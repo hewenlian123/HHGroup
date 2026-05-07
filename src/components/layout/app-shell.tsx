@@ -70,7 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <ToastProvider>
         <AttachmentPreviewProvider>
           <div
-            className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-[#F2F2F4]"}
+            className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-slate-50"}
           >
             {children}
           </div>
@@ -86,7 +86,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <SystemHealthProvider>
             <LaborAddEntryProvider>
               <SystemHealthPoller />
-              <div className="app-shell flex h-screen overflow-hidden bg-page dark:bg-background">
+              <div className="app-shell flex h-screen overflow-hidden bg-slate-50 dark:bg-background">
                 {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
                 <Sidebar
                   className="hidden sm:flex shrink-0 transition-[width] duration-200"
@@ -99,7 +99,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     side="left"
                     className={cn(
                       "w-[210px] max-w-[85vw] p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
-                      "border-r border-white/10 bg-[linear-gradient(180deg,#0B1020_0%,#111827_100%)]"
+                      "border-r border-white/[0.08] bg-[linear-gradient(180deg,#081225_0%,#0F172A_100%)]"
                     )}
                   >
                     <Sidebar
@@ -115,7 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   />
                   <main
                     className={cn(
-                      "flex-1 scroll-smooth overflow-y-auto overflow-x-hidden bg-page",
+                      "flex-1 scroll-smooth overflow-y-auto overflow-x-hidden bg-slate-50",
                       "pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
                     )}
                   >

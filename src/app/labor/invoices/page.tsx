@@ -16,6 +16,7 @@ import {
 } from "@/lib/data";
 import { FilterBar } from "@/components/filter-bar";
 import { StatusBadge } from "@/components/status-badge";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 export default function LaborInvoicesPage() {
   const [rows, setRows] = React.useState<LaborInvoice[]>([]);
@@ -205,13 +206,11 @@ export default function LaborInvoicesPage() {
                 >
                   <td className="py-3 px-4 font-medium text-foreground">{row.invoiceNo}</td>
                   <td className="py-3 px-4">{workersMap.get(row.workerId) ?? "Unknown worker"}</td>
-                  <td className="py-3 px-4 tabular-nums">{row.invoiceDate}</td>
+                  <td className="py-3 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                    {formatDate(row.invoiceDate)}
+                  </td>
                   <td className="py-3 px-4 text-right tabular-nums">
-                    {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                      maximumFractionDigits: 2,
-                    }).format(row.amount)}
+                    {formatCurrency(row.amount)}
                   </td>
                   <td className="py-3 px-4 text-right tabular-nums">{row.projectSplits.length}</td>
                   <td className="py-3 px-4">

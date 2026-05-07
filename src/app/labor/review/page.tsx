@@ -14,6 +14,7 @@ import {
   upsertLaborEntry,
   type LaborEntry,
 } from "@/lib/data";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 export default function LaborReviewPage() {
   const [date, setDate] = React.useState(() => new Date().toISOString().slice(0, 10));
@@ -197,19 +198,17 @@ export default function LaborReviewPage() {
                     key={row.id}
                     className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
                   >
-                    <td className="py-3 px-4 tabular-nums">{row.date}</td>
+                    <td className="py-3 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                      {formatDate(row.date)}
+                    </td>
                     <td className="py-3 px-4">{workers.get(row.workerId) ?? "Unknown worker"}</td>
                     <td className="py-3 px-4">
                       {row.projectId ? (projects.get(row.projectId) ?? row.projectId) : "—"}
                     </td>
                     <td className="py-3 px-4 text-right tabular-nums">{Number(row.hours) || 0}</td>
                     <td className="py-3 px-4">{row.costCode ?? "—"}</td>
-                    <td className="py-3 px-4 text-right tabular-nums">
-                      {new Intl.NumberFormat("en-US", {
-                        style: "currency",
-                        currency: "USD",
-                        maximumFractionDigits: 2,
-                      }).format(computeTotal(row))}
+                    <td className="py-3 px-4 text-right font-semibold tabular-nums tracking-tight text-zinc-950">
+                      {formatCurrency(computeTotal(row))}
                     </td>
                     <td className="py-3 px-4">
                       <div className="flex justify-end gap-2">
@@ -309,12 +308,8 @@ export default function LaborReviewPage() {
                 />
                 <p className="text-sm">
                   Total:{" "}
-                  <span className="font-semibold tabular-nums">
-                    {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                      maximumFractionDigits: 2,
-                    }).format(computeTotal(selected))}
+                  <span className="font-semibold tabular-nums tracking-tight text-zinc-950">
+                    {formatCurrency(computeTotal(selected))}
                   </span>
                 </p>
               </div>

@@ -11,7 +11,7 @@ export const motionTransition = "transition-all duration-150 ease-out";
 
 /** Hover on buttons, links, list tiles (not heavy cards). */
 export const motionInteractiveHover = cn(
-  "hover:-translate-y-px hover:bg-gray-50 dark:hover:bg-muted/40"
+  "hover:-translate-y-px hover:bg-slate-50 dark:hover:bg-muted/40"
 );
 
 /** Press feedback for clickable controls (desktop + mobile scale). */
@@ -20,7 +20,7 @@ export const motionClickableActive = cn(
 );
 
 /** Dense icon-only controls (toolbar, ghost icons). */
-export const motionIconButtonHover = "hover:bg-gray-100 dark:hover:bg-muted/50";
+export const motionIconButtonHover = "hover:bg-slate-100 dark:hover:bg-muted/50";
 
 export const motionIconButtonActive = "active:scale-[0.95] active:duration-100";
 
@@ -31,13 +31,13 @@ export const motionRowPress = "active:scale-[0.99] active:duration-100";
 export const motionListTableRow = cn(
   "group",
   motionTransition,
-  "hover:bg-gray-50 dark:hover:bg-muted/30",
+  "hover:bg-slate-50 dark:hover:bg-muted/30",
   motionRowPress
 );
 
 /** Form controls — ring only, no layout jump. */
 export const motionInputFocus = cn(
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30 focus-visible:ring-offset-0"
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-0"
 );
 
 /** Optional: bordered cards / image tiles that should feel “lifted”. */

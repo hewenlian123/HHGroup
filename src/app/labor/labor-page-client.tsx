@@ -30,6 +30,7 @@ import { EditEntryModal, sessionLabel } from "./edit-entry-modal";
 import type { LaborSession } from "./edit-entry-modal";
 import { CalendarDays, Clock, DollarSign, ListOrdered, Pencil, Plus, Trash2 } from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { formatCurrency, formatDate, formatInteger, formatNumber } from "@/lib/formatters";
 
 function monthAdd(ym: string, deltaMonths: number): string {
   const [y, m] = ym.split("-").map(Number);
@@ -48,8 +49,8 @@ function initials(name: string | null | undefined): string {
 
 function sessionBadgeClass(session: LaborSession): string {
   if (session === "morning") return "bg-amber-50 text-amber-800 ring-1 ring-amber-200/60";
-  if (session === "afternoon") return "bg-blue-50 text-blue-800 ring-1 ring-blue-200/60";
-  return "bg-[#DCFCE7] text-[#166534] ring-1 ring-[#DCFCE7]";
+  if (session === "afternoon") return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/70";
+  return "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/70";
 }
 
 const timeShell =
@@ -104,7 +105,7 @@ function getMonthRange(ym: string): { dateFrom: string; dateTo: string } {
 function formatMonthLabel(ym: string): string {
   const [y, m] = ym.split("-").map(Number);
   const date = new Date(y, m - 1, 1);
-  return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return formatDate(date, "month");
 }
 
 function buildMonthOptions(): { value: string; label: string }[] {
@@ -129,9 +130,7 @@ function getDatesInMonth(ym: string): string[] {
 }
 
 function formatShortDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  return date.toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+  return formatDate(dateStr, "compact");
 }
 
 /** Build calendar grid for month (Mon–Sun). Each cell is null (empty) or day number 1–31. Last row padded to 7. */
@@ -558,11 +557,7 @@ export default function LaborPageClient() {
                   Total labor cost
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {summary.totalLaborCost.toLocaleString("en-US", {
-                    style: "currency",
-                    currency: "USD",
-                    maximumFractionDigits: 0,
-                  })}
+                  {formatCurrency(summary.totalLaborCost)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This month</p>
               </div>
@@ -585,7 +580,7 @@ export default function LaborPageClient() {
                   Work days
                 </p>
                 <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {summary.totalWorkDays.toLocaleString("en-US")}
+                  {formatInteger(summary.totalWorkDays)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Unique dates</p>
               </div>
@@ -604,7 +599,7 @@ export default function LaborPageClient() {
                   Entries
                 </p>
                 <p className="mt-0.5 text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {summary.totalEntries.toLocaleString("en-US")}
+                  {formatInteger(summary.totalEntries)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Recorded</p>
               </div>
@@ -625,11 +620,7 @@ export default function LaborPageClient() {
                   >
                     <span className="text-sm font-medium text-foreground truncate">{name}</span>
                     <span className="text-sm tabular-nums font-medium text-foreground shrink-0">
-                      $
-                      {total.toLocaleString("en-US", {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 0,
-                      })}
+                      {formatCurrency(total)}
                     </span>
                   </div>
                 ))}
@@ -701,11 +692,7 @@ export default function LaborPageClient() {
                                 isHighCost ? "text-amber-700" : "text-hh-profit-positive"
                               )}
                             >
-                              $
-                              {totalPay.toLocaleString("en-US", {
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 0,
-                              })}
+                              {formatCurrency(totalPay)}
                             </span>
                           </div>
                           <span
@@ -773,13 +760,13 @@ export default function LaborPageClient() {
                                           </span>
                                         </td>
                                         <td className="py-2 px-3 text-right tabular-nums font-semibold">
-                                          {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                                          {pay > 0 ? formatCurrency(pay) : "—"}
                                         </td>
                                         <td className="py-2 px-3 text-right">
                                           <div className="flex items-center justify-end gap-2">
                                             <button
                                               type="button"
-                                              className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
+                                              className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-emerald-700 hover:bg-emerald-50/60 hover:text-emerald-800"
                                               onClick={() => openEdit(e)}
                                               aria-label="Edit"
                                             >
@@ -996,15 +983,11 @@ export default function LaborPageClient() {
                                           : "bg-emerald-50/80 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200"
                                       )}
                                     >
-                                      {totalHours.toLocaleString("en-US", {
+                                      {formatNumber(totalHours, {
                                         minimumFractionDigits: 0,
                                         maximumFractionDigits: 1,
                                       })}
-                                      h · $
-                                      {totalPay.toLocaleString("en-US", {
-                                        minimumFractionDigits: 0,
-                                        maximumFractionDigits: 0,
-                                      })}
+                                      h · {formatCurrency(totalPay)}
                                     </span>
                                   ) : null}
                                 </div>
@@ -1136,13 +1119,13 @@ export default function LaborPageClient() {
                                   {otHours}
                                 </td>
                                 <td className="py-2 px-3 text-right tabular-nums font-semibold">
-                                  {pay > 0 ? `$${pay.toFixed(2)}` : "—"}
+                                  {pay > 0 ? formatCurrency(pay) : "—"}
                                 </td>
                                 <td className="py-2 px-3 text-right">
                                   <div className="flex items-center justify-end gap-2">
                                     <button
                                       type="button"
-                                      className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50/60"
+                                      className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-emerald-700 hover:bg-emerald-50/60 hover:text-emerald-800"
                                       onClick={() => openEdit(e)}
                                       aria-label="Edit"
                                     >

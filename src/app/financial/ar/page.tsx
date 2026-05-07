@@ -12,6 +12,8 @@ import {
 import { getARSummary, getOutstandingInvoices, getProjects } from "@/lib/data";
 import { Banknote, AlertCircle, TrendingUp, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { TYPO } from "@/lib/typography";
 
 function getAgingBucket(dueDate: string): string {
   const today = new Date().toISOString().slice(0, 10);
@@ -58,7 +60,7 @@ export default async function ARPage() {
       />
 
       <section>
-        <h2 className="mb-4 text-lg font-semibold text-foreground">AR Overview</h2>
+        <h2 className={cn("mb-4", TYPO.sectionLabel)}>AR overview</h2>
         <div className="grid gap-4 border-b border-gray-100 pb-6 sm:grid-cols-3 dark:border-border">
           {kpis.map(({ label, value, icon: Icon }) => (
             <div key={label}>
@@ -74,10 +76,10 @@ export default async function ARPage() {
                   label === "Overdue AR" && value > 0 && "text-amber-600 dark:text-amber-400",
                   label === "Paid This Month" &&
                     value > 0 &&
-                    "text-hh-profit-positive dark:text-hh-profit-positive"
+                    "text-emerald-700 dark:text-emerald-400"
                 )}
               >
-                ${value.toLocaleString()}
+                {formatCurrency(value)}
               </p>
             </div>
           ))}
@@ -148,16 +150,16 @@ export default async function ARPage() {
                         </TableCell>
                         <TableCell className="text-foreground">{inv.clientName}</TableCell>
                         <TableCell className="text-right font-mono tabular-nums">
-                          ${inv.total.toLocaleString()}
+                          {formatCurrency(inv.total)}
                         </TableCell>
                         <TableCell className="text-right font-mono tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
-                          ${inv.paidTotal.toLocaleString()}
+                          {formatCurrency(inv.paidTotal)}
                         </TableCell>
                         <TableCell className="font-mono tabular-nums text-muted-foreground">
-                          {inv.dueDate}
+                          {formatDate(inv.dueDate)}
                         </TableCell>
                         <TableCell className="text-right font-mono font-medium tabular-nums">
-                          ${inv.balanceDue.toLocaleString()}
+                          {formatCurrency(inv.balanceDue)}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {inv.computedStatus}

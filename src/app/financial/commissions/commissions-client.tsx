@@ -52,13 +52,13 @@ import {
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { useToast } from "@/components/toast/toast-provider";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 const PAYMENT_METHODS = ["Check", "Bank Transfer", "Cash", "Zelle", "Other"] as const;
 
 const COMMISSION_ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"] as const;
 
-const fmtUsd = (n: number) =>
-  n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtUsd = (n: number) => formatCurrency(n);
 
 async function postCommissionReceiptWithProgress(
   uploadUrl: string,
@@ -562,7 +562,7 @@ export function CommissionsClient({
     (printing: boolean) => (
       <Button
         type="button"
-        className="h-8 rounded-lg bg-[#2563EB] text-[13px] font-medium text-white hover:bg-[#1D4ED8]"
+        className="h-8 rounded-lg bg-emerald-600 text-[13px] font-medium text-white hover:bg-emerald-700"
         disabled={printing}
         onClick={() => void handlePreviewPrintReceipt()}
       >
@@ -921,10 +921,10 @@ export function CommissionsClient({
                     onClick={(e) => e.stopPropagation()}
                   >
                     <td className="py-2.5 pr-4 font-mono tabular-nums text-text-secondary">
-                      {p.payment_date || "—"}
+                      {formatDate(p.payment_date)}
                     </td>
                     <td className="py-2.5 pr-4 text-right font-mono tabular-nums text-text-primary">
-                      ${fmtUsd(p.amount)}
+                      {fmtUsd(p.amount)}
                     </td>
                     <td className="py-2.5 pr-4 text-[#374151]">{p.payment_method}</td>
                     <td className="max-w-[16rem] truncate py-2.5 pr-4 text-text-secondary">
@@ -937,7 +937,7 @@ export function CommissionsClient({
                             <button
                               type="button"
                               disabled={receiptViewLoading?.payment.id === p.id}
-                              className="rounded-md p-1.5 text-blue-600 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-blue-700 active:scale-[0.95] active:duration-100 disabled:opacity-50 dark:hover:bg-muted/50"
+                              className="rounded-md p-1.5 text-emerald-700 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-emerald-50 hover:text-emerald-800 active:scale-[0.95] active:duration-100 disabled:opacity-50 dark:hover:bg-emerald-950/30"
                               data-testid={`financial-payment-receipt-view-${p.id}`}
                               aria-label="View uploaded receipt"
                               onClick={(e) => openReceiptPreview(r, p, e)}
@@ -1114,7 +1114,7 @@ export function CommissionsClient({
                   Total commission
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  ${fmtUsd(summary.totalCommission)}
+                  {fmtUsd(summary.totalCommission)}
                 </div>
               </div>
             </div>
@@ -1127,7 +1127,7 @@ export function CommissionsClient({
                   Paid commission
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  ${fmtUsd(summary.paidCommission)}
+                  {fmtUsd(summary.paidCommission)}
                 </div>
               </div>
             </div>
@@ -1140,7 +1140,7 @@ export function CommissionsClient({
                   Outstanding
                 </div>
                 <div className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
-                  ${fmtUsd(summary.outstandingCommission)}
+                  {fmtUsd(summary.outstandingCommission)}
                 </div>
               </div>
             </div>
@@ -1153,7 +1153,7 @@ export function CommissionsClient({
                   This month paid
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  ${fmtUsd(summary.thisMonthPaid)}
+                  {fmtUsd(summary.thisMonthPaid)}
                 </div>
               </div>
             </div>
@@ -1266,7 +1266,7 @@ export function CommissionsClient({
                         {r.person_name || "—"} · {r.role}
                       </p>
                       <p className="mt-1 text-xs font-mono tabular-nums text-text-secondary">
-                        Out ${fmtUsd(r.outstanding_amount)} · Paid ${fmtUsd(r.paid_amount)}
+                        Out {fmtUsd(r.outstanding_amount)} · Paid {fmtUsd(r.paid_amount)}
                       </p>
                     </button>
                     <div className="shrink-0 pt-0.5">
@@ -1296,7 +1296,7 @@ export function CommissionsClient({
                     />
                   </div>
                   {expandedIds.has(r.id) ? (
-                    <div className="mt-2 border-t border-gray-100 bg-[#EDE9E1]/50 px-2 py-3 dark:border-border/40">
+                    <div className="mt-2 border-t border-gray-100 bg-slate-50/80 px-2 py-3 dark:border-border/40">
                       <CommissionPaymentDetailsPanel r={r} />
                     </div>
                   ) : null}
@@ -1383,13 +1383,13 @@ export function CommissionsClient({
                         <td className="px-3 py-4 text-foreground/80">{r.person_name || "—"}</td>
                         <td className="px-3 py-4 text-muted-foreground">{r.role}</td>
                         <td className="px-3 py-4 text-right tabular-nums text-foreground">
-                          ${fmtUsd(r.commission_amount)}
+                          {fmtUsd(r.commission_amount)}
                         </td>
                         <td className="px-3 py-4 text-right tabular-nums text-muted-foreground">
-                          ${fmtUsd(r.paid_amount)}
+                          {fmtUsd(r.paid_amount)}
                         </td>
                         <td className="px-3 py-4 text-right tabular-nums font-semibold text-foreground">
-                          ${fmtUsd(r.outstanding_amount)}
+                          {fmtUsd(r.outstanding_amount)}
                         </td>
                         <td className="px-3 py-4">
                           <CommissionStatusChip row={r} />
@@ -1415,7 +1415,7 @@ export function CommissionsClient({
                       </tr>
                       {expandedIds.has(r.id) ? (
                         <tr className="border-b border-[#E8E4DD]">
-                          <td colSpan={9} className="bg-[#EDE9E1]/90 p-0">
+                          <td colSpan={9} className="bg-slate-50/90 p-0">
                             <div className="px-6 py-4 pl-14">
                               <CommissionPaymentDetailsPanel r={r} />
                             </div>
@@ -1445,7 +1445,7 @@ export function CommissionsClient({
             </DialogHeader>
             {editRow && (
               <p className="text-[13px] leading-snug text-text-secondary">
-                {editRow.project_name || "Project"} · Paid ${fmtUsd(editRow.paid_amount)}
+                {editRow.project_name || "Project"} · Paid {fmtUsd(editRow.paid_amount)}
               </p>
             )}
             <form onSubmit={handleEditCommission} className="mt-4 flex flex-col gap-4">
@@ -1631,7 +1631,7 @@ export function CommissionsClient({
             {selectedCommission && (
               <p className="text-[13px] leading-snug text-text-secondary">
                 {selectedCommission.person_name} · {selectedCommission.project_name} · Outstanding:
-                ${fmtUsd(selectedCommission.outstanding_amount)}
+                {fmtUsd(selectedCommission.outstanding_amount)}
               </p>
             )}
             <form onSubmit={handleRecordPayment} className="mt-4 flex flex-col gap-4">
@@ -1803,7 +1803,7 @@ export function CommissionsClient({
                     Upload Receipt
                   </DialogTitle>
                   <DialogDescription className="text-[13px] text-text-secondary">
-                    {receiptUploadModal.payment.payment_date || "—"} · $
+                    {formatDate(receiptUploadModal.payment.payment_date)} ·{" "}
                     {fmtUsd(receiptUploadModal.payment.amount)}
                   </DialogDescription>
                 </DialogHeader>
@@ -1822,7 +1822,7 @@ export function CommissionsClient({
                   className={cn(
                     "mt-4 flex cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed px-6 py-10 transition-colors outline-none",
                     receiptUploadDragging
-                      ? "border-[#2563EB] bg-[#EFF6FF]"
+                      ? "border-emerald-500 bg-emerald-50"
                       : "border-[#D1D5DB] bg-[#F9FAFB]",
                     receiptUploadSubmitting && "pointer-events-none opacity-70"
                   )}
@@ -1868,7 +1868,7 @@ export function CommissionsClient({
                   <div className="mt-4 space-y-2">
                     <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
                       <div
-                        className="h-full rounded-full bg-[#2563EB] transition-[width] duration-150"
+                        className="h-full rounded-full bg-emerald-500 transition-[width] duration-150"
                         style={{ width: `${Math.max(0, Math.min(100, receiptUploadProgress))}%` }}
                       />
                     </div>

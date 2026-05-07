@@ -21,15 +21,7 @@ import { deleteBillDraftAction, voidBillAction } from "../actions";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { createBrowserClient } from "@/lib/supabase";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
-
-function fmtUsd(n: number): string {
-  return `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-function formatDate(s: string | null): string {
-  if (!s) return "—";
-  return s.slice(0, 10);
-}
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type Props = {
   bill: ApBillWithProject;
@@ -137,13 +129,13 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
       <SectionHeader label="Financial summary" />
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-3 text-sm border-b border-border/60">
         <span className="text-muted-foreground">Total amount</span>
-        <span className="tabular-nums font-medium">{fmtUsd(bill.amount)}</span>
+        <span className="tabular-nums font-medium">{formatCurrency(bill.amount)}</span>
         <span className="text-muted-foreground">Paid amount</span>
         <span className="tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
-          {fmtUsd(bill.paid_amount)}
+          {formatCurrency(bill.paid_amount)}
         </span>
         <span className="text-muted-foreground">Balance</span>
-        <span className="tabular-nums font-medium">{fmtUsd(bill.balance_amount)}</span>
+        <span className="tabular-nums font-medium">{formatCurrency(bill.balance_amount)}</span>
       </div>
       <Divider />
       <SectionHeader
@@ -191,7 +183,9 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
               {payments.map((p) => (
                 <tr key={p.id} className="border-b border-border/40">
                   <td className="py-1.5 px-3">{formatDate(p.payment_date)}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">{fmtUsd(p.amount)}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">
+                    {formatCurrency(p.amount)}
+                  </td>
                   <td className="py-1.5 px-3 text-muted-foreground">{p.payment_method ?? "—"}</td>
                   <td className="py-1.5 px-3 text-muted-foreground">{p.reference_no ?? "—"}</td>
                   <td

@@ -2,21 +2,23 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import { OS, TYPO } from "@/lib/typography";
 
-const tableShellClass =
-  "relative w-full overflow-hidden rounded-xl border border-gray-100 bg-white shadow-none dark:border-border dark:bg-card";
+const tableShellClass = OS.tableShell;
 
 /** Legacy raw table cell borders — light row dividers only (prefer `Table` primitives). */
-export const tableCellBorderClass = "border-b border-gray-100 last:border-b-0 dark:border-border";
+export const tableCellBorderClass =
+  "border-b border-slate-900/[0.06] last:border-b-0 dark:border-border";
 
 export const tableRawThClass = cn(
-  "h-9 bg-white px-3 text-left align-middle text-xs font-medium uppercase tracking-wide text-text-secondary dark:bg-card",
-  "border-b border-gray-100 dark:border-border"
+  "h-9 bg-slate-50/80 px-3 text-left align-middle dark:bg-card",
+  TYPO.tableHeader,
+  "border-b border-slate-900/[0.06] dark:border-border"
 );
 
 export const tableRawTdClass = cn(
-  "h-9 max-md:min-h-[44px] px-3 py-0 align-middle text-sm text-text-primary dark:text-foreground",
-  "border-b border-gray-100 last:border-b-0 dark:border-border"
+  "h-9 max-md:min-h-[44px] px-3 py-0 align-middle text-sm text-zinc-900 dark:text-foreground",
+  "border-b border-slate-900/[0.06] last:border-b-0 dark:border-border"
 );
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
@@ -26,7 +28,7 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
         <table
           ref={ref}
           className={cn(
-            "w-full caption-bottom border-collapse text-sm text-text-primary dark:text-foreground",
+            "w-full caption-bottom border-collapse text-sm text-zinc-900 dark:text-foreground",
             className
           )}
           {...props}
@@ -59,7 +61,7 @@ const TableBody = React.forwardRef<
   <tbody
     ref={ref}
     className={cn(
-      "[&>tr]:border-b [&>tr]:border-gray-100 [&>tr:last-child]:border-b-0 dark:[&>tr]:border-border",
+      "[&>tr]:border-b [&>tr]:border-slate-900/[0.06] [&>tr:last-child]:border-b-0 dark:[&>tr]:border-border",
       className
     )}
     {...props}
@@ -74,7 +76,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t border-gray-100 font-medium dark:border-border [&>tr]:last:border-b-0",
+      "border-t border-slate-900/[0.06] font-medium dark:border-border [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -89,7 +91,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
       className={cn(
         listTableRowStaticClassName,
         "border-l-2 border-l-transparent transition-colors",
-        "data-[state=selected]:border-l-brand-primary data-[state=selected]:bg-blue-50 dark:data-[state=selected]:bg-blue-950/30",
+        "data-[state=selected]:border-l-brand-primary data-[state=selected]:bg-emerald-50 dark:data-[state=selected]:bg-emerald-950/30",
         "[&>td:first-child]:font-medium",
         className
       )}
@@ -106,8 +108,9 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-9 bg-white px-3 text-left align-middle text-xs font-medium uppercase tracking-wide text-text-secondary dark:bg-card",
-      "border-b border-gray-100 dark:border-border",
+      "h-9 bg-slate-50/80 px-3 text-left align-middle dark:bg-card",
+      TYPO.tableHeader,
+      "border-b border-slate-900/[0.06] dark:border-border",
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
@@ -123,7 +126,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "h-9 max-md:min-h-[44px] px-3 py-0 align-middle text-sm text-text-primary dark:text-foreground",
+      "h-9 max-md:min-h-[44px] px-3 py-0 align-middle text-sm text-zinc-900 dark:text-foreground",
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}

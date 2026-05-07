@@ -42,15 +42,7 @@ import type { WorkerReceipt, WorkerReceiptStatus } from "@/lib/worker-receipts-d
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { TYPO } from "@/lib/typography";
-
-function fmtUsd(n: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 export type ReceiptRow = WorkerReceipt & { projectName: string };
 
@@ -614,7 +606,7 @@ export function ReceiptsClient({
                 Total amount
               </p>
               <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                {fmtUsd(summary.totalAmount)}
+                {formatCurrency(summary.totalAmount)}
               </p>
               <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">All uploads</p>
             </div>
@@ -885,7 +877,7 @@ export function ReceiptsClient({
                     <div className="flex flex-wrap items-end justify-between gap-2 border-b border-zinc-100/70 pb-2 dark:border-border/40">
                       <span className={TYPO.sectionLabel}>Amount</span>
                       <span className={cn("max-w-full min-w-0 text-right text-xl", TYPO.amount)}>
-                        {fmtUsd(r.amount)}
+                        {formatCurrency(r.amount)}
                       </span>
                     </div>
                     <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
@@ -919,7 +911,7 @@ export function ReceiptsClient({
                       <div className="min-w-0">
                         <dt className={TYPO.tableHeader}>Date</dt>
                         <dd className={cn("truncate pt-0.5", TYPO.date)}>
-                          {r.createdAt.slice(0, 10)}
+                          {formatDate(r.createdAt)}
                         </dd>
                       </div>
                       <div className="min-w-0 sm:col-span-2">
@@ -1073,7 +1065,7 @@ export function ReceiptsClient({
                             TYPO.amount
                           )}
                         >
-                          {fmtUsd(r.amount)}
+                          {formatCurrency(r.amount)}
                         </td>
                         <td className="px-3 py-2.5 align-middle">
                           {r.receiptUrl ? (
@@ -1109,7 +1101,7 @@ export function ReceiptsClient({
                             TYPO.date
                           )}
                         >
-                          {r.createdAt.slice(0, 10)}
+                          {formatDate(r.createdAt)}
                         </td>
                         <td
                           className="whitespace-nowrap px-2 py-2.5 text-right align-middle"

@@ -32,18 +32,7 @@ import {
 } from "@/components/mobile/mobile-list-chrome";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { ConfirmDialog } from "@/components/base";
-
-function money(n: number): string {
-  return `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
-
-function formatReadableDate(dateStr: string | null | undefined): string {
-  const s = (dateStr ?? "").slice(0, 10);
-  const [y, m, d] = s.split("-").map(Number);
-  if (!y || !m || !d) return s || "—";
-  const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
-}
+import { formatCurrency, formatDate, formatInteger } from "@/lib/formatters";
 
 const invoicesShell =
   "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
@@ -83,7 +72,7 @@ function statusChipClass(status: InvoiceComputedStatus): { label: string; classN
   return {
     label: "Sent",
     className:
-      "bg-blue-50 text-blue-800 ring-1 ring-blue-200/60 dark:bg-blue-900/20 dark:text-blue-200 dark:ring-blue-900/30",
+      "bg-zinc-50 text-zinc-700 ring-1 ring-zinc-200/70 dark:bg-zinc-900/30 dark:text-zinc-200 dark:ring-zinc-800/40",
   };
 }
 
@@ -393,7 +382,7 @@ function InvoicesPageInner() {
                   Total invoiced
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {money(summary.totalInvoiced)}
+                  {formatCurrency(summary.totalInvoiced)}
                 </div>
               </div>
             </div>
@@ -406,7 +395,7 @@ function InvoicesPageInner() {
                   Open invoices
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.openCount.toLocaleString("en-US")}
+                  {formatInteger(summary.openCount)}
                 </div>
               </div>
             </div>
@@ -419,7 +408,7 @@ function InvoicesPageInner() {
                   Paid
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.paidCount.toLocaleString("en-US")}
+                  {formatInteger(summary.paidCount)}
                 </div>
               </div>
             </div>
@@ -432,7 +421,7 @@ function InvoicesPageInner() {
                   Outstanding
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {money(summary.outstanding)}
+                  {formatCurrency(summary.outstanding)}
                 </div>
               </div>
             </div>
@@ -445,7 +434,7 @@ function InvoicesPageInner() {
                   Overdue
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {money(summary.overdue)}
+                  {formatCurrency(summary.overdue)}
                 </div>
               </div>
             </div>
@@ -458,7 +447,7 @@ function InvoicesPageInner() {
                   Draft/Void
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
-                  {summary.draftVoid.toLocaleString("en-US")}
+                  {formatInteger(summary.draftVoid)}
                 </div>
               </div>
             </div>
@@ -646,19 +635,19 @@ function InvoicesPageInner() {
 
                     <div className="mt-2 flex items-center justify-between gap-3 md:mt-0 md:block md:text-right">
                       <div className="md:hidden text-xs text-muted-foreground">
-                        Due {formatReadableDate(inv.dueDate)}
+                        Due {formatDate(inv.dueDate)}
                       </div>
                       <div className="text-sm font-medium tabular-nums text-foreground">
-                        {money(inv.total)}
+                        {formatCurrency(inv.total)}
                       </div>
                     </div>
 
                     <div className="hidden md:block text-right text-sm tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
-                      {money(inv.paidTotal)}
+                      {formatCurrency(inv.paidTotal)}
                     </div>
 
                     <div className="hidden md:block text-right text-sm font-semibold tabular-nums text-foreground">
-                      {money(inv.balanceDue)}
+                      {formatCurrency(inv.balanceDue)}
                     </div>
 
                     <div className="mt-2 flex items-center justify-between gap-2 md:mt-0 md:block">
@@ -671,17 +660,17 @@ function InvoicesPageInner() {
                         {chip.label}
                       </span>
                       <div className="md:hidden text-right text-sm font-semibold tabular-nums text-foreground">
-                        {money(inv.balanceDue)}
+                        {formatCurrency(inv.balanceDue)}
                       </div>
                     </div>
 
                     <div className="hidden md:block text-sm font-mono tabular-nums text-muted-foreground">
-                      {formatReadableDate(inv.dueDate)}
+                      {formatDate(inv.dueDate)}
                     </div>
 
                     <div className="mt-2 flex items-center justify-between gap-2 md:mt-0 md:block">
                       <div className="md:hidden text-xs text-muted-foreground">
-                        Paid {money(inv.paidTotal)} · Total {money(inv.total)}
+                        Paid {formatCurrency(inv.paidTotal)} · Total {formatCurrency(inv.total)}
                       </div>
                       <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
                         <RowActionsMenu

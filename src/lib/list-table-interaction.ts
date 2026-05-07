@@ -16,7 +16,7 @@ export const listTablePrimaryCellClassName =
 
 /** Currency / numeric emphasis columns (beats per-column color on hover). */
 export const listTableAmountCellClassName = cn(
-  "transition-colors duration-200 group-hover:!text-text-primary dark:group-hover:!text-foreground"
+  "tabular-nums tracking-tight font-semibold transition-colors duration-200 group-hover:!text-zinc-950 dark:group-hover:!text-foreground"
 );
 
 /** Row actions trigger: hidden until row hover/focus on desktop; always visible on touch (<md). */
@@ -28,16 +28,16 @@ export const listRowActionsTriggerClassName = cn(
 );
 
 export const listRowActionsContentClassName = cn(
-  "min-w-[160px] rounded-md border border-gray-100 bg-white p-0 py-2 shadow-sm",
+  "min-w-[160px] rounded-md border border-slate-900/[0.06] bg-white/95 p-0 py-2 shadow-sm",
   "dark:border-border dark:bg-popover dark:text-popover-foreground"
 );
 
 export const listRowActionsItemClassName = cn(
   "cursor-pointer rounded-none px-4 py-2 text-sm",
-  "focus:bg-[#F9FAFB] hover:bg-[#F9FAFB]",
+  "focus:bg-slate-50 hover:bg-slate-50",
   "dark:focus:bg-muted/60 dark:hover:bg-muted/60"
 );
 
 export const listRowActionsDestructiveClassName = cn(
-  "text-[#DC2626] focus:text-[#DC2626] hover:bg-[#DC2626] hover:text-white dark:text-red-400 dark:focus:text-red-400"
+  "text-rose-600 focus:text-rose-600 hover:bg-rose-600 hover:text-white dark:text-rose-400 dark:focus:text-rose-400"
 );

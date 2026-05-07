@@ -48,15 +48,7 @@ import {
   type WorkerPayment,
 } from "@/lib/data";
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
-
-function fmtUsd(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 const wpShell =
   "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
@@ -110,7 +102,7 @@ function thisMonthPrefix(): string {
 }
 
 function thisMonthLabel(): string {
-  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(new Date());
+  return formatDate(new Date(), "month");
 }
 
 function PaymentMethodLabel({ method }: { method: string }) {
@@ -429,7 +421,7 @@ export default function WorkerPaymentsPage() {
                   Total paid
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.totalPaid)}
+                  {formatCurrency(summary.totalPaid)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">All time</p>
               </div>
@@ -471,7 +463,7 @@ export default function WorkerPaymentsPage() {
                   This month
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.thisMonthTotal)}
+                  {formatCurrency(summary.thisMonthTotal)}
                 </p>
                 <p className="mt-0.5 truncate text-[9px] leading-none text-muted-foreground">
                   {thisMonthLabel()}
@@ -511,7 +503,7 @@ export default function WorkerPaymentsPage() {
                   Avg payment
                 </p>
                 <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.avgPayment)}
+                  {formatCurrency(summary.avgPayment)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Per payment</p>
               </div>
@@ -714,7 +706,7 @@ export default function WorkerPaymentsPage() {
                         Amount
                       </span>
                       <span className="max-w-full min-w-0 text-right text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground">
-                        {fmtUsd(r.amount)}
+                        {formatCurrency(r.amount)}
                       </span>
                     </div>
                     <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
@@ -731,7 +723,7 @@ export default function WorkerPaymentsPage() {
                           Date
                         </dt>
                         <dd className="truncate pt-0.5 font-mono tabular-nums text-zinc-700 dark:text-zinc-200">
-                          {r.paymentDate}
+                          {formatDate(r.paymentDate)}
                         </dd>
                       </div>
                       <div className="min-w-0 sm:col-span-2">
@@ -918,13 +910,13 @@ export default function WorkerPaymentsPage() {
                           {r.projectId ? (projectNameById.get(r.projectId) ?? r.projectId) : "—"}
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground">
-                          {fmtUsd(r.amount)}
+                          {formatCurrency(r.amount)}
                         </td>
                         <td className="max-w-[160px] px-3 py-2.5 align-middle text-sm">
                           <PaymentMethodLabel method={r.paymentMethod ?? ""} />
                         </td>
                         <td className="whitespace-nowrap px-3 py-2.5 align-middle font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-300">
-                          {r.paymentDate}
+                          {formatDate(r.paymentDate)}
                         </td>
                         <td
                           className="max-w-[220px] truncate px-3 py-2.5 align-middle text-sm text-zinc-600 dark:text-zinc-400"

@@ -57,6 +57,7 @@ import {
   EXPENSE_COMMON_ITEM_NONE,
   EXPENSE_PROJECT_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type QuickExpenseAttachmentSlot = ExpenseReceiptUploadSlot;
 
@@ -970,7 +971,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       }
       toast({
         title: "Expense saved",
-        description: `${vendorName.trim() || "Unknown"} — $${totalAmount.toLocaleString()}`,
+        description: `${vendorName.trim() || "Unknown"} - ${formatCurrency(totalAmount)}`,
         variant: "success",
         durationMs: 14_000,
       });
@@ -1185,7 +1186,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       <li>Amount: {ocrSuggestions.amount}</li>
                     ) : null}
                     {fieldConfidence.date !== "high" && ocrSuggestions.date ? (
-                      <li>Date: {ocrSuggestions.date}</li>
+                      <li>Date: {formatDate(ocrSuggestions.date)}</li>
                     ) : null}
                   </ul>
                 </div>
@@ -1481,8 +1482,9 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
               {duplicateCandidate ? (
                 <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/35 px-2 py-1.5 text-[11px] text-amber-800 dark:text-amber-200">
                   <span className="min-w-0">
-                    Possible duplicate · {duplicateCandidate.vendor} · {duplicateCandidate.date} · $
-                    {duplicateCandidate.amount.toLocaleString()}
+                    Possible duplicate · {duplicateCandidate.vendor} ·{" "}
+                    {formatDate(duplicateCandidate.date)} ·{" "}
+                    {formatCurrency(duplicateCandidate.amount)}
                   </span>
                   <Button
                     type="button"

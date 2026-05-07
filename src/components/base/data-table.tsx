@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motionListTableRow } from "@/lib/motion-system";
+import { TYPO } from "@/lib/typography";
 
 export type DataTableColumn<T> = {
   key: string;
@@ -75,7 +76,7 @@ export function DataTable<T>({
                     "table-row-compact",
                     motionListTableRow,
                     onRowClick &&
-                      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30 focus-visible:ring-offset-0",
+                      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-0",
                     !onRowClick && "cursor-default"
                   )}
                   onClick={(e) => {
@@ -140,25 +141,23 @@ export function DataTable<T>({
             <div
               key={id}
               className={cn(
-                "rounded-xl border border-gray-100 bg-white p-4 shadow-none transition-colors duration-150 ease-out active:scale-[0.99] hover:bg-gray-50 dark:border-border dark:hover:bg-muted/40",
+                "rounded-xl border border-slate-900/[0.06] bg-white/[0.92] p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors duration-150 ease-out active:scale-[0.99] hover:bg-slate-50 dark:border-border dark:hover:bg-muted/40",
                 onRowClick &&
-                  "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/30 focus-visible:ring-offset-0"
+                  "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-0"
               )}
               role={onRowClick ? "button" : undefined}
               tabIndex={onRowClick ? 0 : undefined}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
               onKeyDown={onRowClick ? (e) => e.key === "Enter" && onRowClick(row) : undefined}
             >
-              <div className="text-sm font-medium text-text-primary">
+              <div className={TYPO.primaryName}>
                 {titleCol ? getCellContent(row, titleCol) : null}
               </div>
               <dl className="mt-3 space-y-2">
                 {columns.slice(1).map((col) => (
                   <div key={col.key} className="flex justify-between gap-2 text-sm">
-                    <dt className="text-text-secondary">{col.header}</dt>
-                    <dd className={cn(col.numeric && "text-right tabular-nums")}>
-                      {getCellContent(row, col)}
-                    </dd>
+                    <dt className={TYPO.tableHeader}>{col.header}</dt>
+                    <dd className={cn(col.numeric && TYPO.amount)}>{getCellContent(row, col)}</dd>
                   </div>
                 ))}
               </dl>

@@ -51,6 +51,7 @@ import {
   laborPaymentStatusUiLabel,
   type LaborPaymentStatus,
 } from "@/lib/labor-balance-shared";
+import { formatDate } from "@/lib/formatters";
 
 function DailyEntriesSuspenseFallback() {
   return (
@@ -140,7 +141,9 @@ const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
           className="h-4 w-4 rounded border-input"
         />
       </td>
-      <td className="py-1.5 px-3 tabular-nums text-muted-foreground">{row.work_date}</td>
+      <td className="py-1.5 px-3 font-mono tabular-nums tracking-tight text-zinc-500">
+        {formatDate(row.work_date)}
+      </td>
       <td className="py-1.5 px-3">{row.worker_name ?? "—"}</td>
       <td className="py-1.5 px-3">{row.project_name ?? "—"}</td>
       <td className={cn("py-1.5 px-3 text-right tabular-nums", listTableAmountCellClassName)}>
@@ -729,7 +732,9 @@ function DailyEntriesPageInner() {
                         if (!rowLocked) openEdit(row);
                       }}
                     >
-                      <p className="tabular-nums text-xs text-muted-foreground">{row.work_date}</p>
+                      <p className="font-mono tabular-nums tracking-tight text-xs text-zinc-500">
+                        {formatDate(row.work_date)}
+                      </p>
                       <p className="text-sm font-medium text-foreground">
                         {row.worker_name ?? "—"}
                       </p>

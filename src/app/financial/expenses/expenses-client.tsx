@@ -113,6 +113,7 @@ import {
 } from "@/lib/expense-receipt-items";
 import { buildReceiptPreviewShellFiles } from "@/lib/receipt-preview-shell-files";
 import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
+import { formatCurrency } from "@/lib/formatters";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
@@ -1940,7 +1941,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     This Month
                   </p>
                   <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                    ${summary.monthTotal.toLocaleString()}
+                    {formatCurrency(summary.monthTotal)}
                   </p>
                 </div>
               </div>
@@ -1966,7 +1967,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     {archiveMode ? "Total (archived)" : "Total (all)"}
                   </p>
                   <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                    ${summary.allTotal.toLocaleString()}
+                    {formatCurrency(summary.allTotal)}
                   </p>
                 </div>
               </div>
@@ -1988,11 +1989,11 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     Reimbursements
                   </p>
                   <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                    ${summary.reimbursementTotal.toLocaleString()}
+                    {formatCurrency(summary.reimbursementTotal)}
                   </p>
                 </div>
               </div>
-              <KpiSparkline className="hidden shrink-0 text-violet-300 opacity-50 dark:text-violet-900/40 md:block" />
+              <KpiSparkline className="hidden shrink-0 text-emerald-300 opacity-50 dark:text-emerald-900/40 md:block" />
             </div>
           </div>
 

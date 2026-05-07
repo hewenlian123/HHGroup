@@ -43,6 +43,7 @@ import {
   EXPENSE_PROJECT_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/formatters";
 
 type ProjectOption = { id: string; name: string | null };
 
@@ -697,7 +698,7 @@ export default function NewExpensePage() {
 
               <div className="mt-2 flex items-center justify-between border-t border-border/60 pt-3 text-sm">
                 <span className="text-muted-foreground">Total</span>
-                <span className="tabular-nums font-medium">${total.toLocaleString()}</span>
+                <span className="tabular-nums font-medium">{formatCurrency(total)}</span>
               </div>
             </section>
           ) : null}

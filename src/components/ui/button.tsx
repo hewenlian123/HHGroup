@@ -3,6 +3,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 import {
   motionClickableActive,
   motionIconButtonActive,
@@ -18,23 +19,24 @@ import {
 const buttonVariants = cva(
   cn(
     "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium touch-manipulation outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+    TYPO.button,
     motionTransition,
     motionInteractiveHover,
     "hover:opacity-90",
     motionClickableActive,
-    "focus-visible:ring-2 focus-visible:ring-blue-400/30 focus-visible:ring-offset-0"
+    "focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-0"
   ),
   {
     variants: {
       variant: {
         default:
-          "border border-transparent bg-black text-white hover:bg-gray-900 hover:opacity-100 dark:bg-black dark:hover:bg-gray-800 dark:hover:opacity-100",
+          "border border-transparent bg-[#081225] text-white hover:bg-[#0F172A] hover:opacity-100 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400 dark:hover:opacity-100",
         secondary:
-          "border border-gray-200 bg-white text-text-primary shadow-none hover:bg-gray-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
+          "border border-slate-900/[0.08] bg-white text-zinc-900 shadow-none hover:bg-slate-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
         outline:
-          "border border-gray-200 bg-white text-text-primary shadow-none hover:bg-gray-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
+          "border border-slate-900/[0.08] bg-white text-zinc-900 shadow-none hover:bg-slate-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
         ghost:
-          "border-0 !border-transparent bg-transparent text-text-primary shadow-none hover:!translate-y-0 hover:bg-gray-50 hover:opacity-100 hover:!shadow-none active:!scale-[0.97] active:!duration-100 max-md:active:!scale-[0.96] dark:bg-transparent dark:text-foreground dark:hover:bg-muted/40",
+          "border-0 !border-transparent bg-transparent text-zinc-900 shadow-none hover:!translate-y-0 hover:bg-slate-100/80 hover:opacity-100 hover:!shadow-none active:!scale-[0.97] active:!duration-100 max-md:active:!scale-[0.96] dark:bg-transparent dark:text-foreground dark:hover:bg-muted/40",
       },
       size: {
         /* Touch-friendly: min 44px on mobile/tablet (max-lg) */
@@ -53,7 +55,7 @@ const buttonVariants = cva(
       {
         size: "icon",
         class: cn(
-          "hover:!-translate-y-px hover:!bg-gray-100 dark:hover:!bg-muted/50",
+          "hover:!-translate-y-px hover:!bg-slate-100 dark:hover:!bg-muted/50",
           motionIconButtonActive,
           "max-md:active:!scale-[0.95]"
         ),

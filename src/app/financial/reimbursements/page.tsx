@@ -23,6 +23,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/components/toast/toast-provider";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type WorkerRow = { id: string; name: string };
 
@@ -192,13 +193,13 @@ function WorkerReimbursementsPageInner() {
                       </Button>
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
-                      ${row.totalPending.toLocaleString()}
+                      {formatCurrency(row.totalPending)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
-                      ${row.totalApproved.toLocaleString()}
+                      {formatCurrency(row.totalApproved)}
                     </TableCell>
                     <TableCell className="text-right tabular-nums font-medium">
-                      ${row.totalOwed.toLocaleString()}
+                      {formatCurrency(row.totalOwed)}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -251,10 +252,12 @@ function WorkerReimbursementsPageInner() {
                     <TableBody>
                       {detailWorker.expenses.map((exp) => (
                         <TableRow key={exp.id} className="border-b border-border/30">
-                          <TableCell className="tabular-nums text-foreground">{exp.date}</TableCell>
+                          <TableCell className="font-mono tabular-nums tracking-tight text-zinc-500">
+                            {formatDate(exp.date)}
+                          </TableCell>
                           <TableCell className="text-foreground">{exp.vendorName}</TableCell>
                           <TableCell className="text-right tabular-nums">
-                            ${getExpenseTotal(exp).toLocaleString()}
+                            {formatCurrency(getExpenseTotal(exp))}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm capitalize">
                             {exp.status ?? "pending"}
@@ -278,7 +281,7 @@ function WorkerReimbursementsPageInner() {
                   <span className="text-sm text-muted-foreground">
                     Total owed:{" "}
                     <span className="font-medium text-foreground">
-                      ${detailWorker.totalOwed.toLocaleString()}
+                      {formatCurrency(detailWorker.totalOwed)}
                     </span>
                   </span>
                   <Button

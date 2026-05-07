@@ -57,6 +57,7 @@ import {
   deriveExpenseWorkflowStatus,
   EXPENSE_ACCOUNT_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
+import { formatCurrency } from "@/lib/formatters";
 import {
   isInboxUploadExpenseReference,
   stripInboxUploadNoiseFromText,
@@ -863,7 +864,7 @@ export default function ExpenseDetailPage() {
               Lines total
             </p>
             <p className="mt-0.5 text-xl font-bold tabular-nums text-red-600/90 dark:text-red-400/90">
-              ${total.toLocaleString()}
+              {formatCurrency(total)}
             </p>
           </div>
           <div className="flex-1 border border-gray-100 bg-background px-4 py-3 dark:border-border">
@@ -876,7 +877,7 @@ export default function ExpenseDetailPage() {
                   <span className="text-muted-foreground">
                     {projectId == null ? "Overhead" : (projectNameById.get(projectId) ?? projectId)}
                   </span>
-                  <span>${amount.toLocaleString()}</span>
+                  <span>{formatCurrency(amount)}</span>
                 </li>
               ))}
             </ul>

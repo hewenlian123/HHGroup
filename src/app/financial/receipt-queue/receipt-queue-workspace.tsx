@@ -2005,9 +2005,9 @@ export function ReceiptQueueWorkspace() {
                 type="button"
                 size="sm"
                 className={cn(
-                  "h-10 gap-2 rounded-lg border-0 bg-[#2563eb] px-4 text-sm font-medium text-white shadow-none",
+                  "h-10 gap-2 rounded-lg border-0 bg-emerald-600 px-4 text-sm font-medium text-white shadow-none",
                   RQ_BTN,
-                  "hover:bg-[#1d4ed8]"
+                  "hover:bg-emerald-700"
                 )}
                 disabled={captureUploading}
                 onClick={() => uploadInputRef.current?.click()}
@@ -2036,7 +2036,7 @@ export function ReceiptQueueWorkspace() {
             <div
               className={cn(
                 "hidden min-h-[140px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-[#e5e7eb] bg-white py-8 text-sm text-[#6b7280] transition-colors duration-rq ease-out md:flex",
-                dragOver && !captureUploading && "border-[#2563eb]/45 bg-[#2563eb]/[0.06]",
+                dragOver && !captureUploading && "border-emerald-500/45 bg-emerald-500/[0.06]",
                 captureUploading && "pointer-events-none opacity-60"
               )}
               onDragEnter={(e) => {
@@ -2150,7 +2150,7 @@ export function ReceiptQueueWorkspace() {
               <div className="flex items-center gap-3 border-t border-[#f4d47c]/70 px-4 py-2 dark:border-amber-800/40">
                 <div className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[#f4d47c]/30 dark:bg-amber-900/40">
                   <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-[#2563eb] transition-[width] duration-300"
+                    className="absolute inset-y-0 left-0 rounded-full bg-emerald-500 transition-[width] duration-300"
                     style={{ width: `${queueProgress.pct}%` }}
                   />
                 </div>

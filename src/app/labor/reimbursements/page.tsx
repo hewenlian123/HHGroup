@@ -50,10 +50,7 @@ import {
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
 import { DeleteRowAction } from "@/components/base";
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 function todayLocalISODate(): string {
   const d = new Date();
@@ -726,7 +723,7 @@ export default function WorkerReimbursementsPage() {
               Owed (pending)
             </p>
             <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-              ${fmtUsd(reimbursementStats.pendingTotal)}
+              {formatCurrency(reimbursementStats.pendingTotal)}
             </p>
           </div>
         </div>
@@ -762,7 +759,7 @@ export default function WorkerReimbursementsPage() {
               Paid out
             </p>
             <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-              ${fmtUsd(reimbursementStats.paidTotal)}
+              {formatCurrency(reimbursementStats.paidTotal)}
             </p>
           </div>
         </div>
@@ -1043,7 +1040,7 @@ export default function WorkerReimbursementsPage() {
                     </p>
                     {r.paidAt ? (
                       <p className="text-[10px] tabular-nums text-muted-foreground/70">
-                        Paid {String(r.paidAt).slice(0, 10)}
+                        Paid {formatDate(r.paidAt)}
                       </p>
                     ) : null}
                     <p className="truncate text-[11px] leading-snug text-muted-foreground">
@@ -1058,13 +1055,13 @@ export default function WorkerReimbursementsPage() {
                       </p>
                     ) : null}
                     <p className="text-[10px] tabular-nums text-muted-foreground">
-                      {r.reimbursementDate || (r.createdAt ?? "").slice(0, 10)}
+                      {formatDate(r.reimbursementDate || r.createdAt)}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
                       <span className="text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground">
-                        ${fmtUsd(r.amount)}
+                        {formatCurrency(r.amount)}
                       </span>
                       <ReimbursementStatusChip status={r.status} hasReceipt={hasReceiptUrl(r)} />
                       {r.receiptUrl ? (
@@ -1217,7 +1214,7 @@ export default function WorkerReimbursementsPage() {
                           <div className="flex min-h-10 min-w-10 items-center justify-center">
                             <input
                               type="checkbox"
-                              aria-label={`Select ${workerName(r)} $${fmtUsd(r.amount)}`}
+                              aria-label={`Select ${workerName(r)} ${formatCurrency(r.amount)}`}
                               checked={selectedIds.has(r.id)}
                               onChange={() => toggleSelection(r.id, r.status)}
                               className="h-4 w-4 rounded border-input"
@@ -1228,7 +1225,7 @@ export default function WorkerReimbursementsPage() {
                         )}
                       </td>
                       <td className="px-3 py-2 align-middle text-[11px] text-muted-foreground tabular-nums leading-snug">
-                        {r.reimbursementDate || (r.createdAt ?? "").slice(0, 10)}
+                        {formatDate(r.reimbursementDate || r.createdAt)}
                       </td>
                       <td
                         className={cn(
@@ -1243,7 +1240,7 @@ export default function WorkerReimbursementsPage() {
                           </span>
                           {r.paidAt ? (
                             <span className="block text-[10px] tabular-nums leading-none text-muted-foreground/70">
-                              Paid {String(r.paidAt).slice(0, 10)}
+                              Paid {formatDate(r.paidAt)}
                             </span>
                           ) : null}
                         </div>
@@ -1275,7 +1272,7 @@ export default function WorkerReimbursementsPage() {
                           listTableAmountCellClassName
                         )}
                       >
-                        ${fmtUsd(r.amount)}
+                        {formatCurrency(r.amount)}
                       </td>
                       <td className="px-3 py-2 align-middle whitespace-nowrap">
                         <ReimbursementStatusChip status={r.status} hasReceipt={hasReceiptUrl(r)} />
@@ -1394,7 +1391,7 @@ export default function WorkerReimbursementsPage() {
                       <span className="truncate">
                         {projectName(r)} · {r.vendor ?? "—"}
                       </span>
-                      <span className="tabular-nums shrink-0">${fmtUsd(r.amount)}</span>
+                      <span className="shrink-0 tabular-nums">{formatCurrency(r.amount)}</span>
                     </li>
                   ))}
                 </ul>
@@ -1404,7 +1401,7 @@ export default function WorkerReimbursementsPage() {
                   Total
                 </label>
                 <p className="text-sm font-semibold tabular-nums">
-                  ${fmtUsd(batchPaymentModal.totalAmount)}
+                  {formatCurrency(batchPaymentModal.totalAmount)}
                 </p>
               </div>
               <div>

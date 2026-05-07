@@ -54,15 +54,7 @@ import {
   Search,
   Users,
 } from "lucide-react";
-
-function fmtUsd(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+import { formatCurrency } from "@/lib/formatters";
 
 type Row = PayrollSummaryComputeRow;
 
@@ -126,10 +118,10 @@ function BalanceChip({ balance }: { balance: number }) {
       <span
         className={cn(
           base,
-          "border-blue-500/12 bg-blue-500/[0.04] text-blue-950/75 dark:border-blue-500/14 dark:bg-blue-500/[0.06] dark:text-blue-100/78"
+          "border-amber-500/12 bg-amber-500/[0.04] text-amber-950/75 dark:border-amber-500/14 dark:bg-amber-500/[0.06] dark:text-amber-100/78"
         )}
       >
-        <span className="h-1 w-1 shrink-0 rounded-full bg-blue-500/45" aria-hidden />
+        <span className="h-1 w-1 shrink-0 rounded-full bg-amber-500/45" aria-hidden />
         Overpaid
       </span>
     );
@@ -362,7 +354,7 @@ export default function PayrollSummaryPage() {
                   Total Earned
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.earned)}
+                  {formatCurrency(summary.earned)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This period</p>
               </div>
@@ -381,7 +373,7 @@ export default function PayrollSummaryPage() {
                   Reimbursements
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.reimbursements)}
+                  {formatCurrency(summary.reimbursements)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This period</p>
               </div>
@@ -404,7 +396,7 @@ export default function PayrollSummaryPage() {
                   Should Pay
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.shouldPay)}
+                  {formatCurrency(summary.shouldPay)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This period</p>
               </div>
@@ -427,7 +419,7 @@ export default function PayrollSummaryPage() {
                   Paid
                 </p>
                 <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-                  {fmtUsd(summary.paid)}
+                  {formatCurrency(summary.paid)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This period</p>
               </div>
@@ -453,7 +445,7 @@ export default function PayrollSummaryPage() {
                       : "text-zinc-900 dark:text-foreground"
                   )}
                 >
-                  {fmtUsd(summary.outstanding)}
+                  {formatCurrency(summary.outstanding)}
                 </p>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This period</p>
               </div>
@@ -644,7 +636,7 @@ export default function PayrollSummaryPage() {
                       Earned
                     </dt>
                     <dd className="min-w-0 break-words text-[12px] text-zinc-700 dark:text-zinc-200">
-                      {fmtUsd(r.earned)}
+                      {formatCurrency(r.earned)}
                     </dd>
                   </div>
                   <div className="min-w-0">
@@ -652,7 +644,7 @@ export default function PayrollSummaryPage() {
                       Reimb.
                     </dt>
                     <dd className="min-w-0 break-words text-[12px] text-zinc-700 dark:text-zinc-200">
-                      {fmtUsd(r.reimbursements)}
+                      {formatCurrency(r.reimbursements)}
                     </dd>
                   </div>
                   <div className="min-w-0">
@@ -660,7 +652,7 @@ export default function PayrollSummaryPage() {
                       Should pay
                     </dt>
                     <dd className="min-w-0 break-words text-[12px] text-zinc-700 dark:text-zinc-200">
-                      {fmtUsd(r.shouldPay)}
+                      {formatCurrency(r.shouldPay)}
                     </dd>
                   </div>
                   <div className="min-w-0">
@@ -668,7 +660,7 @@ export default function PayrollSummaryPage() {
                       Paid
                     </dt>
                     <dd className="min-w-0 break-words text-[12px] text-zinc-700 dark:text-zinc-200">
-                      {fmtUsd(r.paid)}
+                      {formatCurrency(r.paid)}
                     </dd>
                   </div>
                   <div className="col-span-2 min-w-0">
@@ -677,7 +669,7 @@ export default function PayrollSummaryPage() {
                     </dt>
                     <dd className="min-w-0 font-medium leading-snug text-zinc-900 dark:text-foreground">
                       <span className="block text-[16px] tabular-nums tracking-tight">
-                        {fmtUsd(r.balance)}
+                        {formatCurrency(r.balance)}
                       </span>
                       <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
                         {balanceStatusLabel(r.balance)}
@@ -881,7 +873,7 @@ export default function PayrollSummaryPage() {
                           listTableAmountCellClassName
                         )}
                       >
-                        {fmtUsd(r.earned)}
+                        {formatCurrency(r.earned)}
                       </td>
                       <td
                         className={cn(
@@ -889,7 +881,7 @@ export default function PayrollSummaryPage() {
                           listTableAmountCellClassName
                         )}
                       >
-                        {fmtUsd(r.reimbursements)}
+                        {formatCurrency(r.reimbursements)}
                       </td>
                       <td
                         className={cn(
@@ -897,7 +889,7 @@ export default function PayrollSummaryPage() {
                           listTableAmountCellClassName
                         )}
                       >
-                        {fmtUsd(r.shouldPay)}
+                        {formatCurrency(r.shouldPay)}
                       </td>
                       <td
                         className={cn(
@@ -905,7 +897,7 @@ export default function PayrollSummaryPage() {
                           listTableAmountCellClassName
                         )}
                       >
-                        {fmtUsd(r.paid)}
+                        {formatCurrency(r.paid)}
                       </td>
                       <td
                         className={cn(
@@ -914,7 +906,7 @@ export default function PayrollSummaryPage() {
                         )}
                       >
                         <div className="text-base font-semibold tabular-nums tracking-tight text-zinc-800 dark:text-zinc-100">
-                          {fmtUsd(r.balance)}
+                          {formatCurrency(r.balance)}
                         </div>
                         <div className="mt-0.5 flex justify-end">
                           <BalanceChip balance={r.balance} />

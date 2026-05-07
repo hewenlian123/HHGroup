@@ -14,6 +14,7 @@ import {
   type CreatePaymentReceivedPayload,
 } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
+import { formatCurrency } from "@/lib/formatters";
 
 type ReceivePaymentModalProps = {
   open: boolean;
@@ -157,7 +158,7 @@ export function ReceivePaymentModal({
               <option value="">Select invoice</option>
               {invoices.map((inv) => (
                 <option key={inv.id} value={inv.id}>
-                  {inv.invoiceNo} — {inv.clientName} (${inv.balanceDue.toLocaleString()} due)
+                  {inv.invoiceNo} — {inv.clientName} ({formatCurrency(inv.balanceDue)} due)
                 </option>
               ))}
             </select>

@@ -17,15 +17,7 @@ import {
   type LaborPayrollSettlementMode,
 } from "@/lib/labor-balance-shared";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
-
-function fmtUsd(n: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(n);
-}
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type LaborEntryRow = {
   id: string;
@@ -292,31 +284,41 @@ export default function WorkerBalanceDetailPage() {
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Labor Owed
                 </p>
-                <p className="text-lg font-medium tabular-nums">{fmtUsd(summary.laborOwed)}</p>
+                <p className="text-lg font-medium tabular-nums">
+                  {formatCurrency(summary.laborOwed)}
+                </p>
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Reimbursements
                 </p>
-                <p className="text-lg font-medium tabular-nums">{fmtUsd(summary.reimbursements)}</p>
+                <p className="text-lg font-medium tabular-nums">
+                  {formatCurrency(summary.reimbursements)}
+                </p>
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Payments
                 </p>
-                <p className="text-lg font-medium tabular-nums">{fmtUsd(summary.payments)}</p>
+                <p className="text-lg font-medium tabular-nums">
+                  {formatCurrency(summary.payments)}
+                </p>
               </div>
               <div>
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Advances
                 </p>
-                <p className="text-lg font-medium tabular-nums">{fmtUsd(summary.advances)}</p>
+                <p className="text-lg font-medium tabular-nums">
+                  {formatCurrency(summary.advances)}
+                </p>
               </div>
               <div className="col-span-2 sm:col-span-1 md:col-span-1">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Balance
                 </p>
-                <p className="text-lg font-semibold tabular-nums">{fmtUsd(summary.balance)}</p>
+                <p className="text-lg font-semibold tabular-nums">
+                  {formatCurrency(summary.balance)}
+                </p>
               </div>
             </div>
           )}
@@ -374,12 +376,16 @@ export default function WorkerBalanceDetailPage() {
                       );
                       return (
                         <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
-                          <td className="py-2 px-4 tabular-nums">{r.date}</td>
+                          <td className="py-2 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                            {formatDate(r.date)}
+                          </td>
                           <td className="py-2 px-4 text-muted-foreground">{r.session ?? "—"}</td>
                           <td className="py-2 px-4 text-muted-foreground">
                             {r.projectName ?? r.projectId ?? "—"}
                           </td>
-                          <td className="py-2 px-4 text-right tabular-nums">{fmtUsd(r.amount)}</td>
+                          <td className="py-2 px-4 text-right tabular-nums">
+                            {formatCurrency(r.amount)}
+                          </td>
                           <td className="py-2 px-4 text-muted-foreground">
                             <span className={paySt === "paid" ? "text-foreground" : ""}>
                               {laborPaymentStatusUiLabel(paySt)}
@@ -433,12 +439,16 @@ export default function WorkerBalanceDetailPage() {
                   ) : (
                     reimbursements.map((r) => (
                       <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
-                        <td className="py-2 px-4 tabular-nums">{r.date}</td>
+                        <td className="py-2 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                          {formatDate(r.date)}
+                        </td>
                         <td className="py-2 px-4 text-muted-foreground">{r.vendor ?? "—"}</td>
                         <td className="py-2 px-4 text-muted-foreground">
                           {r.projectName ?? r.projectId ?? "—"}
                         </td>
-                        <td className="py-2 px-4 text-right tabular-nums">{fmtUsd(r.amount)}</td>
+                        <td className="py-2 px-4 text-right tabular-nums">
+                          {formatCurrency(r.amount)}
+                        </td>
                         <td className="py-2 px-4 text-muted-foreground">{r.status}</td>
                       </tr>
                     ))
@@ -484,9 +494,11 @@ export default function WorkerBalanceDetailPage() {
                   ) : (
                     payments.map((r) => (
                       <tr key={r.id} className="border-b border-border/40 hover:bg-muted/10">
-                        <td className="py-2 px-4 tabular-nums">{r.date}</td>
+                        <td className="py-2 px-4 font-mono tabular-nums tracking-tight text-zinc-500">
+                          {formatDate(r.date)}
+                        </td>
                         <td className="py-2 px-4 text-right tabular-nums font-medium">
-                          {fmtUsd(r.amount)}
+                          {formatCurrency(r.amount)}
                         </td>
                         <td className="py-2 px-4 text-muted-foreground">
                           {r.paymentMethod ?? "—"}
@@ -536,9 +548,11 @@ export default function WorkerBalanceDetailPage() {
                         className="h-4 w-4 rounded border-input"
                       />
                       <span className="text-sm flex-1 truncate">
-                        {e.date} · {e.projectName ?? "—"}
+                        {formatDate(e.date)} · {e.projectName ?? "—"}
                       </span>
-                      <span className="text-sm tabular-nums font-medium">{fmtUsd(e.amount)}</span>
+                      <span className="text-sm tabular-nums font-medium">
+                        {formatCurrency(e.amount)}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -563,9 +577,11 @@ export default function WorkerBalanceDetailPage() {
                         className="h-4 w-4 rounded border-input"
                       />
                       <span className="text-sm flex-1 truncate">
-                        {r.date} · {r.vendor ?? "—"}
+                        {formatDate(r.date)} · {r.vendor ?? "—"}
                       </span>
-                      <span className="text-sm tabular-nums font-medium">{fmtUsd(r.amount)}</span>
+                      <span className="text-sm tabular-nums font-medium">
+                        {formatCurrency(r.amount)}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -575,7 +591,7 @@ export default function WorkerBalanceDetailPage() {
             <div className="border-t border-border/60 pt-3">
               <p className="text-sm font-semibold flex justify-between">
                 <span>Total Payment Amount</span>
-                <span className="tabular-nums">{fmtUsd(totalPaymentAmount)}</span>
+                <span className="tabular-nums">{formatCurrency(totalPaymentAmount)}</span>
               </p>
             </div>
 

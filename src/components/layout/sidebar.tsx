@@ -314,7 +314,7 @@ export function Sidebar({
         ? cn(
             "font-medium text-zinc-50",
             "bg-white/[0.07] hover:bg-white/[0.085]",
-            "before:absolute before:inset-y-1.5 before:left-0 before:w-px before:rounded-full before:bg-indigo-400/80 before:content-['']"
+            "before:absolute before:inset-y-1.5 before:left-0 before:w-px before:rounded-full before:bg-emerald-400/90 before:content-['']"
           )
         : "font-normal text-zinc-100/90 hover:bg-white/[0.05] hover:text-zinc-50 active:bg-white/[0.07]"
     );
@@ -322,7 +322,7 @@ export function Sidebar({
   const navIconClass = (active: boolean, extra?: string) =>
     cn(
       "h-[16px] w-[16px] shrink-0 transition-colors duration-nav ease-out",
-      active ? "text-zinc-50" : "text-zinc-300/80 group-hover:text-zinc-100",
+      active ? "text-emerald-300" : "text-zinc-300/80 group-hover:text-zinc-100",
       extra
     );
 
@@ -330,9 +330,9 @@ export function Sidebar({
     <aside
       data-app-sidebar
       className={cn(
-        "relative flex h-full shrink-0 flex-col overflow-hidden border-r border-white/10",
-        "bg-[linear-gradient(180deg,#0B1020_0%,#111827_100%)]",
-        "before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(900px_circle_at_20%_-10%,rgba(99,102,241,0.18),transparent_55%)] before:opacity-80 before:content-['']",
+        "relative flex h-full shrink-0 flex-col overflow-hidden border-r border-white/[0.08]",
+        "bg-[linear-gradient(180deg,#081225_0%,#0F172A_100%)]",
+        "before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(900px_circle_at_20%_-10%,rgba(16,185,129,0.12),transparent_55%)] before:opacity-80 before:content-['']",
         "after:pointer-events-none after:absolute after:inset-0 after:bg-[radial-gradient(600px_circle_at_110%_40%,rgba(255,255,255,0.06),transparent_50%)] after:content-['']",
         collapsed ? "w-[72px]" : "w-[210px]",
         className
@@ -340,7 +340,7 @@ export function Sidebar({
     >
       <div
         className={cn(
-          "relative z-[1] flex h-12 items-center gap-2 border-b border-white/10 bg-white/[0.03] backdrop-blur-md",
+          "relative z-[1] flex h-12 items-center gap-2 border-b border-white/[0.08] bg-white/[0.03] backdrop-blur-md",
           collapsed ? "px-3" : "px-3"
         )}
       >
@@ -419,9 +419,7 @@ export function Sidebar({
                                 key={expenseInboxPoolAnimKey}
                                 className={cn(
                                   "absolute -right-2 -top-1 z-[1] flex min-h-[15px] min-w-[15px] items-center justify-center rounded-sm px-1 text-[10px] font-semibold tabular-nums leading-none animate-receipt-queue-badge",
-                                  active
-                                    ? "text-brand-primary dark:text-blue-400"
-                                    : "text-text-primary dark:text-foreground"
+                                  active ? "text-emerald-300" : "text-zinc-100"
                                 )}
                                 aria-hidden
                               >
@@ -577,9 +575,9 @@ export function Sidebar({
 
       {/* User footer */}
       {!collapsed && (
-        <div className="relative z-[1] border-t border-white/10 px-3 py-3">
-          <div className="flex items-center gap-2.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-2 backdrop-blur-md">
-            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-white/10">
+        <div className="relative z-[1] border-t border-white/[0.08] px-3 py-3">
+          <div className="flex items-center gap-2.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 backdrop-blur-md">
+            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-white/[0.08]">
               <AvatarFallback className="rounded-md bg-white/[0.06] text-[11px] font-medium text-zinc-200">
                 U
               </AvatarFallback>
@@ -595,7 +593,7 @@ export function Sidebar({
       )}
 
       {/* Collapse button at bottom */}
-      <div className="relative z-[1] border-t border-white/10 p-2">
+      <div className="relative z-[1] border-t border-white/[0.08] p-2">
         <button
           type="button"
           onClick={onToggleCollapsed}

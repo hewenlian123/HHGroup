@@ -68,6 +68,7 @@ import { buildReceiptPreviewShellFiles } from "@/lib/receipt-preview-shell-files
 import { expenseAttachmentStorageDedupeKey } from "@/lib/expense-attachment-dedupe";
 import { ExpenseEditAttachmentsSection } from "./expense-edit-attachments-section";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
@@ -769,15 +770,11 @@ export function ExpenseInboxPreviewModal({
                     {(expense.vendorName ?? "").trim() !== "" ? expense.vendorName : "Needs Review"}
                   </PreviewRow>
                   <PreviewRow label="Amount">
-                    <span className="tabular-nums font-medium text-[#d92d20] dark:text-red-400">
-                      −$
-                      {getExpenseTotal(expense).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+                    <span className="tabular-nums font-semibold tracking-tight text-rose-600 dark:text-rose-400">
+                      {formatCurrency(-getExpenseTotal(expense))}
                     </span>
                   </PreviewRow>
-                  <PreviewRow label="Date">{(expense.date ?? "—").slice(0, 10)}</PreviewRow>
+                  <PreviewRow label="Date">{formatDate(expense.date)}</PreviewRow>
                   <PreviewRow label="Notes">
                     {(() => {
                       const n = stripInboxUploadNoiseFromText((expense.notes ?? "").trim());
