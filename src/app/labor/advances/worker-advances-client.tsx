@@ -91,11 +91,6 @@ function avatarRingClass(workerId: string): string {
   return AVATAR_RING[s % AVATAR_RING.length] ?? AVATAR_RING[0];
 }
 
-function truncateId(id: string, max = 10): string {
-  if (id.length <= max) return id;
-  return `${id.slice(0, 4)}…${id.slice(-4)}`;
-}
-
 function thisMonthPrefix(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -833,14 +828,6 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                         <p className={cn("line-clamp-2 leading-snug", TYPO.primaryName)}>
                           {row.workerName}
                         </p>
-                        <p
-                          className={cn(
-                            "mt-0.5 max-w-[11rem] truncate leading-none",
-                            TYPO.secondaryId
-                          )}
-                        >
-                          {truncateId(row.workerId)}
-                        </p>
                       </div>
                     </div>
                     <div className="flex shrink-0 items-start gap-1">
@@ -1004,14 +991,6 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                           <div className="min-w-0">
                             <p className={cn("line-clamp-2 leading-snug", TYPO.primaryName)}>
                               {row.workerName}
-                            </p>
-                            <p
-                              className={cn(
-                                "max-w-[11rem] truncate leading-none",
-                                TYPO.secondaryId
-                              )}
-                            >
-                              {truncateId(row.workerId)}
                             </p>
                           </div>
                         </div>

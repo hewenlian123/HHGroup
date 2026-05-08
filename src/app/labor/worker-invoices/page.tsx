@@ -76,11 +76,6 @@ function avatarRingClass(seed: string): string {
   return AVATAR_RING[s % AVATAR_RING.length] ?? AVATAR_RING[0];
 }
 
-function truncateId(id: string, max = 10): string {
-  if (id.length <= max) return id;
-  return `${id.slice(0, 4)}…${id.slice(-4)}`;
-}
-
 function invoiceNoFromId(id: string): string {
   const tail = id.replaceAll("-", "").slice(-8).toUpperCase();
   return `WI-${tail || id.slice(0, 6).toUpperCase()}`;
@@ -802,9 +797,6 @@ export default function WorkerInvoicesPage() {
                           <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
                             {workerName}
                           </p>
-                          <p className="mt-0.5 max-w-[11rem] truncate font-mono text-[9px] leading-none tabular-nums text-zinc-500/75 dark:text-zinc-400/85">
-                            {truncateId(r.workerId)}
-                          </p>
                         </div>
                       </div>
                       <div className="flex shrink-0 items-start gap-1">
@@ -994,9 +986,6 @@ export default function WorkerInvoicesPage() {
                             <div className="min-w-0">
                               <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
                                 {workerName}
-                              </p>
-                              <p className="max-w-[11rem] truncate font-mono text-[9px] leading-none tabular-nums text-zinc-500/75 dark:text-zinc-400/85">
-                                {truncateId(r.workerId)}
                               </p>
                             </div>
                           </div>

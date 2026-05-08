@@ -89,11 +89,6 @@ function avatarRingClass(workerId: string): string {
   return AVATAR_RING[s % AVATAR_RING.length] ?? AVATAR_RING[0];
 }
 
-function truncateId(id: string, max = 10): string {
-  if (id.length <= max) return id;
-  return `${id.slice(0, 4)}…${id.slice(-4)}`;
-}
-
 function thisMonthPrefix(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -689,9 +684,6 @@ export default function WorkerPaymentsPage() {
                           <p className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-foreground">
                             {wName}
                           </p>
-                          <p className="mt-0.5 max-w-[11rem] truncate font-mono text-[9px] leading-none tabular-nums text-zinc-400/70 dark:text-zinc-500/75">
-                            {truncateId(r.workerId)}
-                          </p>
                         </div>
                       </div>
                       <PaymentRowActionsMenu
@@ -899,9 +891,6 @@ export default function WorkerPaymentsPage() {
                             <div className="min-w-0">
                               <p className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-foreground">
                                 {wName}
-                              </p>
-                              <p className="max-w-[11rem] truncate font-mono text-[9px] leading-none tabular-nums text-zinc-400/70 dark:text-zinc-500/75">
-                                {truncateId(r.workerId)}
                               </p>
                             </div>
                           </div>

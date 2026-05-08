@@ -92,11 +92,6 @@ function avatarRingClass(seed: string): string {
   return AVATAR_RING[s % AVATAR_RING.length] ?? AVATAR_RING[0];
 }
 
-function truncateId(id: string, max = 10): string {
-  if (id.length <= max) return id;
-  return `${id.slice(0, 4)}…${id.slice(-4)}`;
-}
-
 function BalanceChip({ balance }: { balance: number }) {
   const base =
     "inline-flex w-fit min-h-[22px] shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium tabular-nums tracking-tight shadow-none";
@@ -586,9 +581,6 @@ export default function PayrollSummaryPage() {
                       <span className="block line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
                         {r.workerName}
                       </span>
-                      <span className="mt-0.5 block max-w-[11rem] truncate font-mono text-[9px] leading-none tabular-nums text-zinc-500/75 dark:text-zinc-400/85">
-                        {truncateId(r.workerId)}
-                      </span>
                     </span>
                   </button>
                   <div className="flex shrink-0 items-start gap-1">
@@ -860,9 +852,6 @@ export default function PayrollSummaryPage() {
                           <div className="min-w-0">
                             <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
                               {r.workerName}
-                            </p>
-                            <p className="max-w-[11rem] truncate font-mono text-[9px] leading-none tabular-nums text-zinc-500/75 dark:text-zinc-400/85">
-                              {truncateId(r.workerId)}
                             </p>
                           </div>
                         </div>
