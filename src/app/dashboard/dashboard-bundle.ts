@@ -5,11 +5,26 @@ import {
   getExpensesThisMonth,
   getLaborCostThisWeek,
   getOverdueInvoices,
+  getProjectRiskOverview,
   getProjectsDashboard,
   getRecentTransactions,
+  type ProjectRiskOverview,
 } from "@/lib/data";
 import { getCanonicalProjectProfitBatch } from "@/lib/profit-engine";
 import type { CanonicalProjectProfit } from "@/lib/profit-engine";
+
+const emptyRiskOverview: ProjectRiskOverview = {
+  summary: { highCount: 0, overBudgetCount: 0, laborOverCount: 0, lowRunwayCount: 0 },
+  projects: [],
+};
+
+export const getProjectRiskOverviewCached = cache(async (): Promise<ProjectRiskOverview> => {
+  try {
+    return await getProjectRiskOverview();
+  } catch {
+    return emptyRiskOverview;
+  }
+});
 
 /**
  * Single-flight projects + canonical profit map + dashboard stats for one HTTP request.

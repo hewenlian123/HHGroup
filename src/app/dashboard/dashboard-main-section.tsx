@@ -1,19 +1,20 @@
 import {
   getBillsSummaryAll,
   getPaymentsSummaryAll,
-  getProjectRiskOverview,
-  getRecentTransactions,
   getSubcontractsWithDetailsAll,
   type ProjectRiskOverview,
   type RecentTransaction,
 } from "@/lib/data";
 import { DollarSign, FolderKanban, TrendingUp, Wallet } from "lucide-react";
 import type { CanonicalProjectProfit } from "@/lib/profit-engine";
+import { formatCompactCurrency } from "@/lib/formatters";
 import {
   getApBillsSummaryCached,
   getExpensesThisMonthCached,
   getLaborCostThisWeekCached,
   getOverdueInvoicesCached,
+  getProjectRiskOverviewCached,
+  getRecentTransactionsCached,
   loadDashboardProjectsBundle,
 } from "./dashboard-bundle";
 import { DashboardView } from "./dashboard-view";
@@ -29,11 +30,11 @@ const EMPTY_RISK_OVERVIEW: ProjectRiskOverview = {
 };
 
 export async function DashboardMainSection({
-  searchParamsPromise,
+  searchParamsPromise: _searchParamsPromise,
 }: {
   searchParamsPromise?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const searchParams = (await searchParamsPromise) ?? {};
+  void _searchParamsPromise;
   let stats: Awaited<ReturnType<typeof loadDashboardProjectsBundle>>["stats"] = {
     totalProjects: 0,
     activeProjects: 0,
@@ -49,8 +50,8 @@ export async function DashboardMainSection({
 
   try {
     const [tx, risk, bundle] = await Promise.all([
-      getRecentTransactions(20),
-      getProjectRiskOverview(),
+      getRecentTransactionsCached(20),
+      getProjectRiskOverviewCached(),
       loadDashboardProjectsBundle(),
     ]);
     transactions = tx;
@@ -130,15 +131,6 @@ export async function DashboardMainSection({
       marginPct,
     };
   });
-  const projectProfitSummary = projectHealthRows.reduce((s, p) => s + p.profit, 0);
-
-  const debugFlag = searchParams?.debug;
-  const debugEnabled = debugFlag === "1" || debugFlag === "true";
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const maskTail = (value: string | undefined) =>
-    value && value.length >= 6 ? `...${value.slice(-6)}` : value ? `...${value}` : "MISSING";
-
   const kpis = [
     {
       key: "total-projects",
@@ -155,13 +147,13 @@ export async function DashboardMainSection({
     {
       key: "total-budget",
       label: "Total Budget",
-      value: `$${stats.totalBudget.toLocaleString()}`,
+      value: formatCompactCurrency(stats.totalBudget),
       icon: DollarSign,
     },
     {
       key: "total-profit",
       label: "Total Profit",
-      value: `$${stats.totalProfit.toLocaleString()}`,
+      value: formatCompactCurrency(stats.totalProfit),
       icon: TrendingUp,
     },
   ];
@@ -216,7 +208,6 @@ export async function DashboardMainSection({
 
   return (
     <DashboardView
-      variant="main"
       stats={stats}
       transactions={transactions}
       riskOverview={riskOverview}
@@ -231,11 +222,6 @@ export async function DashboardMainSection({
       riskByProjectId={riskByProjectId}
       outstandingSubcontracts={outstandingSubcontracts}
       projectHealthRows={projectHealthRows}
-      projectProfitSummary={projectProfitSummary}
-      debugEnabled={debugEnabled}
-      supabaseUrl={supabaseUrl}
-      supabaseAnonKey={supabaseAnonKey}
-      maskTail={maskTail}
       kpis={kpis}
       upcomingTasks={upcomingTasks}
       recentActivity={recentActivity}

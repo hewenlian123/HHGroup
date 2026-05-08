@@ -303,44 +303,40 @@ export function Sidebar({
   const isActive = (href: string) =>
     pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
 
-  /** Nav row: active = soft surface + accent icon (Linear-style) */
+  /** Nav row: inactive label always readable; hover adjusts background only. */
   const navRowClass = (active: boolean) =>
     cn(
-      "group relative flex items-center rounded-md text-[13px] transition-colors duration-nav ease-out touch-manipulation",
+      "group relative flex items-center rounded-md text-[13px] transition-[background-color] duration-200 ease-out touch-manipulation",
       collapsed
         ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
         : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0",
       active
         ? cn(
-            "font-medium text-zinc-50",
-            "bg-white/[0.07] hover:bg-white/[0.085]",
-            "before:absolute before:inset-y-1.5 before:left-0 before:w-px before:rounded-full before:bg-emerald-400/90 before:content-['']"
+            "font-medium text-white",
+            "bg-white/[0.048] hover:bg-white/[0.065]",
+            "before:absolute before:inset-y-2 before:left-0 before:w-px before:rounded-full before:bg-emerald-400/42 before:content-['']"
           )
-        : "font-normal text-zinc-100/90 hover:bg-white/[0.05] hover:text-zinc-50 active:bg-white/[0.07]"
+        : "font-normal text-zinc-300 hover:bg-white/[0.038] active:bg-white/[0.055]"
     );
 
   const navIconClass = (active: boolean, extra?: string) =>
-    cn(
-      "h-[16px] w-[16px] shrink-0 transition-colors duration-nav ease-out",
-      active ? "text-emerald-300" : "text-zinc-300/80 group-hover:text-zinc-100",
-      extra
-    );
+    cn("h-[15px] w-[15px] shrink-0", active ? "text-emerald-300/75" : "text-zinc-300", extra);
 
   return (
     <aside
       data-app-sidebar
       className={cn(
-        "relative flex h-full shrink-0 flex-col overflow-hidden border-r border-white/[0.08]",
+        "relative flex h-full shrink-0 flex-col overflow-hidden border-r border-white/[0.065]",
         "bg-[linear-gradient(180deg,#081225_0%,#0F172A_100%)]",
-        "before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(900px_circle_at_20%_-10%,rgba(16,185,129,0.12),transparent_55%)] before:opacity-80 before:content-['']",
-        "after:pointer-events-none after:absolute after:inset-0 after:bg-[radial-gradient(600px_circle_at_110%_40%,rgba(255,255,255,0.06),transparent_50%)] after:content-['']",
+        "before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(900px_circle_at_20%_-10%,rgba(16,185,129,0.09),transparent_55%)] before:opacity-70 before:content-['']",
+        "after:pointer-events-none after:absolute after:inset-0 after:bg-[radial-gradient(600px_circle_at_110%_40%,rgba(255,255,255,0.045),transparent_50%)] after:content-['']",
         collapsed ? "w-[72px]" : "w-[210px]",
         className
       )}
     >
       <div
         className={cn(
-          "relative z-[1] flex h-12 items-center gap-2 border-b border-white/[0.08] bg-white/[0.03] backdrop-blur-md",
+          "relative z-[1] flex h-12 items-center gap-2 border-b border-white/[0.065] bg-white/[0.022] backdrop-blur-sm",
           collapsed ? "px-3" : "px-3"
         )}
       >
@@ -419,7 +415,7 @@ export function Sidebar({
                                 key={expenseInboxPoolAnimKey}
                                 className={cn(
                                   "absolute -right-2 -top-1 z-[1] flex min-h-[15px] min-w-[15px] items-center justify-center rounded-sm px-1 text-[10px] font-semibold tabular-nums leading-none animate-receipt-queue-badge",
-                                  active ? "text-emerald-300" : "text-zinc-100"
+                                  active ? "text-emerald-300/75" : "text-zinc-100"
                                 )}
                                 aria-hidden
                               >
@@ -452,7 +448,7 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={() => setSectionOpen(section.key, !isOpen)}
-                  className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400 transition-colors duration-150 ease-out hover:bg-white/[0.045] hover:text-zinc-200 active:bg-white/[0.06] lg:min-h-0"
+                  className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-300 transition-[background-color] duration-150 ease-out hover:bg-white/[0.045] active:bg-white/[0.06] lg:min-h-0"
                   aria-expanded={isOpen}
                 >
                   {isOpen ? (
@@ -538,9 +534,9 @@ export function Sidebar({
                 title="System Health"
               >
                 <AlertTriangle
-                  className={navIconClass(
-                    isActive("/system-health"),
-                    "text-amber-500 group-hover:text-amber-600"
+                  className={cn(
+                    "h-[15px] w-[15px] shrink-0",
+                    isActive("/system-health") ? "text-amber-300" : "text-amber-400"
                   )}
                   strokeWidth={1.75}
                   aria-hidden
@@ -576,7 +572,7 @@ export function Sidebar({
       {/* User footer */}
       {!collapsed && (
         <div className="relative z-[1] border-t border-white/[0.08] px-3 py-3">
-          <div className="flex items-center gap-2.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 backdrop-blur-md">
+          <div className="flex items-center gap-2.5 rounded-md border border-white/[0.06] bg-white/[0.028] px-2.5 py-2 backdrop-blur-sm">
             <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-white/[0.08]">
               <AvatarFallback className="rounded-md bg-white/[0.06] text-[11px] font-medium text-zinc-200">
                 U
@@ -598,7 +594,7 @@ export function Sidebar({
           type="button"
           onClick={onToggleCollapsed}
           className={cn(
-            "flex w-full items-center rounded-md text-sm font-medium text-zinc-300/90 transition-colors duration-150 ease-out hover:bg-white/[0.05] hover:text-zinc-100",
+            "flex w-full items-center rounded-md text-sm font-medium text-zinc-300 transition-[background-color] duration-150 ease-out hover:bg-white/[0.05]",
             collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-2 px-2 py-1.5"
           )}
           aria-label="Collapse sidebar"
