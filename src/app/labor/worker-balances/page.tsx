@@ -93,11 +93,6 @@ function BalanceStatusChip({ balance }: { balance: number }) {
   return <span className={statusChipClass("success")}>Paid</span>;
 }
 
-function truncateId(id: string, max = 8): string {
-  if (id.length <= max) return id;
-  return `${id.slice(0, 4)}…${id.slice(-3)}`;
-}
-
 export default function WorkerBalancesPage() {
   const [rows, setRows] = React.useState<WorkerBalanceRow[]>([]);
   const [initialLoading, setInitialLoading] = React.useState(true);
@@ -494,9 +489,6 @@ export default function WorkerBalancesPage() {
                       >
                         {r.workerName}
                       </Link>
-                      <p className="mt-0.5 truncate font-mono text-[9px] tabular-nums text-zinc-400/65 dark:text-zinc-500/80">
-                        {truncateId(r.workerId)}
-                      </p>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100/90 pb-2 dark:border-border/50">
@@ -690,9 +682,6 @@ export default function WorkerBalancesPage() {
                             >
                               {r.workerName}
                             </Link>
-                            <p className="max-w-[11rem] truncate font-mono text-[9px] leading-none tabular-nums text-zinc-400/70 dark:text-zinc-500/75">
-                              {truncateId(r.workerId)}
-                            </p>
                           </div>
                         </div>
                       </td>

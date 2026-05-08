@@ -81,11 +81,6 @@ function avatarRingClass(seed: string): string {
   return AVATAR_RING[s % AVATAR_RING.length] ?? AVATAR_RING[0];
 }
 
-function truncateId(id: string, max = 10): string {
-  if (id.length <= max) return id;
-  return `${id.slice(0, 4)}…${id.slice(-4)}`;
-}
-
 function workerFilterKey(r: ReceiptRow): string {
   return r.workerId ?? `__name:${r.workerName}`;
 }
@@ -812,14 +807,6 @@ export function ReceiptsClient({
                           <p className={cn("line-clamp-2 leading-snug", TYPO.primaryName)}>
                             {r.workerName}
                           </p>
-                          <p
-                            className={cn(
-                              "mt-0.5 max-w-[11rem] truncate leading-none",
-                              TYPO.secondaryId
-                            )}
-                          >
-                            {truncateId(r.workerId ?? r.id)}
-                          </p>
                         </div>
                       </div>
                       <div className="flex shrink-0 items-start gap-1">
@@ -990,9 +977,6 @@ export function ReceiptsClient({
                             <div className="min-w-0">
                               <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
                                 {r.workerName}
-                              </p>
-                              <p className="max-w-[11rem] truncate font-mono text-[9px] leading-none tabular-nums text-zinc-500/75 dark:text-zinc-400/85">
-                                {truncateId(r.workerId ?? r.id)}
                               </p>
                             </div>
                           </div>
