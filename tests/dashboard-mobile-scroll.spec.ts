@@ -1,5 +1,11 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+async function suppressInstallPrompt(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    window.localStorage.setItem("hh-pwa-install-dismissed", "1");
+  });
+}
+
 async function appScrollRoot(page: Page): Promise<Locator> {
   const main = page.locator("[data-app-scroll-root]").first();
   await expect(main).toBeVisible({ timeout: 90_000 });
@@ -112,6 +118,73 @@ async function expectMainCanScrollDownAndUp(page: Page): Promise<void> {
   await expect.poll(() => main.evaluate((el) => el.scrollTop), { timeout: 5_000 }).toBeLessThan(2);
 }
 
+async function expectMainCanNativeTouchScrollDownAndUp(page: Page): Promise<void> {
+  const main = await appScrollRoot(page);
+  await expectScrollLocksReleased(page);
+  await expectNoInvisibleOverlayAtViewportCenter(page);
+
+  let client: Awaited<ReturnType<ReturnType<Page["context"]>["newCDPSession"]>>;
+  try {
+    client = await page.context().newCDPSession(page);
+  } catch {
+    return;
+  }
+
+  try {
+    const start = await page.evaluate(() => {
+      const main = document.querySelector("[data-app-scroll-root]") as HTMLElement | null;
+      const target =
+        (document.querySelector("[data-dashboard-kpi-strip]") as HTMLElement | null) ?? main;
+      if (!main || !target) return null;
+      const rect = target.getBoundingClientRect();
+      const fallback = main.getBoundingClientRect();
+      const x = Math.round(rect.left + Math.min(rect.width - 24, Math.max(24, rect.width / 2)));
+      const y = Math.round(rect.top + Math.min(rect.height - 16, Math.max(16, rect.height / 2)));
+      return {
+        x: Number.isFinite(x) ? x : Math.round(fallback.left + fallback.width / 2),
+        y: Number.isFinite(y) ? y : Math.round(fallback.top + fallback.height / 2),
+      };
+    });
+    expect(start).not.toBeNull();
+
+    await main.evaluate((el) => {
+      el.scrollTop = 0;
+    });
+    await page.waitForTimeout(100);
+    await client.send("Input.synthesizeScrollGesture", {
+      x: start!.x,
+      y: start!.y,
+      xDistance: 0,
+      yDistance: -550,
+      speed: 800,
+      gestureSourceType: "touch",
+    });
+    await expect
+      .poll(() => main.evaluate((el) => el.scrollTop), {
+        timeout: 8_000,
+        message: "native touch gesture should scroll the dashboard down",
+      })
+      .toBeGreaterThan(40);
+
+    await client.send("Input.synthesizeScrollGesture", {
+      x: start!.x,
+      y: start!.y,
+      xDistance: 0,
+      yDistance: 550,
+      speed: 800,
+      gestureSourceType: "touch",
+    });
+    await expect
+      .poll(() => main.evaluate((el) => el.scrollTop), {
+        timeout: 8_000,
+        message: "native touch gesture should scroll the dashboard back up",
+      })
+      .toBeLessThan(40);
+  } finally {
+    await client.detach();
+  }
+}
+
 async function gotoDashboardShellPage(page: Page, path: string): Promise<void> {
   let response = null;
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -142,9 +215,12 @@ test.describe("Dashboard mobile scrolling", () => {
   test("iPhone Safari can scroll dashboard down and back up after route navigation", async ({
     page,
   }) => {
+    await suppressInstallPrompt(page);
+
     await gotoDashboardShellPage(page, "/dashboard");
     await expect(page.getByText("HH · Command Center")).toBeVisible({ timeout: 90_000 });
     await expectMainCanScrollDownAndUp(page);
+    await expectMainCanNativeTouchScrollDownAndUp(page);
 
     await gotoDashboardShellPage(page, "/financial/owner");
     await expect(page.getByRole("heading", { name: "Finance dashboard", level: 1 })).toBeVisible({
@@ -155,6 +231,23 @@ test.describe("Dashboard mobile scrolling", () => {
     await gotoDashboardShellPage(page, "/dashboard");
     await expect(page.getByText("HH · Command Center")).toBeVisible({ timeout: 90_000 });
     await expectMainCanScrollDownAndUp(page);
+    await expectMainCanNativeTouchScrollDownAndUp(page);
+
+    await page.getByRole("link", { name: /^Time Entries$/ }).click();
+    await expect(page).toHaveURL(/\/labor(?:[?#].*)?$/);
+    await expectMainCanScrollDownAndUp(page);
+
+    await page.getByRole("link", { name: /^Dashboard$/ }).click();
+    await expect(page).toHaveURL(/\/dashboard(?:[?#].*)?$/);
+    await expectMainCanScrollDownAndUp(page);
+    await expectMainCanNativeTouchScrollDownAndUp(page);
+
+    await page.getByRole("link", { name: /^Time Entries$/ }).click();
+    await page.getByRole("link", { name: /^Expenses$/ }).click();
+    await page.getByRole("link", { name: /^Dashboard$/ }).click();
+    await expect(page).toHaveURL(/\/dashboard(?:[?#].*)?$/);
+    await expectMainCanScrollDownAndUp(page);
+    await expectMainCanNativeTouchScrollDownAndUp(page);
 
     await page.getByRole("link", { name: /^Expenses$/ }).click();
     await expect(page).toHaveURL(/\/financial\/expenses(?:[?#].*)?$/);
@@ -168,6 +261,8 @@ test.describe("Dashboard mobile scrolling", () => {
   test("iPhone Safari recovers scrolling after sheets, dialogs, uploads, and preview overlays", async ({
     page,
   }) => {
+    await suppressInstallPrompt(page);
+
     await gotoDashboardShellPage(page, "/financial/expenses");
     await expectMainCanScrollDownAndUp(page);
 

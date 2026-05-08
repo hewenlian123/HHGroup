@@ -59,12 +59,13 @@ export function DashboardKpiStrip({
 
   return (
     <div
+      data-dashboard-kpi-strip
       className={cn(
         "min-w-0 max-w-full",
         "max-md:-mx-1 max-md:px-1",
         "max-md:flex max-md:snap-x max-md:snap-mandatory max-md:gap-3 max-md:overflow-x-auto max-md:overflow-y-hidden max-md:pb-2 max-md:pt-1",
         "max-md:[-webkit-overflow-scrolling:touch] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden",
-        "touch-pan-x overscroll-x-contain",
+        "touch-auto overscroll-x-contain",
         "md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-6"
       )}
     >
