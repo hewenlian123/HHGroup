@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import { FinanceDatePicker } from "@/components/ui/date-picker";
 import {
   createWorkerPayment,
   markWorkerReimbursementsPaid,
@@ -367,12 +368,11 @@ export function PayWorkerModal({
 
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">Payment Date</label>
-            <Input
-              type="date"
+            <FinanceDatePicker
               value={paymentDate}
-              onChange={(e) => setPaymentDate(e.target.value)}
+              onChange={setPaymentDate}
               disabled={formLocked}
-              className="h-9 text-sm"
+              size="md"
             />
           </div>
 

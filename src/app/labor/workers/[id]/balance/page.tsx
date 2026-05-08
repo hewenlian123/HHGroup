@@ -10,6 +10,7 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { WorkerPaymentReceiptPreviewModal } from "@/components/labor/worker-payment-receipt-preview-modal";
+import { FinanceDatePicker } from "@/components/ui/date-picker";
 import {
   getLaborPaymentStatus,
   laborPaymentStatusUiLabel,
@@ -19,7 +20,7 @@ import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { statusChipClass } from "@/lib/typography";
-import { AlertCircle, CheckCircle2, Info } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, Pencil, Plus, Trash2 } from "lucide-react";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 type LaborEntryRow = {
@@ -201,7 +202,6 @@ export default function WorkerBalanceDetailPage() {
   const [message, setMessage] = React.useState<string | null>(null);
 
   const [payModalOpen, setPayModalOpen] = React.useState(false);
-  const [payMethod, setPayMethod] = React.useState("");
   const [payDate, setPayDate] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [payNotes, setPayNotes] = React.useState("");
   const [selectedLaborIds, setSelectedLaborIds] = React.useState<Set<string>>(new Set());
@@ -289,14 +289,151 @@ export default function WorkerBalanceDetailPage() {
     return s;
   }, [unpaidLabor, unpaidReimb, selectedLaborIds, selectedReimbIds]);
 
+  type SplitMethod = "Cash" | "Check" | "ACH" | "Zelle" | "Other";
+  type SplitRow = { id: string; method: SplitMethod | ""; amount: string; reference: string };
+
+  const splitMethodOptions: SplitMethod[] = ["Cash", "Check", "ACH", "Zelle", "Other"];
+  const [splitRows, setSplitRows] = React.useState<SplitRow[]>([]);
+
+  const splitTotal = React.useMemo(() => {
+    return splitRows.reduce((sum, r) => {
+      const n = Number(r.amount);
+      return Number.isFinite(n) ? sum + n : sum;
+    }, 0);
+  }, [splitRows]);
+
+  const splitDelta = React.useMemo(
+    () => totalPaymentAmount - splitTotal,
+    [totalPaymentAmount, splitTotal]
+  );
+
+  const splitValidation = React.useMemo(() => {
+    if (totalPaymentAmount <= 0) return { ok: false, message: null as string | null };
+    if (splitRows.length === 0) return { ok: false, message: "Add a payment method." };
+    for (const r of splitRows) {
+      if (!r.method) return { ok: false, message: "Each split row needs a method." };
+      const n = Number(r.amount);
+      if (!Number.isFinite(n) || n <= 0)
+        return { ok: false, message: "Each split row needs an amount > 0." };
+    }
+    const rounded = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+    if (rounded(splitTotal) !== rounded(totalPaymentAmount)) return { ok: false, message: null };
+    return { ok: true, message: null };
+  }, [splitRows, splitTotal, totalPaymentAmount]);
+
   const openPayModal = () => {
     setSelectedLaborIds(new Set(unpaidLabor.map((e) => e.id)));
     setSelectedReimbIds(new Set(unpaidReimb.map((r) => r.id)));
-    setPayMethod("");
     setPayDate(new Date().toISOString().slice(0, 10));
     setPayNotes("");
     setPayError(null);
+    const amt = totalPaymentAmount > 0 ? totalPaymentAmount.toFixed(2) : "";
+    setSplitRows(
+      totalPaymentAmount > 0
+        ? [
+            {
+              id: crypto.randomUUID?.() ?? `${Date.now()}`,
+              method: "Cash",
+              amount: amt,
+              reference: "",
+            },
+          ]
+        : []
+    );
     setPayModalOpen(true);
+  };
+
+  React.useEffect(() => {
+    if (!payModalOpen) return;
+    if (splitRows.length !== 1) return;
+    setSplitRows((prev) => {
+      const one = prev[0];
+      if (!one) return prev;
+      const nextAmt = totalPaymentAmount > 0 ? totalPaymentAmount.toFixed(2) : "";
+      if (one.amount === nextAmt) return prev;
+      return [{ ...one, amount: nextAmt }];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payModalOpen, totalPaymentAmount]);
+
+  const removeSplitRow = (id: string) => {
+    setSplitRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const updateSplitRow = (id: string, patch: Partial<SplitRow>) => {
+    setSplitRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  };
+
+  const [splitEditorOpen, setSplitEditorOpen] = React.useState(false);
+  const [splitEditorMode, setSplitEditorMode] = React.useState<"add" | "edit">("add");
+  const [splitEditorTargetId, setSplitEditorTargetId] = React.useState<string | null>(null);
+  const [draftMethod, setDraftMethod] = React.useState<SplitRow["method"]>("Cash");
+  const [draftAmount, setDraftAmount] = React.useState<string>("");
+  const [draftReference, setDraftReference] = React.useState<string>("");
+  const [draftError, setDraftError] = React.useState<string | null>(null);
+
+  const openAddSplit = () => {
+    setSplitEditorMode("add");
+    setSplitEditorTargetId(null);
+    setDraftMethod("Cash");
+    const remaining = Math.max(0, splitDelta);
+    setDraftAmount(remaining > 0 ? remaining.toFixed(2) : "");
+    setDraftReference("");
+    setDraftError(null);
+    setSplitEditorOpen(true);
+  };
+
+  const openEditSplit = (row: SplitRow) => {
+    setSplitEditorMode("edit");
+    setSplitEditorTargetId(row.id);
+    setDraftMethod(row.method || "Cash");
+    setDraftAmount(row.amount);
+    setDraftReference(row.reference);
+    setDraftError(null);
+    setSplitEditorOpen(true);
+  };
+
+  const saveSplitDraft = () => {
+    const method = draftMethod;
+    const amt = Number(draftAmount);
+    if (!method) {
+      setDraftError("Method is required.");
+      return;
+    }
+    if (!Number.isFinite(amt) || amt <= 0) {
+      setDraftError("Amount must be greater than 0.");
+      return;
+    }
+    const rounded = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+    const current = splitRows.find((r) => r.id === splitEditorTargetId) ?? null;
+    const currentAmt = current ? Number(current.amount) : 0;
+    const nextTotal =
+      splitEditorMode === "edit"
+        ? splitTotal - (Number.isFinite(currentAmt) ? currentAmt : 0) + amt
+        : splitTotal + amt;
+    if (rounded(nextTotal) > rounded(totalPaymentAmount)) {
+      setDraftError("Split total can’t exceed Total Payment Amount.");
+      return;
+    }
+
+    if (splitEditorMode === "edit" && splitEditorTargetId) {
+      updateSplitRow(splitEditorTargetId, {
+        method,
+        amount: draftAmount,
+        reference: draftReference,
+      });
+    } else {
+      setSplitRows((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID?.() ?? `${Date.now()}-${prev.length}`,
+          method,
+          amount: draftAmount,
+          reference: draftReference,
+        },
+      ]);
+    }
+    setSplitEditorOpen(false);
   };
 
   const toggleLabor = (id: string) => {
@@ -320,9 +457,18 @@ export default function WorkerBalanceDetailPage() {
   const handlePaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!workerId || totalPaymentAmount <= 0) return;
-    const method = payMethod.trim();
-    if (!method) {
-      setPayError("Payment method is required.");
+    if (splitRows.length > 1) {
+      setPayError("Split payments need backend support before saving.");
+      return;
+    }
+    const only = splitRows[0];
+    const method = (only?.method ?? "").trim();
+    const amt = Number(only?.amount);
+    if (!method) return setPayError("Payment method is required.");
+    if (!Number.isFinite(amt) || amt <= 0) return setPayError("Payment amount is required.");
+    const rounded = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
+    if (rounded(amt) !== rounded(totalPaymentAmount)) {
+      setPayError("Split amount must equal Total Payment Amount.");
       return;
     }
     setPaySubmitting(true);
@@ -764,7 +910,7 @@ export default function WorkerBalanceDetailPage() {
           <DialogHeader>
             <DialogTitle>Pay Worker</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handlePaySubmit} className="space-y-4">
+          <form onSubmit={handlePaySubmit} className="space-y-5">
             <p className="text-xs leading-relaxed text-zinc-500">
               Select items to include in this payment. Total will be calculated automatically.
             </p>
@@ -835,22 +981,110 @@ export default function WorkerBalanceDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-zinc-400 block">Payment method</label>
-              <Input
-                value={payMethod}
-                onChange={(e) => setPayMethod(e.target.value)}
-                placeholder="e.g. Check, ACH, Cash"
-                className="h-9"
-              />
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-zinc-900">Split payment</p>
+                </div>
+                {totalPaymentAmount > 0 ? (
+                  <span
+                    className={cn(
+                      "shrink-0 text-[11px] font-medium tabular-nums",
+                      splitDelta === 0
+                        ? "text-emerald-700 dark:text-emerald-400"
+                        : splitDelta > 0
+                          ? "text-amber-700 dark:text-amber-400"
+                          : "text-rose-700 dark:text-rose-400"
+                    )}
+                  >
+                    {splitDelta === 0
+                      ? `Remaining ${formatCurrency(0)}`
+                      : splitDelta > 0
+                        ? `Remaining ${formatCurrency(splitDelta)}`
+                        : `Over by ${formatCurrency(Math.abs(splitDelta))}`}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="mt-2 rounded-md border border-border/40 bg-muted/[0.05] p-2">
+                {splitRows.length === 0 ? (
+                  <div className="rounded-md border border-dashed border-border/60 px-3 py-3">
+                    <p className="text-sm text-zinc-500">No payment methods yet.</p>
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-border/20">
+                    {splitRows.map((r, idx) => {
+                      const amt = Number(r.amount);
+                      const amtText = Number.isFinite(amt) ? formatCurrency(amt) : "—";
+                      return (
+                        <li key={r.id} className="flex items-center gap-3 py-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-zinc-700 truncate">
+                              <span className="font-medium text-zinc-900">{r.method || "—"}</span>{" "}
+                              <span className="text-zinc-500">·</span>{" "}
+                              <span className="tabular-nums font-semibold tracking-tight text-zinc-900">
+                                {amtText}
+                              </span>
+                              {r.reference?.trim() ? (
+                                <>
+                                  {" "}
+                                  <span className="text-zinc-500">·</span>{" "}
+                                  <span className="text-zinc-500 truncate">
+                                    {r.reference.trim()}
+                                  </span>
+                                </>
+                              ) : null}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-11 w-11 min-h-[44px] min-w-[44px] text-zinc-400/70 hover:text-zinc-600 hover:bg-muted/15 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
+                              onClick={() => openEditSplit(r)}
+                              aria-label={`Edit payment split ${idx + 1}`}
+                            >
+                              <Pencil className="h-4 w-4" aria-hidden />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-11 w-11 min-h-[44px] min-w-[44px] text-zinc-400/70 hover:text-zinc-600 hover:bg-muted/15 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
+                              onClick={() => removeSplitRow(r.id)}
+                              aria-label={`Remove payment split ${idx + 1}`}
+                              disabled={splitRows.length === 1}
+                            >
+                              <Trash2 className="h-4 w-4" aria-hidden />
+                            </Button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                <div className="pt-1.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={cn(
+                      "px-2 text-zinc-500 hover:text-zinc-600 hover:bg-transparent",
+                      "min-h-[44px] sm:min-h-9 text-xs"
+                    )}
+                    onClick={openAddSplit}
+                    disabled={totalPaymentAmount <= 0}
+                  >
+                    <Plus className="mr-2 h-4 w-4 text-zinc-400/80" aria-hidden />
+                    Add payment
+                  </Button>
+                </div>
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium text-zinc-400 block">Payment date</label>
-              <Input
-                type="date"
-                value={payDate}
-                onChange={(e) => setPayDate(e.target.value)}
-                className="h-9"
-              />
+              <FinanceDatePicker value={payDate} onChange={setPayDate} size="md" />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium text-zinc-400 block">Notes (optional)</label>
@@ -863,8 +1097,11 @@ export default function WorkerBalanceDetailPage() {
             </div>
 
             {payError ? <p className="text-sm text-destructive">{payError}</p> : null}
+            {!splitValidation.ok && splitValidation.message ? (
+              <p className="text-sm text-destructive">{splitValidation.message}</p>
+            ) : null}
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
               <Button
                 type="button"
                 variant="outline"
@@ -873,11 +1110,105 @@ export default function WorkerBalanceDetailPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" size="sm" disabled={paySubmitting || totalPaymentAmount <= 0}>
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
+                disabled={
+                  paySubmitting ||
+                  totalPaymentAmount <= 0 ||
+                  splitRows.length === 0 ||
+                  splitRows.length > 1 ||
+                  !splitValidation.ok
+                }
+              >
                 {paySubmitting ? "Processing…" : "Confirm Payment"}
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Split add/edit dialog (UI only) */}
+      <Dialog
+        open={splitEditorOpen}
+        onOpenChange={(open) => {
+          setSplitEditorOpen(open);
+          if (!open) setDraftError(null);
+        }}
+      >
+        <DialogContent className="max-w-sm sm:rounded-md max-sm:bottom-0 max-sm:top-auto max-sm:translate-y-0">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">
+              {splitEditorMode === "edit" ? "Edit payment" : "Add payment"}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-400 block">Method</label>
+              <select
+                value={draftMethod}
+                onChange={(e) => setDraftMethod(e.target.value as SplitRow["method"])}
+                className="h-11 min-h-[44px] w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                required
+              >
+                {splitMethodOptions.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-400 block">Amount</label>
+              <Input
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0"
+                value={draftAmount}
+                onChange={(e) => setDraftAmount(e.target.value)}
+                className="h-11 min-h-[44px] text-right tabular-nums font-semibold tracking-tight"
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-zinc-400 block">
+                Reference (optional)
+              </label>
+              <Input
+                value={draftReference}
+                onChange={(e) => setDraftReference(e.target.value)}
+                className="h-11 min-h-[44px]"
+                placeholder={draftMethod === "Check" ? "Check #" : "Optional"}
+              />
+            </div>
+
+            {draftError ? <p className="text-sm text-destructive">{draftError}</p> : null}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setSplitEditorOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={saveSplitDraft}
+              disabled={totalPaymentAmount <= 0}
+            >
+              Save
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
