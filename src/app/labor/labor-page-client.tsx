@@ -38,15 +38,6 @@ function monthAdd(ym: string, deltaMonths: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function initials(name: string | null | undefined): string {
-  const n = (name ?? "").trim();
-  if (!n) return "—";
-  const parts = n.split(/\s+/).filter(Boolean);
-  const a = parts[0]?.[0] ?? "";
-  const b = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
-  return (a + b).toUpperCase() || "—";
-}
-
 function sessionBadgeClass(session: LaborSession): string {
   if (session === "morning") return "bg-amber-50 text-amber-800 ring-1 ring-amber-200/60";
   if (session === "afternoon") return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/70";
@@ -951,9 +942,11 @@ export default function LaborPageClient() {
                               0
                             );
                             const isToday = dateStr === todayYmd;
-                            const topWorkers = entries
-                              .map((e) => initials(e.worker_name))
-                              .filter((v) => v !== "—")
+                            const crewTopLabels = entries
+                              .map((e) => (e.worker_name ?? "").trim())
+                              .filter(Boolean)
+                              .map((name) => name[0] ?? "")
+                              .filter(Boolean)
                               .slice(0, 3);
                             return (
                               <button
@@ -993,26 +986,31 @@ export default function LaborPageClient() {
                                 </div>
 
                                 {hasEntries ? (
-                                  <div className="mt-2 flex items-center gap-2">
-                                    <div className="flex -space-x-1">
-                                      {topWorkers.map((v, i) => (
-                                        <span
-                                          key={`${v}-${i}`}
-                                          className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white bg-zinc-900/90 text-[10px] font-semibold text-white dark:border-background"
-                                          aria-hidden
-                                          title={v}
-                                        >
-                                          {v}
-                                        </span>
-                                      ))}
-                                      {workerCount > topWorkers.length ? (
-                                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white bg-zinc-100 text-[10px] font-semibold text-zinc-700 dark:border-background dark:bg-muted/40 dark:text-muted-foreground">
-                                          +{workerCount - topWorkers.length}
-                                        </span>
-                                      ) : null}
+                                  <div className="mt-1.5 flex items-center gap-2">
+                                    <div className="min-w-0 flex items-center gap-1 overflow-hidden">
+                                      <span className="shrink-0 text-[10px] font-medium text-zinc-500">
+                                        Crew:
+                                      </span>
+                                      <div className="min-w-0 flex items-center gap-1 overflow-hidden">
+                                        {crewTopLabels.map((label, i) => (
+                                          <span
+                                            key={`${label}-${i}`}
+                                            className="inline-flex shrink-0 items-center rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-700 ring-1 ring-inset ring-zinc-200/70"
+                                            aria-hidden
+                                            title={label}
+                                          >
+                                            {label}
+                                          </span>
+                                        ))}
+                                        {workerCount > crewTopLabels.length ? (
+                                          <span className="inline-flex shrink-0 items-center rounded-md bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-inset ring-zinc-200/70">
+                                            +{workerCount - crewTopLabels.length}
+                                          </span>
+                                        ) : null}
+                                      </div>
                                     </div>
-                                    <span className="text-[11px] text-muted-foreground">
-                                      {workerCount} worker{workerCount !== 1 ? "s" : ""}
+                                    <span className="shrink-0 text-[10px] text-zinc-400">
+                                      {workerCount} workers
                                     </span>
                                   </div>
                                 ) : (
