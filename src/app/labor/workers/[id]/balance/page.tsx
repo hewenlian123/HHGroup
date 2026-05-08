@@ -5,7 +5,6 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,7 @@ import {
   type LaborPayrollSettlementMode,
 } from "@/lib/labor-balance-shared";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { statusChipClass } from "@/lib/typography";
 import { AlertCircle, CheckCircle2, Info } from "lucide-react";
@@ -111,10 +110,8 @@ function KpiTile({
         emphasisClass
       )}
     >
-      <p className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground/90">
-        {label}
-      </p>
-      <p className="text-[18px] font-semibold tabular-nums tracking-tight text-foreground whitespace-nowrap">
+      <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">{label}</p>
+      <p className="text-[18px] font-semibold tabular-nums tracking-tight text-zinc-900 whitespace-nowrap">
         {value}
       </p>
     </div>
@@ -142,15 +139,15 @@ function RecommendationPanel({ balance }: { balance: number }) {
       )}
     >
       <div className="flex min-w-0 items-center gap-2">
-        <Icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+        <Icon className="h-4 w-4 text-zinc-400" aria-hidden />
         <span className={chip.className}>{chip.label}</span>
-        <span className="truncate text-sm font-medium text-foreground">
+        <span className="truncate text-sm font-medium text-zinc-900">
           {recommendationLabel(tone)}
         </span>
       </div>
       <div className="flex items-baseline justify-between gap-3 sm:justify-end">
-        <span className="text-xs text-muted-foreground sm:hidden">Balance</span>
-        <span className="text-[16px] font-semibold tabular-nums tracking-tight text-foreground">
+        <span className="text-xs text-zinc-400 sm:hidden">Balance</span>
+        <span className="text-[16px] font-semibold tabular-nums tracking-tight text-zinc-900">
           {formatCurrency(balance)}
         </span>
       </div>
@@ -168,12 +165,12 @@ function LedgerSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-md border border-border/60 bg-background">
-      <header className="flex flex-col gap-1 border-b border-border/60 px-4 py-3">
-        <h2 className="text-[13px] font-semibold tracking-tight text-foreground">{title}</h2>
-        <p className="text-sm text-muted-foreground/85">{description}</p>
+    <section className="rounded-md border border-border/60 bg-background shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <header className="flex flex-col gap-1.5 border-b border-border/60 px-4 py-3.5">
+        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-zinc-900">{title}</h2>
+        <p className="text-[13px] leading-relaxed text-zinc-500/90">{description}</p>
       </header>
-      <div className="px-4 py-2">{children}</div>
+      <div className="px-4 py-3">{children}</div>
     </section>
   );
 }
@@ -181,10 +178,14 @@ function LedgerSection({
 function EmptyLedgerState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="rounded-md border border-dashed border-border/60 px-4 py-10 text-center">
-      <p className="text-sm font-medium text-foreground">{title}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+      <p className="text-sm font-medium text-zinc-900">{title}</p>
+      <p className="mt-1 text-xs leading-relaxed text-zinc-500">{subtitle}</p>
     </div>
   );
+}
+
+function Dash() {
+  return <span className="text-zinc-400">—</span>;
 }
 
 export default function WorkerBalanceDetailPage() {
@@ -361,21 +362,24 @@ export default function WorkerBalanceDetailPage() {
   if (!workerId) {
     return (
       <div className="page-container page-stack py-6">
-        <p className="text-sm text-muted-foreground">Worker not found.</p>
+        <p className="text-sm text-zinc-500">Worker not found.</p>
       </div>
     );
   }
 
   return (
     <div className="page-container page-stack py-6 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
-      <PageHeader
-        className={cn(
-          "gap-1 border-b border-border/60 pb-3 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
-        )}
-        title={worker?.name ?? "Worker Balance"}
-        subtitle="Labor entries, reimbursements, payments, and balance."
-        actions={
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline">
+      <header className="border-b border-border/60 pb-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between lg:gap-4">
+          <div className="min-w-0">
+            <h1 className="text-[34px] leading-tight font-semibold tracking-tight text-zinc-900 md:text-[36px]">
+              {worker?.name ?? "Worker Balance"}
+            </h1>
+            <p className="mt-1 max-w-2xl text-[15px] leading-relaxed text-zinc-500">
+              Labor entries, reimbursements, payments, and balance.
+            </p>
+          </div>
+          <div className="mt-0 flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:justify-end [&_a]:w-full [&_button]:w-full lg:[&_a]:w-auto lg:[&_button]:w-auto">
             <Link href="/labor/worker-balances" className="w-full sm:w-auto">
               <Button
                 size="sm"
@@ -398,15 +402,15 @@ export default function WorkerBalanceDetailPage() {
               {paySubmitting ? "Saving…" : "Pay Worker"}
             </Button>
           </div>
-        }
-      />
+        </div>
+      </header>
 
       {message ? (
-        <p className="text-sm text-muted-foreground border-b border-border/60 pb-3">{message}</p>
+        <p className="text-sm text-zinc-500 border-b border-border/60 pb-3">{message}</p>
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-muted-foreground py-6">Loading…</p>
+        <p className="text-sm text-zinc-500 py-6">Loading…</p>
       ) : (
         <>
           <div className="flex flex-col gap-4">
@@ -449,23 +453,28 @@ export default function WorkerBalanceDetailPage() {
                       );
                       const statusTone = paySt === "paid" ? "success" : "warning";
                       return (
-                        <div key={r.id} className="py-3">
+                        <div key={r.id} className="py-3.5">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="font-mono text-[13px] tabular-nums tracking-tight text-muted-foreground">
+                              <p className={LEDGER_DATE_CLASS}>
                                 {formatLedgerDate(r.date, "compact")}
                               </p>
-                              <p className="mt-0.5 text-sm font-medium text-foreground">
-                                {r.session ?? "—"} · {r.projectName ?? r.projectId ?? "—"}
+                              <p className="mt-0.5 text-sm font-medium text-zinc-700">
+                                {r.session ?? <Dash />} · {r.projectName ?? r.projectId ?? <Dash />}
                               </p>
                               <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <span className={statusChipClass(statusTone)}>
+                                <span
+                                  className={cn(
+                                    statusChipClass(statusTone),
+                                    "px-2 py-0.5 text-[11px] leading-none rounded-sm"
+                                  )}
+                                >
                                   {laborPaymentStatusUiLabel(paySt)}
                                 </span>
                               </div>
                             </div>
                             <div className="shrink-0 text-right">
-                              <p className="text-sm font-semibold tabular-nums text-foreground">
+                              <p className="text-sm font-semibold tabular-nums tracking-tight text-zinc-900">
                                 {formatCurrency(r.amount)}
                               </p>
                             </div>
@@ -489,24 +498,24 @@ export default function WorkerBalanceDetailPage() {
                     <table className="w-full min-w-[860px] border-collapse text-sm">
                       <thead>
                         <tr className="border-b border-border/60">
-                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                             Date
                           </th>
-                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                             Session
                           </th>
-                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                             Project
                           </th>
-                          <th className="py-2 pr-3 text-right text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
+                          <th className="py-2.5 pr-3 text-right text-[10px] font-medium uppercase tracking-wide text-zinc-400 tabular-nums">
                             Amount
                           </th>
-                          <th className="py-2 text-left text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          <th className="py-2.5 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                             Status
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-border/40">
+                      <tbody className="divide-y divide-border/30">
                         {laborEntries.map((r) => {
                           const paySt = getLaborPaymentStatus(
                             r.workerPaymentId ?? null,
@@ -516,22 +525,25 @@ export default function WorkerBalanceDetailPage() {
                           const statusTone = paySt === "paid" ? "success" : "warning";
                           return (
                             <tr key={r.id} className="hover:bg-muted/5">
-                              <td className="py-2 pr-3 font-mono text-[13px] tabular-nums tracking-tight text-muted-foreground">
+                              <td className="py-2.5 pr-3">
                                 <span className={LEDGER_DATE_CLASS}>
                                   {formatLedgerDate(r.date)}
                                 </span>
                               </td>
-                              <td className="py-2 pr-3 text-muted-foreground">
-                                {r.session ?? "—"}
+                              <td className="py-2.5 pr-3 text-zinc-700">{r.session ?? <Dash />}</td>
+                              <td className="py-2.5 pr-3 text-zinc-700">
+                                {r.projectName ?? r.projectId ?? <Dash />}
                               </td>
-                              <td className="py-2 pr-3 text-muted-foreground">
-                                {r.projectName ?? r.projectId ?? "—"}
-                              </td>
-                              <td className="py-2 pr-3 text-right tabular-nums font-medium text-foreground whitespace-nowrap">
+                              <td className="py-2.5 pr-3 text-right tabular-nums font-semibold tracking-tight text-zinc-900 whitespace-nowrap">
                                 {formatCurrency(r.amount)}
                               </td>
-                              <td className="py-2">
-                                <span className={statusChipClass(statusTone)}>
+                              <td className="py-2.5">
+                                <span
+                                  className={cn(
+                                    statusChipClass(statusTone),
+                                    "px-2 py-0.5 text-[11px] leading-none rounded-sm"
+                                  )}
+                                >
                                   {laborPaymentStatusUiLabel(paySt)}
                                 </span>
                               </td>
@@ -561,21 +573,28 @@ export default function WorkerBalanceDetailPage() {
                       const isPaid = String(r.status).toLowerCase() === "paid";
                       const tone = isPaid ? "success" : "warning";
                       return (
-                        <div key={r.id} className="py-3">
+                        <div key={r.id} className="py-3.5">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="font-mono text-[13px] tabular-nums tracking-tight text-muted-foreground">
+                              <p className={LEDGER_DATE_CLASS}>
                                 {formatLedgerDate(r.date, "compact")}
                               </p>
-                              <p className="mt-0.5 text-sm font-medium text-foreground">
-                                {r.vendor ?? "—"} · {r.projectName ?? r.projectId ?? "—"}
+                              <p className="mt-0.5 text-sm font-medium text-zinc-700">
+                                {r.vendor ?? <Dash />} · {r.projectName ?? r.projectId ?? <Dash />}
                               </p>
                               <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <span className={statusChipClass(tone)}>{r.status}</span>
+                                <span
+                                  className={cn(
+                                    statusChipClass(tone),
+                                    "px-2 py-0.5 text-[11px] leading-none rounded-sm"
+                                  )}
+                                >
+                                  {r.status}
+                                </span>
                               </div>
                             </div>
                             <div className="shrink-0 text-right">
-                              <p className="text-sm font-semibold tabular-nums text-foreground">
+                              <p className="text-sm font-semibold tabular-nums tracking-tight text-zinc-900">
                                 {formatCurrency(r.amount)}
                               </p>
                             </div>
@@ -598,43 +617,50 @@ export default function WorkerBalanceDetailPage() {
                     <table className="w-full min-w-[860px] border-collapse text-sm">
                       <thead>
                         <tr className="border-b border-border/60">
-                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                             Date
                           </th>
-                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                             Vendor
                           </th>
-                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                             Project
                           </th>
-                          <th className="py-2 pr-3 text-right text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
+                          <th className="py-2.5 pr-3 text-right text-[10px] font-medium uppercase tracking-wide text-zinc-400 tabular-nums">
                             Amount
                           </th>
-                          <th className="py-2 text-left text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          <th className="py-2.5 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                             Status
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-border/40">
+                      <tbody className="divide-y divide-border/30">
                         {reimbursements.map((r) => {
                           const isPaid = String(r.status).toLowerCase() === "paid";
                           const tone = isPaid ? "success" : "warning";
                           return (
                             <tr key={r.id} className="hover:bg-muted/5">
-                              <td className="py-2 pr-3 font-mono text-[13px] tabular-nums tracking-tight text-muted-foreground">
+                              <td className="py-2.5 pr-3">
                                 <span className={LEDGER_DATE_CLASS}>
                                   {formatLedgerDate(r.date)}
                                 </span>
                               </td>
-                              <td className="py-2 pr-3 text-muted-foreground">{r.vendor ?? "—"}</td>
-                              <td className="py-2 pr-3 text-muted-foreground">
-                                {r.projectName ?? r.projectId ?? "—"}
+                              <td className="py-2.5 pr-3 text-zinc-700">{r.vendor ?? <Dash />}</td>
+                              <td className="py-2.5 pr-3 text-zinc-700">
+                                {r.projectName ?? r.projectId ?? <Dash />}
                               </td>
-                              <td className="py-2 pr-3 text-right tabular-nums font-medium text-foreground whitespace-nowrap">
+                              <td className="py-2.5 pr-3 text-right tabular-nums font-semibold tracking-tight text-zinc-900 whitespace-nowrap">
                                 {formatCurrency(r.amount)}
                               </td>
-                              <td className="py-2">
-                                <span className={statusChipClass(tone)}>{r.status}</span>
+                              <td className="py-2.5">
+                                <span
+                                  className={cn(
+                                    statusChipClass(tone),
+                                    "px-2 py-0.5 text-[11px] leading-none rounded-sm"
+                                  )}
+                                >
+                                  {r.status}
+                                </span>
                               </td>
                             </tr>
                           );
@@ -653,21 +679,21 @@ export default function WorkerBalanceDetailPage() {
                 ) : (
                   <div className="divide-y divide-border/60">
                     {payments.map((r) => (
-                      <div key={r.id} className="py-3">
+                      <div key={r.id} className="py-3.5">
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="font-mono text-[13px] tabular-nums tracking-tight text-muted-foreground">
+                            <p className={LEDGER_DATE_CLASS}>
                               {formatLedgerDate(r.date, "compact")}
                             </p>
-                            <p className="mt-0.5 text-sm text-muted-foreground">
-                              {r.paymentMethod ?? "—"}
+                            <p className="mt-0.5 text-sm text-zinc-500">
+                              {r.paymentMethod ?? <Dash />}
                             </p>
-                            <p className="mt-2 text-sm text-foreground break-words">
-                              {r.notes ?? "—"}
+                            <p className="mt-2 text-sm text-zinc-700 break-words">
+                              {r.notes ?? <Dash />}
                             </p>
                           </div>
                           <div className="shrink-0 text-right">
-                            <p className="text-sm font-semibold tabular-nums text-foreground">
+                            <p className="text-sm font-semibold tabular-nums tracking-tight text-zinc-900">
                               {formatCurrency(r.amount)}
                             </p>
                           </div>
@@ -686,33 +712,33 @@ export default function WorkerBalanceDetailPage() {
                     <table className="w-full min-w-[860px] border-collapse text-sm">
                       <thead>
                         <tr className="border-b border-border/60">
-                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                             Date
                           </th>
-                          <th className="py-2 pr-3 text-right text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground tabular-nums">
+                          <th className="py-2.5 pr-3 text-right text-[10px] font-medium uppercase tracking-wide text-zinc-400 tabular-nums">
                             Amount
                           </th>
-                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                             Method
                           </th>
-                          <th className="py-2 text-left text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                          <th className="py-2.5 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
                             Notes
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-border/40">
+                      <tbody className="divide-y divide-border/30">
                         {payments.map((r) => (
                           <tr key={r.id} className="hover:bg-muted/5">
-                            <td className="py-2 pr-3 font-mono text-[13px] tabular-nums tracking-tight text-muted-foreground">
+                            <td className="py-2.5 pr-3">
                               <span className={LEDGER_DATE_CLASS}>{formatLedgerDate(r.date)}</span>
                             </td>
-                            <td className="py-2 pr-3 text-right tabular-nums font-medium text-foreground whitespace-nowrap">
+                            <td className="py-2.5 pr-3 text-right tabular-nums font-semibold tracking-tight text-zinc-900 whitespace-nowrap">
                               {formatCurrency(r.amount)}
                             </td>
-                            <td className="py-2 pr-3 text-muted-foreground">
-                              {r.paymentMethod ?? "—"}
+                            <td className="py-2.5 pr-3 text-zinc-700">
+                              {r.paymentMethod ?? <Dash />}
                             </td>
-                            <td className="py-2 text-muted-foreground">
+                            <td className="py-2.5 text-zinc-700">
                               <span
                                 className="block max-w-[520px] truncate"
                                 title={r.notes ?? undefined}
@@ -739,13 +765,13 @@ export default function WorkerBalanceDetailPage() {
             <DialogTitle>Pay Worker</DialogTitle>
           </DialogHeader>
           <form onSubmit={handlePaySubmit} className="space-y-4">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs leading-relaxed text-zinc-500">
               Select items to include in this payment. Total will be calculated automatically.
             </p>
 
             {unpaidLabor.length > 0 && (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 mb-2">
                   Unpaid labor entries
                 </p>
                 <div className="max-h-32 overflow-y-auto border border-border/60 rounded-sm divide-y divide-border/40">
@@ -760,10 +786,10 @@ export default function WorkerBalanceDetailPage() {
                         onChange={() => toggleLabor(e.id)}
                         className="h-4 w-4 rounded border-input"
                       />
-                      <span className="text-sm flex-1 truncate">
-                        {formatDate(e.date)} · {e.projectName ?? "—"}
+                      <span className="text-sm flex-1 truncate text-zinc-700">
+                        {formatLedgerDate(e.date, "compact")} · {e.projectName ?? "—"}
                       </span>
-                      <span className="text-sm tabular-nums font-medium">
+                      <span className="text-sm tabular-nums font-semibold tracking-tight text-zinc-900">
                         {formatCurrency(e.amount)}
                       </span>
                     </label>
@@ -774,7 +800,7 @@ export default function WorkerBalanceDetailPage() {
 
             {unpaidReimb.length > 0 && (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 mb-2">
                   Unpaid reimbursements
                 </p>
                 <div className="max-h-32 overflow-y-auto border border-border/60 rounded-sm divide-y divide-border/40">
@@ -789,10 +815,10 @@ export default function WorkerBalanceDetailPage() {
                         onChange={() => toggleReimb(r.id)}
                         className="h-4 w-4 rounded border-input"
                       />
-                      <span className="text-sm flex-1 truncate">
-                        {formatDate(r.date)} · {r.vendor ?? "—"}
+                      <span className="text-sm flex-1 truncate text-zinc-700">
+                        {formatLedgerDate(r.date, "compact")} · {r.vendor ?? "—"}
                       </span>
-                      <span className="text-sm tabular-nums font-medium">
+                      <span className="text-sm tabular-nums font-semibold tracking-tight text-zinc-900">
                         {formatCurrency(r.amount)}
                       </span>
                     </label>
@@ -809,9 +835,7 @@ export default function WorkerBalanceDetailPage() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground block">
-                Payment method
-              </label>
+              <label className="text-xs font-medium text-zinc-400 block">Payment method</label>
               <Input
                 value={payMethod}
                 onChange={(e) => setPayMethod(e.target.value)}
@@ -820,9 +844,7 @@ export default function WorkerBalanceDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground block">
-                Payment date
-              </label>
+              <label className="text-xs font-medium text-zinc-400 block">Payment date</label>
               <Input
                 type="date"
                 value={payDate}
@@ -831,9 +853,7 @@ export default function WorkerBalanceDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground block">
-                Notes (optional)
-              </label>
+              <label className="text-xs font-medium text-zinc-400 block">Notes (optional)</label>
               <Input
                 value={payNotes}
                 onChange={(e) => setPayNotes(e.target.value)}
