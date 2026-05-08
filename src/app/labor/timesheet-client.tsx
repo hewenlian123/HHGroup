@@ -13,6 +13,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { createBrowserClient } from "@/lib/supabase";
 import { Users, DollarSign, FileEdit, Copy, Check } from "lucide-react";
 import { ENSURE_LABOR_TABLES_SQL } from "./ensure-labor-tables-sql";
+import { formatCurrency } from "@/lib/formatters";
+import { amountClass, OS, TYPO } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 type LaborEntryRow = {
   id: string;
@@ -347,7 +350,7 @@ export default function TimesheetClient() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className={cn("min-h-screen", OS.workspace)}>
       <div className="page-container page-stack py-6">
         <PageHeader
           title="Timesheet Entry"
@@ -359,11 +362,11 @@ export default function TimesheetClient() {
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 max={new Date().toISOString().slice(0, 10)}
-                className="h-10 w-[160px] rounded-xl border-gray-100 bg-white"
+                className="h-10 w-[160px] rounded-xl border-slate-900/[0.06] bg-white/[0.92]"
               />
               <Button
                 variant="outline"
-                className="h-10 rounded-xl border-gray-100"
+                className="h-10 rounded-xl"
                 onClick={addWorkerRow}
                 disabled={busy}
               >
@@ -371,7 +374,7 @@ export default function TimesheetClient() {
               </Button>
               <Button
                 variant="outline"
-                className="h-10 rounded-xl border-gray-100"
+                className="h-10 rounded-xl"
                 onClick={saveAll}
                 disabled={busy}
               >
@@ -382,8 +385,8 @@ export default function TimesheetClient() {
         />
 
         {error ? (
-          <Card className="rounded-xl border border-gray-100 p-4">
-            <p className="text-sm text-red-600">{error}</p>
+          <Card className="p-4">
+            <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
           </Card>
         ) : null}
 
@@ -451,18 +454,14 @@ export default function TimesheetClient() {
           <KpiCard label="Total Workers" value={String(totalWorkers)} icon={Users} />
           <KpiCard
             label="Total Labor Cost"
-            value={new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-              maximumFractionDigits: 0,
-            }).format(totalLaborCost)}
+            value={formatCurrency(totalLaborCost)}
             icon={DollarSign}
             emphasis
           />
           <KpiCard label="Entries" value={String(entryCount)} icon={FileEdit} />
         </div>
 
-        <Card className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-[0_1px_3px_rgba(0_0_0_0.06)]">
+        <Card className="overflow-hidden">
           {loading ? (
             <div className="p-6 space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -478,32 +477,18 @@ export default function TimesheetClient() {
             <>
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-[0_1px_0_0_#E5E7EB]">
+                  <thead className="sticky top-0 z-10 bg-slate-50/90 shadow-[0_1px_0_0_rgba(15,23,42,0.06)]">
                     <tr>
-                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Worker
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Project
-                      </th>
-                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Hours
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Cost Code
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Notes
-                      </th>
-                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className={cn("px-4 py-3 text-left", TYPO.tableHeader)}>Worker</th>
+                      <th className={cn("px-4 py-3 text-left", TYPO.tableHeader)}>Project</th>
+                      <th className={cn("px-4 py-3 text-right", TYPO.tableHeader)}>Hours</th>
+                      <th className={cn("px-4 py-3 text-left", TYPO.tableHeader)}>Cost Code</th>
+                      <th className={cn("px-4 py-3 text-left", TYPO.tableHeader)}>Notes</th>
+                      <th className={cn("px-4 py-3 text-right", TYPO.tableHeader)}>
                         Half-Day Rate
                       </th>
-                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Total
-                      </th>
-                      <th className="text-right py-3 px-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Actions
-                      </th>
+                      <th className={cn("px-4 py-3 text-right", TYPO.tableHeader)}>Total</th>
+                      <th className={cn("px-4 py-3 text-right", TYPO.tableHeader)}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -513,7 +498,7 @@ export default function TimesheetClient() {
                       return (
                         <tr
                           key={row.localId}
-                          className="border-t border-gray-100 transition-colors hover:bg-[#F8FAFC]/80"
+                          className="border-t border-slate-900/[0.06] transition-colors hover:bg-slate-50/80 dark:border-border/60 dark:hover:bg-muted/20"
                         >
                           <td className="py-3 px-4 align-top">
                             <SearchableSelect
@@ -563,15 +548,11 @@ export default function TimesheetClient() {
                               className="h-9 min-w-[120px] rounded-lg"
                             />
                           </td>
-                          <td className="py-3 px-4 align-top text-right text-muted-foreground tabular-nums">
-                            {row.workerId ? `$${rate.toLocaleString()}` : "—"}
+                          <td className={cn("px-4 py-3 text-right align-top", TYPO.amount)}>
+                            {row.workerId ? formatCurrency(rate) : "—"}
                           </td>
-                          <td className="py-3 px-4 align-top text-right tabular-nums font-semibold">
-                            {new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                              maximumFractionDigits: 2,
-                            }).format(total)}
+                          <td className={cn("px-4 py-3 text-right align-top", amountClass())}>
+                            {formatCurrency(total)}
                           </td>
                           <td className="py-3 px-4 align-top">
                             <div className="flex justify-end gap-2">
@@ -587,7 +568,7 @@ export default function TimesheetClient() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 rounded-lg text-red-600 hover:bg-red-50"
+                                className="h-8 rounded-lg text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
                                 onClick={() => deleteRow(row)}
                                 disabled={busy}
                               >
@@ -619,7 +600,7 @@ export default function TimesheetClient() {
             const workerName = workerOptions.find((w) => w.id === row.workerId)?.name ?? "—";
             const projName = projectOptions.find((p) => p.id === row.projectId)?.name ?? "—";
             return (
-              <Card key={row.localId} className="rounded-xl border border-gray-100 p-4 space-y-3">
+              <Card key={row.localId} className="space-y-3 p-4">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{workerName}</span>
                   <span className="text-muted-foreground text-sm">{projName}</span>
@@ -627,13 +608,8 @@ export default function TimesheetClient() {
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>Hours: {row.hours}</div>
                   <div>Cost code: {row.costCode || "—"}</div>
-                  <div className="font-semibold tabular-nums col-span-2">
-                    Total:{" "}
-                    {new Intl.NumberFormat("en-US", {
-                      style: "currency",
-                      currency: "USD",
-                      maximumFractionDigits: 2,
-                    }).format(total)}
+                  <div className={cn("col-span-2", amountClass())}>
+                    Total: {formatCurrency(total)}
                   </div>
                 </div>
                 <div className="flex gap-2 pt-2">
@@ -649,7 +625,7 @@ export default function TimesheetClient() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="flex-1 rounded-lg text-red-600"
+                    className="flex-1 rounded-lg text-rose-600 dark:text-rose-400"
                     onClick={() => deleteRow(row)}
                     disabled={busy}
                   >

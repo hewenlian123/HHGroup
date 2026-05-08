@@ -164,7 +164,7 @@ export function DataTable<T>({
                   }
                   className={cn(
                     onRowClick ? listTableRowClassName : listTableRowStaticClassName,
-                    zebra && index % 2 === 1 && !onRowClick && "bg-[#FAFAFA]/80 dark:bg-muted/10",
+                    zebra && index % 2 === 1 && !onRowClick && "bg-slate-50/70 dark:bg-muted/10",
                     rowClassName
                   )}
                 >
@@ -204,7 +204,7 @@ export function DataTable<T>({
             {Array.from({ length: 4 }, (_, i) => (
               <div
                 key={`msk-${i}`}
-                className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-none dark:border-border dark:bg-card"
+                className="rounded-xl border border-slate-900/[0.06] bg-white/[0.92] px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-border dark:bg-card"
               >
                 <Skeleton className="h-5 w-2/3 rounded-md" />
                 <div className="mt-3 space-y-2">
@@ -215,7 +215,7 @@ export function DataTable<T>({
             ))}
           </div>
         ) : data.length === 0 ? (
-          <div className="rounded-lg border border-border/60 bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl border border-dashed border-slate-900/[0.08] bg-slate-50/50 px-4 py-6 text-center text-sm text-muted-foreground dark:border-border/60 dark:bg-muted/15">
             {emptyText}
           </div>
         ) : (
@@ -224,7 +224,7 @@ export function DataTable<T>({
             return (
               <div
                 key={keyExtractor(row)}
-                className="group rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-none transition-colors duration-150 ease-out active:scale-[0.99] hover:bg-gray-50 dark:border-border dark:hover:bg-muted/40"
+                className="group rounded-xl border border-slate-900/[0.06] bg-white/[0.92] px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors duration-150 ease-out active:scale-[0.99] hover:bg-slate-50 dark:border-border dark:bg-card dark:shadow-none dark:hover:bg-muted/40"
               >
                 <div className="text-sm font-medium text-text-primary dark:text-foreground">
                   {titleCol ? getCellContent(row, titleCol) : null}

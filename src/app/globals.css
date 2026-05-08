@@ -48,7 +48,7 @@
    * Use with outline for toolbar icons, cancel, or dangerous actions.
    */
   .btn-outline-ghost {
-    @apply rounded-md !border-0 bg-transparent shadow-none transition-all duration-150 ease-out hover:!translate-y-0 hover:!bg-gray-100 hover:!scale-100 hover:!shadow-none active:!scale-[0.95] active:!duration-100 dark:!border-transparent dark:bg-transparent dark:hover:!bg-muted/50;
+    @apply rounded-md !border-0 bg-transparent shadow-none transition-all duration-150 ease-out hover:!translate-y-0 hover:!bg-slate-100/80 hover:!scale-100 hover:!shadow-none active:!scale-[0.95] active:!duration-100 dark:!border-transparent dark:bg-transparent dark:hover:!bg-muted/50;
   }
   @media (max-width: 767px) {
     .btn-outline-ghost:active {
@@ -60,7 +60,7 @@
     @apply rounded-md transition-all duration-150 ease-out;
   }
   .hh-inline-tap:hover {
-    @apply -translate-y-px bg-gray-50 dark:hover:bg-muted/40;
+    @apply -translate-y-px bg-slate-50 dark:hover:bg-muted/40;
   }
   .hh-inline-tap:active {
     @apply scale-[0.97] duration-100;
@@ -113,7 +113,7 @@
     @apply flex flex-col gap-3;
   }
   .table-head-label {
-    @apply text-[11px] font-medium uppercase tracking-[0.12em] text-zinc-500;
+    @apply text-[11px] font-medium uppercase tracking-[0.12em] text-zinc-400;
   }
   .table-row-compact {
     @apply h-9;
@@ -127,14 +127,14 @@
     @apply text-right tabular-nums tracking-tight;
   }
   .date-text {
-    @apply font-mono tabular-nums tracking-tight text-zinc-500;
+    @apply font-mono text-[13px] tabular-nums tracking-tight text-zinc-500;
   }
   /* Summary / KPI — dense on mobile (muted tint), card on md+ */
   .kpi-metric {
-    @apply rounded-lg bg-white/80 px-3 py-2 shadow-none md:rounded-xl md:border md:border-slate-900/[0.06] md:bg-white/[0.92] md:px-4 md:py-3 dark:md:border-border dark:md:bg-card;
+    @apply rounded-xl border border-slate-900/[0.06] bg-white/[0.92] px-3 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)] md:px-4 md:py-3 dark:border-border/60 dark:bg-card/90 dark:shadow-none;
   }
   .kpi-metric-label {
-    @apply text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500;
+    @apply text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400;
   }
   .kpi-metric-value {
     @apply text-lg font-semibold tabular-nums tracking-tight text-zinc-950 md:text-xl dark:text-zinc-50;
@@ -246,7 +246,7 @@
     @apply py-2;
   }
   .ui-section-label {
-    @apply text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500;
+    @apply text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400;
   }
 }
 

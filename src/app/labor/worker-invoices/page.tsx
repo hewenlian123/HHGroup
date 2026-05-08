@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
-import { TYPO } from "@/lib/typography";
+import { statusChipClass, TYPO } from "@/lib/typography";
 import {
   CalendarDays,
   DollarSign,
@@ -98,32 +98,10 @@ function thisMonthLabel(): string {
 }
 
 function InvoiceStatusChip({ status }: { status: WorkerInvoiceStatus }) {
-  const chipBase =
-    "inline-flex w-fit max-w-full min-h-[22px] shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] tabular-nums tracking-tight shadow-none";
   if (status === "paid") {
-    return (
-      <span
-        className={cn(
-          chipBase,
-          "border-emerald-500/10 bg-emerald-500/[0.03] font-medium text-emerald-900/78 dark:border-emerald-500/12 dark:bg-emerald-500/[0.05] dark:text-emerald-100/82"
-        )}
-      >
-        <span className="h-1 w-1 shrink-0 rounded-full bg-emerald-500/40" aria-hidden />
-        Paid
-      </span>
-    );
+    return <span className={statusChipClass("success")}>Paid</span>;
   }
-  return (
-    <span
-      className={cn(
-        chipBase,
-        "border-amber-500/10 bg-amber-500/[0.03] font-normal text-amber-900/65 dark:border-amber-500/10 dark:bg-amber-500/[0.04] dark:text-amber-100/62"
-      )}
-    >
-      <span className="h-1 w-1 shrink-0 rounded-full bg-amber-500/35" aria-hidden />
-      Open
-    </span>
-  );
+  return <span className={statusChipClass("warning")}>Open</span>;
 }
 
 export default function WorkerInvoicesPage() {

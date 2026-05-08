@@ -13,7 +13,7 @@ import { getARSummary, getOutstandingInvoices, getProjects } from "@/lib/data";
 import { Banknote, AlertCircle, TrendingUp, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { TYPO } from "@/lib/typography";
+import { amountClass, OS, TYPO } from "@/lib/typography";
 
 function getAgingBucket(dueDate: string): string {
   const today = new Date().toISOString().slice(0, 10);
@@ -61,18 +61,19 @@ export default async function ARPage() {
 
       <section>
         <h2 className={cn("mb-4", TYPO.sectionLabel)}>AR overview</h2>
-        <div className="grid gap-4 border-b border-gray-100 pb-6 sm:grid-cols-3 dark:border-border">
+        <div className="grid gap-4 sm:grid-cols-3">
           {kpis.map(({ label, value, icon: Icon }) => (
-            <div key={label}>
+            <div key={label} className={cn("p-4", OS.card)}>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                  {label}
+                <span className={TYPO.kpiLabel}>{label}</span>
+                <span className={OS.iconWell}>
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
                 </span>
-                <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               </div>
               <p
                 className={cn(
-                  "mt-1 text-xl font-semibold tabular-nums",
+                  "mt-3 text-xl",
+                  TYPO.kpiValue,
                   label === "Overdue AR" && value > 0 && "text-amber-600 dark:text-amber-400",
                   label === "Paid This Month" &&
                     value > 0 &&
@@ -87,51 +88,30 @@ export default async function ARPage() {
       </section>
 
       <section>
-        <h2 className="mb-4 text-lg font-semibold text-foreground">Outstanding by aging</h2>
+        <h2 className={cn("mb-4", TYPO.sectionLabel)}>Outstanding by aging</h2>
         {sortedBuckets.length === 0 ? (
-          <p className="border-b border-gray-100 py-8 text-center text-sm text-muted-foreground dark:border-border">
+          <p className={cn("py-8 text-sm text-muted-foreground", OS.emptyState)}>
             No outstanding invoices.
           </p>
         ) : (
           <div className="space-y-6">
             {sortedBuckets.map((bucket) => (
-              <div
-                key={bucket}
-                className="overflow-hidden rounded-sm border border-gray-100 dark:border-border"
-              >
-                <h3 className="border-b border-gray-100 bg-white px-4 py-3 text-sm font-semibold text-foreground dark:border-border dark:bg-muted/30">
+              <div key={bucket} className={OS.card}>
+                <h3 className="border-b border-slate-900/[0.06] bg-slate-50/80 px-4 py-3 text-sm font-semibold text-foreground dark:border-border dark:bg-muted/20">
                   {bucket} days overdue
                 </h3>
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Invoice #
-                      </TableHead>
-                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Project
-                      </TableHead>
-                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Client
-                      </TableHead>
-                      <TableHead className="text-right font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                        Invoice Total
-                      </TableHead>
-                      <TableHead className="text-right font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                        Paid
-                      </TableHead>
-                      <TableHead className="font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                        Due
-                      </TableHead>
-                      <TableHead className="text-right font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                        Balance
-                      </TableHead>
-                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Status
-                      </TableHead>
-                      <TableHead className="text-right text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Actions
-                      </TableHead>
+                      <TableHead>Invoice #</TableHead>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Client</TableHead>
+                      <TableHead className="text-right">Invoice Total</TableHead>
+                      <TableHead className="text-right">Paid</TableHead>
+                      <TableHead>Due</TableHead>
+                      <TableHead className="text-right">Balance</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -145,20 +125,18 @@ export default async function ARPage() {
                             {inv.invoiceNo}
                           </Link>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="text-zinc-500 dark:text-zinc-400">
                           {projectNameById.get(inv.projectId) ?? inv.projectId}
                         </TableCell>
-                        <TableCell className="text-foreground">{inv.clientName}</TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">
+                        <TableCell className={TYPO.primaryName}>{inv.clientName}</TableCell>
+                        <TableCell className={cn("text-right", amountClass("neutral"))}>
                           {formatCurrency(inv.total)}
                         </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
+                        <TableCell className={cn("text-right", amountClass("income"))}>
                           {formatCurrency(inv.paidTotal)}
                         </TableCell>
-                        <TableCell className="font-mono tabular-nums text-muted-foreground">
-                          {formatDate(inv.dueDate)}
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-medium tabular-nums">
+                        <TableCell className={TYPO.date}>{formatDate(inv.dueDate)}</TableCell>
+                        <TableCell className={cn("text-right", amountClass("neutral"))}>
                           {formatCurrency(inv.balanceDue)}
                         </TableCell>
                         <TableCell className="text-muted-foreground">

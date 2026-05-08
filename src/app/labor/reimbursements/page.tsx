@@ -51,6 +51,7 @@ import {
 } from "@/components/mobile/mobile-list-chrome";
 import { DeleteRowAction } from "@/components/base";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { statusChipClass } from "@/lib/typography";
 
 function todayLocalISODate(): string {
   const d = new Date();
@@ -85,51 +86,13 @@ function ReimbursementStatusChip({
   status: WorkerReimbursementStatus;
   hasReceipt?: boolean;
 }) {
-  const chipBase =
-    "inline-flex w-fit min-h-[22px] shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium tabular-nums tracking-tight shadow-none";
   if (status === "paid") {
-    return (
-      <span
-        className={cn(
-          chipBase,
-          "border-zinc-200/70 bg-zinc-50/70 text-zinc-600 dark:border-border/50 dark:bg-muted/20 dark:text-muted-foreground"
-        )}
-      >
-        <span
-          className="h-1 w-1 shrink-0 rounded-full bg-zinc-400/60 dark:bg-zinc-500/70"
-          aria-hidden
-        />
-        Paid
-      </span>
-    );
+    return <span className={statusChipClass("success")}>Paid</span>;
   }
   if (hasReceipt) {
-    return (
-      <span
-        className={cn(
-          chipBase,
-          "border-emerald-500/10 bg-emerald-500/[0.03] text-emerald-900/78 dark:border-emerald-500/12 dark:bg-emerald-500/[0.05] dark:text-emerald-100/82"
-        )}
-      >
-        <span className="h-1 w-1 shrink-0 rounded-full bg-emerald-500/50" aria-hidden />
-        Ready to pay
-      </span>
-    );
+    return <span className={statusChipClass("warning")}>Ready to pay</span>;
   }
-  return (
-    <span
-      className={cn(
-        chipBase,
-        "border-amber-500/8 bg-amber-500/[0.025] text-amber-900/72 dark:border-amber-500/10 dark:bg-amber-500/[0.04] dark:text-amber-100/72"
-      )}
-    >
-      <span
-        className="h-1 w-1 shrink-0 rounded-full bg-amber-500/50 dark:bg-amber-400/50"
-        aria-hidden
-      />
-      Pending
-    </span>
-  );
+  return <span className={statusChipClass("warning")}>Pending</span>;
 }
 
 export default function WorkerReimbursementsPage() {

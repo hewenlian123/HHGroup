@@ -37,6 +37,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { formatCurrency } from "@/lib/formatters";
+import { statusChipClass } from "@/lib/typography";
 
 type WorkerBalanceRow = {
   workerId: string;
@@ -87,25 +88,9 @@ function avatarRingClass(workerId: string): string {
 
 function BalanceStatusChip({ balance }: { balance: number }) {
   if (balance > 0) {
-    return (
-      <span className="inline-flex w-fit shrink-0 items-center gap-1 rounded-md border border-rose-500/[0.07] bg-gradient-to-b from-rose-500/[0.045] to-rose-500/[0.02] px-2 py-px text-[10px] font-medium tracking-wide tabular-nums text-rose-800/78 dark:border-rose-400/12 dark:from-rose-500/[0.06] dark:to-transparent dark:text-rose-100/78">
-        <span
-          className="h-[5px] w-[5px] shrink-0 rounded-full bg-rose-500/45 shadow-[0_0_0_1px_rgba(244,63,94,0.12)]"
-          aria-hidden
-        />
-        Owed
-      </span>
-    );
+    return <span className={statusChipClass("danger")}>Owed</span>;
   }
-  return (
-    <span className="inline-flex w-fit shrink-0 items-center gap-1 rounded-md border border-emerald-500/[0.07] bg-gradient-to-b from-emerald-500/[0.04] to-emerald-500/[0.015] px-2 py-px text-[10px] font-medium tracking-wide tabular-nums text-emerald-800/75 dark:border-emerald-400/12 dark:from-emerald-500/[0.055] dark:to-transparent dark:text-emerald-100/78">
-      <span
-        className="h-[5px] w-[5px] shrink-0 rounded-full bg-emerald-500/42 shadow-[0_0_0_1px_rgba(16,185,129,0.12)]"
-        aria-hidden
-      />
-      Paid
-    </span>
-  );
+  return <span className={statusChipClass("success")}>Paid</span>;
 }
 
 function truncateId(id: string, max = 8): string {

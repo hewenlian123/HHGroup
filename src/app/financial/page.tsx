@@ -13,7 +13,7 @@ import { getCashOverview, getARSummary } from "@/lib/data";
 import { Banknote, Receipt, CheckCircle, AlertCircle, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { TYPO } from "@/lib/typography";
+import { amountClass, OS, TYPO } from "@/lib/typography";
 
 export const dynamic = "force-dynamic";
 
@@ -44,21 +44,16 @@ export default async function FinancialPage() {
 
       <section>
         <h2 className={cn("mb-4", TYPO.sectionLabel)}>Cash overview</h2>
-        <div className="grid gap-4 border-b border-gray-100 pb-6 sm:grid-cols-2 lg:grid-cols-5 dark:border-border">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {kpis.map(({ label, value, icon: Icon }) => (
-            <div key={label}>
+            <div key={label} className={cn("p-4", OS.card)}>
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                  {label}
+                <span className={TYPO.kpiLabel}>{label}</span>
+                <span className={OS.iconWell}>
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
                 </span>
-                <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               </div>
-              <p
-                className={cn(
-                  "mt-1 text-xl font-semibold tabular-nums",
-                  value < 0 ? "text-red-600/90 dark:text-red-400/90" : "text-foreground"
-                )}
-              >
+              <p className={cn("mt-3 text-xl", amountClass(value < 0 ? "expense" : "neutral"))}>
                 {formatCurrency(value)}
               </p>
             </div>
@@ -74,22 +69,14 @@ export default async function FinancialPage() {
         )}
 
         <div className="mt-6">
-          <h3 className="mb-3 text-sm font-semibold text-foreground">
-            Recent Unreconciled Transactions
-          </h3>
-          <div className="overflow-x-auto rounded-sm border border-gray-100 dark:border-border">
+          <h3 className={cn("mb-3", TYPO.sectionLabel)}>Recent unreconciled transactions</h3>
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
-                    Date
-                  </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
-                    Description
-                  </TableHead>
-                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground tabular-nums">
-                    Amount
-                  </TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -101,18 +88,13 @@ export default async function FinancialPage() {
                   </TableRow>
                 ) : (
                   cash.recentUnreconciled.map((tx) => (
-                    <TableRow
-                      key={tx.id}
-                      className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
-                    >
+                    <TableRow key={tx.id}>
                       <TableCell className={TYPO.date}>{formatDate(tx.date)}</TableCell>
-                      <TableCell>{tx.description}</TableCell>
+                      <TableCell className={TYPO.primaryName}>{tx.description}</TableCell>
                       <TableCell
                         className={cn(
-                          "text-right font-medium tabular-nums",
-                          tx.amount >= 0
-                            ? "text-emerald-700 dark:text-emerald-400"
-                            : "text-rose-600 dark:text-rose-400"
+                          "text-right",
+                          amountClass(tx.amount >= 0 ? "income" : "expense")
                         )}
                       >
                         {formatCurrency(tx.amount)}
