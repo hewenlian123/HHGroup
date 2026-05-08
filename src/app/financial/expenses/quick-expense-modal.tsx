@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { eventTargetsAttachmentPreviewModal } from "@/components/attachment-preview-modal";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import {
   addExpenseAttachment,
@@ -1110,6 +1111,12 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
             "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:flex max-md:max-h-[94dvh] max-md:min-h-[82dvh] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-t-[14px] max-md:rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:border-t max-md:p-0",
             "max-md:data-[state=open]:!animate-hh-sheet-in max-md:data-[state=closed]:!animate-hh-sheet-out"
           )}
+          onPointerDownOutside={(e) => {
+            if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
+          }}
+          onInteractOutside={(e) => {
+            if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
+          }}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               e.stopPropagation();
