@@ -3,10 +3,12 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import {
   isLaborUnpaidForWorkerPayroll,
+  laborEntryPaymentIdMapFromWorkerPayments,
   laborSessionLabel,
+  workerOutstandingBalanceFromUnsettledItems,
   type LaborPayrollSettlementMode,
 } from "@/lib/labor-balance-shared";
 
@@ -102,7 +104,7 @@ export async function getWorkerPaymentReceiptPayload(
     laborEntryIdsFromPayment?: string[] | null;
   }
 ): Promise<WorkerPaymentReceiptPayload | null> {
-  const c = getServerSupabaseInternal();
+  const c = getServerSupabaseInternalNoStore();
   if (!c) return null;
 
   const projectNameById = new Map<string, string | null>();
@@ -227,9 +229,10 @@ async function computeWorkerBalanceSnapshot(
 ): Promise<WorkerBalanceSnapshot> {
   const laborFull = await c
     .from("labor_entries")
-    .select("cost_amount, status, worker_payment_id")
+    .select("id, cost_amount, status, worker_payment_id")
     .eq("worker_id", workerId);
   let laborRows: {
+    id?: string | null;
     cost_amount?: number | null;
     status?: string | null;
     worker_payment_id?: string | null;
@@ -241,21 +244,74 @@ async function computeWorkerBalanceSnapshot(
     laborSettlementMode = "status_fallback";
     const fb = await c
       .from("labor_entries")
-      .select("cost_amount, status")
+      .select("id, cost_amount, status")
       .eq("worker_id", workerId);
-    laborRows = ((fb.data ?? []) as { cost_amount?: number | null; status?: string | null }[]).map(
-      (r) => ({
-        ...r,
-        worker_payment_id: null as string | null,
-      })
-    );
+    laborRows = (
+      (fb.data ?? []) as {
+        id?: string | null;
+        cost_amount?: number | null;
+        status?: string | null;
+      }[]
+    ).map((r) => ({
+      ...r,
+      worker_payment_id: null as string | null,
+    }));
   } else {
     laborRows = [];
   }
 
+  type PaymentRowsResult = {
+    data: unknown[] | null;
+    error: { message?: string } | null;
+  };
+  let paymentRowsForLinks: Array<{ id?: unknown; labor_entry_ids?: unknown }> = [];
+  let payRes: PaymentRowsResult = await c
+    .from("worker_payments")
+    .select("id, total_amount, labor_entry_ids")
+    .eq("worker_id", workerId);
+  if (payRes.error && /column.*labor_entry_ids|schema cache/i.test(payRes.error.message ?? "")) {
+    payRes = await c.from("worker_payments").select("id, total_amount").eq("worker_id", workerId);
+  }
+  let totalPayments = 0;
+  if (!payRes.error) {
+    const rows = (payRes.data ?? []) as Array<{
+      id?: unknown;
+      total_amount?: number | null;
+      labor_entry_ids?: unknown;
+    }>;
+    paymentRowsForLinks = rows;
+    for (const r of rows) {
+      totalPayments += Number(r.total_amount) || 0;
+    }
+  } else if (/column.*total_amount|schema cache/i.test(payRes.error.message ?? "")) {
+    let payFb: PaymentRowsResult = await c
+      .from("worker_payments")
+      .select("id, amount, labor_entry_ids")
+      .eq("worker_id", workerId);
+    if (payFb.error && /column.*labor_entry_ids|schema cache/i.test(payFb.error.message ?? "")) {
+      payFb = await c.from("worker_payments").select("id, amount").eq("worker_id", workerId);
+    }
+    if (!payFb.error) {
+      const rows = (payFb.data ?? []) as Array<{
+        id?: unknown;
+        amount?: number | null;
+        labor_entry_ids?: unknown;
+      }>;
+      paymentRowsForLinks = rows;
+      for (const r of rows) {
+        totalPayments += Number(r.amount) || 0;
+      }
+    }
+  }
+  const paymentIdByLaborEntryId = laborEntryPaymentIdMapFromWorkerPayments(paymentRowsForLinks);
+
   let laborOwed = 0;
   for (const r of laborRows) {
-    if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode))
+    const effectiveWorkerPaymentId =
+      String(r.worker_payment_id ?? "").trim() ||
+      paymentIdByLaborEntryId.get(String(r.id ?? "")) ||
+      null;
+    if (!isLaborUnpaidForWorkerPayroll(r.status, effectiveWorkerPaymentId, laborSettlementMode))
       continue;
     laborOwed += Number(r.cost_amount) || 0;
   }
@@ -270,23 +326,12 @@ async function computeWorkerBalanceSnapshot(
     reimbUnpaid += Number(r.amount) || 0;
   }
 
-  const payRes = await c.from("worker_payments").select("total_amount").eq("worker_id", workerId);
-  let totalPayments = 0;
-  if (!payRes.error) {
-    for (const r of (payRes.data ?? []) as { total_amount?: number | null }[]) {
-      totalPayments += Number(r.total_amount) || 0;
-    }
-  } else if (/column.*total_amount|schema cache/i.test(payRes.error.message ?? "")) {
-    const payFb = await c.from("worker_payments").select("amount").eq("worker_id", workerId);
-    if (!payFb.error) {
-      for (const r of (payFb.data ?? []) as { amount?: number | null }[]) {
-        totalPayments += Number(r.amount) || 0;
-      }
-    }
-  }
-
   const advancesTotal = await sumAdvances(c, workerId);
-  const remainingBalance = laborOwed + reimbUnpaid - totalPayments - advancesTotal;
+  const remainingBalance = workerOutstandingBalanceFromUnsettledItems({
+    laborOwed,
+    reimbursements: reimbUnpaid,
+    advances: advancesTotal,
+  });
 
   return {
     remainingBalance,

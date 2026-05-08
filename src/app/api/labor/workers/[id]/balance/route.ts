@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternal,
+  getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
 import {
   isLaborUnpaidForWorkerPayroll,
+  laborEntryPaymentIdMapFromWorkerPayments,
   laborPayrollSettlementModeFromSelectList,
   laborSessionLabel,
   resolveLaborWorkerForBalance,
+  workerOutstandingBalanceFromUnsettledItems,
   workerIdsForLaborBalanceFinancialQueries,
 } from "@/lib/labor-balance-shared";
 
@@ -58,7 +60,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!workerId) {
     return NextResponse.json({ message: "Worker id required" }, { status: 400 });
   }
-  const c = getServerSupabaseInternal();
+  const c = getServerSupabaseInternalNoStore();
   if (!c) {
     return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
@@ -154,6 +156,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     // worker_payments — canonical: total_amount, note, created_at
     let paymentsRes: RawResult = { data: null, error: null };
     for (const cols of [
+      "id, worker_id, total_amount, payment_method, note, created_at, labor_entry_ids",
       "id, worker_id, total_amount, payment_method, note, created_at",
       "id, worker_id, total_amount, note, created_at",
       "id, worker_id, total_amount, created_at",
@@ -218,6 +221,23 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       morning?: boolean | null;
       afternoon?: boolean | null;
     }[];
+    const payRaw = (paymentsRes.data ?? []) as {
+      id: string;
+      payment_date?: string;
+      created_at?: string;
+      amount?: number | null;
+      total_amount?: number | null;
+      payment_method?: string | null;
+      notes?: string | null;
+      note?: string | null;
+      labor_entry_ids?: unknown;
+    }[];
+    const paymentIdByLaborEntryId = laborEntryPaymentIdMapFromWorkerPayments(payRaw);
+    const effectiveWorkerPaymentIdForLabor = (r: {
+      id: string;
+      worker_payment_id?: string | null;
+    }) => String(r.worker_payment_id ?? "").trim() || paymentIdByLaborEntryId.get(r.id) || null;
+
     // Stable order: newest work date first, then id (same calendar day can have multiple rows).
     const laborSorted = [...laborRaw].sort((a, b) => {
       const da = (a.work_date ?? "").slice(0, 10);
@@ -227,15 +247,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     });
     const laborEntries: LaborEntryRow[] = laborSorted.map((r) => {
       const projectKey = r.project_id ?? r.project_am_id ?? r.project_pm_id ?? null;
-      const workerPaymentId =
-        laborSettlementMode === "payment_link"
-          ? r.worker_payment_id != null
-            ? String(r.worker_payment_id).trim() || null
-            : null
-          : null;
+      const workerPaymentId = effectiveWorkerPaymentIdForLabor(r);
       const payrollSettled = !isLaborUnpaidForWorkerPayroll(
         r.status,
-        r.worker_payment_id,
+        workerPaymentId,
         laborSettlementMode
       );
       return {
@@ -275,16 +290,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       status: String(r.status ?? "") || "pending",
     }));
 
-    const payRaw = (paymentsRes.data ?? []) as {
-      id: string;
-      payment_date?: string;
-      created_at?: string;
-      amount?: number | null;
-      total_amount?: number | null;
-      payment_method?: string | null;
-      notes?: string | null;
-      note?: string | null;
-    }[];
     const payments: PaymentRow[] = payRaw.map((r) => ({
       id: r.id,
       date: (r.payment_date ?? r.created_at ?? "").slice(0, 10),
@@ -295,7 +300,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     const laborOwed = laborRaw
       .filter((r) =>
-        isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode)
+        isLaborUnpaidForWorkerPayroll(
+          r.status,
+          effectiveWorkerPaymentIdForLabor(r),
+          laborSettlementMode
+        )
       )
       .reduce((s, r) => s + (Number(r.cost_amount ?? r.total) || 0), 0);
     const reimbUnpaid = reimbRaw
@@ -316,7 +325,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       if (st !== "deducted") return s;
       return s + (Number(r.amount) || 0);
     }, 0);
-    const balance = laborOwed + reimbUnpaid - totalPayments - advancesTotal;
+    const balance = workerOutstandingBalanceFromUnsettledItems({
+      laborOwed,
+      reimbursements: reimbUnpaid,
+      advances: advancesTotal,
+    });
 
     return NextResponse.json({
       worker: { id: worker.id, name: worker.name },

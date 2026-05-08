@@ -82,6 +82,7 @@ vi.mock("@/lib/supabase-server", async (importOriginal) => {
     getServerSupabaseAdmin: () => mockSupabaseGetter(),
     getServerSupabase: () => mockSupabaseGetter(),
     getServerSupabaseInternal: () => mockSupabaseGetter(),
+    getServerSupabaseInternalNoStore: () => mockSupabaseGetter(),
   };
 });
 
@@ -156,7 +157,7 @@ describe("GET /api/labor/workers/[id]/balance", () => {
       reimbursements: 20,
       payments: 50,
       advances: 0,
-      balance: 70,
+      balance: 120,
     });
     expect(Array.isArray(json.laborEntries)).toBe(true);
     expect(json.laborEntries[0]).toMatchObject({
@@ -168,5 +169,103 @@ describe("GET /api/labor/workers/[id]/balance", () => {
     });
     expect(Array.isArray(json.reimbursements)).toBe(true);
     expect(Array.isArray(json.payments)).toBe(true);
+  });
+
+  it("does not use unlinked worker payment rows to hide unpaid item balances", async () => {
+    mockSupabaseGetter = () =>
+      createBalanceMock("w1", {
+        worker: { id: "w1", name: "Worker One" },
+        labor: [
+          {
+            id: "l1",
+            work_date: "2025-01-01",
+            cost_amount: 100,
+            status: "Approved",
+            worker_payment_id: null,
+          },
+        ],
+        reimb: [
+          {
+            id: "r1",
+            project_id: null,
+            vendor: "V",
+            amount: 20,
+            status: "pending",
+            created_at: "2025-01-02",
+          },
+        ],
+        payments: [
+          {
+            id: "pay1",
+            created_at: "2025-01-03T12:00:00.000Z",
+            total_amount: 50,
+            payment_method: "cash",
+            note: null,
+          },
+        ],
+      });
+    const { GET } = await import("@/app/api/labor/workers/[id]/balance/route");
+    const res = await GET(new Request("http://x"), { params: Promise.resolve({ id: "w1" }) });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.summary).toMatchObject({
+      laborOwed: 100,
+      reimbursements: 20,
+      payments: 50,
+      balance: 120,
+    });
+    expect(json.laborEntries[0]).toMatchObject({
+      workerPaymentId: null,
+      payrollSettled: false,
+    });
+  });
+
+  it("treats worker_payments.labor_entry_ids as a legacy labor settlement link", async () => {
+    mockSupabaseGetter = () =>
+      createBalanceMock("w1", {
+        worker: { id: "w1", name: "Worker One" },
+        labor: [
+          {
+            id: "l1",
+            work_date: "2025-01-01",
+            cost_amount: 100,
+            status: "Approved",
+            worker_payment_id: null,
+          },
+        ],
+        reimb: [
+          {
+            id: "r1",
+            project_id: null,
+            vendor: "V",
+            amount: 20,
+            status: "pending",
+            created_at: "2025-01-02",
+          },
+        ],
+        payments: [
+          {
+            id: "pay1",
+            created_at: "2025-01-03T12:00:00.000Z",
+            total_amount: 100,
+            payment_method: "cash",
+            labor_entry_ids: ["l1"],
+          },
+        ],
+      });
+    const { GET } = await import("@/app/api/labor/workers/[id]/balance/route");
+    const res = await GET(new Request("http://x"), { params: Promise.resolve({ id: "w1" }) });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.summary).toMatchObject({
+      laborOwed: 0,
+      reimbursements: 20,
+      payments: 100,
+      balance: 20,
+    });
+    expect(json.laborEntries[0]).toMatchObject({
+      workerPaymentId: "pay1",
+      payrollSettled: true,
+    });
   });
 });

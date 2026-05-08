@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternal,
+  getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
 import { fetchWorkerBalances, type WorkerBalanceRow } from "@/lib/worker-balances-list";
 
@@ -27,7 +27,7 @@ export type { WorkerBalanceRow };
  * GET: Worker balances summary (see `fetchWorkerBalances` in `@/lib/worker-balances-list`).
  */
 export async function GET() {
-  const c = getServerSupabaseInternal();
+  const c = getServerSupabaseInternalNoStore();
   if (!c) {
     return NextResponse.json(
       { message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   appendLaborSettlementServiceRoleHint,
-  getServerSupabaseInternal,
+  getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
 import {
   createWorkerPaymentWithClient,
@@ -11,6 +11,7 @@ import {
 import { computeImplicitSettlement } from "@/lib/worker-payment-implicit-settlement";
 import {
   isLaborUnpaidForWorkerPayroll,
+  laborEntryPaymentIdMapFromWorkerPayments,
   type LaborPayrollSettlementMode,
 } from "@/lib/labor-balance-shared";
 
@@ -71,7 +72,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ? body.project_id.trim()
       : null;
 
-  const admin = getServerSupabaseInternal();
+  const admin = getServerSupabaseInternalNoStore();
   if (!admin) {
     return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
@@ -161,8 +162,28 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             { status: 400 }
           );
         }
+        const paymentLinksRes = await admin
+          .from("worker_payments")
+          .select("id, labor_entry_ids")
+          .eq("worker_id", workerId);
+        const paymentLinksMissingLaborIds =
+          paymentLinksRes.error &&
+          /column|schema cache|labor_entry_ids/i.test(paymentLinksRes.error.message ?? "");
+        if (paymentLinksRes.error && !paymentLinksMissingLaborIds) {
+          throw new Error(paymentLinksRes.error.message ?? "Failed to validate labor links.");
+        }
+        const paymentIdByLaborEntryId = laborEntryPaymentIdMapFromWorkerPayments(
+          (!paymentLinksMissingLaborIds ? (paymentLinksRes.data ?? []) : []) as Array<{
+            id?: unknown;
+            labor_entry_ids?: unknown;
+          }>
+        );
         for (const r of rows) {
-          if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode)) {
+          const effectiveWorkerPaymentId =
+            String(r.worker_payment_id ?? "").trim() || paymentIdByLaborEntryId.get(r.id) || null;
+          if (
+            !isLaborUnpaidForWorkerPayroll(r.status, effectiveWorkerPaymentId, laborSettlementMode)
+          ) {
             return NextResponse.json(
               { message: "One or more labor entries are already settled." },
               { status: 400 }

@@ -25,6 +25,7 @@ vi.mock("@/lib/supabase-server", async (importOriginal) => {
     getServerSupabaseAdmin: () => mockSupabaseGetter(),
     getServerSupabase: () => mockSupabaseGetter(),
     getServerSupabaseInternal: () => mockSupabaseGetter(),
+    getServerSupabaseInternalNoStore: () => mockSupabaseGetter(),
   };
 });
 
@@ -74,8 +75,78 @@ describe("GET /api/labor/worker-balances", () => {
       reimbursements: 20,
       payments: 50,
       advances: 0,
-      balance: 70,
+      balance: 120,
       deletable: false,
+    });
+  });
+
+  it("keeps unlinked payments as ledger rows instead of reducing unpaid item balance", async () => {
+    const workers = [{ id: "w1", name: "Worker One" }];
+    const labor = [
+      { worker_id: "w1", cost_amount: 100, status: "Approved", worker_payment_id: null },
+    ];
+    const reimb = [{ worker_id: "w1", amount: 20, status: "pending" }];
+    const payments = [{ worker_id: "w1", total_amount: 50 }];
+
+    mockSupabaseGetter = () =>
+      ({
+        from: (table: string) => {
+          if (table === "labor_workers") return createChained(workers) as never;
+          if (table === "labor_entries") return createChained(labor) as never;
+          if (table === "worker_reimbursements") return createChained(reimb) as never;
+          if (table === "worker_payments") return createChained(payments) as never;
+          if (table === "worker_advances") return createChained([]) as never;
+          return createChained([]) as never;
+        },
+      }) as never;
+
+    const { GET } = await import("@/app/api/labor/worker-balances/route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.balances[0]).toMatchObject({
+      laborOwed: 100,
+      reimbursements: 20,
+      payments: 50,
+      balance: 120,
+    });
+  });
+
+  it("uses worker_payments.labor_entry_ids as a legacy labor settlement link", async () => {
+    const workers = [{ id: "w1", name: "Worker One" }];
+    const labor = [
+      {
+        id: "l1",
+        worker_id: "w1",
+        cost_amount: 100,
+        status: "Approved",
+        worker_payment_id: null,
+      },
+    ];
+    const reimb = [{ worker_id: "w1", amount: 20, status: "pending" }];
+    const payments = [{ id: "pay1", worker_id: "w1", total_amount: 100, labor_entry_ids: ["l1"] }];
+
+    mockSupabaseGetter = () =>
+      ({
+        from: (table: string) => {
+          if (table === "labor_workers") return createChained(workers) as never;
+          if (table === "labor_entries") return createChained(labor) as never;
+          if (table === "worker_reimbursements") return createChained(reimb) as never;
+          if (table === "worker_payments") return createChained(payments) as never;
+          if (table === "worker_advances") return createChained([]) as never;
+          return createChained([]) as never;
+        },
+      }) as never;
+
+    const { GET } = await import("@/app/api/labor/worker-balances/route");
+    const res = await GET();
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.balances[0]).toMatchObject({
+      laborOwed: 0,
+      reimbursements: 20,
+      payments: 100,
+      balance: 20,
     });
   });
 
@@ -104,7 +175,7 @@ describe("GET /api/labor/worker-balances", () => {
     const json = await res.json();
     expect(json.balances[0]).toMatchObject({
       advances: 999,
-      balance: -929,
+      balance: -879,
     });
   });
 
@@ -133,7 +204,7 @@ describe("GET /api/labor/worker-balances", () => {
     const json = await res.json();
     expect(json.balances[0]).toMatchObject({
       advances: 0,
-      balance: 70,
+      balance: 120,
     });
   });
 });
