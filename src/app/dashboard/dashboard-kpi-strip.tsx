@@ -1,141 +1,243 @@
-import { fmtUsd } from "./dashboard-shared";
+import { formatCurrency } from "@/lib/formatters";
+import { TYPO } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 import type { OverdueInvoiceRow } from "@/lib/invoices-db";
 
 type ApBillsSummaryKpi = {
-  dueThisWeekCount: number;
-  dueThisWeekAmount: number;
+  totalOutstanding: number;
+  overdueCount: number;
+  overdueAmount: number;
 };
 
-type KpiStats = {
-  activeProjects: number;
-};
+const kpiCard =
+  "relative flex min-h-[108px] flex-col overflow-hidden rounded-sm border border-slate-900/[0.045] bg-white/[0.72] px-3 py-3 shadow-[0_1px_0_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.04)] backdrop-blur-[10px] transition-[box-shadow,transform] duration-300 ease-out dark:border-border/50 dark:bg-zinc-950/32 dark:shadow-[0_1px_0_rgba(0,0,0,0.18)] max-md:min-h-[118px] md:px-3.5 md:py-3.5";
 
+/** Decorative ambient line only — not a data series. */
+function KpiAmbientSparkline() {
+  return (
+    <svg
+      className="pointer-events-none absolute inset-x-0 bottom-0 h-[12px] w-full text-zinc-400/55 dark:text-zinc-500/45"
+      viewBox="0 0 120 12"
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      <path
+        d="M0 9 Q 18 3 36 7.5 T 72 6.5 T 108 5 T 120 8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="0.55"
+        vectorEffect="non-scaling-stroke"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+const kpiValueMutedEmerald = "text-emerald-800/[0.92] dark:text-emerald-400/78";
+const kpiValueMutedRose = "text-rose-600/[0.9] dark:text-rose-400/78";
+const kpiValueMutedLedgerPos = "text-emerald-800/[0.9] dark:text-emerald-400/75";
+const kpiValueMutedLedgerNeg = "text-rose-600/[0.9] dark:text-rose-400/78";
+
+/** Command-center KPIs: collections, payables, labor, margin stress, risk flags, ledger pulse. */
 export function DashboardKpiStrip({
-  stats,
   overdueInvoices,
   apBillsSummary,
   laborCostThisWeek,
-  projectProfitSummary,
+  negativeMarginCount,
+  operationalRiskCount,
+  ledgerNet,
 }: {
-  stats: KpiStats;
   overdueInvoices: OverdueInvoiceRow[];
   apBillsSummary: ApBillsSummaryKpi;
   laborCostThisWeek: number;
-  projectProfitSummary: number;
+  negativeMarginCount: number;
+  operationalRiskCount: number;
+  ledgerNet: number;
 }) {
+  const overdueTotal = overdueInvoices.reduce((s, i) => s + (i.balanceDue ?? 0), 0);
+  const ledgerTone = ledgerNet >= 0 ? ("income" as const) : ("expense" as const);
+
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
-      <div className="kpi-metric relative overflow-hidden">
-        <p className="kpi-metric-label">Active Projects</p>
-        <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
-          {stats.activeProjects}
-        </p>
-        <p className="mt-0.5 text-sm text-muted-foreground">in portfolio</p>
-        <svg
-          viewBox="0 0 80 20"
-          className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
-          aria-hidden
-        >
-          <polyline
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            points="0,14 20,10 40,12 60,6 80,10"
-          />
-        </svg>
-      </div>
-      <div className="kpi-metric relative overflow-hidden">
-        <p className="kpi-metric-label">Outstanding Invoices</p>
-        <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
-          ${fmtUsd(overdueInvoices.reduce((sum, i) => sum + (i.balanceDue ?? 0), 0))}
-        </p>
-        <p className="mt-0.5 text-sm text-muted-foreground">{overdueInvoices.length} pending</p>
-        <svg
-          viewBox="0 0 80 20"
-          className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
-          aria-hidden
-        >
-          <polyline
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            points="0,10 20,14 40,8 60,12 80,6"
-          />
-        </svg>
-      </div>
-      <div className="kpi-metric relative overflow-hidden">
-        <p className="kpi-metric-label">Bills Due</p>
-        <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
-          {apBillsSummary.dueThisWeekCount} · ${fmtUsd(apBillsSummary.dueThisWeekAmount)}
-        </p>
-        <p className="mt-0.5 text-sm text-muted-foreground">Due this week</p>
-        <svg
-          viewBox="0 0 80 20"
-          className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
-          aria-hidden
-        >
-          <polyline
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            points="0,12 20,8 40,14 60,10 80,12"
-          />
-        </svg>
-      </div>
-      <div className="kpi-metric relative overflow-hidden">
-        <p className="kpi-metric-label">Labor Cost (This Month)</p>
-        <p className="kpi-metric-value mt-0.5 tabular-nums text-text-primary dark:text-foreground">
-          ${fmtUsd(laborCostThisWeek)}
-        </p>
-        <p className="mt-0.5 text-sm text-muted-foreground">This month</p>
-        <svg
-          viewBox="0 0 80 20"
-          className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
-          aria-hidden
-        >
-          <polyline
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            points="0,8 20,12 40,10 60,14 80,8"
-          />
-        </svg>
-      </div>
-      <div className="kpi-metric relative overflow-hidden">
-        <p className="kpi-metric-label">Profit</p>
+    <div
+      className={cn(
+        "min-w-0 max-w-full",
+        "max-md:-mx-1 max-md:px-1",
+        "max-md:flex max-md:snap-x max-md:snap-mandatory max-md:gap-3 max-md:overflow-x-auto max-md:overflow-y-hidden max-md:pb-2 max-md:pt-1",
+        "max-md:[-webkit-overflow-scrolling:touch] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden",
+        "touch-pan-x overscroll-x-contain",
+        "md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-6"
+      )}
+    >
+      <div
+        className={cn(
+          kpiCard,
+          "max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:snap-start max-md:snap-always",
+          "hover:shadow-[0_1px_0_rgba(15,23,42,0.04),0_6px_18px_rgba(15,23,42,0.05)] motion-safe:hover:-translate-y-px dark:hover:shadow-[0_1px_0_rgba(0,0,0,0.2),0_8px_24px_rgba(0,0,0,0.14)]"
+        )}
+      >
+        <KpiAmbientSparkline />
+        <p className={TYPO.kpiLabel}>Overdue invoices</p>
         <p
-          className={
-            projectProfitSummary >= 0
-              ? "kpi-metric-value mt-0.5 tabular-nums text-hh-profit-positive dark:text-hh-profit-positive"
-              : "kpi-metric-value mt-0.5 tabular-nums text-red-600 dark:text-red-400"
-          }
+          className={cn(
+            TYPO.kpiValue,
+            "mt-2 break-words text-[17px] tabular-nums tracking-[-0.02em] md:text-[18px]",
+            overdueTotal > 0.005 ? kpiValueMutedRose : undefined
+          )}
         >
-          {projectProfitSummary >= 0 ? "$" : "−$"}
-          {fmtUsd(Math.abs(projectProfitSummary))}
+          {formatCurrency(overdueTotal)}
         </p>
-        <p className="mt-0.5 text-sm text-muted-foreground">This month</p>
-        <svg
-          viewBox="0 0 80 20"
-          className="mt-1.5 h-4 w-full text-[#9CA3AF] max-md:mt-1 md:mt-2 md:h-5"
-          aria-hidden
+        <p
+          className={cn(
+            TYPO.kpiSubtitle,
+            "mt-auto pt-1 text-[12px] font-normal tabular-nums text-zinc-500/90 dark:text-zinc-400/85"
+          )}
         >
-          <polyline
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            points="0,14 20,12 40,8 60,10 80,6"
-          />
-        </svg>
+          {overdueInvoices.length} open
+        </p>
+      </div>
+
+      <div
+        className={cn(
+          kpiCard,
+          "max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:snap-start max-md:snap-always",
+          "hover:shadow-[0_1px_0_rgba(15,23,42,0.04),0_6px_18px_rgba(15,23,42,0.05)] motion-safe:hover:-translate-y-px dark:hover:shadow-[0_1px_0_rgba(0,0,0,0.2),0_8px_24px_rgba(0,0,0,0.14)]"
+        )}
+      >
+        <KpiAmbientSparkline />
+        <p className={TYPO.kpiLabel}>Unpaid bills (AP)</p>
+        <p
+          className={cn(
+            TYPO.kpiValue,
+            "mt-2 break-words text-[17px] tabular-nums tracking-[-0.02em] md:text-[18px]"
+          )}
+        >
+          {formatCurrency(apBillsSummary.totalOutstanding)}
+        </p>
+        <p
+          className={cn(
+            TYPO.kpiSubtitle,
+            "mt-auto pt-1 text-[12px] font-normal tabular-nums text-zinc-500/90 dark:text-zinc-400/85 max-md:text-[11px] max-md:leading-snug"
+          )}
+        >
+          <span className="block sm:inline">{apBillsSummary.overdueCount} overdue</span>
+          <span className="hidden sm:inline"> · </span>
+          <span className="block sm:inline">{formatCurrency(apBillsSummary.overdueAmount)}</span>
+        </p>
+      </div>
+
+      <div
+        className={cn(
+          kpiCard,
+          "max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:snap-start max-md:snap-always",
+          "hover:shadow-[0_1px_0_rgba(15,23,42,0.04),0_6px_18px_rgba(15,23,42,0.05)] motion-safe:hover:-translate-y-px dark:hover:shadow-[0_1px_0_rgba(0,0,0,0.2),0_8px_24px_rgba(0,0,0,0.14)]"
+        )}
+      >
+        <KpiAmbientSparkline />
+        <p className={TYPO.kpiLabel}>Labor cost</p>
+        <p
+          className={cn(
+            TYPO.kpiValue,
+            "mt-2 break-words text-[17px] tabular-nums tracking-[-0.02em] md:text-[18px]",
+            laborCostThisWeek > 0.005 ? kpiValueMutedRose : undefined
+          )}
+        >
+          {formatCurrency(laborCostThisWeek)}
+        </p>
+        <p
+          className={cn(
+            TYPO.kpiSubtitle,
+            "mt-auto pt-1 text-[12px] font-normal tabular-nums text-zinc-500/90 dark:text-zinc-400/85"
+          )}
+        >
+          Current period
+        </p>
+      </div>
+
+      <div
+        className={cn(
+          kpiCard,
+          "max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:snap-start max-md:snap-always",
+          "hover:shadow-[0_1px_0_rgba(15,23,42,0.04),0_6px_18px_rgba(15,23,42,0.05)] motion-safe:hover:-translate-y-px dark:hover:shadow-[0_1px_0_rgba(0,0,0,0.2),0_8px_24px_rgba(0,0,0,0.14)]"
+        )}
+      >
+        <KpiAmbientSparkline />
+        <p className={TYPO.kpiLabel}>Negative margin</p>
+        <p
+          className={cn(
+            TYPO.kpiValue,
+            "mt-2 text-[17px] tabular-nums tracking-[-0.02em] md:text-[18px]",
+            negativeMarginCount > 0 ? kpiValueMutedRose : kpiValueMutedEmerald
+          )}
+        >
+          {negativeMarginCount}
+        </p>
+        <p
+          className={cn(
+            TYPO.kpiSubtitle,
+            "mt-auto pt-1 text-[12px] font-normal text-zinc-500/90 dark:text-zinc-400/85"
+          )}
+        >
+          Projects below 0% margin
+        </p>
+      </div>
+
+      <div
+        className={cn(
+          kpiCard,
+          "max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:snap-start max-md:snap-always",
+          "hover:shadow-[0_1px_0_rgba(15,23,42,0.04),0_6px_18px_rgba(15,23,42,0.05)] motion-safe:hover:-translate-y-px dark:hover:shadow-[0_1px_0_rgba(0,0,0,0.2),0_8px_24px_rgba(0,0,0,0.14)]"
+        )}
+      >
+        <KpiAmbientSparkline />
+        <p className={TYPO.kpiLabel}>Risk signals</p>
+        <p
+          className={cn(
+            TYPO.kpiValue,
+            "mt-2 text-[17px] tabular-nums tracking-[-0.02em] md:text-[18px]",
+            operationalRiskCount > 0
+              ? "text-amber-800/[0.92] dark:text-amber-400/72"
+              : kpiValueMutedEmerald
+          )}
+        >
+          {operationalRiskCount}
+        </p>
+        <p
+          className={cn(
+            TYPO.kpiSubtitle,
+            "mt-auto pt-1 text-[12px] font-normal text-zinc-500/90 dark:text-zinc-400/85"
+          )}
+        >
+          High / budget / labor / runway
+        </p>
+      </div>
+
+      <div
+        className={cn(
+          kpiCard,
+          "max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:snap-start max-md:snap-always",
+          "hover:shadow-[0_1px_0_rgba(15,23,42,0.04),0_6px_18px_rgba(15,23,42,0.05)] motion-safe:hover:-translate-y-px dark:hover:shadow-[0_1px_0_rgba(0,0,0,0.2),0_8px_24px_rgba(0,0,0,0.14)]"
+        )}
+      >
+        <KpiAmbientSparkline />
+        <p className={TYPO.kpiLabel}>Ledger window net</p>
+        <p
+          className={cn(
+            TYPO.kpiValue,
+            "mt-2 break-words text-[17px] tabular-nums tracking-[-0.02em] md:text-[18px]",
+            ledgerTone === "income" && kpiValueMutedLedgerPos,
+            ledgerTone === "expense" && kpiValueMutedLedgerNeg
+          )}
+        >
+          {formatCurrency(ledgerNet)}
+        </p>
+        <p
+          className={cn(
+            TYPO.kpiSubtitle,
+            "mt-auto pt-1 text-[12px] font-normal text-zinc-500/90 dark:text-zinc-400/85"
+          )}
+        >
+          Recent tx sample
+        </p>
       </div>
     </div>
   );

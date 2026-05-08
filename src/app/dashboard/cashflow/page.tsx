@@ -13,13 +13,10 @@ import {
   getDeposits,
   getTotalDepositsAmount,
 } from "@/lib/data";
+import { formatCurrency } from "@/lib/formatters";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 
 export const dynamic = "force-dynamic";
-
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 export default async function CashflowPage() {
   let invoicesWithDerived: Awaited<ReturnType<typeof getInvoicesWithDerived>> = [];
@@ -141,14 +138,14 @@ export default async function CashflowPage() {
       <SectionHeader label="Current Position" />
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-3 border-b border-border/60">
         <span className="text-sm text-muted-foreground">Cash In</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(cashIn)}</span>
+        <span className="text-lg font-medium tabular-nums">{formatCurrency(cashIn)}</span>
         <span className="text-sm text-muted-foreground">Cash Out</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(cashOut)}</span>
+        <span className="text-lg font-medium tabular-nums">{formatCurrency(cashOut)}</span>
         <span className="text-sm text-muted-foreground">Net Cash</span>
         <span
           className={`text-lg font-medium tabular-nums ${netCash >= 0 ? "text-foreground" : "text-destructive"}`}
         >
-          ${fmtUsd(netCash)}
+          {formatCurrency(netCash)}
         </span>
       </div>
       <Divider />
@@ -156,9 +153,9 @@ export default async function CashflowPage() {
       <SectionHeader label="30 Day Projection" />
       <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-3 border-b border-border/60">
         <span className="text-sm text-muted-foreground">Expected Inflow</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(expectedInflow)}</span>
+        <span className="text-lg font-medium tabular-nums">{formatCurrency(expectedInflow)}</span>
         <span className="text-sm text-muted-foreground">Expected Outflow</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(expectedOutflow)}</span>
+        <span className="text-lg font-medium tabular-nums">{formatCurrency(expectedOutflow)}</span>
       </div>
       <Divider />
 
@@ -185,12 +182,12 @@ export default async function CashflowPage() {
             {allBreakdownRows.map((r) => (
               <tr key={r.id} className="border-b border-border/40">
                 <td className="py-1.5 px-3">{r.name}</td>
-                <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.cashIn)}</td>
-                <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.cashOut)}</td>
+                <td className="py-1.5 px-3 text-right tabular-nums">{formatCurrency(r.cashIn)}</td>
+                <td className="py-1.5 px-3 text-right tabular-nums">{formatCurrency(r.cashOut)}</td>
                 <td
                   className={`py-1.5 px-3 text-right tabular-nums ${r.net >= 0 ? "" : "text-destructive"}`}
                 >
-                  ${fmtUsd(r.net)}
+                  {formatCurrency(r.net)}
                 </td>
               </tr>
             ))}

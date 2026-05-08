@@ -1,11 +1,12 @@
+import { formatCurrency, formatPercent } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 
 export function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return formatCurrency(n);
 }
 
 export function fmtPct(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+  return formatPercent(n);
 }
 
 export function getHealthStatus(marginPct: number): {

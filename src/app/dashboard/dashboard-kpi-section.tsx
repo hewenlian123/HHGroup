@@ -3,24 +3,50 @@ import {
   getApBillsSummaryCached,
   getLaborCostThisWeekCached,
   getOverdueInvoicesCached,
+  getProjectRiskOverviewCached,
+  getRecentTransactionsCached,
   loadDashboardProjectsBundle,
 } from "./dashboard-bundle";
 
 export async function DashboardKpiSection() {
   try {
-    const [bundle, overdueInvoices, apBillsSummary, laborCostThisWeek] = await Promise.all([
-      loadDashboardProjectsBundle(),
-      getOverdueInvoicesCached(),
-      getApBillsSummaryCached(),
-      getLaborCostThisWeekCached(),
-    ]);
+    const [bundle, apBillsSummary, overdueInvoices, laborCostThisWeek, riskOverview, recentTx] =
+      await Promise.all([
+        loadDashboardProjectsBundle(),
+        getApBillsSummaryCached(),
+        getOverdueInvoicesCached(),
+        getLaborCostThisWeekCached(),
+        getProjectRiskOverviewCached(),
+        getRecentTransactionsCached(24),
+      ]);
+
+    const negativeMarginCount = bundle.projects.reduce((n, p) => {
+      const m = bundle.profitMap.get(p.id)?.margin ?? 0;
+      return n + (m < 0 ? 1 : 0);
+    }, 0);
+
+    const operationalRiskCount =
+      riskOverview.summary.highCount +
+      riskOverview.summary.overBudgetCount +
+      riskOverview.summary.laborOverCount +
+      riskOverview.summary.lowRunwayCount;
+
+    let cashIn = 0;
+    let cashOut = 0;
+    for (const t of recentTx) {
+      if (t.amount >= 0) cashIn += t.amount;
+      else cashOut += Math.abs(t.amount);
+    }
+    const ledgerNet = cashIn - cashOut;
+
     return (
       <DashboardKpiStrip
-        stats={bundle.stats}
         overdueInvoices={overdueInvoices}
         apBillsSummary={apBillsSummary}
         laborCostThisWeek={laborCostThisWeek}
-        projectProfitSummary={bundle.stats.totalProfit}
+        negativeMarginCount={negativeMarginCount}
+        operationalRiskCount={operationalRiskCount}
+        ledgerNet={ledgerNet}
       />
     );
   } catch (e) {
@@ -30,7 +56,7 @@ export async function DashboardKpiSection() {
         ? "Database connection is not configured. Check NEXT_PUBLIC_SUPABASE_URL and keys in the deployment environment."
         : `Could not load KPIs: ${msg}`;
     return (
-      <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+      <p className="border-b border-border/45 pb-3 text-sm text-muted-foreground" role="status">
         {friendly}
       </p>
     );
