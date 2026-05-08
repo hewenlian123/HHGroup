@@ -105,8 +105,118 @@ const WHEEL_EXP = 0.00115;
 const FRICTION = 0.93;
 const MIN_VEL = 0.42;
 const INERTIA_MULT = 1.45;
+const PREVIEW_IMAGE_WARM_CACHE_LIMIT = 80;
+
+const warmedPreviewImageUrls = new Set<string>();
+const inflightPreviewImageWarmups = new Map<string, Promise<void>>();
 
 type PreflightPhase = "idle" | "checking" | "ok" | "error";
+
+function isImmediatePreviewUrl(url: string): boolean {
+  return /^(blob|data):/i.test((url ?? "").trim());
+}
+
+function localPreflightResult(url: string): PreviewUrlPreflightResult {
+  return {
+    ok: true,
+    method: isImmediatePreviewUrl(url) ? "local" : "memory",
+  };
+}
+
+function rememberPreviewImageWarm(url: string): void {
+  const u = (url ?? "").trim();
+  if (!u) return;
+  warmedPreviewImageUrls.delete(u);
+  warmedPreviewImageUrls.add(u);
+  while (warmedPreviewImageUrls.size > PREVIEW_IMAGE_WARM_CACHE_LIMIT) {
+    const oldest = warmedPreviewImageUrls.values().next().value as string | undefined;
+    if (!oldest) break;
+    warmedPreviewImageUrls.delete(oldest);
+  }
+}
+
+function isPreviewImageWarm(url: string): boolean {
+  const u = (url ?? "").trim();
+  return !!u && warmedPreviewImageUrls.has(u);
+}
+
+function warmPreviewImage(url: string): Promise<void> {
+  const u = (url ?? "").trim();
+  if (
+    !u ||
+    typeof window === "undefined" ||
+    typeof Image === "undefined" ||
+    warmedPreviewImageUrls.has(u)
+  ) {
+    return Promise.resolve();
+  }
+  const existing = inflightPreviewImageWarmups.get(u);
+  if (existing) return existing;
+
+  const p = new Promise<void>((resolve) => {
+    const img = new Image();
+    let settled = false;
+    const finish = (loaded: boolean) => {
+      if (settled) return;
+      settled = true;
+      if (loaded) rememberPreviewImageWarm(u);
+      inflightPreviewImageWarmups.delete(u);
+      resolve();
+    };
+    img.decoding = "async";
+    img.loading = "eager";
+    img.onload = () => finish(true);
+    img.onerror = () => finish(false);
+    img.src = u;
+    if (img.complete && img.naturalWidth > 0) {
+      finish(true);
+    } else {
+      void img
+        .decode?.()
+        .then(() => finish(true))
+        .catch(() => undefined);
+    }
+  });
+  inflightPreviewImageWarmups.set(u, p);
+  return p;
+}
+
+export function prewarmAttachmentPreviewImages(
+  files: AttachmentPreviewFileItem[],
+  currentIndex: number
+): void {
+  if (typeof window === "undefined") return;
+  const ordered = [currentIndex, currentIndex + 1, currentIndex - 1];
+  for (const rawIndex of ordered) {
+    if (files.length === 0) break;
+    const index = ((rawIndex % files.length) + files.length) % files.length;
+    const file = files[index];
+    if (!file || file.unsupported || file.pendingSignedUrl) continue;
+    const type = file.fileType ?? inferAttachmentPreviewType(file.fileName ?? "", file.url);
+    if (type !== "image") continue;
+    void warmPreviewImage(file.url);
+  }
+}
+
+function useFastMobilePreviewMotion(): boolean {
+  const [fast, setFast] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const coarse = window.matchMedia("(hover: none) and (pointer: coarse)");
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setFast(coarse.matches || reduced.matches);
+    update();
+    coarse.addEventListener?.("change", update);
+    reduced.addEventListener?.("change", update);
+    return () => {
+      coarse.removeEventListener?.("change", update);
+      reduced.removeEventListener?.("change", update);
+    };
+  }, []);
+
+  return fast;
+}
 
 function clampPan(
   tx: number,
@@ -632,6 +742,7 @@ function ReceiptPreviewImageArea({
   onDownload,
   defaultDownload,
   onZoomPanChange,
+  fastMotion,
 }: {
   displayUrl: string;
   fileName: string;
@@ -641,25 +752,31 @@ function ReceiptPreviewImageArea({
   onDownload?: () => void | Promise<void>;
   defaultDownload: () => void | Promise<void>;
   onZoomPanChange?: (zoomed: boolean) => void;
+  fastMotion: boolean;
 }) {
-  const [preflightPhase, setPreflightPhase] = React.useState<PreflightPhase>("idle");
-  const [preflightResult, setPreflightResult] = React.useState<PreviewUrlPreflightResult | null>(
-    null
+  const initialPreflight = isImmediatePreviewUrl(displayUrl) || isPreviewImageWarm(displayUrl);
+  const [preflightPhase, setPreflightPhase] = React.useState<PreflightPhase>(
+    initialPreflight ? "ok" : "checking"
   );
-  const [imgPhase, setImgPhase] = React.useState<"loading" | "ready" | "error">("loading");
+  const [preflightResult, setPreflightResult] = React.useState<PreviewUrlPreflightResult | null>(
+    initialPreflight ? localPreflightResult(displayUrl) : null
+  );
+  const [imgPhase, setImgPhase] = React.useState<"loading" | "ready" | "error">(
+    isPreviewImageWarm(displayUrl) ? "ready" : "loading"
+  );
   const [retryKey, setRetryKey] = React.useState(0);
   const [localUrl, setLocalUrl] = React.useState(displayUrl);
-  const [bitmapReady, setBitmapReady] = React.useState(false);
   const onRefreshRef = React.useRef(onRefreshPreviewUrl);
   onRefreshRef.current = onRefreshPreviewUrl;
 
   React.useEffect(() => {
+    const warmed = isPreviewImageWarm(displayUrl);
+    const local = isImmediatePreviewUrl(displayUrl);
     setLocalUrl(displayUrl);
     setRetryKey(0);
-    setImgPhase("loading");
-    setPreflightPhase("idle");
-    setPreflightResult(null);
-    setBitmapReady(false);
+    setImgPhase(warmed ? "ready" : "loading");
+    setPreflightPhase(local || warmed ? "ok" : "checking");
+    setPreflightResult(local || warmed ? localPreflightResult(displayUrl) : null);
   }, [displayUrl]);
 
   const effectiveUrl =
@@ -669,6 +786,11 @@ function ReceiptPreviewImageArea({
 
   React.useEffect(() => {
     if (!effectiveUrl.trim()) return;
+    if (isImmediatePreviewUrl(effectiveUrl) || isPreviewImageWarm(effectiveUrl)) {
+      setPreflightResult(localPreflightResult(effectiveUrl));
+      setPreflightPhase("ok");
+      return;
+    }
     let cancelled = false;
     setPreflightPhase("checking");
     void (async () => {
@@ -709,27 +831,6 @@ function ReceiptPreviewImageArea({
     };
   }, [effectiveUrl]);
 
-  React.useEffect(() => {
-    if (preflightPhase !== "ok" || !effectiveUrl.trim()) {
-      setBitmapReady(false);
-      return;
-    }
-    let cancelled = false;
-    setBitmapReady(false);
-    const img = new Image();
-    img.decoding = "async";
-    img.onload = () => {
-      if (!cancelled) setBitmapReady(true);
-    };
-    img.onerror = () => {
-      if (!cancelled) setBitmapReady(true);
-    };
-    img.src = effectiveUrl;
-    return () => {
-      cancelled = true;
-    };
-  }, [preflightPhase, effectiveUrl]);
-
   const openTab = () => {
     window.open(effectiveUrl, "_blank", "noopener,noreferrer");
   };
@@ -741,6 +842,8 @@ function ReceiptPreviewImageArea({
 
   const preflightHardFail =
     preflightPhase === "error" && preflightResult != null && !preflightResult.ok;
+  const previewStage =
+    preflightPhase === "checking" ? "checking" : preflightHardFail ? "preflight-error" : imgPhase;
 
   const failureActions = (
     <div className="flex flex-wrap items-center justify-center gap-2">
@@ -769,7 +872,11 @@ function ReceiptPreviewImageArea({
   );
 
   return (
-    <div className="flex w-full min-h-0 flex-1 flex-col items-stretch">
+    <div
+      className="flex w-full min-h-0 flex-1 flex-col items-stretch"
+      data-testid="receipt-preview-image-area"
+      data-preview-stage={previewStage}
+    >
       <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-4 px-2 py-2">
         {preflightPhase === "checking" ? (
           <div
@@ -817,7 +924,7 @@ function ReceiptPreviewImageArea({
 
         {preflightPhase === "ok" ? (
           <>
-            {(!bitmapReady || imgPhase === "loading") && imgPhase !== "error" ? (
+            {imgPhase === "loading" ? (
               <Skeleton className="pointer-events-none absolute inset-x-2 top-6 h-[min(68dvh,520px)] w-[min(calc(100%-1rem),56rem)] max-w-full rounded-sm bg-zinc-800/90" />
             ) : null}
             {imgPhase === "error" ? (
@@ -841,23 +948,27 @@ function ReceiptPreviewImageArea({
                   Retry
                 </Button>
               </div>
-            ) : bitmapReady ? (
+            ) : (
               <ZoomableImageFrame
                 effectiveUrl={effectiveUrl}
                 imgPhase={imgPhase}
                 onZoomPanChange={onZoomPanChange}
                 imgClassName={cn(
-                  "max-h-[min(92dvh,calc(100dvh-6.5rem))] max-w-[min(100vw-1rem,100%)] object-contain select-none transition-opacity duration-300 ease-out",
+                  "max-h-[min(92dvh,calc(100dvh-6.5rem))] max-w-[min(100vw-1rem,100%)] object-contain select-none",
+                  fastMotion
+                    ? "transition-opacity duration-75 ease-out"
+                    : "transition-opacity duration-300 ease-out",
                   imgPhase === "ready" ? "opacity-100" : "opacity-0"
                 )}
                 onImgLoad={() => {
+                  rememberPreviewImageWarm(effectiveUrl);
                   setImgPhase("ready");
                 }}
                 onImgError={() => {
                   setImgPhase("error");
                 }}
               />
-            ) : null}
+            )}
           </>
         ) : null}
       </div>
@@ -929,6 +1040,7 @@ export function AttachmentPreviewModal({
   const [navDirection, setNavDirection] = React.useState(1);
   const [imageZoomed, setImageZoomed] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
+  const fastPreviewMotion = useFastMobilePreviewMotion();
   const touchStartRef = React.useRef<{ x: number; y: number } | null>(null);
 
   const itemCount = files.length;
@@ -954,19 +1066,7 @@ export function AttachmentPreviewModal({
 
   React.useEffect(() => {
     if (!isOpen || itemCount === 0) return;
-    const nextIdx = (safeIndex + 1) % itemCount;
-    const next = files[nextIdx];
-    const u = (next?.url ?? "").trim();
-    if (
-      !u ||
-      next?.fileType === "pdf" ||
-      inferAttachmentPreviewType(next?.fileName ?? "", u) === "pdf"
-    ) {
-      return;
-    }
-    const img = new Image();
-    img.decoding = "async";
-    img.src = u;
+    prewarmAttachmentPreviewImages(files, safeIndex);
   }, [isOpen, itemCount, safeIndex, files]);
 
   const goNext = React.useCallback(() => {
@@ -1108,10 +1208,16 @@ export function AttachmentPreviewModal({
           data-attachment-preview-modal
           className="fixed inset-0 z-[201] flex min-h-0 flex-col bg-gradient-to-b from-zinc-900 via-zinc-950 to-black text-zinc-100 before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_85%_65%_at_50%_35%,rgba(255,255,255,0.06),transparent_58%)]"
           style={{ zIndex: 10000, pointerEvents: "auto" }}
-          initial={{ opacity: 0, scale: 0.97 }}
+          initial={fastPreviewMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.16, ease: "easeOut" } }}
-          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+          exit={
+            fastPreviewMotion
+              ? { opacity: 0, scale: 1, transition: { duration: 0.08, ease: "linear" } }
+              : { opacity: 0, scale: 0.98, transition: { duration: 0.16, ease: "easeOut" } }
+          }
+          transition={
+            fastPreviewMotion ? { duration: 0 } : { duration: 0.18, ease: [0.22, 1, 0.36, 1] }
+          }
         >
           <header className="relative z-10 flex shrink-0 items-center gap-3 border-b border-white/10 px-3 py-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
             <div className="min-w-0 flex-1">
@@ -1262,10 +1368,14 @@ export function AttachmentPreviewModal({
                       key={`${safeIndex}-${fileUrl}`}
                       custom={navDirection}
                       variants={slideVariants}
-                      initial="enter"
+                      initial={fastPreviewMotion ? false : "enter"}
                       animate="center"
                       exit="exit"
-                      transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                      transition={
+                        fastPreviewMotion
+                          ? { duration: 0.08, ease: "linear" }
+                          : { duration: 0.18, ease: [0.22, 1, 0.36, 1] }
+                      }
                       drag={enableMotionDrag ? "x" : false}
                       dragConstraints={{ left: 0, right: 0 }}
                       dragElastic={0.12}
@@ -1284,6 +1394,7 @@ export function AttachmentPreviewModal({
                           onDownload={onDownload}
                           defaultDownload={() => void downloadPreviewBlob(fileUrl, fileName)}
                           onZoomPanChange={setImageZoomed}
+                          fastMotion={fastPreviewMotion}
                         />
                       )}
                     </motion.div>

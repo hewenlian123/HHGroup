@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   AttachmentPreviewModal,
   inferAttachmentPreviewType,
+  prewarmAttachmentPreviewImages,
   type AttachmentPreviewFileItem,
   type AttachmentPreviewFileType,
 } from "@/components/attachment-preview-modal";
@@ -244,6 +245,7 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
         applySessionOptions(base, payload, onClosedRef);
       }
 
+      prewarmAttachmentPreviewImages(base.files, base.currentIndex);
       setState(base);
     },
     [clearResetTimer]
@@ -375,6 +377,11 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
     }),
     [state.isOpen, openPreview, patchPreview, closePreview]
   );
+
+  React.useEffect(() => {
+    if (!state.isOpen || state.files.length === 0) return;
+    prewarmAttachmentPreviewImages(state.files, state.currentIndex);
+  }, [state.isOpen, state.files, state.currentIndex]);
 
   return (
     <AttachmentPreviewContext.Provider value={value}>
