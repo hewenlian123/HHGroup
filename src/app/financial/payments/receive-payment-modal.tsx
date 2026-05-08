@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FinanceDatePicker } from "@/components/ui/date-picker";
 import {
   getInvoicesWithDerived,
   getProjects,
@@ -189,13 +190,7 @@ export function ReceivePaymentModal({
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Payment Date
               </label>
-              <Input
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-                className="h-9"
-                required
-              />
+              <FinanceDatePicker value={paymentDate} onChange={setPaymentDate} size="md" />
             </div>
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
