@@ -42,7 +42,8 @@ import type { WorkerReceipt, WorkerReceiptStatus } from "@/lib/worker-receipts-d
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { statusChipClass, TYPO } from "@/lib/typography";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
+import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 export type ReceiptRow = WorkerReceipt & { projectName: string };
 
@@ -865,8 +866,8 @@ export function ReceiptsClient({
                       </div>
                       <div className="min-w-0">
                         <dt className={TYPO.tableHeader}>Date</dt>
-                        <dd className={cn("truncate pt-0.5", TYPO.date)}>
-                          {formatDate(r.createdAt)}
+                        <dd className={cn("truncate pt-0.5", LEDGER_DATE_CLASS)}>
+                          {formatLedgerDate(r.createdAt, "compact")}
                         </dd>
                       </div>
                       <div className="min-w-0 sm:col-span-2">
@@ -1053,10 +1054,10 @@ export function ReceiptsClient({
                         <td
                           className={cn(
                             "whitespace-nowrap px-3 py-2.5 text-right align-middle",
-                            TYPO.date
+                            LEDGER_DATE_CLASS
                           )}
                         >
-                          {formatDate(r.createdAt)}
+                          {formatLedgerDate(r.createdAt)}
                         </td>
                         <td
                           className="whitespace-nowrap px-2 py-2.5 text-right align-middle"

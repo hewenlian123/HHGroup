@@ -19,8 +19,9 @@ import { createBrowserClient } from "@/lib/supabase";
 import { getARSummary } from "@/lib/data";
 import { Banknote, Receipt, CheckCircle, AlertCircle, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { amountClass, OS, TYPO } from "@/lib/typography";
+import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 type BankTx = {
   id: string;
@@ -241,7 +242,9 @@ export function FinancialClient() {
                         key={tx.id}
                         className="border-b border-gray-100 dark:border-border/60"
                       >
-                        <TableCell className={TYPO.date}>{formatDate(tx.txn_date)}</TableCell>
+                        <TableCell>
+                          <span className={LEDGER_DATE_CLASS}>{formatLedgerDate(tx.txn_date)}</span>
+                        </TableCell>
                         <TableCell className={TYPO.primaryName}>{tx.description}</TableCell>
                         <TableCell
                           className={cn(

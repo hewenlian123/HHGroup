@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { getCashOverview, getARSummary } from "@/lib/data";
 import { Banknote, Receipt, CheckCircle, AlertCircle, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { amountClass, OS, TYPO } from "@/lib/typography";
+import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 export const dynamic = "force-dynamic";
 
@@ -89,7 +90,9 @@ export default async function FinancialPage() {
                 ) : (
                   cash.recentUnreconciled.map((tx) => (
                     <TableRow key={tx.id}>
-                      <TableCell className={TYPO.date}>{formatDate(tx.date)}</TableCell>
+                      <TableCell>
+                        <span className={LEDGER_DATE_CLASS}>{formatLedgerDate(tx.date)}</span>
+                      </TableCell>
                       <TableCell className={TYPO.primaryName}>{tx.description}</TableCell>
                       <TableCell
                         className={cn(

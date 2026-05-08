@@ -18,6 +18,7 @@ import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { amountClass, TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 type PayRunRow = {
   workerId: string;
@@ -556,8 +557,8 @@ export default function LaborPaymentsClient() {
                                       className="flex justify-between gap-4 items-center"
                                     >
                                       <span>
-                                        <span className={TYPO.date}>
-                                          {formatDate(p.paymentDate)}
+                                        <span className={LEDGER_DATE_CLASS}>
+                                          {formatLedgerDate(p.paymentDate)}
                                         </span>{" "}
                                         • {p.method} {p.memo ? `• ${p.memo}` : ""}
                                       </span>
