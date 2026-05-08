@@ -10,6 +10,9 @@ import { Select } from "@/components/ui/native-select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createBrowserClient } from "@/lib/supabase";
 import { ArrowLeft, Plus } from "lucide-react";
+import { formatCurrency } from "@/lib/formatters";
+import { amountClass } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 type LaborInvoiceStatus = "draft" | "reviewed" | "confirmed" | "void";
 
@@ -501,27 +504,18 @@ export default function LaborInvoiceDetailClient() {
           ))}
         </div>
         <p className="mt-3 text-sm text-muted-foreground">
-          Split Total:{" "}
-          {new Intl.NumberFormat("en-US", {
-            style: "currency",
-            currency: "USD",
-            maximumFractionDigits: 2,
-          }).format(splitTotal)}
+          Split Total: <span className={amountClass("neutral")}>{formatCurrency(splitTotal)}</span>
         </p>
         <p className="mt-4 text-sm text-muted-foreground">
           Remaining:{" "}
           <span
-            className={
+            className={cn(
               isRemainingZero
-                ? "font-medium text-hh-profit-positive dark:text-hh-profit-positive"
-                : "font-medium text-amber-600 dark:text-amber-400"
-            }
+                ? amountClass("income")
+                : "tabular-nums font-semibold text-amber-600 dark:text-amber-400"
+            )}
           >
-            {new Intl.NumberFormat("en-US", {
-              style: "currency",
-              currency: "USD",
-              maximumFractionDigits: 2,
-            }).format(remaining)}
+            {formatCurrency(remaining)}
           </span>
         </p>
       </section>

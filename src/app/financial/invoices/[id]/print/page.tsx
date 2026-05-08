@@ -6,6 +6,7 @@ import { DocumentCompanyHeader } from "@/components/documents/document-company-h
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 
 /** Company block must reflect latest `company_profile` after Settings saves (no stale RSC cache). */
 export const dynamic = "force-dynamic";
@@ -52,7 +53,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
         company={company}
         documentTitle="Invoice"
         documentNo={invoice.invoiceNo}
-        documentDate={invoice.issueDate}
+        documentDate={formatDate(invoice.issueDate)}
         documentNoLabel="Invoice No"
       />
 
@@ -66,10 +67,10 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
 
       <section className="mb-6 flex justify-between text-sm">
         <div>
-          <span className="text-zinc-500">Issue date:</span> {invoice.issueDate}
+          <span className="text-zinc-500">Issue date:</span> {formatDate(invoice.issueDate)}
         </div>
         <div>
-          <span className="text-zinc-500">Due date:</span> {invoice.dueDate}
+          <span className="text-zinc-500">Due date:</span> {formatDate(invoice.dueDate)}
         </div>
       </section>
 
@@ -87,9 +88,9 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
             <tr key={idx} className="border-b border-zinc-200">
               <td className="py-2">{line.description}</td>
               <td className="text-right py-2 tabular-nums">{line.qty}</td>
-              <td className="text-right py-2 tabular-nums">${line.unitPrice.toLocaleString()}</td>
+              <td className="text-right py-2 tabular-nums">{formatCurrency(line.unitPrice)}</td>
               <td className="text-right py-2 tabular-nums font-medium">
-                ${line.amount.toLocaleString()}
+                {formatCurrency(line.amount)}
               </td>
             </tr>
           ))}
@@ -100,25 +101,25 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
         <div className="text-sm space-y-1 text-right min-w-[180px]">
           <div className="flex justify-between">
             <span className="text-zinc-500">Subtotal</span>
-            <span className="tabular-nums">${invoice.subtotal.toLocaleString()}</span>
+            <span className="tabular-nums">{formatCurrency(invoice.subtotal)}</span>
           </div>
           {invoice.taxAmount != null && invoice.taxAmount > 0 && (
             <div className="flex justify-between">
               <span className="text-zinc-500">Tax</span>
-              <span className="tabular-nums">${invoice.taxAmount.toLocaleString()}</span>
+              <span className="tabular-nums">{formatCurrency(invoice.taxAmount)}</span>
             </div>
           )}
           <div className="flex justify-between font-bold text-base pt-2 border-t border-zinc-300">
             <span>Total</span>
-            <span className="tabular-nums">${invoice.total.toLocaleString()}</span>
+            <span className="tabular-nums">{formatCurrency(invoice.total)}</span>
           </div>
           <div className="flex justify-between text-[#166534]">
             <span>Paid</span>
-            <span className="tabular-nums">${invoice.paidTotal.toLocaleString()}</span>
+            <span className="tabular-nums">{formatCurrency(invoice.paidTotal)}</span>
           </div>
           <div className="flex justify-between font-semibold">
             <span>Balance due</span>
-            <span className="tabular-nums">${invoice.balanceDue.toLocaleString()}</span>
+            <span className="tabular-nums">{formatCurrency(invoice.balanceDue)}</span>
           </div>
         </div>
       </div>

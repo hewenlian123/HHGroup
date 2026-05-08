@@ -12,6 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { amountClass, TYPO } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 type SubcontractorRow = {
   id: string;
@@ -636,9 +639,7 @@ export default function SubcontractorDetailPage() {
                     <td className="px-4 py-3 text-muted-foreground">
                       {item.size_bytes != null ? `${Math.round(item.size_bytes / 1024)} KB` : "—"}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(item.created_at).toLocaleDateString()}
-                    </td>
+                    <td className={cn("px-4 py-3", TYPO.date)}>{formatDate(item.created_at)}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-2">
                         <Button
@@ -755,10 +756,8 @@ export default function SubcontractorDetailPage() {
                     <td className="px-4 py-3 text-muted-foreground">
                       {link.agreed_rate_type || "—"}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                      {link.agreed_rate != null
-                        ? `$${Number(link.agreed_rate).toLocaleString()}`
-                        : "—"}
+                    <td className={cn("px-4 py-3 text-right", amountClass("neutral"))}>
+                      {link.agreed_rate != null ? formatCurrency(Number(link.agreed_rate)) : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Button

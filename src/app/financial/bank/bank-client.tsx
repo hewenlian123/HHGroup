@@ -21,6 +21,8 @@ import { Upload, CheckSquare } from "lucide-react";
 import { MatchStatusBadge, bankTransactionMatchKind } from "@/components/base";
 import { cn } from "@/lib/utils";
 import { createBrowserClient } from "@/lib/supabase";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { amountClass, TYPO } from "@/lib/typography";
 
 type TabFilter = "unmatched" | "reconciled" | "all";
 
@@ -950,18 +952,15 @@ export default function BankReconcileClient() {
                             className="h-4 w-4 rounded border-input"
                           />
                         </TableCell>
-                        <TableCell className="tabular-nums">{tx.date}</TableCell>
+                        <TableCell className={TYPO.date}>{formatDate(tx.date)}</TableCell>
                         <TableCell className="font-medium">{tx.description}</TableCell>
                         <TableCell
                           className={cn(
-                            "text-right tabular-nums font-medium",
-                            tx.amount >= 0
-                              ? "text-hh-profit-positive dark:text-hh-profit-positive"
-                              : "text-red-600/90 dark:text-red-400/90"
+                            "text-right",
+                            amountClass(tx.amount >= 0 ? "income" : "expense")
                           )}
                         >
-                          {tx.amount >= 0 ? "+" : ""}$
-                          {tx.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                          {formatCurrency(tx.amount)}
                         </TableCell>
                         <TableCell className="text-right">
                           <MatchStatusBadge kind={matchSt.kind} />
@@ -1050,14 +1049,18 @@ export default function BankReconcileClient() {
                 <h2 className="text-base font-semibold text-foreground mb-2">Reconciled</h2>
                 <p className="text-sm text-muted-foreground mb-2">
                   {selectedTxFromList?.description} —{" "}
-                  {selectedTxFromList && (selectedTxFromList.amount >= 0 ? "+" : "")}$
-                  {selectedTxFromList?.amount.toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })}
+                  <span
+                    className={amountClass(
+                      (selectedTxFromList?.amount ?? 0) >= 0 ? "income" : "expense"
+                    )}
+                  >
+                    {formatCurrency(selectedTxFromList?.amount)}
+                  </span>
                 </p>
                 {selectedTxFromList?.reconciledAt ? (
                   <p className="text-sm text-muted-foreground mb-2">
-                    Reconciled on {selectedTxFromList.reconciledAt.slice(0, 10)}
+                    Reconciled on{" "}
+                    <span className={TYPO.date}>{formatDate(selectedTxFromList.reconciledAt)}</span>
                   </p>
                 ) : null}
                 {isLinkedToExpense && selectedTxFromList?.linkedExpenseId ? (
@@ -1100,8 +1103,10 @@ export default function BankReconcileClient() {
               <>
                 <h2 className="text-base font-semibold text-foreground mb-2">Reconcile</h2>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {selected.description} — {selected.amount >= 0 ? "+" : ""}$
-                  {selected.amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  {selected.description} —{" "}
+                  <span className={amountClass(selected.amount >= 0 ? "income" : "expense")}>
+                    {formatCurrency(selected.amount)}
+                  </span>
                 </p>
                 <div>
                   <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -1136,14 +1141,14 @@ export default function BankReconcileClient() {
                               key={s.expense.id}
                               className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200/60 dark:border-border p-2 text-sm"
                             >
-                              <span className="tabular-nums text-muted-foreground w-20">
-                                {s.expense.expense_date}
+                              <span className={cn("w-20", TYPO.date)}>
+                                {formatDate(s.expense.expense_date)}
                               </span>
                               <span className="font-medium min-w-[100px]">
                                 {s.expense.vendor_name}
                               </span>
-                              <span className="tabular-nums font-medium text-red-600/90 dark:text-red-400/90">
-                                ${s.total.toLocaleString()}
+                              <span className={amountClass("expense")}>
+                                {formatCurrency(s.total)}
                               </span>
                               <span className="text-muted-foreground">{s.projectLabel}</span>
                               <span className="text-muted-foreground">{s.categoryLabel}</span>
