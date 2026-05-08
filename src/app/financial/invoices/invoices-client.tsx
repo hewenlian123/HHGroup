@@ -31,6 +31,8 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Pagination } from "@/components/ui/pagination";
 import { FILTER_CONTROL_CLASS } from "@/lib/native-field-classes";
 import { useToast } from "@/components/toast/toast-provider";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { amountClass, TYPO } from "@/lib/typography";
 
 type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -64,10 +66,6 @@ const STATUS_OPTIONS: { value: "" | InvoiceStatus; label: string }[] = [
 function safeNumber(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : 0;
-}
-
-function money(n: number): string {
-  return `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
 }
 
 function isMissingTableError(error: unknown): boolean {
@@ -204,28 +202,46 @@ export function InvoicesClient() {
         render: (row) => <span className="text-muted-foreground">{row.projects?.name ?? "—"}</span>,
       },
       { key: "client_name", header: "Client" },
-      { key: "issue_date", header: "Issue", className: "tabular-nums text-muted-foreground" },
-      { key: "due_date", header: "Due", className: "tabular-nums text-muted-foreground" },
+      {
+        key: "issue_date",
+        header: "Issue",
+        className: "tabular-nums",
+        render: (row) => <span className={TYPO.date}>{formatDate(row.issue_date)}</span>,
+      },
+      {
+        key: "due_date",
+        header: "Due",
+        className: "tabular-nums",
+        render: (row) => <span className={TYPO.date}>{formatDate(row.due_date)}</span>,
+      },
       {
         key: "total",
         header: "Total",
         align: "right",
-        className: "tabular-nums font-medium",
-        render: (row) => money(safeNumber(row.total)),
+        className: "tabular-nums",
+        render: (row) => (
+          <span className={amountClass("neutral")}>{formatCurrency(safeNumber(row.total))}</span>
+        ),
       },
       {
         key: "paidTotal",
         header: "Paid",
         align: "right",
-        className: "tabular-nums text-hh-profit-positive dark:text-hh-profit-positive",
-        render: (row) => money(safeNumber(row.paidTotal)),
+        className: "tabular-nums",
+        render: (row) => (
+          <span className={amountClass("income")}>{formatCurrency(safeNumber(row.paidTotal))}</span>
+        ),
       },
       {
         key: "balanceDue",
         header: "Balance",
         align: "right",
-        className: "tabular-nums font-medium",
-        render: (row) => money(safeNumber(row.balanceDue)),
+        className: "tabular-nums",
+        render: (row) => (
+          <span className={amountClass("neutral")}>
+            {formatCurrency(safeNumber(row.balanceDue))}
+          </span>
+        ),
       },
       { key: "status", header: "Status", render: (row) => <StatusBadge status={row.status} /> },
       {
@@ -297,9 +313,7 @@ export function InvoicesClient() {
       <FilterBar>
         <div className="grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-muted-foreground">
-              Search
-            </p>
+            <p className={TYPO.sectionLabel}>Search</p>
             <div className="relative w-full max-w-[240px]">
               <Search
                 className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]"
@@ -315,9 +329,7 @@ export function InvoicesClient() {
             </div>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-muted-foreground">
-              Status
-            </p>
+            <p className={TYPO.sectionLabel}>Status</p>
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceStatus)}
@@ -331,9 +343,7 @@ export function InvoicesClient() {
             </Select>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-[#9CA3AF] dark:text-muted-foreground">
-              Project
-            </p>
+            <p className={TYPO.sectionLabel}>Project</p>
             <Select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
@@ -352,7 +362,7 @@ export function InvoicesClient() {
 
       {error ? (
         <div className="rounded-lg border border-border/60 bg-background px-4 py-3">
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
         </div>
       ) : null}
 

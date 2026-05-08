@@ -41,7 +41,7 @@ import {
 import type { WorkerReceipt, WorkerReceiptStatus } from "@/lib/worker-receipts-db";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-import { TYPO } from "@/lib/typography";
+import { statusChipClass, TYPO } from "@/lib/typography";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 export type ReceiptRow = WorkerReceipt & { projectName: string };
@@ -90,61 +90,16 @@ function workerFilterKey(r: ReceiptRow): string {
 }
 
 function ReceiptUploadStatusChip({ status }: { status: WorkerReceiptStatus }) {
-  const chipBase =
-    "inline-flex w-fit max-w-full min-h-[22px] shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] tabular-nums tracking-tight shadow-none";
   if (status === "Pending") {
-    return (
-      <span
-        className={cn(
-          chipBase,
-          "border-amber-500/10 bg-amber-500/[0.03] font-normal text-amber-900/65 dark:border-amber-500/10 dark:bg-amber-500/[0.04] dark:text-amber-100/62"
-        )}
-      >
-        <span className="h-1 w-1 shrink-0 rounded-full bg-amber-500/35" aria-hidden />
-        Pending
-      </span>
-    );
+    return <span className={statusChipClass("warning")}>Pending</span>;
   }
   if (status === "Approved") {
-    return (
-      <span
-        className={cn(
-          chipBase,
-          "border-emerald-500/10 bg-emerald-500/[0.03] font-medium text-emerald-900/78 dark:border-emerald-500/12 dark:bg-emerald-500/[0.05] dark:text-emerald-100/82"
-        )}
-      >
-        <span className="h-1 w-1 shrink-0 rounded-full bg-emerald-500/40" aria-hidden />
-        Approved
-      </span>
-    );
+    return <span className={statusChipClass("success")}>Approved</span>;
   }
   if (status === "Rejected") {
-    return (
-      <span
-        className={cn(
-          chipBase,
-          "border-rose-500/10 bg-rose-500/[0.03] font-normal text-rose-900/70 dark:border-rose-500/12 dark:bg-rose-500/[0.05] dark:text-rose-100/75"
-        )}
-      >
-        <span className="h-1 w-1 shrink-0 rounded-full bg-rose-500/40" aria-hidden />
-        Rejected
-      </span>
-    );
+    return <span className={statusChipClass("danger")}>Rejected</span>;
   }
-  return (
-    <span
-      className={cn(
-        chipBase,
-        "border-zinc-200/70 bg-zinc-50/70 font-normal text-zinc-600 dark:border-border/50 dark:bg-muted/20 dark:text-muted-foreground"
-      )}
-    >
-      <span
-        className="h-1 w-1 shrink-0 rounded-full bg-zinc-400/50 dark:bg-zinc-500/65"
-        aria-hidden
-      />
-      Paid
-    </span>
-  );
+  return <span className={statusChipClass("success")}>Paid</span>;
 }
 
 export function ReceiptsClient({

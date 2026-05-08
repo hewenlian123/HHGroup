@@ -8,7 +8,7 @@ const cardSkeleton =
 export default function FinanceOwnerDashboardLoading() {
   return (
     <PageLayout
-      className="bg-zinc-50 dark:bg-background"
+      className="bg-slate-50 dark:bg-background"
       divider={false}
       header={
         <PageHeader

@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { OS } from "@/lib/typography";
 import { motionCardHover } from "@/lib/motion-system";
 
 export type CardProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -12,11 +13,7 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, interactive, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(
-        "rounded-xl border border-slate-900/[0.06] bg-white/[0.92] text-foreground shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-border dark:bg-card dark:shadow-none",
-        interactive && motionCardHover,
-        className
-      )}
+      className={cn(OS.card, "text-foreground", interactive && motionCardHover, className)}
       {...props}
     />
   )

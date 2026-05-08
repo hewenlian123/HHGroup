@@ -55,7 +55,7 @@ const EMPTY_OWNER_DASHBOARD: Awaited<ReturnType<typeof getFinanceOwnerDashboard>
   },
 };
 
-const pageBg = "bg-zinc-50 dark:bg-background";
+const pageBg = "bg-slate-50 dark:bg-background";
 
 const cardBase =
   "rounded-2xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] transition-[transform,box-shadow,border-color] duration-200 ease-out dark:border-border/50 dark:bg-card/80 dark:shadow-none";
@@ -86,7 +86,7 @@ function HealthStripe({ row }: { row: FinanceOwnerProjectRow }) {
 
   const dotClass = (i: number) => {
     if (row.revenue <= 0 || !pctOk) return "bg-zinc-200 dark:bg-muted";
-    if (atRisk) return i === 0 ? "bg-red-500" : "bg-zinc-200 dark:bg-muted";
+    if (atRisk) return i === 0 ? "bg-rose-500" : "bg-zinc-200 dark:bg-muted";
     if (strong) return "bg-emerald-500";
     if (watch) return i <= 1 ? "bg-amber-400" : "bg-zinc-200 dark:bg-muted";
     return "bg-zinc-200 dark:bg-muted";
@@ -115,7 +115,7 @@ function HealthStripe({ row }: { row: FinanceOwnerProjectRow }) {
       <span
         className={cn(
           "max-w-[5.5rem] truncate text-right text-[11px] font-semibold tabular-nums tracking-tight sm:max-w-none",
-          atRisk && "text-red-600 dark:text-red-400",
+          atRisk && "text-rose-600 dark:text-rose-400",
           strong && "text-emerald-700 dark:text-emerald-400",
           watch && !atRisk && "text-amber-700 dark:text-amber-400",
           row.revenue <= 0 && "font-normal text-muted-foreground"
@@ -156,7 +156,7 @@ function ProfitMarginTrack({ row }: { row: FinanceOwnerProjectRow }) {
         <span
           className={cn(
             "max-w-[5rem] shrink-0 truncate tabular-nums normal-case sm:max-w-none",
-            positive ? "text-emerald-700 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+            positive ? "text-emerald-700 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
           )}
           title={pctFullTooltip(Number.isFinite(row.profitPct) ? row.profitPct : NaN)}
         >
@@ -169,7 +169,7 @@ function ProfitMarginTrack({ row }: { row: FinanceOwnerProjectRow }) {
             "h-full max-w-full rounded-full transition-[width] duration-300 ease-out",
             positive
               ? "bg-gradient-to-r from-emerald-500/90 to-emerald-600/80"
-              : "bg-gradient-to-r from-red-500/90 to-red-600/75"
+              : "bg-gradient-to-r from-rose-500/90 to-rose-600/75"
           )}
           style={{ width: `${barW}%` }}
         />
@@ -281,7 +281,7 @@ function OwnerProjectList({
                     className={cn(
                       "mt-0.5 max-w-full truncate text-right tabular-nums font-semibold md:mt-0 md:truncate md:text-sm whitespace-nowrap",
                       r.profit > 0 && "text-emerald-700 dark:text-emerald-400",
-                      r.profit < 0 && "text-red-600 dark:text-red-400",
+                      r.profit < 0 && "text-rose-600 dark:text-rose-400",
                       r.profit === 0 && "font-medium text-muted-foreground"
                     )}
                     title={fmtUsdSignedFull(r.profit)}
@@ -362,7 +362,7 @@ export default async function FinanceOwnerDashboardPage() {
       label: "Expense",
       value: data.kpis.expenseThisMonth,
       icon: Receipt,
-      iconWrap: "bg-red-500/10 text-red-700 dark:text-red-400",
+      iconWrap: "bg-rose-500/10 text-rose-700 dark:text-rose-400",
       accent: "expense",
     },
     {
@@ -373,7 +373,7 @@ export default async function FinanceOwnerDashboardPage() {
       iconWrap:
         data.kpis.profitThisMonth >= 0
           ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400"
-          : "bg-red-500/12 text-red-700 dark:text-red-400",
+          : "bg-rose-500/12 text-rose-700 dark:text-rose-400",
       accent: "profit",
     },
     {
@@ -550,11 +550,11 @@ export default async function FinanceOwnerDashboardPage() {
               const Icon = k.icon;
               const valueTone =
                 k.accent === "expense"
-                  ? "text-red-700 dark:text-red-400"
+                  ? "text-rose-700 dark:text-rose-400"
                   : k.accent === "profit"
                     ? data.kpis.profitThisMonth >= 0
                       ? "text-emerald-800 dark:text-emerald-400"
-                      : "text-red-600 dark:text-red-400"
+                      : "text-rose-600 dark:text-rose-400"
                     : k.accent === "pending"
                       ? "text-emerald-800 dark:text-emerald-400"
                       : k.accent === "warning"
@@ -563,11 +563,11 @@ export default async function FinanceOwnerDashboardPage() {
 
               const pulse =
                 k.accent === "expense"
-                  ? { outer: "bg-red-400/30", inner: "bg-red-500/85" }
+                  ? { outer: "bg-rose-400/30", inner: "bg-rose-500/85" }
                   : k.accent === "profit"
                     ? data.kpis.profitThisMonth >= 0
                       ? { outer: "bg-emerald-400/40", inner: "bg-emerald-500/90" }
-                      : { outer: "bg-red-400/35", inner: "bg-red-500/90" }
+                      : { outer: "bg-rose-400/35", inner: "bg-rose-500/90" }
                     : k.accent === "pending"
                       ? { outer: "bg-emerald-400/35", inner: "bg-emerald-600/90" }
                       : k.accent === "warning"
@@ -687,7 +687,7 @@ export default async function FinanceOwnerDashboardPage() {
                         <span className="min-w-0 text-muted-foreground">
                           Out{" "}
                           <span
-                            className="inline-block font-semibold whitespace-nowrap text-red-600 dark:text-red-400"
+                            className="inline-block whitespace-nowrap font-semibold text-rose-600 dark:text-rose-400"
                             title={fmtUsdFull(row.expense)}
                           >
                             {fmtUsdAdaptive(row.expense)}

@@ -20,6 +20,8 @@ import { getARSummary, getOutstandingInvoices } from "@/lib/data";
 import { Banknote, AlertCircle, TrendingUp, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { amountClass, OS, TYPO } from "@/lib/typography";
 
 type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -190,35 +192,36 @@ export function ArClient() {
 
       {error ? (
         <Card className="p-5">
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
         </Card>
       ) : null}
 
       <section>
-        <h2 className="text-lg font-semibold text-foreground mb-4">AR Overview</h2>
+        <h2 className={cn("mb-4", TYPO.sectionLabel)}>AR overview</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {kpis.map(({ label, value, icon: Icon }) => (
             <Card key={label} className="shadow-none">
               <div className="flex flex-row items-center justify-between p-5">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{label}</p>
+                  <p className={TYPO.kpiLabel}>{label}</p>
                   {loading ? (
                     <Skeleton className="mt-2 h-7 w-32" />
                   ) : (
                     <p
                       className={cn(
-                        "text-2xl font-bold tabular-nums mt-0.5",
+                        "mt-1 text-2xl",
+                        TYPO.kpiValue,
                         label === "Overdue AR" && value > 0 && "text-amber-600 dark:text-amber-400",
                         label === "Paid This Month" &&
                           value > 0 &&
-                          "text-hh-profit-positive dark:text-hh-profit-positive"
+                          "text-emerald-700 dark:text-emerald-400"
                       )}
                     >
-                      ${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      {formatCurrency(value)}
                     </p>
                   )}
                 </div>
-                <div className="rounded-lg bg-muted p-2">
+                <div className={OS.iconWell}>
                   <Icon className="h-4 w-4 text-muted-foreground" />
                 </div>
               </div>
@@ -228,7 +231,7 @@ export function ArClient() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-foreground mb-4">Outstanding by aging</h2>
+        <h2 className={cn("mb-4", TYPO.sectionLabel)}>Outstanding by aging</h2>
         {loading ? (
           <Card className="p-5">
             <div className="space-y-2">
@@ -243,39 +246,23 @@ export function ArClient() {
           <div className="space-y-6">
             {sortedBuckets.map((bucket) => (
               <Card key={bucket} className="overflow-hidden">
-                <h3 className="text-sm font-semibold text-foreground px-4 py-3 bg-muted/30 border-b border-zinc-200/60 dark:border-border">
+                <h3 className="border-b border-slate-900/[0.06] bg-slate-50/80 px-4 py-3 text-sm font-semibold text-foreground dark:border-border dark:bg-muted/20">
                   {bucket} {bucket === "Current" ? "" : "days overdue"}
                 </h3>
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Invoice #
-                      </TableHead>
-                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Project
-                      </TableHead>
-                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Client
-                      </TableHead>
-                      <TableHead className="text-right font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                      <TableHead className={TYPO.tableHeader}>Invoice #</TableHead>
+                      <TableHead className={TYPO.tableHeader}>Project</TableHead>
+                      <TableHead className={TYPO.tableHeader}>Client</TableHead>
+                      <TableHead className={cn("text-right", TYPO.tableHeader)}>
                         Invoice Total
                       </TableHead>
-                      <TableHead className="text-right font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                        Paid
-                      </TableHead>
-                      <TableHead className="font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                        Due
-                      </TableHead>
-                      <TableHead className="text-right font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                        Balance
-                      </TableHead>
-                      <TableHead className="text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Status
-                      </TableHead>
-                      <TableHead className="text-right text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Actions
-                      </TableHead>
+                      <TableHead className={cn("text-right", TYPO.tableHeader)}>Paid</TableHead>
+                      <TableHead className={TYPO.tableHeader}>Due</TableHead>
+                      <TableHead className={cn("text-right", TYPO.tableHeader)}>Balance</TableHead>
+                      <TableHead className={TYPO.tableHeader}>Status</TableHead>
+                      <TableHead className={cn("text-right", TYPO.tableHeader)}>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -289,21 +276,19 @@ export function ArClient() {
                             {inv.invoice_no}
                           </Link>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="text-zinc-500 dark:text-zinc-400">
                           {normalizeProject(inv.projects)?.name ?? "—"}
                         </TableCell>
-                        <TableCell className="text-foreground">{inv.client_name}</TableCell>
-                        <TableCell className="text-right font-mono tabular-nums">
-                          ${safeNumber(inv.total).toLocaleString()}
+                        <TableCell className={TYPO.primaryName}>{inv.client_name}</TableCell>
+                        <TableCell className={cn("text-right", amountClass("neutral"))}>
+                          {formatCurrency(safeNumber(inv.total))}
                         </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
-                          ${safeNumber(inv.paidTotal).toLocaleString()}
+                        <TableCell className={cn("text-right", amountClass("income"))}>
+                          {formatCurrency(safeNumber(inv.paidTotal))}
                         </TableCell>
-                        <TableCell className="font-mono tabular-nums text-muted-foreground">
-                          {inv.due_date}
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums font-medium">
-                          ${safeNumber(inv.balanceDue).toLocaleString()}
+                        <TableCell className={TYPO.date}>{formatDate(inv.due_date)}</TableCell>
+                        <TableCell className={cn("text-right", amountClass("neutral"))}>
+                          {formatCurrency(safeNumber(inv.balanceDue))}
                         </TableCell>
                         <TableCell>
                           <StatusBadge status={inv.status} />

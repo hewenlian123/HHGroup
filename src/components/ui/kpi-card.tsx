@@ -1,7 +1,7 @@
 import { LucideIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { TYPO } from "@/lib/typography";
+import { OS, TYPO } from "@/lib/typography";
 
 export function KpiCard({
   label,
@@ -17,7 +17,7 @@ export function KpiCard({
   className?: string;
 }) {
   return (
-    <Card className={cn("min-h-[100px] p-[22px]", emphasis && "border-foreground/15", className)}>
+    <Card className={cn("min-h-[108px] p-5", emphasis && "border-emerald-500/20", className)}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className={TYPO.kpiLabel}>{label}</p>
@@ -26,7 +26,7 @@ export function KpiCard({
           </p>
         </div>
         {Icon ? (
-          <div className="rounded-md border border-border/60 bg-muted/20 p-2">
+          <div className={OS.iconWell}>
             <Icon className="h-4 w-4 text-muted-foreground" />
           </div>
         ) : null}

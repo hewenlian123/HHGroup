@@ -48,11 +48,17 @@ export const TYPO = {
 export const OS = {
   workspace: "bg-slate-50 dark:bg-background",
   card: "rounded-xl border border-slate-900/[0.06] bg-white/[0.92] shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-border/60 dark:bg-card/90 dark:shadow-none",
+  cardHover:
+    "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-slate-900/[0.1] hover:shadow-[0_8px_32px_rgba(15,23,42,0.07)] dark:hover:border-border",
+  iconWell:
+    "rounded-md border border-slate-900/[0.06] bg-slate-50/75 p-2 text-zinc-500 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-400",
   tableShell:
     "relative w-full overflow-hidden rounded-xl border border-slate-900/[0.06] bg-white/[0.92] shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-border/60 dark:bg-card/90",
   tableDivider: "border-slate-900/[0.06] dark:border-border/60",
   filterSurface:
     "rounded-xl border border-slate-900/[0.06] bg-white/[0.92] shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-border/60 dark:bg-card/90",
+  emptyState:
+    "rounded-xl border border-dashed border-slate-900/[0.08] bg-slate-50/50 px-5 py-12 text-center dark:border-border/60 dark:bg-muted/15",
   primaryButton:
     "bg-[#081225] text-white hover:bg-[#0F172A] focus-visible:ring-emerald-500/30 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400",
   secondaryButton:

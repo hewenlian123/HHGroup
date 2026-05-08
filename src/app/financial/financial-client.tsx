@@ -19,6 +19,8 @@ import { createBrowserClient } from "@/lib/supabase";
 import { getARSummary } from "@/lib/data";
 import { Banknote, Receipt, CheckCircle, AlertCircle, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import { amountClass, OS, TYPO } from "@/lib/typography";
 
 type BankTx = {
   id: string;
@@ -31,11 +33,6 @@ type BankTx = {
 function safeNumber(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : 0;
-}
-
-function formatMoney(amount: number): string {
-  const formatted = `$${Math.abs(amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  return amount < 0 ? `−${formatted}` : formatted;
 }
 
 function isMissingTableError(error: unknown): boolean {
@@ -164,20 +161,18 @@ export function FinancialClient() {
 
       {error ? (
         <Card className="p-5">
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
         </Card>
       ) : null}
 
       <section>
-        <h2 className="mb-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-          CASH OVERVIEW
-        </h2>
+        <h2 className={cn("mb-4", TYPO.sectionLabel)}>Cash overview</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {kpis.map(({ label, value, icon: Icon }) => (
             <Card key={label}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
-                <div className="rounded-lg border border-gray-100 bg-white p-2 dark:border-border dark:bg-muted">
+                <CardTitle className={TYPO.kpiLabel}>{label}</CardTitle>
+                <div className={OS.iconWell}>
                   <Icon className="h-4 w-4 text-text-secondary dark:text-muted-foreground" />
                 </div>
               </CardHeader>
@@ -187,11 +182,11 @@ export function FinancialClient() {
                 ) : (
                   <p
                     className={cn(
-                      "text-2xl font-bold tabular-nums text-right",
-                      value < 0 ? "text-red-600/90 dark:text-red-400/90" : "text-foreground"
+                      "text-right text-2xl",
+                      amountClass(value < 0 ? "expense" : "neutral")
                     )}
                   >
-                    {formatMoney(value)}
+                    {formatCurrency(value)}
                   </p>
                 )}
               </CardContent>
@@ -208,9 +203,7 @@ export function FinancialClient() {
         ) : null}
 
         <div className="mt-6">
-          <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-            Recent Unreconciled Transactions
-          </h3>
+          <h3 className={cn("mb-3", TYPO.sectionLabel)}>Recent unreconciled transactions</h3>
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
@@ -248,18 +241,15 @@ export function FinancialClient() {
                         key={tx.id}
                         className="border-b border-gray-100 dark:border-border/60"
                       >
-                        <TableCell className="tabular-nums">{tx.txn_date}</TableCell>
-                        <TableCell>{tx.description}</TableCell>
+                        <TableCell className={TYPO.date}>{formatDate(tx.txn_date)}</TableCell>
+                        <TableCell className={TYPO.primaryName}>{tx.description}</TableCell>
                         <TableCell
                           className={cn(
-                            "text-right tabular-nums font-medium",
-                            tx.amount >= 0
-                              ? "text-hh-profit-positive dark:text-hh-profit-positive"
-                              : "text-red-600/90 dark:text-red-400/90"
+                            "text-right",
+                            amountClass(tx.amount >= 0 ? "income" : "expense")
                           )}
                         >
-                          {tx.amount >= 0 ? "+" : ""}
-                          {formatMoney(tx.amount)}
+                          {formatCurrency(tx.amount)}
                         </TableCell>
                       </TableRow>
                     ))
