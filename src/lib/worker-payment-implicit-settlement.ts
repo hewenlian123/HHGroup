@@ -11,6 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   isLaborUnpaidForWorkerPayroll,
+  laborEntryPaymentIdMapFromWorkerPayments,
   type LaborPayrollSettlementMode,
 } from "@/lib/labor-balance-shared";
 
@@ -83,9 +84,28 @@ async function loadUnpaidPayItems(
     project_id?: string | null;
   }[];
 
+  const paymentLinksRes = await admin
+    .from("worker_payments")
+    .select("id, labor_entry_ids")
+    .eq("worker_id", workerId);
+  const paymentLinksMissingLaborIds =
+    paymentLinksRes.error &&
+    /column|schema cache|labor_entry_ids/i.test(paymentLinksRes.error.message ?? "");
+  if (paymentLinksRes.error && !paymentLinksMissingLaborIds) {
+    throw new Error(paymentLinksRes.error.message ?? "Failed to load worker payment links.");
+  }
+  const paymentIdByLaborEntryId = laborEntryPaymentIdMapFromWorkerPayments(
+    (!paymentLinksMissingLaborIds ? (paymentLinksRes.data ?? []) : []) as Array<{
+      id?: unknown;
+      labor_entry_ids?: unknown;
+    }>
+  );
+
   for (const r of laborRaw) {
     if (projectId && (r.project_id ?? null) !== projectId) continue;
-    if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode))
+    const effectiveWorkerPaymentId =
+      String(r.worker_payment_id ?? "").trim() || paymentIdByLaborEntryId.get(r.id) || null;
+    if (!isLaborUnpaidForWorkerPayroll(r.status, effectiveWorkerPaymentId, laborSettlementMode))
       continue;
     const cents = toCents(Number(r.cost_amount ?? r.total) || 0);
     if (cents <= 0) continue;

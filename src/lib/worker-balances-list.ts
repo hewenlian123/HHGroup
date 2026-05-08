@@ -2,6 +2,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { omitE2ESeedWorkerFromBalanceWorkers } from "@/lib/e2e-seed-worker";
 import {
   isLaborUnpaidForWorkerPayroll,
+  laborEntryPaymentIdMapFromWorkerPayments,
+  workerOutstandingBalanceFromUnsettledItems,
   workerIdsForLaborBalanceFinancialQueries,
 } from "@/lib/labor-balance-shared";
 
@@ -42,7 +44,9 @@ export async function fetchWorkerBalanceRowForDelete(
 /**
  * Worker balances summary (same rules as GET /api/labor/worker-balances).
  * Labor Owed = unpaid payroll per `isLaborUnpaidForWorkerPayroll` / worker_payment_id NULL in SQL path.
- * Balance = Labor Owed + Reimbursements - Payments - DeductedAdvances.
+ * Balance = unpaid Labor Owed + pending Reimbursements - DeductedAdvances.
+ * Worker payments remain visible as a ledger, but linked paid items are already removed
+ * from the unpaid totals and unlinked legacy payments cannot prove which rows they settled.
  * Worker list comes from labor_workers; payments/advances aggregate by worker_id (same ids as labor_workers when synced).
  * Also unions worker_id from labor_entries, worker_reimbursements, worker_payments, worker_advances so orphans still appear.
  * Names are resolved via labor_workers first, then `workers` (full-table name map + targeted lookups).
@@ -179,6 +183,7 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
         );
       }
       type LaborRaw = {
+        id?: string | null;
         worker_id?: string | null;
         cost_amount?: number | null;
         total?: number | null;
@@ -189,13 +194,13 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
       let laborSettlementMode: "payment_link" | "status_fallback" = "payment_link";
 
       for (const cols of [
-        "worker_id, cost_amount, total, status, worker_payment_id",
-        "worker_id, cost_amount, status, worker_payment_id",
-        "worker_id, total, status, worker_payment_id",
-        "worker_id, cost_amount, total, status",
-        "worker_id, cost_amount, status",
-        "worker_id, total, status",
-        "worker_id, cost_amount, total",
+        "id, worker_id, cost_amount, total, status, worker_payment_id",
+        "id, worker_id, cost_amount, status, worker_payment_id",
+        "id, worker_id, total, status, worker_payment_id",
+        "id, worker_id, cost_amount, total, status",
+        "id, worker_id, cost_amount, status",
+        "id, worker_id, total, status",
+        "id, worker_id, cost_amount, total",
       ]) {
         const base = c.from("labor_entries").select(cols) as unknown;
         const res = (await (hasFunction(base, "eq")
@@ -213,8 +218,42 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
         }
       }
 
+      let payRows: Array<{
+        id?: string | null;
+        total_amount?: number | null;
+        amount?: number | null;
+        labor_entry_ids?: unknown;
+      }> = [];
+      let payRes = await queryByIds(
+        "worker_payments",
+        "id, worker_id, total_amount, labor_entry_ids"
+      );
+      if (payRes.error && isMissingColumn(payRes.error)) {
+        payRes = await queryByIds("worker_payments", "id, worker_id, total_amount");
+      }
+      if (!payRes.error) {
+        payRows = (payRes.data ?? []) as typeof payRows;
+      } else {
+        let payFb = await queryByIds("worker_payments", "id, worker_id, amount, labor_entry_ids");
+        if (payFb.error && isMissingColumn(payFb.error)) {
+          payFb = await queryByIds("worker_payments", "id, worker_id, amount");
+        }
+        payRows = (payFb.data ?? []) as typeof payRows;
+      }
+      const paymentIdByLaborEntryId = laborEntryPaymentIdMapFromWorkerPayments(payRows);
+      const effectiveWorkerPaymentIdForLabor = (r: LaborRaw) =>
+        String(r.worker_payment_id ?? "").trim() ||
+        (r.id ? paymentIdByLaborEntryId.get(String(r.id)) : undefined) ||
+        null;
+
       const laborOwed = laborRows.reduce((s, r) => {
-        if (!isLaborUnpaidForWorkerPayroll(r.status, r.worker_payment_id, laborSettlementMode))
+        if (
+          !isLaborUnpaidForWorkerPayroll(
+            r.status,
+            effectiveWorkerPaymentIdForLabor(r),
+            laborSettlementMode
+          )
+        )
           return s;
         return s + (Number(r.cost_amount ?? r.total) || 0);
       }, 0);
@@ -245,14 +284,6 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
         return s + (Number(r.amount ?? r.total_amount) || 0);
       }, 0);
 
-      let payRows: Array<{ total_amount?: number | null; amount?: number | null }> = [];
-      const payRes = await queryByIds("worker_payments", "worker_id, total_amount");
-      if (!payRes.error) {
-        payRows = (payRes.data ?? []) as Array<{ total_amount?: number | null }>;
-      } else {
-        const payFb = await queryByIds("worker_payments", "worker_id, amount");
-        payRows = (payFb.data ?? []) as Array<{ amount?: number | null }>;
-      }
       const payments = payRows.reduce((s, r) => s + (Number(r.total_amount ?? r.amount) || 0), 0);
 
       // Advances: always use the same Supabase path as detail page to avoid env DB URL drift.
@@ -277,7 +308,11 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
         return s + (Number(r.amount ?? r.total_amount) || 0);
       }, 0);
 
-      const balance = laborOwed + reimbursements - payments - advances;
+      const balance = workerOutstandingBalanceFromUnsettledItems({
+        laborOwed,
+        reimbursements,
+        advances,
+      });
       const payRowsCount = payRows.length;
       const deletable =
         Math.abs(balance) < BAL_EPS &&

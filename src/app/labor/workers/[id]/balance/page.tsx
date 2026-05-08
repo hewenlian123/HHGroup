@@ -322,14 +322,18 @@ export default function WorkerBalanceDetailPage() {
   }, [splitRows, splitTotal, totalPaymentAmount]);
 
   const openPayModal = () => {
-    setSelectedLaborIds(new Set(unpaidLabor.map((e) => e.id)));
-    setSelectedReimbIds(new Set(unpaidReimb.map((r) => r.id)));
+    const initialLaborIds = new Set(unpaidLabor.map((e) => e.id));
+    const initialReimbIds = new Set(unpaidReimb.map((r) => r.id));
+    const initialTotal =
+      unpaidLabor.reduce((s, e) => s + e.amount, 0) + unpaidReimb.reduce((s, r) => s + r.amount, 0);
+    setSelectedLaborIds(initialLaborIds);
+    setSelectedReimbIds(initialReimbIds);
     setPayDate(new Date().toISOString().slice(0, 10));
     setPayNotes("");
     setPayError(null);
-    const amt = totalPaymentAmount > 0 ? totalPaymentAmount.toFixed(2) : "";
+    const amt = initialTotal > 0 ? initialTotal.toFixed(2) : "";
     setSplitRows(
-      totalPaymentAmount > 0
+      initialTotal > 0
         ? [
             {
               id: crypto.randomUUID?.() ?? `${Date.now()}`,

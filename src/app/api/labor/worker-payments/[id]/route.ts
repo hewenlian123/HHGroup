@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternal,
+  getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export async function DELETE(_req: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ message: "Payment id required." }, { status: 400 });
   }
 
-  const admin = getServerSupabaseInternal();
+  const admin = getServerSupabaseInternalNoStore();
   if (!admin) {
     return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }

@@ -21,6 +21,19 @@ function envServiceRole(): string | null {
   return process.env.SUPABASE_SERVICE_ROLE_KEY ?? null;
 }
 
+const noStoreFetch: typeof fetch = (input, init) =>
+  fetch(input, {
+    ...init,
+    cache: "no-store",
+  });
+
+function serverClientOptions(noStore = false) {
+  return {
+    auth: { persistSession: false, autoRefreshToken: false },
+    ...(noStore ? { global: { fetch: noStoreFetch } } : {}),
+  };
+}
+
 /**
  * Server client (synchronous).
  *
@@ -36,10 +49,10 @@ export function getServerSupabase(): SupabaseClient | null {
   if (!url) return null;
   const service = envServiceRole();
   if (service) {
-    return createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
+    return createClient(url, service, serverClientOptions());
   }
   if (!anon) return null;
-  return createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createClient(url, anon, serverClientOptions());
 }
 
 /**
@@ -50,7 +63,7 @@ export function getServerSupabaseAdmin(): SupabaseClient | null {
   const url = envUrl();
   const service = envServiceRole();
   if (!url || !service) return null;
-  return createClient(url, service, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createClient(url, service, serverClientOptions());
 }
 
 /**
@@ -62,6 +75,17 @@ export function getServerSupabaseAdmin(): SupabaseClient | null {
  */
 export function getServerSupabaseInternal(): SupabaseClient | null {
   return getServerSupabaseAdmin() ?? getServerSupabase();
+}
+
+/** Internal API reads that must observe writes immediately within payment/balance flows. */
+export function getServerSupabaseInternalNoStore(): SupabaseClient | null {
+  const url = envUrl();
+  if (!url) return null;
+  const service = envServiceRole();
+  if (service) return createClient(url, service, serverClientOptions(true));
+  const anon = envAnon();
+  if (!anon) return null;
+  return createClient(url, anon, serverClientOptions(true));
 }
 
 /** Matches reads from env — documented so ops/Vercel use one name only (never embed secrets in code). */

@@ -77,6 +77,41 @@ export function isLaborUnpaidForWorkerPayroll(
   return laborPayrollDisplayStatus(status, workerPaymentId, mode) !== "paid";
 }
 
+/**
+ * Outstanding worker balance after item-level settlement has been applied.
+ *
+ * `laborOwed` and `reimbursements` must already include only unpaid/unsettled rows.
+ * Worker payments are an audit ledger; subtracting the full payments ledger again makes
+ * linked payments count twice and lets unlinked legacy payments hide still-unpaid rows.
+ */
+export function workerOutstandingBalanceFromUnsettledItems({
+  laborOwed,
+  reimbursements,
+  advances = 0,
+}: {
+  laborOwed: number;
+  reimbursements: number;
+  advances?: number;
+}): number {
+  return laborOwed + reimbursements - advances;
+}
+
+/** Map legacy worker_payments.labor_entry_ids arrays back to the payment id that settled them. */
+export function laborEntryPaymentIdMapFromWorkerPayments(
+  rows: Iterable<{ id?: unknown; labor_entry_ids?: unknown }>
+): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const row of rows) {
+    const paymentId = typeof row.id === "string" ? row.id.trim() : "";
+    if (!paymentId || !Array.isArray(row.labor_entry_ids)) continue;
+    for (const raw of row.labor_entry_ids) {
+      const laborId = typeof raw === "string" ? raw.trim() : "";
+      if (laborId && !out.has(laborId)) out.set(laborId, paymentId);
+    }
+  }
+  return out;
+}
+
 /** Same label logic as Labor daily list (session badges). */
 export function laborSessionLabel(row: {
   morning?: boolean | null;

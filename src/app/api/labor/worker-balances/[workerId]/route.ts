@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternal,
+  getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
+import { workerOutstandingBalanceFromUnsettledItems } from "@/lib/labor-balance-shared";
 import { fetchWorkerBalanceRowForDelete } from "@/lib/worker-balances-list";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +38,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
   }
 
-  const c = getServerSupabaseInternal();
+  const c = getServerSupabaseInternalNoStore();
   if (!c) {
     return NextResponse.json(
       { ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },
@@ -116,7 +117,11 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
         if (st !== "deducted") return s;
         return s + (Number(r.amount) || 0);
       }, 0);
-      const balance = laborOwed + reimbursements - payments - advances;
+      const balance = workerOutstandingBalanceFromUnsettledItems({
+        laborOwed,
+        reimbursements,
+        advances,
+      });
       const deletable =
         laborRows.length === 0 &&
         payRows.length === 0 &&
