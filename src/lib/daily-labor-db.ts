@@ -12,13 +12,29 @@ export type LaborEntryStatus = "Draft" | "Submitted" | "Approved" | "Locked";
 
 const LABOR_ENTRIES_COLS =
   "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, morning, afternoon" as const;
+const LABOR_ENTRIES_COLS_NO_PROJECT =
+  "id, worker_id, work_date, hours, cost_code, notes, cost_amount, morning, afternoon" as const;
+const LABOR_ENTRIES_COLS_NO_PROJECT_NO_AMPM =
+  "id, worker_id, work_date, hours, cost_code, notes, cost_amount" as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS =
   "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, submitted_by, approved_at, approved_by, locked_at, locked_by, morning, afternoon" as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT =
   `${LABOR_ENTRIES_COLS_WITH_STATUS}, worker_payment_id` as const;
+const LABOR_ENTRIES_COLS_WITH_STATUS_NO_PROJECT =
+  "id, worker_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, submitted_by, approved_at, approved_by, locked_at, locked_by, morning, afternoon" as const;
+const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT_NO_PROJECT =
+  `${LABOR_ENTRIES_COLS_WITH_STATUS_NO_PROJECT}, worker_payment_id` as const;
+const LABOR_ENTRIES_COLS_WITH_STATUS_NO_PROJECT_NO_AMPM =
+  "id, worker_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, submitted_by, approved_at, approved_by, locked_at, locked_by" as const;
+const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT_NO_PROJECT_NO_AMPM =
+  `${LABOR_ENTRIES_COLS_WITH_STATUS_NO_PROJECT_NO_AMPM}, worker_payment_id` as const;
 /** Columns when cost_amount column does not exist (older schema). */
 const LABOR_ENTRIES_COLS_WITHOUT_COST =
   "id, worker_id, project_id, work_date, hours, cost_code, notes, morning, afternoon" as const;
+const LABOR_ENTRIES_COLS_WITHOUT_COST_NO_PROJECT =
+  "id, worker_id, work_date, hours, cost_code, notes, morning, afternoon" as const;
+const LABOR_ENTRIES_COLS_WITHOUT_COST_NO_PROJECT_NO_AMPM =
+  "id, worker_id, work_date, hours, cost_code, notes" as const;
 
 export type DailyLaborEntryRow = {
   id: string;
@@ -220,7 +236,9 @@ export type LaborEntriesFilters = {
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /column.*does not exist|does not exist.*column|undefined column/i.test(m);
+  return /column.*does not exist|does not exist.*column|undefined column|could not find.*column|column.*schema cache|schema cache.*column/i.test(
+    m
+  );
 }
 
 function isAmbiguousRelationship(err: { message?: string } | null): boolean {
@@ -246,15 +264,74 @@ export async function getLaborEntriesWithJoins(
   const c = client();
   const statusFilter = filters.status;
   let hasWorkerPaymentIdCol = true;
+  type QueryResult = { data: unknown[] | null; error: { message?: string } | null };
 
-  function buildQuery(selectCols: string) {
+  async function buildQuery(selectCols: string, hasProjectId = true): Promise<QueryResult> {
+    if (filters.project_id && !hasProjectId) {
+      return { data: [], error: null };
+    }
     let q2 = c.from("labor_entries").select(selectCols).order("work_date", { ascending: false });
     if (filters.date_from) q2 = q2.gte("work_date", filters.date_from.slice(0, 10));
     if (filters.date_to) q2 = q2.lte("work_date", filters.date_to.slice(0, 10));
     if (filters.worker_id) q2 = q2.eq("worker_id", filters.worker_id);
-    if (filters.project_id) q2 = q2.eq("project_id", filters.project_id);
+    if (filters.project_id && hasProjectId) q2 = q2.eq("project_id", filters.project_id);
     if (statusFilter) q2 = q2.eq("status", statusFilter);
-    return q2;
+    const res = await q2;
+    return { data: res.data as unknown[] | null, error: res.error };
+  }
+
+  async function queryNoProjectColumns() {
+    usedStatusCols = true;
+    hasCostAmount = true;
+    hasWorkerPaymentIdCol = true;
+    let res = await buildQuery(LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT_NO_PROJECT, false);
+    if (
+      res.error &&
+      isMissingColumn(res.error) &&
+      /worker_payment_id/i.test(res.error.message ?? "")
+    ) {
+      hasWorkerPaymentIdCol = false;
+      res = await buildQuery(LABOR_ENTRIES_COLS_WITH_STATUS_NO_PROJECT, false);
+    }
+    if (
+      res.error &&
+      isMissingColumn(res.error) &&
+      /morning|afternoon/i.test(res.error.message ?? "")
+    ) {
+      res = await buildQuery(LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT_NO_PROJECT_NO_AMPM, false);
+      if (
+        res.error &&
+        isMissingColumn(res.error) &&
+        /worker_payment_id/i.test(res.error.message ?? "")
+      ) {
+        hasWorkerPaymentIdCol = false;
+        res = await buildQuery(LABOR_ENTRIES_COLS_WITH_STATUS_NO_PROJECT_NO_AMPM, false);
+      }
+    }
+    if (res.error && isMissingColumn(res.error)) {
+      usedStatusCols = false;
+      hasWorkerPaymentIdCol = false;
+      res = await buildQuery(LABOR_ENTRIES_COLS_NO_PROJECT, false);
+      if (
+        res.error &&
+        isMissingColumn(res.error) &&
+        /morning|afternoon/i.test(res.error.message ?? "")
+      ) {
+        res = await buildQuery(LABOR_ENTRIES_COLS_NO_PROJECT_NO_AMPM, false);
+      }
+    }
+    if (res.error && isMissingColumn(res.error)) {
+      hasCostAmount = false;
+      res = await buildQuery(LABOR_ENTRIES_COLS_WITHOUT_COST_NO_PROJECT, false);
+      if (
+        res.error &&
+        isMissingColumn(res.error) &&
+        /morning|afternoon/i.test(res.error.message ?? "")
+      ) {
+        res = await buildQuery(LABOR_ENTRIES_COLS_WITHOUT_COST_NO_PROJECT_NO_AMPM, false);
+      }
+    }
+    return res;
   }
 
   let rows: Array<Record<string, unknown>> | null = null;
@@ -279,10 +356,24 @@ export async function getLaborEntriesWithJoins(
     if (filters.date_to) qSafe = qSafe.lte("work_date", filters.date_to.slice(0, 10));
     if (filters.worker_id) qSafe = qSafe.eq("worker_id", filters.worker_id);
     if (filters.project_id) qSafe = qSafe.eq("project_id", filters.project_id);
-    const safeRes = await qSafe;
+    const safeRaw = await qSafe;
+    const safeRes: QueryResult = {
+      data: safeRaw.data as unknown[] | null,
+      error: safeRaw.error,
+    };
     error = safeRes.error;
     if (!safeRes.error) rows = safeRes.data as Array<Record<string, unknown>>;
     usedStatusCols = false;
+  }
+
+  if (error && isMissingColumn(error)) {
+    usedStatusCols = false;
+    hasWorkerPaymentIdCol = false;
+    if (/project_id/i.test(error.message ?? "")) {
+      const noProject = await queryNoProjectColumns();
+      rows = noProject.data as Array<Record<string, unknown>>;
+      error = noProject.error;
+    }
   }
 
   if (error && isMissingColumn(error)) {
@@ -296,7 +387,8 @@ export async function getLaborEntriesWithJoins(
     if (filters.date_to) qFallback = qFallback.lte("work_date", filters.date_to.slice(0, 10));
     if (filters.worker_id) qFallback = qFallback.eq("worker_id", filters.worker_id);
     if (filters.project_id) qFallback = qFallback.eq("project_id", filters.project_id);
-    const res = await qFallback;
+    const resRaw = await qFallback;
+    const res: QueryResult = { data: resRaw.data as unknown[] | null, error: resRaw.error };
     if (res.error && isMissingColumn(res.error)) {
       hasCostAmount = false;
       let qNoCost = c
@@ -307,14 +399,25 @@ export async function getLaborEntriesWithJoins(
       if (filters.date_to) qNoCost = qNoCost.lte("work_date", filters.date_to.slice(0, 10));
       if (filters.worker_id) qNoCost = qNoCost.eq("worker_id", filters.worker_id);
       if (filters.project_id) qNoCost = qNoCost.eq("project_id", filters.project_id);
-      const resNoCost = await qNoCost;
+      const resNoCostRaw = await qNoCost;
+      let resNoCost: QueryResult = {
+        data: resNoCostRaw.data as unknown[] | null,
+        error: resNoCostRaw.error,
+      };
+      if (
+        resNoCost.error &&
+        isMissingColumn(resNoCost.error) &&
+        /project_id/i.test(resNoCost.error.message ?? "")
+      ) {
+        resNoCost = await queryNoProjectColumns();
+      }
       rows = resNoCost.data as Array<Record<string, unknown>>;
       error = resNoCost.error;
     } else {
       rows = res.data as Array<Record<string, unknown>>;
       error = res.error;
     }
-  } else if (!error) {
+  } else if (!error && rows == null) {
     rows = first.data as unknown as Array<Record<string, unknown>>;
   }
 

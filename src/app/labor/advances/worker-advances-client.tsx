@@ -110,6 +110,7 @@ function AdvanceStatusChip({ status }: { status: AdvanceRow["status"] }) {
 
 export function WorkerAdvancesClient({ workers, projects }: Props) {
   const router = useRouter();
+  const [workerOptions, setWorkerOptions] = React.useState<WorkerOption[]>(workers);
   const [rows, setRows] = React.useState<AdvanceRow[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -127,6 +128,41 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
 
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    setWorkerOptions(workers);
+  }, [workers]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    const mergeWorkers = (next: WorkerOption[]) => {
+      setWorkerOptions((prev) => {
+        const byId = new Map<string, WorkerOption>();
+        for (const w of [...prev, ...next]) {
+          if (!w.id) continue;
+          byId.set(w.id, { id: w.id, name: w.name });
+        }
+        return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+      });
+    };
+    fetch("/api/labor/workers", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: unknown) => {
+        if (cancelled || !Array.isArray(data)) return;
+        mergeWorkers(
+          data
+            .map((w) => ({
+              id: String((w as { id?: unknown }).id ?? ""),
+              name: String((w as { name?: unknown }).name ?? ""),
+            }))
+            .filter((w) => w.id && w.name)
+        );
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -422,7 +458,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         aria-label="Filter by worker"
       >
         <option value="">All workers</option>
-        {workers.map((w) => (
+        {workerOptions.map((w) => (
           <option key={w.id} value={w.id}>
             {w.name}
           </option>
@@ -677,7 +713,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
               className="w-full"
             >
               <option value="">All workers</option>
-              {workers.map((w) => (
+              {workerOptions.map((w) => (
                 <option key={w.id} value={w.id}>
                   {w.name}
                 </option>
@@ -1045,7 +1081,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
       <WorkerAdvanceFormDialog
         open={editorOpen}
         mode={editorMode}
-        workers={workers}
+        workers={workerOptions}
         projects={projects}
         initialValues={
           editing
