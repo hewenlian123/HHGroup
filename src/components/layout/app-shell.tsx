@@ -16,6 +16,7 @@ import { AttachmentPreviewProvider } from "@/contexts/attachment-preview-context
 import { SystemHealthPoller } from "@/components/system-health/system-health-poller";
 import { cn } from "@/lib/utils";
 import { useIsTabletNav } from "@/hooks/use-is-tablet-nav";
+import { ScrollLockRecovery } from "./scroll-lock-recovery";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -69,6 +70,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <ToastProvider>
         <AttachmentPreviewProvider>
+          <ScrollLockRecovery />
           <div
             className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-slate-50"}
           >
@@ -85,8 +87,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <BreadcrumbOverrideProvider>
           <SystemHealthProvider>
             <LaborAddEntryProvider>
+              <ScrollLockRecovery />
               <SystemHealthPoller />
-              <div className="app-shell flex h-screen overflow-hidden bg-slate-50 dark:bg-background">
+              <div className="app-shell hh-app-shell flex min-h-0 overflow-hidden bg-slate-50 dark:bg-background">
                 {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
                 <Sidebar
                   className="hidden sm:flex shrink-0 transition-[width] duration-200"
@@ -108,14 +111,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     />
                   </SheetContent>
                 </Sheet>
-                <div data-app-main-column className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                <div
+                  data-app-main-column
+                  className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+                >
                   <Topbar
                     onOpenSidebar={() => setMobileOpen(true)}
                     onToggleSidebar={handleToggleSidebar}
                   />
                   <main
+                    data-app-scroll-root
                     className={cn(
-                      "flex-1 scroll-smooth overflow-y-auto overflow-x-hidden bg-slate-50",
+                      "min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden bg-slate-50 overscroll-y-contain [-webkit-overflow-scrolling:touch]",
                       "pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
                     )}
                   >

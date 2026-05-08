@@ -68,6 +68,8 @@ const ignorePaymentAndDeleteMutations = [
   /delete-flows-mutations\.spec\.ts$/,
 ];
 
+const mobileDashboardScrollTests = /dashboard-mobile-scroll\.spec\.ts$/;
+
 export default defineConfig({
   testDir: "./tests",
   globalSetup: "./tests/global-setup.ts",
@@ -175,6 +177,15 @@ export default defineConfig({
       timeout: 150_000,
       use: {
         ...devices["Desktop Chrome"],
+        baseURL: resolvedBase,
+      },
+    },
+    {
+      name: "mobile-safari",
+      testMatch: mobileDashboardScrollTests,
+      timeout: 150_000,
+      use: {
+        ...devices["iPhone 14"],
         baseURL: resolvedBase,
       },
     },

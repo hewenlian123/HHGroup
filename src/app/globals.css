@@ -390,6 +390,20 @@
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
   }
+
+  .hh-app-shell {
+    height: 100vh;
+    height: 100svh;
+    min-height: 100vh;
+    min-height: 100svh;
+  }
+
+  @supports (height: 100dvh) {
+    .hh-app-shell {
+      height: 100dvh;
+      min-height: 100dvh;
+    }
+  }
 }
 
 @media print {
