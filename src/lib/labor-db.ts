@@ -8,15 +8,20 @@
 import { getSupabaseClient } from "@/lib/supabase";
 
 const LABOR_ENTRIES_COLS = "id, worker_id, project_id, work_date, hours, cost_code, notes" as const;
+const LABOR_ENTRIES_COLS_NO_PROJECT = "id, worker_id, work_date, hours, cost_code, notes" as const;
 /** Columns for labor cost aggregation (includes cost_amount). Use after migration 202603101200. */
 const LABOR_ENTRIES_COLS_WITH_COST =
   "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount" as const;
 /** Columns for daily (AM/PM) insert; includes morning, afternoon when migration 202603191000 applied. */
 const LABOR_ENTRIES_DAILY_COLS =
   "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, morning, afternoon" as const;
+const LABOR_ENTRIES_DAILY_COLS_NO_PROJECT =
+  "id, worker_id, work_date, hours, cost_code, notes, cost_amount, morning, afternoon" as const;
 /** Columns for reading entries with AM/PM for pay display. */
 const LABOR_ENTRIES_COLS_WITH_AMPM =
   "id, worker_id, project_id, work_date, hours, cost_code, notes, morning, afternoon" as const;
+const LABOR_ENTRIES_COLS_WITH_AMPM_NO_PROJECT =
+  "id, worker_id, work_date, hours, cost_code, notes, morning, afternoon" as const;
 const LABOR_ENTRIES_ALLOWED = new Set<string>([
   "id",
   "worker_id",
@@ -189,7 +194,7 @@ function isMissingTable(err: { message?: string } | null): boolean {
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /column.*does not exist|does not exist.*column|undefined column|could not find.*daily_rate|daily_rate.*schema cache/i.test(
+  return /column.*does not exist|does not exist.*column|undefined column|could not find.*column|column.*schema cache|schema cache.*column/i.test(
     m
   );
 }
@@ -518,13 +523,24 @@ export async function getLaborEntriesByProjectAndDate(
 export async function getFullDayLaborEntriesByDate(workDate: string): Promise<LaborEntry[]> {
   const c = client();
   const date = workDate.slice(0, 10);
-  const { data: rows, error } = await c
+  let { data: rows, error } = await c
     .from("labor_entries")
     .select(LABOR_ENTRIES_COLS_WITH_AMPM)
     .eq("work_date", date)
     .eq("morning", true)
     .eq("afternoon", true)
     .order("id");
+  if (error && isMissingColumn(error) && /project_id/i.test(error.message ?? "")) {
+    const fallback = await c
+      .from("labor_entries")
+      .select(LABOR_ENTRIES_COLS_WITH_AMPM_NO_PROJECT)
+      .eq("work_date", date)
+      .eq("morning", true)
+      .eq("afternoon", true)
+      .order("id");
+    rows = fallback.data as typeof rows;
+    error = fallback.error as typeof error;
+  }
   if (error && isMissingColumn(error)) {
     // Older schemas without AM/PM flags can't distinguish full days; treat as none.
     return [];
@@ -607,12 +623,27 @@ export async function insertDailyLaborEntries(
   }
   if (payloads.length === 0) return [];
 
-  const colsForSelect = LABOR_ENTRIES_DAILY_COLS;
-  let { data: inserted, error } = await c
-    .from("labor_entries")
-    .insert(payloads)
-    .select(colsForSelect);
+  const insertPayloads = async (
+    payload: Array<Record<string, unknown>>,
+    cols: string
+  ): Promise<{ data: unknown[] | null; error: { message?: string } | null }> => {
+    const res = await c.from("labor_entries").insert(payload).select(cols);
+    return { data: res.data as unknown[] | null, error: res.error };
+  };
+
+  let { data: inserted, error } = await insertPayloads(payloads, LABOR_ENTRIES_DAILY_COLS);
   if (error) {
+    if (isMissingColumn(error) && /project_id/i.test(error.message ?? "")) {
+      const payloadsNoProject = payloads.map((p) => {
+        const copy = { ...p };
+        delete copy.project_id;
+        return copy;
+      });
+      const fallback = await insertPayloads(payloadsNoProject, LABOR_ENTRIES_DAILY_COLS_NO_PROJECT);
+      inserted = fallback.data as typeof inserted;
+      error = fallback.error as typeof error;
+      if (!error) return (inserted ?? []).map((r) => toLaborEntry(r as unknown as LaborEntryRow));
+    }
     if (isMissingColumn(error)) {
       const payloadsHoursOnly = payloads.map((p) => {
         const rest = { ...(p as Record<string, unknown>) };
@@ -620,27 +651,37 @@ export async function insertDailyLaborEntries(
         delete rest.afternoon;
         return rest;
       });
-      const { data: fallback, error: err2 } = await c
-        .from("labor_entries")
-        .insert(payloadsHoursOnly)
-        .select(LABOR_ENTRIES_COLS);
+      let fallback = await insertPayloads(payloadsHoursOnly, LABOR_ENTRIES_COLS);
+      if (
+        fallback.error &&
+        isMissingColumn(fallback.error) &&
+        /project_id/i.test(fallback.error.message ?? "")
+      ) {
+        const payloadsHoursOnlyNoProject = payloadsHoursOnly.map((p) => {
+          const copy = { ...p };
+          delete copy.project_id;
+          return copy;
+        });
+        fallback = await insertPayloads(payloadsHoursOnlyNoProject, LABOR_ENTRIES_COLS_NO_PROJECT);
+      }
+      const { data, error: err2 } = fallback;
       if (err2) throw new Error(err2.message ?? "Failed to save daily labor entries.");
-      return (fallback ?? []).map((row) => toLaborEntry(row as LaborEntryRow));
+      return (data ?? []).map((row) => toLaborEntry(row as unknown as LaborEntryRow));
     }
     const msg = error.message ?? "";
     if (/foreign key constraint|worker_id_fkey/i.test(msg)) {
       // One retry after syncing labor_workers from workers table.
       await ensureLaborWorkers();
-      const retry = await c.from("labor_entries").insert(payloads).select(colsForSelect);
-      inserted = retry.data as typeof inserted;
-      error = retry.error as typeof error;
-      if (!error) return (inserted ?? []).map((r) => toLaborEntry(r as LaborEntryRow));
+      const retry = await insertPayloads(payloads, LABOR_ENTRIES_DAILY_COLS);
+      inserted = retry.data;
+      error = retry.error;
+      if (!error) return (inserted ?? []).map((r) => toLaborEntry(r as unknown as LaborEntryRow));
 
       throw new Error("Selected worker(s) not found in the database.");
     }
     throw new Error(error.message ?? "Failed to save daily labor entries.");
   }
-  return (inserted ?? []).map((r) => toLaborEntry(r as LaborEntryRow));
+  return (inserted ?? []).map((r) => toLaborEntry(r as unknown as LaborEntryRow));
 }
 
 export async function getLaborEntryById(id: string): Promise<LaborEntry | null> {

@@ -214,6 +214,7 @@ export default function LaborPageClient() {
   const [workers, setWorkers] = React.useState<{ id: string; name: string }[]>([]);
   const [monthEntries, setMonthEntries] = React.useState<LaborEntryWithJoins[]>([]);
   const monthEntriesRef = React.useRef(monthEntries);
+  const entriesLoadSeqRef = React.useRef(0);
   monthEntriesRef.current = monthEntries;
   const [loadingProjects, setLoadingProjects] = React.useState(true);
   const [loadingEntries, setLoadingEntries] = React.useState(false);
@@ -266,6 +267,8 @@ export default function LaborPageClient() {
   }, []);
 
   const loadMonthEntries = React.useCallback(async () => {
+    const seq = entriesLoadSeqRef.current + 1;
+    entriesLoadSeqRef.current = seq;
     setLoadingEntries(true);
     try {
       const list = await getLaborEntriesWithJoins({
@@ -274,11 +277,15 @@ export default function LaborPageClient() {
         project_id: projectFilter || undefined,
         worker_id: workerFilter || undefined,
       });
+      if (entriesLoadSeqRef.current !== seq) return;
       setMonthEntries(list);
-    } catch {
+      setError(null);
+    } catch (e) {
+      if (entriesLoadSeqRef.current !== seq) return;
       setMonthEntries([]);
+      setError(e instanceof Error ? e.message : "Failed to load labor entries.");
     } finally {
-      setLoadingEntries(false);
+      if (entriesLoadSeqRef.current === seq) setLoadingEntries(false);
     }
   }, [monthStart, monthEnd, projectFilter, workerFilter]);
 

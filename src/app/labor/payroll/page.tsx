@@ -11,6 +11,7 @@ import {
   getWorkers,
   getProjects,
   getDailyWorkEntriesInRange,
+  getLaborEntriesWithJoins,
   getWorkerReimbursements,
   getWorkerInvoices,
   getLaborInvoices,
@@ -18,6 +19,7 @@ import {
   getWorkerAdvances,
   includeLaborInvoicesInProjectLabor,
   type DailyWorkEntry,
+  type LaborEntryWithJoins,
   type WorkerReimbursement,
   type WorkerInvoice,
 } from "@/lib/data";
@@ -57,6 +59,71 @@ import {
 import { formatCurrency } from "@/lib/formatters";
 
 type Row = PayrollSummaryComputeRow;
+
+function payrollAmountFingerprint(
+  workerId: string,
+  workDate: string,
+  projectId: string | null,
+  amount: number
+): string {
+  return [
+    workerId,
+    workDate.slice(0, 10),
+    projectId ?? "",
+    (Math.round(amount * 100) / 100).toFixed(2),
+  ].join("|");
+}
+
+function laborEntryTotal(entry: LaborEntryWithJoins): number {
+  return Number(entry.cost_amount) || 0;
+}
+
+function laborEntryToDailyWorkEntry(entry: LaborEntryWithJoins): DailyWorkEntry {
+  const amount = laborEntryTotal(entry);
+  return {
+    id: entry.id,
+    workDate: entry.work_date.slice(0, 10),
+    workerId: entry.worker_id,
+    projectId: entry.project_id,
+    dayType: "full_day",
+    dailyRate: amount,
+    otAmount: 0,
+    notes: entry.notes,
+    createdAt: entry.submitted_at ?? entry.work_date,
+  };
+}
+
+function mergePayrollLaborEntries(
+  dailyWorkEntries: DailyWorkEntry[],
+  laborEntries: LaborEntryWithJoins[]
+): DailyWorkEntry[] {
+  const ledgerEntries = laborEntries.map(laborEntryToDailyWorkEntry);
+  const ledgerKeys = new Set(
+    ledgerEntries.map((entry) =>
+      payrollAmountFingerprint(
+        entry.workerId,
+        entry.workDate,
+        entry.projectId,
+        entry.dailyRate + entry.otAmount
+      )
+    )
+  );
+
+  return [
+    ...dailyWorkEntries.filter(
+      (entry) =>
+        !ledgerKeys.has(
+          payrollAmountFingerprint(
+            entry.workerId,
+            entry.workDate,
+            entry.projectId,
+            entry.dailyRate + entry.otAmount
+          )
+        )
+    ),
+    ...ledgerEntries,
+  ];
+}
 
 const psShell =
   "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
@@ -172,6 +239,7 @@ export default function PayrollSummaryPage() {
       const [
         w,
         p,
+        dailyWorkEntries,
         laborEntries,
         reimbursementsAll,
         invoicesAll,
@@ -182,6 +250,7 @@ export default function PayrollSummaryPage() {
         getWorkers(),
         getProjects(),
         getDailyWorkEntriesInRange(fromDate, toDate),
+        getLaborEntriesWithJoins({ date_from: fromDate, date_to: toDate }),
         getWorkerReimbursements(),
         getWorkerInvoices(),
         getLaborInvoices(),
@@ -198,7 +267,10 @@ export default function PayrollSummaryPage() {
         projectFilter,
         includeLaborInvoices: includeLaborInvoicesInProjectLabor,
         workers: w,
-        laborEntries: laborEntries as DailyWorkEntry[],
+        laborEntries: mergePayrollLaborEntries(
+          dailyWorkEntries as DailyWorkEntry[],
+          laborEntries as LaborEntryWithJoins[]
+        ),
         reimbursementsAll: reimbursementsAll as WorkerReimbursement[],
         workerInvoicesAll: invoicesAll as WorkerInvoice[],
         laborInvoicesAll,

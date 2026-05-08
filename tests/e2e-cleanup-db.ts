@@ -361,6 +361,62 @@ export async function cleanupTestData(supabase: SupabaseClient): Promise<Cleanup
     else bump("expenses", e2eExpenseIds.length);
   }
 
+  /** Labor full integration spec rows. Narrow prefix; preserved seed rows are not touched. */
+  const laborFullWorkerIds = new Set<string>();
+  for (const table of ["workers", "labor_workers"] as const) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("id")
+      .like("name", "[E2E] Labor Full %");
+    if (error) {
+      warnings.push(`${table} labor-full collect: ${error.message}`);
+      continue;
+    }
+    for (const row of data ?? []) {
+      const id = (row as { id?: string }).id;
+      if (id && id !== E2E_PRESERVED_WORKER_ID) laborFullWorkerIds.add(id);
+    }
+  }
+
+  const laborFullIds = Array.from(laborFullWorkerIds);
+  const deleteByWorker = async (table: string) => {
+    if (laborFullIds.length === 0) return;
+    const { data, error: selectError } = await supabase
+      .from(table)
+      .select("id")
+      .in("worker_id", laborFullIds);
+    if (selectError) {
+      if (/schema cache|does not exist|could not find/i.test(selectError.message ?? "")) return;
+      warnings.push(`${table} labor-full collect: ${selectError.message}`);
+      return;
+    }
+    const ids = uniqueIds((data ?? []).map((row) => (row as { id: string }).id).filter(Boolean));
+    if (ids.length === 0) return;
+    const { error } = await supabase.from(table).delete().in("id", ids);
+    if (error) {
+      if (/schema cache|does not exist|could not find/i.test(error.message ?? "")) return;
+      warnings.push(`${table} labor-full cleanup: ${error.message}`);
+    } else {
+      bump(table, ids.length);
+    }
+  };
+
+  await deleteByWorker("worker_reimbursements");
+  await deleteByWorker("worker_advances");
+  await deleteByWorker("worker_invoices");
+  await deleteByWorker("labor_entries");
+  await deleteByWorker("worker_payments");
+
+  if (laborFullIds.length > 0) {
+    const { error: lwErr } = await supabase.from("labor_workers").delete().in("id", laborFullIds);
+    if (lwErr) warnings.push(`labor_workers labor-full cleanup: ${lwErr.message}`);
+    else bump("labor_workers", laborFullIds.length);
+
+    const { error: wErr } = await supabase.from("workers").delete().in("id", laborFullIds);
+    if (wErr) warnings.push(`workers labor-full cleanup: ${wErr.message}`);
+    else bump("workers", laborFullIds.length);
+  }
+
   const rqPurged = await purgeE2EReceiptQueueRows(supabase);
   if (rqPurged > 0) bump("receipt_queue", rqPurged);
 
