@@ -20,8 +20,9 @@ import { getARSummary, getOutstandingInvoices } from "@/lib/data";
 import { Banknote, AlertCircle, TrendingUp, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { amountClass, OS, TYPO } from "@/lib/typography";
+import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -286,7 +287,11 @@ export function ArClient() {
                         <TableCell className={cn("text-right", amountClass("income"))}>
                           {formatCurrency(safeNumber(inv.paidTotal))}
                         </TableCell>
-                        <TableCell className={TYPO.date}>{formatDate(inv.due_date)}</TableCell>
+                        <TableCell>
+                          <span className={LEDGER_DATE_CLASS}>
+                            {formatLedgerDate(inv.due_date)}
+                          </span>
+                        </TableCell>
                         <TableCell className={cn("text-right", amountClass("neutral"))}>
                           {formatCurrency(safeNumber(inv.balanceDue))}
                         </TableCell>

@@ -35,6 +35,7 @@ import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { WorkerAdvanceFormDialog } from "./worker-advance-form-dialog";
 import { WorkerAdvanceActionsMenu } from "./worker-advance-actions-menu";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 type WorkerOption = { id: string; name: string };
 type ProjectOption = { id: string; name: string };
@@ -867,8 +868,8 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Date
                       </dt>
-                      <dd className={cn("truncate pt-0.5", TYPO.date)}>
-                        {formatDate(row.advanceDate)}
+                      <dd className={cn("truncate pt-0.5", LEDGER_DATE_CLASS)}>
+                        {formatLedgerDate(row.advanceDate, "compact")}
                       </dd>
                     </div>
                     <div className="min-w-0">
@@ -1024,10 +1025,10 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       <td
                         className={cn(
                           "whitespace-nowrap px-3 py-2.5 text-right align-middle",
-                          TYPO.date
+                          LEDGER_DATE_CLASS
                         )}
                       >
-                        {formatDate(row.advanceDate)}
+                        {formatLedgerDate(row.advanceDate)}
                       </td>
                       <td className="px-3 py-2.5 align-middle">
                         <AdvanceStatusChip status={row.status} />

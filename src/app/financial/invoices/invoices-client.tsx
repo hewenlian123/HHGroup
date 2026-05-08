@@ -31,8 +31,9 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Pagination } from "@/components/ui/pagination";
 import { FILTER_CONTROL_CLASS } from "@/lib/native-field-classes";
 import { useToast } from "@/components/toast/toast-provider";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { amountClass, TYPO } from "@/lib/typography";
+import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -206,13 +207,17 @@ export function InvoicesClient() {
         key: "issue_date",
         header: "Issue",
         className: "tabular-nums",
-        render: (row) => <span className={TYPO.date}>{formatDate(row.issue_date)}</span>,
+        render: (row) => (
+          <span className={LEDGER_DATE_CLASS}>{formatLedgerDate(row.issue_date)}</span>
+        ),
       },
       {
         key: "due_date",
         header: "Due",
         className: "tabular-nums",
-        render: (row) => <span className={TYPO.date}>{formatDate(row.due_date)}</span>,
+        render: (row) => (
+          <span className={LEDGER_DATE_CLASS}>{formatLedgerDate(row.due_date)}</span>
+        ),
       },
       {
         key: "total",

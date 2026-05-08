@@ -12,9 +12,10 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { StatusBadge } from "@/components/status-badge";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
-import { formatCurrency, formatDate } from "@/lib/formatters";
-import { amountClass, TYPO } from "@/lib/typography";
+import { formatCurrency } from "@/lib/formatters";
+import { amountClass } from "@/lib/typography";
 import { cn } from "@/lib/utils";
+import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 type SubcontractorRow = {
   id: string;
@@ -639,7 +640,9 @@ export default function SubcontractorDetailPage() {
                     <td className="px-4 py-3 text-muted-foreground">
                       {item.size_bytes != null ? `${Math.round(item.size_bytes / 1024)} KB` : "—"}
                     </td>
-                    <td className={cn("px-4 py-3", TYPO.date)}>{formatDate(item.created_at)}</td>
+                    <td className="px-4 py-3">
+                      <span className={LEDGER_DATE_CLASS}>{formatLedgerDate(item.created_at)}</span>
+                    </td>
                     <td className="px-4 py-3 text-right">
                       <div className="inline-flex items-center gap-2">
                         <Button

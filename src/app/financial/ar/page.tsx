@@ -12,8 +12,9 @@ import {
 import { getARSummary, getOutstandingInvoices, getProjects } from "@/lib/data";
 import { Banknote, AlertCircle, TrendingUp, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCurrency, formatDate } from "@/lib/formatters";
+import { formatCurrency } from "@/lib/formatters";
 import { amountClass, OS, TYPO } from "@/lib/typography";
+import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 function getAgingBucket(dueDate: string): string {
   const today = new Date().toISOString().slice(0, 10);
@@ -135,7 +136,9 @@ export default async function ARPage() {
                         <TableCell className={cn("text-right", amountClass("income"))}>
                           {formatCurrency(inv.paidTotal)}
                         </TableCell>
-                        <TableCell className={TYPO.date}>{formatDate(inv.dueDate)}</TableCell>
+                        <TableCell>
+                          <span className={LEDGER_DATE_CLASS}>{formatLedgerDate(inv.dueDate)}</span>
+                        </TableCell>
                         <TableCell className={cn("text-right", amountClass("neutral"))}>
                           {formatCurrency(inv.balanceDue)}
                         </TableCell>

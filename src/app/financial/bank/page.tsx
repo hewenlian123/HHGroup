@@ -38,8 +38,9 @@ import { CreatableSelect } from "@/components/ui/creatable-select";
 import { Upload, CheckSquare } from "lucide-react";
 import { MatchStatusBadge, bankTransactionMatchKind } from "@/components/base";
 import { cn } from "@/lib/utils";
-import { formatCurrency, formatDate } from "@/lib/formatters";
-import { amountClass, TYPO } from "@/lib/typography";
+import { formatCurrency } from "@/lib/formatters";
+import { amountClass } from "@/lib/typography";
+import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 type TabFilter = "unmatched" | "reconciled" | "all";
 
@@ -505,7 +506,9 @@ export default function BankReconcilePage() {
                           className="h-4 w-4 rounded border-input"
                         />
                       </TableCell>
-                      <TableCell className={TYPO.date}>{formatDate(tx.date)}</TableCell>
+                      <TableCell>
+                        <span className={LEDGER_DATE_CLASS}>{formatLedgerDate(tx.date)}</span>
+                      </TableCell>
                       <TableCell className="font-medium">{tx.description}</TableCell>
                       <TableCell
                         className={cn(
@@ -612,7 +615,9 @@ export default function BankReconcilePage() {
                 {selectedTxFromList?.reconciledAt && (
                   <p className="text-sm text-muted-foreground mb-2">
                     Reconciled on{" "}
-                    <span className={TYPO.date}>{formatDate(selectedTxFromList.reconciledAt)}</span>
+                    <span className={LEDGER_DATE_CLASS}>
+                      {formatLedgerDate(selectedTxFromList.reconciledAt)}
+                    </span>
                   </p>
                 )}
                 {isLinkedToExpense && selectedTxFromList?.linkedExpenseId && (
@@ -692,8 +697,8 @@ export default function BankReconcilePage() {
                               key={s.expense.id}
                               className="flex flex-wrap items-center gap-2 border border-gray-100 p-2 text-sm dark:border-border"
                             >
-                              <span className={cn("w-20", TYPO.date)}>
-                                {formatDate(s.expense.date)}
+                              <span className={cn("w-20", LEDGER_DATE_CLASS)}>
+                                {formatLedgerDate(s.expense.date)}
                               </span>
                               <span className="font-medium min-w-[100px]">
                                 {s.expense.vendorName}
