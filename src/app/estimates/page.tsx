@@ -1,7 +1,7 @@
 import { unstable_noStore } from "next/cache";
 import { getEstimateList } from "@/lib/data";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
-import { deleteEstimateAction, createTestEstimateAction } from "./actions";
+import { deleteEstimateAction } from "./actions";
 import { EstimatesListClient } from "./estimates-list-client";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +36,6 @@ export default async function EstimatesListPage({
       saved={saved}
       errorMessage={errorMessage}
       deleteEstimateAction={deleteEstimateAction}
-      createTestEstimateAction={createTestEstimateAction}
     />
   );
 }

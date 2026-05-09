@@ -21,6 +21,7 @@ const navItems = [
   { href: "/finance", label: "Overview" },
   { href: "/financial/owner", label: "Owner dashboard" },
   { href: "/financial/accounts", label: "Accounts" },
+  { href: "/financial/estimates", label: "Estimates" },
   { href: "/financial/invoices", label: "Invoices" },
   { href: "/bills", label: "Bills" },
   { href: "/financial/expenses", label: "Expenses" },

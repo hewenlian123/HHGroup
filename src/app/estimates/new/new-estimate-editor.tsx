@@ -71,19 +71,10 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   const [categoryNames, setCategoryNames] = React.useState<Record<string, string>>({});
   const [lineItems, setLineItems] = React.useState<LineItem[]>([]);
   const [saving, setSaving] = React.useState(false);
+  const [submitAttempted, setSubmitAttempted] = React.useState(false);
+  const [formError, setFormError] = React.useState<string | null>(null);
   /** Estimate Information: read-only summary by default; Edit opens the form. */
-  const [isEditing, setIsEditing] = React.useState(false);
-  const infoSnapshotRef = React.useRef<{
-    clientName: string;
-    projectName: string;
-    address: string;
-    phone: string;
-    email: string;
-    validUntil: string;
-    salesPerson: string;
-    notes: string;
-    selectedCustomer: CustomerOption | null;
-  } | null>(null);
+  const [isEditing, setIsEditing] = React.useState(true);
   const [paymentMilestones, setPaymentMilestones] = React.useState<PaymentMilestoneLocal[]>([]);
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const [pmTitle, setPmTitle] = React.useState("");
@@ -138,6 +129,19 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
       grandTotal,
     };
   }, [lineItems, codeToType, overheadPct, profitPct, tax, discount]);
+
+  const hasValidLineItem = React.useMemo(
+    () => lineItems.some((li) => li.title.trim().length > 0 || li.description.trim().length > 0),
+    [lineItems]
+  );
+
+  const validationErrors = React.useMemo(() => {
+    const errors: string[] = [];
+    if (!clientName.trim()) errors.push("Client name is required.");
+    if (!projectName.trim()) errors.push("Project name is required.");
+    if (!hasValidLineItem) errors.push("At least one line item is required.");
+    return errors;
+  }, [clientName, hasValidLineItem, projectName]);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -248,58 +252,28 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   );
 
   const beginEstimateInfoEdit = () => {
-    infoSnapshotRef.current = {
-      clientName,
-      projectName,
-      address,
-      phone,
-      email,
-      validUntil,
-      salesPerson,
-      notes,
-      selectedCustomer: selectedCustomer ? { ...selectedCustomer } : null,
-    };
     setIsEditing(true);
   };
 
-  const cancelEstimateInfoEdit = () => {
-    const snap = infoSnapshotRef.current;
-    if (snap) {
-      setClientName(snap.clientName);
-      setProjectName(snap.projectName);
-      setAddress(snap.address);
-      setPhone(snap.phone);
-      setEmail(snap.email);
-      setValidUntil(snap.validUntil);
-      setSalesPerson(snap.salesPerson);
-      setNotes(snap.notes);
-      setSelectedCustomer(snap.selectedCustomer);
-    }
-    infoSnapshotRef.current = null;
-    setIsEditing(false);
-  };
-
   const handleSave = async () => {
+    if (saving) return;
+    setSubmitAttempted(true);
     const client = clientName.trim();
-    if (!client) {
-      toast({ title: "Missing client", description: "Client name is required", variant: "error" });
-      return;
-    }
     const project = projectName.trim();
-    if (!project) {
-      toast({
-        title: "Missing project",
-        description: "Project name is required",
-        variant: "error",
-      });
+    if (validationErrors.length > 0) {
+      const msg = validationErrors[0] ?? "Please complete the estimate.";
+      setFormError(msg);
+      setIsEditing(true);
+      toast({ title: "Estimate is incomplete", description: msg, variant: "error" });
       return;
     }
 
     setSaving(true);
+    setFormError(null);
     try {
       const res = await createEstimateWithItemsAction({
-        clientName,
-        projectName,
+        clientName: client,
+        projectName: project,
         address,
         clientPhone: phone,
         clientEmail: email,
@@ -312,14 +286,20 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         overheadPct: overheadPct / 100,
         profitPct: profitPct / 100,
         costCategoryNames: Object.keys(categoryNames).length ? categoryNames : undefined,
-        items: lineItems.map((li) => ({
-          costCode: li.costCode,
-          desc: li.description ? `${li.title}\n${li.description}` : li.title || "Line item",
-          qty: li.qty,
-          unit: li.unit,
-          unitCost: li.unitPrice,
-          markupPct: li.markupPct,
-        })),
+        items: lineItems
+          .map((li) => {
+            const title = li.title.trim();
+            const description = li.description.trim();
+            return {
+              costCode: li.costCode,
+              desc: description ? `${title || "Line item"}\n${description}` : title,
+              qty: li.qty,
+              unit: li.unit,
+              unitCost: li.unitPrice,
+              markupPct: li.markupPct,
+            };
+          })
+          .filter((li) => li.desc.trim().length > 0),
         paymentSchedule: paymentMilestones.length
           ? paymentMilestones.map((m) => ({
               title: m.title,
@@ -332,11 +312,12 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
           : undefined,
       });
       if (!res.ok || !res.estimateId) {
-        toast({ title: "Create failed", description: res.error ?? "操作失败", variant: "error" });
+        const msg = res.error ?? "操作失败";
+        setFormError(msg);
+        toast({ title: "Create failed", description: msg, variant: "error" });
         return;
       }
       setIsEditing(false);
-      infoSnapshotRef.current = null;
       toast({ title: "Created", description: "Estimate created.", variant: "success" });
       router.push(`/estimates/${res.estimateId}?created=1`);
     } finally {
@@ -391,6 +372,15 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         </div>
       </header>
 
+      {formError ? (
+        <div
+          role="alert"
+          className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
+        >
+          {formError}
+        </div>
+      ) : null}
+
       {/* B. Compact Estimate Information */}
       <section className="border border-zinc-200/70 dark:border-border rounded-lg overflow-hidden bg-background transition-all duration-200 ease-in-out">
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-200/60 dark:border-border bg-muted/20">
@@ -402,29 +392,16 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {isEditing ? (
-              <>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-md h-8"
-                  onClick={cancelEstimateInfoEdit}
-                  disabled={saving}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  className="rounded-md h-8"
-                  onClick={() => void handleSave()}
-                  disabled={saving}
-                >
-                  <SubmitSpinner loading={saving} className="mr-2" />
-                  {saving ? "Saving…" : "Save"}
-                </Button>
-              </>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="btn-outline-ghost rounded-md h-8"
+                onClick={() => setIsEditing(false)}
+                disabled={saving}
+              >
+                Hide details
+              </Button>
             ) : (
               <Button
                 type="button"
@@ -528,8 +505,12 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   onChange={(e) => setClientName(e.target.value)}
                   placeholder="Client or company name"
                   className="h-8 rounded-md text-sm"
+                  aria-invalid={submitAttempted && !clientName.trim()}
                   required
                 />
+                {submitAttempted && !clientName.trim() ? (
+                  <p className="text-xs text-rose-600">Client name is required.</p>
+                ) : null}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="projectName" className="text-xs">
@@ -541,8 +522,12 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   onChange={(e) => setProjectName(e.target.value)}
                   placeholder="Project name"
                   className="h-8 rounded-md text-sm"
+                  aria-invalid={submitAttempted && !projectName.trim()}
                   required
                 />
+                {submitAttempted && !projectName.trim() ? (
+                  <p className="text-xs text-rose-600">Project name is required.</p>
+                ) : null}
               </div>
             </div>
             <div className="space-y-1.5 pt-2 border-t border-zinc-200/60 dark:border-border">
@@ -651,12 +636,15 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             size="sm"
             className="rounded-md h-8"
             onClick={addCategory}
-            disabled={codesWithoutItems.length === 0}
+            disabled={saving || codesWithoutItems.length === 0}
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Category
           </Button>
         </div>
+        {submitAttempted && !hasValidLineItem ? (
+          <p className="px-4 pt-3 text-xs text-rose-600">At least one line item is required.</p>
+        ) : null}
         <div className="divide-y divide-zinc-200/60 dark:divide-border">
           {codesWithItems.map((code) => {
             const cc = costCodes.find((c) => c.code === code)!;
@@ -708,7 +696,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.map((row) => (
+                        {rows.map((row, rowIndex) => (
                           <React.Fragment key={row.id}>
                             <tr className="border-b border-zinc-100/50 dark:border-border/30 hover:bg-muted/20 transition-colors">
                               <td className="py-2 px-4 align-top">
@@ -717,6 +705,10 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                                   onChange={(e) => updateItem(row.id, { title: e.target.value })}
                                   className="h-8 text-sm"
                                   placeholder="Title"
+                                  aria-label={`Line item ${rowIndex + 1} title`}
+                                  aria-invalid={
+                                    submitAttempted && !row.title.trim() && !row.description.trim()
+                                  }
                                 />
                               </td>
                               <td className="py-2 px-4 align-top">
@@ -729,6 +721,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                                     updateItem(row.id, { qty: Number(e.target.value) || 0 })
                                   }
                                   className="h-8 w-20 text-right"
+                                  aria-label={`Line item ${rowIndex + 1} quantity`}
                                 />
                               </td>
                               <td className="py-2 px-4 align-top">
@@ -736,6 +729,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                                   value={row.unit}
                                   onChange={(e) => updateItem(row.id, { unit: e.target.value })}
                                   className="h-8 w-16"
+                                  aria-label={`Line item ${rowIndex + 1} unit`}
                                 />
                               </td>
                               <td className="py-2 px-4 align-top">
@@ -748,6 +742,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                                     updateItem(row.id, { unitPrice: Number(e.target.value) || 0 })
                                   }
                                   className="h-8 w-28 text-right"
+                                  aria-label={`Line item ${rowIndex + 1} unit price`}
                                 />
                               </td>
                               <td className="py-2 px-4 align-top text-muted-foreground text-xs">
@@ -767,7 +762,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                                     size="icon"
                                     className="btn-outline-ghost h-8 w-8"
                                     onClick={() => duplicateItem(row.id)}
-                                    title="Duplicate"
+                                    title="Duplicate line item"
+                                    aria-label="Duplicate line item"
+                                    disabled={saving}
                                   >
                                     <Copy className="h-4 w-4" />
                                   </Button>
@@ -777,7 +774,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                                     size="icon"
                                     className="btn-outline-ghost h-8 w-8 text-muted-foreground hover:text-destructive"
                                     onClick={() => deleteItem(row.id)}
-                                    title="Delete"
+                                    title="Remove line item"
+                                    aria-label="Remove line item"
+                                    disabled={saving}
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -806,6 +805,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                       size="sm"
                       className="btn-outline-ghost h-8 text-muted-foreground hover:text-foreground"
                       onClick={() => addLineItem(code)}
+                      disabled={saving}
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Line Item
@@ -825,7 +825,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                 size="sm"
                 className="rounded-md h-8"
                 onClick={addCategory}
-                disabled={costCodes.length === 0}
+                disabled={saving || costCodes.length === 0}
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Category
@@ -845,6 +845,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             size="sm"
             className="rounded-md h-8"
             onClick={() => setScheduleOpen(true)}
+            disabled={saving}
           >
             <Plus className="h-4 w-4 mr-2" />
             Schedule Payment
@@ -1106,14 +1107,21 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
       </section>
 
       {/* F. Actions */}
-      <div className="flex flex-wrap items-center gap-3 pt-2">
-        <Button onClick={handleSave} disabled={saving} className="rounded-md h-9 px-4">
-          <SubmitSpinner loading={saving} className="mr-2" />
-          {saving ? "Saving…" : "Save Estimate"}
-        </Button>
-        <Button type="button" variant="outline" asChild className="rounded-md h-9 px-4">
-          <Link href="/estimates">Cancel</Link>
-        </Button>
+      <div className="-mx-4 sticky bottom-0 z-20 border-t border-border/60 bg-zinc-50/95 p-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button type="button" variant="outline" asChild className="rounded-md h-9 px-4">
+            <Link href="/estimates">Cancel</Link>
+          </Button>
+          <Button onClick={handleSave} disabled={saving} className="rounded-md h-9 px-4">
+            <SubmitSpinner loading={saving} className="mr-2" />
+            {saving ? "Saving…" : "Save Estimate"}
+          </Button>
+        </div>
+        {submitAttempted && validationErrors.length > 0 ? (
+          <p className="mt-2 text-center text-xs text-rose-600 sm:text-right">
+            {validationErrors[0]}
+          </p>
+        ) : null}
       </div>
     </div>
   );

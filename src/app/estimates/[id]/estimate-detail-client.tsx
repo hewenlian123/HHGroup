@@ -13,6 +13,7 @@ import type {
   PaymentScheduleTemplate,
 } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
+import { ConfirmDialog } from "@/components/base";
 import {
   approveEstimateInlineAction,
   changeEstimateStatusInlineAction,
@@ -21,6 +22,7 @@ import {
   sendEstimateInlineAction,
   type EstimateStatus,
 } from "./actions";
+import { deleteEstimateAction } from "../actions";
 import { EstimateDetailHeader } from "./estimate-detail-header";
 import { ConvertToProjectDrawer } from "./convert-to-project-drawer";
 import { EstimateEditor } from "../_components/estimate-editor";
@@ -61,6 +63,8 @@ export function EstimateDetailClient({
   const [editing, setEditing] = React.useState(false);
   const [resetNonce, setResetNonce] = React.useState(0);
   const [convertDrawerOpen, setConvertDrawerOpen] = React.useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [deleteBusy, setDeleteBusy] = React.useState(false);
   const [infoCollapseNonce, setInfoCollapseNonce] = React.useState(0);
   const [costBreakdownCollapseNonce, setCostBreakdownCollapseNonce] = React.useState(0);
   const [pending, startTransition] = React.useTransition();
@@ -144,6 +148,37 @@ export function EstimateDetailClient({
     });
   };
 
+  const onDelete = () => {
+    if (deleteBusy || pending) return;
+    setDeleteBusy(true);
+    const formData = new FormData();
+    formData.set("estimateId", estimateId);
+    startTransition(async () => {
+      try {
+        const res = await deleteEstimateAction(formData);
+        if (!res.ok) {
+          toast({
+            title: "Could not delete estimate",
+            description: res.error ?? "Please try again.",
+            variant: "error",
+          });
+          return;
+        }
+        setDeleteConfirmOpen(false);
+        toast({ title: "Estimate deleted", variant: "success" });
+        router.push("/estimates");
+      } catch (error) {
+        toast({
+          title: "Could not delete estimate",
+          description: error instanceof Error ? error.message : "Please try again.",
+          variant: "error",
+        });
+      } finally {
+        setDeleteBusy(false);
+      }
+    });
+  };
+
   const onConvertSuccess = (projectId: string) => {
     setStatus("Converted");
     setEditing(false);
@@ -171,6 +206,7 @@ export function EstimateDetailClient({
         onApprove={() => runStatusChange("Approved", () => approveEstimateInlineAction(estimateId))}
         onReject={() => runStatusChange("Rejected", () => rejectEstimateInlineAction(estimateId))}
         onConvertClick={() => setConvertDrawerOpen(true)}
+        onDeleteClick={() => setDeleteConfirmOpen(true)}
       />
 
       <ConvertToProjectDrawer
@@ -198,6 +234,21 @@ export function EstimateDetailClient({
         editing={editing && !isLocked}
         infoCollapseNonce={infoCollapseNonce}
         costBreakdownCollapseNonce={costBreakdownCollapseNonce}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open && !deleteBusy) setDeleteConfirmOpen(false);
+        }}
+        title="Delete estimate?"
+        description={`Permanently delete ${estimateNumber}? This cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        loading={deleteBusy}
+        dismissBeforeAsync={false}
+        onConfirm={onDelete}
       />
     </>
   );

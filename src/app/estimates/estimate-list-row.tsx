@@ -1,7 +1,6 @@
 "use client";
 
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
-import { memo, useCallback, useTransition } from "react";
+import { memo, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -9,19 +8,17 @@ import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import type { EstimateListItem } from "@/lib/data";
 import { EstimateStatusBadge } from "./_components/estimate-status-badge";
 
-type DeleteAction = (formData: FormData) => Promise<void>;
-
 export function EstimateMobileList({
   list,
-  deleteAction,
+  onRequestDelete,
 }: {
   list: EstimateListItem[];
-  deleteAction: DeleteAction;
+  onRequestDelete: (row: EstimateListItem) => void;
 }) {
   return (
     <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
       {list.map((row) => (
-        <EstimateListRowMobile key={row.id} row={row} deleteAction={deleteAction} />
+        <EstimateListRowMobile key={row.id} row={row} onRequestDelete={onRequestDelete} />
       ))}
     </div>
   );
@@ -29,24 +26,14 @@ export function EstimateMobileList({
 
 const EstimateListRowMobile = memo(function EstimateListRowMobile({
   row,
-  deleteAction,
+  onRequestDelete,
 }: {
   row: EstimateListItem;
-  deleteAction: DeleteAction;
+  onRequestDelete: (row: EstimateListItem) => void;
 }) {
   const href = `/estimates/${row.id}`;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-
-  const handleDelete = useCallback(() => {
-    if (!confirm("Delete this estimate?")) return;
-    const formData = new FormData();
-    formData.set("estimateId", row.id);
-    startTransition(async () => {
-      await deleteAction(formData);
-      syncRouterNonBlocking(router);
-    });
-  }, [row.id, deleteAction, router]);
 
   return (
     <div className="flex min-h-[48px] items-center gap-2 py-2.5">
@@ -71,7 +58,12 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
         ariaLabel={`Actions for estimate ${row.number}`}
         actions={[
           { label: "View", onClick: () => startTransition(() => router.push(href)) },
-          { label: "Delete", onClick: handleDelete, destructive: true, disabled: isPending },
+          {
+            label: "Delete",
+            onClick: () => onRequestDelete(row),
+            destructive: true,
+            disabled: isPending,
+          },
         ]}
       />
     </div>
@@ -80,24 +72,14 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
 
 export const EstimateListRow = memo(function EstimateListRow({
   row,
-  deleteAction,
+  onRequestDelete,
 }: {
   row: EstimateListItem;
-  deleteAction: DeleteAction;
+  onRequestDelete: (row: EstimateListItem) => void;
 }) {
   const href = `/estimates/${row.id}`;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-
-  const handleDelete = useCallback(() => {
-    if (!confirm("Delete this estimate?")) return;
-    const formData = new FormData();
-    formData.set("estimateId", row.id);
-    startTransition(async () => {
-      await deleteAction(formData);
-      syncRouterNonBlocking(router);
-    });
-  }, [row.id, deleteAction, router]);
 
   return (
     <TableRow>
@@ -127,7 +109,12 @@ export const EstimateListRow = memo(function EstimateListRow({
           ariaLabel={`Actions for estimate ${row.number}`}
           actions={[
             { label: "View", onClick: () => startTransition(() => router.push(href)) },
-            { label: "Delete", onClick: handleDelete, destructive: true, disabled: isPending },
+            {
+              label: "Delete",
+              onClick: () => onRequestDelete(row),
+              destructive: true,
+              disabled: isPending,
+            },
           ]}
         />
       </TableCell>
