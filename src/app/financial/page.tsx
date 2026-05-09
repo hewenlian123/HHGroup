@@ -1,76 +1,70 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { getCashOverview, getARSummary } from "@/lib/data";
-import { ArrowLeft, Banknote, Receipt, CheckCircle, AlertCircle, Scale } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/formatters";
-import { amountClass, OS, TYPO } from "@/lib/typography";
-import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
-import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
+import {
+  ArrowLeft,
+  Banknote,
+  Building2,
+  CreditCard,
+  FileText,
+  Landmark,
+  Receipt,
+  WalletCards,
+} from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-const EMPTY_CASH: Awaited<ReturnType<typeof getCashOverview>> = {
-  bankBalance: 0,
-  systemExpenses: 0,
-  reconciledBankTotal: 0,
-  unreconciledBankTotal: 0,
-  cashDifference: 0,
-  recentUnreconciled: [],
-  dataLoadWarnings: [],
-};
+const financeLinks = [
+  {
+    href: "/financial/owner",
+    title: "Owner dashboard",
+    description: "Executive finance snapshot and cash-flow trends.",
+    icon: Building2,
+  },
+  {
+    href: "/financial/accounts",
+    title: "Accounts",
+    description: "Payment accounts and cash controls.",
+    icon: Landmark,
+  },
+  {
+    href: "/financial/invoices",
+    title: "Invoices",
+    description: "Create, track, and manage customer invoices.",
+    icon: FileText,
+  },
+  {
+    href: "/financial/payments",
+    title: "Payments Received",
+    description: "Record incoming customer payments.",
+    icon: CreditCard,
+  },
+  {
+    href: "/financial/deposits",
+    title: "Deposits",
+    description: "Review deposits created from received payments.",
+    icon: Banknote,
+  },
+  {
+    href: "/bills",
+    title: "Bills",
+    description: "Track AP bills and vendor obligations.",
+    icon: Receipt,
+  },
+  {
+    href: "/financial/expenses",
+    title: "Expenses",
+    description: "Manage company expenses and receipt workflows.",
+    icon: WalletCards,
+  },
+] as const;
 
-const EMPTY_AR: Awaited<ReturnType<typeof getARSummary>> = {
-  totalAR: 0,
-  overdueAR: 0,
-  paidThisMonth: 0,
-};
-
-export default async function FinancialPage() {
-  const [cashResult, arResult] = await Promise.allSettled([getCashOverview(), getARSummary()]);
-  let cash: Awaited<ReturnType<typeof getCashOverview>> = { ...EMPTY_CASH };
-  let ar: Awaited<ReturnType<typeof getARSummary>> = { ...EMPTY_AR };
-  const dataLoadWarnings: string[] = [];
-
-  if (cashResult.status === "fulfilled") {
-    cash = cashResult.value;
-    dataLoadWarnings.push(...(cash.dataLoadWarnings ?? []));
-  } else {
-    logServerPageDataError("financial cash overview", cashResult.reason);
-    dataLoadWarnings.push(serverDataLoadWarning(cashResult.reason, "cash overview"));
-  }
-
-  if (arResult.status === "fulfilled") {
-    ar = arResult.value;
-  } else {
-    logServerPageDataError("financial AR summary", arResult.reason);
-    dataLoadWarnings.push(serverDataLoadWarning(arResult.reason, "AR summary"));
-  }
-
-  const kpis = [
-    { label: "Bank Balance", value: cash.bankBalance, icon: Banknote },
-    { label: "System Expenses", value: cash.systemExpenses, icon: Receipt },
-    { label: "Reconciled Total", value: cash.reconciledBankTotal, icon: CheckCircle },
-    { label: "Unreconciled Total", value: cash.unreconciledBankTotal, icon: AlertCircle },
-    { label: "Cash Difference", value: cash.cashDifference, icon: Scale },
-    { label: "AR Balance", value: ar.totalAR, icon: Banknote },
-    { label: "Overdue AR", value: ar.overdueAR, icon: AlertCircle },
-  ];
-
+export default function FinancialPage() {
   return (
     <div className="page-container page-stack py-6">
       <PageHeader
         title="Financial"
-        description="Financial overview and reports."
+        description="Choose a finance workspace."
         actions={
           <Button asChild variant="outline" size="sm" className="rounded-sm">
             <Link href="/finance">
@@ -80,94 +74,45 @@ export default async function FinancialPage() {
           </Button>
         }
       />
+
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border/60 pb-3 text-sm text-muted-foreground">
         <Link href="/financial/owner" className="hover:text-foreground">
           Owner dashboard
+        </Link>
+        <Link href="/financial/accounts" className="hover:text-foreground">
+          Accounts
         </Link>
         <Link href="/financial/dashboard" className="hover:text-foreground">
           Company Dashboard
         </Link>
       </div>
-      {dataLoadWarnings.length > 0 ? (
-        <div className="space-y-2 border-b border-border/60 pb-3 text-sm text-muted-foreground">
-          {dataLoadWarnings.map((warning) => (
-            <p key={warning} role="status">
-              {warning}
-            </p>
-          ))}
-        </div>
-      ) : null}
 
       <section>
-        <h2 className={cn("mb-4", TYPO.sectionLabel)}>Cash overview</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {kpis.map(({ label, value, icon: Icon }) => (
-            <div key={label} className={cn("p-4", OS.card)}>
-              <div className="flex items-center justify-between gap-2">
-                <span className={TYPO.kpiLabel}>{label}</span>
-                <span className={OS.iconWell}>
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
+        <h2 className="mb-4 text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500">
+          Finance overview
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {financeLinks.map(({ href, title, description, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="group rounded-md border border-slate-900/[0.06] bg-white/[0.92] p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition hover:-translate-y-px hover:border-slate-900/[0.1] hover:shadow-[0_8px_32px_rgba(15,23,42,0.07)] dark:border-border/60 dark:bg-card/90"
+            >
+              <div className="flex items-start gap-3">
+                <span className="rounded-md border border-slate-900/[0.06] bg-slate-50/75 p-2 text-zinc-500 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-400">
+                  <Icon className="h-4 w-4" aria-hidden />
                 </span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold tracking-tight text-zinc-950 group-hover:text-foreground dark:text-zinc-50">
+                    {title}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-500 dark:text-zinc-400">
+                    {description}
+                  </p>
+                </div>
               </div>
-              <p className={cn("mt-3 text-xl", amountClass(value < 0 ? "expense" : "neutral"))}>
-                {formatCurrency(value)}
-              </p>
-            </div>
+            </Link>
           ))}
-        </div>
-
-        {cash.cashDifference !== 0 && (
-          <div className="mt-4 border-b border-amber-400/40 pb-3 dark:border-amber-600/40">
-            <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
-              Cash mismatch detected
-            </p>
-          </div>
-        )}
-
-        <div className="mt-6">
-          <h3 className={cn("mb-3", TYPO.sectionLabel)}>Recent unreconciled transactions</h3>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cash.recentUnreconciled.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="py-6 text-center text-muted-foreground">
-                      No unreconciled transactions
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  cash.recentUnreconciled.map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell>
-                        <span className={LEDGER_DATE_CLASS}>{formatLedgerDate(tx.date)}</span>
-                      </TableCell>
-                      <TableCell className={TYPO.primaryName}>{tx.description}</TableCell>
-                      <TableCell
-                        className={cn(
-                          "text-right",
-                          amountClass(tx.amount >= 0 ? "income" : "expense")
-                        )}
-                      >
-                        {formatCurrency(tx.amount)}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          {cash.recentUnreconciled.length > 0 && (
-            <Button asChild variant="outline" size="sm" className="mt-3 rounded-sm">
-              <Link href="/financial/bank">Reconcile in Bank</Link>
-            </Button>
-          )}
         </div>
       </section>
     </div>
