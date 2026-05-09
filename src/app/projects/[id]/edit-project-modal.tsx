@@ -21,55 +21,39 @@ const LBL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
 const FIELD =
   "h-10 rounded-lg border border-gray-100 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
 
-type CustomerOption = { id: string; name: string };
-
 /** Payload passed to parent for optimistic UI + background server action. */
 export type ProjectEditSavePatch = {
   name: string;
+  client: string;
   address: string;
   budget: number;
-  customerId: string | null;
-  /** Resolved label for overview customer line; null when cleared. */
-  customerName: string | null;
 };
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Pick<Project, "id" | "name" | "address" | "budget" | "customerId">;
+  project: Pick<Project, "id" | "name" | "client" | "address" | "budget" | "customerId">;
   /** Synchronous: parent applies optimistic UI and closes modal; runs server work in background. */
   onSave: (patch: ProjectEditSavePatch) => void;
 };
 
 export function EditProjectModal({ open, onOpenChange, project, onSave }: Props) {
   const [name, setName] = React.useState(project.name ?? "");
+  const [client, setClient] = React.useState(project.client ?? "");
   const [address, setAddress] = React.useState(project.address ?? "");
   const [budget, setBudget] = React.useState(String(project.budget ?? ""));
-  const [customerId, setCustomerId] = React.useState<string | null>(project.customerId ?? null);
-  const [customers, setCustomers] = React.useState<CustomerOption[]>([]);
-  const [customersLoading, setCustomersLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (open) {
       setName(project.name ?? "");
+      setClient(project.client ?? "");
       setAddress(project.address ?? "");
       setBudget(String(project.budget ?? ""));
-      setCustomerId(project.customerId ?? null);
       setError(null);
     }
-  }, [open, project.name, project.address, project.budget, project.customerId]);
-
-  React.useEffect(() => {
-    if (!open) return;
-    setCustomersLoading(true);
-    fetch("/api/customers", { cache: "no-store" })
-      .then((r) => r.json())
-      .then((data) => setCustomers((data.customers ?? []) as CustomerOption[]))
-      .catch(() => setCustomers([]))
-      .finally(() => setCustomersLoading(false));
-  }, [open]);
+  }, [open, project.name, project.client, project.address, project.budget]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,14 +64,21 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
       setError("Project name is required.");
       return;
     }
+    const clientTrim = client.trim();
+    if (!clientTrim) {
+      setError("Client name is required.");
+      return;
+    }
+    const addressTrim = address.trim();
+    if (!addressTrim) {
+      setError("Project address is required.");
+      return;
+    }
     const budgetNum = Number(budget);
     if (!Number.isFinite(budgetNum) || budgetNum < 0) {
       setError("Budget must be 0 or greater.");
       return;
     }
-
-    const cid = customerId?.trim() || null;
-    const customerName = cid ? (customers.find((c) => c.id === cid)?.name ?? null) : null;
 
     flushSync(() => {
       setSaving(true);
@@ -97,10 +88,9 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
     try {
       onSave({
         name: nameTrim,
-        address: address.trim(),
+        client: clientTrim,
+        address: addressTrim,
         budget: budgetNum,
-        customerId: cid,
-        customerName,
       });
     } catch {
       setError("Something went wrong. Try again.");
@@ -129,23 +119,16 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
             />
           </div>
           <div>
-            <label htmlFor="edit-project-customer" className={LBL}>
-              Customer
+            <label htmlFor="edit-project-client" className={LBL}>
+              Client
             </label>
-            <select
-              id="edit-project-customer"
-              value={customerId ?? ""}
-              onChange={(e) => setCustomerId(e.target.value || null)}
-              className={cn("w-full px-3", FIELD)}
-              disabled={saving || customersLoading}
-            >
-              <option value="">No customer</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <Input
+              id="edit-project-client"
+              value={client}
+              onChange={(e) => setClient(e.target.value)}
+              className={FIELD}
+              disabled={saving}
+            />
           </div>
           <div>
             <label htmlFor="edit-project-address" className={LBL}>
