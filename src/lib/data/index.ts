@@ -2091,13 +2091,30 @@ export interface CashOverview {
   unreconciledBankTotal: number;
   cashDifference: number;
   recentUnreconciled: BankTransaction[];
+  dataLoadWarnings?: string[];
 }
 
 export async function getCashOverview(): Promise<CashOverview> {
-  const [txs, systemExpenses] = await Promise.all([
+  const [txsResult, systemExpensesResult] = await Promise.allSettled([
     bankTxDb.getBankTransactions(),
     expensesDb.getTotalExpenses(),
   ]);
+  const dataLoadWarnings: string[] = [];
+  const txs = txsResult.status === "fulfilled" ? txsResult.value : [];
+  const systemExpenses =
+    systemExpensesResult.status === "fulfilled" ? systemExpensesResult.value : 0;
+  if (txsResult.status === "rejected") {
+    const message =
+      txsResult.reason instanceof Error ? txsResult.reason.message : String(txsResult.reason);
+    dataLoadWarnings.push(`Bank transaction data is unavailable: ${message}`);
+  }
+  if (systemExpensesResult.status === "rejected") {
+    const message =
+      systemExpensesResult.reason instanceof Error
+        ? systemExpensesResult.reason.message
+        : String(systemExpensesResult.reason);
+    dataLoadWarnings.push(`Expense total data is unavailable: ${message}`);
+  }
   const bankBalance = txs.reduce((s, t) => s + t.amount, 0);
   const reconciledBankTotal = txs
     .filter((t) => t.status === "reconciled")
@@ -2114,8 +2131,12 @@ export async function getCashOverview(): Promise<CashOverview> {
     systemExpenses,
     reconciledBankTotal,
     unreconciledBankTotal,
-    cashDifference: bankBalance - systemExpenses,
+    cashDifference:
+      txsResult.status === "fulfilled" && systemExpensesResult.status === "fulfilled"
+        ? bankBalance - systemExpenses
+        : 0,
     recentUnreconciled,
+    dataLoadWarnings,
   };
 }
 
