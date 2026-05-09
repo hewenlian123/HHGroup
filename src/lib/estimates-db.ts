@@ -350,42 +350,50 @@ export async function createEstimateWithItems(payload: {
     profitPct: payload.profitPct,
   });
   const c = client();
-  if (payload.categoryNames && Object.keys(payload.categoryNames).length > 0) {
-    let orderIdx = 0;
-    for (const [cost_code, display_name] of Object.entries(payload.categoryNames)) {
-      await c
-        .from("estimate_categories")
-        .upsert(
-          { estimate_id: id, cost_code, display_name, order_index: orderIdx++ },
-          { onConflict: "estimate_id,cost_code" }
-        );
+  try {
+    if (payload.categoryNames && Object.keys(payload.categoryNames).length > 0) {
+      let orderIdx = 0;
+      for (const [cost_code, display_name] of Object.entries(payload.categoryNames)) {
+        const { error } = await c
+          .from("estimate_categories")
+          .upsert(
+            { estimate_id: id, cost_code, display_name, order_index: orderIdx++ },
+            { onConflict: "estimate_id,cost_code" }
+          );
+        if (error) throw new Error(error.message ?? "Failed to create estimate category.");
+      }
     }
-  }
-  for (const it of payload.items) {
-    await c.from("estimate_items").insert({
-      estimate_id: id,
-      cost_code: it.costCode,
-      desc: it.desc,
-      qty: it.qty,
-      unit: it.unit,
-      unit_cost: it.unitCost,
-      markup_pct: it.markupPct,
-    });
-  }
-  if (payload.paymentSchedule && payload.paymentSchedule.length > 0) {
-    for (let idx = 0; idx < payload.paymentSchedule.length; idx++) {
-      const ps = payload.paymentSchedule[idx];
-      await c.from("estimate_payment_schedule").insert({
+    for (const it of payload.items) {
+      const { error } = await c.from("estimate_items").insert({
         estimate_id: id,
-        sort_order: idx,
-        title: ps.title,
-        amount_type: ps.amountType,
-        value: ps.value,
-        due_rule: ps.dueRule,
-        due_date: ps.dueDate ?? null,
-        notes: ps.notes ?? null,
+        cost_code: it.costCode,
+        desc: it.desc,
+        qty: it.qty,
+        unit: it.unit,
+        unit_cost: it.unitCost,
+        markup_pct: it.markupPct,
       });
+      if (error) throw new Error(error.message ?? "Failed to create estimate item.");
     }
+    if (payload.paymentSchedule && payload.paymentSchedule.length > 0) {
+      for (let idx = 0; idx < payload.paymentSchedule.length; idx++) {
+        const ps = payload.paymentSchedule[idx];
+        const { error } = await c.from("estimate_payment_schedule").insert({
+          estimate_id: id,
+          sort_order: idx,
+          title: ps.title,
+          amount_type: ps.amountType,
+          value: ps.value,
+          due_rule: ps.dueRule,
+          due_date: ps.dueDate ?? null,
+          notes: ps.notes ?? null,
+        });
+        if (error) throw new Error(error.message ?? "Failed to create payment schedule.");
+      }
+    }
+  } catch (error) {
+    await c.from("estimates").delete().eq("id", id);
+    throw error;
   }
   return id;
 }

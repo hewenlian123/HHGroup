@@ -41,9 +41,24 @@ export async function createEstimateWithItemsAction(
   payload: CreateEstimatePayload
 ): Promise<{ ok: boolean; estimateId?: string; error?: string }> {
   const clientName = payload.clientName.trim();
-  if (!clientName) return { ok: false, error: "Client name is required" };
+  if (!clientName) return { ok: false, error: "Client name is required." };
   const projectName = payload.projectName.trim();
-  if (!projectName) return { ok: false, error: "Project name is required" };
+  if (!projectName) return { ok: false, error: "Project name is required." };
+  const items = (payload.items ?? [])
+    .map((i) => ({
+      ...i,
+      costCode: i.costCode.trim(),
+      desc: i.desc.trim(),
+      unit: i.unit?.trim() || "EA",
+      qty: Number(i.qty) || 0,
+      unitCost: Number(i.unitCost) || 0,
+      markupPct: Number(i.markupPct) || 0,
+    }))
+    .filter((i) => i.costCode && i.desc.length > 0);
+
+  if (items.length === 0) {
+    return { ok: false, error: "At least one line item is required." };
+  }
 
   try {
     const id = await createEstimateWithItems({
@@ -61,13 +76,13 @@ export async function createEstimateWithItemsAction(
       overheadPct: payload.overheadPct ?? 0.05,
       profitPct: payload.profitPct ?? 0.1,
       costCategoryNames: payload.costCategoryNames,
-      items: payload.items.map((i) => ({
+      items: items.map((i) => ({
         costCode: i.costCode,
-        desc: i.desc.trim() || "Line item",
-        qty: Number(i.qty) || 0,
-        unit: i.unit?.trim() || "EA",
-        unitCost: Number(i.unitCost) || 0,
-        markupPct: Number(i.markupPct) ?? 0.1,
+        desc: i.desc,
+        qty: i.qty,
+        unit: i.unit,
+        unitCost: i.unitCost,
+        markupPct: i.markupPct,
       })),
       paymentSchedule: payload.paymentSchedule?.length ? payload.paymentSchedule : undefined,
     });

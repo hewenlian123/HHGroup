@@ -1237,6 +1237,7 @@ function LineItemRow({
               onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
               className="h-8 text-sm"
               placeholder="Title"
+              aria-label="Line item title"
             />
           )}
         </td>
@@ -1253,6 +1254,7 @@ function LineItemRow({
               onChange={(e) => setQty(Number(e.target.value) || 0)}
               onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
               className="h-8 w-16 text-right"
+              aria-label="Line item quantity"
             />
           )}
         </td>
@@ -1267,6 +1269,7 @@ function LineItemRow({
               onChange={(e) => setUnit(e.target.value)}
               onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
               className="h-8 w-14"
+              aria-label="Line item unit"
             />
           )}
         </td>
@@ -1283,6 +1286,7 @@ function LineItemRow({
               onChange={(e) => setUnitCost(Number(e.target.value) || 0)}
               onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
               className="h-8 w-20 text-right"
+              aria-label="Line item unit cost"
             />
           )}
         </td>
@@ -1300,6 +1304,7 @@ function LineItemRow({
                 variant="outline"
                 size="icon"
                 className="btn-outline-ghost h-8 w-8"
+                aria-label="Duplicate line item"
               >
                 <Copy className="h-4 w-4" />
               </Button>
@@ -1312,6 +1317,7 @@ function LineItemRow({
                 variant="outline"
                 size="icon"
                 className="btn-outline-ghost h-8 w-8 text-destructive"
+                aria-label="Remove line item"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

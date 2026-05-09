@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { FlaskConical, Plus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,9 @@ import { EstimateListRow, EstimateMobileList } from "./estimate-list-row";
 import { EmptyState } from "@/components/empty-state";
 import { EstimateSuccessBanner } from "./[id]/estimate-success-banner";
 import type { EstimateListItem, EstimateStatus } from "@/lib/estimates-db";
+import { ConfirmDialog } from "@/components/base";
+import { useToast } from "@/components/toast/toast-provider";
+import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import {
   MobileEmptyState,
   MobileFabPlus,
@@ -21,7 +25,7 @@ import {
 } from "@/components/mobile/mobile-list-chrome";
 import { cn } from "@/lib/utils";
 
-type DeleteAction = (formData: FormData) => Promise<void>;
+type DeleteAction = (formData: FormData) => Promise<{ ok: boolean; error?: string }>;
 
 export function EstimatesListClient({
   list,
@@ -29,40 +33,77 @@ export function EstimatesListClient({
   saved,
   errorMessage,
   deleteEstimateAction,
-  createTestEstimateAction,
 }: {
   list: EstimateListItem[];
   loadWarning: string | null;
   saved?: string;
   errorMessage: string | null;
   deleteEstimateAction: DeleteAction;
-  createTestEstimateAction: () => Promise<void>;
 }) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [rows, setRows] = React.useState(list);
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<EstimateStatus | "all">("all");
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<EstimateListItem | null>(null);
+  const [deleteBusy, setDeleteBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    setRows(list);
+  }, [list]);
 
   const activeFilterCount = statusFilter !== "all" ? 1 : 0;
 
   const filtered = React.useMemo(() => {
-    let rows = list;
+    let nextRows = [...rows];
     if (statusFilter !== "all") {
-      rows = rows.filter((e) => e.status === statusFilter);
+      nextRows = nextRows.filter((e) => e.status === statusFilter);
     }
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
+    if (!q) return nextRows;
+    return nextRows.filter(
       (e) =>
         e.number.toLowerCase().includes(q) ||
         e.client.toLowerCase().includes(q) ||
         e.project.toLowerCase().includes(q)
     );
-  }, [list, search, statusFilter]);
+  }, [rows, search, statusFilter]);
 
-  const totalEstimates = list.length;
-  const draftCount = list.filter((e) => e.status === "Draft").length;
-  const sentCount = list.filter((e) => e.status === "Sent").length;
-  const totalValue = list.reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+  const totalEstimates = rows.length;
+  const draftCount = rows.filter((e) => e.status === "Draft").length;
+  const sentCount = rows.filter((e) => e.status === "Sent").length;
+  const totalValue = rows.reduce((sum, e) => sum + (Number(e.total) || 0), 0);
+
+  const handleConfirmDelete = React.useCallback(async () => {
+    if (!deleteTarget || deleteBusy) return;
+    setDeleteBusy(true);
+    try {
+      const formData = new FormData();
+      formData.set("estimateId", deleteTarget.id);
+      const result = await deleteEstimateAction(formData);
+      if (!result.ok) {
+        toast({
+          title: "Could not delete estimate",
+          description: result.error ?? "Please try again.",
+          variant: "error",
+        });
+        return;
+      }
+      setRows((prev) => prev.filter((row) => row.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      toast({ title: "Estimate deleted", variant: "success" });
+      syncRouterNonBlocking(router);
+    } catch (error) {
+      toast({
+        title: "Could not delete estimate",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setDeleteBusy(false);
+    }
+  }, [deleteBusy, deleteEstimateAction, deleteTarget, router, toast]);
 
   return (
     <div
@@ -79,18 +120,7 @@ export function EstimatesListClient({
           description="Manage cost-code estimates."
           actions={
             <div className="flex items-center gap-2">
-              <form action={createTestEstimateAction}>
-                <Button type="submit" variant="outline" size="sm" className="rounded-sm">
-                  <FlaskConical className="mr-2 h-4 w-4" />
-                  Create test estimate
-                </Button>
-              </form>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="btn-outline-ghost rounded-sm text-foreground hover:bg-[#F9FAFB] dark:hover:bg-muted/30"
-              >
+              <Button asChild size="sm" className="rounded-sm">
                 <Link href="/estimates/new">
                   <Plus className="mr-2 h-4 w-4" />
                   New Estimate
@@ -116,7 +146,7 @@ export function EstimatesListClient({
         </p>
       )}
 
-      {list.length > 0 ? (
+      {rows.length > 0 ? (
         <div className="hidden grid-cols-1 gap-[10px] sm:grid-cols-2 lg:grid-cols-4 md:grid">
           <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
             <p className="kpi-metric-label">Total Estimates</p>
@@ -143,7 +173,7 @@ export function EstimatesListClient({
         </div>
       ) : null}
 
-      {list.length > 0 ? (
+      {rows.length > 0 ? (
         <>
           <MobileSearchFiltersRow
             filterSheetOpen={filtersOpen}
@@ -205,7 +235,7 @@ export function EstimatesListClient({
         </>
       ) : null}
 
-      {list.length === 0 ? (
+      {rows.length === 0 ? (
         <>
           <MobileEmptyState
             icon={<FlaskConical className="h-8 w-8 opacity-80" aria-hidden />}
@@ -245,7 +275,7 @@ export function EstimatesListClient({
         </p>
       ) : (
         <>
-          <EstimateMobileList list={filtered} deleteAction={deleteEstimateAction} />
+          <EstimateMobileList list={filtered} onRequestDelete={setDeleteTarget} />
           <div className="hidden md:block">
             <Table className="min-w-[640px] lg:min-w-0">
               <TableHeader>
@@ -261,13 +291,31 @@ export function EstimatesListClient({
               </TableHeader>
               <TableBody>
                 {filtered.map((row) => (
-                  <EstimateListRow key={row.id} row={row} deleteAction={deleteEstimateAction} />
+                  <EstimateListRow key={row.id} row={row} onRequestDelete={setDeleteTarget} />
                 ))}
               </TableBody>
             </Table>
           </div>
         </>
       )}
+      <ConfirmDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => {
+          if (!open && !deleteBusy) setDeleteTarget(null);
+        }}
+        title="Delete estimate?"
+        description={
+          deleteTarget
+            ? `Permanently delete ${deleteTarget.number}? This cannot be undone.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        loading={deleteBusy}
+        dismissBeforeAsync={false}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 }

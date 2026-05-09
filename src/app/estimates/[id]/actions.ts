@@ -247,6 +247,12 @@ export async function saveEstimateMetaInlineAction(
     const notes = (formData.get("notes") as string)?.trim();
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
     const markupNum = markupPct != null && markupPct !== "" ? Number(markupPct) / 100 : undefined;
+    if (formData.has("clientName") && !clientName) {
+      return { ok: false, error: "Client name is required." };
+    }
+    if (formData.has("projectName") && !projectName) {
+      return { ok: false, error: "Project name is required." };
+    }
     const ok = await updateEstimateMeta(estimateId, {
       ...(clientName != null
         ? { client: { name: clientName, ...(address != null ? { address } : {}) } }
