@@ -15,11 +15,46 @@ import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
 import { amountClass, OS, TYPO } from "@/lib/typography";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 
 export const dynamic = "force-dynamic";
 
+const EMPTY_CASH: Awaited<ReturnType<typeof getCashOverview>> = {
+  bankBalance: 0,
+  systemExpenses: 0,
+  reconciledBankTotal: 0,
+  unreconciledBankTotal: 0,
+  cashDifference: 0,
+  recentUnreconciled: [],
+  dataLoadWarnings: [],
+};
+
+const EMPTY_AR: Awaited<ReturnType<typeof getARSummary>> = {
+  totalAR: 0,
+  overdueAR: 0,
+  paidThisMonth: 0,
+};
+
 export default async function FinancialPage() {
-  const [cash, ar] = await Promise.all([getCashOverview(), getARSummary()]);
+  const [cashResult, arResult] = await Promise.allSettled([getCashOverview(), getARSummary()]);
+  let cash: Awaited<ReturnType<typeof getCashOverview>> = { ...EMPTY_CASH };
+  let ar: Awaited<ReturnType<typeof getARSummary>> = { ...EMPTY_AR };
+  const dataLoadWarnings: string[] = [];
+
+  if (cashResult.status === "fulfilled") {
+    cash = cashResult.value;
+    dataLoadWarnings.push(...(cash.dataLoadWarnings ?? []));
+  } else {
+    logServerPageDataError("financial cash overview", cashResult.reason);
+    dataLoadWarnings.push(serverDataLoadWarning(cashResult.reason, "cash overview"));
+  }
+
+  if (arResult.status === "fulfilled") {
+    ar = arResult.value;
+  } else {
+    logServerPageDataError("financial AR summary", arResult.reason);
+    dataLoadWarnings.push(serverDataLoadWarning(arResult.reason, "AR summary"));
+  }
 
   const kpis = [
     { label: "Bank Balance", value: cash.bankBalance, icon: Banknote },
@@ -42,6 +77,15 @@ export default async function FinancialPage() {
           Company Dashboard
         </Link>
       </div>
+      {dataLoadWarnings.length > 0 ? (
+        <div className="space-y-2 border-b border-border/60 pb-3 text-sm text-muted-foreground">
+          {dataLoadWarnings.map((warning) => (
+            <p key={warning} role="status">
+              {warning}
+            </p>
+          ))}
+        </div>
+      ) : null}
 
       <section>
         <h2 className={cn("mb-4", TYPO.sectionLabel)}>Cash overview</h2>
