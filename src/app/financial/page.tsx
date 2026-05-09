@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { getCashOverview, getARSummary } from "@/lib/data";
-import { Banknote, Receipt, CheckCircle, AlertCircle, Scale } from "lucide-react";
+import { ArrowLeft, Banknote, Receipt, CheckCircle, AlertCircle, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
 import { amountClass, OS, TYPO } from "@/lib/typography";
@@ -68,7 +68,18 @@ export default async function FinancialPage() {
 
   return (
     <div className="page-container page-stack py-6">
-      <PageHeader title="Financial" description="Financial overview and reports." />
+      <PageHeader
+        title="Financial"
+        description="Financial overview and reports."
+        actions={
+          <Button asChild variant="outline" size="sm" className="rounded-sm">
+            <Link href="/finance">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Finance
+            </Link>
+          </Button>
+        }
+      />
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-border/60 pb-3 text-sm text-muted-foreground">
         <Link href="/financial/owner" className="hover:text-foreground">
           Owner dashboard
