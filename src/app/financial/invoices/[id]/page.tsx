@@ -15,12 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import { ConfirmDialog } from "@/components/base";
 import {
   getProjectById,
   getPaymentsByInvoiceId,
@@ -37,22 +33,33 @@ import {
 import {
   ArrowLeft,
   Send,
-  CreditCard,
   FileText,
   Trash2,
-  ChevronDown,
   Ban,
   CircleDollarSign,
   RotateCcw,
+  Pencil,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { deleteInvoiceAction } from "../actions";
+import { deleteInvoiceAction, updateInvoiceAction } from "../actions";
 import { ReceivePaymentModal } from "@/app/financial/payments/receive-payment-modal";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { useToast } from "@/components/toast/toast-provider";
 import { voidInvoiceFromClient } from "@/lib/invoice-void-client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+
+type EditLineDraft = {
+  description: string;
+  qty: number;
+  unitPrice: number;
+};
+
+function safeNumber(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
 
 export default function InvoiceDetailPage() {
   const params = useParams();
@@ -75,9 +82,21 @@ export default function InvoiceDetailPage() {
   const [paymentMethod, setPaymentMethod] = React.useState("ACH");
   const [paymentMemo, setPaymentMemo] = React.useState("");
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [voidConfirmOpen, setVoidConfirmOpen] = React.useState(false);
   const [revertOpen, setRevertOpen] = React.useState(false);
   const [actionBusy, setActionBusy] = React.useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = React.useState<string | null>(null);
+  const [editing, setEditing] = React.useState(false);
+  const [editSaving, setEditSaving] = React.useState(false);
+  const [editAttempted, setEditAttempted] = React.useState(false);
+  const [editError, setEditError] = React.useState<string | null>(null);
+  const [editClientName, setEditClientName] = React.useState("");
+  const [editIssueDate, setEditIssueDate] = React.useState("");
+  const [editDueDate, setEditDueDate] = React.useState("");
+  const [editTaxPct, setEditTaxPct] = React.useState(0);
+  const [editNotes, setEditNotes] = React.useState("");
+  const [editLines, setEditLines] = React.useState<EditLineDraft[]>([]);
 
   const refresh = React.useCallback(async () => {
     if (!id) return;
@@ -108,7 +127,8 @@ export default function InvoiceDetailPage() {
       searchParams.get("recordPayment") === "1" &&
       invoice &&
       invoice.computedStatus !== "Void" &&
-      invoice.computedStatus !== "Paid"
+      invoice.computedStatus !== "Paid" &&
+      invoice.computedStatus !== "Draft"
     ) {
       setShowPaymentModal(true);
     }
@@ -138,10 +158,108 @@ export default function InvoiceDetailPage() {
 
   const { toast } = useToast();
 
+  const resetEditDraft = React.useCallback((source: InvoiceWithDerived) => {
+    setEditClientName(source.clientName ?? "");
+    setEditIssueDate((source.issueDate ?? "").slice(0, 10));
+    setEditDueDate((source.dueDate ?? "").slice(0, 10));
+    setEditTaxPct(safeNumber(source.taxPct ?? 0));
+    setEditNotes(source.notes ?? "");
+    setEditLines(
+      source.lineItems.length > 0
+        ? source.lineItems.map((line) => ({
+            description: line.description ?? "",
+            qty: safeNumber(line.qty),
+            unitPrice: safeNumber(line.unitPrice),
+          }))
+        : [{ description: "", qty: 1, unitPrice: 0 }]
+    );
+    setEditAttempted(false);
+    setEditError(null);
+  }, []);
+
+  const startEditing = React.useCallback(() => {
+    if (!invoice || invoice.status !== "Draft") return;
+    resetEditDraft(invoice);
+    setEditing(true);
+  }, [invoice, resetEditDraft]);
+
+  const cancelEditing = React.useCallback(() => {
+    if (invoice) resetEditDraft(invoice);
+    setEditing(false);
+  }, [invoice, resetEditDraft]);
+
+  const editValidationErrors = React.useMemo(() => {
+    const errors: string[] = [];
+    if (!invoice?.projectId) errors.push("Project is required.");
+    if (!editClientName.trim()) errors.push("Client name is required.");
+    if (!editLines.some((line) => line.description.trim().length > 0)) {
+      errors.push("At least one line item is required.");
+    }
+    return errors;
+  }, [editClientName, editLines, invoice?.projectId]);
+
+  const editSubtotal = React.useMemo(
+    () =>
+      editLines.reduce(
+        (sum, line) =>
+          sum + Math.max(0, safeNumber(line.qty)) * Math.max(0, safeNumber(line.unitPrice)),
+        0
+      ),
+    [editLines]
+  );
+  const editTaxAmount = React.useMemo(
+    () => Math.round(editSubtotal * (Math.max(0, safeNumber(editTaxPct)) / 100) * 100) / 100,
+    [editSubtotal, editTaxPct]
+  );
+  const editTotal = editSubtotal + editTaxAmount;
+
+  const handleSaveEdit = async () => {
+    if (!id || !invoice || editSaving || actionBusy) return;
+    setEditAttempted(true);
+    if (editValidationErrors.length > 0) {
+      const msg = editValidationErrors[0] ?? "Please complete the invoice.";
+      setEditError(msg);
+      toast({ title: "Invoice is incomplete", description: msg, variant: "error" });
+      return;
+    }
+
+    setEditSaving(true);
+    setEditError(null);
+    const result = await updateInvoiceAction(id, {
+      projectId: invoice.projectId,
+      clientName: editClientName,
+      issueDate: editIssueDate,
+      dueDate: editDueDate,
+      taxPct: Math.max(0, safeNumber(editTaxPct)),
+      notes: editNotes,
+      lineItems: editLines.map((line) => ({
+        description: line.description,
+        qty: Math.max(0, safeNumber(line.qty)),
+        unitPrice: Math.max(0, safeNumber(line.unitPrice)),
+      })),
+    });
+    if (!result.ok) {
+      const msg = result.error ?? "Failed to save invoice.";
+      setEditError(msg);
+      toast({ title: "Could not save invoice", description: msg, variant: "error" });
+      setEditSaving(false);
+      return;
+    }
+    toast({ title: "Invoice saved", variant: "success" });
+    setEditing(false);
+    setEditSaving(false);
+    await refresh();
+  };
+
   const handleMarkSent = async () => {
-    if (!id) return;
-    await markInvoiceSent(id);
-    void refresh();
+    if (!id || actionBusy || editSaving) return;
+    setActionBusy(true);
+    try {
+      await markInvoiceSent(id);
+      await refresh();
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   const handleVoid = async () => {
@@ -171,11 +289,18 @@ export default function InvoiceDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!id) return;
+    if (!id || actionBusy) return;
     setActionBusy(true);
     const result = await deleteInvoiceAction(id);
     setActionBusy(false);
     if (result.ok) router.push("/financial/invoices");
+    else {
+      toast({
+        title: "Could not delete invoice",
+        description: result.error ?? "Only draft or void invoices can be deleted.",
+        variant: "error",
+      });
+    }
   };
 
   const handleRevertToDraft = async () => {
@@ -191,19 +316,24 @@ export default function InvoiceDetailPage() {
   };
 
   const handleRecordPayment = async () => {
-    if (!id || !paymentAmount) return;
+    if (!id || !paymentAmount || actionBusy) return;
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount) || amount <= 0) return;
-    await recordInvoicePayment(id, {
-      date: paymentDate,
-      amount,
-      method: paymentMethod,
-      memo: paymentMemo.trim() || undefined,
-    });
-    setPaymentAmount("");
-    setPaymentMemo("");
-    setShowPaymentModal(false);
-    void refresh();
+    setActionBusy(true);
+    try {
+      await recordInvoicePayment(id, {
+        date: paymentDate,
+        amount,
+        method: paymentMethod,
+        memo: paymentMemo.trim() || undefined,
+      });
+      setPaymentAmount("");
+      setPaymentMemo("");
+      setShowPaymentModal(false);
+      await refresh();
+    } finally {
+      setActionBusy(false);
+    }
   };
 
   const handleDeletePayment = async (paymentId: string) => {
@@ -256,8 +386,9 @@ export default function InvoiceDetailPage() {
 
   const isDraft = invoice.status === "Draft";
   const isVoid = invoice.computedStatus === "Void";
-  const canPay = !isVoid && invoice.computedStatus !== "Paid";
+  const canPay = !isVoid && invoice.computedStatus !== "Paid" && !isDraft && invoice.balanceDue > 0;
   const canRevertToDraft = invoice.computedStatus === "Void" || invoice.computedStatus === "Paid";
+  const primaryActionBusy = actionBusy || editSaving;
 
   return (
     <div className="mx-auto max-w-[900px] flex flex-col gap-6 p-6">
@@ -275,148 +406,248 @@ export default function InvoiceDetailPage() {
             <InvoiceStatusBadge status={invoice.computedStatus} />
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button asChild variant="outline" size="sm" className="rounded-lg">
-            <Link href={`/financial/invoices/${id}/print`}>
-              <FileText className="h-4 w-4 mr-2" />
-              Print
-            </Link>
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="rounded-lg" disabled={actionBusy}>
-                Actions
-                <ChevronDown className="h-4 w-4 ml-1" />
+        <div className="-mx-6 sticky bottom-0 z-20 order-3 grid grid-cols-2 gap-2 border-t border-border/60 bg-background/95 p-3 backdrop-blur sm:static sm:order-none sm:mx-0 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:border-0 sm:bg-transparent sm:p-0">
+          {editing ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-sm"
+                onClick={cancelEditing}
+                disabled={primaryActionBusy}
+              >
+                Cancel
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[180px]">
-              {!isVoid && (
-                <DropdownMenuItem
-                  className="text-red-600 focus:text-red-700"
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    if (
-                      !window.confirm(
-                        "Void this invoice? Total and balance will be set to zero. This cannot be undone."
-                      )
-                    ) {
-                      return;
-                    }
-                    void handleVoid();
-                  }}
-                  disabled={actionBusy}
+              <Button
+                size="sm"
+                className="rounded-sm"
+                onClick={handleSaveEdit}
+                disabled={primaryActionBusy}
+              >
+                <SubmitSpinner loading={editSaving} className="mr-2" />
+                Save
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="outline" size="sm" className="rounded-sm">
+                <Link href={`/financial/invoices/${id}/print`}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Print
+                </Link>
+              </Button>
+              {isDraft ? (
+                <Button
+                  size="sm"
+                  className="rounded-sm"
+                  onClick={startEditing}
+                  disabled={primaryActionBusy}
                 >
-                  <Ban className="h-4 w-4 mr-2" />
-                  Void Invoice
-                </DropdownMenuItem>
-              )}
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              ) : null}
+              {isDraft ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-sm"
+                  onClick={handleMarkSent}
+                  disabled={primaryActionBusy}
+                >
+                  <Send className="h-4 w-4 mr-2" />
+                  Mark Sent
+                </Button>
+              ) : null}
+              {canPay ? (
+                <Button
+                  size="sm"
+                  className="rounded-sm"
+                  onClick={() => setShowReceivePaymentModal(true)}
+                  disabled={primaryActionBusy}
+                >
+                  <CircleDollarSign className="h-4 w-4 mr-2" />
+                  Receive Payment
+                </Button>
+              ) : null}
               {canRevertToDraft ? (
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault();
-                    setRevertOpen(true);
-                  }}
-                  disabled={actionBusy}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-sm"
+                  onClick={() => setRevertOpen(true)}
+                  disabled={primaryActionBusy}
                 >
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Revert to Draft
-                </DropdownMenuItem>
+                </Button>
               ) : null}
-              <DropdownMenuItem
-                className="text-red-600 focus:text-red-700"
-                onSelect={(e) => {
-                  e.preventDefault();
-                  if (isDraft) {
-                    if (
-                      window.confirm(
-                        "Permanently delete this draft invoice? This cannot be undone."
-                      )
-                    ) {
-                      void handleDelete();
-                    }
-                  } else {
-                    setDeleteBlockedOpen(true);
-                  }
-                }}
-                disabled={actionBusy}
+              {!isVoid ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="btn-outline-destructive rounded-sm"
+                  onClick={() => setVoidConfirmOpen(true)}
+                  disabled={primaryActionBusy}
+                >
+                  <Ban className="h-4 w-4 mr-2" />
+                  Void
+                </Button>
+              ) : null}
+              <Button
+                variant="outline"
+                size="sm"
+                className="btn-outline-destructive rounded-sm"
+                onClick={() =>
+                  isDraft || isVoid ? setDeleteConfirmOpen(true) : setDeleteBlockedOpen(true)
+                }
+                disabled={primaryActionBusy}
               >
                 <Trash2 className="h-4 w-4 mr-2" />
-                Delete Invoice
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {isDraft && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-sm"
-              onClick={handleMarkSent}
-              disabled={actionBusy}
-            >
-              <Send className="h-4 w-4 mr-2" />
-              Mark Sent
-            </Button>
-          )}
-          {canPay && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-lg"
-              onClick={() => setShowPaymentModal(true)}
-              disabled={actionBusy}
-            >
-              <CreditCard className="h-4 w-4 mr-2" />
-              Record Payment
-            </Button>
-          )}
-          {!isVoid && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-sm"
-              onClick={() => setShowReceivePaymentModal(true)}
-              disabled={actionBusy}
-            >
-              <CircleDollarSign className="h-4 w-4 mr-2" />
-              Receive Payment
-            </Button>
+                Delete
+              </Button>
+            </>
           )}
         </div>
       </div>
 
       <section className="border-b border-gray-100 pb-6 dark:border-border">
         <h2 className="mb-3 text-sm font-semibold text-foreground">Client / Project</h2>
-        <p className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{invoice.clientName}</span>
-          {" — "}
-          {project?.name ?? invoice.projectId}
-        </p>
-        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs">
-          <span className="text-muted-foreground">Status</span>
-          <InvoiceStatusBadge status={invoice.computedStatus} />
-          <span className="ml-2 text-muted-foreground">Due date</span>
-          <span
-            className={cn(
-              "tabular-nums",
-              invoice.computedStatus === "Overdue" && "text-red-600 dark:text-red-400"
-            )}
-          >
-            {formatDate(invoice.dueDate)}
-          </span>
-          {invoice.daysOverdue > 0 && (
-            <>
-              <span className="ml-2 text-muted-foreground">Days overdue</span>
-              <span className="font-medium tabular-nums text-red-600 dark:text-red-400">
-                {invoice.daysOverdue}
+        {editing ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Client name
+              </label>
+              <Input
+                value={editClientName}
+                onChange={(e) => setEditClientName(e.target.value)}
+                placeholder="Client"
+                className="mt-1 rounded-sm"
+                aria-invalid={editAttempted && !editClientName.trim()}
+              />
+              {editAttempted && !editClientName.trim() ? (
+                <p className="mt-1 text-xs text-rose-600">Client name is required.</p>
+              ) : null}
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Project
+              </p>
+              <p className="mt-2 rounded-sm border border-border/60 bg-muted/20 px-3 py-2 text-sm">
+                {project?.name ?? invoice.projectId}
+              </p>
+              {editAttempted && !invoice.projectId ? (
+                <p className="mt-1 text-xs text-rose-600">Project is required.</p>
+              ) : null}
+            </div>
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Issue date
+              </label>
+              <Input
+                type="date"
+                value={editIssueDate}
+                onChange={(e) => setEditIssueDate((e.target.value || editIssueDate).slice(0, 10))}
+                className="mt-1 rounded-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Due date
+              </label>
+              <Input
+                type="date"
+                value={editDueDate}
+                onChange={(e) => setEditDueDate((e.target.value || editDueDate).slice(0, 10))}
+                className="mt-1 rounded-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Tax %
+              </label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={editTaxPct}
+                onChange={(e) => setEditTaxPct(safeNumber(e.target.value))}
+                className="mt-1 rounded-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Notes
+              </label>
+              <Input
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder="Terms / notes"
+                className="mt-1 rounded-sm"
+              />
+            </div>
+            {editError ? <p className="text-sm text-rose-600 md:col-span-2">{editError}</p> : null}
+          </div>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{invoice.clientName}</span>
+              {" — "}
+              {project?.name ?? invoice.projectId}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs">
+              <span className="text-muted-foreground">Status</span>
+              <InvoiceStatusBadge status={invoice.computedStatus} />
+              <span className="ml-2 text-muted-foreground">Due date</span>
+              <span
+                className={cn(
+                  "tabular-nums",
+                  invoice.computedStatus === "Overdue" && "text-red-600 dark:text-red-400"
+                )}
+              >
+                {formatDate(invoice.dueDate)}
               </span>
-            </>
-          )}
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">Issue: {formatDate(invoice.issueDate)}</p>
+              {invoice.daysOverdue > 0 && (
+                <>
+                  <span className="ml-2 text-muted-foreground">Days overdue</span>
+                  <span className="font-medium tabular-nums text-red-600 dark:text-red-400">
+                    {invoice.daysOverdue}
+                  </span>
+                </>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Issue: {formatDate(invoice.issueDate)}
+            </p>
+          </>
+        )}
       </section>
 
       <div className="overflow-hidden rounded-sm border border-gray-100 dark:border-border">
-        <h2 className="p-4 pb-2 text-sm font-semibold text-foreground">Line items</h2>
+        <div className="flex items-center justify-between gap-3 p-4 pb-2">
+          <h2 className="text-sm font-semibold text-foreground">Line items</h2>
+          {editing ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={() =>
+                setEditLines((prev) => [...prev, { description: "", qty: 1, unitPrice: 0 }])
+              }
+              disabled={primaryActionBusy}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add line item
+            </Button>
+          ) : null}
+        </div>
+        {editing &&
+        editAttempted &&
+        !editLines.some((line) => line.description.trim().length > 0) ? (
+          <p className="px-4 pb-2 text-xs text-rose-600">At least one line item is required.</p>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -433,26 +664,111 @@ export default function InvoiceDetailPage() {
                 <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
                   Amount
                 </th>
+                {editing ? <th className="py-3 px-2 w-[52px]" /> : null}
               </tr>
             </thead>
             <tbody>
-              {invoice.lineItems.map((line, idx) => (
-                <tr
-                  key={idx}
-                  className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
-                >
-                  <td className="py-3 px-4 text-foreground">{line.description}</td>
-                  <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
-                    {line.qty}
-                  </td>
-                  <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
-                    {formatCurrency(line.unitPrice)}
-                  </td>
-                  <td className="py-3 px-4 text-right tabular-nums font-medium">
-                    {formatCurrency(line.amount)}
-                  </td>
-                </tr>
-              ))}
+              {(editing ? editLines : invoice.lineItems).map((line, idx) => {
+                const qty = safeNumber(line.qty);
+                const unitPrice = safeNumber(line.unitPrice);
+                const savedAmount = "amount" in line ? safeNumber(line.amount) : 0;
+                const amount = editing ? Math.max(0, qty) * Math.max(0, unitPrice) : savedAmount;
+                return (
+                  <tr
+                    key={idx}
+                    className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
+                  >
+                    <td className="py-3 px-4 text-foreground">
+                      {editing ? (
+                        <Input
+                          value={line.description}
+                          onChange={(e) =>
+                            setEditLines((prev) =>
+                              prev.map((current, i) =>
+                                i === idx ? { ...current, description: e.target.value } : current
+                              )
+                            )
+                          }
+                          placeholder="Description"
+                          aria-label={`Line item ${idx + 1} description`}
+                          aria-invalid={editAttempted && !line.description.trim()}
+                        />
+                      ) : (
+                        line.description
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
+                      {editing ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={qty}
+                          onChange={(e) =>
+                            setEditLines((prev) =>
+                              prev.map((current, i) =>
+                                i === idx
+                                  ? { ...current, qty: safeNumber(e.target.value) }
+                                  : current
+                              )
+                            )
+                          }
+                          className="text-right tabular-nums"
+                          aria-label={`Line item ${idx + 1} quantity`}
+                        />
+                      ) : (
+                        qty
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
+                      {editing ? (
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={unitPrice}
+                          onChange={(e) =>
+                            setEditLines((prev) =>
+                              prev.map((current, i) =>
+                                i === idx
+                                  ? { ...current, unitPrice: safeNumber(e.target.value) }
+                                  : current
+                              )
+                            )
+                          }
+                          className="text-right tabular-nums"
+                          aria-label={`Line item ${idx + 1} unit price`}
+                        />
+                      ) : (
+                        formatCurrency(unitPrice)
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-right tabular-nums font-medium">
+                      {formatCurrency(safeNumber(amount))}
+                    </td>
+                    {editing ? (
+                      <td className="py-3 px-2 text-right">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="btn-outline-destructive h-8"
+                          aria-label="Remove line item"
+                          title="Remove line item"
+                          onClick={() =>
+                            setEditLines((prev) =>
+                              prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)
+                            )
+                          }
+                          disabled={primaryActionBusy || editLines.length <= 1}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    ) : null}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -463,19 +779,30 @@ export default function InvoiceDetailPage() {
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Subtotal</span>
-            <span className="tabular-nums">{formatCurrency(invoice.subtotal)}</span>
+            <span className="tabular-nums">
+              {formatCurrency(editing ? editSubtotal : invoice.subtotal)}
+            </span>
           </div>
-          {invoice.taxAmount != null && invoice.taxAmount > 0 && (
+          {(editing ? editTaxAmount > 0 : invoice.taxAmount != null && invoice.taxAmount > 0) && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">
-                Tax {invoice.taxPct != null ? `(${invoice.taxPct}%)` : ""}
+                Tax{" "}
+                {editing
+                  ? `(${editTaxPct || 0}%)`
+                  : invoice.taxPct != null
+                    ? `(${invoice.taxPct}%)`
+                    : ""}
               </span>
-              <span className="tabular-nums">{formatCurrency(invoice.taxAmount)}</span>
+              <span className="tabular-nums">
+                {formatCurrency(editing ? editTaxAmount : invoice.taxAmount)}
+              </span>
             </div>
           )}
           <div className="flex justify-between border-t border-gray-100 pt-2 font-medium dark:border-border">
             <span>Total</span>
-            <span className="tabular-nums">{formatCurrency(invoice.total)}</span>
+            <span className="tabular-nums">
+              {formatCurrency(editing ? editTotal : invoice.total)}
+            </span>
           </div>
           <div className="flex justify-between text-hh-profit-positive dark:text-hh-profit-positive">
             <span>Paid</span>
@@ -720,8 +1047,9 @@ export default function InvoiceDetailPage() {
                 size="sm"
                 className="rounded-sm"
                 onClick={handleRecordPayment}
-                disabled={!paymentAmount || parseFloat(paymentAmount) <= 0}
+                disabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || actionBusy}
               >
+                <SubmitSpinner loading={actionBusy} className="mr-2" />
                 Record
               </Button>
               <Button
@@ -729,6 +1057,7 @@ export default function InvoiceDetailPage() {
                 size="sm"
                 className="rounded-sm"
                 onClick={() => setShowPaymentModal(false)}
+                disabled={actionBusy}
               >
                 Cancel
               </Button>
@@ -743,6 +1072,44 @@ export default function InvoiceDetailPage() {
         onSuccess={refresh}
         preselectedInvoiceId={id}
         remainingBalance={invoice?.balanceDue}
+      />
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        title="Delete invoice?"
+        description={`Permanently delete ${invoice.invoiceNo}? This cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        loading={actionBusy}
+        dismissBeforeAsync={false}
+        onConfirm={handleDelete}
+      />
+
+      <ConfirmDialog
+        open={voidConfirmOpen}
+        onOpenChange={setVoidConfirmOpen}
+        title="Void invoice?"
+        description="This will mark the invoice as Void. This cannot be undone."
+        confirmLabel="Void"
+        cancelLabel="Cancel"
+        destructive
+        loading={actionBusy}
+        dismissBeforeAsync={false}
+        onConfirm={handleVoid}
+      />
+
+      <ConfirmDialog
+        open={revertOpen}
+        onOpenChange={setRevertOpen}
+        title="Revert invoice to draft?"
+        description="This will allow editing or deleting the invoice again."
+        confirmLabel="Confirm"
+        cancelLabel="Cancel"
+        loading={actionBusy}
+        dismissBeforeAsync={false}
+        onConfirm={handleRevertToDraft}
       />
 
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>
@@ -761,30 +1128,6 @@ export default function InvoiceDetailPage() {
               onClick={() => setDeleteBlockedOpen(false)}
             >
               OK
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={revertOpen} onOpenChange={setRevertOpen}>
-        <DialogContent className="max-w-sm border-border/60 p-5 rounded-md">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Revert invoice to draft?</DialogTitle>
-            <DialogDescription className="text-sm text-muted-foreground">
-              This will allow editing or deleting the invoice again.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="pt-3 border-t border-border/60">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setRevertOpen(false)}
-              disabled={actionBusy}
-            >
-              Cancel
-            </Button>
-            <Button size="sm" onClick={handleRevertToDraft} disabled={actionBusy}>
-              Confirm
             </Button>
           </DialogFooter>
         </DialogContent>

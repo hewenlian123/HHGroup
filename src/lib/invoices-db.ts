@@ -628,13 +628,17 @@ export async function createInvoice(payload: {
       for (const item of payload.lineItems) {
         const quantity = Number(item.qty) || 0;
         const unitPrice = Number(item.unitPrice) || 0;
-        await c.from("invoice_items").insert({
+        const { error: itemErr } = await c.from("invoice_items").insert({
           invoice_id: inv.id,
           description: item.description,
-          quantity,
+          qty: quantity,
           unit_price: unitPrice,
           amount: quantity * unitPrice,
         });
+        if (itemErr) {
+          await c.from("invoices").delete().eq("id", inv.id);
+          throw new Error(itemErr.message ?? "Failed to create invoice items.");
+        }
       }
       const itemRows = await getInvoiceItemsOrEmpty(inv.id);
       return toInvoice(inv, itemRows);
@@ -650,6 +654,8 @@ export async function createInvoice(payload: {
 export async function updateInvoice(
   invoiceId: string,
   payload: Partial<{
+    projectId: string;
+    clientName: string;
     issueDate: string;
     dueDate: string;
     lineItems: InvoiceLineItem[];
@@ -661,25 +667,44 @@ export async function updateInvoice(
   const inv = await getInvoiceById(invoiceId);
   if (!inv || inv.status !== "Draft") return false;
   const updates: Record<string, unknown> = {};
+  if (payload.projectId !== undefined) updates.project_id = payload.projectId || null;
+  if (payload.clientName !== undefined) updates.client_name = payload.clientName.trim();
   if (payload.issueDate != null) updates.issue_date = payload.issueDate.slice(0, 10);
   if (payload.dueDate != null) updates.due_date = payload.dueDate.slice(0, 10);
   if (payload.notes !== undefined) updates.notes = payload.notes ?? null;
   if (payload.taxPct != null) updates.tax_pct = payload.taxPct;
+  if (payload.lineItems != null || payload.taxPct != null) {
+    const nextItems = payload.lineItems ?? inv.lineItems;
+    const subtotal = nextItems.reduce((sum, item) => {
+      const quantity = Math.max(0, Number(item.qty) || 0);
+      const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
+      return sum + quantity * unitPrice;
+    }, 0);
+    const taxPct = Math.max(0, Number(payload.taxPct ?? inv.taxPct ?? 0) || 0);
+    const taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
+    updates.subtotal = subtotal;
+    updates.tax_pct = taxPct;
+    updates.tax_amount = taxAmount;
+    updates.total = subtotal + taxAmount;
+  }
   if (Object.keys(updates).length > 0) {
-    await c.from("invoices").update(updates).eq("id", invoiceId);
+    const { error: updateErr } = await c.from("invoices").update(updates).eq("id", invoiceId);
+    if (updateErr) return false;
   }
   if (payload.lineItems != null) {
-    await c.from("invoice_items").delete().eq("invoice_id", invoiceId);
+    const { error: deleteErr } = await c.from("invoice_items").delete().eq("invoice_id", invoiceId);
+    if (deleteErr) return false;
     for (const item of payload.lineItems) {
       const quantity = Number(item.qty) || 0;
       const unitPrice = Number(item.unitPrice) || 0;
-      await c.from("invoice_items").insert({
+      const { error: itemErr } = await c.from("invoice_items").insert({
         invoice_id: invoiceId,
         description: item.description,
-        quantity,
+        qty: quantity,
         unit_price: unitPrice,
         amount: quantity * unitPrice,
       });
+      if (itemErr) return false;
     }
   }
   return true;
