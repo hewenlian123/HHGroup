@@ -1,11 +1,30 @@
 import { getProjects } from "@/lib/data";
 import { getCanonicalProjectProfitBatch } from "@/lib/profit-engine";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
-import { ProjectsListClient, type ProjectsListRow } from "./projects-list-client";
+import {
+  ProjectsListClient,
+  type ProjectListStatusFilter,
+  type ProjectsListRow,
+} from "./projects-list-client";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ status?: string }>;
+}) {
+  const sp = (await searchParams) ?? {};
+  const statusParam = String(sp.status ?? "all").toLowerCase();
+  const initialStatusFilter: ProjectListStatusFilter = [
+    "all",
+    "active",
+    "completed",
+    "pending",
+    "on_hold",
+  ].includes(statusParam)
+    ? (statusParam as ProjectListStatusFilter)
+    : "all";
   let projects: Awaited<ReturnType<typeof getProjects>> = [];
   let dataLoadWarning: string | null = null;
   try {
@@ -46,7 +65,11 @@ export default async function ProjectsPage() {
 
   return (
     <div className="min-h-full bg-page">
-      <ProjectsListClient rows={rows} dataLoadWarning={dataLoadWarning} />
+      <ProjectsListClient
+        rows={rows}
+        dataLoadWarning={dataLoadWarning}
+        initialStatusFilter={initialStatusFilter}
+      />
     </div>
   );
 }

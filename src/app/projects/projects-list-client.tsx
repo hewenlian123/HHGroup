@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
+import { ConfirmDialog } from "@/components/base";
 import { cn } from "@/lib/utils";
 import { listTableRowClassName } from "@/lib/list-table-interaction";
 import {
@@ -111,18 +112,22 @@ function ProjectListStatusPill({ status }: { status: string }) {
 export function ProjectsListClient({
   rows,
   dataLoadWarning = null,
+  initialStatusFilter = "all",
 }: {
   rows: ProjectsListRow[];
   dataLoadWarning?: string | null;
+  initialStatusFilter?: ProjectListStatusFilter;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [localRows, setLocalRows] = React.useState<ProjectsListRow[]>(rows);
   React.useEffect(() => setLocalRows(rows), [rows]);
-  const [statusFilter, setStatusFilter] = React.useState<ProjectListStatusFilter>("all");
+  const [statusFilter, setStatusFilter] =
+    React.useState<ProjectListStatusFilter>(initialStatusFilter);
   const [sortBy, setSortBy] = React.useState<"updated" | "name" | "revenue" | "profit">("updated");
   const [query, setQuery] = React.useState("");
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<ProjectsListRow | null>(null);
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
   const [deleteBlockedCounts, setDeleteBlockedCounts] = React.useState<DeleteBlockedCounts | null>(
     null
@@ -183,42 +188,47 @@ export function ProjectsListClient({
     [router]
   );
 
-  const handleDelete = React.useCallback(
-    async (id: string, name: string) => {
-      const usage = await getProjectUsageAction(id);
-      if (usage.blocked && usage.counts) {
-        setDeleteBlockedCounts(usage.counts);
+  const requestDelete = React.useCallback(async (row: ProjectsListRow) => {
+    const { id } = row;
+    const usage = await getProjectUsageAction(id);
+    if (usage.blocked && usage.counts) {
+      setDeleteBlockedCounts(usage.counts);
+      setDeleteBlockedProjectId(id);
+      setDeleteBlockedOpen(true);
+      return;
+    }
+    setDeleteTarget(row);
+  }, []);
+
+  const handleConfirmDelete = React.useCallback(async () => {
+    const target = deleteTarget;
+    if (!target || deletingId != null) return;
+    const id = target.id;
+    let snapshot: ProjectsListRow[] | undefined;
+    setLocalRows((prev) => {
+      snapshot = prev;
+      return prev.filter((r) => r.id !== id);
+    });
+    setDeletingId(id);
+    try {
+      const result = await deleteProjectAction(id);
+      if (result?.blocked && result?.counts) {
+        if (snapshot) setLocalRows(snapshot);
+        setDeleteBlockedCounts(result.counts);
         setDeleteBlockedProjectId(id);
         setDeleteBlockedOpen(true);
-        return;
+      } else if (result?.error) {
+        if (snapshot) setLocalRows(snapshot);
+        toast({ title: "Error", description: result.error, variant: "error" });
+      } else {
+        setDeleteTarget(null);
+        toast({ title: "Project deleted", variant: "success" });
+        syncRouterNonBlocking(router);
       }
-      if (!window.confirm(`Delete project "${name}"? This cannot be undone.`)) return;
-      let snapshot: ProjectsListRow[] | undefined;
-      setLocalRows((prev) => {
-        snapshot = prev;
-        return prev.filter((r) => r.id !== id);
-      });
-      setDeletingId(id);
-      try {
-        const result = await deleteProjectAction(id);
-        if (result?.blocked && result?.counts) {
-          if (snapshot) setLocalRows(snapshot);
-          setDeleteBlockedCounts(result.counts);
-          setDeleteBlockedProjectId(id);
-          setDeleteBlockedOpen(true);
-        } else if (result?.error) {
-          if (snapshot) setLocalRows(snapshot);
-          toast({ title: "Error", description: result.error, variant: "error" });
-        } else {
-          toast({ title: "Project deleted", variant: "success" });
-          syncRouterNonBlocking(router);
-        }
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [router, toast]
-  );
+    } finally {
+      setDeletingId(null);
+    }
+  }, [deleteTarget, deletingId, router, toast]);
 
   return (
     <div
@@ -458,7 +468,7 @@ export function ProjectsListClient({
                     <DropdownMenuItem
                       className="text-destructive focus:text-destructive"
                       disabled={deletingId != null}
-                      onSelect={() => void handleDelete(r.id, r.name)}
+                      onSelect={() => void requestDelete(r)}
                     >
                       Delete
                     </DropdownMenuItem>
@@ -563,7 +573,7 @@ export function ProjectsListClient({
                             className="rounded-md p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
                             aria-label={`Delete ${r.name}`}
                             disabled={deletingId != null}
-                            onClick={() => void handleDelete(r.id, r.name)}
+                            onClick={() => void requestDelete(r)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -577,6 +587,25 @@ export function ProjectsListClient({
           </TableShell>
         </>
       )}
+
+      <ConfirmDialog
+        open={deleteTarget != null}
+        onOpenChange={(open) => {
+          if (!open && deletingId == null) setDeleteTarget(null);
+        }}
+        title="Delete project?"
+        description={
+          deleteTarget
+            ? `Permanently delete ${deleteTarget.name}? This cannot be undone.`
+            : undefined
+        }
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        loading={deletingId != null}
+        dismissBeforeAsync={false}
+        onConfirm={handleConfirmDelete}
+      />
 
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>
         <DialogContent className={MODAL}>

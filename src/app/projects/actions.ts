@@ -24,13 +24,17 @@ export async function createProjectAction(
   formData: FormData
 ): Promise<{ error?: string } | null> {
   const name = (formData.get("name") as string)?.trim();
+  const client = (formData.get("client") as string)?.trim();
+  const address = (formData.get("address") as string)?.trim();
   const budgetRaw = formData.get("budget");
   const budget = Number(budgetRaw);
   const status = (formData.get("status") as "active" | "pending" | "completed") ?? "pending";
   if (!name) return { error: "Project name is required." };
+  if (!client) return { error: "Client name is required." };
+  if (!address) return { error: "Project address is required." };
   if (!Number.isFinite(budget) || budget <= 0) return { error: "Budget must be greater than 0." };
   // projects.budget is the canonical contract value used by profit-engine (revenue base).
-  await createProject({ name, budget, status });
+  await createProject({ name, client, address, budget, status });
   revalidatePath("/projects");
   redirect("/projects");
 }
@@ -61,20 +65,31 @@ export async function getProjectUsageAction(
   }
 }
 
-/** Update project name, address, budget, customer_id. */
+/** Update project name, client, address, budget, and optional customer_id. */
 export async function updateProjectAction(
   projectId: string,
-  patch: { name: string; address?: string; budget: number; customerId?: string | null }
+  patch: {
+    name: string;
+    client?: string;
+    address?: string;
+    budget: number;
+    customerId?: string | null;
+  }
 ): Promise<{ error?: string }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   const name = patch.name?.trim();
+  const client = patch.client?.trim();
+  const address = patch.address?.trim();
   if (!name) return { error: "Project name is required." };
+  if (!client) return { error: "Client name is required." };
+  if (!address) return { error: "Project address is required." };
   const budget = Number(patch.budget);
   if (!Number.isFinite(budget) || budget < 0) return { error: "Budget must be 0 or greater." };
   try {
     await updateProject(projectId, {
       name,
-      address: patch.address?.trim() ?? "",
+      client,
+      address,
       budget,
       ...(patch.customerId !== undefined ? { customerId: patch.customerId?.trim() || null } : {}),
     });
@@ -146,7 +161,7 @@ export async function deleteProjectAction(
     if (!ok) return { error: "Failed to delete project." };
     revalidatePath("/projects");
     revalidatePath("/dashboard");
-    redirect("/projects");
+    return {};
   } catch (e) {
     const payload = e as DeleteBlockedPayload | undefined;
     if (payload && payload.__deleteBlocked === true && payload.counts) {
@@ -164,7 +179,7 @@ export async function forceDeleteProjectAction(projectId: string): Promise<{ err
     await forceDeleteProject(projectId);
     revalidatePath("/projects");
     revalidatePath("/dashboard");
-    redirect("/projects");
+    return {};
   } catch (e) {
     const message = e instanceof Error ? e.message : "Force delete failed.";
     return { error: message };

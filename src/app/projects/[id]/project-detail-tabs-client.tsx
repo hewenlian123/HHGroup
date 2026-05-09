@@ -12,7 +12,7 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
-import { PageLayout, Divider, SectionHeader } from "@/components/base";
+import { ConfirmDialog, PageLayout, Divider, SectionHeader } from "@/components/base";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -174,6 +174,10 @@ export function ProjectDetailTabsClient({
   const [tab, setTab] = React.useState<TabKey>(initialTab);
   const [costBucketFilter, setCostBucketFilter] = React.useState<CostBucketFilter>(null);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = React.useState(false);
+  const [archiveBusy, setArchiveBusy] = React.useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [deleteBusy, setDeleteBusy] = React.useState(false);
   const [displayProject, setDisplayProject] = React.useState<Project>(() => project);
   useBreadcrumbEntityLabel(displayProject.name);
   const displayProjectRef = React.useRef(displayProject);
@@ -214,10 +218,9 @@ export function ProjectDetailTabsClient({
         setDisplayProject((p) => ({
           ...p,
           name: patch.name,
+          client: patch.client,
           address: patch.address,
           budget: patch.budget,
-          customerId: patch.customerId,
-          client: patch.customerId ? (patch.customerName ?? p.client) : undefined,
         }));
         setEditModalOpen(false);
       });
@@ -225,9 +228,9 @@ export function ProjectDetailTabsClient({
       void (async () => {
         const result = await updateProjectAction(projectId, {
           name: patch.name,
+          client: patch.client,
           address: patch.address,
           budget: patch.budget,
-          customerId: patch.customerId,
         });
         if (result?.error) {
           flushSync(() => setDisplayProject(snapshot));
@@ -243,6 +246,66 @@ export function ProjectDetailTabsClient({
     },
     [projectId, toast]
   );
+
+  const handleArchiveConfirm = React.useCallback(async () => {
+    if (archiveBusy) return;
+    setArchiveBusy(true);
+    const snapshot = displayProjectRef.current;
+    try {
+      const res = await archiveProjectAction(projectId);
+      if (res?.error) {
+        toast({ title: "Archive failed", description: res.error, variant: "error" });
+        return;
+      }
+      flushSync(() => {
+        setDisplayProject((p) => ({ ...p, status: "completed" }));
+        setArchiveConfirmOpen(false);
+      });
+      toast({ title: "Project archived" });
+      router.push("/projects?status=active");
+    } catch (error) {
+      flushSync(() => setDisplayProject(snapshot));
+      toast({
+        title: "Archive failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setArchiveBusy(false);
+    }
+  }, [archiveBusy, projectId, router, toast]);
+
+  const handleDeleteConfirm = React.useCallback(async () => {
+    if (deleteBusy) return;
+    setDeleteBusy(true);
+    try {
+      const res = await deleteProjectAction(projectId);
+      if (res?.blocked) {
+        toast({
+          title: "Cannot delete project",
+          description:
+            "This project has related records. Archive it or remove related data before deleting.",
+          variant: "error",
+        });
+        return;
+      }
+      if (res?.error) {
+        toast({ title: "Delete failed", description: res.error, variant: "error" });
+        return;
+      }
+      setDeleteConfirmOpen(false);
+      toast({ title: "Project deleted", variant: "success" });
+      router.push("/projects");
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setDeleteBusy(false);
+    }
+  }, [deleteBusy, projectId, router, toast]);
 
   const budgetVal = displayProject.budget ?? financialSummary?.budget ?? 0;
   const spentVal = financialSummary?.spent ?? projectCost.spentTotal;
@@ -328,76 +391,49 @@ export function ProjectDetailTabsClient({
                   </p>
                 )}
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 rounded-lg border-gray-100 text-[13px] text-text-secondary"
-                    aria-label="Project actions"
-                  >
-                    <MoreHorizontal className="mr-1 h-4 w-4" />
-                    More
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[180px]">
-                  <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      setEditModalOpen(true);
-                    }}
-                  >
-                    Edit project
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={async (e) => {
-                      e.preventDefault();
-                      const res = await archiveProjectAction(projectId);
-                      if (res?.error) {
-                        toast({
-                          title: "Archive failed",
-                          description: res.error,
-                          variant: "error",
-                        });
-                      } else {
-                        toast({ title: "Project archived" });
-                        syncRouterNonBlocking(router);
-                      }
-                    }}
-                  >
-                    Archive project
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
-                    onSelect={async (e) => {
-                      e.preventDefault();
-                      if (
-                        !window.confirm(
-                          `Delete project "${displayProject.name}"? This cannot be undone.`
-                        )
-                      )
-                        return;
-                      const res = await deleteProjectAction(projectId);
-                      if (res?.blocked) {
-                        toast({
-                          title: "Cannot delete project",
-                          description:
-                            "This project has related records. Please archive instead or remove related data.",
-                          variant: "error",
-                        });
-                      } else if (res?.error) {
-                        toast({
-                          title: "Delete failed",
-                          description: res.error,
-                          variant: "error",
-                        });
-                      }
-                    }}
-                  >
-                    Delete project…
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="flex flex-wrap items-center justify-end gap-2 max-md:w-full max-md:[&>*]:flex-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-9 rounded-lg text-[13px]"
+                  onClick={() => setEditModalOpen(true)}
+                >
+                  Edit
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-9 rounded-lg border-gray-100 text-[13px] text-text-secondary"
+                      aria-label="Project actions"
+                      data-testid="project-detail-actions"
+                    >
+                      <MoreHorizontal className="mr-1 h-4 w-4" />
+                      More
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[180px]">
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setArchiveConfirmOpen(true);
+                      }}
+                    >
+                      Archive project
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setDeleteConfirmOpen(true);
+                      }}
+                    >
+                      Delete project…
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
             <div className="mt-6 border-t border-gray-100 pt-6">
               <div className="rounded-xl border border-border/60 bg-white p-4 sm:p-5">
@@ -457,11 +493,39 @@ export function ProjectDetailTabsClient({
         project={{
           id: projectId,
           name: displayProject.name,
+          client: displayProject.client ?? "",
           address: displayProject.address ?? "",
           budget: displayProject.budget,
           customerId: displayProject.customerId ?? null,
         }}
         onSave={handleProjectSave}
+      />
+      <ConfirmDialog
+        open={archiveConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open && !archiveBusy) setArchiveConfirmOpen(false);
+        }}
+        title="Archive project?"
+        description={`Archive ${displayProject.name}? The project will be marked completed and removed from the active list.`}
+        confirmLabel="Archive"
+        cancelLabel="Cancel"
+        loading={archiveBusy}
+        dismissBeforeAsync={false}
+        onConfirm={handleArchiveConfirm}
+      />
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open && !deleteBusy) setDeleteConfirmOpen(false);
+        }}
+        title="Delete project?"
+        description={`Permanently delete ${displayProject.name}? This cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        destructive
+        loading={deleteBusy}
+        dismissBeforeAsync={false}
+        onConfirm={handleDeleteConfirm}
       />
       <div className="-mx-4 -mb-4 px-4 pb-8 sm:-mx-6 sm:px-6">
         <div className="space-y-4">
