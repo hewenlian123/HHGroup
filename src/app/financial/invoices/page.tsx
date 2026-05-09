@@ -33,6 +33,7 @@ import {
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { ConfirmDialog } from "@/components/base";
 import { formatCurrency, formatDate, formatInteger } from "@/lib/formatters";
+import { deleteInvoiceAction } from "./actions";
 
 const invoicesShell =
   "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
@@ -107,6 +108,8 @@ function InvoicesPageInner() {
   const [dateFrom, setDateFrom] = React.useState("");
   const [dateTo, setDateTo] = React.useState("");
   const [voidTarget, setVoidTarget] = React.useState<InvoiceWithDerived | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<InvoiceWithDerived | null>(null);
+  const [deleteBusyId, setDeleteBusyId] = React.useState<string | null>(null);
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -228,6 +231,29 @@ function InvoicesPageInner() {
       }
     },
     [toast, refresh]
+  );
+
+  const handleDelete = React.useCallback(
+    async (target: InvoiceWithDerived) => {
+      setDeleteBusyId(target.id);
+      try {
+        const result = await deleteInvoiceAction(target.id);
+        if (!result.ok) {
+          toast({
+            title: "Could not delete invoice",
+            description: result.error ?? "Only draft or void invoices can be deleted.",
+            variant: "error",
+          });
+          return;
+        }
+        setInvoices((prev) => prev.filter((invoice) => invoice.id !== target.id));
+        toast({ title: "Invoice deleted", variant: "success" });
+        await refresh();
+      } finally {
+        setDeleteBusyId(null);
+      }
+    },
+    [refresh, toast]
   );
 
   const handleDuplicate = React.useCallback(
@@ -604,7 +630,13 @@ function InvoicesPageInner() {
             <div className="flex flex-col divide-y divide-border/60">
               {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => {
                 const chip = statusChipClass(inv.computedStatus);
-                const isBusy = voidBusyId === inv.id;
+                const isBusy = voidBusyId === inv.id || deleteBusyId === inv.id;
+                const canDelete = inv.computedStatus === "Draft" || inv.computedStatus === "Void";
+                const canRecordPayment =
+                  inv.computedStatus !== "Draft" &&
+                  inv.computedStatus !== "Void" &&
+                  inv.computedStatus !== "Paid" &&
+                  inv.balanceDue > 0;
                 return (
                   <div
                     key={inv.id}
@@ -682,7 +714,7 @@ function InvoicesPageInner() {
                               onClick: () =>
                                 startTransition(() => router.push(`/financial/invoices/${inv.id}`)),
                             },
-                            ...(inv.computedStatus !== "Void" && inv.computedStatus !== "Paid"
+                            ...(canRecordPayment
                               ? [
                                   {
                                     label: "Record payment",
@@ -704,6 +736,16 @@ function InvoicesPageInner() {
                                     destructive: true,
                                     disabled: isBusy,
                                     onClick: () => setVoidTarget(inv),
+                                  },
+                                ]
+                              : []),
+                            ...(canDelete
+                              ? [
+                                  {
+                                    label: "Delete",
+                                    destructive: true,
+                                    disabled: isBusy,
+                                    onClick: () => setDeleteTarget(inv),
                                   },
                                 ]
                               : []),
@@ -739,6 +781,27 @@ function InvoicesPageInner() {
             if (!inv) return;
             setVoidTarget(null);
             await handleVoid(inv.id);
+          }}
+        />
+        <ConfirmDialog
+          open={!!deleteTarget}
+          onOpenChange={(open) => !open && setDeleteTarget(null)}
+          title="Delete invoice?"
+          description={
+            deleteTarget
+              ? `This will permanently delete ${deleteTarget.invoiceNo} for ${deleteTarget.clientName}. This cannot be undone.`
+              : undefined
+          }
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          destructive
+          loading={!!deleteBusyId}
+          dismissBeforeAsync={false}
+          onConfirm={async () => {
+            const inv = deleteTarget;
+            if (!inv) return;
+            await handleDelete(inv);
+            setDeleteTarget(null);
           }}
         />
       </div>

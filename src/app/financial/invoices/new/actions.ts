@@ -17,10 +17,10 @@ export async function createInvoiceDraftAction(payload: {
   lineItems: Array<{ description: string; qty: number; unitPrice: number }>;
 }): Promise<{ ok: boolean; invoiceId?: string; error?: string }> {
   const projectId = payload.projectId?.trim();
-  if (!projectId) return { ok: false, error: "projectId is required" };
+  if (!projectId) return { ok: false, error: "Project is required." };
 
   const clientName = payload.clientName?.trim();
-  if (!clientName) return { ok: false, error: "clientName is required" };
+  if (!clientName) return { ok: false, error: "Client name is required." };
 
   const items = (payload.lineItems ?? [])
     .map((l) => ({
@@ -30,7 +30,7 @@ export async function createInvoiceDraftAction(payload: {
     }))
     .filter((l) => l.description.length > 0);
 
-  if (items.length === 0) return { ok: false, error: "lineItems is required" };
+  if (items.length === 0) return { ok: false, error: "At least one line item is required." };
 
   try {
     // Prefer admin client (service role) so INSERT + subsequent SELECT on detail page
@@ -82,13 +82,15 @@ export async function createInvoiceDraftAction(payload: {
     const itemRows = items.map((l) => ({
       invoice_id: invoiceId,
       description: l.description,
-      quantity: Math.max(0, l.qty),
+      qty: Math.max(0, l.qty),
       unit_price: Math.max(0, l.unitPrice),
       amount: Math.max(0, l.qty) * Math.max(0, l.unitPrice),
     }));
     const { error: itemsErr } = await supabase.from("invoice_items").insert(itemRows);
-    if (itemsErr)
+    if (itemsErr) {
+      await supabase.from("invoices").delete().eq("id", invoiceId);
       return { ok: false, error: itemsErr.message ?? "Failed to create invoice items." };
+    }
 
     return { ok: true, invoiceId };
   } catch (error) {

@@ -2224,6 +2224,8 @@ export async function createInvoice(payload: {
 export async function updateInvoice(
   invoiceId: string,
   payload: Partial<{
+    projectId: string;
+    clientName: string;
     issueDate: string;
     dueDate: string;
     lineItems: InvoiceLineItem[];

@@ -14,6 +14,7 @@ import { useToast } from "@/components/toast/toast-provider";
 import { createInvoiceDraftAction } from "./actions";
 import { getCompanyProfile } from "@/lib/company-profile";
 import { formatCurrency } from "@/lib/formatters";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 
 type ProjectOption = { id: string; name: string };
 type CustomerOption = { id: string; name: string | null };
@@ -40,6 +41,7 @@ export default function NewInvoiceClient() {
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [submitAttempted, setSubmitAttempted] = React.useState(false);
 
   const [projects, setProjects] = React.useState<ProjectOption[]>([]);
   const [customers, setCustomers] = React.useState<CustomerOption[]>([]);
@@ -56,7 +58,7 @@ export default function NewInvoiceClient() {
   const [notes, setNotes] = React.useState<string>("");
 
   const [lines, setLines] = React.useState<LineDraft[]>([
-    { description: "Item", qty: 1, unitPrice: 0 },
+    { description: "", qty: 1, unitPrice: 0 },
   ]);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -91,11 +93,6 @@ export default function NewInvoiceClient() {
 
     if (projErr) setError(projErr.message);
     setProjects(((proj ?? []) as ProjectOption[]).filter((p) => p.id && p.name));
-    setProjectId((prev) => {
-      if (prev) return prev;
-      const list = (proj ?? []) as ProjectOption[];
-      return list.length > 0 ? list[0].id : "";
-    });
 
     if (custErr) {
       if (!isMissingTableError(custErr)) setError((p) => p ?? custErr.message);
@@ -146,13 +143,27 @@ export default function NewInvoiceClient() {
     [computedSubtotal, computedTax]
   );
 
-  const canSave =
-    Boolean(projectId) &&
-    clientName.trim().length > 0 &&
-    lines.some((l) => l.description.trim().length > 0);
+  const validationErrors = React.useMemo(() => {
+    const errors: string[] = [];
+    if (!projectId) errors.push("Project is required.");
+    if (!clientName.trim()) errors.push("Client name is required.");
+    if (!lines.some((l) => l.description.trim().length > 0)) {
+      errors.push("At least one line item is required.");
+    }
+    return errors;
+  }, [clientName, lines, projectId]);
+
+  const canSubmit = Boolean(supabase) && !loading && !saving;
 
   const handleCreate = async () => {
-    if (!supabase || saving || !canSave) return;
+    if (!supabase || saving || loading) return;
+    setSubmitAttempted(true);
+    if (validationErrors.length > 0) {
+      const msg = validationErrors[0] ?? "Please complete the invoice.";
+      setError(msg);
+      toast({ title: "Invoice is incomplete", description: msg, variant: "error" });
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -222,6 +233,7 @@ export default function NewInvoiceClient() {
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
                 className="mt-1 flex h-10 w-full rounded-[10px] border border-input bg-white px-3 text-sm"
+                aria-invalid={submitAttempted && !projectId}
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
@@ -230,6 +242,9 @@ export default function NewInvoiceClient() {
                   </option>
                 ))}
               </select>
+              {submitAttempted && !projectId ? (
+                <p className="mt-1 text-xs text-rose-600">Project is required.</p>
+              ) : null}
             </div>
 
             <div>
@@ -259,7 +274,11 @@ export default function NewInvoiceClient() {
                 onChange={(e) => setClientName(e.target.value)}
                 placeholder="Client"
                 className="mt-1"
+                aria-invalid={submitAttempted && !clientName.trim()}
               />
+              {submitAttempted && !clientName.trim() ? (
+                <p className="mt-1 text-xs text-rose-600">Client name is required.</p>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -326,11 +345,15 @@ export default function NewInvoiceClient() {
             variant="outline"
             size="sm"
             onClick={() => setLines((prev) => [...prev, { description: "", qty: 1, unitPrice: 0 }])}
+            disabled={saving}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add line
+            Add line item
           </Button>
         </div>
+        {submitAttempted && !lines.some((l) => l.description.trim().length > 0) ? (
+          <p className="px-4 pt-3 text-xs text-rose-600">At least one line item is required.</p>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -367,6 +390,8 @@ export default function NewInvoiceClient() {
                           )
                         }
                         placeholder="Description"
+                        aria-label={`Line item ${idx + 1} description`}
+                        aria-invalid={submitAttempted && !line.description.trim()}
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -383,6 +408,7 @@ export default function NewInvoiceClient() {
                           )
                         }
                         className="text-right tabular-nums"
+                        aria-label={`Line item ${idx + 1} quantity`}
                       />
                     </td>
                     <td className="py-2 px-4">
@@ -399,6 +425,7 @@ export default function NewInvoiceClient() {
                           )
                         }
                         className="text-right tabular-nums"
+                        aria-label={`Line item ${idx + 1} unit price`}
                       />
                     </td>
                     <td className="py-2 px-4 text-right tabular-nums font-medium">
@@ -409,12 +436,14 @@ export default function NewInvoiceClient() {
                         variant="outline"
                         size="sm"
                         className="btn-outline-ghost h-8 text-red-600 hover:text-red-700"
+                        aria-label="Remove line item"
+                        disabled={saving || lines.length <= 1}
                         onClick={() =>
                           setLines((prev) =>
                             prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)
                           )
                         }
-                        title="Remove line"
+                        title="Remove line item"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -446,17 +475,26 @@ export default function NewInvoiceClient() {
         </div>
       </Card>
 
-      <div className="flex gap-2 justify-end">
-        <Button onClick={handleCreate} disabled={!canSave || saving}>
-          {saving ? "Creating..." : "Create draft invoice"}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => router.push("/financial/invoices")}
-          disabled={saving}
-        >
-          Cancel
-        </Button>
+      <div className="-mx-6 sticky bottom-0 z-20 border-t border-border/60 bg-zinc-50/95 p-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button
+            variant="outline"
+            onClick={() => router.push("/financial/invoices")}
+            disabled={saving}
+            className="rounded-sm"
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleCreate} disabled={!canSubmit} className="rounded-sm">
+            <SubmitSpinner loading={saving} className="mr-2" />
+            {saving ? "Creating..." : "Create draft invoice"}
+          </Button>
+        </div>
+        {submitAttempted && validationErrors.length > 0 ? (
+          <p className="mt-2 text-center text-xs text-rose-600 sm:text-right">
+            {validationErrors[0]}
+          </p>
+        ) : null}
       </div>
     </div>
   );
