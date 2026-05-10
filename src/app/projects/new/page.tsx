@@ -8,12 +8,16 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import { CustomerSelectWithAdd } from "@/components/customers/customer-select-with-add";
 import { createProjectAction } from "../actions";
 
 export default function NewProjectPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [submitAttempted, setSubmitAttempted] = React.useState(false);
   const [status, setStatus] = React.useState<"active" | "pending" | "completed">("pending");
+  const [customerId, setCustomerId] = React.useState<string | null>(null);
+  const [client, setClient] = React.useState("");
+  const [address, setAddress] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
 
   const handleSubmit = React.useCallback(
@@ -46,6 +50,20 @@ export default function NewProjectPage() {
       <Card className="max-w-[640px] p-5">
         <form onSubmit={handleSubmit} noValidate className="grid gap-3">
           <div className="space-y-1">
+            <CustomerSelectWithAdd
+              label="Link customer"
+              value={customerId}
+              onChange={(nextCustomerId, customer) => {
+                setCustomerId(nextCustomerId);
+                if (customer) {
+                  setClient(customer.name ?? "");
+                  setAddress(customer.address ?? "");
+                }
+              }}
+            />
+            <input type="hidden" name="customerId" value={customerId ?? ""} />
+          </div>
+          <div className="space-y-1">
             <p className="text-xs text-muted-foreground">Project Name</p>
             <Input
               name="name"
@@ -60,6 +78,11 @@ export default function NewProjectPage() {
             <Input
               name="client"
               placeholder="Client or company name"
+              value={client}
+              onChange={(e) => {
+                setClient(e.target.value);
+                if (customerId) setCustomerId(null);
+              }}
               required
               disabled={submitting}
               aria-invalid={submitAttempted && Boolean(error?.includes("Client name"))}
@@ -70,6 +93,8 @@ export default function NewProjectPage() {
             <Input
               name="address"
               placeholder="Project address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
               required
               disabled={submitting}
               aria-invalid={submitAttempted && Boolean(error?.includes("address"))}

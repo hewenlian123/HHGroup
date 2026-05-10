@@ -106,7 +106,7 @@ function client() {
 
 function isMissingTable(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
-  return /schema cache|relation.*does not exist|could not find the table/i.test(m);
+  return /relation.*does not exist|could not find the table/i.test(m);
 }
 
 function isMissingFunction(err: { message?: string } | null): boolean {
@@ -183,61 +183,72 @@ const CO_COLS =
   "id,project_id,number,status,total,total_amount,amount,date,created_at,approved_at,approved_by,title,description,cost_impact,schedule_impact_days";
 const CO_COLS_NO_AMOUNT =
   "id,project_id,number,status,total,total_amount,date,created_at,approved_at,approved_by,title,description,cost_impact,schedule_impact_days";
+const CO_COLS_NO_DESCRIPTION =
+  "id,project_id,number,status,total,total_amount,amount,date,created_at,approved_at,approved_by,title,cost_impact,schedule_impact_days";
+const CO_COLS_NO_DESCRIPTION_NO_AMOUNT =
+  "id,project_id,number,status,total,total_amount,date,created_at,approved_at,approved_by,title,cost_impact,schedule_impact_days";
 const CO_COLS_LEGACY = "id,project_id,number,status,total,total_amount,date,created_at,approved_at";
+const CO_SELECT_FALLBACKS = [
+  CO_COLS,
+  CO_COLS_NO_DESCRIPTION,
+  CO_COLS_NO_AMOUNT,
+  CO_COLS_NO_DESCRIPTION_NO_AMOUNT,
+  CO_COLS_LEGACY,
+] as const;
 
 async function selectChangeOrders(
   c: ReturnType<typeof client>,
   projectId: string
 ): Promise<{ data: unknown[] | null; error: { message?: string } | null }> {
-  const first = await c
-    .from("project_change_orders")
-    .select(CO_COLS)
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false })
-    .order("number", { ascending: false });
-  if (!first.error) return { data: first.data as unknown[], error: null };
-  if (!isMissingColumn(first.error)) return { data: null, error: first.error };
-
-  const retry1 = await c
-    .from("project_change_orders")
-    .select(CO_COLS_NO_AMOUNT)
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false })
-    .order("number", { ascending: false });
-  if (!retry1.error) return { data: retry1.data as unknown[], error: null };
-  if (!isMissingColumn(retry1.error)) return { data: null, error: retry1.error };
-
-  const retry2 = await c
-    .from("project_change_orders")
-    .select(CO_COLS_LEGACY)
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false })
-    .order("number", { ascending: false });
-  return { data: retry2.data as unknown[], error: retry2.error as { message?: string } | null };
+  let lastMissing: { message?: string } | null = null;
+  for (const cols of CO_SELECT_FALLBACKS) {
+    const result = await c
+      .from("project_change_orders")
+      .select(cols)
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .order("number", { ascending: false });
+    if (!result.error) return { data: result.data as unknown[], error: null };
+    if (!isMissingColumn(result.error)) return { data: null, error: result.error };
+    lastMissing = result.error;
+  }
+  return { data: null, error: lastMissing };
 }
 
 async function selectChangeOrderById(
   c: ReturnType<typeof client>,
   id: string
 ): Promise<{ data: unknown | null; error: { message?: string } | null }> {
-  const first = await c.from("project_change_orders").select(CO_COLS).eq("id", id).maybeSingle();
-  if (!first.error) return { data: first.data as unknown, error: null };
-  if (!isMissingColumn(first.error)) return { data: null, error: first.error };
+  let lastMissing: { message?: string } | null = null;
+  for (const cols of CO_SELECT_FALLBACKS) {
+    const result = await c.from("project_change_orders").select(cols).eq("id", id).maybeSingle();
+    if (!result.error) return { data: result.data as unknown, error: null };
+    if (!isMissingColumn(result.error)) return { data: null, error: result.error };
+    lastMissing = result.error;
+  }
+  return { data: null, error: lastMissing };
+}
 
-  const retry1 = await c
-    .from("project_change_orders")
-    .select(CO_COLS_NO_AMOUNT)
-    .eq("id", id)
-    .maybeSingle();
-  if (!retry1.error) return { data: retry1.data as unknown, error: null };
-  if (!isMissingColumn(retry1.error)) return { data: null, error: retry1.error };
-
-  const retry2 = await c
-    .from("project_change_orders")
-    .select(CO_COLS_LEGACY)
-    .eq("id", id)
-    .maybeSingle();
-  return { data: retry2.data as unknown, error: retry2.error as { message?: string } | null };
+async function selectChangeOrderByProjectNumber(
+  c: ReturnType<typeof client>,
+  projectId: string,
+  number: string
+): Promise<{ data: unknown | null; error: { message?: string } | null }> {
+  let lastMissing: { message?: string } | null = null;
+  for (const cols of CO_SELECT_FALLBACKS) {
+    const result = await c
+      .from("project_change_orders")
+      .select(cols)
+      .eq("project_id", projectId)
+      .eq("number", number)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!result.error) return { data: result.data as unknown, error: null };
+    if (!isMissingColumn(result.error)) return { data: null, error: result.error };
+    lastMissing = result.error;
+  }
+  return { data: null, error: lastMissing };
 }
 
 // —— Read ——
@@ -374,36 +385,48 @@ export async function createChangeOrder(
   if (input?.amount != null) payload.amount = input.amount;
   if (input?.costImpact != null) payload.cost_impact = input.costImpact;
   if (input?.scheduleImpactDays != null) payload.schedule_impact_days = input.scheduleImpactDays;
-  const first = await c.from("project_change_orders").insert(payload).select(CO_COLS).single();
-  if (first.error) {
-    const raw = first.error.message ? ` (${first.error.message})` : "";
-    if (isMissingTable(first.error)) throw new Error(`Change orders table missing. ${HINT}${raw}`);
-    if (isMissingColumn(first.error)) {
-      // Insert may have succeeded but select failed (e.g. approved_by missing). Fetch by project_id+number with legacy columns.
-      const fetched = await c
-        .from("project_change_orders")
-        .select(CO_COLS_LEGACY)
-        .eq("project_id", projectId)
-        .eq("number", number)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (!fetched.error && fetched.data) return toChangeOrder(fetched.data as ChangeOrderRow);
-      // Otherwise insert failed too: retry without amount and select legacy columns.
-      const payloadNoAmount = { ...payload };
-      delete (payloadNoAmount as Record<string, unknown>).amount;
-      const retry = await c
-        .from("project_change_orders")
-        .insert(payloadNoAmount)
-        .select(CO_COLS_LEGACY)
-        .single();
-      if (!retry.error && retry.data) return toChangeOrder(retry.data as ChangeOrderRow);
-      throw new Error(retry.error?.message ? `${retry.error.message} ${HINT}` : HINT);
-    }
-    throw new Error(first.error.message);
+
+  const omit = (source: Record<string, unknown>, keys: string[]) => {
+    const next = { ...source };
+    for (const key of keys) delete next[key];
+    return next;
+  };
+
+  const insertAttempts: Array<{ row: Record<string, unknown>; cols: string }> = [
+    { row: payload, cols: CO_COLS },
+    { row: omit(payload, ["description"]), cols: CO_COLS_NO_DESCRIPTION },
+    { row: omit(payload, ["amount"]), cols: CO_COLS_NO_AMOUNT },
+    {
+      row: omit(payload, ["description", "amount"]),
+      cols: CO_COLS_NO_DESCRIPTION_NO_AMOUNT,
+    },
+    {
+      row: omit(payload, ["title", "description", "amount", "cost_impact", "schedule_impact_days"]),
+      cols: CO_COLS_LEGACY,
+    },
+  ];
+
+  let lastMissing: { message?: string } | null = null;
+  for (const attempt of insertAttempts) {
+    const result = await c
+      .from("project_change_orders")
+      .insert(attempt.row)
+      .select(attempt.cols)
+      .single();
+    if (!result.error && result.data)
+      return toChangeOrder(result.data as unknown as ChangeOrderRow);
+    if (!result.error) continue;
+
+    const raw = result.error.message ? ` (${result.error.message})` : "";
+    if (isMissingTable(result.error)) throw new Error(`Change orders table missing. ${HINT}${raw}`);
+    if (!isMissingColumn(result.error)) throw new Error(result.error.message);
+
+    const fetched = await selectChangeOrderByProjectNumber(c, projectId, number);
+    if (!fetched.error && fetched.data) return toChangeOrder(fetched.data as ChangeOrderRow);
+    lastMissing = result.error;
   }
-  if (!first.data) throw new Error("Failed to create change order: no id returned.");
-  return toChangeOrder(first.data as ChangeOrderRow);
+
+  throw new Error(lastMissing?.message ? `${lastMissing.message} ${HINT}` : HINT);
 }
 
 export async function addChangeOrderAttachment(

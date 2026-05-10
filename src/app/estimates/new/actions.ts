@@ -88,6 +88,8 @@ export async function createEstimateWithItemsAction(
     });
 
     revalidatePath("/estimates");
+    revalidatePath("/projects");
+    revalidatePath("/projects/[id]", "page");
     revalidateEstimatePaths(id);
     return { ok: true, estimateId: id };
   } catch (error) {

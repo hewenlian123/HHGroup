@@ -20,6 +20,7 @@ import {
   getCloseoutCompletion,
   getProjectSchedule,
   getInvoicesWithDerived,
+  getEstimateList,
 } from "@/lib/data";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { getProjectCostDashboard } from "@/lib/project-cost-dashboard";
@@ -27,6 +28,8 @@ import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { ProjectDetailTabsClient } from "./project-detail-tabs-client";
 import type { RecentExpenseLineRow } from "./recent-expense-lines";
+
+export const dynamic = "force-dynamic";
 
 const LEGACY_TAB_MAP: Record<string, string> = {
   financial: "cost",
@@ -127,6 +130,7 @@ export default async function ProjectDetailPage({
     closeoutCompletion,
     scheduleItems,
     projectInvoicesRaw,
+    estimatesRaw,
     costDashboard,
   ] = await Promise.all([
     safe(() => getCanonicalProjectProfit(id), {
@@ -171,6 +175,7 @@ export default async function ProjectDetailPage({
     safe(() => getCloseoutCompletion(id), null),
     safe(() => getProjectSchedule(id), []),
     safe(() => getInvoicesWithDerived({ projectId: id }), []),
+    safe(() => getEstimateList(), []),
     safe(() => getProjectCostDashboard(id), {
       breakdown: { totalCost: 0, materials: 0, labor: 0, bills: 0, other: 0 },
       spentTotal: 0,
@@ -205,6 +210,13 @@ export default async function ProjectDetailPage({
   }));
 
   const projectInvoices = (projectInvoicesRaw ?? []).filter((i) => i.computedStatus !== "Void");
+  const sameText = (a: string | null | undefined, b: string | null | undefined) =>
+    a != null && b != null && a.trim().toLowerCase() === b.trim().toLowerCase();
+  const relatedEstimates = (estimatesRaw ?? []).filter(
+    (estimate) =>
+      sameText(estimate.project, project.name) ||
+      (project.client != null && sameText(estimate.client, project.client))
+  );
 
   const financialSummary = {
     budget: project.budget ?? 0,
@@ -232,6 +244,7 @@ export default async function ProjectDetailPage({
       expenseLineRows={expenseLineRowsAll}
       scheduleItems={scheduleItems ?? []}
       projectInvoices={projectInvoices}
+      relatedEstimates={relatedEstimates}
       laborEntries={laborEntries ?? []}
       documents={documents ?? []}
       commissions={commissions ?? []}

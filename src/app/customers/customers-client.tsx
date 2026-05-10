@@ -276,9 +276,9 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
 
       <div className="hidden flex-col gap-3 md:flex md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          <h1 className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
             Customers
-          </p>
+          </h1>
           <p className="text-sm text-muted-foreground">Manage your clients and contacts.</p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center md:w-auto">
