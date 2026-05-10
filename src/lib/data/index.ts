@@ -251,6 +251,7 @@ export async function createProject(input: {
   budget: number;
   status?: Project["status"];
   client?: string;
+  customerId?: string | null;
   address?: string;
   projectManager?: string;
   startDate?: string;

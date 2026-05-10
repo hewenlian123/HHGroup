@@ -35,10 +35,45 @@ type CustomerForm = {
   status: "active" | "inactive";
 };
 
+type RelatedProject = {
+  id: string;
+  name: string | null;
+  status: string | null;
+  client: string | null;
+  customer_id: string | null;
+};
+
+type RelatedEstimate = {
+  id: string;
+  number: string | null;
+  client: string | null;
+  project: string | null;
+  status: string | null;
+};
+
+type RelatedChangeOrder = {
+  id: string;
+  project_id: string;
+  number: string | null;
+  title?: string | null;
+  status: string | null;
+};
+
+type RelatedWork = {
+  projects: RelatedProject[];
+  estimates: RelatedEstimate[];
+  changeOrders: RelatedChangeOrder[];
+};
+
 const toNullable = (value: string): string | null => {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
 };
+
+const isMissingColumn = (message: string | undefined | null): boolean =>
+  /column.*does not exist|does not exist.*column|undefined column|could not find the.*column|schema cache.*column/i.test(
+    message ?? ""
+  );
 
 export default function CustomerDetailPage() {
   const params = useParams();
@@ -56,6 +91,11 @@ export default function CustomerDetailPage() {
   const [saving, setSaving] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [notFound, setNotFound] = React.useState(false);
+  const [relatedWork, setRelatedWork] = React.useState<RelatedWork>({
+    projects: [],
+    estimates: [],
+    changeOrders: [],
+  });
   const [form, setForm] = React.useState<CustomerForm>({
     name: "",
     contact_person: "",
@@ -105,6 +145,62 @@ export default function CustomerDetailPage() {
     };
     setForm(next);
     serverFormRef.current = { ...next };
+    const customerName = (row.name ?? "").trim();
+    const projectRows = new Map<string, RelatedProject>();
+    const appendProjects = (rows: RelatedProject[] | null | undefined) => {
+      for (const project of rows ?? []) {
+        if (project.id) projectRows.set(project.id, project);
+      }
+    };
+    const byCustomerId = await supabase
+      .from("projects")
+      .select("id,name,status,client,customer_id")
+      .eq("customer_id", id);
+    if (!byCustomerId.error) appendProjects(byCustomerId.data as RelatedProject[]);
+    if (customerName) {
+      const byClient = await supabase
+        .from("projects")
+        .select("id,name,status,client,customer_id")
+        .eq("client", customerName);
+      if (!byClient.error) appendProjects(byClient.data as RelatedProject[]);
+    }
+
+    let estimates: RelatedEstimate[] = [];
+    if (customerName) {
+      const estimatesRes = await supabase
+        .from("estimates")
+        .select("id,number,client,project,status")
+        .eq("client", customerName)
+        .order("updated_at", { ascending: false });
+      if (!estimatesRes.error) estimates = (estimatesRes.data ?? []) as RelatedEstimate[];
+    }
+
+    let changeOrders: RelatedChangeOrder[] = [];
+    const projectIds = Array.from(projectRows.keys());
+    if (projectIds.length > 0) {
+      const changeOrdersRes = await supabase
+        .from("project_change_orders")
+        .select("id,project_id,number,title,status")
+        .in("project_id", projectIds)
+        .order("created_at", { ascending: false });
+      if (!changeOrdersRes.error) {
+        changeOrders = (changeOrdersRes.data ?? []) as RelatedChangeOrder[];
+      } else if (isMissingColumn(changeOrdersRes.error.message)) {
+        const legacyChangeOrdersRes = await supabase
+          .from("project_change_orders")
+          .select("id,project_id,number,status")
+          .in("project_id", projectIds)
+          .order("created_at", { ascending: false });
+        if (!legacyChangeOrdersRes.error) {
+          changeOrders = (legacyChangeOrdersRes.data ?? []) as RelatedChangeOrder[];
+        }
+      }
+    }
+    setRelatedWork({
+      projects: Array.from(projectRows.values()),
+      estimates,
+      changeOrders,
+    });
     setLoading(false);
   }, [id, supabase]);
 
@@ -282,6 +378,94 @@ export default function CustomerDetailPage() {
               <option value="active">active</option>
               <option value="inactive">inactive</option>
             </Select>
+          </div>
+        </div>
+      </Card>
+
+      <Card className="border-gray-100 p-4 dark:border-border">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Related work</h2>
+            <p className="text-xs text-muted-foreground">
+              Projects, estimates, and change orders connected to this customer.
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="space-y-2">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              Projects
+            </p>
+            {relatedWork.projects.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No related projects.</p>
+            ) : (
+              <div className="divide-y divide-border/60">
+                {relatedWork.projects.map((project) => (
+                  <Link
+                    key={project.id}
+                    href={`/projects/${project.id}`}
+                    className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
+                  >
+                    <span className="min-w-0 truncate font-medium text-foreground">
+                      {project.name ?? "Untitled project"}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {project.status ?? "—"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              Estimates
+            </p>
+            {relatedWork.estimates.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No related estimates.</p>
+            ) : (
+              <div className="divide-y divide-border/60">
+                {relatedWork.estimates.map((estimate) => (
+                  <Link
+                    key={estimate.id}
+                    href={`/estimates/${estimate.id}`}
+                    className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
+                  >
+                    <span className="min-w-0 truncate font-medium text-foreground">
+                      {estimate.number ?? "Estimate"}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {estimate.status ?? "—"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              Change Orders
+            </p>
+            {relatedWork.changeOrders.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No related change orders.</p>
+            ) : (
+              <div className="divide-y divide-border/60">
+                {relatedWork.changeOrders.map((co) => (
+                  <Link
+                    key={co.id}
+                    href={`/projects/${co.project_id}/change-orders/${co.id}`}
+                    className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
+                  >
+                    <span className="min-w-0 truncate font-medium text-foreground">
+                      {co.title ?? co.number ?? "Change order"}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {co.status ?? "—"}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </Card>

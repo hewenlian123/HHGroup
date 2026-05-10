@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/toast/toast-provider";
 import type { Project, ProjectFinancialSummary } from "@/lib/data";
+import type { EstimateListItem } from "@/lib/estimates-db";
 import type { CanonicalProjectProfit } from "@/lib/profit-engine";
 import {
   categoryLooksMaterials,
@@ -123,6 +124,7 @@ export interface ProjectDetailTabsClientProps {
   expenseLineRows: import("./recent-expense-lines").RecentExpenseLineRow[];
   scheduleItems: import("@/lib/data").ProjectScheduleItem[];
   projectInvoices: import("@/lib/data").InvoiceWithDerived[];
+  relatedEstimates: EstimateListItem[];
   laborEntries: import("@/lib/daily-labor-db").LaborEntryWithJoins[];
   documents: import("@/lib/data").DocumentRow[];
   commissions: import("@/lib/data").CommissionWithPaid[];
@@ -153,6 +155,7 @@ export function ProjectDetailTabsClient({
   expenseLineRows,
   scheduleItems,
   projectInvoices,
+  relatedEstimates,
   laborEntries,
   documents,
   commissions,
@@ -865,11 +868,22 @@ export function ProjectDetailTabsClient({
                 <div className="mt-2 grid grid-cols-1 gap-2 text-[13px] sm:grid-cols-2">
                   <div className="flex items-center justify-between gap-3 py-2">
                     <span className="text-muted-foreground">Client</span>
-                    <span className="truncate text-right font-medium text-text-primary">
-                      {displayProject.client ??
-                        (displayProject as { client_name?: string }).client_name ??
-                        "—"}
-                    </span>
+                    {displayProject.customerId ? (
+                      <Link
+                        href={`/customers/${displayProject.customerId}`}
+                        className="truncate text-right font-medium text-text-primary underline-offset-2 hover:underline"
+                      >
+                        {displayProject.client ??
+                          (displayProject as { client_name?: string }).client_name ??
+                          "Customer"}
+                      </Link>
+                    ) : (
+                      <span className="truncate text-right font-medium text-text-primary">
+                        {displayProject.client ??
+                          (displayProject as { client_name?: string }).client_name ??
+                          "—"}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center justify-between gap-3 py-2">
                     <span className="text-muted-foreground">Contract value</span>
@@ -894,6 +908,36 @@ export function ProjectDetailTabsClient({
                     </>
                   ) : null}
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-border/60 bg-white px-4 py-4">
+                <SectionHeader
+                  label="Related estimates"
+                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                />
+                <Divider />
+                {relatedEstimates.length === 0 ? (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    No estimates linked by this project or client name.
+                  </p>
+                ) : (
+                  <div className="mt-2 divide-y divide-border/60">
+                    {relatedEstimates.slice(0, 5).map((estimate) => (
+                      <Link
+                        key={estimate.id}
+                        href={`/estimates/${estimate.id}`}
+                        className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
+                      >
+                        <span className="min-w-0 truncate font-medium text-text-primary">
+                          {estimate.number}
+                        </span>
+                        <span className="shrink-0 text-xs text-muted-foreground">
+                          {estimate.status}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
 
@@ -1246,7 +1290,12 @@ export function ProjectDetailTabsClient({
                         {changeOrders.map((co) => (
                           <tr key={co.id} className={listTableRowStaticClassName}>
                             <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
-                              {co.number ?? "—"}
+                              <Link
+                                href={`/projects/${projectId}/change-orders/${co.id}`}
+                                className="underline-offset-2 hover:underline"
+                              >
+                                {co.number ?? "—"}
+                              </Link>
                             </td>
                             <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
                               {co.status ?? "—"}

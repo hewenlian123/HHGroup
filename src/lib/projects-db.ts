@@ -339,6 +339,7 @@ export type CreateProjectInput = {
   budget: number;
   status?: ProjectStatus;
   client?: string;
+  customerId?: string | null;
   address?: string;
   projectManager?: string;
   startDate?: string;
@@ -364,6 +365,9 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
     spent: 0,
     ...(input.client != null && input.client !== ""
       ? { client: input.client.trim(), client_name: input.client.trim() }
+      : {}),
+    ...(input.customerId != null && input.customerId !== ""
+      ? { customer_id: input.customerId.trim() }
       : {}),
     ...(input.address != null && input.address !== "" ? { address: input.address.trim() } : {}),
     ...(input.projectManager != null && input.projectManager !== ""

@@ -25,6 +25,7 @@ export async function createProjectAction(
 ): Promise<{ error?: string } | null> {
   const name = (formData.get("name") as string)?.trim();
   const client = (formData.get("client") as string)?.trim();
+  const customerId = (formData.get("customerId") as string)?.trim() || null;
   const address = (formData.get("address") as string)?.trim();
   const budgetRaw = formData.get("budget");
   const budget = Number(budgetRaw);
@@ -34,7 +35,7 @@ export async function createProjectAction(
   if (!address) return { error: "Project address is required." };
   if (!Number.isFinite(budget) || budget <= 0) return { error: "Budget must be greater than 0." };
   // projects.budget is the canonical contract value used by profit-engine (revenue base).
-  await createProject({ name, client, address, budget, status });
+  await createProject({ name, client, customerId, address, budget, status });
   revalidatePath("/projects");
   redirect("/projects");
 }
