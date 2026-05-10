@@ -485,9 +485,6 @@ export async function createCustomEstimateCategoryAction(
     revalidatePath("/estimates");
     return { ok: true, costCode: out.costCode };
   } catch (e) {
-    console.error(e);
-    console.log(e instanceof Error ? e.message : "Could not create category.");
-    console.log((e as { details?: unknown })?.details);
     return { ok: false, error: e instanceof Error ? e.message : "Could not create category." };
   }
 }
@@ -505,9 +502,6 @@ export async function createEstimateCategoryWithCodeAction(
     revalidatePath("/estimates");
     return { ok: true, costCode: out.costCode };
   } catch (e) {
-    console.error(e);
-    console.log(e instanceof Error ? e.message : "Could not create category.");
-    console.log((e as { details?: unknown })?.details);
     return { ok: false, error: e instanceof Error ? e.message : "Could not create category." };
   }
 }

@@ -67,6 +67,10 @@ export default function nextConfig(phase) {
         "@supabase/ssr",
         // Used by ensure-expenses-source-columns; bundling breaks RSC route chunks (webpack __webpack_modules__ error).
         "postgres",
+        // Avoid missing `vendor-chunks/motion-dom.js` when App Router server chunks load client-heavy pages.
+        "framer-motion",
+        "motion-dom",
+        "motion-utils",
       ],
     },
     // Avoid ENOENT/rename errors in .next/cache/webpack (path with spaces, concurrent access)

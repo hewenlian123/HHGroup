@@ -199,12 +199,41 @@ async function fetchExpenseLinesGroupedByExpenseId(
 
 async function getLinkedBankTxId(expenseId: string): Promise<string | null> {
   const c = client();
-  const { data } = await c
+  const { data, error } = await c
     .from("bank_transactions")
     .select("id")
     .eq("linked_expense_id", expenseId)
     .maybeSingle();
+  if (error) {
+    if (isMissingTable(error) || isMissingColumn(error)) return null;
+    throw new Error(error.message ?? "Failed to load linked bank transaction.");
+  }
   return data?.id ?? null;
+}
+
+async function fetchLinkedBankTxIdMap(
+  c: SupabaseClient,
+  expenseIds: string[]
+): Promise<Map<string, string>> {
+  const unique = [...new Set(expenseIds.filter(Boolean))];
+  const map = new Map<string, string>();
+  for (let i = 0; i < unique.length; i += EXPENSE_LINES_IN_CHUNK) {
+    const slice = unique.slice(i, i + EXPENSE_LINES_IN_CHUNK);
+    const { data, error } = await c
+      .from("bank_transactions")
+      .select("id,linked_expense_id")
+      .in("linked_expense_id", slice);
+    if (error) {
+      if (isMissingTable(error) || isMissingColumn(error)) return map;
+      throw new Error(error.message ?? "Failed to load linked bank transactions.");
+    }
+    for (const row of data ?? []) {
+      const linkedExpenseId = (row as { linked_expense_id?: string | null }).linked_expense_id;
+      const bankTxId = (row as { id?: string | null }).id;
+      if (linkedExpenseId && bankTxId) map.set(linkedExpenseId, bankTxId);
+    }
+  }
+  return map;
 }
 
 async function getLegacyAttachmentsFromTable(expenseId: string): Promise<ExpenseAttachment[]> {
@@ -374,10 +403,16 @@ async function toExpense(
   const embedded = (row as ExpenseRowWithPaymentEmbed).payment_accounts?.name;
   const fromEmbed = typeof embedded === "string" && embedded.length > 0 ? embedded : null;
   const paymentAccountName = fromEmbed ?? (paId ? (paymentAccountNames?.get(paId) ?? null) : null);
+  const vendorValue = String(row.vendor ?? "").trim();
+  const vendorNameValue = String(row.vendor_name ?? "").trim();
+  const vendorName =
+    vendorNameValue && /^unknown(?: vendor)?$/i.test(vendorValue)
+      ? vendorNameValue
+      : vendorValue || vendorNameValue;
   return {
     id: row.id,
     date: row.expense_date?.slice(0, 10) ?? "",
-    vendorName: row.vendor ?? row.vendor_name ?? "",
+    vendorName,
     paymentMethod: row.payment_method ?? "Card",
     referenceNo: row.reference_no ?? undefined,
     notes: row.notes ?? undefined,
@@ -600,12 +635,16 @@ export async function getExpenses(
     c,
     rowModels.map((r) => r.id).filter(Boolean)
   );
+  const linkedBankTxIdByExpenseId = await fetchLinkedBankTxIdMap(
+    c,
+    rowModels.map((r) => r.id).filter(Boolean)
+  );
   const result: Expense[] = [];
   for (const row of rowModels) {
     const r = row;
     const lines = linesByExpenseId.get(r.id) ?? [];
     const attachments = await getAttachments(r.id);
-    const linkedBankTxId = await getLinkedBankTxId(r.id);
+    const linkedBankTxId = linkedBankTxIdByExpenseId.get(r.id) ?? null;
     result.push(await toExpense(r, lines, attachments, linkedBankTxId, paymentNameMap));
   }
   return result;
@@ -1054,6 +1093,13 @@ export async function createQuickExpense(payload: {
   if (expErr) throw new Error(expErr.message ?? "Failed to create quick expense.");
   const expenseId = (expRow as { id: string } | null)?.id;
   if (!expenseId) throw new Error("Failed to create quick expense: no id.");
+  const vendorSync = await c
+    .from("expenses")
+    .update({ vendor, vendor_name: vendor })
+    .eq("id", expenseId);
+  if (vendorSync.error && !isMissingColumn(vendorSync.error)) {
+    console.warn("[createQuickExpense] vendor sync:", vendorSync.error.message);
+  }
 
   const lineBase = (includeProject: boolean): Record<string, unknown> => ({
     expense_id: expenseId,
@@ -1141,16 +1187,6 @@ export async function createExpenseFromPaidReimbursement(
   const notes = (opts?.note ?? reimb.description ?? "").toString().trim() || null;
   const referenceNo = `REIM-${reimbursementId}`;
 
-  if (typeof console !== "undefined" && console.log) {
-    console.log("[createExpenseFromPaidReimbursement] start", {
-      reimbursementId,
-      workerId: reimb.workerId,
-      projectId,
-      amount,
-      vendorName,
-    });
-  }
-
   let existingId: string | null = null;
   // Check by reference_no first (works when source/source_id columns don't exist)
   try {
@@ -1160,11 +1196,6 @@ export async function createExpenseFromPaidReimbursement(
       .eq("reference_no", referenceNo)
       .maybeSingle();
     existingId = byRef?.id ?? null;
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[createExpenseFromPaidReimbursement] duplicate check by reference_no", {
-        existingId,
-      });
-    }
   } catch {
     // reference_no column may not exist; try source/source_id next
   }
@@ -1313,13 +1344,6 @@ export async function createExpenseFromPaidReimbursement(
   for (let i = 0; i < attempts.length; i++) {
     const row = attempts[i]!;
     result = await c.from("expenses").insert(row).select("id").single();
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[createExpenseFromPaidReimbursement] insert attempt", i + 1, {
-        keys: Object.keys(row),
-        ok: !result.error,
-        error: result.error?.message,
-      });
-    }
     if (!result.error) break;
     if (
       isStatusConstraintError(result.error) &&
@@ -1339,10 +1363,6 @@ export async function createExpenseFromPaidReimbursement(
   if (expErr) throw new Error(expErr.message ?? "Failed to create expense.");
   const expenseId = (expRow as { id: string } | null)?.id;
   if (!expenseId) throw new Error("Failed to create expense: no id.");
-  if (typeof console !== "undefined" && console.log) {
-    console.log("[createExpenseFromPaidReimbursement] expense created", { expenseId });
-    console.log("[workflow test] expense created", { expenseId, reimbursementId });
-  }
 
   const linePayloads: Record<string, unknown>[] = [
     {
@@ -1384,12 +1404,6 @@ export async function createExpenseFromPaidReimbursement(
     const res = await c.from("expense_lines").insert(payload);
     lineErr = res.error;
     if (!lineErr) {
-      if (typeof console !== "undefined" && console.log) {
-        console.log(
-          "[createExpenseFromPaidReimbursement] expense_lines inserted",
-          Object.keys(payload)
-        );
-      }
       break;
     }
     if (!isMissingColumn(lineErr)) break;
@@ -2231,12 +2245,17 @@ export async function countExpensesWithoutReceiptUrlInRange(
 /** Unlinked expenses for bank tx suggestion. */
 export async function getUnlinkedExpenses(): Promise<Expense[]> {
   const c = client();
-  const { data: btRows } = await c
+  const { data: btRows, error } = await c
     .from("bank_transactions")
     .select("linked_expense_id")
     .not("linked_expense_id", "is", null);
+  if (error && !(isMissingTable(error) || isMissingColumn(error))) {
+    throw new Error(error.message ?? "Failed to load linked bank transactions.");
+  }
   const linkedIds = new Set(
-    (btRows ?? []).map((r: { linked_expense_id: string }) => r.linked_expense_id)
+    (btRows ?? [])
+      .map((r: { linked_expense_id: string | null }) => r.linked_expense_id)
+      .filter((id): id is string => Boolean(id))
   );
   const all = await getExpenses();
   return all.filter((e) => !linkedIds.has(e.id));

@@ -33,10 +33,8 @@ import {
   FilePen,
   AlertTriangle,
   Activity,
-  FlaskConical,
   BarChart2,
   ScrollText,
-  MonitorCheck,
   Archive,
   Inbox,
 } from "lucide-react";
@@ -59,7 +57,6 @@ import { getCompanyInitials } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
 
 const STORAGE_KEY = "hh.sidebarSections";
-
 type NavItem = { href: string; label: string; icon?: LucideIcon };
 
 const SECTION_KEYS = ["PROJECTS", "OPERATIONS", "FINANCE", "LABOR", "PEOPLE", "SYSTEM"] as const;
@@ -139,8 +136,6 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
     label: "SYSTEM",
     items: [
       { href: "/system-health", label: "System Health", icon: Activity },
-      { href: "/system-tests", label: "System Tests", icon: FlaskConical },
-      { href: "/system-tests/ui", label: "UI Tests", icon: MonitorCheck },
       { href: "/system-metrics", label: "System Metrics", icon: BarChart2 },
       { href: "/system-logs", label: "System Logs", icon: ScrollText },
       { href: "/system/backups", label: "Backups", icon: Archive },

@@ -499,10 +499,6 @@ export async function markReimbursementPaid(reimbursementId: string): Promise<Wo
   }
   if (result.error) throw new Error(result.error.message ?? "Failed to update reimbursement.");
   if (result.data) {
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[reimbursement paid]", reimbursementId);
-      console.log("[workflow test] reimbursement paid", { reimbursementId });
-    }
     return (await enrichNames([fromRow(result.data as Record<string, unknown>)]))[0]!;
   }
   const { data: existing, error: fetchErr } = await c

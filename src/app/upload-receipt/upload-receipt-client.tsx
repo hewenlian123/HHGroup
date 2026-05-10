@@ -228,16 +228,6 @@ export function UploadReceiptClient() {
 
     setUploading(true);
     try {
-      // Debug: upload + submit start
-      // eslint-disable-next-line no-console
-      console.log("[UploadReceipt] submit start", {
-        workerId,
-        workerName,
-        projectId,
-        expenseType,
-        fileName: file?.name,
-        fileSize: file?.size,
-      });
       const fd = new FormData();
       fd.set("file", file);
       const up = await fetch("/api/upload-receipt/upload", { method: "POST", body: fd });
@@ -245,9 +235,6 @@ export function UploadReceiptClient() {
       if (!up.ok || !upData.receipt_url) {
         throw new Error(upData.message ?? "上传失败 / Upload failed");
       }
-      // Debug: upload success
-      // eslint-disable-next-line no-console
-      console.log("[UploadReceipt] upload success", { receiptUrl: upData.receipt_url });
       setUploading(false);
       setSubmitting(true);
       const res = await fetch("/api/upload-receipt/submit", {
@@ -268,9 +255,6 @@ export function UploadReceiptClient() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "提交失败 / Submit failed");
-      // Debug: submit success
-      // eslint-disable-next-line no-console
-      console.log("[UploadReceipt] submit success", { id: data.id });
       try {
         if (ocrDetectedSnapshot) {
           const vendorTrim = vendor.trim();
@@ -491,7 +475,7 @@ export function UploadReceiptClient() {
           {process.env.NODE_ENV !== "production" && ocrMatchedRules.length > 0 ? (
             <details className="mt-2 rounded-sm border border-border/60 px-3 py-2 text-xs">
               <summary className="cursor-pointer text-muted-foreground">
-                OCR Debug ({ocrSource}) - amount diagnostics
+                OCR diagnostics ({ocrSource})
               </summary>
               <AmountDiagnosticsPanel
                 className="mt-2"
