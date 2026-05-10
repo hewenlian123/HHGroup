@@ -4,9 +4,6 @@ import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: reimbursementId } = await params;
-  if (typeof console !== "undefined" && console.log) {
-    console.log("[reimbursement/pay] start", { reimbursementId });
-  }
   try {
     try {
       const { ensureExpensesSourceColumns } = await import("@/lib/ensure-expenses-source-columns");
@@ -48,9 +45,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         { paymentMethod: body?.method ?? null, note: body?.note ?? null }
       );
       expenseId = expense?.id ?? null;
-      if (typeof console !== "undefined" && console.log) {
-        console.log("[reimbursement/pay] expense created", { expenseId, reimbursementId });
-      }
     } catch (expErr) {
       expenseWarning =
         expErr instanceof Error ? expErr.message : "Could not add to Project Expenses.";
@@ -61,17 +55,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     // Step 4: Update reimbursement status (SET status='paid', paid_at=now())
     const reimbursement = await markReimbursementPaid(reimbursementId);
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[reimbursement/pay] reimbursement status updated", {
-        reimbursementId,
-        status: reimbursement.status,
-      });
-    }
 
     // Step 5: Return updated reimbursement
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[reimbursement/pay] finished", { reimbursementId });
-    }
     return NextResponse.json({
       reimbursement,
       expenseId: expenseId ?? undefined,

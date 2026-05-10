@@ -12,6 +12,7 @@ import {
   E2E_PRESERVED_CUSTOMER_ID,
   E2E_PRESERVED_PROJECT_ID,
   E2E_PRESERVED_WORKER_ID,
+  cleanupTestData,
   purgeE2EReceiptQueueRows,
 } from "./e2e-cleanup-db";
 import { loadE2EProcessEnv } from "./e2e-load-env";
@@ -50,6 +51,15 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
   }
 
   const supabase = createClient(url, key);
+  const preClean = await cleanupTestData(supabase);
+  const preCleanTotal = Object.values(preClean.deleted).reduce((a, b) => a + b, 0);
+  if (preCleanTotal > 0) {
+    console.log("[global-setup] pre-cleaned stale E2E rows:", preClean.deleted);
+  }
+  if (preClean.warnings.length > 0) {
+    preClean.warnings.forEach((w) => console.warn(`[global-setup] pre-clean warning: ${w}`));
+  }
+
   await resetE2ESeedWorkerPayrollStateWithClient(supabase);
   await ensureE2EPreservedSeed(supabase);
 

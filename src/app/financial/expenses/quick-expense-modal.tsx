@@ -216,6 +216,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const [debugUnlocked, setDebugUnlocked] = React.useState(false);
   const [debugOpen, setDebugOpen] = React.useState(false);
   const [debugData, setDebugData] = React.useState<OcrDebugInfo | null>(null);
+  const debugToolsEnabled = process.env.NODE_ENV !== "production";
   const [duplicateConfirmed, setDuplicateConfirmed] = React.useState(false);
   const [ocrSuggestions, setOcrSuggestions] = React.useState<{
     vendor: string;
@@ -232,6 +233,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const LAST_PROJECT_KEY = "hh.quick-expense-last-project-id";
   const OCR_LEARN_KEY = "hh.quick-expense-ocr-learn";
   const OCR_HISTORY_KEY = "hh.quick-expense-ocr-history";
+  const manualVendorNameRef = React.useRef("");
   const vendorInputRef = React.useRef<HTMLInputElement>(null);
   const amountInputRef = React.useRef<HTMLInputElement>(null);
   const dateInputRef = React.useRef<HTMLInputElement>(null);
@@ -434,6 +436,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setDuplicateCandidate(null);
     setOcrSuggestions(null);
     setCatalogPick(EXPENSE_COMMON_ITEM_NONE);
+    manualVendorNameRef.current = "";
     if (fileInputRef.current) fileInputRef.current.value = "";
     ocrFieldTouchedRef.current = {
       vendor: false,
@@ -521,7 +524,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   }, [vendorName, open, paymentAccountRows]);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open || !debugToolsEnabled) return;
     try {
       const params = new URLSearchParams(window.location.search);
       if ((params.get("debug") ?? "").toLowerCase() === "ocr") {
@@ -540,7 +543,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [debugToolsEnabled, open]);
 
   const projectOptions = React.useMemo(() => {
     const sorted = [...projects].sort((a, b) => {
@@ -881,6 +884,18 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const handleSave = async (saveAndNew?: boolean) => {
     if (saving || receiptPipelineBusy) return;
     const totalAmount = Number(amount);
+    const domVendorName =
+      typeof document === "undefined"
+        ? ""
+        : (
+            document.getElementById("quick-expense-vendor") as HTMLInputElement | null
+          )?.value.trim() || "";
+    const effectiveVendorName = (
+      manualVendorNameRef.current ||
+      domVendorName ||
+      vendorInputRef.current?.value ||
+      vendorName
+    ).trim();
     if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
       setError("Amount must be greater than 0.");
       return;
@@ -889,7 +904,8 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       (e) => (e.date ?? "") === (date || new Date().toISOString().slice(0, 10))
     );
     const dup = sameDay.find((e) => {
-      const sameVendor = normalizeVendor(e.vendorName ?? "") === normalizeVendor(vendorName ?? "");
+      const sameVendor =
+        normalizeVendor(e.vendorName ?? "") === normalizeVendor(effectiveVendorName);
       const closeAmount = Math.abs(getExpenseTotal(e) - totalAmount) < 0.01;
       return sameVendor && closeAmount;
     });
@@ -942,7 +958,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
 
       const created = await createQuickExpense({
         date: date || new Date().toISOString().slice(0, 10),
-        vendorName: vendorName.trim() || "Unknown",
+        vendorName: effectiveVendorName || "Unknown",
         totalAmount,
         receiptUrl: firstPublic || undefined,
         sourceType: slotsToSave.length > 0 ? "receipt_upload" : "company",
@@ -972,7 +988,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       }
       toast({
         title: "Expense saved",
-        description: `${vendorName.trim() || "Unknown"} - ${formatCurrency(totalAmount)}`,
+        description: `${effectiveVendorName || "Unknown"} - ${formatCurrency(totalAmount)}`,
         variant: "success",
         durationMs: 14_000,
       });
@@ -993,7 +1009,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       try {
         if (detectedSnapshot) {
           const changedVendor =
-            normalizeVendor(vendorName) !== normalizeVendor(detectedSnapshot.vendor);
+            normalizeVendor(effectiveVendorName) !== normalizeVendor(detectedSnapshot.vendor);
           const changedAmount = Math.abs(totalAmount - detectedSnapshot.amount) >= 0.01;
           if (changedVendor || changedAmount) {
             const raw = window.localStorage.getItem(OCR_LEARN_KEY);
@@ -1006,7 +1022,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
             const key = normalizeVendor(detectedSnapshot.vendor);
             if (changedVendor) {
               learned.vendorAliases = learned.vendorAliases ?? {};
-              learned.vendorAliases[key] = vendorName.trim() || detectedSnapshot.vendor;
+              learned.vendorAliases[key] = effectiveVendorName || detectedSnapshot.vendor;
             }
             if (changedAmount) {
               learned.amountHints = learned.amountHints ?? {};
@@ -1023,7 +1039,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           source: ocrSource,
           raw_text: debugData?.rawText ?? "",
           parsed_result: {
-            vendor: vendorName.trim() || "Unknown",
+            vendor: effectiveVendorName || "Unknown",
             amount: totalAmount,
             date: date || new Date().toISOString().slice(0, 10),
             items: dedupeItems(recognizedItems),
@@ -1041,7 +1057,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       const paSaved = effectivePaymentAccountId;
       if (paSaved) {
         persistLastExpensePaymentAccountId(paSaved);
-        rememberExpenseVendorPaymentAccount(vendorName.trim() || "Unknown", paSaved);
+        rememberExpenseVendorPaymentAccount(effectiveVendorName || "Unknown", paSaved);
       }
       setSaving(false);
       uiActionLog("quick-expense-save-ui", perfStart, 100);
@@ -1051,6 +1067,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         setSaveFlash(false);
         if (saveAndNew) {
           setVendorName("");
+          manualVendorNameRef.current = "";
           setAmount("");
           setDate(new Date().toISOString().slice(0, 10));
           setCategory("Other");
@@ -1227,11 +1244,19 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                   </label>
                   <Input
                     id="quick-expense-vendor"
+                    name="vendorName"
                     ref={vendorInputRef}
                     value={vendorName}
+                    onInput={(e) => {
+                      manualVendorNameRef.current = e.currentTarget.value;
+                    }}
                     onChange={(e) => {
                       ocrFieldTouchedRef.current.vendor = true;
+                      manualVendorNameRef.current = e.target.value;
                       setVendorName(e.target.value);
+                    }}
+                    onBlur={(e) => {
+                      manualVendorNameRef.current = e.currentTarget.value;
                     }}
                     className={FIELD_INPUT_CLASS}
                     disabled={saving || !supabase}
@@ -1660,7 +1685,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                         </div>
                       ) : null}
                     </div>
-                    {process.env.NODE_ENV !== "production" && ocrSource !== "none" ? (
+                    {debugToolsEnabled && ocrSource !== "none" ? (
                       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
                         <span>
                           OCR:{" "}
@@ -1678,7 +1703,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                             className="btn-outline-ghost h-7 px-2 text-[11px]"
                             onClick={() => setDebugOpen(true)}
                           >
-                            Debug
+                            Diagnostics
                           </Button>
                         ) : null}
                       </div>
@@ -1795,92 +1820,94 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           </form>
         </DialogContent>
       </Dialog>
-      <Dialog open={debugOpen} onOpenChange={setDebugOpen}>
-        <DialogContent className="max-w-2xl border-border/60">
-          <DialogHeader className="border-b border-border/60 pb-2">
-            <DialogTitle className="text-base font-medium">OCR Debug Panel</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-3">
-            <div className="text-xs text-muted-foreground">
-              Hidden tool mode: `Cmd/Ctrl + Shift + D` or `?debug=ocr`
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div>Source: {debugData?.source ?? "n/a"}</div>
-              <div>Fallback: {debugData?.fallbackTriggered ? "yes" : "no"}</div>
-            </div>
-            <div className="text-sm">
-              Status/Reason:{" "}
-              {(debugData?.cloud ?? [])
-                .map((c) => `${c.status ?? "n/a"}${c.reason ? ` (${c.reason})` : ""}`)
-                .join(" | ")}
-            </div>
-            <div>
-              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Parsed JSON
+      {debugToolsEnabled ? (
+        <Dialog open={debugOpen} onOpenChange={setDebugOpen}>
+          <DialogContent className="max-w-2xl border-border/60">
+            <DialogHeader className="border-b border-border/60 pb-2">
+              <DialogTitle className="text-base font-medium">OCR Diagnostics</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-3">
+              <div className="text-xs text-muted-foreground">
+                Diagnostics mode: `Cmd/Ctrl + Shift + D` or `?debug=ocr`
               </div>
-              <pre className="max-h-40 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
-                {JSON.stringify(debugData?.parsed ?? {}, null, 2)}
-              </pre>
-            </div>
-            <div>
-              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Parsed Items
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>Source: {debugData?.source ?? "n/a"}</div>
+                <div>Fallback: {debugData?.fallbackTriggered ? "yes" : "no"}</div>
               </div>
-              <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
-                {JSON.stringify(debugData?.parsedItems ?? [], null, 2)}
-              </pre>
-            </div>
-            <div>
-              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Matched Rules
+              <div className="text-sm">
+                Status/Reason:{" "}
+                {(debugData?.cloud ?? [])
+                  .map((c) => `${c.status ?? "n/a"}${c.reason ? ` (${c.reason})` : ""}`)
+                  .join(" | ")}
               </div>
-              <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
-                {JSON.stringify(debugData?.matchedRules ?? [], null, 2)}
-              </pre>
-            </div>
-            <div>
-              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Amount Diagnostics
+              <div>
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Parsed JSON
+                </div>
+                <pre className="max-h-40 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                  {JSON.stringify(debugData?.parsed ?? {}, null, 2)}
+                </pre>
               </div>
-              <AmountDiagnosticsPanel
-                diagnostics={debugData?.amountDiagnostics ?? []}
-                matchedRules={debugData?.matchedRules ?? []}
-              />
-            </div>
-            <div>
-              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Confidence
+              <div>
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Parsed Items
+                </div>
+                <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                  {JSON.stringify(debugData?.parsedItems ?? [], null, 2)}
+                </pre>
               </div>
-              <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
-                {JSON.stringify(debugData?.confidence ?? {}, null, 2)}
-              </pre>
-            </div>
-            <div>
-              <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Raw OCR Text
+              <div>
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Matched Rules
+                </div>
+                <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                  {JSON.stringify(debugData?.matchedRules ?? [], null, 2)}
+                </pre>
               </div>
-              <pre className="max-h-48 overflow-auto rounded-sm border border-border/60 p-2 text-xs whitespace-pre-wrap">
-                {debugData?.rawText ?? ""}
-              </pre>
+              <div>
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Amount Diagnostics
+                </div>
+                <AmountDiagnosticsPanel
+                  diagnostics={debugData?.amountDiagnostics ?? []}
+                  matchedRules={debugData?.matchedRules ?? []}
+                />
+              </div>
+              <div>
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Confidence
+                </div>
+                <pre className="max-h-28 overflow-auto rounded-sm border border-border/60 p-2 text-xs">
+                  {JSON.stringify(debugData?.confidence ?? {}, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <div className="mb-1 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Raw OCR Text
+                </div>
+                <pre className="max-h-48 overflow-auto rounded-sm border border-border/60 p-2 text-xs whitespace-pre-wrap">
+                  {debugData?.rawText ?? ""}
+                </pre>
+              </div>
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={async () => {
+                    const payload = JSON.stringify(debugData ?? {}, null, 2);
+                    await navigator.clipboard.writeText(payload);
+                    toast({ title: "Copied OCR diagnostics", variant: "success" });
+                  }}
+                >
+                  Copy Diagnostics JSON
+                </Button>
+              </div>
             </div>
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8"
-                onClick={async () => {
-                  const payload = JSON.stringify(debugData ?? {}, null, 2);
-                  await navigator.clipboard.writeText(payload);
-                  toast({ title: "Copied OCR debug", variant: "success" });
-                }}
-              >
-                Copy Debug JSON
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </>
   );
 }

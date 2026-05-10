@@ -31,10 +31,18 @@ const AUTO_REPAIR_DDL: string[] = [
   `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS source text`,
   `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS source_id uuid`,
   `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS card_name text`,
+  `ALTER TABLE public.expenses ADD COLUMN IF NOT EXISTS project_id uuid NULL REFERENCES public.projects(id) ON DELETE SET NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_expenses_project_id ON public.expenses (project_id)
+   WHERE project_id IS NOT NULL`,
 
   // 3. expense_lines table columns
   `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS total numeric`,
   `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS category text DEFAULT 'Other'`,
+  `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS cost_code text NULL`,
+  `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS memo text NULL`,
+  `ALTER TABLE public.expense_lines ADD COLUMN IF NOT EXISTS project_id uuid NULL REFERENCES public.projects(id) ON DELETE SET NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_expense_lines_project_id ON public.expense_lines (project_id)
+   WHERE project_id IS NOT NULL`,
 
   // 4. payments_received table columns (table may not exist yet; ALTER will no-op or fail gracefully)
   `ALTER TABLE public.payments_received ADD COLUMN IF NOT EXISTS customer_name text`,
@@ -42,7 +50,29 @@ const AUTO_REPAIR_DDL: string[] = [
   `ALTER TABLE public.payments_received ADD COLUMN IF NOT EXISTS deposit_account text`,
 
   // 5. labor_entries table columns
-  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending'`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'Draft'`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS submitted_at timestamptz`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS submitted_by text`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS approved_at timestamptz`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS approved_by text`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS locked_at timestamptz`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS locked_by text`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS project_id uuid NULL REFERENCES public.projects(id) ON DELETE SET NULL`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS cost_amount numeric NULL`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS morning boolean NOT NULL DEFAULT false`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS afternoon boolean NOT NULL DEFAULT false`,
+  `UPDATE public.labor_entries
+   SET status = 'Draft'
+   WHERE status IS NULL OR status NOT IN ('Draft', 'Submitted', 'Approved', 'Locked')`,
+  `ALTER TABLE public.labor_entries ALTER COLUMN status SET DEFAULT 'Draft'`,
+  `ALTER TABLE public.labor_entries ALTER COLUMN status SET NOT NULL`,
+  `ALTER TABLE public.labor_entries DROP CONSTRAINT IF EXISTS labor_entries_status_check`,
+  `ALTER TABLE public.labor_entries
+   ADD CONSTRAINT labor_entries_status_check
+   CHECK (status IN ('Draft', 'Submitted', 'Approved', 'Locked'))`,
+  `CREATE INDEX IF NOT EXISTS idx_labor_entries_status ON public.labor_entries (status)`,
+  `CREATE INDEX IF NOT EXISTS idx_labor_entries_project_id ON public.labor_entries (project_id)
+   WHERE project_id IS NOT NULL`,
   `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS worker_payment_id uuid`,
   `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS labor_entry_ids uuid[]`,
   `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS idempotency_key text`,
@@ -218,7 +248,120 @@ END
 $_$`,
   `NOTIFY pgrst, 'reload schema'`,
 
-  // 9c. receipt_queue (finance receipt intake; E2E + app expect table when using direct DB URL)
+  // 9c. project_change_orders metadata used by detail/list views.
+  `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS title text NULL`,
+  `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS description text NULL`,
+  `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS amount numeric GENERATED ALWAYS AS (total) STORED`,
+  `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS cost_impact numeric NULL`,
+  `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS schedule_impact_days integer NULL`,
+  `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS date date NULL`,
+  `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS approved_by text NULL`,
+  `NOTIFY pgrst, 'reload schema'`,
+
+  // 9d. punch_list columns used by Operations / Punch List.
+  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS location text NULL`,
+  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS assigned_worker_id uuid NULL`,
+  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS status text NULL DEFAULT 'open'`,
+  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS photo_url text NULL`,
+  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS notes text NULL`,
+  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS created_at timestamptz NULL DEFAULT now()`,
+  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS description text NULL`,
+  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS priority text NOT NULL DEFAULT 'Medium'`,
+  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS completed_at timestamptz NULL`,
+  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS created_by text NULL`,
+  `ALTER TABLE public.punch_list ADD COLUMN IF NOT EXISTS photo_id uuid NULL`,
+  `CREATE INDEX IF NOT EXISTS idx_punch_list_photo_id ON public.punch_list (photo_id)`,
+  `DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'punch_list' AND column_name = 'notes'
+  ) THEN
+    UPDATE public.punch_list
+    SET description = notes
+    WHERE description IS NULL AND notes IS NOT NULL;
+  END IF;
+
+  UPDATE public.punch_list SET status = 'assigned' WHERE status = 'in_progress';
+  UPDATE public.punch_list SET status = 'completed' WHERE status = 'resolved';
+END
+$$`,
+  `NOTIFY pgrst, 'reload schema'`,
+
+  // 9e. bank_transactions (cash reconciliation / accounts overview)
+  `CREATE EXTENSION IF NOT EXISTS pgcrypto`,
+  `CREATE TABLE IF NOT EXISTS public.bank_transactions (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  txn_date date not null,
+  description text not null default '',
+  amount numeric not null default 0,
+  status text not null default 'unmatched' check (status in ('unmatched', 'reconciled')),
+  reconcile_type text null check (reconcile_type in ('Expense', 'Income', 'Transfer')),
+  reconciled_at timestamptz null,
+  reconciled_by text null,
+  linked_expense_id uuid null references public.expenses(id) on delete set null,
+  vendor_name text null,
+  payment_method text null,
+  notes text null
+)`,
+  `ALTER TABLE public.bank_transactions ADD COLUMN IF NOT EXISTS reconciled_by text null`,
+  `CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$`,
+  `DROP TRIGGER IF EXISTS trg_bank_transactions_updated_at ON public.bank_transactions`,
+  `CREATE TRIGGER trg_bank_transactions_updated_at
+  BEFORE UPDATE ON public.bank_transactions
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_updated_at()`,
+  `CREATE INDEX IF NOT EXISTS idx_bank_transactions_txn_date
+  ON public.bank_transactions (txn_date DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_bank_transactions_status_txn_date
+  ON public.bank_transactions (status, txn_date DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_bank_transactions_linked_expense_id
+  ON public.bank_transactions (linked_expense_id)
+  WHERE linked_expense_id IS NOT NULL`,
+  `ALTER TABLE public.bank_transactions ENABLE ROW LEVEL SECURITY`,
+  `GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.bank_transactions TO anon, authenticated, service_role`,
+  `DROP POLICY IF EXISTS bank_transactions_select_all ON public.bank_transactions`,
+  `DROP POLICY IF EXISTS bank_transactions_insert_all ON public.bank_transactions`,
+  `DROP POLICY IF EXISTS bank_transactions_update_all ON public.bank_transactions`,
+  `DROP POLICY IF EXISTS bank_transactions_delete_all ON public.bank_transactions`,
+  `DROP POLICY IF EXISTS bank_transactions_anon_select ON public.bank_transactions`,
+  `CREATE POLICY bank_transactions_anon_select
+  ON public.bank_transactions FOR SELECT TO anon USING (true)`,
+  `DROP POLICY IF EXISTS bank_transactions_anon_insert ON public.bank_transactions`,
+  `CREATE POLICY bank_transactions_anon_insert
+  ON public.bank_transactions FOR INSERT TO anon WITH CHECK (true)`,
+  `DROP POLICY IF EXISTS bank_transactions_anon_update ON public.bank_transactions`,
+  `CREATE POLICY bank_transactions_anon_update
+  ON public.bank_transactions FOR UPDATE TO anon USING (true) WITH CHECK (true)`,
+  `DROP POLICY IF EXISTS bank_transactions_anon_delete ON public.bank_transactions`,
+  `CREATE POLICY bank_transactions_anon_delete
+  ON public.bank_transactions FOR DELETE TO anon USING (true)`,
+  `DROP POLICY IF EXISTS bank_transactions_authenticated_select ON public.bank_transactions`,
+  `CREATE POLICY bank_transactions_authenticated_select
+  ON public.bank_transactions FOR SELECT TO authenticated USING (true)`,
+  `DROP POLICY IF EXISTS bank_transactions_authenticated_insert ON public.bank_transactions`,
+  `CREATE POLICY bank_transactions_authenticated_insert
+  ON public.bank_transactions FOR INSERT TO authenticated WITH CHECK (true)`,
+  `DROP POLICY IF EXISTS bank_transactions_authenticated_update ON public.bank_transactions`,
+  `CREATE POLICY bank_transactions_authenticated_update
+  ON public.bank_transactions FOR UPDATE TO authenticated USING (true) WITH CHECK (true)`,
+  `DROP POLICY IF EXISTS bank_transactions_authenticated_delete ON public.bank_transactions`,
+  `CREATE POLICY bank_transactions_authenticated_delete
+  ON public.bank_transactions FOR DELETE TO authenticated USING (true)`,
+  `COMMENT ON COLUMN public.bank_transactions.reconciled_by IS 'Optional actor id or label when status=reconciled.'`,
+  `NOTIFY pgrst, 'reload schema'`,
+
+  // 9f. receipt_queue (finance receipt intake; E2E + app expect table when using direct DB URL)
   `CREATE TABLE IF NOT EXISTS public.receipt_queue (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   status TEXT NOT NULL DEFAULT 'processing'

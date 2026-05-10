@@ -1094,16 +1094,9 @@ export async function createCustomEstimateCategory(
       }
       return { ok: true, costCode, item };
     }
-    console.error(fallbackErr);
-    console.log(fallbackErr.message);
-    console.log(fallbackErr.details);
     return { ok: false, error: fallbackErr.message || "Could not create category." };
   }
   if (eCat) {
-    // Debug: log full Supabase error for quick-create failures.
-    console.error(eCat);
-    console.log(eCat.message);
-    console.log(eCat.details);
     const msg = eCat.message ?? "";
     if (/duplicate|unique/i.test(msg)) return { ok: false, error: "This code is already in use." };
     return { ok: false, error: eCat.message || "Could not create category." };
@@ -1202,16 +1195,9 @@ export async function createEstimateCategoryWithExplicitCode(
       }
       return { ok: true, costCode, item };
     }
-    console.error(fallbackErr);
-    console.log(fallbackErr.message);
-    console.log(fallbackErr.details);
     return { ok: false, error: fallbackErr.message || "Could not create category." };
   }
   if (eCat) {
-    // Debug: log full Supabase error for modal category create failures.
-    console.error(eCat);
-    console.log(eCat.message);
-    console.log(eCat.details);
     const msg = eCat.message ?? "";
     if (/duplicate|unique/i.test(msg)) return { ok: false, error: "This code is already in use." };
     return { ok: false, error: eCat.message || "Could not create category." };

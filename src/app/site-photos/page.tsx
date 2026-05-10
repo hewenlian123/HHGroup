@@ -42,8 +42,15 @@ function isDemoMissingPath(path: string): boolean {
   return /^site-photos\/demo-\d+\.jpg$/i.test((path ?? "").trim());
 }
 
+function isLegacyUnavailablePhotoUrl(path: string): boolean {
+  const trimmed = (path ?? "").trim();
+  return isDemoMissingPath(trimmed) || /^https:\/\/picsum\.photos\/seed\/hh-e2e\//i.test(trimmed);
+}
+
 function photoImageUrl(path: string): string {
-  return `/api/operations/site-photos/photo?path=${encodeURIComponent(path)}`;
+  const trimmed = (path ?? "").trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `/api/operations/site-photos/photo?path=${encodeURIComponent(trimmed)}`;
 }
 
 export default function SitePhotosPage() {
@@ -127,7 +134,9 @@ export default function SitePhotosPage() {
       // Avoid noisy 404s for legacy demo rows that point to missing files.
       // These records may exist in some dev DBs from older seeds.
       const demoMissing = new Set<string>(
-        (list as PhotoRow[]).filter((p) => isDemoMissingPath(p.photo_url)).map((p) => p.id)
+        (list as PhotoRow[])
+          .filter((p) => isLegacyUnavailablePhotoUrl(p.photo_url))
+          .map((p) => p.id)
       );
       if (demoMissing.size) {
         setFailedPhotoIds((prev) => {

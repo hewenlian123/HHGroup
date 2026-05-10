@@ -149,13 +149,6 @@ export async function insertWorkerReceiptWithClient(
     .single();
   if (error) throw new Error(error.message ?? "Failed to create receipt upload.");
   const receipt = fromRow(data as Record<string, unknown>);
-  if (typeof console !== "undefined" && console.log) {
-    console.log("[workflow test] receipt created", {
-      id: receipt.id,
-      workerId: draft.workerId,
-      amount: draft.amount,
-    });
-  }
   return receipt;
 }
 
@@ -473,14 +466,6 @@ export async function approveWorkerReceiptWithClient(
       .single();
     if (linkErr) throw new Error(linkErr.message ?? "Failed to link reimbursement to receipt.");
 
-    if (typeof console !== "undefined" && console.log) {
-      console.log("[workflow test] reimbursement created", {
-        id: reimbursementCreated.id,
-        workerId: reimbursementCreated.workerId,
-        amount: reimbursementCreated.amount,
-        status: reimbursementCreated.status,
-      });
-    }
     return { receipt: fromRow(linkedRow as Record<string, unknown>), reimbursementCreated };
   } catch (e) {
     // Revert status back to Pending if reimbursement creation/linking fails

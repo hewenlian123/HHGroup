@@ -594,32 +594,28 @@ export function ProjectDetailTabsClient({
                     Cost
                   </DropdownMenuLabel>
                   <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
+                    onSelect={() => {
                       setTab("expenses");
                     }}
                   >
                     Expenses
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
+                    onSelect={() => {
                       setTab("labor");
                     }}
                   >
                     Labor
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
+                    onSelect={() => {
                       setTab("bills");
                     }}
                   >
                     Bills
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
+                    onSelect={() => {
                       setTab("subcontracts");
                     }}
                   >
@@ -630,24 +626,21 @@ export function ProjectDetailTabsClient({
                     Project
                   </DropdownMenuLabel>
                   <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
+                    onSelect={() => {
                       setTab("budget");
                     }}
                   >
                     Budget
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
+                    onSelect={() => {
                       setTab("change-orders");
                     }}
                   >
                     Change Orders
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
+                    onSelect={() => {
                       setTab("materials");
                     }}
                   >
@@ -658,16 +651,14 @@ export function ProjectDetailTabsClient({
                     Activity
                   </DropdownMenuLabel>
                   <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
+                    onSelect={() => {
                       setTab("activity");
                     }}
                   >
                     Activity
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
+                    onSelect={() => {
                       setTab("punch-list");
                     }}
                   >
@@ -678,16 +669,14 @@ export function ProjectDetailTabsClient({
                     Final
                   </DropdownMenuLabel>
                   <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
+                    onSelect={() => {
                       setTab("closeout");
                     }}
                   >
                     Closeout
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
+                    onSelect={() => {
                       setTab("commission");
                     }}
                   >
@@ -1290,12 +1279,19 @@ export function ProjectDetailTabsClient({
                         {changeOrders.map((co) => (
                           <tr key={co.id} className={listTableRowStaticClassName}>
                             <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
-                              <Link
-                                href={`/projects/${projectId}/change-orders/${co.id}`}
-                                className="underline-offset-2 hover:underline"
-                              >
-                                {co.number ?? "—"}
-                              </Link>
+                              <div className="flex min-w-0 flex-col py-1.5">
+                                <Link
+                                  href={`/projects/${projectId}/change-orders/${co.id}`}
+                                  className="underline-offset-2 hover:underline"
+                                >
+                                  {co.number ?? "—"}
+                                </Link>
+                                {co.title ? (
+                                  <span className="mt-0.5 max-w-[18rem] truncate text-xs font-normal text-muted-foreground">
+                                    {co.title}
+                                  </span>
+                                ) : null}
+                              </div>
                             </td>
                             <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
                               {co.status ?? "—"}

@@ -371,18 +371,18 @@ export async function createChangeOrder(
   const number = await getNextChangeOrderNumber(c, projectId);
   const sequence = parseInt(number.replace(/^CO-0*/, "") || "0", 10) || 1;
   const date = new Date().toISOString().slice(0, 10);
+  const requestedAmount = input?.amount != null ? Number(input.amount) || 0 : 0;
   const payload: Record<string, unknown> = {
     project_id: projectId,
     number,
     sequence,
     status: "Draft",
-    total: 0,
-    total_amount: 0,
+    total: requestedAmount,
+    total_amount: requestedAmount,
     date,
   };
   if (input?.title != null) payload.title = input.title;
   if (input?.description != null) payload.description = input.description;
-  if (input?.amount != null) payload.amount = input.amount;
   if (input?.costImpact != null) payload.cost_impact = input.costImpact;
   if (input?.scheduleImpactDays != null) payload.schedule_impact_days = input.scheduleImpactDays;
 
@@ -521,7 +521,11 @@ export async function updateChangeOrder(
   const updates: Record<string, unknown> = {};
   if (patch.title !== undefined) updates.title = patch.title;
   if (patch.description !== undefined) updates.description = patch.description;
-  if (patch.amount !== undefined) updates.amount = patch.amount;
+  if (patch.amount !== undefined) {
+    const amount = patch.amount != null ? Number(patch.amount) || 0 : 0;
+    updates.total = amount;
+    updates.total_amount = amount;
+  }
   if (patch.costImpact !== undefined) updates.cost_impact = patch.costImpact;
   if (patch.scheduleImpactDays !== undefined)
     updates.schedule_impact_days = patch.scheduleImpactDays;

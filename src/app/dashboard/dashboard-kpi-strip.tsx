@@ -237,7 +237,7 @@ export function DashboardKpiStrip({
             "mt-auto pt-1 text-[12px] font-normal text-zinc-500/90 dark:text-zinc-400/85"
           )}
         >
-          Recent tx sample
+          Recent transactions
         </p>
       </div>
     </div>

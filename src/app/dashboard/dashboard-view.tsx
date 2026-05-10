@@ -767,7 +767,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   </p>
                 </div>
                 <div className="rounded-sm border border-slate-900/[0.045] bg-white/[0.65] px-3 py-3 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-[8px] dark:border-border/45 dark:bg-zinc-950/28 sm:px-3.5 sm:py-3.5">
-                  <p className={TYPO.kpiLabel}>Net (sample)</p>
+                  <p className={TYPO.kpiLabel}>Net</p>
                   <p
                     className={cn(
                       TYPO.kpiValue,
