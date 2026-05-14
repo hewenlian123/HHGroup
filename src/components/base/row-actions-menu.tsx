@@ -28,8 +28,16 @@ export interface RowActionsMenuProps {
   actions: RowAction[];
   ariaLabel?: string;
   className?: string;
+  /** Dropdown alignment. Defaults to right-aligned row actions. */
+  contentAlign?: "start" | "center" | "end";
+  /** Whether Radix may flip the menu to avoid viewport collisions. */
+  contentAvoidCollisions?: boolean;
   /** Merged into `DropdownMenuContent` (e.g. SaaS-style panel). */
   contentClassName?: string;
+  /** Dropdown side. Useful for tight mobile cards where the menu should open upward. */
+  contentSide?: "top" | "right" | "bottom" | "left";
+  contentSideOffset?: number;
+  contentStyle?: React.CSSProperties;
   /** Merged into every `DropdownMenuItem`. */
   itemClassName?: string;
   /** Overrides default destructive item text/focus colors when `destructive` is true. */
@@ -51,7 +59,12 @@ export function RowActionsMenu({
   actions,
   ariaLabel = "Row actions",
   className,
+  contentAlign = "end",
+  contentAvoidCollisions,
   contentClassName,
+  contentSide,
+  contentSideOffset = 4,
+  contentStyle,
   itemClassName,
   destructiveItemClassName,
   touchFriendly: touchFriendlyProp,
@@ -81,8 +94,11 @@ export function RowActionsMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
-        sideOffset={4}
+        align={contentAlign}
+        avoidCollisions={contentAvoidCollisions}
+        side={contentSide}
+        sideOffset={contentSideOffset}
+        style={contentStyle}
         className={cn(
           "min-w-[10rem]",
           appearance === "list" && listRowActionsContentClassName,

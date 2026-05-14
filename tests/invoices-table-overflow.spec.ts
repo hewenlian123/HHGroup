@@ -154,6 +154,33 @@ test("keeps premium invoice rows usable with long client and project names", asy
   await expect(mobileCard.getByText(fixture.invoiceNo)).toBeVisible();
   await expect(mobileCard.getByRole("link", { name: "Open" })).toBeVisible();
 
+  const mobileActionButton = mobileCard.getByRole("button", {
+    name: `Actions for ${fixture.invoiceNo}`,
+  });
+  await expect(mobileActionButton).toBeVisible();
+  const actionButtonBox = await mobileActionButton.boundingBox();
+
+  await mobileActionButton.click();
+  const mobileMenu = page.getByRole("menu", { name: `Actions for ${fixture.invoiceNo}` });
+  await expect(mobileMenu).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "View" })).toBeVisible();
+
+  const menuBox = await mobileMenu.boundingBox();
+  const menuSurface = await mobileMenu.evaluate((element) => {
+    const styles = window.getComputedStyle(element);
+    return {
+      backgroundColor: styles.backgroundColor,
+      opacity: styles.opacity,
+    };
+  });
+
+  expect(actionButtonBox).not.toBeNull();
+  expect(menuBox).not.toBeNull();
+  expect(menuBox!.y).toBeGreaterThan(actionButtonBox!.y);
+  expect(menuSurface.opacity).toBe("1");
+  expect(menuSurface.backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+  expect(menuSurface.backgroundColor).not.toBe("transparent");
+
   const mobileLayoutMetrics = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,
     documentWidth: document.documentElement.scrollWidth,
