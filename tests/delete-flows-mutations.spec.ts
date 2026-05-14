@@ -3,6 +3,7 @@ import {
   acceptBrowserDialogs,
   expectDeleteControlVisibleWithoutHover,
   clickTrashInRowAndConfirmDialog,
+  tryCreateDraftInvoiceNavigateToDetail,
 } from "./e2e-helpers";
 import { allowDeleteMutations, e2eTargetOrigin } from "./e2e-env-helpers";
 
@@ -60,6 +61,41 @@ test.describe("Delete mutations: create then delete", () => {
     await del.click();
     await expect(row).toHaveCount(0, { timeout: ROW_REMOVED_MS });
     expect(Date.now() - t0, "row clears quickly after confirm").toBeLessThan(8000);
+  });
+
+  test("financial invoices: create draft, verify preview/detail, then delete", async ({ page }) => {
+    const stamp = Date.now();
+    const clientName = `PW-INVOICE-DELETE-${stamp}`;
+    const lineDescription = `PW invoice delete line ${stamp}`;
+
+    const created = await tryCreateDraftInvoiceNavigateToDetail(page, {
+      clientName,
+      lineDescription,
+    });
+    test.skip(!created.ok, created.ok ? "" : created.skipReason);
+
+    await expect(page.locator("body")).toContainText(clientName, { timeout: 20_000 });
+    await expect(page.locator("body")).toContainText(lineDescription, { timeout: 20_000 });
+
+    const invoiceId = page.url().match(/\/financial\/invoices\/([^/?#]+)/)?.[1];
+    expect(invoiceId, "Created invoice id should be present in the URL.").toBeTruthy();
+
+    await page.goto(`${BASE}/financial/invoices/${invoiceId}`);
+    await page.waitForLoadState("domcontentloaded");
+    await expect(page.getByRole("heading", { name: /^INV-/ })).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("body")).toContainText(clientName, { timeout: 20_000 });
+    await expect(page.locator("body")).toContainText(lineDescription, { timeout: 20_000 });
+
+    await page.getByRole("button", { name: /More|Actions/i }).click();
+    await page.getByRole("menuitem", { name: /Delete Invoice/i }).click();
+    await expect(page).toHaveURL(/\/financial\/invoices\/?($|[?#])/, { timeout: 30_000 });
+
+    const search = page.locator('input[placeholder*="Invoice #"]:visible').first();
+    await expect(search).toBeVisible({ timeout: 30_000 });
+    await search.fill(clientName);
+    await expect(page.locator("tbody tr").filter({ hasText: clientName })).toHaveCount(0, {
+      timeout: ROW_REMOVED_MS,
+    });
   });
 
   test("settings categories: create then delete", async ({ page }) => {
