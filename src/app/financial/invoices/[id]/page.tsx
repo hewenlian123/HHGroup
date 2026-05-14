@@ -242,10 +242,9 @@ export default function InvoiceDetailPage() {
   }, []);
 
   const startEditing = React.useCallback(() => {
-    if (!invoice || invoice.status !== "Draft") return;
-    resetEditDraft(invoice);
-    setEditing(true);
-  }, [invoice, resetEditDraft]);
+    if (!id || !invoice || invoice.status !== "Draft") return;
+    router.push(`/financial/invoices/${id}/edit`);
+  }, [id, invoice, router]);
 
   const cancelEditing = React.useCallback(() => {
     if (invoice) resetEditDraft(invoice);

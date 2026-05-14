@@ -1,0 +1,614 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
+import { useToast } from "@/components/toast/toast-provider";
+import { createBrowserClient } from "@/lib/supabase";
+import { formatCurrency, formatDate } from "@/lib/formatters";
+import type { InvoiceWithDerived } from "@/lib/data";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { updateInvoiceAction } from "../../actions";
+
+type ProjectOption = { id: string; name: string };
+type CustomerOption = { id: string; name: string | null };
+
+type LineDraft = {
+  itemName: string;
+  description: string;
+  qty: number;
+  unitPrice: number;
+};
+
+function safeNumber(v: unknown): number {
+  const n = typeof v === "number" ? v : Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function isMissingTableError(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code;
+  return code === "42P01";
+}
+
+function newLineDraft(): LineDraft {
+  return { itemName: "", description: "", qty: 1, unitPrice: 0 };
+}
+
+function lineHasContent(line: LineDraft): boolean {
+  return line.itemName.trim().length > 0 || line.description.trim().length > 0;
+}
+
+function composeLineDescription(line: LineDraft): string {
+  const itemName = line.itemName.trim();
+  const description = line.description.trim();
+  if (itemName && description) return `${itemName}\n${description}`;
+  return itemName || description;
+}
+
+function splitLineDescription(raw: string): Pick<LineDraft, "itemName" | "description"> {
+  const normalized = (raw ?? "").replace(/\r\n/g, "\n").trim();
+  if (!normalized) return { itemName: "", description: "" };
+  const [itemName, ...descriptionParts] = normalized.split("\n");
+  return {
+    itemName: itemName.trim(),
+    description: descriptionParts.join("\n").trim(),
+  };
+}
+
+function invoiceLinesToDrafts(invoice: InvoiceWithDerived): LineDraft[] {
+  if (!invoice.lineItems.length) return [newLineDraft()];
+  return invoice.lineItems.map((line) => ({
+    ...splitLineDescription(line.description ?? ""),
+    qty: safeNumber(line.qty),
+    unitPrice: safeNumber(line.unitPrice),
+  }));
+}
+
+function AutoResizeTextarea({
+  className = "",
+  value,
+  onChange,
+  ...props
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const ref = React.useRef<HTMLTextAreaElement | null>(null);
+
+  const resize = React.useCallback((node: HTMLTextAreaElement | null) => {
+    if (!node) return;
+    node.style.height = "auto";
+    node.style.height = `${node.scrollHeight}px`;
+  }, []);
+
+  React.useLayoutEffect(() => {
+    resize(ref.current);
+  }, [resize, value]);
+
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(e) => {
+        onChange?.(e);
+        resize(e.currentTarget);
+      }}
+      className={[
+        "block min-h-[44px] w-full resize-none overflow-hidden rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm leading-5 text-zinc-600 shadow-none transition-all duration-150 placeholder:text-zinc-400 hover:bg-zinc-50/70 focus:border-sky-200 focus:bg-sky-50/40 focus:outline-none focus:ring-2 focus:ring-sky-100/80 disabled:cursor-not-allowed disabled:opacity-50",
+        className,
+      ].join(" ")}
+      {...props}
+    />
+  );
+}
+
+export default function EditInvoiceClient({
+  invoice,
+  initialProjectName,
+}: {
+  invoice: InvoiceWithDerived;
+  initialProjectName: string;
+}) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const detailHref = `/financial/invoices/${invoice.id}`;
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [submitAttempted, setSubmitAttempted] = React.useState(false);
+
+  const [projects, setProjects] = React.useState<ProjectOption[]>([]);
+  const [customers, setCustomers] = React.useState<CustomerOption[]>([]);
+
+  const [projectId, setProjectId] = React.useState<string>(invoice.projectId ?? "");
+  const [customerId, setCustomerId] = React.useState<string>("");
+  const [clientName, setClientName] = React.useState<string>(invoice.clientName ?? "");
+  const [issueDate, setIssueDate] = React.useState<string>((invoice.issueDate ?? "").slice(0, 10));
+  const [dueDate, setDueDate] = React.useState<string>((invoice.dueDate ?? "").slice(0, 10));
+  const [taxPct, setTaxPct] = React.useState<number>(safeNumber(invoice.taxPct ?? 0));
+  const [notes, setNotes] = React.useState<string>(invoice.notes ?? "");
+  const [lines, setLines] = React.useState<LineDraft[]>(() => invoiceLinesToDrafts(invoice));
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const configured = Boolean(url && anon);
+  const supabase = React.useMemo(
+    () => (configured ? createBrowserClient(url as string, anon as string) : null),
+    [configured, url, anon]
+  );
+
+  const load = React.useCallback(async () => {
+    if (!supabase) {
+      setLoading(false);
+      setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
+    const [{ data: proj, error: projErr }, { data: cust, error: custErr }] = await Promise.all([
+      supabase
+        .from("projects")
+        .select("id,name")
+        .order("created_at", { ascending: false })
+        .limit(500),
+      supabase
+        .from("customers")
+        .select("id,name")
+        .order("created_at", { ascending: false })
+        .limit(500),
+    ]);
+
+    if (projErr) setError(projErr.message);
+    setProjects(((proj ?? []) as ProjectOption[]).filter((p) => p.id && p.name));
+
+    if (custErr) {
+      if (!isMissingTableError(custErr)) setError((p) => p ?? custErr.message);
+      setCustomers([]);
+    } else {
+      setCustomers((cust ?? []) as CustomerOption[]);
+    }
+
+    setLoading(false);
+  }, [supabase, configured]);
+
+  React.useEffect(() => {
+    void load();
+  }, [load]);
+
+  useOnAppSync(
+    React.useCallback(() => {
+      void load();
+    }, [load]),
+    [load]
+  );
+
+  React.useEffect(() => {
+    const selected = customers.find((c) => c.id === customerId)?.name?.trim() ?? "";
+    if (customerId && selected) setClientName(selected);
+  }, [customerId, customers]);
+
+  const computedSubtotal = React.useMemo(() => {
+    return lines.reduce(
+      (sum, l) => sum + Math.max(0, safeNumber(l.qty)) * Math.max(0, safeNumber(l.unitPrice)),
+      0
+    );
+  }, [lines]);
+  const computedTax = React.useMemo(
+    () => computedSubtotal * (Math.max(0, safeNumber(taxPct)) / 100),
+    [computedSubtotal, taxPct]
+  );
+  const computedTotal = React.useMemo(
+    () => computedSubtotal + computedTax,
+    [computedSubtotal, computedTax]
+  );
+
+  const validationErrors = React.useMemo(() => {
+    const errors: string[] = [];
+    if (!projectId) errors.push("Project is required.");
+    if (!clientName.trim()) errors.push("Client name is required.");
+    if (!lines.some(lineHasContent)) errors.push("At least one line item is required.");
+    return errors;
+  }, [clientName, lines, projectId]);
+
+  const currentProjectOptionMissing =
+    Boolean(projectId) && !projects.some((project) => project.id === projectId);
+  const canSubmit = !loading && !saving;
+
+  const updateLine = React.useCallback((idx: number, patch: Partial<LineDraft>) => {
+    setLines((prev) => prev.map((line, i) => (i === idx ? { ...line, ...patch } : line)));
+  }, []);
+
+  const addLine = React.useCallback(() => {
+    setLines((prev) => [...prev, newLineDraft()]);
+  }, []);
+
+  const removeLine = React.useCallback((idx: number) => {
+    setLines((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)));
+  }, []);
+
+  const handleSave = async () => {
+    if (saving || loading) return;
+    setSubmitAttempted(true);
+    if (validationErrors.length > 0) {
+      const msg = validationErrors[0] ?? "Please complete the invoice.";
+      setError(msg);
+      toast({ title: "Invoice is incomplete", description: msg, variant: "error" });
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      const result = await updateInvoiceAction(invoice.id, {
+        projectId,
+        clientName,
+        issueDate,
+        dueDate,
+        taxPct: Math.max(0, safeNumber(taxPct)),
+        notes,
+        lineItems: lines.map((line) => ({
+          description: composeLineDescription(line),
+          qty: Math.max(0, safeNumber(line.qty) || 0),
+          unitPrice: Math.max(0, safeNumber(line.unitPrice) || 0),
+        })),
+      });
+
+      if (!result.ok) {
+        const msg = result.error ?? "Failed to save invoice.";
+        setError(msg);
+        toast({ title: "Could not save invoice", description: msg, variant: "error" });
+        return;
+      }
+
+      toast({ title: "Invoice saved", variant: "success" });
+      router.push(detailHref);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to save invoice.";
+      setError(msg);
+      toast({ title: "Could not save invoice", description: msg, variant: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (invoice.status !== "Draft") {
+    return (
+      <div className="mx-auto flex max-w-[920px] flex-col gap-6 p-6">
+        <div>
+          <Button asChild variant="ghost" size="sm" className="-ml-2 rounded-sm">
+            <Link href={detailHref}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to invoice
+            </Link>
+          </Button>
+          <div className="mt-3 flex items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
+              {invoice.invoiceNo}
+            </h1>
+            <InvoiceStatusBadge status={invoice.computedStatus} />
+          </div>
+        </div>
+        <Card className="p-5">
+          <p className="text-sm text-muted-foreground">Only draft invoices can be edited.</p>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto flex max-w-[920px] flex-col gap-6 p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <Button asChild variant="ghost" size="sm" className="-ml-2 rounded-sm">
+            <Link href={detailHref}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to invoice
+            </Link>
+          </Button>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-950">
+              Edit {invoice.invoiceNo}
+            </h1>
+            <InvoiceStatusBadge status={invoice.computedStatus} />
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Update project, client, dates, and billable items.
+          </p>
+        </div>
+        <div className="text-left text-sm text-muted-foreground sm:text-right">
+          <p className="font-medium text-foreground">{invoice.clientName}</p>
+          <p>{initialProjectName}</p>
+          <p>Issued {formatDate(invoice.issueDate)}</p>
+        </div>
+      </div>
+
+      {error ? (
+        <Card className="p-5">
+          <p className="text-sm text-red-600">{error}</p>
+        </Card>
+      ) : null}
+
+      <Card className="p-5">
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-6 w-44" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Project
+              </label>
+              <select
+                data-testid="invoice-edit-project-select"
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="mt-1 flex h-10 w-full rounded-[10px] border border-input bg-white px-3 text-sm"
+                aria-invalid={submitAttempted && !projectId}
+              >
+                <option value="">Select project</option>
+                {currentProjectOptionMissing ? (
+                  <option value={projectId}>{initialProjectName}</option>
+                ) : null}
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+              {submitAttempted && !projectId ? (
+                <p className="mt-1 text-xs text-rose-600">Project is required.</p>
+              ) : null}
+            </div>
+
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Customer (optional)
+              </label>
+              <select
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value)}
+                className="mt-1 flex h-10 w-full rounded-[10px] border border-input bg-white px-3 text-sm"
+              >
+                <option value="">Select customer</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name || "Unnamed customer"}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Client name
+              </label>
+              <Input
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+                placeholder="Client"
+                className="mt-1"
+                aria-invalid={submitAttempted && !clientName.trim()}
+              />
+              {submitAttempted && !clientName.trim() ? (
+                <p className="mt-1 text-xs text-rose-600">Client name is required.</p>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Issue date
+                </label>
+                <Input
+                  type="date"
+                  value={issueDate}
+                  onChange={(e) => setIssueDate((e.target.value || issueDate).slice(0, 10))}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Due date
+                </label>
+                <Input
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate((e.target.value || dueDate).slice(0, 10))}
+                  className="mt-1"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Tax %
+              </label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={taxPct}
+                onChange={(e) => setTaxPct(safeNumber(e.target.value))}
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Notes (optional)
+              </label>
+              <Input
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Terms / notes"
+                className="mt-1"
+              />
+            </div>
+          </div>
+        )}
+      </Card>
+
+      <Card className="overflow-hidden border-zinc-200/70 bg-white shadow-none">
+        <div className="flex items-center justify-between border-b border-zinc-100/80 px-4 py-3">
+          <h2 className="text-sm font-semibold text-foreground">Line items</h2>
+          <span className="text-xs text-muted-foreground">
+            {lines.length} item{lines.length === 1 ? "" : "s"}
+          </span>
+        </div>
+        {submitAttempted && !lines.some(lineHasContent) ? (
+          <p className="px-4 pt-3 text-xs text-rose-600">At least one line item is required.</p>
+        ) : null}
+        <div className="space-y-3 px-3 py-3 sm:px-4">
+          {lines.map((line, idx) => {
+            const amount =
+              Math.max(0, safeNumber(line.qty)) * Math.max(0, safeNumber(line.unitPrice));
+            const invalidLine = submitAttempted && !lineHasContent(line);
+
+            return (
+              <div
+                key={idx}
+                className={[
+                  "group relative rounded-xl border border-zinc-200/70 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-150 hover:border-zinc-300/80 hover:bg-zinc-50/40 hover:shadow-[0_8px_24px_rgba(15,23,42,0.05)]",
+                  invalidLine ? "border-rose-200 bg-rose-50/20" : "",
+                ].join(" ")}
+              >
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_72px_112px_132px_32px] md:items-start">
+                  <div className="space-y-1 pr-9 md:pr-0">
+                    <Input
+                      value={line.itemName}
+                      onChange={(e) => updateLine(idx, { itemName: e.target.value })}
+                      placeholder="Item name"
+                      aria-label={`Line item ${idx + 1} item name`}
+                      aria-invalid={invalidLine}
+                      className="h-8 min-h-8 border-transparent bg-transparent px-2 py-1 text-[15px] font-medium leading-5 text-zinc-950 placeholder:text-zinc-400 hover:bg-zinc-50/70 focus-visible:border-sky-200 focus-visible:bg-sky-50/40 focus-visible:ring-2 focus-visible:ring-sky-100/80 max-md:text-base"
+                    />
+                    <AutoResizeTextarea
+                      value={line.description}
+                      onChange={(e) => updateLine(idx, { description: e.target.value })}
+                      placeholder="Describe the scope of work, materials, or service…"
+                      aria-label={`Line item ${idx + 1} description`}
+                      aria-invalid={invalidLine}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 md:contents">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
+                        Qty
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={line.qty}
+                        onChange={(e) => updateLine(idx, { qty: safeNumber(e.target.value) })}
+                        className="h-8 min-h-8 rounded-lg border-zinc-100 bg-zinc-50/70 px-2 text-right text-sm font-normal tabular-nums text-zinc-500 hover:bg-white focus-visible:bg-white"
+                        aria-label={`Line item ${idx + 1} quantity`}
+                      />
+                    </div>
+                    <span className="pb-2 text-sm text-zinc-300 md:hidden">×</span>
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
+                        Rate
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={line.unitPrice}
+                        onChange={(e) => updateLine(idx, { unitPrice: safeNumber(e.target.value) })}
+                        className="h-8 min-h-8 rounded-lg border-zinc-100 bg-zinc-50/70 px-2 text-right text-sm font-normal tabular-nums text-zinc-500 hover:bg-white focus-visible:bg-white"
+                        aria-label={`Line item ${idx + 1} rate`}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-end justify-between border-t border-zinc-100 pt-3 md:block md:border-0 md:pt-0 md:text-right">
+                    <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 md:block">
+                      Amount
+                    </span>
+                    <span className="mt-2 block text-base font-semibold tabular-nums text-zinc-950">
+                      {formatCurrency(amount)}
+                    </span>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="btn-outline-ghost absolute right-3 top-3 h-8 w-8 border-transparent p-0 text-zinc-300 opacity-100 transition-colors hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600 md:static md:mt-5 md:opacity-0 md:group-hover:opacity-100"
+                    aria-label="Remove line item"
+                    disabled={saving || lines.length <= 1}
+                    onClick={() => removeLine(idx)}
+                    title="Remove line item"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={addLine}
+            disabled={saving}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            Add another item
+          </button>
+        </div>
+
+        <div className="flex justify-end p-4">
+          <div className="w-full max-w-sm space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="tabular-nums">{formatCurrency(computedSubtotal)}</span>
+            </div>
+            {computedTax > 0 ? (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Tax ({taxPct || 0}%)</span>
+                <span className="tabular-nums">{formatCurrency(computedTax)}</span>
+              </div>
+            ) : null}
+            <div className="flex justify-between border-t border-zinc-200/60 pt-2 font-medium">
+              <span>Total</span>
+              <span className="tabular-nums">{formatCurrency(computedTotal)}</span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
+      <div className="-mx-6 sticky bottom-0 z-20 border-t border-border/60 bg-zinc-50/95 p-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button
+            variant="outline"
+            onClick={() => router.push(detailHref)}
+            disabled={saving}
+            className="rounded-sm"
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={!canSubmit} className="rounded-sm">
+            <SubmitSpinner loading={saving} className="mr-2" />
+            {saving ? "Saving..." : "Save changes"}
+          </Button>
+        </div>
+        {submitAttempted && validationErrors.length > 0 ? (
+          <p className="mt-2 text-center text-xs text-rose-600 sm:text-right">
+            {validationErrors[0]}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}
