@@ -12,8 +12,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import {
+  budgetDigits,
+  ProjectAddressField,
+  ProjectBudgetInput,
+} from "@/components/projects/project-form-controls";
 import type { Project } from "@/lib/data";
-import { cn } from "@/lib/utils";
 
 const MODAL =
   "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0_0_0_0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
@@ -41,7 +45,7 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
   const [name, setName] = React.useState(project.name ?? "");
   const [client, setClient] = React.useState(project.client ?? "");
   const [address, setAddress] = React.useState(project.address ?? "");
-  const [budget, setBudget] = React.useState(String(project.budget ?? ""));
+  const [budget, setBudget] = React.useState(budgetDigits(String(project.budget ?? "")));
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -50,7 +54,7 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
       setName(project.name ?? "");
       setClient(project.client ?? "");
       setAddress(project.address ?? "");
-      setBudget(String(project.budget ?? ""));
+      setBudget(budgetDigits(String(project.budget ?? "")));
       setError(null);
     }
   }, [open, project.name, project.client, project.address, project.budget]);
@@ -130,33 +134,18 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
               disabled={saving}
             />
           </div>
-          <div>
-            <label htmlFor="edit-project-address" className={LBL}>
-              Address
-            </label>
-            <Input
-              id="edit-project-address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className={FIELD}
-              disabled={saving}
-            />
-          </div>
-          <div>
-            <label htmlFor="edit-project-budget" className={LBL}>
-              Budget
-            </label>
-            <Input
-              id="edit-project-budget"
-              type="number"
-              min="0"
-              step="1"
-              value={budget}
-              onChange={(e) => setBudget(e.target.value)}
-              className={cn(FIELD, "tabular-nums")}
-              disabled={saving}
-            />
-          </div>
+          <ProjectAddressField
+            inputId="edit-project-address"
+            value={address}
+            onChange={setAddress}
+            disabled={saving}
+          />
+          <ProjectBudgetInput
+            inputId="edit-project-budget"
+            value={budget}
+            onValueChange={setBudget}
+            disabled={saving}
+          />
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
             <Button
