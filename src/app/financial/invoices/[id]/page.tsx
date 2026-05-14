@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/native-select";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +18,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
@@ -28,35 +28,38 @@ import {
   getPaymentsByInvoiceId,
   getPaymentsReceivedByInvoiceId,
   getDepositsByInvoiceId,
-  getPaymentMethods,
+  getPaymentAttachmentPreviewUrl,
   markInvoiceSent,
   revertInvoiceToDraft,
-  recordInvoicePayment,
   deleteInvoicePayment,
+  duplicateInvoice,
   type InvoiceWithDerived,
   type InvoicePayment,
+  type PaymentReceivedAttachment,
 } from "@/lib/data";
 import {
   ArrowLeft,
   Send,
-  CreditCard,
   FileText,
   Eye,
   Trash2,
   ChevronDown,
   Ban,
   CircleDollarSign,
-  RotateCcw,
   CalendarDays,
   Building2,
   Pencil,
   Plus,
+  Copy,
+  Download,
+  Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { deleteInvoiceAction, updateInvoiceAction } from "../actions";
 import { ReceivePaymentModal } from "@/app/financial/payments/receive-payment-modal";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { useToast } from "@/components/toast/toast-provider";
 import { voidInvoiceFromClient } from "@/lib/invoice-void-client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
@@ -119,12 +122,6 @@ function EmptyLedgerState({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ToolbarDivider() {
-  return (
-    <span aria-hidden="true" className="hidden h-5 w-px bg-gray-200 dark:bg-border sm:block" />
-  );
-}
-
 export default function InvoiceDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -139,16 +136,10 @@ export default function InvoiceDetailPage() {
   const [deposits, setDeposits] = React.useState<
     Awaited<ReturnType<typeof getDepositsByInvoiceId>>
   >([]);
-  const [showPaymentModal, setShowPaymentModal] = React.useState(false);
   const [showReceivePaymentModal, setShowReceivePaymentModal] = React.useState(false);
-  const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
-  const [paymentAmount, setPaymentAmount] = React.useState("");
-  const [paymentMethod, setPaymentMethod] = React.useState("ACH");
-  const [paymentMemo, setPaymentMemo] = React.useState("");
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [voidConfirmOpen, setVoidConfirmOpen] = React.useState(false);
-  const [revertOpen, setRevertOpen] = React.useState(false);
   const [actionBusy, setActionBusy] = React.useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = React.useState<string | null>(null);
   const [editing, setEditing] = React.useState(false);
@@ -187,24 +178,22 @@ export default function InvoiceDetailPage() {
   }, [refresh]);
 
   React.useEffect(() => {
+    const shouldOpenReceivePayment =
+      searchParams.get("receivePayment") === "1" || searchParams.get("recordPayment") === "1";
     if (
-      searchParams.get("recordPayment") === "1" &&
+      shouldOpenReceivePayment &&
       invoice &&
       invoice.computedStatus !== "Void" &&
       invoice.computedStatus !== "Paid" &&
       invoice.computedStatus !== "Draft"
     ) {
-      setShowPaymentModal(true);
+      setShowReceivePaymentModal(true);
     }
   }, [searchParams, invoice]);
 
-  const [methods, setMethods] = React.useState<string[]>([]);
   const [project, setProject] = React.useState<Awaited<ReturnType<typeof getProjectById>> | null>(
     null
   );
-  React.useEffect(() => {
-    getPaymentMethods().then(setMethods);
-  }, []);
   React.useEffect(() => {
     if (invoice) getProjectById(invoice.projectId).then(setProject);
     else setProject(null);
@@ -213,7 +202,6 @@ export default function InvoiceDetailPage() {
   useOnAppSync(
     React.useCallback(() => {
       void refresh();
-      void getPaymentMethods().then(setMethods);
     }, [refresh]),
     [refresh]
   );
@@ -221,6 +209,38 @@ export default function InvoiceDetailPage() {
   useBreadcrumbEntityLabel(invoice?.invoiceNo);
 
   const { toast } = useToast();
+  const { openPreview } = useAttachmentPreview();
+  const [openingPaymentAttachmentsId, setOpeningPaymentAttachmentsId] = React.useState<
+    string | null
+  >(null);
+
+  const openPaymentAttachments = React.useCallback(
+    async (paymentId: string, attachments: PaymentReceivedAttachment[]) => {
+      if (attachments.length === 0) return;
+      setOpeningPaymentAttachmentsId(paymentId);
+      try {
+        const files = await Promise.all(
+          attachments.map(async (att) => ({
+            url: await getPaymentAttachmentPreviewUrl(att),
+            fileName: att.file_name,
+            fileType: att.file_type,
+            mimeType: att.mime_type ?? undefined,
+            attachmentId: att.id,
+          }))
+        );
+        openPreview({ files, initialIndex: 0 });
+      } catch (err) {
+        toast({
+          title: "Unable to open attachment",
+          description: err instanceof Error ? err.message : undefined,
+          variant: "error",
+        });
+      } finally {
+        setOpeningPaymentAttachmentsId(null);
+      }
+    },
+    [openPreview, toast]
+  );
 
   const resetEditDraft = React.useCallback((source: InvoiceWithDerived) => {
     setEditClientName(source.clientName ?? "");
@@ -318,8 +338,63 @@ export default function InvoiceDetailPage() {
     if (!id || actionBusy || editSaving) return;
     setActionBusy(true);
     try {
-      await markInvoiceSent(id);
+      const ok = await markInvoiceSent(id);
+      if (!ok) {
+        toast({
+          title: "Could not mark as sent",
+          description: "Only draft invoices can be marked as sent.",
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Invoice marked as sent", variant: "success" });
       await refresh();
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleBackToEdit = async () => {
+    if (!id || actionBusy || editSaving) return;
+    setActionBusy(true);
+    try {
+      const ok = await revertInvoiceToDraft(id);
+      if (!ok) {
+        toast({
+          title: "Cannot go back to edit",
+          description: "Only invoices without payments can be returned to draft.",
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Invoice returned to draft", variant: "success" });
+      router.push(`/financial/invoices/${id}/edit`);
+    } finally {
+      setActionBusy(false);
+    }
+  };
+
+  const handleDuplicateInvoice = async () => {
+    if (!id || actionBusy || editSaving || isVoid) return;
+    setActionBusy(true);
+    try {
+      const duplicated = await duplicateInvoice(id);
+      if (!duplicated) {
+        toast({
+          title: "Could not duplicate invoice",
+          description: "Void invoices cannot be duplicated.",
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Invoice duplicated", variant: "success" });
+      router.push(`/financial/invoices/${duplicated.id}`);
+    } catch (e) {
+      toast({
+        title: "Could not duplicate invoice",
+        description: e instanceof Error ? e.message : "Please try again.",
+        variant: "error",
+      });
     } finally {
       setActionBusy(false);
     }
@@ -363,39 +438,6 @@ export default function InvoiceDetailPage() {
         description: result.error ?? "Only draft or void invoices can be deleted.",
         variant: "error",
       });
-    }
-  };
-
-  const handleRevertToDraft = async () => {
-    if (!id) return;
-    setActionBusy(true);
-    try {
-      await revertInvoiceToDraft(id);
-      setRevertOpen(false);
-      void refresh();
-    } finally {
-      setActionBusy(false);
-    }
-  };
-
-  const handleRecordPayment = async () => {
-    if (!id || !paymentAmount || actionBusy) return;
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0) return;
-    setActionBusy(true);
-    try {
-      await recordInvoicePayment(id, {
-        date: paymentDate,
-        amount,
-        method: paymentMethod,
-        memo: paymentMemo.trim() || undefined,
-      });
-      setPaymentAmount("");
-      setPaymentMemo("");
-      setShowPaymentModal(false);
-      await refresh();
-    } finally {
-      setActionBusy(false);
     }
   };
 
@@ -451,11 +493,13 @@ export default function InvoiceDetailPage() {
   const isVoid = invoice.computedStatus === "Void";
   const isTestDataInvoice = isTestInvoice(invoice);
   const canPay = !isVoid && invoice.computedStatus !== "Paid" && !isDraft && invoice.balanceDue > 0;
-  const canRevertToDraft = invoice.computedStatus === "Void" || invoice.computedStatus === "Paid";
+  const canBackToEdit = !isDraft && !isVoid && invoice.paidTotal <= 0;
   const primaryActionBusy = actionBusy || editSaving;
   const projectName = project?.name ?? invoice.projectId;
   const toolbarButtonClass =
-    "h-8 rounded-[5px] border-0 bg-transparent px-2.5 shadow-none hover:!translate-y-0 hover:bg-gray-50 hover:shadow-none dark:bg-transparent dark:hover:bg-muted/50";
+    "h-9 rounded-lg border-0 bg-transparent px-3 text-[13px] font-medium text-zinc-600 shadow-none hover:!translate-y-0 hover:bg-zinc-100/75 hover:text-zinc-950 hover:shadow-none dark:bg-transparent dark:text-zinc-300 dark:hover:bg-muted/50";
+  const primaryToolbarButtonClass =
+    "h-9 rounded-lg bg-zinc-950 px-3.5 text-[13px] font-semibold text-white shadow-sm hover:bg-zinc-800 hover:opacity-100 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-white";
   const displayedSubtotal = editing ? editSubtotal : invoice.subtotal;
   const displayedTax = editing ? editTaxAmount : (invoice.taxAmount ?? 0);
   const displayedTotal = editing ? editTotal : invoice.total;
@@ -497,9 +541,9 @@ export default function InvoiceDetailPage() {
         </div>
 
         <div className="flex w-full justify-start lg:w-auto lg:justify-end">
-          <div className="inline-flex max-w-full flex-wrap items-center gap-1 rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-border dark:bg-card lg:flex-nowrap">
+          <div className="flex max-w-full flex-wrap items-center gap-2 lg:justify-end">
             {editing ? (
-              <>
+              <div className="inline-flex items-center gap-1 rounded-xl border border-zinc-200/70 bg-white/90 p-1 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-border dark:bg-card">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -518,10 +562,10 @@ export default function InvoiceDetailPage() {
                   <SubmitSpinner loading={editSaving} className="mr-2" />
                   Save
                 </Button>
-              </>
+              </div>
             ) : (
               <>
-                <div className="flex items-center gap-0.5">
+                <div className="inline-flex items-center gap-1 rounded-xl border border-zinc-200/70 bg-white/85 p-1 shadow-[0_1px_2px_rgba(15,23,42,0.035)] dark:border-border dark:bg-card">
                   <Button asChild variant="ghost" size="sm" className={toolbarButtonClass}>
                     <Link href={`/financial/invoices/${id}/preview`}>
                       <Eye className="h-4 w-4" />
@@ -536,60 +580,28 @@ export default function InvoiceDetailPage() {
                   </Button>
                 </div>
 
-                <ToolbarDivider />
-
-                <div className="flex items-center gap-0.5">
-                  {isDraft ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={toolbarButtonClass}
-                      onClick={startEditing}
-                      disabled={primaryActionBusy}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Edit
-                    </Button>
-                  ) : null}
-                  {isDraft ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={toolbarButtonClass}
-                      onClick={handleMarkSent}
-                      disabled={primaryActionBusy}
-                    >
-                      <Send className="h-4 w-4" />
-                      Send
-                    </Button>
-                  ) : null}
-                  {canPay ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={toolbarButtonClass}
-                      onClick={() => setShowPaymentModal(true)}
-                      disabled={primaryActionBusy}
-                    >
-                      <CreditCard className="h-4 w-4" />
-                      Record
-                    </Button>
-                  ) : null}
-                  {canPay ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={toolbarButtonClass}
-                      onClick={() => setShowReceivePaymentModal(true)}
-                      disabled={primaryActionBusy}
-                    >
-                      <CircleDollarSign className="h-4 w-4" />
-                      Receive
-                    </Button>
-                  ) : null}
-                </div>
-
-                <ToolbarDivider />
+                {isDraft ? (
+                  <Button
+                    size="sm"
+                    className={primaryToolbarButtonClass}
+                    onClick={startEditing}
+                    disabled={primaryActionBusy}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Draft
+                  </Button>
+                ) : null}
+                {canPay ? (
+                  <Button
+                    size="sm"
+                    className={primaryToolbarButtonClass}
+                    onClick={() => setShowReceivePaymentModal(true)}
+                    disabled={primaryActionBusy}
+                  >
+                    <CircleDollarSign className="h-4 w-4" />
+                    Receive Payment
+                  </Button>
+                ) : null}
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -603,7 +615,47 @@ export default function InvoiceDetailPage() {
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-[190px]">
+                  <DropdownMenuContent
+                    align="end"
+                    className="min-w-[220px] rounded-xl border-zinc-200/80 p-1.5 shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
+                  >
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        void handleDuplicateInvoice();
+                      }}
+                      disabled={primaryActionBusy || isVoid}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Duplicate invoice
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href={`/financial/invoices/${id}/preview?download=1`}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download PDF
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        void handleMarkSent();
+                      }}
+                      disabled={!isDraft || primaryActionBusy}
+                    >
+                      <Send className="h-4 w-4 mr-2" />
+                      Mark as sent
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        void handleBackToEdit();
+                      }}
+                      disabled={!canBackToEdit || primaryActionBusy}
+                    >
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Back to edit
+                    </DropdownMenuItem>
                     {!isVoid ? (
                       <DropdownMenuItem
                         className="text-red-600 focus:text-red-700"
@@ -615,18 +667,6 @@ export default function InvoiceDetailPage() {
                       >
                         <Ban className="h-4 w-4 mr-2" />
                         Void Invoice
-                      </DropdownMenuItem>
-                    ) : null}
-                    {canRevertToDraft ? (
-                      <DropdownMenuItem
-                        onSelect={(e) => {
-                          e.preventDefault();
-                          setRevertOpen(true);
-                        }}
-                        disabled={primaryActionBusy}
-                      >
-                        <RotateCcw className="h-4 w-4 mr-2" />
-                        Revert to Draft
                       </DropdownMenuItem>
                     ) : null}
                     <DropdownMenuItem
@@ -973,6 +1013,23 @@ export default function InvoiceDetailPage() {
                               <p className="truncate text-xs text-muted-foreground">
                                 {p.payment_method ?? "No method"}
                               </p>
+                              {(p.attachments ?? []).length > 0 ? (
+                                <button
+                                  type="button"
+                                  disabled={openingPaymentAttachmentsId === p.id}
+                                  onClick={() => void openPaymentAttachments(p.id, p.attachments)}
+                                  className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                                >
+                                  <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
+                                  <span className="truncate">
+                                    {openingPaymentAttachmentsId === p.id
+                                      ? "Opening..."
+                                      : `${p.attachments.length} attachment${
+                                          p.attachments.length === 1 ? "" : "s"
+                                        }`}
+                                  </span>
+                                </button>
+                              ) : null}
                             </td>
                             <td className="px-3 py-2 text-right font-medium tabular-nums text-hh-profit-positive">
                               {formatCurrency(p.amount)}
@@ -1087,94 +1144,6 @@ export default function InvoiceDetailPage() {
         </aside>
       </div>
 
-      {showPaymentModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-          onClick={() => setShowPaymentModal(false)}
-        >
-          <div
-            className="mx-4 w-full max-w-md rounded-sm border border-gray-100 bg-background p-6 dark:border-border"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-4 text-base font-semibold text-foreground">Record Payment</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Date
-                </label>
-                <Input
-                  type="date"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                  className="mt-1 rounded-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Amount
-                </label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  placeholder="0"
-                  className="mt-1 rounded-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Method
-                </label>
-                <Select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="mt-1"
-                >
-                  {methods.map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Memo (optional)
-                </label>
-                <Input
-                  value={paymentMemo}
-                  onChange={(e) => setPaymentMemo(e.target.value)}
-                  placeholder="Memo"
-                  className="mt-1 rounded-sm"
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex gap-2">
-              <Button
-                size="sm"
-                className="rounded-sm"
-                onClick={handleRecordPayment}
-                disabled={!paymentAmount || parseFloat(paymentAmount) <= 0 || actionBusy}
-              >
-                <SubmitSpinner loading={actionBusy} className="mr-2" />
-                Record
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-sm"
-                onClick={() => setShowPaymentModal(false)}
-                disabled={actionBusy}
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <ReceivePaymentModal
         open={showReceivePaymentModal}
         onOpenChange={setShowReceivePaymentModal}
@@ -1207,18 +1176,6 @@ export default function InvoiceDetailPage() {
         loading={actionBusy}
         dismissBeforeAsync={false}
         onConfirm={handleVoid}
-      />
-
-      <ConfirmDialog
-        open={revertOpen}
-        onOpenChange={setRevertOpen}
-        title="Revert invoice to draft?"
-        description="This will allow editing or deleting the invoice again."
-        confirmLabel="Confirm"
-        cancelLabel="Cancel"
-        loading={actionBusy}
-        dismissBeforeAsync={false}
-        onConfirm={handleRevertToDraft}
       />
 
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>

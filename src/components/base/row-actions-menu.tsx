@@ -4,7 +4,6 @@ import * as React from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -72,10 +71,20 @@ export function RowActionsMenu({
 }: RowActionsMenuProps) {
   const touchFriendly = appearance === "list" ? false : (touchFriendlyProp ?? true);
   const visibleActions = actions.filter((a) => a !== undefined && a !== null);
+  const [open, setOpen] = React.useState(false);
+  const lastRunRef = React.useRef(0);
+  const runAction = React.useCallback((action: RowAction) => {
+    if (action.disabled) return;
+    const now = Date.now();
+    if (now - lastRunRef.current < 250) return;
+    lastRunRef.current = now;
+    setOpen(false);
+    action.onClick();
+  }, []);
   if (visibleActions.length === 0) return null;
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
@@ -106,10 +115,13 @@ export function RowActionsMenu({
         )}
       >
         {visibleActions.map((action, i) => (
-          <DropdownMenuItem
+          <button
             key={i}
+            type="button"
+            role="menuitem"
             disabled={action.disabled}
             className={cn(
+              "flex w-full items-center border-0 bg-transparent text-left outline-none disabled:pointer-events-none disabled:opacity-50",
               appearance === "list" && listRowActionsItemClassName,
               itemClassName,
               action.destructive &&
@@ -118,13 +130,17 @@ export function RowActionsMenu({
                     ? listRowActionsDestructiveClassName
                     : "text-destructive focus:text-destructive"))
             )}
-            onSelect={(e) => {
-              e.preventDefault();
-              if (!action.disabled) action.onClick();
+            onClick={(e) => {
+              e.stopPropagation();
+              runAction(action);
+            }}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              runAction(action);
             }}
           >
             {action.label}
-          </DropdownMenuItem>
+          </button>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>

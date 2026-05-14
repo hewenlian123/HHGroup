@@ -95,9 +95,9 @@ test("creates, edits, cancels, saves, and deletes a draft invoice", async ({ pag
   await page.getByPlaceholder("Client").fill(clientName);
   await page.getByLabel("Line item 1 description").fill(lineDescription);
   await page.getByLabel("Line item 1 quantity").fill("2");
-  await page.getByLabel("Line item 1 unit price").fill("125.5");
+  await page.getByLabel("Line item 1 rate").fill("125.5");
 
-  await page.getByRole("button", { name: "Add line item" }).click();
+  await page.getByRole("button", { name: "Add another item" }).click();
   await expect(page.getByLabel("Line item 2 description")).toBeVisible({ timeout: 10_000 });
   await page.getByRole("button", { name: "Remove line item" }).last().click();
   await expect(page.getByLabel("Line item 2 description")).toHaveCount(0);
@@ -199,7 +199,7 @@ test("keeps invoice actions usable on mobile", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "New Invoice" })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByRole("button", { name: "Add line item" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Add another item" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Create draft invoice" })).toBeVisible();
 

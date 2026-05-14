@@ -304,7 +304,7 @@ export function InvoicesClient() {
     <div className="page-container page-stack">
       <PageHeader
         title="Invoices"
-        subtitle="Create and manage invoices. Record payments and track AR."
+        subtitle="Create and manage invoices. Receive payments and track AR."
         actions={
           <Button asChild size="sm">
             <Link href="/financial/invoices/new">

@@ -573,15 +573,13 @@ export async function voidInvoice(invoiceId: string): Promise<boolean> {
   return !error;
 }
 
-/**
- * Revert a Void/Paid invoice back to draft (editable again).
- * IMPORTANT: Does not restore totals for Void invoices; it only changes status.
- */
+/** Return an issued invoice with no posted payments back to draft for editing. */
 export async function revertInvoiceToDraft(invoiceId: string): Promise<boolean> {
   const c = client();
   const inv = await getInvoiceByIdWithDerived(invoiceId);
   if (!inv) return false;
-  if (inv.computedStatus !== "Void" && inv.computedStatus !== "Paid") return false;
+  if (inv.status === "Draft") return true;
+  if (inv.computedStatus === "Void" || inv.paidTotal > 0) return false;
   const { error } = await c.from("invoices").update({ status: "Draft" }).eq("id", invoiceId);
   return !error;
 }

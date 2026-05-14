@@ -26,6 +26,10 @@ const REQUIRED: { table: string; column?: string }[] = [
   { table: "payments_received" },
   { table: "payments_received", column: "customer_name" },
   { table: "payments_received", column: "attachment_url" },
+  { table: "payments_received", column: "status" },
+  { table: "payment_received_attachments" },
+  { table: "invoice_payments", column: "payment_received_id" },
+  { table: "invoice_payments", column: "payment_date" },
   { table: "worker_payments" },
 ];
 

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -16,10 +17,12 @@ function safePdfFilename(invoiceNo: string): string {
 }
 
 export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoicePreviewShellProps) {
+  const searchParams = useSearchParams();
   const exportRef = React.useRef<HTMLDivElement>(null);
+  const autoDownloadStarted = React.useRef(false);
   const [pdfBusy, setPdfBusy] = React.useState(false);
 
-  const handleDownloadPdf = async () => {
+  const handleDownloadPdf = React.useCallback(async () => {
     const el = exportRef.current;
     if (!el) return;
     setPdfBusy(true);
@@ -43,7 +46,16 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
     } finally {
       setPdfBusy(false);
     }
-  };
+  }, [invoiceNo]);
+
+  React.useEffect(() => {
+    if (searchParams.get("download") !== "1" || autoDownloadStarted.current) return;
+    autoDownloadStarted.current = true;
+    const frame = window.requestAnimationFrame(() => {
+      void handleDownloadPdf();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [handleDownloadPdf, searchParams]);
 
   return (
     <div className="mx-auto max-w-[8.5in] px-4 py-4 print:px-0 print:py-0">
