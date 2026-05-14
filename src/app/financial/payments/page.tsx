@@ -1,18 +1,42 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
-import { getPaymentsReceived, type PaymentReceivedWithMeta } from "@/lib/data";
-import { Banknote, CalendarDays, Link2, Plus, Search, Wallet } from "lucide-react";
+import {
+  getPaymentAttachmentPreviewUrl,
+  getPaymentsReceived,
+  type PaymentReceivedAttachment,
+  type PaymentReceivedWithMeta,
+} from "@/lib/data";
+import {
+  Banknote,
+  CalendarDays,
+  Download,
+  Link2,
+  Mail,
+  Paperclip,
+  Pencil,
+  Plus,
+  Printer,
+  ReceiptText,
+  Search,
+  Wallet,
+} from "lucide-react";
 import { EmptyState } from "@/components/empty-state";
 import { ReceivePaymentModal } from "./receive-payment-modal";
+import { EditPaymentReceivedModal } from "./edit-payment-received-modal";
 import { useToast } from "@/components/toast/toast-provider";
+import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { deletePaymentReceivedAction } from "./actions";
+import { PaymentReceiptPreviewModal } from "@/components/financial/payment-receipt-preview-modal";
+import { SendPaymentReceiptModal } from "@/components/financial/send-payment-receipt-modal";
 import {
   MobileFabButton,
   MobileListHeader,
@@ -22,6 +46,7 @@ import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { ConfirmDialog } from "@/components/base";
 import { formatCurrency, formatDate, formatInteger } from "@/lib/formatters";
 import { TYPO } from "@/lib/typography";
+import type { PaymentReceiptPreviewDto } from "@/lib/payment-receipt-preview-dto";
 
 const paymentsShell =
   "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
@@ -42,15 +67,36 @@ export default function PaymentsReceivedPage() {
 
 function PaymentsReceivedPageInner() {
   const { toast } = useToast();
+  const { openPreview } = useAttachmentPreview();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [payments, setPayments] = React.useState<PaymentReceivedWithMeta[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [editPaymentId, setEditPaymentId] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [methodFilter, setMethodFilter] = React.useState("");
   const [accountFilter, setAccountFilter] = React.useState("");
   const [dateFrom, setDateFrom] = React.useState("");
   const [dateTo, setDateTo] = React.useState("");
   const [deleteTarget, setDeleteTarget] = React.useState<PaymentReceivedWithMeta | null>(null);
+  const [openingPaymentAttachmentsId, setOpeningPaymentAttachmentsId] = React.useState<
+    string | null
+  >(null);
+  const [receiptPreviewPaymentId, setReceiptPreviewPaymentId] = React.useState<string | null>(null);
+  const [receiptPreviewAction, setReceiptPreviewAction] = React.useState<
+    "download" | "print" | null
+  >(null);
+  const [sendReceiptData, setSendReceiptData] = React.useState<PaymentReceiptPreviewDto | null>(
+    null
+  );
+  const [sendReceiptOpen, setSendReceiptOpen] = React.useState(false);
+  const [receiptActionBusyId, setReceiptActionBusyId] = React.useState<string | null>(null);
+  const handledQueryRef = React.useRef("");
+
+  const clearPaymentQuery = React.useCallback(() => {
+    router.replace("/financial/payments", { scroll: false });
+  }, [router]);
 
   const load = React.useCallback(async () => {
     const list = await getPaymentsReceived();
@@ -73,6 +119,112 @@ function PaymentsReceivedPageInner() {
     }, [load]),
     [load]
   );
+
+  const openPaymentAttachments = React.useCallback(
+    async (paymentId: string, attachments: PaymentReceivedAttachment[]) => {
+      if (attachments.length === 0) return;
+      setOpeningPaymentAttachmentsId(paymentId);
+      try {
+        const files = await Promise.all(
+          attachments.map(async (att) => ({
+            url: await getPaymentAttachmentPreviewUrl(att),
+            fileName: att.file_name,
+            fileType: att.file_type,
+            mimeType: att.mime_type ?? undefined,
+            attachmentId: att.id,
+          }))
+        );
+        openPreview({ files, initialIndex: 0 });
+      } catch (err) {
+        toast({
+          title: "Unable to open attachment",
+          description: err instanceof Error ? err.message : undefined,
+          variant: "error",
+        });
+      } finally {
+        setOpeningPaymentAttachmentsId(null);
+      }
+    },
+    [openPreview, toast]
+  );
+
+  const fetchReceiptPreview = React.useCallback(
+    async (paymentId: string): Promise<PaymentReceiptPreviewDto> => {
+      const res = await fetch(
+        `/api/financial/payments/${encodeURIComponent(paymentId)}/receipt-preview`,
+        { cache: "no-store" }
+      );
+      const json = (await res.json().catch(() => null)) as
+        | PaymentReceiptPreviewDto
+        | { error?: string }
+        | null;
+      if (!res.ok) {
+        throw new Error(
+          json && "error" in json && json.error ? String(json.error) : "Failed to load receipt."
+        );
+      }
+      return json as PaymentReceiptPreviewDto;
+    },
+    []
+  );
+
+  const openReceiptPreview = React.useCallback(
+    (paymentId: string, action: "download" | "print" | null = null) => {
+      setReceiptPreviewAction(action);
+      setReceiptPreviewPaymentId(paymentId);
+    },
+    []
+  );
+
+  const openSendReceipt = React.useCallback(
+    async (paymentId: string) => {
+      setReceiptActionBusyId(paymentId);
+      try {
+        const data = await fetchReceiptPreview(paymentId);
+        setSendReceiptData(data);
+        setSendReceiptOpen(true);
+      } catch (err) {
+        toast({
+          title: "Unable to load receipt",
+          description: err instanceof Error ? err.message : undefined,
+          variant: "error",
+        });
+      } finally {
+        setReceiptActionBusyId(null);
+      }
+    },
+    [fetchReceiptPreview, toast]
+  );
+
+  React.useEffect(() => {
+    const query = searchParams.toString();
+    if (!query) {
+      handledQueryRef.current = "";
+      return;
+    }
+    if (handledQueryRef.current === query) return;
+    handledQueryRef.current = query;
+
+    const editPayment = searchParams.get("editPayment");
+    const receipt = searchParams.get("receipt");
+    const receiptAction = searchParams.get("receiptAction");
+    const sendReceipt = searchParams.get("sendReceipt");
+
+    if (editPayment) {
+      setEditPaymentId(editPayment);
+      return;
+    }
+    if (receipt) {
+      setReceiptPreviewAction(
+        receiptAction === "download" || receiptAction === "print" ? receiptAction : null
+      );
+      setReceiptPreviewPaymentId(receipt);
+      return;
+    }
+    if (sendReceipt) {
+      void openSendReceipt(sendReceipt);
+    }
+  }, [openSendReceipt, searchParams]);
 
   const methodOptions = React.useMemo(() => {
     const set = new Set<string>();
@@ -406,7 +558,7 @@ function PaymentsReceivedPageInner() {
         ) : (
           <section className={cn(paymentsShell, "overflow-hidden p-0")}>
             {/* Desktop header row */}
-            <div className="hidden md:grid grid-cols-[minmax(200px,1.2fr)_minmax(180px,1fr)_minmax(90px,0.5fr)_minmax(130px,0.6fr)_minmax(120px,0.6fr)_minmax(160px,0.8fr)_minmax(120px,0.6fr)_44px] gap-3 border-b border-border/60 px-3 py-2.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+            <div className="hidden md:grid grid-cols-[minmax(170px,1.1fr)_minmax(150px,1fr)_minmax(72px,0.45fr)_minmax(110px,0.55fr)_minmax(90px,0.45fr)_minmax(110px,0.55fr)_minmax(102px,0.5fr)_minmax(184px,0.75fr)] gap-3 border-b border-border/60 px-3 py-2.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
               <div>Customer</div>
               <div>Project</div>
               <div>Invoice #</div>
@@ -414,14 +566,14 @@ function PaymentsReceivedPageInner() {
               <div>Method</div>
               <div>Account</div>
               <div>Date</div>
-              <div />
+              <div className="text-right">Actions</div>
             </div>
 
             <div className="flex flex-col divide-y divide-border/60">
               {filteredPayments.map((row) => (
                 <div
                   key={row.id}
-                  className="group px-3 py-3 transition-colors hover:bg-muted/25 md:grid md:grid-cols-[minmax(200px,1.2fr)_minmax(180px,1fr)_minmax(90px,0.5fr)_minmax(130px,0.6fr)_minmax(120px,0.6fr)_minmax(160px,0.8fr)_minmax(120px,0.6fr)_44px] md:items-center md:gap-3"
+                  className="group px-3 py-3 transition-colors hover:bg-muted/25 md:grid md:grid-cols-[minmax(170px,1.1fr)_minmax(150px,1fr)_minmax(72px,0.45fr)_minmax(110px,0.55fr)_minmax(90px,0.45fr)_minmax(110px,0.55fr)_minmax(102px,0.5fr)_minmax(184px,0.75fr)] md:items-center md:gap-3"
                 >
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-foreground">
@@ -453,8 +605,23 @@ function PaymentsReceivedPageInner() {
                     </div>
                   </div>
 
-                  <div className="hidden md:block text-sm text-muted-foreground">
-                    {row.payment_method ?? "—"}
+                  <div className="hidden min-w-0 md:block">
+                    <div className="text-sm text-muted-foreground">{row.payment_method ?? "—"}</div>
+                    {(row.attachments ?? []).length > 0 ? (
+                      <button
+                        type="button"
+                        disabled={openingPaymentAttachmentsId === row.id}
+                        onClick={() => void openPaymentAttachments(row.id, row.attachments)}
+                        className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                      >
+                        <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
+                        <span className="truncate">
+                          {openingPaymentAttachmentsId === row.id
+                            ? "Opening..."
+                            : `${row.attachments.length} file${row.attachments.length === 1 ? "" : "s"}`}
+                        </span>
+                      </button>
+                    ) : null}
                   </div>
 
                   <div className="hidden md:block min-w-0 text-sm text-muted-foreground truncate">
@@ -465,17 +632,104 @@ function PaymentsReceivedPageInner() {
                     {formatDate(row.payment_date)}
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between gap-2 md:mt-0 md:block">
+                  <div className="mt-2 flex items-center justify-between gap-2 md:mt-0 md:flex md:justify-end">
                     <div className="md:hidden text-xs text-muted-foreground">
-                      {(row.payment_method ?? "—") + " · " + (row.deposit_account ?? "—")}
+                      <div>
+                        {(row.payment_method ?? "—") + " · " + (row.deposit_account ?? "—")}
+                      </div>
+                      {(row.attachments ?? []).length > 0 ? (
+                        <button
+                          type="button"
+                          disabled={openingPaymentAttachmentsId === row.id}
+                          onClick={() => void openPaymentAttachments(row.id, row.attachments)}
+                          className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                        >
+                          <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
+                          <span className="truncate">
+                            {openingPaymentAttachmentsId === row.id
+                              ? "Opening..."
+                              : `${row.attachments.length} file${
+                                  row.attachments.length === 1 ? "" : "s"
+                                }`}
+                          </span>
+                        </button>
+                      ) : null}
                     </div>
-                    <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-md px-2 text-xs shadow-none"
+                      >
+                        <Link
+                          href={`/financial/payments?editPayment=${encodeURIComponent(row.id)}`}
+                        >
+                          <Pencil className="mr-1 h-3.5 w-3.5" />
+                          Edit
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        size="sm"
+                        variant="outline"
+                        className="h-8 rounded-md px-2 text-xs shadow-none"
+                      >
+                        <Link href={`/financial/payments?receipt=${encodeURIComponent(row.id)}`}>
+                          <ReceiptText className="mr-1 h-3.5 w-3.5" />
+                          Receipt
+                        </Link>
+                      </Button>
+                      {receiptActionBusyId === row.id ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-md px-2 text-xs shadow-none"
+                          disabled
+                        >
+                          <Mail className="mr-1 h-3.5 w-3.5" />
+                          Send
+                        </Button>
+                      ) : (
+                        <Button
+                          asChild
+                          size="sm"
+                          variant="outline"
+                          className="h-8 rounded-md px-2 text-xs shadow-none"
+                        >
+                          <Link
+                            href={`/financial/payments?sendReceipt=${encodeURIComponent(row.id)}`}
+                          >
+                            <Mail className="mr-1 h-3.5 w-3.5" />
+                            Send
+                          </Link>
+                        </Button>
+                      )}
                       <RowActionsMenu
                         appearance="list"
                         ariaLabel={`Actions for payment ${row.invoice_no ?? ""}`}
                         actions={[
                           {
-                            label: "Delete",
+                            label: (
+                              <span className="inline-flex items-center gap-2">
+                                <Download className="h-3.5 w-3.5" />
+                                Download PDF
+                              </span>
+                            ),
+                            onClick: () => openReceiptPreview(row.id, "download"),
+                          },
+                          {
+                            label: (
+                              <span className="inline-flex items-center gap-2">
+                                <Printer className="h-3.5 w-3.5" />
+                                Print receipt
+                              </span>
+                            ),
+                            onClick: () => openReceiptPreview(row.id, "print"),
+                          },
+                          {
+                            label: "Void payment",
                             destructive: true,
                             onClick: () => setDeleteTarget(row),
                           },
@@ -518,6 +772,44 @@ function PaymentsReceivedPageInner() {
         />
 
         <ReceivePaymentModal open={modalOpen} onOpenChange={setModalOpen} onSuccess={load} />
+        <EditPaymentReceivedModal
+          open={!!editPaymentId}
+          paymentId={editPaymentId}
+          onOpenChange={(open) => {
+            if (!open) {
+              if (editPaymentId) clearPaymentQuery();
+              setEditPaymentId(null);
+            }
+          }}
+          onSuccess={load}
+        />
+        <PaymentReceiptPreviewModal
+          open={!!receiptPreviewPaymentId}
+          paymentId={receiptPreviewPaymentId}
+          autoAction={receiptPreviewAction}
+          onOpenChange={(open) => {
+            if (!open) {
+              if (receiptPreviewPaymentId) clearPaymentQuery();
+              setReceiptPreviewPaymentId(null);
+              setReceiptPreviewAction(null);
+            }
+          }}
+          onSendReceipt={(data) => {
+            setSendReceiptData(data);
+            setSendReceiptOpen(true);
+          }}
+        />
+        <SendPaymentReceiptModal
+          open={sendReceiptOpen}
+          data={sendReceiptData}
+          onOpenChange={(open) => {
+            if (!open && sendReceiptOpen) clearPaymentQuery();
+            setSendReceiptOpen(open);
+            if (!open) {
+              setSendReceiptData(null);
+            }
+          }}
+        />
       </div>
     </div>
   );

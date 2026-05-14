@@ -1008,10 +1008,10 @@ function InvoicesPageInner() {
                   ...(canRecordPayment
                     ? [
                         {
-                          label: "Record payment",
+                          label: "Receive payment",
                           onClick: () =>
                             startTransition(() =>
-                              router.push(`/financial/invoices/${inv.id}?recordPayment=1`)
+                              router.push(`/financial/invoices/${inv.id}?receivePayment=1`)
                             ),
                         },
                       ]
@@ -1148,8 +1148,8 @@ function InvoicesPageInner() {
                       }
                     : canRecordPayment
                       ? {
-                          label: "Record payment",
-                          href: `/financial/invoices/${inv.id}?recordPayment=1`,
+                          label: "Receive payment",
+                          href: `/financial/invoices/${inv.id}?receivePayment=1`,
                         }
                       : {
                           label: "Preview",
@@ -1164,10 +1164,10 @@ function InvoicesPageInner() {
                   ...(canRecordPayment
                     ? [
                         {
-                          label: "Record payment",
+                          label: "Receive payment",
                           onClick: () =>
                             startTransition(() =>
-                              router.push(`/financial/invoices/${inv.id}?recordPayment=1`)
+                              router.push(`/financial/invoices/${inv.id}?receivePayment=1`)
                             ),
                         },
                       ]

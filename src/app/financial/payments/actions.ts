@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 
+function isMissingColumn(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
+}
+
 export async function deletePaymentReceivedAction(
   paymentId: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -38,6 +43,17 @@ export async function deletePaymentReceivedAction(
 
     // Best-effort: remove corresponding invoice_payment row (no FK; match by invoice_id, amount, date).
     if (pay.invoice_id) {
+      try {
+        const direct = await c
+          .from("invoice_payments")
+          .update({ status: "Voided" })
+          .eq("payment_received_id", paymentId);
+        if (!direct.error || !isMissingColumn(direct.error)) {
+          if (direct.error) throw direct.error;
+        }
+      } catch {
+        // Missing link or older schema: fall back to legacy matching below.
+      }
       try {
         const paidAt = typeof pay.payment_date === "string" ? pay.payment_date.slice(0, 10) : null;
         const amount = Number((pay as { amount?: number }).amount ?? 0);

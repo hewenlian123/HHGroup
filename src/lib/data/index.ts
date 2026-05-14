@@ -2244,12 +2244,20 @@ export async function markInvoiceSent(invoiceId: string): Promise<boolean> {
 export type {
   PaymentReceivedRow,
   PaymentReceivedWithMeta,
+  PaymentReceivedAttachment,
+  PaymentReceivedDetail,
   CreatePaymentReceivedPayload,
+  CreatePaymentReceivedAttachmentPayload,
+  UpdatePaymentReceivedPayload,
+  UpdatePaymentReceivedAttachmentPayload,
   PaymentMethod,
 } from "../payments-received-db";
 export { PAYMENT_METHODS } from "../payments-received-db";
 export async function getPaymentsReceived() {
   return paymentsReceivedDb.getPaymentsReceived();
+}
+export async function getPaymentReceivedById(paymentId: string) {
+  return paymentsReceivedDb.getPaymentReceivedById(paymentId);
 }
 export async function getPaymentsReceivedByInvoiceId(invoiceId: string) {
   return paymentsReceivedDb.getPaymentsReceivedByInvoiceId(invoiceId);
@@ -2257,10 +2265,20 @@ export async function getPaymentsReceivedByInvoiceId(invoiceId: string) {
 export async function getSumPaymentsReceivedByInvoiceId(invoiceId: string) {
   return paymentsReceivedDb.getSumPaymentsReceivedByInvoiceId(invoiceId);
 }
+export async function getPaymentAttachmentPreviewUrl(
+  attachment: import("../payments-received-db").PaymentReceivedAttachment
+) {
+  return paymentsReceivedDb.getPaymentAttachmentPreviewUrl(attachment);
+}
 export async function createPaymentReceived(
   payload: import("../payments-received-db").CreatePaymentReceivedPayload
 ) {
   return paymentsReceivedDb.createPaymentReceived(payload);
+}
+export async function updatePaymentReceived(
+  payload: import("../payments-received-db").UpdatePaymentReceivedPayload
+) {
+  return paymentsReceivedDb.updatePaymentReceived(payload);
 }
 
 export type { DepositRow, DepositWithMeta } from "../deposits-db";
