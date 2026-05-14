@@ -48,6 +48,8 @@
     "db:reset:test": "NODE_ENV=test npx tsx scripts/cleanup-test-data.ts",
     "db:ensure-tables": "npx tsx scripts/ensure-project-tasks.ts",
     "db:migrate": "npx supabase db push",
+    "db:apply:worker-payments": "bash scripts/run-production-worker-payments-sql.sh",
+    "db:verify:worker-payments": "bash scripts/verify-worker-payments-schema.sh",
     "db:seed": "npx supabase db reset --local",
     "db:seed:remote": "node scripts/seed-supabase-remote.mjs",
     "db:seed:e2e": "npx tsx scripts/ensure-e2e-seed.ts",
