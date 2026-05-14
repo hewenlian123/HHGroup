@@ -20,6 +20,7 @@ type ProjectOption = { id: string; name: string };
 type CustomerOption = { id: string; name: string | null };
 
 type LineDraft = {
+  itemName: string;
   description: string;
   qty: number;
   unitPrice: number;
@@ -33,6 +34,57 @@ function safeNumber(v: unknown): number {
 function isMissingTableError(error: unknown): boolean {
   const code = (error as { code?: string } | null)?.code;
   return code === "42P01";
+}
+
+function newLineDraft(): LineDraft {
+  return { itemName: "", description: "", qty: 1, unitPrice: 0 };
+}
+
+function lineHasContent(line: LineDraft): boolean {
+  return line.itemName.trim().length > 0 || line.description.trim().length > 0;
+}
+
+function composeLineDescription(line: LineDraft): string {
+  const itemName = line.itemName.trim();
+  const description = line.description.trim();
+  if (itemName && description) return `${itemName}\n${description}`;
+  return itemName || description;
+}
+
+function AutoResizeTextarea({
+  className = "",
+  value,
+  onChange,
+  ...props
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const ref = React.useRef<HTMLTextAreaElement | null>(null);
+
+  const resize = React.useCallback((node: HTMLTextAreaElement | null) => {
+    if (!node) return;
+    node.style.height = "auto";
+    node.style.height = `${node.scrollHeight}px`;
+  }, []);
+
+  React.useLayoutEffect(() => {
+    resize(ref.current);
+  }, [resize, value]);
+
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(e) => {
+        onChange?.(e);
+        resize(e.currentTarget);
+      }}
+      className={[
+        "block min-h-[44px] w-full resize-none overflow-hidden rounded-lg border border-transparent bg-transparent px-2 py-1.5 text-sm leading-5 text-zinc-600 shadow-none transition-all duration-150 placeholder:text-zinc-400 hover:bg-zinc-50/70 focus:border-sky-200 focus:bg-sky-50/40 focus:outline-none focus:ring-2 focus:ring-sky-100/80 disabled:cursor-not-allowed disabled:opacity-50",
+        className,
+      ].join(" ")}
+      {...props}
+    />
+  );
 }
 
 export default function NewInvoiceClient() {
@@ -57,9 +109,7 @@ export default function NewInvoiceClient() {
   const [taxTouched, setTaxTouched] = React.useState(false);
   const [notes, setNotes] = React.useState<string>("");
 
-  const [lines, setLines] = React.useState<LineDraft[]>([
-    { description: "", qty: 1, unitPrice: 0 },
-  ]);
+  const [lines, setLines] = React.useState<LineDraft[]>([newLineDraft()]);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -147,7 +197,7 @@ export default function NewInvoiceClient() {
     const errors: string[] = [];
     if (!projectId) errors.push("Project is required.");
     if (!clientName.trim()) errors.push("Client name is required.");
-    if (!lines.some((l) => l.description.trim().length > 0)) {
+    if (!lines.some(lineHasContent)) {
       errors.push("At least one line item is required.");
     }
     return errors;
@@ -175,7 +225,7 @@ export default function NewInvoiceClient() {
         taxPct: Math.max(0, safeNumber(taxPct)),
         notes,
         lineItems: lines.map((l) => ({
-          description: l.description,
+          description: composeLineDescription(l),
           qty: Math.max(0, safeNumber(l.qty) || 0),
           unitPrice: Math.max(0, safeNumber(l.unitPrice) || 0),
         })),
@@ -200,6 +250,18 @@ export default function NewInvoiceClient() {
       setSaving(false);
     }
   };
+
+  const updateLine = React.useCallback((idx: number, patch: Partial<LineDraft>) => {
+    setLines((prev) => prev.map((line, i) => (i === idx ? { ...line, ...patch } : line)));
+  }, []);
+
+  const addLine = React.useCallback(() => {
+    setLines((prev) => [...prev, newLineDraft()]);
+  }, []);
+
+  const removeLine = React.useCallback((idx: number) => {
+    setLines((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)));
+  }, []);
 
   return (
     <div className="mx-auto max-w-[920px] flex flex-col gap-6 p-6">
@@ -338,121 +400,115 @@ export default function NewInvoiceClient() {
         )}
       </Card>
 
-      <Card className="overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-zinc-100">
+      <Card className="overflow-hidden border-zinc-200/70 bg-white shadow-none">
+        <div className="flex items-center justify-between border-b border-zinc-100/80 px-4 py-3">
           <h2 className="text-sm font-semibold text-foreground">Line items</h2>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setLines((prev) => [...prev, { description: "", qty: 1, unitPrice: 0 }])}
-            disabled={saving}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add line item
-          </Button>
+          <span className="text-xs text-muted-foreground">
+            {lines.length} item{lines.length === 1 ? "" : "s"}
+          </span>
         </div>
-        {submitAttempted && !lines.some((l) => l.description.trim().length > 0) ? (
+        {submitAttempted && !lines.some(lineHasContent) ? (
           <p className="px-4 pt-3 text-xs text-rose-600">At least one line item is required.</p>
         ) : null}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-100 bg-muted/20">
-                <th className="text-left py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                  Description
-                </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-[90px]">
-                  Qty
-                </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-[140px]">
-                  Unit price
-                </th>
-                <th className="text-right py-3 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-[140px]">
-                  Amount
-                </th>
-                <th className="py-3 px-2 w-[52px]" />
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line, idx) => {
-                const amount =
-                  Math.max(0, safeNumber(line.qty)) * Math.max(0, safeNumber(line.unitPrice));
-                return (
-                  <tr key={idx} className="border-b border-zinc-100/70">
-                    <td className="py-2 px-4">
-                      <Input
-                        value={line.description}
-                        onChange={(e) =>
-                          setLines((prev) =>
-                            prev.map((p, i) =>
-                              i === idx ? { ...p, description: e.target.value } : p
-                            )
-                          )
-                        }
-                        placeholder="Description"
-                        aria-label={`Line item ${idx + 1} description`}
-                        aria-invalid={submitAttempted && !line.description.trim()}
-                      />
-                    </td>
-                    <td className="py-2 px-4">
+        <div className="space-y-3 px-3 py-3 sm:px-4">
+          {lines.map((line, idx) => {
+            const amount =
+              Math.max(0, safeNumber(line.qty)) * Math.max(0, safeNumber(line.unitPrice));
+            const invalidLine = submitAttempted && !lineHasContent(line);
+
+            return (
+              <div
+                key={idx}
+                className={[
+                  "group relative rounded-xl border border-zinc-200/70 bg-white px-4 py-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-150 hover:border-zinc-300/80 hover:bg-zinc-50/40 hover:shadow-[0_8px_24px_rgba(15,23,42,0.05)]",
+                  invalidLine ? "border-rose-200 bg-rose-50/20" : "",
+                ].join(" ")}
+              >
+                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_72px_112px_132px_32px] md:items-start">
+                  <div className="space-y-1 pr-9 md:pr-0">
+                    <Input
+                      value={line.itemName}
+                      onChange={(e) => updateLine(idx, { itemName: e.target.value })}
+                      placeholder="Item name"
+                      aria-label={`Line item ${idx + 1} item name`}
+                      aria-invalid={invalidLine}
+                      className="h-8 min-h-8 border-transparent bg-transparent px-2 py-1 text-[15px] font-medium leading-5 text-zinc-950 placeholder:text-zinc-400 hover:bg-zinc-50/70 focus-visible:border-sky-200 focus-visible:bg-sky-50/40 focus-visible:ring-2 focus-visible:ring-sky-100/80 max-md:text-base"
+                    />
+                    <AutoResizeTextarea
+                      value={line.description}
+                      onChange={(e) => updateLine(idx, { description: e.target.value })}
+                      placeholder="Describe the scope of work, materials, or service…"
+                      aria-label={`Line item ${idx + 1} description`}
+                      aria-invalid={invalidLine}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 md:contents">
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
+                        Qty
+                      </label>
                       <Input
                         type="number"
                         min="0"
                         step="0.01"
                         value={line.qty}
-                        onChange={(e) =>
-                          setLines((prev) =>
-                            prev.map((p, i) =>
-                              i === idx ? { ...p, qty: safeNumber(e.target.value) } : p
-                            )
-                          )
-                        }
-                        className="text-right tabular-nums"
+                        onChange={(e) => updateLine(idx, { qty: safeNumber(e.target.value) })}
+                        className="h-8 min-h-8 rounded-lg border-zinc-100 bg-zinc-50/70 px-2 text-right text-sm font-normal tabular-nums text-zinc-500 hover:bg-white focus-visible:bg-white"
                         aria-label={`Line item ${idx + 1} quantity`}
                       />
-                    </td>
-                    <td className="py-2 px-4">
+                    </div>
+                    <span className="pb-2 text-sm text-zinc-300 md:hidden">×</span>
+                    <div className="space-y-1">
+                      <label className="block text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
+                        Rate
+                      </label>
                       <Input
                         type="number"
                         min="0"
                         step="0.01"
                         value={line.unitPrice}
-                        onChange={(e) =>
-                          setLines((prev) =>
-                            prev.map((p, i) =>
-                              i === idx ? { ...p, unitPrice: safeNumber(e.target.value) } : p
-                            )
-                          )
-                        }
-                        className="text-right tabular-nums"
-                        aria-label={`Line item ${idx + 1} unit price`}
+                        onChange={(e) => updateLine(idx, { unitPrice: safeNumber(e.target.value) })}
+                        className="h-8 min-h-8 rounded-lg border-zinc-100 bg-zinc-50/70 px-2 text-right text-sm font-normal tabular-nums text-zinc-500 hover:bg-white focus-visible:bg-white"
+                        aria-label={`Line item ${idx + 1} rate`}
                       />
-                    </td>
-                    <td className="py-2 px-4 text-right tabular-nums font-medium">
+                    </div>
+                  </div>
+
+                  <div className="flex items-end justify-between border-t border-zinc-100 pt-3 md:block md:border-0 md:pt-0 md:text-right">
+                    <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400 md:block">
+                      Amount
+                    </span>
+                    <span className="mt-2 block text-base font-semibold tabular-nums text-zinc-950">
                       {formatCurrency(amount)}
-                    </td>
-                    <td className="py-2 px-2 text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="btn-outline-ghost h-8 text-red-600 hover:text-red-700"
-                        aria-label="Remove line item"
-                        disabled={saving || lines.length <= 1}
-                        onClick={() =>
-                          setLines((prev) =>
-                            prev.length <= 1 ? prev : prev.filter((_, i) => i !== idx)
-                          )
-                        }
-                        title="Remove line item"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                    </span>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="btn-outline-ghost absolute right-3 top-3 h-8 w-8 border-transparent p-0 text-zinc-300 opacity-100 transition-colors hover:border-rose-100 hover:bg-rose-50 hover:text-rose-600 md:static md:mt-5 md:opacity-0 md:group-hover:opacity-100"
+                    aria-label="Remove line item"
+                    disabled={saving || lines.length <= 1}
+                    onClick={() => removeLine(idx)}
+                    title="Remove line item"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={addLine}
+            disabled={saving}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" />
+            Add another item
+          </button>
         </div>
 
         <div className="p-4 flex justify-end">
