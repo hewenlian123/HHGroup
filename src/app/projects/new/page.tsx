@@ -81,18 +81,9 @@ function formatBudgetDisplay(value: string) {
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-function formatCompactBudget(value: string) {
-  const amount = Number(value);
-  if (!Number.isFinite(amount) || amount <= 0) return "";
-  if (amount >= 1_000_000) {
-    const formatted = (amount / 1_000_000).toFixed(amount % 1_000_000 === 0 ? 0 : 1);
-    return `≈ $${formatted}m`;
-  }
-  if (amount >= 1_000) {
-    const formatted = (amount / 1_000).toFixed(amount % 1_000 === 0 ? 0 : 1);
-    return `≈ $${formatted}k`;
-  }
-  return `≈ $${amount}`;
+function formatBudgetEstimate(value: string) {
+  const formatted = formatBudgetDisplay(value);
+  return formatted ? `Estimated $${formatted}` : "";
 }
 
 export default function NewProjectPage() {
@@ -110,7 +101,7 @@ export default function NewProjectPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const autoFilled = React.useRef({ client: "", address: "" });
   const budgetValue = React.useMemo(() => budgetDigits(budgetDisplay), [budgetDisplay]);
-  const compactBudget = React.useMemo(() => formatCompactBudget(budgetValue), [budgetValue]);
+  const budgetEstimate = React.useMemo(() => formatBudgetEstimate(budgetValue), [budgetValue]);
 
   const applyCustomerSelection = React.useCallback(
     (nextCustomerId: string | null, customer?: CustomerOption | null) => {
@@ -278,8 +269,8 @@ export default function NewProjectPage() {
           <div className="space-y-1">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">Budget (USD)</p>
-              <p className="text-[11px] font-medium text-muted-foreground">
-                {compactBudget || "Estimated project budget"}
+              <p className="min-w-0 truncate text-right text-[11px] font-medium tabular-nums text-muted-foreground">
+                {budgetEstimate || "Estimated project budget"}
               </p>
             </div>
             <div className="group flex h-11 items-center overflow-hidden rounded-[10px] border border-input bg-white shadow-[0_1px_0_rgba(15,23,42,0.03)] transition-colors focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-emerald-500/15 dark:bg-card dark:focus-within:border-emerald-500/50">
