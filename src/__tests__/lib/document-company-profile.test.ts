@@ -39,6 +39,9 @@ describe("companyProfileToDocumentDto", () => {
     expect(dto.phone).toBeNull();
     expect(dto.email).toBeNull();
     expect(dto.licenseNumber).toBeNull();
+    expect(dto.taxId).toBeNull();
+    expect(dto.invoiceFooter).toBeNull();
+    expect(dto.defaultTerms).toBeNull();
   });
 
   it("maps full profile and address lines", () => {
@@ -49,6 +52,10 @@ describe("companyProfileToDocumentDto", () => {
         email: " billing@example.com ",
         website: " https://example.com ",
         license_number: " LIC-99 ",
+        tax_id: " TAX-22 ",
+        invoice_footer: " Thanks ",
+        default_terms: " Net 15 ",
+        notes: " Internal note ",
         address1: "100 Main",
         address2: "Suite 2",
         city: "Austin",
@@ -62,6 +69,10 @@ describe("companyProfileToDocumentDto", () => {
     expect(dto.email).toBe("billing@example.com");
     expect(dto.website).toBe("https://example.com");
     expect(dto.licenseNumber).toBe("LIC-99");
+    expect(dto.taxId).toBe("TAX-22");
+    expect(dto.invoiceFooter).toBe("Thanks");
+    expect(dto.defaultTerms).toBe("Net 15");
+    expect(dto.notes).toBe("Internal note");
     expect(dto.logoUrl).toBe("https://cdn.example/logo.png");
     expect(dto.addressLines).toEqual(["100 Main, Suite 2", "Austin, TX 78701"]);
   });

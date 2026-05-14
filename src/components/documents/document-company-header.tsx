@@ -93,6 +93,11 @@ export function DocumentCompanyHeader({
               License: {company.licenseNumber}
             </p>
           ) : null}
+          {company.taxId ? (
+            <p className={cn("text-zinc-600", compact ? "text-[10px]" : "text-xs")}>
+              Tax ID: {company.taxId}
+            </p>
+          ) : null}
         </div>
       </div>
 

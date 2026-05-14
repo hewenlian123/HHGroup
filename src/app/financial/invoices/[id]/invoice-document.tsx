@@ -44,18 +44,40 @@ function SummaryRow({
 export function InvoiceDocument({ invoice, projectName, company }: InvoiceDocumentProps) {
   const contact = [company.phone, company.email, company.website].filter(Boolean).join(" / ");
   const statusLabel = invoice.computedStatus === "Void" ? "Void" : invoice.computedStatus;
+  const termsText =
+    invoice.notes?.trim() || company.defaultTerms || `Payment is due by ${invoice.dueDate}.`;
+  const footerText = company.invoiceFooter || "Thank you for your business.";
 
   return (
     <article className="bg-white px-6 py-8 text-zinc-950 sm:px-10 sm:py-10 print:px-0 print:py-0">
-      <header className="flex flex-col items-start justify-between gap-7 sm:flex-row sm:gap-10">
+      <header
+        data-testid="document-company-header"
+        className="flex flex-col items-start justify-between gap-7 sm:flex-row sm:gap-10"
+      >
         <div className="min-w-0">
-          <p className="text-lg font-semibold text-zinc-950">{company.companyName}</p>
+          <div className="flex min-w-0 items-center gap-3">
+            {company.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- print/PDF-safe external company logo
+              <img
+                data-testid="document-company-logo"
+                src={company.logoUrl}
+                alt=""
+                width={48}
+                height={48}
+                className="h-12 w-12 shrink-0 object-contain"
+              />
+            ) : null}
+            <p data-testid="document-company-name" className="text-lg font-semibold text-zinc-950">
+              {company.companyName}
+            </p>
+          </div>
           <div className="mt-4 max-w-[340px] space-y-1 text-xs leading-5 text-zinc-500">
             {company.addressLines.map((line, index) => (
               <p key={`${line}-${index}`}>{line}</p>
             ))}
             {contact ? <p className="break-words text-zinc-600">{contact}</p> : null}
             {company.licenseNumber ? <p>License {company.licenseNumber}</p> : null}
+            {company.taxId ? <p>Tax ID {company.taxId}</p> : null}
           </div>
         </div>
 
@@ -140,11 +162,7 @@ export function InvoiceDocument({ invoice, projectName, company }: InvoiceDocume
       <section className="mt-10 grid grid-cols-1 gap-8 sm:grid-cols-[minmax(0,1fr)_280px] sm:gap-10">
         <div className="border-t border-zinc-200 pt-5 text-sm leading-6 text-zinc-600">
           <p className="font-medium text-zinc-950">Terms</p>
-          {invoice.notes ? (
-            <p className="mt-2 whitespace-pre-wrap">{invoice.notes}</p>
-          ) : (
-            <p className="mt-2">Payment is due by {invoice.dueDate}.</p>
-          )}
+          <p className="mt-2 whitespace-pre-wrap">{termsText}</p>
         </div>
 
         <div className="space-y-3">
@@ -162,7 +180,7 @@ export function InvoiceDocument({ invoice, projectName, company }: InvoiceDocume
       </section>
 
       <footer className="mt-16 flex flex-wrap items-center justify-between gap-4 border-t border-zinc-200 pt-5 text-xs text-zinc-500">
-        <p>Thank you for your business.</p>
+        <p className="whitespace-pre-wrap">{footerText}</p>
         <p className="tabular-nums">{invoice.invoiceNo}</p>
       </footer>
     </article>

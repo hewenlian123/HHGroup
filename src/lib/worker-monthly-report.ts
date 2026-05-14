@@ -12,6 +12,10 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getCompanyProfile } from "@/lib/company-profile";
+import {
+  companyProfileToDocumentDto,
+  type DocumentCompanyProfileDTO,
+} from "@/lib/document-company-profile";
 import { getServerSupabase } from "@/lib/supabase-server";
 
 export type WorkerMonthlyReportRowType =
@@ -41,6 +45,7 @@ export type WorkerMonthlyReportSummary = {
 /** Extra fields for print / PDF payroll statement (screen UI may ignore). */
 export type WorkerMonthlyReportPayrollStatement = {
   companyName: string;
+  company: DocumentCompanyProfileDTO;
   monthYm: string;
   monthLabel: string;
   generatedAtDisplay: string;
@@ -110,8 +115,10 @@ function generatedAtLabel(): string {
 }
 
 function stubPayrollStatement(monthYm: string): WorkerMonthlyReportPayrollStatement {
+  const company = companyProfileToDocumentDto(null);
   return {
-    companyName: "HH Group",
+    companyName: company.companyName,
+    company,
     monthYm,
     monthLabel: monthHeading(monthYm),
     generatedAtDisplay: generatedAtLabel(),
@@ -585,10 +592,10 @@ export async function getWorkerMonthlyReport(
   const dailyRateFromWorker = workerDailyRate != null && workerDailyRate > 0;
   const displayDailyRate = dailyRateFromWorker ? workerDailyRate! : impliedDaily;
 
-  let companyName = "HH Group";
+  let company = companyProfileToDocumentDto(null);
   try {
     const prof = await getCompanyProfile(admin);
-    companyName = prof?.org_name?.trim() || "HH Group";
+    company = companyProfileToDocumentDto(prof);
   } catch {
     /* keep default */
   }
@@ -605,7 +612,8 @@ export async function getWorkerMonthlyReport(
       balance,
     },
     payrollStatement: {
-      companyName,
+      companyName: company.companyName,
+      company,
       monthYm,
       monthLabel: monthHeading(monthYm),
       generatedAtDisplay: generatedAtLabel(),

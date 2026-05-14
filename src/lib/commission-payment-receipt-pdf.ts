@@ -2,6 +2,14 @@
  * Client-side commission payment receipt PDF (jsPDF). A4, black & white, print-friendly.
  */
 
+import {
+  addDocumentCompanyPdfFooter,
+  addDocumentCompanyPdfHeader,
+  DOCUMENT_COMPANY_FALLBACK,
+  normalizeDocumentCompanyProfile,
+} from "@/lib/document-company-pdf";
+import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
+
 export type CommissionReceiptPdfInput = {
   paymentId: string;
   paymentDate: string;
@@ -12,10 +20,8 @@ export type CommissionReceiptPdfInput = {
   paymentAmount: number;
   paymentMethod: string;
   notes: string | null;
+  company?: Partial<DocumentCompanyProfileDTO> | null;
 };
-
-const COMPANY_LINE1 = "HH Construction";
-const COMPANY_LINE2 = "Hawaii, USA";
 
 function compactId(paymentId: string): string {
   return paymentId.replace(/-/g, "").toUpperCase();
@@ -33,6 +39,59 @@ function money(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+type CompanyProfileApiRow = {
+  org_name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  license_number?: string | null;
+  tax_id?: string | null;
+  invoice_footer?: string | null;
+  default_terms?: string | null;
+  notes?: string | null;
+  logo_url?: string | null;
+  address1?: string | null;
+  address2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+};
+
+function profileRowToDocumentCompany(row: CompanyProfileApiRow): DocumentCompanyProfileDTO {
+  const addressLines = [
+    [row.address1?.trim(), row.address2?.trim()].filter(Boolean).join(", "),
+    [[row.city?.trim(), row.state?.trim()].filter(Boolean).join(", "), row.zip?.trim()]
+      .filter(Boolean)
+      .join(" "),
+  ].filter(Boolean);
+  return normalizeDocumentCompanyProfile({
+    companyName: row.org_name ?? DOCUMENT_COMPANY_FALLBACK.companyName,
+    phone: row.phone ?? null,
+    email: row.email ?? null,
+    website: row.website ?? null,
+    licenseNumber: row.license_number ?? null,
+    taxId: row.tax_id ?? null,
+    invoiceFooter: row.invoice_footer ?? null,
+    defaultTerms: row.default_terms ?? null,
+    notes: row.notes ?? null,
+    logoUrl: row.logo_url ?? null,
+    addressLines,
+  });
+}
+
+export async function fetchCommissionReceiptCompanyProfile(): Promise<DocumentCompanyProfileDTO> {
+  try {
+    const res = await fetch("/api/settings/company-profile", { cache: "no-store" });
+    if (!res.ok) return DOCUMENT_COMPANY_FALLBACK;
+    const json = (await res.json()) as { ok?: boolean; profile?: CompanyProfileApiRow };
+    return json.ok && json.profile
+      ? profileRowToDocumentCompany(json.profile)
+      : DOCUMENT_COMPANY_FALLBACK;
+  } catch {
+    return DOCUMENT_COMPANY_FALLBACK;
+  }
+}
+
 export async function generateCommissionReceiptPdf(
   input: CommissionReceiptPdfInput
 ): Promise<Blob> {
@@ -41,34 +100,18 @@ export async function generateCommissionReceiptPdf(
   const pageW = doc.internal.pageSize.getWidth();
   const left = 24;
   const right = pageW - 24;
-  let y = 22;
+  const company = normalizeDocumentCompanyProfile(input.company);
+  let y = await addDocumentCompanyPdfHeader(doc, company, {
+    title: "COMMISSION PAYMENT RECEIPT",
+    documentNo: commissionReceiptNo(input.paymentId),
+    documentNoLabel: "Receipt No",
+    documentDate: input.paymentDate || "—",
+    y: 16,
+    left,
+    right,
+  });
 
-  doc.setTextColor(0, 0, 0);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text(COMPANY_LINE1, left, y);
-  y += 7;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(COMPANY_LINE2, left, y);
-  y += 14;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text("COMMISSION PAYMENT RECEIPT", left, y);
-  y += 8;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(`Receipt No: ${commissionReceiptNo(input.paymentId)}`, left, y);
-  y += 6;
-  doc.text(`Date: ${input.paymentDate || "—"}`, left, y);
-  y += 10;
-
-  doc.setDrawColor(60);
-  doc.setLineWidth(0.3);
-  doc.line(left, y, right, y);
-  y += 8;
-
   const block: [string, string][] = [
     ["Project:", input.projectName?.trim() || "—"],
     ["Person:", input.personName?.trim() || "—"],
@@ -110,6 +153,8 @@ export async function generateCommissionReceiptPdf(
   doc.setFontSize(10);
   doc.setFont("helvetica", "italic");
   doc.text("Thank you for your work.", left, y);
+  y += 8;
+  addDocumentCompanyPdfFooter(doc, company, { y, left, maxWidth: right - left });
 
   return doc.output("blob");
 }

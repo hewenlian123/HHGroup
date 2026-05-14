@@ -73,14 +73,20 @@ export async function tryCreateDraftInvoiceNavigateToDetail(
   const clientName = options?.clientName ?? `PW Invoice ${Date.now()}`;
   await page.getByPlaceholder("Client").fill(clientName);
 
-  const lineItemsTable = page.locator("div.overflow-x-auto table").first();
-  const descriptionInput = lineItemsTable.locator('input[placeholder="Description"]').first();
-  await expect(descriptionInput).toBeVisible({ timeout: 10_000 });
-  await descriptionInput.fill(options?.lineDescription ?? "Playwright invoice item");
-  const lineRow = lineItemsTable.locator("tbody tr").first();
-  const unitPriceField = lineRow.locator('input[type="number"]').nth(1);
-  if ((await unitPriceField.count()) > 0) {
-    await unitPriceField.fill("100");
+  const itemNameInput = page.getByLabel("Line item 1 item name");
+  if (await itemNameInput.isVisible().catch(() => false)) {
+    await itemNameInput.fill(options?.lineDescription ?? "Playwright invoice item");
+    await page.getByLabel("Line item 1 rate").fill("100");
+  } else {
+    const lineItemsTable = page.locator("div.overflow-x-auto table").first();
+    const descriptionInput = lineItemsTable.locator('input[placeholder="Description"]').first();
+    await expect(descriptionInput).toBeVisible({ timeout: 10_000 });
+    await descriptionInput.fill(options?.lineDescription ?? "Playwright invoice item");
+    const lineRow = lineItemsTable.locator("tbody tr").first();
+    const unitPriceField = lineRow.locator('input[type="number"]').nth(1);
+    if ((await unitPriceField.count()) > 0) {
+      await unitPriceField.fill("100");
+    }
   }
 
   const createBtn = page.getByRole("button", { name: /Create draft invoice/i });

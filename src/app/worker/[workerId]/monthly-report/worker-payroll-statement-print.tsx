@@ -15,15 +15,26 @@ function fmtSignedUsd(n: number): string {
  */
 export function WorkerPayrollStatementPrint({ report }: { report: WorkerMonthlyReportResult }) {
   const ps = report.payrollStatement;
+  const company = ps.company;
+  const contact = [company.phone, company.email, company.website].filter(Boolean).join(" / ");
   const { summary } = report;
 
   return (
     <div className="payroll-statement-print-root hidden print:block text-black">
       <header className="mb-8 flex flex-col justify-between gap-6 border-b border-black pb-6 sm:flex-row sm:items-start">
         <div className="min-w-0">
-          <p className="text-[11px] font-normal uppercase tracking-[0.12em] text-neutral-600">
-            {ps.companyName}
-          </p>
+          <div className="flex min-w-0 items-center gap-3">
+            {company.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- print/PDF-safe external company logo
+              <img src={company.logoUrl} alt="" className="h-10 w-10 shrink-0 object-contain" />
+            ) : null}
+            <div className="min-w-0">
+              <p className="text-[11px] font-normal uppercase tracking-[0.12em] text-neutral-600">
+                {ps.companyName}
+              </p>
+              {contact ? <p className="mt-1 text-[10px] text-neutral-500">{contact}</p> : null}
+            </div>
+          </div>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Payroll Statement</h1>
         </div>
         <div className="min-w-0 text-right text-sm leading-relaxed sm:max-w-[14rem]">
@@ -134,6 +145,16 @@ export function WorkerPayrollStatementPrint({ report }: { report: WorkerMonthlyR
           <p className="text-xs font-medium uppercase tracking-wide text-neutral-600">
             {ps.companyName}
           </p>
+          {company.licenseNumber || company.taxId ? (
+            <p className="mt-1 text-[10px] text-neutral-500">
+              {[
+                company.licenseNumber ? `License ${company.licenseNumber}` : null,
+                company.taxId ? `Tax ID ${company.taxId}` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          ) : null}
           <div className="mt-12 border-b border-black" />
           <p className="mt-2 text-xs text-neutral-600">Authorized signature</p>
         </div>
