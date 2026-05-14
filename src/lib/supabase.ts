@@ -1,14 +1,37 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+type BrowserSupabaseGlobal = typeof globalThis & {
+  __hhBrowserSupabaseClients?: Map<string, SupabaseClient>;
+};
+
+function getBrowserSupabaseClients(): Map<string, SupabaseClient> {
+  const g = globalThis as BrowserSupabaseGlobal;
+  g.__hhBrowserSupabaseClients ??= new Map();
+  return g.__hhBrowserSupabaseClients;
+}
+
 export function createBrowserClient(url: string, anonKey: string): SupabaseClient {
   const isBrowser = typeof window !== "undefined";
-  return createClient(url, anonKey, {
+  const options = {
     auth: {
       persistSession: isBrowser,
       autoRefreshToken: isBrowser,
       detectSessionInUrl: isBrowser,
     },
-  });
+  };
+
+  if (!isBrowser) {
+    return createClient(url, anonKey, options);
+  }
+
+  const cacheKey = `${url}\n${anonKey}`;
+  const clients = getBrowserSupabaseClients();
+  const cached = clients.get(cacheKey);
+  if (cached) return cached;
+
+  const client = createClient(url, anonKey, options);
+  clients.set(cacheKey, client);
+  return client;
 }
 
 /**
