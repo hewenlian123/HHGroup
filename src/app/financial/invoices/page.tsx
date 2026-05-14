@@ -1205,6 +1205,19 @@ function InvoicesPageInner() {
                       <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                         <RowActionsMenu
                           ariaLabel={`Actions for ${inv.invoiceNo}`}
+                          className="h-10 w-10 min-h-10 min-w-10 rounded-lg border-stone-200/70 bg-white/86 shadow-none hover:bg-stone-50 dark:border-border/70 dark:bg-card dark:hover:bg-muted/35"
+                          contentAvoidCollisions={false}
+                          contentSide="bottom"
+                          contentSideOffset={8}
+                          contentClassName="z-[1000] w-36 min-w-36 rounded-lg border-stone-200/80 !bg-popover py-1 !opacity-100 shadow-[0_10px_28px_rgba(24,24,27,0.12)] !backdrop-blur-none dark:border-border"
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--popover))",
+                            opacity: 1,
+                            zIndex: 1000,
+                          }}
+                          itemClassName="relative z-10 h-8 rounded-md px-3 py-0 text-[13px] font-medium tracking-[-0.01em]"
+                          destructiveItemClassName="text-rose-600 focus:bg-rose-50 focus:text-rose-700 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:focus:bg-rose-950/35 dark:focus:text-rose-300 dark:hover:bg-rose-950/35 dark:hover:text-rose-300"
+                          touchFriendly={false}
                           actions={rowActions}
                         />
                       </div>
