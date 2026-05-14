@@ -18,6 +18,11 @@ export const TEST_DATA_PATTERNS = [
 
 export type CleanupResult = { deleted: Record<string, number>; errors: string[] };
 
+function isMissingRelationOrColumn(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return /schema cache|relation.*does not exist|could not find|column .* does not exist/i.test(m);
+}
+
 /** Return array of unique strings without using Set iteration (avoids downlevelIteration). */
 function uniqueStrings(arr: string[]): string[] {
   const seen: Record<string, boolean> = {};
@@ -55,6 +60,38 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
       errors.push(`${table}: ${e instanceof Error ? e.message : String(e)}`);
       return false;
     }
+  };
+
+  const collectIdsByPatterns = async (
+    table: string,
+    column: string,
+    patterns = TEST_DATA_PATTERNS
+  ): Promise<string[]> => {
+    const ids: string[] = [];
+    for (const pattern of patterns) {
+      const { data, error } = await c.from(table).select("id").ilike(column, `%${pattern}%`);
+      if (error) {
+        if (!isMissingRelationOrColumn(error)) errors.push(`${table}.${column}: ${error.message}`);
+        continue;
+      }
+      ids.push(...(data ?? []).map((r: { id: string }) => r.id));
+    }
+    return uniqueStrings(ids);
+  };
+
+  const collectIdsByColumnValues = async (
+    table: string,
+    column: string,
+    values: string[]
+  ): Promise<string[]> => {
+    const uniqueValues = uniqueStrings(values.filter(Boolean));
+    if (uniqueValues.length === 0) return [];
+    const { data, error } = await c.from(table).select("id").in(column, uniqueValues);
+    if (error) {
+      if (!isMissingRelationOrColumn(error)) errors.push(`${table}.${column}: ${error.message}`);
+      return [];
+    }
+    return uniqueStrings((data ?? []).map((r: { id: string }) => r.id));
   };
 
   // Resolve test project and worker IDs once (before we delete projects/workers)
@@ -262,30 +299,42 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     return uniqueStrings(ids);
   });
 
-  // 13. payments_received — by customer_name pattern (before invoices so FK is clean)
-  await tryDelete("payments_received", async () => {
-    const ids: string[] = [];
-    for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c
-        .from("payments_received")
-        .select("id")
-        .ilike("customer_name", `%${pattern}%`);
-      ids.push(...(data ?? []).map((r: { id: string }) => r.id));
-    }
-    return uniqueStrings(ids);
-  });
+  const testInvoiceIds = uniqueStrings([
+    ...(await collectIdsByPatterns("invoices", "client_name")),
+    ...(await collectIdsByPatterns("invoices", "customer_name")),
+    ...(await collectIdsByPatterns("invoices", "invoice_no")),
+    ...(await collectIdsByPatterns("invoices", "notes")),
+  ]);
+  const testPaymentReceivedIds = uniqueStrings([
+    ...(await collectIdsByPatterns("payments_received", "customer_name")),
+    ...(await collectIdsByColumnValues("payments_received", "invoice_id", testInvoiceIds)),
+  ]);
 
-  // 14. invoices — by customer_name pattern
-  await tryDelete("invoices", async () => {
-    const ids: string[] = [];
-    for (const pattern of TEST_DATA_PATTERNS) {
-      const { data } = await c.from("invoices").select("id").ilike("customer_name", `%${pattern}%`);
-      ids.push(...(data ?? []).map((r: { id: string }) => r.id));
-    }
-    return uniqueStrings(ids);
-  });
+  // 13. deposits — by linked test payments/invoices (before payments_received / invoices)
+  await tryDelete("deposits", async () =>
+    uniqueStrings([
+      ...(await collectIdsByColumnValues("deposits", "payment_id", testPaymentReceivedIds)),
+      ...(await collectIdsByColumnValues("deposits", "invoice_id", testInvoiceIds)),
+    ])
+  );
 
-  // 15. estimates — by client pattern
+  // 14. payments_received — by test customer name or linked test invoice
+  await tryDelete("payments_received", async () => testPaymentReceivedIds);
+
+  // 15. invoice_payments — linked test invoices
+  await tryDelete("invoice_payments", async () =>
+    collectIdsByColumnValues("invoice_payments", "invoice_id", testInvoiceIds)
+  );
+
+  // 16. invoice_items — linked test invoices
+  await tryDelete("invoice_items", async () =>
+    collectIdsByColumnValues("invoice_items", "invoice_id", testInvoiceIds)
+  );
+
+  // 17. invoices — by client_name/customer_name/invoice_no/notes pattern
+  await tryDelete("invoices", async () => testInvoiceIds);
+
+  // 18. estimates — by client pattern
   await tryDelete("estimates", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {
@@ -295,7 +344,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     return uniqueStrings(ids);
   });
 
-  // 16. material_catalog — by material_name pattern
+  // 19. material_catalog — by material_name pattern
   await tryDelete("material_catalog", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {
@@ -308,7 +357,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     return uniqueStrings(ids);
   });
 
-  // 17. activity_logs — by description pattern or test project (before deleting projects)
+  // 20. activity_logs — by description pattern or test project (before deleting projects)
   await tryDelete("activity_logs", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {
@@ -325,7 +374,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     return uniqueStrings(ids);
   });
 
-  // 18. projects — by name pattern
+  // 21. projects — by name pattern
   await tryDelete("projects", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {
@@ -335,7 +384,7 @@ export async function cleanupTestData(c: SupabaseClient): Promise<CleanupResult>
     return uniqueStrings(ids);
   });
 
-  // 19. workers — by name pattern
+  // 22. workers — by name pattern
   await tryDelete("workers", async () => {
     const ids: string[] = [];
     for (const pattern of TEST_DATA_PATTERNS) {

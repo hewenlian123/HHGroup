@@ -72,6 +72,17 @@ function safeNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function isTestInvoice(inv: InvoiceWithDerived): boolean {
+  const haystack = [inv.clientName, inv.invoiceNo, inv.notes ?? ""].join(" ").toLowerCase();
+  return (
+    haystack.includes("workflow test") ||
+    haystack.includes("[e2e]") ||
+    haystack.includes("playwright") ||
+    haystack.includes("body balance") ||
+    /\bpw[-\s_]/i.test(haystack)
+  );
+}
+
 function DetailMetric({
   label,
   value,
@@ -439,6 +450,7 @@ export default function InvoiceDetailPage() {
 
   const isDraft = invoice.status === "Draft";
   const isVoid = invoice.computedStatus === "Void";
+  const isTestDataInvoice = isTestInvoice(invoice);
   const canPay = !isVoid && invoice.computedStatus !== "Paid" && !isDraft && invoice.balanceDue > 0;
   const canRevertToDraft = invoice.computedStatus === "Void" || invoice.computedStatus === "Paid";
   const primaryActionBusy = actionBusy || editSaving;
@@ -622,7 +634,7 @@ export default function InvoiceDetailPage() {
                       className="text-red-600 focus:text-red-700"
                       onSelect={(e) => {
                         e.preventDefault();
-                        if (isDraft || isVoid) setDeleteConfirmOpen(true);
+                        if (isDraft || isVoid || isTestDataInvoice) setDeleteConfirmOpen(true);
                         else setDeleteBlockedOpen(true);
                       }}
                       disabled={primaryActionBusy}
@@ -1215,7 +1227,8 @@ export default function InvoiceDetailPage() {
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cannot delete invoice</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              Only draft or void invoices can be deleted. Issued or paid invoices cannot be removed.
+              Only draft, void, or recognized test invoices can be deleted. Issued or paid invoices
+              cannot be removed.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-3 border-t border-border/60">
