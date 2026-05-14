@@ -191,7 +191,7 @@ export default function NewInvoiceClient() {
         description: "Draft invoice created.",
         variant: "success",
       });
-      router.push(`/financial/invoices/${res.invoiceId}`);
+      router.push(`/financial/invoices/${res.invoiceId}/preview`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to create invoice.";
       setError(msg);
