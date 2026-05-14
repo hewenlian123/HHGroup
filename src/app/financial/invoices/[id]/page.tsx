@@ -448,7 +448,9 @@ export default function InvoiceDetailPage() {
   const displayedSubtotal = editing ? editSubtotal : invoice.subtotal;
   const displayedTax = editing ? editTaxAmount : (invoice.taxAmount ?? 0);
   const displayedTotal = editing ? editTotal : invoice.total;
-  const displayedBalance = editing ? Math.max(0, editTotal - invoice.paidTotal) : invoice.balanceDue;
+  const displayedBalance = editing
+    ? Math.max(0, editTotal - invoice.paidTotal)
+    : invoice.balanceDue;
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-4 sm:px-6 lg:py-6">
@@ -719,7 +721,9 @@ export default function InvoiceDetailPage() {
         <DetailMetric label="Paid" value={formatCurrency(invoice.paidTotal)} tone="positive" />
         <DetailMetric
           label={invoice.daysOverdue > 0 ? "Overdue" : "Due date"}
-          value={invoice.daysOverdue > 0 ? `${invoice.daysOverdue} days` : formatDate(invoice.dueDate)}
+          value={
+            invoice.daysOverdue > 0 ? `${invoice.daysOverdue} days` : formatDate(invoice.dueDate)
+          }
           tone={invoice.daysOverdue > 0 ? "danger" : "muted"}
         />
       </section>
@@ -783,7 +787,9 @@ export default function InvoiceDetailPage() {
                     const qty = safeNumber(line.qty);
                     const unitPrice = safeNumber(line.unitPrice);
                     const savedAmount = "amount" in line ? safeNumber(line.amount) : 0;
-                    const amount = editing ? Math.max(0, qty) * Math.max(0, unitPrice) : savedAmount;
+                    const amount = editing
+                      ? Math.max(0, qty) * Math.max(0, unitPrice)
+                      : savedAmount;
                     return (
                       <tr
                         key={idx}
@@ -1062,9 +1068,7 @@ export default function InvoiceDetailPage() {
                 </div>
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Due</p>
-                  <p className="mt-1 tabular-nums text-foreground">
-                    {formatDate(invoice.dueDate)}
-                  </p>
+                  <p className="mt-1 tabular-nums text-foreground">{formatDate(invoice.dueDate)}</p>
                 </div>
               </div>
             </div>
