@@ -6,6 +6,14 @@ import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
 
+function getInvoiceDetailUrl(currentUrl: string): string {
+  const match = currentUrl.match(/\/financial\/invoices\/([^/?#]+)/);
+  if (!match?.[1]) {
+    throw new Error(`Could not determine invoice id from URL: ${currentUrl}`);
+  }
+  return `/financial/invoices/${match[1]}`;
+}
+
 async function cleanupInvoiceClientNames(clientNames: Iterable<string>): Promise<void> {
   const names = Array.from(clientNames);
   if (names.length === 0) return;
@@ -100,23 +108,24 @@ test("creates, edits, cancels, saves, and deletes a draft invoice", async ({ pag
   await expect(page).toHaveURL(/\/financial\/invoices\/(?!new(?:\/|$))[^/?#]+/, {
     timeout: 30_000,
   });
-  await expect(page.getByText(clientName)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(clientName).first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(lineDescription)).toBeVisible({ timeout: 30_000 });
 
-  const detailUrl = page.url();
+  const detailUrl = getInvoiceDetailUrl(page.url());
   await page.goto("/financial/invoices");
   await page.waitForLoadState("domcontentloaded");
   const listSearch = page.locator('input[placeholder*="Invoice #"]:visible').first();
   await expect(listSearch).toBeVisible({ timeout: 30_000 });
   await listSearch.fill(clientName);
-  await expect(page.getByText(clientName)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(clientName).first()).toBeVisible({ timeout: 30_000 });
 
   await page.goto(detailUrl);
-  await page.waitForLoadState("domcontentloaded");
+  await page.waitForLoadState("networkidle");
+  await expect(page.getByRole("button", { name: "Edit" })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Edit" }).click();
   await page.getByPlaceholder("Client").fill(canceledClientName);
   await page.getByRole("button", { name: "Cancel" }).click();
-  await expect(page.getByText(clientName)).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByText(clientName).first()).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(canceledClientName)).toHaveCount(0);
 
   await page.getByRole("button", { name: "Edit" }).click();
@@ -125,22 +134,45 @@ test("creates, edits, cancels, saves, and deletes a draft invoice", async ({ pag
   const saveButton = page.getByRole("button", { name: "Save" });
   await expect(saveButton).toBeEnabled({ timeout: 10_000 });
   await saveButton.click();
-  await expect(page.getByText(savedClientName)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(savedClientName).first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText(savedLineDescription)).toBeVisible({ timeout: 30_000 });
+  const invoiceNumber = (await page.getByRole("heading", { level: 1 }).textContent())?.trim();
+  expect(invoiceNumber).toBeTruthy();
 
-  await page.getByRole("button", { name: "Delete" }).click();
+  await page.goto("/financial/invoices");
+  await page.waitForLoadState("domcontentloaded");
+  await expect(listSearch).toBeVisible({ timeout: 30_000 });
+  await listSearch.fill(savedClientName);
+  const invoiceRow = page.getByTestId(`invoice-row-${invoiceNumber}`);
+  await expect(invoiceRow).toBeVisible({ timeout: 30_000 });
+  await invoiceRow.hover();
+  const rowActionsButton = invoiceRow.getByRole("button", { name: /Actions for / });
+  await expect(rowActionsButton).toBeVisible({ timeout: 30_000 });
+  await rowActionsButton.click();
   let deleteDialog = page.getByRole("dialog", { name: "Delete invoice?" });
+  await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("menuitem", { name: "Delete" }).click({ force: true });
   await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
   await deleteDialog.getByRole("button", { name: "Cancel" }).click();
-  await expect(page.getByText(savedClientName)).toBeVisible({ timeout: 10_000 });
+  await expect(deleteDialog).toBeHidden({ timeout: 10_000 });
 
-  await page.getByRole("button", { name: "Delete" }).click();
+  await page.goto("/financial/invoices");
+  await page.waitForLoadState("domcontentloaded");
+  const listSearchAfterCancel = page.locator('input[placeholder*="Invoice #"]:visible').first();
+  await expect(listSearchAfterCancel).toBeVisible({ timeout: 30_000 });
+  await listSearchAfterCancel.fill(savedClientName);
+  const invoiceRowAfterCancel = page.getByTestId(`invoice-row-${invoiceNumber}`);
+  await expect(invoiceRowAfterCancel).toBeVisible({ timeout: 30_000 });
+  await invoiceRowAfterCancel.hover();
+  const rowActionsButtonAfterCancel = invoiceRowAfterCancel.getByRole("button", {
+    name: /Actions for /,
+  });
+  await rowActionsButtonAfterCancel.click();
+  await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible({ timeout: 10_000 });
+  await page.getByRole("menuitem", { name: "Delete" }).click({ force: true });
   deleteDialog = page.getByRole("dialog", { name: "Delete invoice?" });
   await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
-  await Promise.all([
-    page.waitForURL(/\/financial\/invoices(?:[/?#]|$)/, { timeout: 30_000 }),
-    deleteDialog.getByRole("button", { name: "Delete" }).click({ force: true }),
-  ]);
+  await deleteDialog.getByRole("button", { name: "Delete" }).click({ force: true });
   await expect(page.locator("body")).not.toContainText("Something went wrong");
 
   await expect(listSearch).toBeVisible({ timeout: 30_000 });
