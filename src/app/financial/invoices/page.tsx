@@ -150,6 +150,17 @@ function InvoiceStatusText({
   );
 }
 
+function isTestInvoiceRow(inv: InvoiceWithDerived): boolean {
+  const haystack = [inv.clientName, inv.invoiceNo, inv.notes ?? ""].join(" ").toLowerCase();
+  return (
+    haystack.includes("workflow test") ||
+    haystack.includes("[e2e]") ||
+    haystack.includes("playwright") ||
+    haystack.includes("body balance") ||
+    /\bpw[-\s_]/i.test(haystack)
+  );
+}
+
 function InvoiceMiniMetric({
   label,
   value,
@@ -975,7 +986,10 @@ function InvoicesPageInner() {
             <div className="hidden space-y-1 p-1.5 md:block">
               {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => {
                 const isBusy = voidBusyId === inv.id || deleteBusyId === inv.id;
-                const canDelete = inv.computedStatus === "Draft" || inv.computedStatus === "Void";
+                const canDelete =
+                  inv.computedStatus === "Draft" ||
+                  inv.computedStatus === "Void" ||
+                  isTestInvoiceRow(inv);
                 const canRecordPayment =
                   inv.computedStatus !== "Draft" &&
                   inv.computedStatus !== "Void" &&
@@ -1113,7 +1127,10 @@ function InvoicesPageInner() {
             <div className="space-y-2 p-2.5 md:hidden">
               {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => {
                 const isBusy = voidBusyId === inv.id || deleteBusyId === inv.id;
-                const canDelete = inv.computedStatus === "Draft" || inv.computedStatus === "Void";
+                const canDelete =
+                  inv.computedStatus === "Draft" ||
+                  inv.computedStatus === "Void" ||
+                  isTestInvoiceRow(inv);
                 const canRecordPayment =
                   inv.computedStatus !== "Draft" &&
                   inv.computedStatus !== "Void" &&
