@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getProjectById, getSelectionsByProject, insertDocument } from "@/lib/data";
+import { addDocumentCompanyPdfHeader } from "@/lib/document-company-pdf";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
@@ -22,40 +23,12 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
 
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
-    let y = 14;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text(company.companyName, 20, y);
-    y += 5;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    for (const line of company.addressLines) {
-      doc.text(line, 20, y);
-      y += 4;
-    }
-    if (company.phone) {
-      doc.text(company.phone, 20, y);
-      y += 4;
-    }
-    if (company.email) {
-      doc.text(company.email, 20, y);
-      y += 4;
-    }
-    if (company.website) {
-      doc.text(company.website, 20, y);
-      y += 4;
-    }
-    if (company.licenseNumber) {
-      doc.text(`License: ${company.licenseNumber}`, 20, y);
-      y += 4;
-    }
-    y += 4;
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text("Material Selections", 20, y);
-    y += 8;
+    let y = await addDocumentCompanyPdfHeader(doc, company, {
+      title: "Material Selections",
+      documentNo: `MS-${projectId.replace(/-/g, "").slice(0, 8).toUpperCase()}`,
+      documentNoLabel: "Export No",
+      documentDate: new Date().toISOString().slice(0, 10),
+    });
     doc.setFont("helvetica", "normal");
 
     doc.setFontSize(11);

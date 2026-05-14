@@ -46,6 +46,7 @@ import type {
   CommissionWithPaid,
 } from "@/lib/data";
 import {
+  fetchCommissionReceiptCompanyProfile,
   generateCommissionReceiptPdf,
   printAndDownloadCommissionReceipt,
 } from "@/lib/commission-payment-receipt-pdf";
@@ -535,6 +536,7 @@ export function CommissionsClient({
     const { parent, payment } = r;
     setReceiptPrinting(true);
     try {
+      const company = await fetchCommissionReceiptCompanyProfile();
       const blob = await generateCommissionReceiptPdf({
         paymentId: payment.id,
         paymentDate: payment.payment_date || "—",
@@ -545,6 +547,7 @@ export function CommissionsClient({
         paymentAmount: payment.amount,
         paymentMethod: payment.payment_method ?? "",
         notes: payment.note,
+        company,
       });
       printAndDownloadCommissionReceipt(blob, payment.id);
     } catch (err) {

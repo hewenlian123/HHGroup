@@ -272,6 +272,20 @@ export function EstimatePreviewContent({
           </>
         )}
 
+        {company.defaultTerms ? (
+          <>
+            <div className="border-b border-zinc-300 my-4" />
+            <section>
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-2">
+                Terms
+              </h2>
+              <p className="text-sm text-zinc-800 whitespace-pre-wrap border-b border-zinc-200 pb-3">
+                {company.defaultTerms}
+              </p>
+            </section>
+          </>
+        ) : null}
+
         <div className="border-t border-zinc-300 my-4" />
 
         <section
@@ -297,8 +311,8 @@ export function EstimatePreviewContent({
           </div>
         </section>
 
-        <footer className="text-[11px] text-zinc-400 border-t border-zinc-200 pt-3 mt-10">
-          {company.companyName} · Estimate {estimate.number}
+        <footer className="text-[11px] text-zinc-400 border-t border-zinc-200 pt-3 mt-10 whitespace-pre-wrap">
+          {company.invoiceFooter || `${company.companyName} · Estimate ${estimate.number}`}
         </footer>
       </div>
     </article>

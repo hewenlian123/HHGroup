@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCloseoutCompletion, getProjectById, insertDocument } from "@/lib/data";
+import {
+  addDocumentCompanyPdfFooter,
+  addDocumentCompanyPdfHeader,
+} from "@/lib/document-company-pdf";
+import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "attachments";
@@ -14,17 +19,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     const completionDate = body.completion_date ?? "";
     const contractorName = body.contractor_name ?? "";
     const clientName = body.client_name ?? "";
-    const [completion, project] = await Promise.all([
+    const [completion, project, company] = await Promise.all([
       getCloseoutCompletion(projectId),
       getProjectById(projectId),
+      fetchDocumentCompanyProfile(),
     ]);
     const name = project?.name ?? projectName;
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
-    let y = 20;
-    doc.setFontSize(18);
-    doc.text("Completion Certificate", 20, y);
-    y += 15;
+    let y = await addDocumentCompanyPdfHeader(doc, company, {
+      title: "Completion Certificate",
+      documentNo: `CC-${projectId.replace(/-/g, "").slice(0, 8).toUpperCase()}`,
+      documentNoLabel: "Certificate No",
+      documentDate:
+        completionDate || completion?.completion_date || new Date().toISOString().slice(0, 10),
+    });
     doc.setFontSize(11);
     doc.text(`Project: ${name}`, 20, y);
     y += 8;
@@ -40,7 +49,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
     if (completion?.client_signature) {
       doc.text(`Client signature: ${completion.client_signature}`, 20, y);
+      y += 8;
     }
+    y += 6;
+    addDocumentCompanyPdfFooter(doc, company, { y });
     const buf = doc.output("arraybuffer") as ArrayBuffer;
     const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const fileName = `completion-certificate-${ts}.pdf`;

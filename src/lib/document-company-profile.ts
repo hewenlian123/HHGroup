@@ -13,6 +13,10 @@ export type DocumentCompanyProfileDTO = {
   email: string | null;
   website: string | null;
   licenseNumber: string | null;
+  taxId: string | null;
+  invoiceFooter: string | null;
+  defaultTerms: string | null;
+  notes: string | null;
   /** Non-empty lines only; compact (no blank rows). */
   addressLines: string[];
   logoUrl: string | null;
@@ -45,6 +49,10 @@ export function companyProfileToDocumentDto(
     email: profile?.email?.trim() || null,
     website: profile?.website?.trim() || null,
     licenseNumber: profile?.license_number?.trim() || null,
+    taxId: profile?.tax_id?.trim() || null,
+    invoiceFooter: profile?.invoice_footer?.trim() || null,
+    defaultTerms: profile?.default_terms?.trim() || null,
+    notes: profile?.notes?.trim() || null,
     addressLines: buildAddressLinesFromProfile(profile),
     logoUrl: profile?.logo_url?.trim() || null,
   };

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCloseoutPunch, getProjectById, insertDocument } from "@/lib/data";
+import {
+  addDocumentCompanyPdfFooter,
+  addDocumentCompanyPdfHeader,
+} from "@/lib/document-company-pdf";
+import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "attachments";
@@ -9,18 +14,21 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   if (!projectId)
     return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
   try {
-    const [punch, project] = await Promise.all([
+    const [punch, project, company] = await Promise.all([
       getCloseoutPunch(projectId),
       getProjectById(projectId),
+      fetchDocumentCompanyProfile(),
     ]);
     if (!project)
       return NextResponse.json({ ok: false, message: "Project not found" }, { status: 404 });
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
-    let y = 20;
-    doc.setFontSize(16);
-    doc.text("Final Punch List", 20, y);
-    y += 12;
+    let y = await addDocumentCompanyPdfHeader(doc, company, {
+      title: "Final Punch List",
+      documentNo: `FP-${projectId.replace(/-/g, "").slice(0, 8).toUpperCase()}`,
+      documentNoLabel: "Punch No",
+      documentDate: punch?.inspection_date || new Date().toISOString().slice(0, 10),
+    });
     doc.setFontSize(11);
     doc.text(`Project: ${project.name ?? ""}`, 20, y);
     y += 8;
@@ -59,8 +67,11 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
       }
       if (punch.client_signature) {
         doc.text(`Client: ${punch.client_signature}`, 20, y);
+        y += 6;
       }
     }
+    y += 8;
+    addDocumentCompanyPdfFooter(doc, company, { y });
     const buf = doc.output("arraybuffer") as ArrayBuffer;
     const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const fileName = `final-punch-${ts}.pdf`;

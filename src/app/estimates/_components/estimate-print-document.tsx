@@ -252,8 +252,19 @@ export function EstimatePrintDocument({
         </section>
       )}
 
-      <footer className="text-xs text-zinc-400 border-t border-zinc-200 pt-6 mt-8 print:break-before-avoid">
-        Estimate — {company.companyName}
+      {company.defaultTerms ? (
+        <section className="mb-8 print:break-inside-avoid">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">
+            Terms
+          </h2>
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-4 text-sm text-zinc-700 whitespace-pre-wrap">
+            {company.defaultTerms}
+          </div>
+        </section>
+      ) : null}
+
+      <footer className="text-xs text-zinc-400 border-t border-zinc-200 pt-6 mt-8 print:break-before-avoid whitespace-pre-wrap">
+        {company.invoiceFooter || `Estimate — ${company.companyName}`}
       </footer>
     </article>
   );

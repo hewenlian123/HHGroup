@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import { getProjectById, getProjectBillingSummary, insertDocument } from "@/lib/data";
+import {
+  addDocumentCompanyPdfFooter,
+  addDocumentCompanyPdfHeader,
+} from "@/lib/document-company-pdf";
+import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
@@ -10,10 +15,11 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   if (!projectId)
     return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
   try {
-    const [project, billing, canonical] = await Promise.all([
+    const [project, billing, canonical, company] = await Promise.all([
       getProjectById(projectId),
       getProjectBillingSummary(projectId),
       getCanonicalProjectProfit(projectId),
+      fetchDocumentCompanyProfile(),
     ]);
     if (!project)
       return NextResponse.json({ ok: false, message: "Project not found" }, { status: 404 });
@@ -22,10 +28,12 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const remaining = Math.max(0, contractValue - paid);
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
-    let y = 20;
-    doc.setFontSize(16);
-    doc.text("Final Invoice", 20, y);
-    y += 12;
+    let y = await addDocumentCompanyPdfHeader(doc, company, {
+      title: "Final Invoice",
+      documentNo: `FI-${projectId.replace(/-/g, "").slice(0, 8).toUpperCase()}`,
+      documentNoLabel: "Invoice No",
+      documentDate: new Date().toISOString().slice(0, 10),
+    });
     doc.setFontSize(11);
     doc.text(`Project: ${project.name ?? ""}`, 20, y);
     y += 15;
@@ -46,6 +54,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
       20,
       y
     );
+    y += 14;
+    addDocumentCompanyPdfFooter(doc, company, { y });
     const buf = doc.output("arraybuffer") as ArrayBuffer;
     const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
     const fileName = `final-invoice-${ts}.pdf`;
