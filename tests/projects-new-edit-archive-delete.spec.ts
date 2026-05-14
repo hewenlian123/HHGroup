@@ -31,8 +31,22 @@ async function fillNewProject(
 ): Promise<void> {
   await page.getByPlaceholder("Luxury Villa E").fill(params.name);
   await page.getByPlaceholder("Client or company name").fill(params.client);
-  await page.getByPlaceholder("Project address").fill(params.address);
+  await setProjectAddress(page, "project-address", params.address);
   await page.locator('input[name="budget"]').fill(params.budget ?? "250000");
+}
+
+async function setProjectAddress(page: Page, inputId: string, address: string): Promise<void> {
+  await page.locator(`#${inputId}`).click();
+  const details = page.getByRole("dialog", { name: "Address details" }).last();
+  await expect(details).toBeVisible({ timeout: 10_000 });
+  await page.locator(`#${inputId}-street`).fill(address);
+  await page.locator(`#${inputId}-unit`).fill("");
+  await page.locator(`#${inputId}-city`).fill("");
+  await page.locator(`#${inputId}-state`).fill("");
+  await page.locator(`#${inputId}-zip`).fill("");
+  await page.locator(`#${inputId}-notes`).fill("");
+  await details.getByRole("button", { name: "Save address" }).click();
+  await expect(details).toBeHidden({ timeout: 10_000 });
 }
 
 async function createProject(
@@ -153,7 +167,7 @@ test("creates, edits, archives, and deletes projects", async ({ page }) => {
   await expect(editDialog).toBeVisible({ timeout: 10_000 });
   await editDialog.getByLabel("Project name").fill(savedName);
   await editDialog.getByLabel("Client").fill(savedClient);
-  await editDialog.getByLabel("Address").fill(savedAddress);
+  await setProjectAddress(page, "edit-project-address", savedAddress);
   const saveButton = editDialog.getByRole("button", { name: "Save" });
   await expect(saveButton).toBeEnabled({ timeout: 10_000 });
   await saveButton.click();
