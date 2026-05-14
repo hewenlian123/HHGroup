@@ -130,7 +130,7 @@ export function PaymentReceiptPreviewModal({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
           className={cn(
-            "receipt-preview-overlay fixed inset-0 z-50 bg-black/45 backdrop-blur-sm",
+            "receipt-preview-overlay fixed inset-0 z-50 bg-black/40",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           )}
         />
@@ -138,7 +138,7 @@ export function PaymentReceiptPreviewModal({
           className={cn(
             "receipt-preview-dialog-root fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh_880px)] w-[min(720px_94vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-sm border border-border/60 bg-background shadow-none duration-100",
             "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-            "max-md:inset-x-3 max-md:top-6 max-md:max-h-[calc(100vh-3rem)] max-md:w-auto max-md:max-w-[calc(100vw-1.5rem)] max-md:-translate-x-1/2 max-md:translate-y-0"
+            "max-md:inset-x-3 max-md:top-[max(0.75rem,env(safe-area-inset-top))] max-md:max-h-[calc(100dvh_-_1.5rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] max-md:w-auto max-md:max-w-[calc(100vw-1.5rem)] max-md:-translate-x-1/2 max-md:translate-y-0"
           )}
         >
           <DialogPrimitive.Description className="sr-only">
@@ -196,7 +196,7 @@ export function PaymentReceiptPreviewModal({
             </div>
           </div>
 
-          <div className="receipt-preview-scroll receipt-print-shell min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="receipt-preview-scroll receipt-print-shell mobile-native-scroll min-h-0 flex-1 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
             {loading ? (
               <p className="py-12 text-center text-sm text-muted-foreground">Loading receipt...</p>
             ) : error ? (

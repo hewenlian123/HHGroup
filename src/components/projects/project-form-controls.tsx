@@ -116,7 +116,7 @@ export function ProjectBudgetInput({
       <div className="group flex h-11 items-center overflow-hidden rounded-[10px] border border-input bg-white shadow-[0_1px_0_rgba(15,23,42,0.03)] transition-colors focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-emerald-500/15 dark:bg-card dark:focus-within:border-emerald-500/50">
         <div className="flex h-full items-center gap-2 border-r border-slate-900/[0.08] bg-muted/30 px-3 text-xs font-semibold tracking-[0.08em] text-muted-foreground dark:border-border">
           <span>USD</span>
-          <span className="font-mono text-sm tracking-normal text-foreground/80">$</span>
+          <span className="financial-nums text-sm tracking-normal text-foreground/80">$</span>
         </div>
         <input
           id={inputId}
@@ -130,7 +130,7 @@ export function ProjectBudgetInput({
           onChange={(e) => onValueChange(budgetDigits(e.target.value))}
           disabled={disabled}
           aria-invalid={error}
-          className="h-full min-w-0 flex-1 bg-transparent px-3 text-right font-mono text-[15px] font-semibold tabular-nums tracking-[0.01em] text-foreground outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-50"
+          className="financial-nums h-full min-w-0 flex-1 bg-transparent px-3 text-right text-[15px] font-semibold tracking-[0.01em] text-foreground outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
     </div>
@@ -216,14 +216,14 @@ export function ProjectAddressField({
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[520px] gap-4">
+        <DialogContent className="max-w-[520px] gap-4 max-md:flex max-md:flex-col max-md:overflow-hidden">
           <DialogHeader>
             <DialogTitle>Address details</DialogTitle>
             <DialogDescription>
               Save will update the one-line project address summary.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3">
+          <div className="mobile-native-scroll grid gap-3 max-md:min-h-0 max-md:flex-1 max-md:overflow-y-auto max-md:pb-2">
             <div className="space-y-1.5">
               <label
                 htmlFor={`${inputId}-street`}

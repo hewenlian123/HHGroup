@@ -21,7 +21,7 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-50 bg-black/50 backdrop-blur-md duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/40 duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -31,7 +31,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 border-gray-100 bg-white p-6 shadow-sm transition-all duration-150 ease-out data-[state=open]:animate-in data-[state=closed]:animate-out max-md:w-full max-md:max-w-none max-md:inset-0 max-md:rounded-none dark:border-border dark:bg-background dark:shadow-none",
+  "fixed z-50 gap-4 overflow-y-auto overscroll-y-contain border-gray-100 bg-white p-6 shadow-sm transition-all duration-150 ease-out [-webkit-overflow-scrolling:touch] data-[state=open]:animate-in data-[state=closed]:animate-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none max-md:rounded-none dark:border-border dark:bg-background dark:shadow-none",
   {
     variants: {
       side: {
@@ -65,7 +65,7 @@ const SheetContent = React.forwardRef<
       className={cn(
         sheetVariants({ side }),
         side === "bottom" &&
-          "pt-[env(safe-area-inset-top_0px)] [&>button]:top-[calc(0.25rem+env(safe-area-inset-top_0px))]",
+          "pb-[max(1rem,env(safe-area-inset-bottom))] [&>button]:top-[calc(0.25rem+env(safe-area-inset-top_0px))]",
         className
       )}
       {...props}
@@ -87,7 +87,11 @@ SheetHeader.displayName = "SheetHeader";
 
 const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}
+    className={cn(
+      "flex flex-col-reverse gap-2 pb-[env(safe-area-inset-bottom)] sm:flex-row sm:justify-end sm:space-x-2 sm:pb-0",
+      "max-lg:[&>button]:min-h-11 max-lg:[&>button]:w-full",
+      className
+    )}
     {...props}
   />
 );
