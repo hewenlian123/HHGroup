@@ -1144,7 +1144,7 @@ function InvoicesPageInner() {
                   inv.computedStatus === "Draft"
                     ? {
                         label: "Edit draft",
-                        href: `/financial/invoices/${inv.id}`,
+                        href: `/financial/invoices/${inv.id}/edit`,
                       }
                     : canRecordPayment
                       ? {

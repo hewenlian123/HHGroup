@@ -270,7 +270,7 @@ export function InvoicesClient() {
                 {
                   label: "Edit",
                   onClick: () =>
-                    startTransition(() => router.push(`/financial/invoices/${row.id}`)),
+                    startTransition(() => router.push(`/financial/invoices/${row.id}/edit`)),
                 },
                 {
                   label: "Delete",
