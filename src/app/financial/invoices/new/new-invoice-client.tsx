@@ -100,6 +100,7 @@ export default function NewInvoiceClient() {
 
   const [projectId, setProjectId] = React.useState<string>("");
   const [customerId, setCustomerId] = React.useState<string>("");
+  const [invoiceNo, setInvoiceNo] = React.useState<string>("");
   const [clientName, setClientName] = React.useState<string>("");
 
   const today = new Date().toISOString().slice(0, 10);
@@ -218,6 +219,7 @@ export default function NewInvoiceClient() {
     setError(null);
     try {
       const res = await createInvoiceDraftAction({
+        invoiceNo,
         projectId,
         clientName,
         issueDate,
@@ -251,6 +253,47 @@ export default function NewInvoiceClient() {
     }
   };
 
+  const handleSaveDraft = async () => {
+    if (!supabase || saving || loading) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await createInvoiceDraftAction({
+        invoiceNo,
+        projectId,
+        clientName,
+        issueDate,
+        dueDate,
+        taxPct: Math.max(0, safeNumber(taxPct)),
+        notes,
+        allowIncomplete: true,
+        lineItems: lines.map((l) => ({
+          description: composeLineDescription(l),
+          qty: Math.max(0, safeNumber(l.qty) || 0),
+          unitPrice: Math.max(0, safeNumber(l.unitPrice) || 0),
+        })),
+      });
+      if (!res.ok || !res.invoiceId) {
+        const msg = res.error ?? "Failed to save draft.";
+        setError(msg);
+        toast({ title: "Save draft failed", description: msg, variant: "error" });
+        return;
+      }
+      toast({
+        title: "Draft saved",
+        description: "Invoice draft saved.",
+        variant: "success",
+      });
+      router.push(`/financial/invoices/${res.invoiceId}`);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to save draft.";
+      setError(msg);
+      toast({ title: "Save draft failed", description: msg, variant: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const updateLine = React.useCallback((idx: number, patch: Partial<LineDraft>) => {
     setLines((prev) => prev.map((line, i) => (i === idx ? { ...line, ...patch } : line)));
   }, []);
@@ -264,7 +307,7 @@ export default function NewInvoiceClient() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-[920px] flex flex-col gap-6 p-6">
+    <div className="financial-nums mx-auto flex max-w-[920px] flex-col gap-6 p-6">
       <PageHeader
         title="New Invoice"
         description="Create a draft invoice for a project and client."
@@ -332,6 +375,7 @@ export default function NewInvoiceClient() {
                 Client name
               </label>
               <Input
+                data-testid="invoice-new-client-input"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 placeholder="Client"
@@ -343,12 +387,26 @@ export default function NewInvoiceClient() {
               ) : null}
             </div>
 
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Invoice number
+              </label>
+              <Input
+                data-testid="invoice-new-number-input"
+                value={invoiceNo}
+                onChange={(e) => setInvoiceNo(e.target.value)}
+                placeholder="Auto if blank"
+                className="mt-1"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Issue date
                 </label>
                 <Input
+                  data-testid="invoice-new-issue-date-input"
                   type="date"
                   value={issueDate}
                   onChange={(e) => setIssueDate((e.target.value || issueDate).slice(0, 10))}
@@ -360,6 +418,7 @@ export default function NewInvoiceClient() {
                   Due date
                 </label>
                 <Input
+                  data-testid="invoice-new-due-date-input"
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate((e.target.value || dueDate).slice(0, 10))}
@@ -373,6 +432,7 @@ export default function NewInvoiceClient() {
                 Tax %
               </label>
               <Input
+                data-testid="invoice-new-tax-input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -390,6 +450,7 @@ export default function NewInvoiceClient() {
                 Notes (optional)
               </label>
               <Input
+                data-testid="invoice-new-notes-input"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Terms / notes"
@@ -427,6 +488,7 @@ export default function NewInvoiceClient() {
                 <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_72px_112px_132px_32px] md:items-start">
                   <div className="space-y-1 pr-9 md:pr-0">
                     <Input
+                      data-testid={`invoice-new-line-${idx + 1}-item-input`}
                       value={line.itemName}
                       onChange={(e) => updateLine(idx, { itemName: e.target.value })}
                       placeholder="Item name"
@@ -435,6 +497,7 @@ export default function NewInvoiceClient() {
                       className="h-8 min-h-8 border-transparent bg-transparent px-2 py-1 text-[15px] font-medium leading-5 text-zinc-950 placeholder:text-zinc-400 hover:bg-zinc-50/70 focus-visible:border-sky-200 focus-visible:bg-sky-50/40 focus-visible:ring-2 focus-visible:ring-sky-100/80 max-md:text-base"
                     />
                     <AutoResizeTextarea
+                      data-testid={`invoice-new-line-${idx + 1}-description-input`}
                       value={line.description}
                       onChange={(e) => updateLine(idx, { description: e.target.value })}
                       placeholder="Describe the scope of work, materials, or service…"
@@ -449,6 +512,7 @@ export default function NewInvoiceClient() {
                         Qty
                       </label>
                       <Input
+                        data-testid={`invoice-new-line-${idx + 1}-qty-input`}
                         type="number"
                         min="0"
                         step="0.01"
@@ -464,6 +528,7 @@ export default function NewInvoiceClient() {
                         Rate
                       </label>
                       <Input
+                        data-testid={`invoice-new-line-${idx + 1}-rate-input`}
                         type="number"
                         min="0"
                         step="0.01"
@@ -540,6 +605,14 @@ export default function NewInvoiceClient() {
             className="rounded-sm"
           >
             Cancel
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleSaveDraft}
+            disabled={!canSubmit}
+            className="rounded-sm"
+          >
+            Save draft
           </Button>
           <Button onClick={handleCreate} disabled={!canSubmit} className="rounded-sm">
             <SubmitSpinner loading={saving} className="mr-2" />

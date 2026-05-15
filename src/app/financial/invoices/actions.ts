@@ -29,6 +29,7 @@ export async function updateInvoiceAction(
   invoiceId: string,
   payload: {
     projectId: string;
+    invoiceNo?: string;
     clientName: string;
     issueDate: string;
     dueDate: string;
@@ -51,6 +52,7 @@ export async function updateInvoiceAction(
   try {
     const updated = await updateInvoiceData(invoiceId, {
       projectId,
+      invoiceNo: payload.invoiceNo,
       clientName,
       issueDate: payload.issueDate,
       dueDate: payload.dueDate,
@@ -61,6 +63,8 @@ export async function updateInvoiceAction(
     if (!updated) return { ok: false, error: "Only draft invoices can be edited." };
     revalidatePath("/financial/invoices");
     revalidatePath(`/financial/invoices/${invoiceId}`);
+    revalidatePath(`/financial/invoices/${invoiceId}/preview`);
+    revalidatePath(`/financial/invoices/${invoiceId}/print`);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to update invoice." };

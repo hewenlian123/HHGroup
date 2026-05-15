@@ -127,6 +127,7 @@ export default function EditInvoiceClient({
 
   const [projectId, setProjectId] = React.useState<string>(invoice.projectId ?? "");
   const [customerId, setCustomerId] = React.useState<string>("");
+  const [invoiceNo, setInvoiceNo] = React.useState<string>(invoice.invoiceNo ?? "");
   const [clientName, setClientName] = React.useState<string>(invoice.clientName ?? "");
   const [issueDate, setIssueDate] = React.useState<string>((invoice.issueDate ?? "").slice(0, 10));
   const [dueDate, setDueDate] = React.useState<string>((invoice.dueDate ?? "").slice(0, 10));
@@ -245,6 +246,7 @@ export default function EditInvoiceClient({
     setError(null);
     try {
       const result = await updateInvoiceAction(invoice.id, {
+        invoiceNo,
         projectId,
         clientName,
         issueDate,
@@ -278,7 +280,7 @@ export default function EditInvoiceClient({
 
   if (invoice.status !== "Draft") {
     return (
-      <div className="mx-auto flex max-w-[920px] flex-col gap-6 p-6">
+      <div className="financial-nums mx-auto flex max-w-[920px] flex-col gap-6 p-6">
         <div>
           <Button asChild variant="ghost" size="sm" className="-ml-2 rounded-sm">
             <Link href={detailHref}>
@@ -301,7 +303,7 @@ export default function EditInvoiceClient({
   }
 
   return (
-    <div className="mx-auto flex max-w-[920px] flex-col gap-6 p-6">
+    <div className="financial-nums mx-auto flex max-w-[920px] flex-col gap-6 p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Button asChild variant="ghost" size="sm" className="-ml-2 rounded-sm">
@@ -392,6 +394,7 @@ export default function EditInvoiceClient({
                 Client name
               </label>
               <Input
+                data-testid="invoice-edit-client-input"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 placeholder="Client"
@@ -403,12 +406,26 @@ export default function EditInvoiceClient({
               ) : null}
             </div>
 
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Invoice number
+              </label>
+              <Input
+                data-testid="invoice-edit-number-input"
+                value={invoiceNo}
+                onChange={(e) => setInvoiceNo(e.target.value)}
+                placeholder="Invoice number"
+                className="mt-1"
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Issue date
                 </label>
                 <Input
+                  data-testid="invoice-edit-issue-date-input"
                   type="date"
                   value={issueDate}
                   onChange={(e) => setIssueDate((e.target.value || issueDate).slice(0, 10))}
@@ -420,6 +437,7 @@ export default function EditInvoiceClient({
                   Due date
                 </label>
                 <Input
+                  data-testid="invoice-edit-due-date-input"
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate((e.target.value || dueDate).slice(0, 10))}
@@ -433,6 +451,7 @@ export default function EditInvoiceClient({
                 Tax %
               </label>
               <Input
+                data-testid="invoice-edit-tax-input"
                 type="number"
                 min="0"
                 step="0.01"
@@ -447,6 +466,7 @@ export default function EditInvoiceClient({
                 Notes (optional)
               </label>
               <Input
+                data-testid="invoice-edit-notes-input"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Terms / notes"
@@ -484,6 +504,7 @@ export default function EditInvoiceClient({
                 <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_72px_112px_132px_32px] md:items-start">
                   <div className="space-y-1 pr-9 md:pr-0">
                     <Input
+                      data-testid={`invoice-edit-line-${idx + 1}-item-input`}
                       value={line.itemName}
                       onChange={(e) => updateLine(idx, { itemName: e.target.value })}
                       placeholder="Item name"
@@ -492,6 +513,7 @@ export default function EditInvoiceClient({
                       className="h-8 min-h-8 border-transparent bg-transparent px-2 py-1 text-[15px] font-medium leading-5 text-zinc-950 placeholder:text-zinc-400 hover:bg-zinc-50/70 focus-visible:border-sky-200 focus-visible:bg-sky-50/40 focus-visible:ring-2 focus-visible:ring-sky-100/80 max-md:text-base"
                     />
                     <AutoResizeTextarea
+                      data-testid={`invoice-edit-line-${idx + 1}-description-input`}
                       value={line.description}
                       onChange={(e) => updateLine(idx, { description: e.target.value })}
                       placeholder="Describe the scope of work, materials, or service…"
@@ -506,6 +528,7 @@ export default function EditInvoiceClient({
                         Qty
                       </label>
                       <Input
+                        data-testid={`invoice-edit-line-${idx + 1}-qty-input`}
                         type="number"
                         min="0"
                         step="0.01"
@@ -521,6 +544,7 @@ export default function EditInvoiceClient({
                         Rate
                       </label>
                       <Input
+                        data-testid={`invoice-edit-line-${idx + 1}-rate-input`}
                         type="number"
                         min="0"
                         step="0.01"

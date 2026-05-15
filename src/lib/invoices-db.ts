@@ -4,6 +4,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export type InvoiceStatus = "Draft" | "Sent" | "Partially Paid" | "Paid" | "Void";
 
@@ -81,7 +82,22 @@ type InvoicePaymentRow = {
   status?: string;
 };
 
-function client() {
+const noStoreFetch: typeof fetch = (input, init) =>
+  fetch(input, {
+    ...init,
+    cache: "no-store",
+  });
+
+function client(): SupabaseClient {
+  if (typeof window === "undefined") {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) throw new Error("Supabase is not configured.");
+    return createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: noStoreFetch },
+    });
+  }
   const c = getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
@@ -101,6 +117,11 @@ function isNetworkError(err: { message?: string } | null): boolean {
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
+}
+
+function isQuantityColumnUnsupported(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return /quantity/i.test(m) && /column|generated|schema cache|could not find/i.test(m);
 }
 
 function isTestInvoice(inv: Invoice): boolean {
@@ -139,6 +160,50 @@ async function hardDeleteInvoiceGraph(
   await deleteRowsByInvoiceIds(c, "invoice_items", "invoice_id", invoiceIds);
 }
 
+async function insertInvoiceItems(
+  c: ReturnType<typeof client>,
+  rows: Array<{
+    invoice_id: string;
+    description: string;
+    qty: number;
+    unit_price: number;
+    amount: number;
+  }>
+): Promise<{ error?: string }> {
+  if (rows.length === 0) return {};
+  const rowsWithQuantity = rows.map((row) => ({ ...row, quantity: row.qty }));
+  let { error } = await c.from("invoice_items").insert(rowsWithQuantity);
+  if (error && isQuantityColumnUnsupported(error)) {
+    const fallback = await c.from("invoice_items").insert(rows);
+    error = fallback.error;
+  }
+  return error ? { error: error.message ?? "Failed to create invoice items." } : {};
+}
+
+async function syncInvoiceStoredTotals(
+  c: ReturnType<typeof client>,
+  invoiceId: string,
+  lineItems: InvoiceLineItem[],
+  taxPct: number
+): Promise<void> {
+  const subtotal = lineItems.reduce((sum, item) => {
+    const quantity = Math.max(0, Number(item.qty) || 0);
+    const unitPrice = Math.max(0, Number(item.unitPrice) || 0);
+    return sum + quantity * unitPrice;
+  }, 0);
+  const safeTaxPct = Math.max(0, Number(taxPct) || 0);
+  const taxAmount = Math.round(subtotal * (safeTaxPct / 100) * 100) / 100;
+  await c
+    .from("invoices")
+    .update({
+      subtotal,
+      tax_pct: safeTaxPct,
+      tax_amount: taxAmount,
+      total: subtotal + taxAmount,
+    })
+    .eq("id", invoiceId);
+}
+
 /** Avoid appending migration HINT to connection/network errors. */
 function throwInvoiceError(error: { message?: string } | null, fallbackHint: string): never {
   const msg = error?.message ?? "";
@@ -151,11 +216,14 @@ const HINT = "Run supabase/migrations/202602280009_create_invoices.sql";
 
 function toLineItem(r: InvoiceItemRow): InvoiceLineItem {
   const q = Number(r.quantity ?? r.qty) || 0;
+  const unitPrice = Number(r.unit_price) || 0;
+  const computedAmount = q * unitPrice;
+  const storedAmount = Number(r.amount) || 0;
   return {
     description: r.description ?? "",
     qty: q,
-    unitPrice: Number(r.unit_price) || 0,
-    amount: Number(r.amount) || 0,
+    unitPrice,
+    amount: Math.abs(storedAmount - computedAmount) > 0.005 ? computedAmount : storedAmount,
   };
 }
 
@@ -176,6 +244,16 @@ function toInvoice(row: InvoiceRow, items: InvoiceItemRow[]): Invoice {
   const dueDate =
     row.due_date?.slice?.(0, 10) ?? (typeof row.due_date === "string" ? row.due_date : "");
   const issueDate = row.issue_date?.slice?.(0, 10) ?? row.created_at?.slice?.(0, 10) ?? "";
+  const lineItems = items.map(toLineItem);
+  const hasLineItems = lineItems.length > 0;
+  const taxPct = Number(row.tax_pct) || 0;
+  const subtotal = hasLineItems
+    ? lineItems.reduce((sum, item) => sum + item.amount, 0)
+    : Number(row.subtotal ?? row.total) || 0;
+  const taxAmount = hasLineItems
+    ? Math.round(subtotal * (taxPct / 100) * 100) / 100
+    : Number(row.tax_amount) || 0;
+  const total = hasLineItems ? subtotal + taxAmount : Number(row.total) || 0;
   return {
     id: row.id,
     invoiceNo: row.invoice_no ?? row.id.slice(0, 8),
@@ -184,11 +262,11 @@ function toInvoice(row: InvoiceRow, items: InvoiceItemRow[]): Invoice {
     issueDate,
     dueDate,
     status,
-    lineItems: items.map(toLineItem),
-    subtotal: Number(row.subtotal ?? row.total) || 0,
-    taxPct: Number(row.tax_pct) || undefined,
-    taxAmount: Number(row.tax_amount) || undefined,
-    total: Number(row.total) || 0,
+    lineItems,
+    subtotal,
+    taxPct: taxPct || undefined,
+    taxAmount: taxAmount || undefined,
+    total,
     notes: row.notes ?? undefined,
   };
 }
@@ -208,7 +286,11 @@ function toPayment(r: InvoicePaymentRow): InvoicePayment {
 
 async function getInvoiceItemsOrEmpty(invoiceId: string): Promise<InvoiceItemRow[]> {
   const c = client();
-  const itemRes = await c.from("invoice_items").select("*").eq("invoice_id", invoiceId);
+  const itemRes = await c
+    .from("invoice_items")
+    .select("*")
+    .eq("invoice_id", invoiceId)
+    .order("created_at", { ascending: true });
   if (itemRes.error) {
     if (isMissingTable(itemRes.error)) return [];
     throw new Error(itemRes.error.message ?? "Failed to load invoice items.");
@@ -613,6 +695,7 @@ export async function deleteInvoice(invoiceId: string): Promise<boolean> {
 }
 
 export async function createInvoice(payload: {
+  invoiceNo?: string;
   projectId: string;
   clientName: string;
   issueDate: string;
@@ -624,7 +707,7 @@ export async function createInvoice(payload: {
   const c = client();
   const subtotal = payload.lineItems.reduce((s, l) => s + l.amount, 0);
   const taxPct = payload.taxPct ?? 0;
-  const taxAmount = Math.round(subtotal * (taxPct / 100));
+  const taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
   const total = subtotal + taxAmount;
 
   const isUniqueInvoiceNo = (err: unknown): boolean => {
@@ -635,9 +718,13 @@ export async function createInvoice(payload: {
 
   let lastErr: unknown = null;
   for (let attempt = 0; attempt < 2; attempt++) {
-    const { count } = await c.from("invoices").select("id", { count: "exact", head: true });
-    const nextNum = (count ?? 0) + 1;
-    const invoiceNo = `INV-${String(nextNum).padStart(4, "0")}`;
+    const customInvoiceNo = payload.invoiceNo?.trim();
+    let invoiceNo = customInvoiceNo ?? "";
+    if (!invoiceNo) {
+      const { count } = await c.from("invoices").select("id", { count: "exact", head: true });
+      const nextNum = (count ?? 0) + 1 + attempt;
+      invoiceNo = `INV-${String(nextNum).padStart(4, "0")}`;
+    }
 
     const { data: invRow, error: invErr } = await c
       .from("invoices")
@@ -661,27 +748,29 @@ export async function createInvoice(payload: {
 
     if (!invErr && invRow) {
       const inv = invRow as InvoiceRow;
-      for (const item of payload.lineItems) {
+      const itemRows = payload.lineItems.map((item) => {
         const quantity = Number(item.qty) || 0;
         const unitPrice = Number(item.unitPrice) || 0;
-        const { error: itemErr } = await c.from("invoice_items").insert({
+        return {
           invoice_id: inv.id,
           description: item.description,
           qty: quantity,
           unit_price: unitPrice,
           amount: quantity * unitPrice,
-        });
-        if (itemErr) {
-          await c.from("invoices").delete().eq("id", inv.id);
-          throw new Error(itemErr.message ?? "Failed to create invoice items.");
-        }
+        };
+      });
+      const itemInsert = await insertInvoiceItems(c, itemRows);
+      if (itemInsert.error) {
+        await c.from("invoices").delete().eq("id", inv.id);
+        throw new Error(itemInsert.error);
       }
-      const itemRows = await getInvoiceItemsOrEmpty(inv.id);
-      return toInvoice(inv, itemRows);
+      await syncInvoiceStoredTotals(c, inv.id, payload.lineItems, taxPct);
+      const savedItemRows = await getInvoiceItemsOrEmpty(inv.id);
+      return toInvoice(inv, savedItemRows);
     }
 
     lastErr = invErr;
-    if (invErr && isUniqueInvoiceNo(invErr) && attempt === 0) continue;
+    if (!payload.invoiceNo && invErr && isUniqueInvoiceNo(invErr) && attempt === 0) continue;
     throw new Error(invErr?.message ?? "Failed to create invoice.");
   }
   throw new Error((lastErr as { message?: string } | null)?.message ?? "Failed to create invoice.");
@@ -691,6 +780,7 @@ export async function updateInvoice(
   invoiceId: string,
   payload: Partial<{
     projectId: string;
+    invoiceNo: string;
     clientName: string;
     issueDate: string;
     dueDate: string;
@@ -704,6 +794,8 @@ export async function updateInvoice(
   if (!inv || inv.status !== "Draft") return false;
   const updates: Record<string, unknown> = {};
   if (payload.projectId !== undefined) updates.project_id = payload.projectId || null;
+  if (payload.invoiceNo !== undefined)
+    updates.invoice_no = payload.invoiceNo.trim() || inv.invoiceNo;
   if (payload.clientName !== undefined) updates.client_name = payload.clientName.trim();
   if (payload.issueDate != null) updates.issue_date = payload.issueDate.slice(0, 10);
   if (payload.dueDate != null) updates.due_date = payload.dueDate.slice(0, 10);
@@ -730,18 +822,21 @@ export async function updateInvoice(
   if (payload.lineItems != null) {
     const { error: deleteErr } = await c.from("invoice_items").delete().eq("invoice_id", invoiceId);
     if (deleteErr) return false;
-    for (const item of payload.lineItems) {
+    const itemRows = payload.lineItems.map((item) => {
       const quantity = Number(item.qty) || 0;
       const unitPrice = Number(item.unitPrice) || 0;
-      const { error: itemErr } = await c.from("invoice_items").insert({
+      return {
         invoice_id: invoiceId,
         description: item.description,
         qty: quantity,
         unit_price: unitPrice,
         amount: quantity * unitPrice,
-      });
-      if (itemErr) return false;
-    }
+      };
+    });
+    const itemInsert = await insertInvoiceItems(c, itemRows);
+    if (itemInsert.error) return false;
+    const taxPct = Math.max(0, Number(payload.taxPct ?? inv.taxPct ?? 0) || 0);
+    await syncInvoiceStoredTotals(c, invoiceId, payload.lineItems, taxPct);
   }
   return true;
 }
@@ -750,6 +845,7 @@ export async function markInvoiceSent(invoiceId: string): Promise<boolean> {
   const c = client();
   const inv = await getInvoiceById(invoiceId);
   if (!inv || inv.status !== "Draft") return false;
+  if (!inv.projectId || !inv.clientName.trim() || inv.lineItems.length === 0) return false;
   const { error } = await c.from("invoices").update({ status: "Sent" }).eq("id", invoiceId);
   return !error;
 }

@@ -79,7 +79,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const itemsRes = await supabase
       .from("invoice_items")
       .select("id,invoice_id,description,quantity,qty,unit_price,amount")
-      .eq("invoice_id", id);
+      .eq("invoice_id", id)
+      .order("created_at", { ascending: true });
     if (itemsRes.error)
       return NextResponse.json(
         { ok: false, message: itemsRes.error.message ?? "Failed to load invoice items." },
@@ -103,17 +104,29 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     ) as InvoiceWithDerived["status"];
     const dueDate = String(row.due_date ?? "").slice(0, 10);
     const issueDate = String(row.issue_date ?? row.created_at ?? "").slice(0, 10);
-    const total = toNum(row.total);
-    const subtotal = toNum(row.subtotal ?? row.total);
-
     const lineItems: InvoiceLineItem[] = (
       (itemsRes.data ?? []) as Array<Record<string, unknown>>
-    ).map((r) => ({
-      description: String(r.description ?? ""),
-      qty: toNum(r.quantity ?? r.qty),
-      unitPrice: toNum(r.unit_price),
-      amount: toNum(r.amount),
-    }));
+    ).map((r) => {
+      const qty = toNum(r.quantity ?? r.qty);
+      const unitPrice = toNum(r.unit_price);
+      const computedAmount = qty * unitPrice;
+      const storedAmount = toNum(r.amount);
+      return {
+        description: String(r.description ?? ""),
+        qty,
+        unitPrice,
+        amount: Math.abs(storedAmount - computedAmount) > 0.005 ? computedAmount : storedAmount,
+      };
+    });
+    const hasLineItems = lineItems.length > 0;
+    const taxPct = toNum(row.tax_pct);
+    const subtotal = hasLineItems
+      ? lineItems.reduce((sum, item) => sum + item.amount, 0)
+      : toNum(row.subtotal ?? row.total);
+    const taxAmount = hasLineItems
+      ? Math.round(subtotal * (taxPct / 100) * 100) / 100
+      : toNum(row.tax_amount);
+    const total = hasLineItems ? subtotal + taxAmount : toNum(row.total);
 
     const paidTotal = ((paysRes.data ?? []) as Array<Record<string, unknown>>)
       .filter((p) => String(p.status ?? "") !== "Voided")
@@ -161,8 +174,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       status,
       lineItems,
       subtotal,
-      taxPct: toNum(row.tax_pct) || undefined,
-      taxAmount: toNum(row.tax_amount) || undefined,
+      taxPct: taxPct || undefined,
+      taxAmount: taxAmount || undefined,
       total,
       notes: row.notes ? String(row.notes) : undefined,
       paidTotal,
