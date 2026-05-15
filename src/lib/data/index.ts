@@ -2211,6 +2211,7 @@ export async function deleteInvoice(invoiceId: string): Promise<boolean> {
 }
 
 export async function createInvoice(payload: {
+  invoiceNo?: string;
   projectId: string;
   clientName: string;
   issueDate: string;
@@ -2226,6 +2227,7 @@ export async function updateInvoice(
   invoiceId: string,
   payload: Partial<{
     projectId: string;
+    invoiceNo: string;
     clientName: string;
     issueDate: string;
     dueDate: string;

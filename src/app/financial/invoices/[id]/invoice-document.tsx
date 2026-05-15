@@ -1,5 +1,6 @@
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 import type { InvoiceWithDerived } from "@/lib/invoices-db";
+import { formatDate } from "@/lib/formatters";
 
 type InvoiceDocumentProps = {
   invoice: InvoiceWithDerived;
@@ -19,14 +20,17 @@ function SummaryRow({
   value,
   strong = false,
   tone = "default",
+  testId,
 }: {
   label: string;
   value: string;
   strong?: boolean;
   tone?: "default" | "positive";
+  testId?: string;
 }) {
   return (
     <div
+      data-testid={testId}
       className={
         strong
           ? "flex justify-between gap-4 border-t border-zinc-300 pt-4 text-base font-semibold sm:gap-8"
@@ -44,12 +48,17 @@ function SummaryRow({
 export function InvoiceDocument({ invoice, projectName, company }: InvoiceDocumentProps) {
   const contact = [company.phone, company.email, company.website].filter(Boolean).join(" / ");
   const statusLabel = invoice.computedStatus === "Void" ? "Void" : invoice.computedStatus;
+  const issueDate = formatDate(invoice.issueDate);
+  const dueDate = formatDate(invoice.dueDate);
   const termsText =
-    invoice.notes?.trim() || company.defaultTerms || `Payment is due by ${invoice.dueDate}.`;
+    invoice.notes?.trim() || company.defaultTerms || `Payment is due by ${dueDate}.`;
   const footerText = company.invoiceFooter || "Thank you for your business.";
 
   return (
-    <article className="bg-white px-6 py-8 text-zinc-950 sm:px-10 sm:py-10 print:px-0 print:py-0">
+    <article
+      data-testid="invoice-preview-document"
+      className="financial-nums bg-white px-6 py-8 text-zinc-950 sm:px-10 sm:py-10 print:px-0 print:py-0"
+    >
       <header
         data-testid="document-company-header"
         className="flex flex-col items-start justify-between gap-7 sm:flex-row sm:gap-10"
@@ -83,7 +92,10 @@ export function InvoiceDocument({ invoice, projectName, company }: InvoiceDocume
 
         <div className="w-full shrink-0 text-left sm:w-auto sm:text-right">
           <p className="text-sm font-medium text-zinc-500">Invoice</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-950">
+          <p
+            data-testid="invoice-preview-number"
+            className="mt-2 text-2xl font-semibold tabular-nums text-zinc-950"
+          >
             {invoice.invoiceNo}
           </p>
           <p className="mt-3 inline-flex rounded-full border border-zinc-200 px-3 py-1 text-xs text-zinc-600">
@@ -101,23 +113,39 @@ export function InvoiceDocument({ invoice, projectName, company }: InvoiceDocume
         </div>
         <div className="grid grid-cols-[max-content_minmax(0,1fr)] gap-x-5 gap-y-1.5 text-left text-sm sm:grid-cols-[auto_auto] sm:text-right">
           <span className="text-zinc-500">Issued</span>
-          <span className="tabular-nums text-zinc-950">{invoice.issueDate}</span>
+          <span data-testid="invoice-preview-issue-date" className="tabular-nums text-zinc-950">
+            {issueDate}
+          </span>
           <span className="text-zinc-500">Due</span>
-          <span className="font-medium tabular-nums text-zinc-950">{invoice.dueDate}</span>
+          <span
+            data-testid="invoice-preview-due-date"
+            className="font-medium tabular-nums text-zinc-950"
+          >
+            {dueDate}
+          </span>
           <span className="text-zinc-500">Total</span>
-          <span className="tabular-nums text-zinc-950">{fmtMoney(invoice.total)}</span>
+          <span data-testid="invoice-preview-total-top" className="tabular-nums text-zinc-950">
+            {fmtMoney(invoice.total)}
+          </span>
         </div>
       </section>
 
       <section className="mt-6 grid grid-cols-1 gap-5 border-b border-zinc-200 pb-6 text-sm sm:grid-cols-[minmax(0,1fr)_220px] sm:gap-8">
         <div className="min-w-0">
           <p className="text-xs font-medium text-zinc-500">Bill to</p>
-          <p className="mt-1.5 font-medium text-zinc-950">{invoice.clientName}</p>
-          <p className="mt-0.5 break-words text-zinc-600 sm:truncate">{projectName}</p>
+          <p data-testid="invoice-preview-client" className="mt-1.5 font-medium text-zinc-950">
+            {invoice.clientName}
+          </p>
+          <p
+            data-testid="invoice-preview-project"
+            className="mt-0.5 break-words text-zinc-600 sm:truncate"
+          >
+            {projectName}
+          </p>
         </div>
         <div className="min-w-0 text-left sm:text-right">
           <p className="text-xs font-medium text-zinc-500">Payment</p>
-          <p className="mt-1.5 font-medium text-zinc-950">Due {invoice.dueDate}</p>
+          <p className="mt-1.5 font-medium text-zinc-950">Due {dueDate}</p>
           <p className="mt-0.5 text-zinc-600">Ref {invoice.invoiceNo}</p>
         </div>
       </section>
@@ -140,17 +168,33 @@ export function InvoiceDocument({ invoice, projectName, company }: InvoiceDocume
           </thead>
           <tbody>
             {invoice.lineItems.map((line, index) => (
-              <tr key={`${line.description}-${index}`} className="border-b border-zinc-100">
-                <td className="break-words py-5 pr-2 align-top font-medium text-zinc-950 sm:pr-3">
+              <tr
+                key={`${line.description}-${index}`}
+                data-testid={`invoice-preview-line-${index + 1}`}
+                className="border-b border-zinc-100"
+              >
+                <td
+                  data-testid={`invoice-preview-line-${index + 1}-description`}
+                  className="whitespace-pre-wrap break-words py-5 pr-2 align-top font-medium text-zinc-950 sm:pr-3"
+                >
                   {line.description}
                 </td>
-                <td className="px-1 py-5 text-right align-top tabular-nums text-zinc-600 sm:px-2">
+                <td
+                  data-testid={`invoice-preview-line-${index + 1}-qty`}
+                  className="px-1 py-5 text-right align-top tabular-nums text-zinc-600 sm:px-2"
+                >
                   {line.qty}
                 </td>
-                <td className="px-1 py-5 text-right align-top tabular-nums text-zinc-600 sm:px-2">
+                <td
+                  data-testid={`invoice-preview-line-${index + 1}-rate`}
+                  className="px-1 py-5 text-right align-top tabular-nums text-zinc-600 sm:px-2"
+                >
                   {fmtMoney(line.unitPrice)}
                 </td>
-                <td className="py-5 pl-2 text-right align-top font-semibold tabular-nums text-zinc-950 sm:pl-3">
+                <td
+                  data-testid={`invoice-preview-line-${index + 1}-amount`}
+                  className="py-5 pl-2 text-right align-top font-semibold tabular-nums text-zinc-950 sm:pl-3"
+                >
                   {fmtMoney(line.amount)}
                 </td>
               </tr>
@@ -166,16 +210,35 @@ export function InvoiceDocument({ invoice, projectName, company }: InvoiceDocume
         </div>
 
         <div className="space-y-3">
-          <SummaryRow label="Subtotal" value={fmtMoney(invoice.subtotal)} />
+          <SummaryRow
+            label="Subtotal"
+            value={fmtMoney(invoice.subtotal)}
+            testId="invoice-preview-subtotal"
+          />
           {invoice.taxAmount != null && invoice.taxAmount > 0 ? (
             <SummaryRow
               label={invoice.taxPct != null ? `Tax (${invoice.taxPct}%)` : "Tax"}
               value={fmtMoney(invoice.taxAmount)}
+              testId="invoice-preview-tax"
             />
           ) : null}
-          <SummaryRow label="Total" value={fmtMoney(invoice.total)} />
-          <SummaryRow label="Paid" value={fmtMoney(invoice.paidTotal)} tone="positive" />
-          <SummaryRow label="Balance due" value={fmtMoney(invoice.balanceDue)} strong />
+          <SummaryRow
+            label="Total"
+            value={fmtMoney(invoice.total)}
+            testId="invoice-preview-total"
+          />
+          <SummaryRow
+            label="Paid"
+            value={fmtMoney(invoice.paidTotal)}
+            tone="positive"
+            testId="invoice-preview-paid"
+          />
+          <SummaryRow
+            label="Balance due"
+            value={fmtMoney(invoice.balanceDue)}
+            strong
+            testId="invoice-preview-balance"
+          />
         </div>
       </section>
 

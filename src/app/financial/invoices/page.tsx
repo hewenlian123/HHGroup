@@ -540,7 +540,7 @@ function InvoicesPageInner() {
   return (
     <div
       className={cn(
-        "min-w-0 overflow-x-hidden bg-stone-50 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] dark:bg-background",
+        "financial-nums min-w-0 overflow-x-hidden bg-stone-50 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] dark:bg-background",
         "flex flex-col"
       )}
     >

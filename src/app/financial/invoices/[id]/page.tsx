@@ -508,7 +508,10 @@ export default function InvoiceDetailPage() {
     : invoice.balanceDue;
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-4 sm:px-6 lg:py-6">
+    <div
+      data-testid="invoice-detail"
+      className="financial-nums mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-4 sm:px-6 lg:py-6"
+    >
       <div className="flex flex-col gap-4 border-b border-gray-100 pb-4 dark:border-border lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <Link
@@ -522,7 +525,9 @@ export default function InvoiceDetailPage() {
             <h1 className="text-3xl font-semibold tracking-normal text-foreground">
               {invoice.invoiceNo}
             </h1>
-            <InvoiceStatusBadge status={invoice.computedStatus} />
+            <span data-testid="invoice-detail-status">
+              <InvoiceStatusBadge status={invoice.computedStatus} />
+            </span>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
             <span className="inline-flex min-w-0 items-center gap-2">
@@ -567,7 +572,10 @@ export default function InvoiceDetailPage() {
               <>
                 <div className="inline-flex items-center gap-1 rounded-xl border border-zinc-200/70 bg-white/85 p-1 shadow-[0_1px_2px_rgba(15,23,42,0.035)] dark:border-border dark:bg-card">
                   <Button asChild variant="ghost" size="sm" className={toolbarButtonClass}>
-                    <Link href={`/financial/invoices/${id}/preview`}>
+                    <Link
+                      href={`/financial/invoices/${id}/preview`}
+                      data-testid="invoice-detail-preview-link"
+                    >
                       <Eye className="h-4 w-4" />
                       Preview
                     </Link>
@@ -844,11 +852,13 @@ export default function InvoiceDetailPage() {
                     return (
                       <tr
                         key={idx}
+                        data-testid={`invoice-detail-line-${idx + 1}`}
                         className="border-b border-gray-100/80 transition-colors last:border-0 hover:bg-gray-50 dark:border-border/40 dark:hover:bg-muted/20"
                       >
-                        <td className="py-3 px-4 text-foreground">
+                        <td className="whitespace-pre-wrap py-3 px-4 text-foreground">
                           {editing ? (
                             <Input
+                              data-testid={`invoice-detail-edit-line-${idx + 1}-description-input`}
                               value={line.description}
                               onChange={(e) =>
                                 setEditLines((prev) =>
@@ -864,12 +874,18 @@ export default function InvoiceDetailPage() {
                               aria-invalid={editAttempted && !line.description.trim()}
                             />
                           ) : (
-                            line.description
+                            <span data-testid={`invoice-detail-line-${idx + 1}-description`}>
+                              {line.description}
+                            </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
+                        <td
+                          data-testid={`invoice-detail-line-${idx + 1}-qty`}
+                          className="py-3 px-4 text-right tabular-nums text-muted-foreground"
+                        >
                           {editing ? (
                             <Input
+                              data-testid={`invoice-detail-edit-line-${idx + 1}-qty-input`}
                               type="number"
                               min="0"
                               step="0.01"
@@ -890,9 +906,13 @@ export default function InvoiceDetailPage() {
                             qty
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right tabular-nums text-muted-foreground">
+                        <td
+                          data-testid={`invoice-detail-line-${idx + 1}-rate`}
+                          className="py-3 px-4 text-right tabular-nums text-muted-foreground"
+                        >
                           {editing ? (
                             <Input
+                              data-testid={`invoice-detail-edit-line-${idx + 1}-rate-input`}
                               type="number"
                               min="0"
                               step="0.01"
@@ -913,7 +933,10 @@ export default function InvoiceDetailPage() {
                             formatCurrency(unitPrice)
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right tabular-nums font-medium">
+                        <td
+                          data-testid={`invoice-detail-line-${idx + 1}-amount`}
+                          className="py-3 px-4 text-right tabular-nums font-medium"
+                        >
                           {formatCurrency(amount)}
                         </td>
                         {editing ? (
@@ -1082,7 +1105,10 @@ export default function InvoiceDetailPage() {
             <div className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between gap-4">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span className="tabular-nums text-foreground">
+                <span
+                  data-testid="invoice-detail-subtotal"
+                  className="tabular-nums text-foreground"
+                >
                   {formatCurrency(displayedSubtotal)}
                 </span>
               </div>
@@ -1096,14 +1122,16 @@ export default function InvoiceDetailPage() {
                         ? `(${invoice.taxPct}%)`
                         : ""}
                   </span>
-                  <span className="tabular-nums text-foreground">
+                  <span data-testid="invoice-detail-tax" className="tabular-nums text-foreground">
                     {formatCurrency(displayedTax)}
                   </span>
                 </div>
               ) : null}
               <div className="flex justify-between gap-4 border-t border-gray-100 pt-3 font-semibold dark:border-border">
                 <span>Total</span>
-                <span className="tabular-nums">{formatCurrency(displayedTotal)}</span>
+                <span data-testid="invoice-detail-total" className="tabular-nums">
+                  {formatCurrency(displayedTotal)}
+                </span>
               </div>
               <div className="flex justify-between gap-4 text-hh-profit-positive">
                 <span>Paid</span>
@@ -1111,7 +1139,9 @@ export default function InvoiceDetailPage() {
               </div>
               <div className="flex justify-between gap-4 text-base font-semibold">
                 <span>Balance due</span>
-                <span className="tabular-nums">{formatCurrency(displayedBalance)}</span>
+                <span data-testid="invoice-detail-balance" className="tabular-nums">
+                  {formatCurrency(displayedBalance)}
+                </span>
               </div>
             </div>
           </section>
