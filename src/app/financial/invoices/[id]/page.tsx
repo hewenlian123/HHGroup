@@ -731,6 +731,9 @@ export default function InvoiceDetailPage() {
                 type="date"
                 value={editIssueDate}
                 onChange={(e) => setEditIssueDate((e.target.value || editIssueDate).slice(0, 10))}
+                onInput={(e) =>
+                  setEditIssueDate((e.currentTarget.value || editIssueDate).slice(0, 10))
+                }
                 className="mt-1 rounded-sm"
               />
             </div>
@@ -742,6 +745,7 @@ export default function InvoiceDetailPage() {
                 type="date"
                 value={editDueDate}
                 onChange={(e) => setEditDueDate((e.target.value || editDueDate).slice(0, 10))}
+                onInput={(e) => setEditDueDate((e.currentTarget.value || editDueDate).slice(0, 10))}
                 className="mt-1 rounded-sm"
               />
             </div>

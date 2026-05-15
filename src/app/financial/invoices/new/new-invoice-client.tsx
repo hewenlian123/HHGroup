@@ -410,6 +410,7 @@ export default function NewInvoiceClient() {
                   type="date"
                   value={issueDate}
                   onChange={(e) => setIssueDate((e.target.value || issueDate).slice(0, 10))}
+                  onInput={(e) => setIssueDate((e.currentTarget.value || issueDate).slice(0, 10))}
                   className="mt-1"
                 />
               </div>
@@ -422,6 +423,7 @@ export default function NewInvoiceClient() {
                   type="date"
                   value={dueDate}
                   onChange={(e) => setDueDate((e.target.value || dueDate).slice(0, 10))}
+                  onInput={(e) => setDueDate((e.currentTarget.value || dueDate).slice(0, 10))}
                   className="mt-1"
                 />
               </div>
