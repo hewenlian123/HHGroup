@@ -1122,11 +1122,16 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
+          data-testid="quick-expense-dialog"
+          data-quick-expense-dialog
+          draggable={false}
           className={cn(
             "flex flex-col gap-0 overflow-hidden border-border/60 p-0 shadow-none",
-            "md:max-h-[min(92dvh,820px)] md:max-w-[560px] md:w-full md:rounded-sm",
-            "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:flex max-md:max-h-[94dvh] max-md:min-h-[82dvh] max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-t-[14px] max-md:rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:border-t max-md:p-0",
-            "max-md:data-[state=open]:!animate-hh-sheet-in max-md:data-[state=closed]:!animate-hh-sheet-out"
+            "md:!fixed md:left-1/2 md:top-1/2 md:max-h-[min(92dvh,820px)] md:w-full md:max-w-[560px] md:rounded-sm md:!translate-x-[-50%] md:!translate-y-[-50%]",
+            "max-md:!fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:flex max-md:max-h-[94dvh] max-md:min-h-[82dvh] max-md:w-full max-md:max-w-none max-md:!translate-x-0 max-md:!translate-y-0 max-md:rounded-t-[14px] max-md:rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:border-t max-md:p-0",
+            "max-md:pointer-events-auto max-md:!opacity-100 max-md:!transform-none max-md:!transition-none max-md:!duration-0",
+            "max-md:data-[state=open]:!animate-none max-md:data-[state=open]:!opacity-100 max-md:data-[state=open]:!transform-none",
+            "max-md:data-[state=closed]:!animate-none"
           )}
           onPointerDownOutside={(e) => {
             if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
@@ -1147,11 +1152,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
             }
           }}
         >
-          <div
-            className="mx-auto mt-1.5 hidden h-px w-9 shrink-0 rounded-full bg-muted-foreground/25 max-md:block"
-            aria-hidden
-          />
-          <DialogHeader className="shrink-0 space-y-0 border-b border-border/60 bg-background px-4 pb-3 pt-1 max-md:pt-0">
+          <DialogHeader className="shrink-0 space-y-0 border-b border-border/60 bg-background px-4 pb-3 pt-3 md:pt-1">
             <DialogTitle className="text-[17px] font-semibold leading-tight tracking-tight md:text-sm md:font-medium">
               Quick expense
             </DialogTitle>
@@ -1715,7 +1716,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
               {error ? <p className="mt-3 text-xs text-destructive">{error}</p> : null}
             </div>
 
-            <div className="z-[2] shrink-0 border-t border-border/60 bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="z-[20] shrink-0 border-t border-border/60 bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-md:sticky max-md:bottom-0">
               <div className="flex flex-col gap-2 md:hidden">
                 <Button
                   type="submit"
