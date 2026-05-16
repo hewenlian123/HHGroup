@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import {
+  guardedInternalFetchHeaders,
+  guardDangerousMaintenanceRequest,
+} from "@/lib/production-safety";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -68,6 +72,9 @@ function shapedRows(
  * Returns { ok, totalExecutionTimeMs, tests: RunAllTestRow[] }.
  */
 export async function POST(req: Request) {
+  const blocked = guardDangerousMaintenanceRequest(req);
+  if (blocked) return blocked;
+
   const host = req.headers.get("host") ?? "localhost:3000";
   const protocol = req.headers.get("x-forwarded-proto") === "https" ? "https" : "http";
   const baseUrl = `${protocol}://${host}`;
@@ -90,7 +97,7 @@ export async function POST(req: Request) {
   try {
     res = await fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: guardedInternalFetchHeaders(req, { "Content-Type": "application/json" }),
       body: JSON.stringify(body.only ? { only: body.only } : {}),
     });
   } catch (e) {

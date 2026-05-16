@@ -4,6 +4,7 @@
  * Requires SUPABASE_DATABASE_URL or DATABASE_URL in .env.local.
  */
 import { NextResponse } from "next/server";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import postgres from "postgres";
 import { readFileSync } from "fs";
 import { join } from "path";
@@ -12,7 +13,10 @@ function getUrl() {
   return process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   const url = getUrl();
   if (!url) {
     return NextResponse.json(
@@ -47,7 +51,10 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   const url = getUrl();
   if (!url) {
     return NextResponse.json(

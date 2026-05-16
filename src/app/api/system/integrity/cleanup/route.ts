@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import postgres from "postgres";
 
@@ -20,6 +21,9 @@ const WHITELIST_PROJECT_IDS = ["9d14a300-a682-498a-9e5e-3bd4a7e070c4"];
 type CleanupCategory = "orphaned" | "ghost" | "duplicate" | "stale";
 
 export async function POST(request: Request) {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   let category: CleanupCategory;
   try {
     const body = await request.json().catch(() => ({}));

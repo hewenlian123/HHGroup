@@ -1,5 +1,6 @@
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
 import { runSchemaAutoRepair } from "@/lib/ensure-schema-auto-repair";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { NextResponse } from "next/server";
 
 /**
@@ -8,7 +9,10 @@ import { NextResponse } from "next/server";
  * 2) Runs schema auto-repair (worker_payments, expenses columns, expense_lines, payments_received, labor_entries).
  * Returns combined status for the UI.
  */
-export async function POST() {
+export async function POST(request: Request) {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   const url = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!url) {
     return NextResponse.json(

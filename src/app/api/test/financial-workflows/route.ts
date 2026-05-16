@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { SUPABASE_MISSING_SERVER_ENV_MESSAGE, getServerSupabase } from "@/lib/supabase-server";
 import { insertLaborEntryForTestSchema } from "@/lib/labor-entry-test-insert";
 import { createWorkerPaymentWithClient } from "@/lib/worker-payments-db";
@@ -36,6 +37,9 @@ const TEST_IDS = [
  * Returns { ok, tests: [{ name, ok, steps? }] }.
  */
 export async function POST(req: Request) {
+  const blocked = guardDangerousMaintenanceRequest(req);
+  if (blocked) return blocked;
+
   const host = req.headers.get("host") ?? "localhost:3000";
   const protocol = req.headers.get("x-forwarded-proto") === "https" ? "https" : "http";
   const baseUrl = `${protocol}://${host}`;

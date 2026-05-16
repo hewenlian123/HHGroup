@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { markInvoiceSent } from "@/lib/invoices-db";
 import { createPaymentReceived } from "@/lib/payments-received-db";
@@ -61,6 +62,9 @@ type TestId = (typeof TEST_IDS)[number];
  * Tests are independent — each creates and deletes its own rows.
  */
 export async function POST(req: Request) {
+  const blocked = guardDangerousMaintenanceRequest(req);
+  if (blocked) return blocked;
+
   const host = req.headers.get("host") ?? "localhost:3000";
   const protocol = req.headers.get("x-forwarded-proto") === "https" ? "https" : "http";
   const baseUrl = `${protocol}://${host}`;
