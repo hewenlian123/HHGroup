@@ -9,6 +9,10 @@ import { join } from "path";
 let ensured = false;
 
 export async function ensureExpensesSourceColumns(): Promise<void> {
+  // Production schema must be changed via reviewed Supabase migrations, not
+  // opportunistic runtime DDL from a business payment route.
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") return;
+
   const url = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!url || ensured) return;
   try {

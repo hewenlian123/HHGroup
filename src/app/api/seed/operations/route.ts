@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import {
   getProjects,
   createProject,
@@ -94,7 +95,10 @@ const INSPECTION_TEMPLATES: Array<{ type: string; status: "passed" | "failed" | 
  *
  * Does NOT overwrite existing data.
  */
-export async function POST() {
+export async function POST(request: Request) {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   try {
     let projects = await getProjects();
 

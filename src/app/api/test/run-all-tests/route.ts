@@ -11,6 +11,10 @@
  */
 
 import { NextResponse } from "next/server";
+import {
+  guardedInternalFetchHeaders,
+  guardDangerousMaintenanceRequest,
+} from "@/lib/production-safety";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 min for UI tests + system tests
@@ -24,6 +28,9 @@ export type RunAllTestsGroup = {
 };
 
 export async function POST(req: Request): Promise<NextResponse> {
+  const blocked = guardDangerousMaintenanceRequest(req);
+  if (blocked) return blocked;
+
   const host = req.headers.get("host") ?? "localhost:3000";
   const protocol = req.headers.get("x-forwarded-proto") === "https" ? "https" : "http";
   const baseUrl = `${protocol}://${host}`;
@@ -36,7 +43,7 @@ export async function POST(req: Request): Promise<NextResponse> {
     try {
       const res = await fetch(`${baseUrl}/api/test/run-all`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: guardedInternalFetchHeaders(req, { "Content-Type": "application/json" }),
         body: JSON.stringify({ suite: "full" }),
       });
       const data = (await res.json().catch(() => ({}))) as {
@@ -74,7 +81,10 @@ export async function POST(req: Request): Promise<NextResponse> {
   {
     const start = Date.now();
     try {
-      const res = await fetch(`${baseUrl}/api/test/run-ui-tests`, { method: "POST" });
+      const res = await fetch(`${baseUrl}/api/test/run-ui-tests`, {
+        method: "POST",
+        headers: guardedInternalFetchHeaders(req),
+      });
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         tests?: Array<{ name: string; ok: boolean; error?: string }>;
@@ -115,7 +125,10 @@ export async function POST(req: Request): Promise<NextResponse> {
   {
     const start = Date.now();
     try {
-      const res = await fetch(`${baseUrl}/api/system/guardian`, { cache: "no-store" });
+      const res = await fetch(`${baseUrl}/api/system/guardian`, {
+        cache: "no-store",
+        headers: guardedInternalFetchHeaders(req),
+      });
       const data = (await res.json().catch(() => ({}))) as {
         ok?: boolean;
         checks?: Array<{ name: string; ok: boolean; error?: string }>;
@@ -149,7 +162,10 @@ export async function POST(req: Request): Promise<NextResponse> {
   {
     const start = Date.now();
     try {
-      const res = await fetch(`${baseUrl}/api/schema-check`, { cache: "no-store" });
+      const res = await fetch(`${baseUrl}/api/schema-check`, {
+        cache: "no-store",
+        headers: guardedInternalFetchHeaders(req),
+      });
       const data = (await res.json().catch(() => ({}))) as {
         status?: string;
         missing?: string[];

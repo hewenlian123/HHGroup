@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+const INTERNAL_ADMIN_SECRET_HEADER = "x-internal-admin-secret";
+const PRODUCTION_SAFETY_LOCK_HEADER = "x-hh-production-safety-lock";
+
 /**
  * Turbopack / other Next builds use different chunk names than webpack `next dev`.
  * A stale tab, embedded preview, or SW-cached HTML may still request those URLs → 404 spam.
@@ -30,9 +33,47 @@ function staleDevAssetResponse(): NextResponse {
   });
 }
 
+function isProductionSafetyLocked(request: NextRequest): boolean {
+  return (
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL_ENV === "production" ||
+    request.headers.get(PRODUCTION_SAFETY_LOCK_HEADER) === "1"
+  );
+}
+
+function hasInternalAdminSecret(request: NextRequest): boolean {
+  const primary = process.env.HH_INTERNAL_ADMIN_SECRET?.trim() ?? "";
+  const fallback = process.env.INTERNAL_ADMIN_SECRET?.trim() ?? "";
+  const expected = primary.length > 0 ? primary : fallback;
+  const actual = request.headers.get(INTERNAL_ADMIN_SECRET_HEADER)?.trim() ?? "";
+  return expected.length > 0 && actual.length > 0 && expected === actual;
+}
+
+function forbiddenMaintenancePageResponse(): NextResponse {
+  return NextResponse.json(
+    {
+      ok: false,
+      message:
+        "This maintenance page is disabled in production. Use a non-production environment or an internal admin flow.",
+    },
+    {
+      status: 403,
+      headers: { "Cache-Control": "no-store" },
+    }
+  );
+}
+
 /** Auth disabled: all pages and API routes are accessible without login. */
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
+
+  if (
+    (pathname === "/system-tests" || pathname.startsWith("/system-tests/")) &&
+    isProductionSafetyLocked(request) &&
+    !hasInternalAdminSecret(request)
+  ) {
+    return forbiddenMaintenancePageResponse();
+  }
 
   if (pathname.startsWith("/_next/static/chunks/")) {
     if (process.env.NODE_ENV !== "development") {

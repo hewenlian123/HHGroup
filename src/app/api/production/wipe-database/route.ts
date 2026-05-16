@@ -15,6 +15,10 @@
  */
 
 import { NextResponse } from "next/server";
+import {
+  guardedInternalFetchHeaders,
+  guardDangerousMaintenanceRequest,
+} from "@/lib/production-safety";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { wipeAllData } from "@/lib/wipe-database";
 
@@ -22,9 +26,15 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   const host = request.headers.get("host") ?? "localhost:3000";
   const protocol = request.headers.get("x-forwarded-proto") === "https" ? "https" : "http";
   const origin = `${protocol}://${host}`;
+  const internalHeaders = guardedInternalFetchHeaders(request, {
+    "Content-Type": "application/json",
+  });
 
   const c = getServerSupabase();
   if (!c) {
@@ -46,7 +56,7 @@ export async function POST(request: Request) {
   try {
     const res = await fetch(`${origin}/api/test/full-system-test`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: internalHeaders,
       body: JSON.stringify({}),
     });
     const data = (await res.json().catch(() => ({}))) as { ok?: boolean; tests?: unknown[] };
@@ -62,7 +72,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const res = await fetch(`${origin}/api/test/run-ui-tests`, { method: "POST" });
+    const res = await fetch(`${origin}/api/test/run-ui-tests`, {
+      method: "POST",
+      headers: guardedInternalFetchHeaders(request),
+    });
     const data = (await res.json().catch(() => ({}))) as {
       ok?: boolean;
       tests?: unknown[];

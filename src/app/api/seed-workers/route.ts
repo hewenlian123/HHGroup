@@ -1,4 +1,5 @@
 import { createWorker } from "@/lib/data";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { NextResponse } from "next/server";
 
 const SEED_WORKERS: { name: string; daily_rate: number }[] = [
@@ -21,7 +22,10 @@ const SEED_WORKERS: { name: string; daily_rate: number }[] = [
  * Inserts the predefined workers with daily_rate. Idempotent only in the sense
  * that it creates; duplicate names will create duplicate rows.
  */
-export async function POST() {
+export async function POST(request: Request) {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   try {
     const created: { name: string; id: string }[] = [];
     for (const w of SEED_WORKERS) {

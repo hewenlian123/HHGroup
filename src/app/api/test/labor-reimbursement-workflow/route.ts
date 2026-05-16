@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { getServerSupabase } from "@/lib/supabase-server";
 import {
   insertWorkerReceiptWithClient,
@@ -26,6 +27,9 @@ type StepResult = { step: string; ok: boolean; detail?: string; error?: string }
  * 7. Log [workflow test] workflow passed
  */
 export async function POST(req: Request) {
+  const blocked = guardDangerousMaintenanceRequest(req);
+  if (blocked) return blocked;
+
   const steps: StepResult[] = [];
   const host = req.headers.get("host") ?? "localhost:3000";
   const protocol = req.headers.get("x-forwarded-proto") === "https" ? "https" : "http";

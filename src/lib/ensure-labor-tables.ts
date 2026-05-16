@@ -147,6 +147,8 @@ let ensured = false;
  * No-op if SUPABASE_DATABASE_URL / DATABASE_URL is not set or on error (logs and returns).
  */
 export async function ensureLaborTables(): Promise<void> {
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") return;
+
   const url = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!url) return;
 

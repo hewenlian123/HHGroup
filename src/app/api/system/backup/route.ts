@@ -15,6 +15,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { addSystemLog } from "@/lib/system-log-store";
 import fs from "fs";
@@ -70,7 +71,10 @@ function todayStr(): string {
 
 // ── POST — create backup ──────────────────────────────────────────────────────
 
-export async function POST(): Promise<NextResponse> {
+export async function POST(request: Request): Promise<NextResponse> {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   const c = getServerSupabase();
   if (!c) {
     addSystemLog({

@@ -40,24 +40,20 @@ function serverClientOptions(noStore = false) {
  * This is used widely in API routes and DB helpers. It MUST remain synchronous
  * (many call sites expect a SupabaseClient, not a Promise).
  *
- * - Prefers service role (RLS bypass) when configured.
- * - Falls back to anon key (RLS applies) when service role isn't configured.
+ * Uses the anon key so ordinary server reads/writes go through normal RLS.
+ * Use getServerSupabaseAdmin() only in explicitly admin/internal server paths.
  */
 export function getServerSupabase(): SupabaseClient | null {
   const url = envUrl();
   const anon = envAnon();
-  if (!url) return null;
-  const service = envServiceRole();
-  if (service) {
-    return createClient(url, service, serverClientOptions());
-  }
-  if (!anon) return null;
+  if (!url || !anon) return null;
   return createClient(url, anon, serverClientOptions());
 }
 
 /**
- * Service-role admin client (RLS bypass). Safe to import anywhere (no next/headers).
- * Used by internal API routes and DB helpers that need consistent read/write behavior.
+ * Service-role admin client (RLS bypass).
+ * Keep usage narrow: maintenance, server-only uploads, and explicitly admin-only routes.
+ * Never import this from client components or browser-bound helpers.
  */
 export function getServerSupabaseAdmin(): SupabaseClient | null {
   const url = envUrl();
@@ -68,7 +64,7 @@ export function getServerSupabaseAdmin(): SupabaseClient | null {
 
 /**
  * Internal API routes: prefer service-role admin; otherwise use {@link getServerSupabase}
- * (service role when configured, else anon/publishable key).
+ * (anon/publishable key).
  *
  * Some deployments only expose anon keys on the server — routes must not hard-require
  * `SUPABASE_SERVICE_ROLE_KEY` for reads used by dashboard workflow tests.
@@ -92,11 +88,11 @@ export function getServerSupabaseInternalNoStore(): SupabaseClient | null {
 export const SUPABASE_SERVICE_ROLE_ENV_NAME = "SUPABASE_SERVICE_ROLE_KEY" as const;
 
 /**
- * Stable API error text when neither anon nor service-role credentials yield a client.
+ * Stable API error text when anon credentials are unavailable.
  * Add secrets only in deployment env (e.g. Vercel → Environment Variables).
  */
 export const SUPABASE_MISSING_SERVER_ENV_MESSAGE =
-  "Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the server (e.g. Vercel). Optional: SUPABASE_SERVICE_ROLE_KEY (server-only) bypasses RLS for labor pay/settlement.";
+  "Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the server (e.g. Vercel). Optional: SUPABASE_SERVICE_ROLE_KEY is server-only and should be used only by explicit admin/internal routes.";
 
 /** PostgREST/Postgres errors that usually mean anon/session lacks privileges — hint service role on server. */
 export function appendLaborSettlementServiceRoleHint(message: string): string {

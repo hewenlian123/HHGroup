@@ -8,6 +8,10 @@
  */
 
 import { NextResponse } from "next/server";
+import {
+  guardedInternalFetchHeaders,
+  guardDangerousMaintenanceRequest,
+} from "@/lib/production-safety";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { cleanupTestData } from "@/lib/cleanup-test-data";
 
@@ -26,12 +30,18 @@ async function runCleanup(
 }
 
 export async function GET(request: Request) {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   const url = new URL(request.url);
   const origin = url.origin;
-  return runChecklist(origin, false);
+  return runChecklist(origin, false, request);
 }
 
 export async function POST(request: Request) {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   const url = new URL(request.url);
   const origin = url.origin;
   let runCleanupFlag = false;
@@ -41,10 +51,10 @@ export async function POST(request: Request) {
   } catch {
     /* ignore */
   }
-  return runChecklist(origin, runCleanupFlag);
+  return runChecklist(origin, runCleanupFlag, request);
 }
 
-async function runChecklist(origin: string, doCleanup: boolean) {
+async function runChecklist(origin: string, doCleanup: boolean, request: Request) {
   const report: {
     databaseStatus: "ok" | "error";
     databaseMissing?: string[];
@@ -86,7 +96,10 @@ async function runChecklist(origin: string, doCleanup: boolean) {
 
   // ── 1. Database integrity ─────────────────────────────────────────────────
   try {
-    const schemaRes = await fetch(`${origin}/api/schema-check`, { cache: "no-store" });
+    const schemaRes = await fetch(`${origin}/api/schema-check`, {
+      cache: "no-store",
+      headers: guardedInternalFetchHeaders(request),
+    });
     const schemaData = (await schemaRes.json().catch(() => ({}))) as {
       status?: string;
       missing?: string[];
@@ -107,7 +120,7 @@ async function runChecklist(origin: string, doCleanup: boolean) {
   try {
     const crudRes = await fetch(`${origin}/api/test/full-system-test`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: guardedInternalFetchHeaders(request, { "Content-Type": "application/json" }),
       body: JSON.stringify({}),
     });
     const crudData = (await crudRes.json().catch(() => ({}))) as {
@@ -153,7 +166,10 @@ async function runChecklist(origin: string, doCleanup: boolean) {
 
   // ── 4. UI tests (run via API) ─────────────────────────────────────────────
   try {
-    const uiRes = await fetch(`${origin}/api/test/run-ui-tests`, { method: "POST" });
+    const uiRes = await fetch(`${origin}/api/test/run-ui-tests`, {
+      method: "POST",
+      headers: guardedInternalFetchHeaders(request),
+    });
     const uiData = (await uiRes.json().catch(() => ({}))) as {
       ok?: boolean;
       tests?: unknown[];
@@ -173,7 +189,10 @@ async function runChecklist(origin: string, doCleanup: boolean) {
 
   // ── 5. Run all tests (system + UI + guardian + schema) ────────────────────
   try {
-    const runAllRes = await fetch(`${origin}/api/test/run-all-tests`, { method: "POST" });
+    const runAllRes = await fetch(`${origin}/api/test/run-all-tests`, {
+      method: "POST",
+      headers: guardedInternalFetchHeaders(request),
+    });
     const runAllData = (await runAllRes.json().catch(() => ({}))) as {
       ok?: boolean;
       groups?: unknown[];

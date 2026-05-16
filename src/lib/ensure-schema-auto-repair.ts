@@ -557,6 +557,15 @@ export type SchemaAutoRepairResult = {
  * Returns result summary; does not throw.
  */
 export async function runSchemaAutoRepair(): Promise<SchemaAutoRepairResult> {
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
+    return {
+      ok: false,
+      hasDatabaseUrl: Boolean(process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL),
+      message:
+        "Schema auto-repair is disabled in production. Apply reviewed Supabase migrations instead.",
+    };
+  }
+
   const url = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!url) {
     return {

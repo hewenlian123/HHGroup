@@ -9,6 +9,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { exec } from "child_process";
 import path from "path";
 
@@ -62,6 +63,9 @@ function normaliseTests(result: ScriptResult): UiTestRow[] {
 }
 
 export async function POST(req: Request): Promise<NextResponse> {
+  const blocked = guardDangerousMaintenanceRequest(req);
+  if (blocked) return blocked;
+
   const host = req.headers.get("host") ?? "localhost:3000";
   const protocol = req.headers.get("x-forwarded-proto") === "https" ? "https" : "http";
   const baseUrl = `${protocol}://${host}`;
