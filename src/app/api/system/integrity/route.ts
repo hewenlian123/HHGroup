@@ -12,6 +12,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { requireInternalAdminAccess } from "@/lib/auth-boundary";
 import postgres from "postgres";
 
 export const dynamic = "force-dynamic";
@@ -41,7 +42,10 @@ export type DataIntegrityResult = {
   errors?: string[];
 };
 
-export async function GET(): Promise<NextResponse<DataIntegrityResult>> {
+export async function GET(request: Request): Promise<NextResponse<DataIntegrityResult>> {
+  const guard = await requireInternalAdminAccess(request);
+  if (!guard.ok) return guard.response as NextResponse<DataIntegrityResult>;
+
   const url = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
 
   if (!url) {

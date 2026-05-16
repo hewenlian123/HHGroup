@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 export const INTERNAL_ADMIN_SECRET_HEADER = "x-internal-admin-secret";
 export const PRODUCTION_SAFETY_LOCK_HEADER = "x-hh-production-safety-lock";
+export const TEST_AUTH_BYPASS_HEADER = "x-hh-test-auth-bypass";
 
 const FORBIDDEN_MESSAGE =
   "This maintenance endpoint is disabled in production. Run it in a non-production environment or provide the internal admin secret from a server-side caller.";
@@ -32,6 +33,14 @@ export function isProductionSafetyLocked(request: Request): boolean {
   );
 }
 
+function isProductionRuntime(): boolean {
+  return process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production";
+}
+
+export function hasLocalTestAuthBypass(request: Request): boolean {
+  return !isProductionRuntime() && request.headers.get(TEST_AUTH_BYPASS_HEADER) === "1";
+}
+
 export function hasInternalAdminSecret(request: Request): boolean {
   const expected = configuredInternalAdminSecret();
   if (!expected) return false;
@@ -42,6 +51,7 @@ export function hasInternalAdminSecret(request: Request): boolean {
 export function guardDangerousMaintenanceRequest(request: Request): NextResponse | null {
   if (!isProductionSafetyLocked(request)) return null;
   if (hasInternalAdminSecret(request)) return null;
+  if (hasLocalTestAuthBypass(request)) return null;
 
   return NextResponse.json(
     {
@@ -59,6 +69,9 @@ export function guardedInternalFetchHeaders(request: Request, init?: HeadersInit
   const headers = new Headers(init);
   const secret = request.headers.get(INTERNAL_ADMIN_SECRET_HEADER);
   if (secret) headers.set(INTERNAL_ADMIN_SECRET_HEADER, secret);
+  if (request.headers.get(TEST_AUTH_BYPASS_HEADER) === "1") {
+    headers.set(TEST_AUTH_BYPASS_HEADER, "1");
+  }
   if (request.headers.get(PRODUCTION_SAFETY_LOCK_HEADER) === "1") {
     headers.set(PRODUCTION_SAFETY_LOCK_HEADER, "1");
   }

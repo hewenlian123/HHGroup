@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { getServerSupabase } from "@/lib/supabase-server";
@@ -198,6 +199,9 @@ type PatchBody = { action?: string };
  * (Draft, Sent, Partially Paid, Paid — including rows whose computed UI status is Unpaid / Overdue / Partial).
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
   const { id } = await params;
   if (!id) return NextResponse.json({ ok: false, message: "Missing invoice id." }, { status: 400 });
 

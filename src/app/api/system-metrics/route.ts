@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireInternalAdminAccess } from "@/lib/auth-boundary";
 import { getServerSupabase } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,10 @@ type Metrics = {
  * GET: Database row counts for core tables.
  * Returns { projects, workers, labor_entries, reimbursements, expenses, invoices, worker_payments }.
  */
-export async function GET() {
+export async function GET(request: Request) {
+  const guard = await requireInternalAdminAccess(request);
+  if (!guard.ok) return guard.response;
+
   const server = getServerSupabase();
   if (!server) {
     return NextResponse.json({ message: "Supabase not configured" }, { status: 500 });

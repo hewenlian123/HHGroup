@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import { createWorker } from "@/lib/data";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
@@ -47,6 +48,9 @@ export async function GET() {
  * POST: Create a worker (uses admin client).
  */
 export async function POST(req: Request) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
   const admin = getServerSupabaseInternal();
   if (!admin) {
     return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });

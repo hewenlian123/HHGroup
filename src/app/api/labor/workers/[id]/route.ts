@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import { deleteWorker, updateWorker } from "@/lib/data";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
@@ -13,6 +14,9 @@ type RouteParams = { params: Promise<{ id: string }> };
  * PATCH: Update a worker (uses admin client).
  */
 export async function PATCH(req: Request, { params }: RouteParams) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
   const { id } = await params;
   if (!id?.trim()) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
@@ -47,7 +51,10 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 /**
  * DELETE: Remove a worker (uses admin client so it matches list/clear-data).
  */
-export async function DELETE(_req: Request, { params }: RouteParams) {
+export async function DELETE(req: Request, { params }: RouteParams) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
   const { id } = await params;
   if (!id?.trim()) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
