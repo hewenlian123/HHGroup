@@ -364,12 +364,6 @@ export async function assertE2EExpenseVisibleInDatabase(
         line_category: (line?.category as string | null) ?? null,
         line_project_id: (line?.project_id as string | null) ?? null,
       };
-      // eslint-disable-next-line no-console
-      console.log("[E2E] expense row in DB (vendor mark)", vendorMark, snap);
-      if (rows.length > 1) {
-        // eslint-disable-next-line no-console
-        console.warn(`[E2E] Multiple (${rows.length}) expenses matched vendor mark; using newest.`);
-      }
       return snap;
     }
     await new Promise((r) => setTimeout(r, 350));
