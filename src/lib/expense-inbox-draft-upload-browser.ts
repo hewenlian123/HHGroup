@@ -1,4 +1,4 @@
-import { createQuickExpense } from "@/lib/data";
+import { addExpenseAttachment, createQuickExpense } from "@/lib/data";
 import { uploadReceiptToStorage } from "@/lib/expense-receipt-upload-browser";
 import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
 import { inboxUploadDedupeReference } from "@/lib/inbox-upload-constants";
@@ -78,6 +78,17 @@ export async function createInboxDraftFromReceiptFile(
     initialStatus: "draft",
     referenceNo: ref,
   });
+  const attachmentUrl = slot.attachmentPath?.trim() || receiptUrl;
+  if (attachmentUrl) {
+    await addExpenseAttachment(created.id, {
+      id: crypto.randomUUID(),
+      fileName: prepared.name || "receipt",
+      mimeType: prepared.type || "image/jpeg",
+      size: prepared.size || 0,
+      url: attachmentUrl,
+      createdAt: new Date().toISOString(),
+    });
+  }
 
   scheduleInboxDraftExpenseOcr(created.id, prepared);
   return { ok: true, expenseId: created.id, duplicate: false, referenceNo: ref };

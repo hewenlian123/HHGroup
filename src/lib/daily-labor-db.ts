@@ -674,10 +674,7 @@ export async function insertDailyLaborEntries(
   const workerIds2 = Array.from(new Set(rowsToInsert.map((r) => r.worker_id).filter(Boolean)));
   const workerRows2: WorkerRateRow[] = [];
   if (workerIds2.length) {
-    const withDaily = await c
-      .from("workers")
-      .select("id, half_day_rate, daily_rate")
-      .in("id", workerIds2);
+    const withDaily = await c.from("workers").select("*").in("id", workerIds2);
     if (withDaily.error && !isMissingColumn(withDaily.error)) {
       throw new Error(withDaily.error.message ?? "Failed to load worker rates.");
     }
@@ -767,11 +764,7 @@ export async function updateDailyLaborEntry(
   if (status === "Locked") throw new Error("Cannot edit a locked labor entry.");
 
   let workerRow: WorkerRateRow | null = null;
-  const withDaily = await c
-    .from("workers")
-    .select("id, half_day_rate, daily_rate")
-    .eq("id", draft.worker_id)
-    .maybeSingle();
+  const withDaily = await c.from("workers").select("*").eq("id", draft.worker_id).maybeSingle();
   if (withDaily.error && !isMissingColumn(withDaily.error)) {
     throw new Error(withDaily.error.message ?? "Failed to load worker rate.");
   }

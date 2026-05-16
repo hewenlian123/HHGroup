@@ -111,6 +111,34 @@ function isMissingColumn(err: { message?: string } | null): boolean {
   return /column .* does not exist|does not exist.*column|schema cache/i.test(m);
 }
 
+const schemaAvailabilityCache = new Map<string, Promise<boolean>>();
+
+export async function publicSchemaItemAvailable(table: string, column?: string): Promise<boolean> {
+  if (typeof window === "undefined") return true;
+  const key = column ? `${table}.${column}` : table;
+  const cached = schemaAvailabilityCache.get(key);
+  if (cached) return cached;
+
+  const check = fetch(
+    `/api/schema-check?table=${encodeURIComponent(table)}${
+      column ? `&column=${encodeURIComponent(column)}` : ""
+    }`,
+    { cache: "no-store" }
+  )
+    .then(async (res) => {
+      if (!res.ok) return true;
+      const body = (await res.json().catch(() => null)) as {
+        status?: string;
+        missing?: string[];
+      } | null;
+      return body?.status === "ok" && (body.missing?.length ?? 0) === 0;
+    })
+    .catch(() => true);
+
+  schemaAvailabilityCache.set(key, check);
+  return check;
+}
+
 function slugKey(name: string): string {
   const base = name
     .trim()
@@ -137,7 +165,10 @@ async function legacyRowsByStoredNameType(
 ): Promise<Array<{ name: string; active: boolean }>> {
   const c = client();
   if (type === "category") {
-    const base = c.from("categories").select("name,status").eq("type", "expense").order("name");
+    if (!(await publicSchemaItemAvailable("categories"))) {
+      return DEFAULT_CATEGORIES.map((name) => ({ name, active: true }));
+    }
+    const base = c.from("categories").select("*").eq("type", "expense").order("name");
     const { data, error } = await base;
     if (!error) {
       return ((data ?? []) as { name?: string | null; status?: string | null }[])
@@ -158,7 +189,10 @@ async function legacyRowsByStoredNameType(
     return DEFAULT_CATEGORIES.map((name) => ({ name, active: true }));
   }
 
-  const { data, error } = await c.from("payment_methods").select("name,status").order("name");
+  if (!(await publicSchemaItemAvailable("payment_methods"))) {
+    return DEFAULT_PAYMENT_METHODS.map((name) => ({ name, active: true }));
+  }
+  const { data, error } = await c.from("payment_methods").select("*").order("name");
   if (!error) {
     return ((data ?? []) as { name?: string | null; status?: string | null }[])
       .map((r) => ({ name: (r.name ?? "").trim(), active: (r.status ?? "active") === "active" }))
@@ -202,6 +236,7 @@ async function legacyPickerItemsByStoredName(
 }
 
 export async function expenseOptionsTableAvailable(): Promise<boolean> {
+  if (!(await publicSchemaItemAvailable("expense_options"))) return false;
   const c = client();
   const { error } = await c.from("expense_options").select("id").limit(1);
   if (error && isMissingTable(error)) return false;

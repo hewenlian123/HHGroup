@@ -42,30 +42,64 @@ function toKey(t: { table: string; column?: string }): string {
  * Verifies required database schema exists.
  * Returns { status: "ok", missing: [] } or { status: "error", missing: ["expenses.account_id", ...] }.
  */
-export async function GET() {
+async function checkDirectSchema(
+  sql: ReturnType<typeof postgres>,
+  item: { table: string; column?: string }
+): Promise<boolean> {
+  const { table, column } = item;
+  if (column) {
+    const rows = await sql`
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = ${table} AND column_name = ${column}
+      LIMIT 1
+    `;
+    return rows.length > 0;
+  }
+  const rows = await sql`
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = ${table}
+    LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
+function isSafeIdentifier(value: string): boolean {
+  return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value);
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const requestedTable = searchParams.get("table")?.trim() ?? "";
+  const requestedColumn = searchParams.get("column")?.trim() ?? "";
+  const singleCheck =
+    requestedTable !== "" &&
+    isSafeIdentifier(requestedTable) &&
+    (requestedColumn === "" || isSafeIdentifier(requestedColumn));
+
   const url = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
 
   if (url) {
     try {
       const sql = postgres(url, { max: 1, connect_timeout: 10 });
+      if (singleCheck) {
+        const ok = await checkDirectSchema(sql, {
+          table: requestedTable,
+          column: requestedColumn || undefined,
+        });
+        await sql.end();
+        return NextResponse.json({
+          status: ok ? "ok" : "error",
+          missing: ok
+            ? []
+            : [requestedColumn ? `${requestedTable}.${requestedColumn}` : requestedTable],
+        });
+      }
+
       const missing: string[] = [];
 
       for (const { table, column } of REQUIRED) {
-        if (column) {
-          const rows = await sql`
-            SELECT 1 FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = ${table} AND column_name = ${column}
-            LIMIT 1
-          `;
-          if (rows.length === 0) missing.push(toKey({ table, column }));
-        } else {
-          const rows = await sql`
-            SELECT 1 FROM information_schema.tables
-            WHERE table_schema = 'public' AND table_name = ${table}
-            LIMIT 1
-          `;
-          if (rows.length === 0) missing.push(table);
-        }
+        if (!(await checkDirectSchema(sql, { table, column })))
+          missing.push(toKey({ table, column }));
       }
 
       await sql.end();
@@ -90,8 +124,11 @@ export async function GET() {
   }
 
   const missing: string[] = [];
+  const items = singleCheck
+    ? [{ table: requestedTable, column: requestedColumn || undefined }]
+    : REQUIRED;
 
-  for (const { table, column } of REQUIRED) {
+  for (const { table, column } of items) {
     try {
       if (column) {
         const { error } = await server.from(table).select(column).limit(1).maybeSingle();

@@ -139,11 +139,7 @@ async function loadWorkerForReport(
   admin: SupabaseClient,
   wid: string
 ): Promise<{ data: WorkerRowRates | null; error: { message?: string } | null }> {
-  let res = await admin
-    .from("workers")
-    .select("id, name, half_day_rate, daily_rate")
-    .eq("id", wid)
-    .maybeSingle();
+  let res = await admin.from("workers").select("*").eq("id", wid).maybeSingle();
   if (res.error && isRetryableSelectError(res.error)) {
     res = await admin.from("workers").select("id, name, half_day_rate").eq("id", wid).maybeSingle();
   }

@@ -2,10 +2,9 @@ import { test, expect } from "@playwright/test";
 import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
 import {
   E2E_FINANCIAL_EXPENSES_ARCHIVE_URL,
-  E2E_FINANCIAL_INBOX_URL,
+  assertE2EExpenseVisibleInDatabase,
   clickVisibleQuickExpenseButton,
-  expenseListRow,
-  expensesVendorSearch,
+  expenseListRowById,
   waitForExpensesQuerySuccess,
   waitForQuickExpenseProjectLabel,
 } from "./e2e-expenses-helpers";
@@ -22,6 +21,7 @@ test.describe("Quick Expense: upload and save", () => {
   test("manual save binds project (not Overhead)", async ({ page }) => {
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
+    await waitForExpensesQuerySuccess(page);
 
     await clickVisibleQuickExpenseButton(page);
     const dialog = page.getByRole("dialog", { name: /Quick expense/i });
@@ -42,6 +42,7 @@ test.describe("Quick Expense: upload and save", () => {
     await dialog.locator("#quick-expense-project-select").click();
     await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
     await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
+    await expect(dialog.locator("#quick-expense-vendor")).toHaveValue(vendorMark);
 
     const grid = dialog.locator("form div.grid").first();
     await expect(grid).toBeVisible();
@@ -86,14 +87,17 @@ test.describe("Quick Expense: upload and save", () => {
       .toBe("done");
 
     await expect(dialog).not.toBeVisible({ timeout: 30_000 });
+    const saved = await assertE2EExpenseVisibleInDatabase(vendorMark);
 
-    await page.goto(E2E_FINANCIAL_INBOX_URL, { waitUntil: "domcontentloaded" });
+    // Project + category quick saves are workflow-complete and belong in the archive list.
+    await page.goto(E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, { waitUntil: "domcontentloaded" });
     await waitForExpensesQuerySuccess(page);
     await page.locator("main").first().waitFor({ state: "visible", timeout: 60_000 });
 
-    await expensesVendorSearch(page).fill(vendorMark);
-    const dataRow = expenseListRow(page, vendorMark);
+    const dataRow = expenseListRowById(page, saved.expenseId);
     await expect(dataRow).toBeVisible({ timeout: 20_000 });
+    await expect(dataRow).toContainText("Unknown Vendor");
+    await expect(dataRow).not.toContainText(vendorMark);
     await expect(dataRow).toContainText("[E2E] Seed — HH Unified");
     await expect(dataRow).not.toContainText("Overhead");
   });
@@ -101,6 +105,7 @@ test.describe("Quick Expense: upload and save", () => {
   test("upload shows attachment count, preview control, and saves", async ({ page }) => {
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
+    await waitForExpensesQuerySuccess(page);
 
     await clickVisibleQuickExpenseButton(page);
     const dialog = page.getByRole("dialog", { name: /Quick expense/i });
@@ -126,6 +131,9 @@ test.describe("Quick Expense: upload and save", () => {
     await expect(dialog.getByText("Uploaded", { exact: true }).first()).toBeVisible({
       timeout: 90_000,
     });
+    await expect(dialog.getByRole("button", { name: "Save", exact: true })).toBeEnabled({
+      timeout: 90_000,
+    });
 
     const vendorMark = `E2E-QE-${Date.now()}`;
     await dialog.locator("#quick-expense-vendor").fill(vendorMark);
@@ -133,6 +141,7 @@ test.describe("Quick Expense: upload and save", () => {
     await dialog.locator("#quick-expense-project-select").click();
     await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
     await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
+    await expect(dialog.locator("#quick-expense-vendor")).toHaveValue(vendorMark);
 
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
     if (
@@ -173,15 +182,17 @@ test.describe("Quick Expense: upload and save", () => {
       .toBe("done");
 
     await expect(dialog).not.toBeVisible({ timeout: 30_000 });
+    const saved = await assertE2EExpenseVisibleInDatabase(vendorMark);
 
     // With attachment + project + category, quick save can land as archived (`reviewed`), which Inbox excludes.
     await page.goto(E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, { waitUntil: "domcontentloaded" });
     await waitForExpensesQuerySuccess(page);
     await page.locator("main").first().waitFor({ state: "visible", timeout: 60_000 });
 
-    await expensesVendorSearch(page).fill(vendorMark);
-    const dataRow = expenseListRow(page, vendorMark);
+    const dataRow = expenseListRowById(page, saved.expenseId);
     await expect(dataRow).toBeVisible({ timeout: 20_000 });
+    await expect(dataRow).toContainText("Unknown Vendor");
+    await expect(dataRow).not.toContainText(vendorMark);
   });
 
   test("mobile iPhone: receipt input attrs, preview on pick, failed upload keeps preview + retry", async ({
@@ -190,6 +201,7 @@ test.describe("Quick Expense: upload and save", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
+    await waitForExpensesQuerySuccess(page);
 
     await clickVisibleQuickExpenseButton(page);
     const dialog = page.getByRole("dialog", { name: /Quick expense/i });

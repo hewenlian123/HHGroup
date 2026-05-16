@@ -124,6 +124,10 @@ function normalizeVendor(v: string): string {
   return (v || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+function isPlaceholderVendor(v: string): boolean {
+  return /^unknown(?: vendor)?$/i.test(normalizeVendor(v));
+}
+
 function isPdfFile(f: File): boolean {
   return f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
 }
@@ -237,6 +241,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const vendorInputRef = React.useRef<HTMLInputElement>(null);
   const amountInputRef = React.useRef<HTMLInputElement>(null);
   const dateInputRef = React.useRef<HTMLInputElement>(null);
+  const formRef = React.useRef<HTMLFormElement>(null);
   const formScrollRef = React.useRef<HTMLDivElement>(null);
   /** Extra bottom padding when the on-screen keyboard reduces visual viewport (iOS Safari). */
   const [keyboardBottomInset, setKeyboardBottomInset] = React.useState(0);
@@ -881,21 +886,29 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     }
   };
 
-  const handleSave = async (saveAndNew?: boolean) => {
-    if (saving || receiptPipelineBusy) return;
+  const handleSave = async (saveAndNew?: boolean, formEl?: HTMLFormElement | null) => {
+    if (saving || processing || receiptPipelineBusy) return;
     const totalAmount = Number(amount);
+    const formVendorName = (
+      (formEl?.elements.namedItem("vendorName") as HTMLInputElement | null)?.value ?? ""
+    ).trim();
     const domVendorName =
       typeof document === "undefined"
         ? ""
         : (
             document.getElementById("quick-expense-vendor") as HTMLInputElement | null
           )?.value.trim() || "";
-    const effectiveVendorName = (
-      manualVendorNameRef.current ||
-      domVendorName ||
-      vendorInputRef.current?.value ||
-      vendorName
-    ).trim();
+    const vendorCandidates = [
+      formVendorName,
+      domVendorName,
+      vendorInputRef.current?.value ?? "",
+      manualVendorNameRef.current,
+      vendorName,
+    ].map((v) => v.trim());
+    const effectiveVendorName =
+      vendorCandidates.find((v) => v !== "" && !isPlaceholderVendor(v)) ??
+      vendorCandidates.find((v) => v !== "") ??
+      "";
     if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
       setError("Amount must be greater than 0.");
       return;
@@ -1147,7 +1160,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
               const tag = (e.target as HTMLElement).tagName?.toLowerCase();
               if (tag !== "textarea") {
                 e.preventDefault();
-                void handleSave(true);
+                void handleSave(true, formRef.current);
               }
             }
           }}
@@ -1161,10 +1174,11 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
             </p>
           </DialogHeader>
           <form
+            ref={formRef}
             className="flex min-h-0 flex-1 flex-col overflow-hidden max-md:min-h-0 max-md:flex-1"
             onSubmit={(e) => {
               e.preventDefault();
-              void handleSave(false);
+              void handleSave(false, e.currentTarget);
             }}
           >
             <input
@@ -1723,7 +1737,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                   variant="default"
                   size="sm"
                   className="h-12 min-h-[48px] w-full touch-manipulation rounded-xl"
-                  disabled={saving || saveFlash || !supabase || receiptPipelineBusy}
+                  disabled={saving || saveFlash || !supabase || processing || receiptPipelineBusy}
                 >
                   <SubmitSpinner loading={saving} className="mr-2" />
                   {saving
@@ -1743,8 +1757,8 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                   variant="outline"
                   size="sm"
                   className="h-12 min-h-[48px] w-full touch-manipulation rounded-xl shadow-none"
-                  onClick={() => void handleSave(true)}
-                  disabled={saving || saveFlash || !supabase || receiptPipelineBusy}
+                  onClick={() => void handleSave(true, formRef.current)}
+                  disabled={saving || saveFlash || !supabase || processing || receiptPipelineBusy}
                 >
                   {saveFlash
                     ? "✔ Done"
@@ -1782,8 +1796,8 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                     variant="outline"
                     size="sm"
                     className="h-10 rounded-md shadow-none"
-                    onClick={() => void handleSave(true)}
-                    disabled={saving || saveFlash || !supabase || receiptPipelineBusy}
+                    onClick={() => void handleSave(true, formRef.current)}
+                    disabled={saving || saveFlash || !supabase || processing || receiptPipelineBusy}
                   >
                     {saveFlash
                       ? "✔ Done"
@@ -1800,7 +1814,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                     variant="default"
                     size="sm"
                     className="h-10 rounded-md"
-                    disabled={saving || saveFlash || !supabase || receiptPipelineBusy}
+                    disabled={saving || saveFlash || !supabase || processing || receiptPipelineBusy}
                   >
                     <SubmitSpinner loading={saving} className="mr-2" />
                     {saving

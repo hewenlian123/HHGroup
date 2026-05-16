@@ -9,7 +9,7 @@ import { dedupeExpenseAttachmentsByStorageKey } from "@/lib/expense-attachment-d
 import { expenseHasReceiptSignal } from "@/lib/expense-receipt-items";
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
 import { deriveExpenseWorkflowStatus } from "@/lib/expense-workflow-status";
-import { defaultPaymentMethodName } from "@/lib/expense-options-db";
+import { defaultPaymentMethodName, publicSchemaItemAvailable } from "@/lib/expense-options-db";
 import { isConfirmedExpenseStatus } from "@/lib/project-expense-cost-status";
 import { stripInboxUploadNoiseFromText } from "@/lib/inbox-upload-constants";
 
@@ -131,6 +131,7 @@ async function hydrateExpenseListPaymentMethods(
   rowModels: ExpenseRow[]
 ): Promise<void> {
   if (rowModels.length === 0) return;
+  if (!rowModels.some((r) => Object.prototype.hasOwnProperty.call(r, "payment_method"))) return;
   const ids = rowModels.map((r) => r.id).filter(Boolean);
   for (let i = 0; i < ids.length; i += PAYMENT_METHOD_LIST_HYDRATE_CHUNK) {
     const slice = ids.slice(i, i + PAYMENT_METHOD_LIST_HYDRATE_CHUNK);
@@ -437,7 +438,6 @@ async function toExpense(
 /** Select columns: base + optional receipt_url, status, worker_id. */
 const EXPENSE_COLS_CORE =
   "id,expense_date,vendor,vendor_name,notes,payment_method,reference_no,total,line_count,receipt_url,status,worker_id,card_name,account_id,payment_account_id,project_id,created_at";
-const EXPENSE_COLS_FULL = `${EXPENSE_COLS_CORE},source,source_id,source_type`;
 /** Same as pre-migration list (no source columns). */
 const EXPENSE_COLS_FULL_LEGACY_META = EXPENSE_COLS_CORE;
 /** Fallback when payment_method column does not exist (e.g. account_id-only schema). */
@@ -547,7 +547,7 @@ export async function getExpenses(
   const c = client();
   let rows: unknown[] = [];
   /** Flat select only: embedded `payment_accounts` can omit or skew columns in some PostgREST responses; names come from `fetchPaymentAccountNameMap`. */
-  const res = await applyExpenseOrderToQuery(c.from("expenses").select(EXPENSE_COLS_FULL), sort);
+  const res = await applyExpenseOrderToQuery(c.from("expenses").select("*"), sort);
 
   if (!res.error) {
     rows = res.data ?? [];
@@ -652,7 +652,7 @@ export async function getExpenses(
 
 export async function getExpenseById(expenseId: string): Promise<Expense | null> {
   const c = client();
-  const res = await c.from("expenses").select(EXPENSE_COLS_FULL).eq("id", expenseId).maybeSingle();
+  const res = await c.from("expenses").select("*").eq("id", expenseId).maybeSingle();
   let row: ExpenseRow | null = null;
   if (res.error) {
     if (!isMissingColumn(res.error)) {
@@ -996,6 +996,7 @@ export async function createQuickExpense(payload: {
     payload.initialStatus ??
       (workflowDefault === "reviewed" ? "reviewed" : receiptUrl ? "needs_review" : "pending")
   );
+  const hasReceiptUrlColumn = await publicSchemaItemAvailable("expenses", "receipt_url");
 
   const insertRow: Record<string, unknown> = {
     expense_date: date,
@@ -1008,10 +1009,10 @@ export async function createQuickExpense(payload: {
     /** Some schemas use NOT NULL `amount` on expenses (legacy); mirror `total` for quick create. */
     amount: total,
     line_count: 1,
-    receipt_url: receiptUrl || null,
     status: resolvedStatus,
     source_type: sourceType,
   };
+  if (hasReceiptUrlColumn) insertRow.receipt_url = receiptUrl || null;
   if (payload.paymentAccountId !== undefined) {
     insertRow.payment_account_id = payload.paymentAccountId?.trim() || null;
   }
@@ -1233,6 +1234,8 @@ export async function createExpenseFromPaidReimbursement(
 
   // Try inserts in order; on "column not in schema cache" strip more columns until one succeeds.
   // expenses may have amount (NOT NULL) and/or total; set both when present.
+  const hasReceiptUrlColumn = await publicSchemaItemAvailable("expenses", "receipt_url");
+  const receiptUrlPatch = hasReceiptUrlColumn ? { receipt_url: null } : {};
   const attempts: Record<string, unknown>[] = [
     {
       expense_date: date,
@@ -1243,7 +1246,7 @@ export async function createExpenseFromPaidReimbursement(
       total: amount,
       amount,
       line_count: 1,
-      receipt_url: null,
+      ...receiptUrlPatch,
       status: "paid",
       source: WORKER_REIMBURSEMENT_SOURCE,
       source_id: reimbursementId,
@@ -1881,10 +1884,7 @@ async function fetchExpenseHeadersByIds(
   if (ids.length === 0) return map;
   for (let i = 0; i < ids.length; i += PAYMENT_METHOD_LIST_HYDRATE_CHUNK) {
     const slice = ids.slice(i, i + PAYMENT_METHOD_LIST_HYDRATE_CHUNK);
-    const { data, error } = await c
-      .from("expenses")
-      .select("id,status,vendor_name,vendor,expense_date,payment_method,receipt_url")
-      .in("id", slice);
+    const { data, error } = await c.from("expenses").select("*").in("id", slice);
     if (error || !data) continue;
     for (const r of data as ExpenseHeaderForProjectCost[]) {
       map.set(r.id, r);
@@ -2224,10 +2224,11 @@ export async function countExpensesWithoutReceiptUrlInRange(
   const c = client();
   const { data: rows, error } = await c
     .from("expenses")
-    .select("receipt_url, status, reference_no")
+    .select("*")
     .gte("expense_date", start.slice(0, 10))
     .lte("expense_date", end.slice(0, 10));
   if (error) return 0;
+  if ((rows ?? []).some((r) => !Object.prototype.hasOwnProperty.call(r, "receipt_url"))) return 0;
   let n = 0;
   for (const r of rows ?? []) {
     if (

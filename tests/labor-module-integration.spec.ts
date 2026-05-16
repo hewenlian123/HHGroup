@@ -40,7 +40,7 @@ WITH p AS (
   RETURNING id
 ), le AS (
   INSERT INTO labor_entries (worker_id, work_date, cost_code, cost_amount, status, morning, afternoon, notes)
-  SELECT lw.id, (CURRENT_DATE - INTERVAL '2 days')::date, 'TEST', 123.45, 'approved', true, false, 'integration labor entry'
+  SELECT lw.id, (CURRENT_DATE - INTERVAL '2 days')::date, 'TEST', 123.45, 'Approved', true, false, 'integration labor entry'
   FROM lw
   RETURNING id
 ), rb_today AS (
@@ -160,11 +160,19 @@ test.describe("Labor module integration", () => {
     await expect(page.getByText(/No labor entries\./i)).not.toBeVisible({ timeout: 30_000 });
 
     // Reimbursements should show seeded vendor names.
-    await expect(page.getByText(/Vendor A|Vendor B/i).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("tbody tr", { hasText: /Vendor A|Vendor B/i }).first()).toBeVisible({
+      timeout: 30_000,
+    });
 
     // Payments should show seeded method/note.
-    await expect(page.getByText(/Cash/i).first()).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(/integration payment/i).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator("tbody tr", { hasText: /Cash/i }).first()).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.locator("tbody tr", { hasText: /integration payment/i }).first()).toBeVisible(
+      {
+        timeout: 30_000,
+      }
+    );
 
     // 3) Payroll summary
     await page.goto(`${BASE}/labor/payroll`);
