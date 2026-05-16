@@ -133,6 +133,7 @@ async function expectPreviewInvoice(
   }
 ): Promise<void> {
   await expect(page.getByTestId("invoice-preview-document")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("invoice-preview-document")).not.toContainText("Amount due");
   await expect(page.getByTestId("document-company-name")).toBeVisible();
   await expect(page.getByTestId("invoice-preview-number")).toContainText(expected.invoiceNo);
   await expect(page.getByTestId("invoice-preview-client")).toContainText(expected.clientName);
@@ -153,6 +154,7 @@ async function expectPreviewInvoice(
   if (expected.tax)
     await expect(page.getByTestId("invoice-preview-tax")).toContainText(expected.tax);
   await expect(page.getByTestId("invoice-preview-total")).toContainText(expected.total);
+  await expect(page.getByTestId("invoice-preview-balance")).toContainText(expected.total);
 }
 
 async function openInvoiceFromList(

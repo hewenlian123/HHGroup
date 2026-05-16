@@ -79,6 +79,18 @@ const financeSecondaryAmountClass =
 
 const financeToolbarButtonTextClass = "text-[12px] font-medium tracking-[-0.012em]";
 
+const invoiceActionsMenuContentClassName =
+  "z-[1000] min-w-[160px] overflow-hidden rounded-xl border border-stone-200 bg-popover p-1 py-2 text-popover-foreground !opacity-100 shadow-xl backdrop-blur-none data-[state=open]:!animate-none data-[state=closed]:!animate-none dark:border-border dark:bg-popover dark:text-popover-foreground";
+
+const invoiceActionsMenuContentStyle: React.CSSProperties = {
+  backgroundColor: "hsl(var(--popover))",
+  opacity: 1,
+  zIndex: 1000,
+  animation: "none",
+  backdropFilter: "none",
+  filter: "none",
+};
+
 function statusChipClass(status: InvoiceComputedStatus): {
   label: string;
   dotClassName: string;
@@ -587,6 +599,7 @@ function InvoicesPageInner() {
           filterSheetOpen={filtersOpen}
           onOpenFilters={() => setFiltersOpen(true)}
           activeFilterCount={activeDrawerFilterCount}
+          filtersTriggerClassName="min-h-11"
           searchSlot={
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-500 dark:text-zinc-500" />
@@ -594,7 +607,7 @@ function InvoicesPageInner() {
                 placeholder="Invoice #, client, project…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-10 pl-8 text-[13.5px] tracking-[-0.012em] text-zinc-900 placeholder:text-stone-500 placeholder:tracking-[-0.008em] dark:text-zinc-100"
+                className="h-11 pl-8 text-[13.5px] tracking-[-0.012em] text-zinc-900 placeholder:text-stone-500 placeholder:tracking-[-0.008em] dark:text-zinc-100"
               />
             </div>
           }
@@ -1116,6 +1129,8 @@ function InvoicesPageInner() {
                         appearance="list"
                         ariaLabel={`Actions for ${inv.invoiceNo}`}
                         className="text-stone-500 transition-colors group-hover:text-stone-700 dark:text-zinc-500 dark:group-hover:text-zinc-300"
+                        contentClassName={invoiceActionsMenuContentClassName}
+                        contentStyle={invoiceActionsMenuContentStyle}
                         actions={rowActions}
                       />
                     </div>
@@ -1226,12 +1241,11 @@ function InvoicesPageInner() {
                           contentAvoidCollisions={false}
                           contentSide="bottom"
                           contentSideOffset={8}
-                          contentClassName="z-[1000] w-36 min-w-36 rounded-lg border-stone-200/80 !bg-popover py-1 !opacity-100 shadow-[0_10px_28px_rgba(24,24,27,0.12)] !backdrop-blur-none dark:border-border"
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--popover))",
-                            opacity: 1,
-                            zIndex: 1000,
-                          }}
+                          contentClassName={cn(
+                            invoiceActionsMenuContentClassName,
+                            "w-36 min-w-36 rounded-lg py-1"
+                          )}
+                          contentStyle={invoiceActionsMenuContentStyle}
                           itemClassName="relative z-10 h-8 rounded-md px-3 py-0 text-[13px] font-medium tracking-[-0.01em]"
                           destructiveItemClassName="text-rose-600 focus:bg-rose-50 focus:text-rose-700 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:focus:bg-rose-950/35 dark:focus:text-rose-300 dark:hover:bg-rose-950/35 dark:hover:text-rose-300"
                           touchFriendly={false}
