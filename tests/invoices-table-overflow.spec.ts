@@ -1,10 +1,42 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdProjectIds = new Set<string>();
 const createdInvoiceIds = new Set<string>();
+
+function cssColorAlpha(color: string): number {
+  if (color === "transparent") return 0;
+  const legacyRgba = color.match(
+    /^rgba\(\s*[\d.]+\s*,\s*[\d.]+\s*,\s*[\d.]+\s*,\s*([\d.]+)\s*\)$/i
+  );
+  if (legacyRgba?.[1]) return Number(legacyRgba[1]);
+  const slashAlpha = color.match(/^rgba?\(.+\/\s*([\d.]+%?)\s*\)$/i);
+  if (slashAlpha?.[1]) {
+    const value = slashAlpha[1];
+    return value.endsWith("%") ? Number(value.slice(0, -1)) / 100 : Number(value);
+  }
+  return 1;
+}
+
+async function expectOpaqueMenuSurface(menu: Locator): Promise<void> {
+  await expect(menu).toBeVisible({ timeout: 10_000 });
+  const surface = await menu.evaluate((element) => {
+    const styles = window.getComputedStyle(element);
+    return {
+      backgroundColor: styles.backgroundColor,
+      opacity: styles.opacity,
+      zIndex: styles.zIndex,
+    };
+  });
+
+  expect(surface.opacity).toBe("1");
+  expect(Number(surface.zIndex)).toBeGreaterThanOrEqual(50);
+  expect(cssColorAlpha(surface.backgroundColor)).toBe(1);
+  expect(surface.backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
+  expect(surface.backgroundColor).not.toBe("transparent");
+}
 
 function getAdminSupabase(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -138,6 +170,8 @@ test("keeps premium invoice rows usable with long client and project names", asy
   expect(actionBox!.x + actionBox!.width).toBeLessThanOrEqual(1100);
 
   await actionButton.click();
+  const desktopMenu = page.getByRole("menu", { name: `Actions for ${fixture.invoiceNo}` });
+  await expectOpaqueMenuSurface(desktopMenu);
   await expect(page.getByRole("menuitem", { name: "View" })).toBeVisible({ timeout: 10_000 });
 
   await page.keyboard.press("Escape");
@@ -162,24 +196,14 @@ test("keeps premium invoice rows usable with long client and project names", asy
 
   await mobileActionButton.click();
   const mobileMenu = page.getByRole("menu", { name: `Actions for ${fixture.invoiceNo}` });
-  await expect(mobileMenu).toBeVisible();
+  await expectOpaqueMenuSurface(mobileMenu);
   await expect(page.getByRole("menuitem", { name: "View" })).toBeVisible();
 
   const menuBox = await mobileMenu.boundingBox();
-  const menuSurface = await mobileMenu.evaluate((element) => {
-    const styles = window.getComputedStyle(element);
-    return {
-      backgroundColor: styles.backgroundColor,
-      opacity: styles.opacity,
-    };
-  });
 
   expect(actionButtonBox).not.toBeNull();
   expect(menuBox).not.toBeNull();
   expect(menuBox!.y).toBeGreaterThan(actionButtonBox!.y);
-  expect(menuSurface.opacity).toBe("1");
-  expect(menuSurface.backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
-  expect(menuSurface.backgroundColor).not.toBe("transparent");
 
   const mobileLayoutMetrics = await page.evaluate(() => ({
     viewportWidth: window.innerWidth,

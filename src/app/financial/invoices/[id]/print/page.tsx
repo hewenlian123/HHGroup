@@ -46,7 +46,10 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
   }
 
   return (
-    <div className="min-h-screen bg-white text-black p-8 mx-auto" style={{ maxWidth: "8.5in" }}>
+    <div
+      className="min-h-screen bg-white p-8 text-black mx-auto print:p-0"
+      style={{ maxWidth: "8.5in" }}
+    >
       <SetBreadcrumbEntityTitle label={invoice.invoiceNo} />
       <InvoiceDocument
         invoice={invoice}

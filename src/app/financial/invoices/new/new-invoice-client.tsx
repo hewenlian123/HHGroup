@@ -598,7 +598,7 @@ export default function NewInvoiceClient() {
         </div>
       </Card>
 
-      <div className="-mx-6 sticky bottom-0 z-20 border-t border-border/60 bg-zinc-50/95 p-4 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
+      <div className="-mx-6 sticky bottom-0 z-20 border-t border-border/60 bg-zinc-50/95 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:p-0">
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
             variant="outline"
