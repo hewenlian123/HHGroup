@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
@@ -18,7 +19,10 @@ function parseLaborEntryIds(raw: unknown): string[] {
  * DELETE: Remove worker_payments row and reverse settlement on labor_entries + worker_reimbursements
  * so balances and "paid" state match accounting reality.
  */
-export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
   const { id: paymentId } = await params;
   if (!paymentId?.trim()) {
     return NextResponse.json({ message: "Payment id required." }, { status: 400 });

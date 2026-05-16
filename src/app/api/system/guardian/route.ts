@@ -10,6 +10,8 @@
  */
 
 import { NextResponse } from "next/server";
+import { requireInternalAdminAccess } from "@/lib/auth-boundary";
+import { guardedInternalFetchHeaders } from "@/lib/production-safety";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { addSystemLog } from "@/lib/system-log-store";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -53,9 +55,12 @@ async function checkStorage(c: SupabaseClient): Promise<GuardianCheck> {
   }
 }
 
-async function checkDataIntegrity(origin: string): Promise<GuardianCheck> {
+async function checkDataIntegrity(origin: string, headers?: HeadersInit): Promise<GuardianCheck> {
   try {
-    const res = await fetch(`${origin}/api/system/integrity`, { cache: "no-store" });
+    const res = await fetch(`${origin}/api/system/integrity`, {
+      cache: "no-store",
+      headers,
+    });
     const data = (await res.json().catch(() => ({}))) as {
       ok?: boolean;
       orphanedTasks?: { count?: number };
@@ -108,7 +113,8 @@ async function checkDataIntegrity(origin: string): Promise<GuardianCheck> {
 async function checkEndpoint(
   origin: string,
   urlPath: string,
-  displayName: string
+  displayName: string,
+  headers?: HeadersInit
 ): Promise<GuardianCheck> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 8000);
@@ -116,6 +122,7 @@ async function checkEndpoint(
     const res = await fetch(`${origin}${urlPath}`, {
       method: "GET",
       cache: "no-store",
+      headers,
       signal: controller.signal,
     });
     // 2xx, 4xx (route exists, rejected input) → route is alive
@@ -198,6 +205,9 @@ async function checkTable(
 // ── route handler ─────────────────────────────────────────────────────────────
 
 export async function GET(request: Request): Promise<NextResponse<GuardianResult>> {
+  const guard = await requireInternalAdminAccess(request);
+  if (!guard.ok) return guard.response as NextResponse<GuardianResult>;
+
   const safeResult = (checks: GuardianCheck[], ok: boolean): NextResponse<GuardianResult> =>
     NextResponse.json({
       ok,
@@ -208,6 +218,7 @@ export async function GET(request: Request): Promise<NextResponse<GuardianResult
   try {
     const origin = new URL(request.url).origin;
     const c = getServerSupabase();
+    const internalHeaders = guardedInternalFetchHeaders(request);
 
     const notConfigured = (name: string): GuardianCheck => ({
       name,
@@ -284,8 +295,8 @@ export async function GET(request: Request): Promise<NextResponse<GuardianResult
       c
         ? checkTable(c, "activity_logs", "Activity Logs")
         : Promise.resolve(notConfigured("Activity Logs")),
-      checkEndpoint(origin, "/api/system/backup", "Backups"),
-      checkDataIntegrity(origin),
+      checkEndpoint(origin, "/api/system/backup", "Backups", internalHeaders),
+      checkDataIntegrity(origin, internalHeaders),
     ]);
 
     const checks: GuardianCheck[] = [

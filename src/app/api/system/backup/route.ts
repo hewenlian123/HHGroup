@@ -15,7 +15,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
+import { requireInternalAdminAccess } from "@/lib/auth-boundary";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { addSystemLog } from "@/lib/system-log-store";
 import fs from "fs";
@@ -72,8 +72,8 @@ function todayStr(): string {
 // ── POST — create backup ──────────────────────────────────────────────────────
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const blocked = guardDangerousMaintenanceRequest(request);
-  if (blocked) return blocked;
+  const guard = await requireInternalAdminAccess(request);
+  if (!guard.ok) return guard.response;
 
   const c = getServerSupabase();
   if (!c) {
@@ -165,7 +165,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
 // ── GET — list backups ────────────────────────────────────────────────────────
 
-export async function GET(): Promise<NextResponse> {
+export async function GET(request: Request): Promise<NextResponse> {
+  const guard = await requireInternalAdminAccess(request);
+  if (!guard.ok) return guard.response;
+
   try {
     const dir = backupDir();
     if (!fs.existsSync(dir)) {
