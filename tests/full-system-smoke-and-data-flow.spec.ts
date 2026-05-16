@@ -502,7 +502,7 @@ async function createLinkedProject(
   await selectCustomer(page, params.customerName);
   await expect(page.getByPlaceholder("Client or company name")).toHaveValue(params.customerName);
   await page.getByPlaceholder("Luxury Villa E").fill(params.projectName);
-  await page.getByPlaceholder("Project address").fill(params.address);
+  await setProjectAddress(page, params.address);
   await page.locator('input[name="budget"]').fill("125000");
   await page.locator('select[name="status"]').selectOption("active");
   await page.getByRole("button", { name: "Create Project" }).click();
@@ -520,6 +520,26 @@ async function createLinkedProject(
     timeout: 30_000,
   });
   return page.url();
+}
+
+async function setProjectAddress(page: Page, address: string) {
+  const addressButton = page
+    .getByRole("button", { name: /Add project address|Project address:/ })
+    .first();
+  await expect(addressButton).toBeVisible({ timeout: 10_000 });
+  await addressButton.click();
+  const dialog = page.getByRole("dialog", { name: "Address details" });
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await dialog.getByLabel("Street address").fill(address);
+  await dialog.getByRole("button", { name: "Save address" }).click();
+  await expect(dialog).toBeHidden({ timeout: 10_000 });
+  await expect(
+    page.getByRole("button", { name: new RegExp(`Project address: ${escapeRegExp(address)}`) })
+  ).toBeVisible({ timeout: 10_000 });
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 async function createEstimateForProject(
@@ -596,7 +616,7 @@ async function createInvoiceForProject(
   await page.getByPlaceholder("Client").fill(params.clientName);
   await page.getByLabel("Line item 1 description").fill(params.lineDescription);
   await page.getByLabel("Line item 1 quantity").fill("2");
-  await page.getByLabel("Line item 1 unit price").fill("125.5");
+  await page.getByTestId("invoice-new-line-1-rate-input").fill("125.5");
   const createButton = page.getByRole("button", { name: "Create draft invoice" });
   await expect(createButton).toBeEnabled({ timeout: 15_000 });
   await createButton.click();
@@ -858,7 +878,7 @@ test("creates linked system data and verifies cross-module flow", async ({ page 
     clientName: names.invoiceClientName,
     lineDescription: names.invoiceLineDescription,
   });
-  const invoicePath = new URL(invoiceUrl).pathname;
+  const invoicePath = new URL(invoiceUrl).pathname.replace(/\/preview$/, "");
 
   await createQuickExpenseForProject(page, {
     projectName: names.projectName,

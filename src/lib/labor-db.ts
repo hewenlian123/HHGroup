@@ -279,9 +279,7 @@ function toLaborPayment(r: LaborPaymentRow): LaborPayment {
 
 export async function getWorkers(): Promise<Worker[]> {
   const c = client();
-  const colsWithDaily =
-    "id, name, role, phone, half_day_rate, daily_rate, status, notes, created_at";
-  const { data: rows, error } = await c.from("workers").select(colsWithDaily).order("name");
+  const { data: rows, error } = await c.from("workers").select("*").order("name");
   if (error) {
     if (isMissingTable(error))
       throw new Error("labor_workers (workers): table not found. Run migrations.");
@@ -305,13 +303,7 @@ export async function getLaborWorkers(): Promise<Worker[]> {
 
 export async function getWorkerById(id: string): Promise<Worker | null> {
   const c = client();
-  const colsWithDaily =
-    "id, name, role, phone, half_day_rate, daily_rate, status, notes, created_at";
-  const { data: row, error } = await c
-    .from("workers")
-    .select(colsWithDaily)
-    .eq("id", id)
-    .maybeSingle();
+  const { data: row, error } = await c.from("workers").select("*").eq("id", id).maybeSingle();
   if (error) {
     if (isMissingColumn(error)) {
       const { data: row2, error: err2 } = await c
@@ -350,11 +342,7 @@ export async function createWorker(input: {
     notes: input.notes?.trim() ?? null,
   };
   if (dailyRate != null && Number(dailyRate) >= 0) payload.daily_rate = dailyRate;
-  const { data: row, error } = await c
-    .from("workers")
-    .insert(payload)
-    .select("id, name, role, phone, half_day_rate, daily_rate, status, notes, created_at")
-    .single();
+  const { data: row, error } = await c.from("workers").insert(payload).select("*").single();
   if (error) {
     if (isMissingColumn(error)) {
       const { data: row2, error: err2 } = await c

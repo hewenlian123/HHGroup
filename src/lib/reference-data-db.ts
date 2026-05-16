@@ -53,6 +53,7 @@ async function ensureExpenseCategoriesExist(): Promise<void> {
     }
     return;
   }
+  if (!(await expenseOpts.publicSchemaItemAvailable("categories"))) return;
   const c = client();
   const { data: existing, error } = await c
     .from("categories")
@@ -74,6 +75,9 @@ export async function getExpenseCategories(includeDisabled = false): Promise<str
     return list
       .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
       .map((r) => r.name);
+  }
+  if (!(await expenseOpts.publicSchemaItemAvailable("categories"))) {
+    return [...DEFAULT_CATEGORIES];
   }
   const c = client();
   const { data: rows, error } = await c
@@ -260,7 +264,7 @@ export async function getVendors(includeDisabled = false): Promise<string[]> {
   await ensureVendorsExist();
   let rows: unknown[] | null = null;
   let error: { message?: string } | null = null;
-  const res = await c.from("vendors").select("name, status").order("name");
+  const res = await c.from("vendors").select("*").order("name");
   error = res.error;
   rows = res.data;
   if (error && isMissingColumn(error)) {
@@ -333,6 +337,7 @@ export async function renameVendor(oldName: string, newName: string): Promise<bo
 }
 
 export async function disableVendor(name: string): Promise<boolean> {
+  if (!(await expenseOpts.publicSchemaItemAvailable("vendors", "status"))) return false;
   const c = client();
   const { error } = await c
     .from("vendors")
@@ -342,6 +347,7 @@ export async function disableVendor(name: string): Promise<boolean> {
 }
 
 export async function enableVendor(name: string): Promise<boolean> {
+  if (!(await expenseOpts.publicSchemaItemAvailable("vendors", "status"))) return false;
   const c = client();
   const { error } = await c.from("vendors").update({ status: "active" }).ilike("name", name.trim());
   return !error;
@@ -355,6 +361,7 @@ export async function deleteVendor(name: string): Promise<boolean> {
 }
 
 export async function isVendorDisabled(name: string): Promise<boolean> {
+  if (!(await expenseOpts.publicSchemaItemAvailable("vendors", "status"))) return false;
   const c = client();
   const { data: row } = await c
     .from("vendors")
@@ -373,6 +380,7 @@ async function ensurePaymentMethodsExist(): Promise<void> {
     }
     return;
   }
+  if (!(await expenseOpts.publicSchemaItemAvailable("payment_methods"))) return;
   const c = client();
   const { data: existing, error } = await c.from("payment_methods").select("id").limit(1);
   if (error && isMissingTable(error)) return;
@@ -390,6 +398,9 @@ export async function getPaymentMethods(includeDisabled = false): Promise<string
     return list
       .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
       .map((r) => r.name);
+  }
+  if (!(await expenseOpts.publicSchemaItemAvailable("payment_methods"))) {
+    return [...DEFAULT_PAYMENT_METHODS];
   }
   const c = client();
   const { data: rows, error } = await c

@@ -60,6 +60,7 @@ export async function waitForVisibleQuickExpenseButton(
 }
 
 export async function clickVisibleQuickExpenseButton(page: Page): Promise<void> {
+  await waitForVisibleQuickExpenseButton(page);
   const buttons = page.getByRole("button", { name: /^Quick$/ });
   const n = await buttons.count();
   for (let i = 0; i < n; i++) {
