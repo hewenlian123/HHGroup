@@ -97,20 +97,15 @@ export default function LaborInvoiceDetailClient() {
     if (!id || !supabase) return;
     setLoading(true);
     setError(null);
-    const [{ data: invData, error: invErr }, { data: workerData }, { data: projectData }] =
-      await Promise.all([
-        supabase.from("labor_invoices").select("*").eq("id", id).maybeSingle(),
-        supabase
-          .from("workers")
-          .select("id,name")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("projects")
-          .select("id,name")
-          .order("created_at", { ascending: false })
-          .limit(500),
-      ]);
+    const [{ data: invData, error: invErr }, workerRes, { data: projectData }] = await Promise.all([
+      supabase.from("labor_invoices").select("*").eq("id", id).maybeSingle(),
+      fetch("/api/labor/workers", { cache: "no-store" }),
+      supabase
+        .from("projects")
+        .select("id,name")
+        .order("created_at", { ascending: false })
+        .limit(500),
+    ]);
     if (invErr) {
       setError(invErr.message);
       setInvoice(null);
@@ -141,12 +136,17 @@ export default function LaborInvoiceDetailClient() {
     } else {
       setInvoice(null);
     }
-    setWorkers(
-      (workerData ?? []).map((w) => ({
-        id: (w as { id: string }).id,
-        name: (w as { name: string }).name ?? "",
-      }))
-    );
+    if (!workerRes.ok) {
+      const body = (await workerRes.json().catch(() => null)) as { message?: string } | null;
+      setError((e) => e ?? body?.message ?? "Failed to load workers.");
+      setWorkers([]);
+    } else {
+      const workerData = (await workerRes.json().catch(() => [])) as Array<{
+        id: string;
+        name?: string;
+      }>;
+      setWorkers(workerData.map((w) => ({ id: w.id, name: w.name ?? "" })));
+    }
     setProjects(
       (projectData ?? []).map((p) => ({
         id: (p as { id: string }).id,

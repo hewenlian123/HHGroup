@@ -51,11 +51,6 @@ function safeNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function isMissingTableError(error: unknown): boolean {
-  const code = (error as { code?: string } | null)?.code;
-  return code === "42P01";
-}
-
 function suggestFromDescription(description: string): { vendor?: string; category?: string } {
   const d = description.toLowerCase();
   const out: { vendor?: string; category?: string } = {};
@@ -212,113 +207,39 @@ export default function BankReconcileClient() {
   );
 
   const refresh = React.useCallback(async () => {
-    if (!supabase) {
-      setLoading(false);
-      setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
-      return;
-    }
     setLoading(true);
     setError(null);
 
-    const [txRes, projRes, catRes, venRes, pmRes] = await Promise.all([
-      supabase
-        .from("bank_transactions")
-        .select(
-          "id,txn_date,description,amount,status,reconciled_at,linked_expense_id,reconcile_type"
-        )
-        .order("txn_date", { ascending: false })
-        .limit(2000),
-      supabase
-        .from("projects")
-        .select("id,name")
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("categories")
-        .select("name,type,status")
-        .eq("type", "expense")
-        .order("name", { ascending: true })
-        .limit(500),
-      supabase.from("vendors").select("name,status").order("name", { ascending: true }).limit(500),
-      supabase
-        .from("payment_methods")
-        .select("name,status")
-        .order("name", { ascending: true })
-        .limit(500),
-    ]);
-
-    if (txRes.error) {
-      if (!isMissingTableError(txRes.error)) setError(txRes.error.message);
-      setTransactions([]);
-    } else {
-      const list = (txRes.data ?? []).map((r) => {
-        const row = r as {
-          id: string;
-          txn_date: string;
-          description: string;
-          amount: number;
-          status: "unmatched" | "reconciled";
-          reconciled_at?: string | null;
-          linked_expense_id?: string | null;
-          reconcile_type?: "Expense" | "Income" | "Transfer" | null;
-        };
-        return {
-          id: row.id,
-          date: row.txn_date,
-          description: row.description,
-          amount: safeNumber(row.amount),
-          status: row.status,
-          reconciledAt: row.reconciled_at ?? null,
-          linkedExpenseId: row.linked_expense_id ?? null,
-          reconcileType: row.reconcile_type ?? null,
-        } satisfies BankTransaction;
+    try {
+      const response = await fetch("/api/financial/bank-transactions?view=reconcile", {
+        cache: "no-store",
       });
-      setTransactions(list);
-    }
+      const body = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        transactions?: BankTransaction[];
+        projects?: Array<{ id: string; name: string }>;
+        categories?: string[];
+        vendors?: string[];
+        paymentMethods?: string[];
+      };
+      if (!response.ok) throw new Error(body.message ?? "Failed to load bank transactions.");
 
-    if (projRes.error)
-      setError((prev) => prev ?? projRes.error?.message ?? "Failed to load projects.");
-    setProjects((projRes.data ?? []) as Array<{ id: string; name: string }>);
-
-    if (catRes.error) {
-      if (!isMissingTableError(catRes.error))
-        setError((prev) => prev ?? catRes.error?.message ?? "Failed to load categories.");
+      setTransactions(body.transactions ?? []);
+      setProjects(body.projects ?? []);
+      setCategories(body.categories?.length ? body.categories : ["Other"]);
+      setVendorsList(body.vendors ?? []);
+      setPaymentMethodsList(body.paymentMethods?.length ? body.paymentMethods : ["ACH"]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load bank transactions.");
+      setTransactions([]);
+      setProjects([]);
       setCategories(["Other"]);
-    } else {
-      const names = (catRes.data ?? [])
-        .filter((r) => (r as { status?: string }).status !== "inactive")
-        .map((r) => (r as { name: string }).name)
-        .filter(Boolean);
-      setCategories(names.length ? names : ["Other"]);
-    }
-
-    if (venRes.error) {
-      if (!isMissingTableError(venRes.error))
-        setError((prev) => prev ?? venRes.error?.message ?? "Failed to load vendors.");
       setVendorsList([]);
-    } else {
-      setVendorsList(
-        (venRes.data ?? [])
-          .filter((r) => (r as { status?: string }).status !== "inactive")
-          .map((r) => (r as { name: string }).name)
-          .filter(Boolean)
-      );
-    }
-
-    if (pmRes.error) {
-      if (!isMissingTableError(pmRes.error))
-        setError((prev) => prev ?? pmRes.error?.message ?? "Failed to load payment methods.");
       setPaymentMethodsList(["ACH"]);
-    } else {
-      const names = (pmRes.data ?? [])
-        .filter((r) => (r as { status?: string }).status !== "inactive")
-        .map((r) => (r as { name: string }).name)
-        .filter(Boolean);
-      setPaymentMethodsList(names.length ? names : ["ACH"]);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-  }, [configured, supabase]);
+  }, []);
 
   React.useEffect(() => {
     void refresh();
@@ -386,6 +307,16 @@ export default function BankReconcileClient() {
       ]);
     }
   }, [selected]);
+
+  const postBankAction = React.useCallback(async (payload: Record<string, unknown>) => {
+    const response = await fetch("/api/financial/bank-transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const body = (await response.json().catch(() => ({}))) as { message?: string };
+    if (!response.ok) throw new Error(body.message ?? "Bank transaction update failed.");
+  }, []);
 
   const handleLineChange = (lineId: string, patch: Partial<SplitLineRow>) => {
     setLines((prev) => prev.map((l) => (l.id === lineId ? { ...l, ...patch } : l)));
@@ -534,77 +465,20 @@ export default function BankReconcileClient() {
       category?: string;
     }
   ) => {
-    if (!supabase) return;
-
-    if (params.type === "Expense") {
-      const headerVendor = (params.vendorName || tx.description).trim();
-      const headerMethod = (params.paymentMethod || "ACH").trim();
-
-      const { data: exp, error: expErr } = await supabase
-        .from("expenses")
-        .insert({
-          expense_date: tx.date,
-          vendor_name: headerVendor,
-          payment_method: headerMethod,
-          notes: tx.description,
-          reference_no: null,
-        })
-        .select("id")
-        .single();
-      if (expErr) throw expErr;
-      const expenseId = (exp as { id: string }).id;
-
-      const linePayload =
-        params.lines && params.lines.length > 0
-          ? params.lines
-          : [
-              {
-                id: "auto",
-                projectId: params.projectId ?? null,
-                category: params.category ?? "Other",
-                memo: tx.description,
-                amount: Math.abs(tx.amount),
-              },
-            ];
-
-      const rows = linePayload.map((l) => ({
-        expense_id: expenseId,
-        project_id: l.projectId ?? null,
-        category: l.category || "Other",
-        memo: l.memo ?? null,
-        amount: Math.max(0, safeNumber(l.amount)),
-      }));
-      const { error: linesErr } = await supabase.from("expense_lines").insert(rows);
-      if (linesErr) throw linesErr;
-
-      const { error: updErr } = await supabase
-        .from("bank_transactions")
-        .update({
-          status: "reconciled",
-          reconcile_type: "Expense",
-          reconciled_at: new Date().toISOString(),
-          linked_expense_id: expenseId,
-          vendor_name: headerVendor,
-          payment_method: headerMethod,
-        })
-        .eq("id", tx.id);
-      if (updErr) throw updErr;
-      return;
-    }
-
-    const { error: updErr } = await supabase
-      .from("bank_transactions")
-      .update({
-        status: "reconciled",
-        reconcile_type: params.type,
-        reconciled_at: new Date().toISOString(),
-      })
-      .eq("id", tx.id);
-    if (updErr) throw updErr;
+    await postBankAction({
+      action: "reconcile",
+      txId: tx.id,
+      type: params.type,
+      vendorName: params.vendorName,
+      paymentMethod: params.paymentMethod,
+      lines: params.lines,
+      projectId: params.projectId,
+      category: params.category,
+    });
   };
 
   const handleReconcile = async () => {
-    if (!selected || !canReconcile || !supabase || busy) return;
+    if (!selected || !canReconcile || busy) return;
     setBusy(true);
     setError(null);
     try {
@@ -625,20 +499,11 @@ export default function BankReconcileClient() {
   };
 
   const handleLinkToExpense = async (expenseId: string) => {
-    if (!selected || !supabase || busy) return;
+    if (!selected || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const { error: updErr } = await supabase
-        .from("bank_transactions")
-        .update({
-          status: "reconciled",
-          reconcile_type: "Expense",
-          reconciled_at: new Date().toISOString(),
-          linked_expense_id: expenseId,
-        })
-        .eq("id", selected.id);
-      if (updErr) throw updErr;
+      await postBankAction({ action: "linkExpense", txId: selected.id, expenseId });
       await refresh();
       const next = getNextUnmatched(transactions, selected.id);
       setSelectedIds(next ? new Set([next.id]) : new Set());
@@ -650,22 +515,11 @@ export default function BankReconcileClient() {
   };
 
   const handleUnlink = async () => {
-    if (!selected || !supabase || busy) return;
+    if (!selected || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const { error: updErr } = await supabase
-        .from("bank_transactions")
-        .update({
-          status: "unmatched",
-          reconcile_type: null,
-          reconciled_at: null,
-          linked_expense_id: null,
-          vendor_name: null,
-          payment_method: null,
-        })
-        .eq("id", selected.id);
-      if (updErr) throw updErr;
+      await postBankAction({ action: "unlink", txId: selected.id });
       await refresh();
       setSelectedIds(new Set([selected.id]));
     } catch (e) {
@@ -676,7 +530,7 @@ export default function BankReconcileClient() {
   };
 
   const handleReconcileAll = async () => {
-    if (!supabase || busy || selectedList.length === 0) return;
+    if (busy || selectedList.length === 0) return;
     setBusy(true);
     setError(null);
     try {
@@ -707,7 +561,7 @@ export default function BankReconcileClient() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !supabase) return;
+    if (!file) return;
     const text = await file.text();
     const parsed = parseCsv(text);
     e.target.value = "";
@@ -720,20 +574,9 @@ export default function BankReconcileClient() {
     setBusy(true);
     setError(null);
     try {
-      const rows = parsed.map((r) => ({
-        txn_date: r.date,
-        description: r.description,
-        amount: r.amount,
-        status: "unmatched" as const,
-      }));
-      const chunkSize = 500;
-      for (let i = 0; i < rows.length; i += chunkSize) {
-        const chunk = rows.slice(i, i + chunkSize);
-        const { error: insErr } = await supabase.from("bank_transactions").insert(chunk);
-        if (insErr) throw insErr;
-      }
+      await postBankAction({ action: "import", rows: parsed });
       await refresh();
-      setImportMessage(`Imported ${rows.length} line(s)`);
+      setImportMessage(`Imported ${parsed.length} line(s)`);
       setTimeout(() => setImportMessage(null), 4000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Import failed.");

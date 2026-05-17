@@ -3,6 +3,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 type MockSupabaseClient = { from: ReturnType<typeof createChained> } | null;
 let mockSupabaseGetter: () => MockSupabaseClient = () => null;
 
+function request() {
+  return new Request("http://localhost/api/labor/worker-balances");
+}
+
 function createChained<T>(data: T[], error: { message: string } | null = null) {
   const result = { data, error };
   const thenable = {
@@ -38,7 +42,7 @@ describe("GET /api/labor/worker-balances", () => {
   it("returns 503 when Supabase is not configured", async () => {
     mockSupabaseGetter = () => null;
     const { GET } = await import("@/app/api/labor/worker-balances/route");
-    const res = await GET();
+    const res = await GET(request());
     expect(res.status).toBe(503);
     const json = await res.json();
     expect(json.message).toContain("Supabase");
@@ -63,7 +67,7 @@ describe("GET /api/labor/worker-balances", () => {
       }) as never;
 
     const { GET } = await import("@/app/api/labor/worker-balances/route");
-    const res = await GET();
+    const res = await GET(request());
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(Array.isArray(json.balances)).toBe(true);
@@ -101,7 +105,7 @@ describe("GET /api/labor/worker-balances", () => {
       }) as never;
 
     const { GET } = await import("@/app/api/labor/worker-balances/route");
-    const res = await GET();
+    const res = await GET(request());
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.balances[0]).toMatchObject({
@@ -139,7 +143,7 @@ describe("GET /api/labor/worker-balances", () => {
       }) as never;
 
     const { GET } = await import("@/app/api/labor/worker-balances/route");
-    const res = await GET();
+    const res = await GET(request());
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.balances[0]).toMatchObject({
@@ -170,7 +174,7 @@ describe("GET /api/labor/worker-balances", () => {
       }) as never;
 
     const { GET } = await import("@/app/api/labor/worker-balances/route");
-    const res = await GET();
+    const res = await GET(request());
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.balances[0]).toMatchObject({
@@ -199,7 +203,7 @@ describe("GET /api/labor/worker-balances", () => {
       }) as never;
 
     const { GET } = await import("@/app/api/labor/worker-balances/route");
-    const res = await GET();
+    const res = await GET(request());
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.balances[0]).toMatchObject({

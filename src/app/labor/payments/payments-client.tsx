@@ -13,7 +13,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { DeleteRowAction } from "@/components/base";
-import { createBrowserClient } from "@/lib/supabase";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { amountClass, TYPO } from "@/lib/typography";
@@ -36,15 +35,6 @@ type PayRunRow = {
     memo?: string;
   }>;
 };
-
-function safeNumber(v: unknown): number {
-  const n = typeof v === "number" ? v : Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function isMissingTableError(error: unknown): boolean {
-  return (error as { code?: string } | null)?.code === "42P01";
-}
 
 function last7DaysStart(): string {
   const d = new Date();
@@ -73,154 +63,36 @@ export default function LaborPaymentsClient() {
   const [busy, setBusy] = React.useState(false);
   const [backgroundRefreshing, setBackgroundRefreshing] = React.useState(false);
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
-
   const refresh = React.useCallback(
     async (opts?: { silent?: boolean }) => {
       const silent = opts?.silent ?? false;
-      if (!supabase) {
-        if (!silent) setLoading(false);
-        setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
-        setRows([]);
-        return;
-      }
       if (!silent) setLoading(true);
       setError(null);
 
-      const [workersRes, entriesRes, paymentsRes, projectsRes, methodsRes] = await Promise.all([
-        supabase
-          .from("workers")
-          .select("id,name,half_day_rate")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("labor_entries")
-          .select(
-            "id,entry_date,worker_id,total,am_worked,am_project_id,pm_worked,pm_project_id,ot_amount,ot_project_id"
-          )
-          .eq("status", "confirmed")
-          .gte("entry_date", startDate)
-          .lte("entry_date", endDate)
-          .limit(2000),
-        supabase
-          .from("labor_payments")
-          .select(
-            "id,worker_id,payment_date,amount,method,memo,applied_start_date,applied_end_date"
-          )
-          .or(
-            `and(applied_start_date.eq.${startDate},applied_end_date.eq.${endDate}),and(payment_date.gte.${startDate},payment_date.lte.${endDate})`
-          )
-          .limit(2000),
-        supabase
-          .from("projects")
-          .select("id,name")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("payment_methods")
-          .select("name,status")
-          .eq("status", "active")
-          .order("name")
-          .limit(100),
-      ]);
-
-      const workers = (workersRes.data ?? []) as Array<{
-        id: string;
-        name: string;
-        half_day_rate?: number | null;
-      }>;
-      const entries = (entriesRes.data ?? []) as Array<{
-        entry_date: string;
-        worker_id: string;
-        total: number | null;
-        am_project_id: string | null;
-        pm_project_id: string | null;
-        ot_project_id: string | null;
-      }>;
-      const payments = (paymentsRes.data ?? []) as Array<{
-        id: string;
-        worker_id: string;
-        payment_date: string;
-        amount: number | null;
-        method: string | null;
-        memo: string | null;
-        applied_start_date: string | null;
-        applied_end_date: string | null;
-      }>;
-
-      if (projectsRes.data)
-        setProjects((projectsRes.data ?? []) as Array<{ id: string; name: string }>);
-      if (methodsRes.data) {
-        const names = (methodsRes.data as Array<{ name: string }>)
-          .map((r) => r.name)
-          .filter(Boolean);
-        setPaymentMethods(names.length ? names : ["ACH"]);
-      }
-
-      const inRange = (d: string) => d >= startDate && d <= endDate;
-      const payRunRows: PayRunRow[] = workers.map((w) => {
-        const workerEntries = entries.filter((e) => e.worker_id === w.id && inRange(e.entry_date));
-        const rate = safeNumber(w.half_day_rate);
-        const projectFilter = projectId.trim();
-        let confirmedTotal: number;
-        if (projectFilter) {
-          confirmedTotal = workerEntries.reduce((sum, e) => {
-            const ent = e as {
-              am_worked?: boolean;
-              am_project_id?: string | null;
-              pm_worked?: boolean;
-              pm_project_id?: string | null;
-              ot_amount?: number | null;
-              ot_project_id?: string | null;
-            };
-            const am = ent.am_worked && ent.am_project_id === projectFilter ? rate : 0;
-            const pm = ent.pm_worked && ent.pm_project_id === projectFilter ? rate : 0;
-            const ot = ent.ot_project_id === projectFilter ? safeNumber(ent.ot_amount) : 0;
-            return sum + am + pm + ot;
-          }, 0);
-        } else {
-          confirmedTotal = workerEntries.reduce((sum, e) => sum + safeNumber(e.total), 0);
-        }
-        const workerPayments = payments.filter(
-          (p) =>
-            p.worker_id === w.id &&
-            (inRange(p.payment_date) ||
-              (p.applied_start_date === startDate && p.applied_end_date === endDate))
-        );
-        const paidTotal = workerPayments.reduce((s, p) => s + safeNumber(p.amount), 0);
-        const balance = Math.max(0, confirmedTotal - paidTotal);
-        return {
-          workerId: w.id,
-          workerName: w.name ?? w.id,
-          confirmedDailyTotal: confirmedTotal,
-          confirmedInvoiceTotal: 0,
-          confirmedTotal,
-          paidTotal,
-          balance,
-          payments: workerPayments.map((p) => ({
-            id: p.id,
-            paymentDate: p.payment_date,
-            amount: safeNumber(p.amount),
-            method: p.method ?? "—",
-            memo: p.memo ?? undefined,
-          })),
+      try {
+        const params = new URLSearchParams({ startDate, endDate });
+        if (projectId.trim()) params.set("projectId", projectId.trim());
+        const response = await fetch(`/api/labor/payments?${params.toString()}`, {
+          cache: "no-store",
+        });
+        const body = (await response.json().catch(() => ({}))) as {
+          message?: string;
+          rows?: PayRunRow[];
+          projects?: Array<{ id: string; name: string }>;
+          paymentMethods?: string[];
         };
-      });
-
-      setRows(payRunRows);
-      if (entriesRes.error && !isMissingTableError(entriesRes.error))
-        setError(entriesRes.error.message);
-      if (workersRes.error && !isMissingTableError(workersRes.error))
-        setError((e) => e ?? workersRes.error?.message ?? null);
-      if (!silent) setLoading(false);
+        if (!response.ok) throw new Error(body.message ?? "Failed to load labor payments.");
+        setRows(body.rows ?? []);
+        setProjects(body.projects ?? []);
+        setPaymentMethods(body.paymentMethods?.length ? body.paymentMethods : ["ACH"]);
+      } catch (e) {
+        setRows([]);
+        setError(e instanceof Error ? e.message : "Failed to load labor payments.");
+      } finally {
+        if (!silent) setLoading(false);
+      }
     },
-    [configured, startDate, endDate, projectId, supabase]
+    [startDate, endDate, projectId]
   );
 
   React.useEffect(() => {
@@ -247,7 +119,7 @@ export default function LaborPaymentsClient() {
   };
 
   const savePayment = async () => {
-    if (!modalWorkerId || !method || !supabase || busy) return;
+    if (!modalWorkerId || !method || busy) return;
     if (amount <= 0) {
       setModalWarning("Amount must be greater than 0.");
       return;
@@ -260,17 +132,22 @@ export default function LaborPaymentsClient() {
 
     setBusy(true);
     setError(null);
-    const { error: insErr } = await supabase.from("labor_payments").insert({
-      worker_id: modalWorkerId,
-      payment_date: paymentDate,
-      amount: appliedAmount,
-      method,
-      memo: memo.trim() || null,
-      applied_start_date: startDate,
-      applied_end_date: endDate,
+    const response = await fetch("/api/labor/payments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        workerId: modalWorkerId,
+        paymentDate,
+        amount: appliedAmount,
+        method,
+        memo,
+        startDate,
+        endDate,
+      }),
     });
-    if (insErr) {
-      setError(insErr.message);
+    const body = (await response.json().catch(() => ({}))) as { message?: string };
+    if (!response.ok) {
+      setError(body.message ?? "Failed to record labor payment.");
       setBusy(false);
       return;
     }
@@ -284,7 +161,7 @@ export default function LaborPaymentsClient() {
   };
 
   const deletePayment = async (paymentId: string) => {
-    if (!supabase || busy) return;
+    if (busy) return;
     setBusy(true);
     setError(null);
     const prevRows = rows;
@@ -302,9 +179,12 @@ export default function LaborPaymentsClient() {
         };
       })
     );
-    const { error: delErr } = await supabase.from("labor_payments").delete().eq("id", paymentId);
-    if (delErr) {
-      setError(delErr.message);
+    const response = await fetch(`/api/labor/payments?id=${encodeURIComponent(paymentId)}`, {
+      method: "DELETE",
+    });
+    const body = (await response.json().catch(() => ({}))) as { message?: string };
+    if (!response.ok) {
+      setError(body.message ?? "Failed to delete labor payment.");
       setRows(prevRows);
     }
     setBusy(false);

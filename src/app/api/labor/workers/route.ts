@@ -16,7 +16,10 @@ const NO_CACHE_HEADERS = {
 /**
  * GET: List all workers — query with admin client directly so UI always sees same data as DELETE/clear-data.
  */
-export async function GET() {
+export async function GET(req: Request) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
   const admin = getServerSupabaseInternal();
   if (!admin) {
     return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });

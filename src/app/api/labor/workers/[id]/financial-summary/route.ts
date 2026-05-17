@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternal,
@@ -14,7 +15,10 @@ export const dynamic = "force-dynamic";
  * Total Payments = SUM(worker_payments.total_amount).
  * Balance = Labor + Reimbursements + Invoices - Payments.
  */
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
   const { id: workerId } = await params;
   if (!workerId) {
     return NextResponse.json({ message: "Worker id required" }, { status: 400 });

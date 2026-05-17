@@ -58,20 +58,25 @@ export default function NewLaborInvoiceClient() {
       return;
     }
     setLoading(true);
-    const { data, error: err } = await supabase
-      .from("workers")
-      .select("id,name")
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (err) setError(err.message);
-    else
+    const res = await fetch("/api/labor/workers", { cache: "no-store" });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => null)) as { message?: string } | null;
+      setError(body?.message ?? "Failed to load workers.");
+    } else {
+      const data = (await res.json().catch(() => [])) as Array<{
+        id: string;
+        name?: string;
+        status?: string;
+      }>;
       setWorkers(
-        (data ?? []).map((w) => ({
-          id: (w as { id: string }).id,
-          name: (w as { name: string }).name ?? "",
-        }))
+        data
+          .filter((w) => w.status !== "inactive")
+          .map((w) => ({
+            id: w.id,
+            name: w.name ?? "",
+          }))
       );
+    }
     setLoading(false);
   }, [supabase, configured]);
 

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createBrowserClient } from "@/lib/supabase";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type LaborEntryRow = {
@@ -39,10 +38,6 @@ function safeNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-function isMissingTableError(error: unknown): boolean {
-  return (error as { code?: string } | null)?.code === "42P01";
-}
-
 function rowToEntry(r: LaborEntryRow): LaborEntry {
   return {
     id: r.id,
@@ -68,14 +63,6 @@ export default function LaborReviewClient() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
-
   const halfDayRates = React.useMemo(
     () => new Map(workerOptions.map((w) => [w.id, w.halfDayRate])),
     [workerOptions]
@@ -90,53 +77,28 @@ export default function LaborReviewClient() {
   );
 
   const refresh = React.useCallback(async () => {
-    if (!supabase) {
-      setLoading(false);
-      setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
-      setRows([]);
-      return;
-    }
     setLoading(true);
     setError(null);
 
-    const [entriesRes, workersRes, projectsRes] = await Promise.all([
-      supabase
-        .from("labor_entries")
-        .select("id,worker_id,project_id,work_date,hours,cost_code,notes")
-        .order("work_date", { ascending: false })
-        .limit(500),
-      supabase
-        .from("workers")
-        .select("id,name,half_day_rate")
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("projects")
-        .select("id,name")
-        .order("created_at", { ascending: false })
-        .limit(500),
-    ]);
-
-    if (entriesRes.error) {
-      if (!isMissingTableError(entriesRes.error)) setError(entriesRes.error.message);
+    try {
+      const response = await fetch("/api/labor/entries", { cache: "no-store" });
+      const body = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        entries?: LaborEntryRow[];
+        workers?: WorkerOption[];
+        projects?: ProjectOption[];
+      };
+      if (!response.ok) throw new Error(body.message ?? "Failed to load labor entries.");
+      setWorkerOptions(body.workers ?? []);
+      setProjectOptions(body.projects ?? []);
+      setRows((body.entries ?? []).map(rowToEntry));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load labor entries.");
       setRows([]);
-    } else {
-      const list = (entriesRes.data ?? []) as LaborEntryRow[];
-      const workerOpts: WorkerOption[] = (workersRes.data ?? []).map((w) => {
-        const row = w as { id: string; name: string; half_day_rate?: number | null };
-        return { id: row.id, name: row.name ?? "", halfDayRate: safeNumber(row.half_day_rate) };
-      });
-      setWorkerOptions(workerOpts);
-      const projOpts = (projectsRes.data ?? []) as ProjectOption[];
-      setProjectOptions(projOpts);
-      setRows(list.map(rowToEntry));
+    } finally {
+      setLoading(false);
     }
-    if (workersRes.error && !isMissingTableError(workersRes.error))
-      setError((e) => e ?? workersRes.error?.message ?? null);
-    if (projectsRes.error && !isMissingTableError(projectsRes.error))
-      setError((e) => e ?? projectsRes.error?.message ?? null);
-    setLoading(false);
-  }, [configured, supabase]);
+  }, []);
 
   React.useEffect(() => {
     void refresh();
@@ -166,39 +128,45 @@ export default function LaborReviewClient() {
   };
 
   const handleDelete = async (row: LaborEntry) => {
-    if (!supabase || busy) return;
+    if (busy) return;
     if (!window.confirm("Delete this entry?")) return;
     setBusy(true);
     setError(null);
     if (selected?.id === row.id) setSelected(null);
     const prevRows = rows;
     setRows((r) => r.filter((e) => e.id !== row.id));
-    const { error: delErr } = await supabase.from("labor_entries").delete().eq("id", row.id);
-    if (delErr) {
-      setError(delErr.message);
+    const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(row.id)}`, {
+      method: "DELETE",
+    });
+    const body = (await response.json().catch(() => ({}))) as { message?: string };
+    if (!response.ok) {
+      setError(body.message ?? "Failed to delete labor entry.");
       setRows(prevRows);
     } else setMessage("Entry deleted.");
     setBusy(false);
   };
 
   const handleSaveSelected = async () => {
-    if (!selected || !supabase || busy) return;
+    if (!selected || busy) return;
     setBusy(true);
     setError(null);
     const hourlyRate = getHalfDayRate(selected.workerId) / 4;
-    const payload = {
-      worker_id: selected.workerId,
-      project_id: selected.projectId,
-      work_date: selected.date,
-      hours: selected.hours,
-      cost_code: selected.costCode || null,
-      notes: selected.notes || null,
-      cost_amount: (selected.hours ?? 0) * hourlyRate,
-    };
-    const { error: upsertErr } = await supabase
-      .from("labor_entries")
-      .upsert({ id: selected.id, ...payload }, { onConflict: "id" });
-    if (upsertErr) setError(upsertErr.message);
+    const response = await fetch("/api/labor/entries", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: selected.id,
+        workerId: selected.workerId,
+        projectId: selected.projectId,
+        workDate: selected.date,
+        hours: selected.hours,
+        costCode: selected.costCode,
+        notes: selected.notes,
+        costAmount: (selected.hours ?? 0) * hourlyRate,
+      }),
+    });
+    const body = (await response.json().catch(() => ({}))) as { message?: string };
+    if (!response.ok) setError(body.message ?? "Failed to save labor entry.");
     else {
       setMessage("Changes saved.");
     }

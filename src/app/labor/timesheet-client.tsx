@@ -10,7 +10,6 @@ import { KpiCard } from "@/components/ui/kpi-card";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import type { SearchableSelectOption } from "@/components/ui/searchable-select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createBrowserClient } from "@/lib/supabase";
 import { Users, DollarSign, FileEdit, Copy, Check } from "lucide-react";
 import { ENSURE_LABOR_TABLES_SQL } from "./ensure-labor-tables-sql";
 import { formatCurrency } from "@/lib/formatters";
@@ -76,17 +75,6 @@ function computeTotal(row: DraftRow, halfDayRate: number): number {
   return (Number(row.hours) || 0) * hourlyRate;
 }
 
-function isMissingTableError(error: unknown): boolean {
-  const e = error as { code?: string; message?: string } | null;
-  if (!e) return false;
-  if (e.code === "42P01") return true;
-  const msg = (e.message ?? "").toLowerCase();
-  return (
-    msg.includes("labor_entries") &&
-    (msg.includes("schema cache") || msg.includes("could not find"))
-  );
-}
-
 const workerOptionsToSelect = (workers: WorkerOption[]): SearchableSelectOption[] =>
   workers.map((w) => ({ id: w.id, label: w.name }));
 const projectOptionsToSelect = (projects: ProjectOption[]): SearchableSelectOption[] =>
@@ -104,14 +92,6 @@ export default function TimesheetClient() {
   const [message, setMessage] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
-
   const halfDayRates = React.useMemo(
     () => new Map(workerOptions.map((w) => [w.id, w.halfDayRate])),
     [workerOptions]
@@ -126,53 +106,33 @@ export default function TimesheetClient() {
   );
 
   const refresh = React.useCallback(async () => {
-    if (!supabase) {
-      setLoading(false);
-      setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
-      setRows([]);
-      return;
-    }
     setLoading(true);
     setError(null);
     setMissingLaborTable(false);
-    const [entriesRes, workersRes, projectsRes] = await Promise.all([
-      supabase
-        .from("labor_entries")
-        .select("id,worker_id,project_id,work_date,hours,cost_code,notes")
-        .eq("work_date", date)
-        .order("work_date", { ascending: true }),
-      supabase.from("workers").select("id,name,half_day_rate").order("name").limit(500),
-      supabase.from("projects").select("id,name").order("name").limit(500),
-    ]);
-
-    if (entriesRes.error) {
-      if (isMissingTableError(entriesRes.error)) {
-        setMissingLaborTable(true);
-      } else {
-        setError(entriesRes.error.message);
-      }
+    try {
+      const response = await fetch(`/api/labor/entries?date=${encodeURIComponent(date)}`, {
+        cache: "no-store",
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        missingLaborTable?: boolean;
+        entries?: LaborEntryRow[];
+        workers?: WorkerOption[];
+        projects?: ProjectOption[];
+      };
+      if (!response.ok) throw new Error(body.message ?? "Failed to load labor entries.");
+      setMissingLaborTable(Boolean(body.missingLaborTable));
+      setWorkerOptions(body.workers ?? []);
+      setProjectOptions(body.projects ?? []);
+      const list = body.entries ?? [];
+      setRows(list.length > 0 ? list.map(rowToDraft) : []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load labor entries.");
+      setRows([]);
+    } finally {
+      setLoading(false);
     }
-    if (workersRes.error && !isMissingTableError(workersRes.error))
-      setError((e) => e ?? workersRes.error?.message ?? null);
-    if (projectsRes.error && !isMissingTableError(projectsRes.error))
-      setError((e) => e ?? projectsRes.error?.message ?? null);
-
-    const workerOpts: WorkerOption[] = (workersRes.data ?? []).map((w) => {
-      const row = w as { id: string; name: string; half_day_rate?: number | null };
-      return { id: row.id, name: row.name ?? "", halfDayRate: safeNumber(row.half_day_rate) };
-    });
-    const projOpts: ProjectOption[] = (projectsRes.data ?? []).map((p) => ({
-      id: (p as { id: string }).id,
-      name: (p as { name: string }).name ?? "",
-    }));
-    setWorkerOptions(workerOpts);
-    setProjectOptions(projOpts);
-
-    const list = (entriesRes.data ?? []) as LaborEntryRow[];
-    const drafts = list.length > 0 ? list.map(rowToDraft) : [];
-    setRows(drafts);
-    setLoading(false);
-  }, [date, configured, supabase]);
+  }, [date]);
 
   React.useEffect(() => {
     void refresh();
@@ -213,6 +173,28 @@ export default function TimesheetClient() {
     return null;
   };
 
+  const saveEntryRequest = async (row: DraftRow): Promise<string | null> => {
+    const hourlyRate = (halfDayRates.get(row.workerId) ?? 0) / 4;
+    const payload = {
+      id: row.id,
+      workerId: row.workerId,
+      projectId: row.projectId,
+      workDate: row.date,
+      hours: Number(row.hours) || 0,
+      costCode: row.costCode,
+      notes: row.notes,
+      costAmount: (Number(row.hours) || 0) * hourlyRate,
+    };
+    const response = await fetch("/api/labor/entries", {
+      method: row.id ? "PATCH" : "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const body = (await response.json().catch(() => ({}))) as { id?: string; message?: string };
+    if (!response.ok) throw new Error(body.message ?? "Failed to save labor entry.");
+    return body.id ?? null;
+  };
+
   const saveRow = async (row: DraftRow) => {
     const err = validateRow(row);
     if (err) {
@@ -223,58 +205,41 @@ export default function TimesheetClient() {
       setMessage("Worker, project, and positive hours are required.");
       return;
     }
-    if (!supabase || busy) return;
+    if (busy) return;
     setBusy(true);
     setMessage(null);
-    const hourlyRate = (halfDayRates.get(row.workerId) ?? 0) / 4;
-    const payload = {
-      worker_id: row.workerId,
-      project_id: row.projectId,
-      work_date: row.date,
-      hours: Number(row.hours) || 0,
-      cost_code: row.costCode?.trim() || null,
-      notes: row.notes?.trim() || null,
-      cost_amount: (Number(row.hours) || 0) * hourlyRate,
-    };
-    if (row.id) {
-      const { error: updErr } = await supabase
-        .from("labor_entries")
-        .update(payload)
-        .eq("id", row.id);
-      if (updErr) setError(updErr.message);
-      else setMessage("Entry saved.");
-    } else {
-      const { data: inserted, error: insErr } = await supabase
-        .from("labor_entries")
-        .insert(payload)
-        .select("id")
-        .single();
-      if (insErr) setError(insErr.message);
-      else {
-        setMessage("Entry saved.");
-        if (inserted?.id)
-          setRows((prev) =>
-            prev.map((r) =>
-              r.localId === row.localId ? { ...r, id: inserted.id, localId: inserted.id } : r
-            )
-          );
+    try {
+      const insertedId = await saveEntryRequest(row);
+      setMessage("Entry saved.");
+      if (insertedId) {
+        setRows((prev) =>
+          prev.map((r) =>
+            r.localId === row.localId ? { ...r, id: insertedId, localId: insertedId } : r
+          )
+        );
       }
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save labor entry.");
+    } finally {
+      setBusy(false);
     }
-    await refresh();
-    setBusy(false);
   };
 
   const deleteRow = async (row: DraftRow) => {
-    if (!supabase || busy) return;
+    if (busy) return;
     if (row.id && !window.confirm("Delete this entry?")) return;
     if (row.id) {
       setBusy(true);
       setMessage(null);
       const prevRows = rows;
       setRows((prev) => prev.filter((r) => r.id !== row.id));
-      const { error: delErr } = await supabase.from("labor_entries").delete().eq("id", row.id);
-      if (delErr) {
-        setError(delErr.message);
+      const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(row.id)}`, {
+        method: "DELETE",
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) {
+        setError(body.message ?? "Failed to delete labor entry.");
         setRows(prevRows);
       } else setMessage("Row deleted.");
       setBusy(false);
@@ -295,59 +260,29 @@ export default function TimesheetClient() {
     }
     setBusy(true);
     setMessage(null);
-    for (const row of toSave) {
-      const hourlyRate = (halfDayRates.get(row.workerId) ?? 0) / 4;
-      const payload = {
-        worker_id: row.workerId,
-        project_id: row.projectId,
-        work_date: row.date,
-        hours: Number(row.hours) || 0,
-        cost_code: row.costCode?.trim() || null,
-        notes: row.notes?.trim() || null,
-        cost_amount: (Number(row.hours) || 0) * hourlyRate,
-      };
-      if (row.id && supabase) {
-        await supabase.from("labor_entries").update(payload).eq("id", row.id);
-      } else if (supabase) {
-        const { data: inserted } = await supabase
-          .from("labor_entries")
-          .insert(payload)
-          .select("id")
-          .single();
-        if (inserted?.id)
+    try {
+      for (const row of toSave) {
+        const insertedId = await saveEntryRequest(row);
+        if (insertedId) {
           setRows((prev) =>
             prev.map((r) =>
-              r.localId === row.localId ? { ...r, id: inserted.id, localId: inserted.id } : r
+              r.localId === row.localId ? { ...r, id: insertedId, localId: insertedId } : r
             )
           );
-        await refresh();
+        }
       }
+      setMessage("All entries saved.");
+      await refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save labor entries.");
+    } finally {
+      setBusy(false);
     }
-    setMessage("All entries saved.");
-    await refresh();
-    setBusy(false);
   };
 
   const addWorkerRow = () => {
     setRows((prev) => [...prev, makeEmptyDraft(date)]);
   };
-
-  if (!configured) {
-    return (
-      <div className="page-container page-stack py-6">
-        <PageHeader
-          title="Timesheet Entry"
-          description="Manage daily labor entries by worker and project."
-        />
-        <Card className="rounded-xl border border-gray-100 bg-white p-6">
-          <p className="text-sm text-muted-foreground">
-            Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and
-            NEXT_PUBLIC_SUPABASE_ANON_KEY.
-          </p>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className={cn("min-h-screen", OS.workspace)}>

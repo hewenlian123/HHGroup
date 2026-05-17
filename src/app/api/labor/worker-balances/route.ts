@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
@@ -26,7 +27,10 @@ export type { WorkerBalanceRow };
 /**
  * GET: Worker balances summary (see `fetchWorkerBalances` in `@/lib/worker-balances-list`).
  */
-export async function GET() {
+export async function GET(request: Request) {
+  const guard = await requireAuthenticatedUser(request);
+  if (!guard.ok) return guard.response;
+
   const c = getServerSupabaseInternalNoStore();
   if (!c) {
     return NextResponse.json(
