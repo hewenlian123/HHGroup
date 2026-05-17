@@ -37,7 +37,9 @@ export function LoginForm({
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(() => cleanStatusText(initialError));
-  const [message, setMessage] = React.useState<string | null>(() => cleanStatusText(initialMessage));
+  const [message, setMessage] = React.useState<string | null>(() =>
+    cleanStatusText(initialMessage)
+  );
   const [pending, setPending] = React.useState(false);
   const configured = Boolean(supabaseUrl && anonKey);
 
@@ -79,7 +81,10 @@ export function LoginForm({
         <p className="text-xs font-medium uppercase tracking-[0.14em] text-zinc-500 dark:text-muted-foreground">
           HH Group
         </p>
-        <h1 id="login-title" className="text-xl font-semibold tracking-normal text-zinc-950 dark:text-foreground">
+        <h1
+          id="login-title"
+          className="text-xl font-semibold tracking-normal text-zinc-950 dark:text-foreground"
+        >
           Sign in
         </h1>
         <p className="text-sm leading-6 text-zinc-600 dark:text-muted-foreground">
