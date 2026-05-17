@@ -1,7 +1,7 @@
-# CI: Vitest + Prettier + ESLint (unit tests) + Build + production deploy to Vercel (main only).
+# CI: schema checks + Vitest + Prettier + ESLint + TypeScript + Build.
 # E2E (Playwright) runs locally only — not in this workflow.
-# Secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
 # Optional: vars.NEXT_PUBLIC_SUPABASE_URL, secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY (for next build if needed)
+# Production deploys are handled by the Vercel Git Integration for this repository.
 # Production Supabase migrations are intentionally not applied from this push workflow.
 # Use the "Manual Production Supabase Migration" workflow_dispatch job for DB changes.
 
@@ -62,58 +62,8 @@ jobs:
       - name: ESLint (src/__tests__ only)
         run: npm run lint:ci
 
+      - name: TypeScript
+        run: npm run typecheck
+
       - name: Build Next.js
         run: npm run build
-
-  deploy-vercel:
-    name: Deploy to Vercel (production)
-    needs: ci
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check Vercel deploy secrets
-        id: vercel_secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          ok=true
-          missing=()
-          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then ok=false; missing+=("VERCEL_TOKEN"); fi
-          if [ -z "${{ secrets.VERCEL_ORG_ID }}" ]; then ok=false; missing+=("VERCEL_ORG_ID"); fi
-          if [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]; then ok=false; missing+=("VERCEL_PROJECT_ID"); fi
-          if [ "$ok" != "true" ]; then
-            echo "::notice::Skipping Vercel deploy (missing secrets: ${missing[*]}). Configure repo secrets to enable production deploy."
-            echo "ok=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # Verify the token can access the configured project before attempting deploy.
-          # This avoids hard failures like: {"code":"forbidden","message":"Not authorized","status":403}
-          token="${{ secrets.VERCEL_TOKEN }}"
-          org="${{ secrets.VERCEL_ORG_ID }}"
-          project="${{ secrets.VERCEL_PROJECT_ID }}"
-          url="https://api.vercel.com/v9/projects/${project}?teamId=${org}"
-          code="$(curl -sS -o /tmp/vercel_project_check.json -w "%{http_code}" \
-            -H "Authorization: Bearer ${token}" \
-            -H "Content-Type: application/json" \
-            "${url}" || true)"
-          if [ "$code" != "200" ]; then
-            echo "::notice::Skipping Vercel deploy (project access check HTTP ${code}). Check VERCEL_TOKEN permissions and VERCEL_ORG_ID/VERCEL_PROJECT_ID values."
-            echo "::notice::Vercel response: $(head -c 400 /tmp/vercel_project_check.json || true)"
-            echo "ok=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "ok=true" >> "$GITHUB_OUTPUT"
-
-      - name: Deploy to Vercel
-        if: ${{ steps.vercel_secrets.outputs.ok == 'true' }}
-        uses: amondnet/vercel-action@v42.2.0
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          target: production
