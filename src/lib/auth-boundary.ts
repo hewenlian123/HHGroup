@@ -7,6 +7,7 @@ import {
   hasLocalTestAuthBypass,
   isProductionSafetyLocked,
 } from "@/lib/production-safety";
+import { isValidPinSession } from "@/lib/pin-auth";
 import { getSupabaseUserFromRequest } from "@/lib/supabase-server";
 
 type AuthBoundaryContext = {
@@ -15,6 +16,7 @@ type AuthBoundaryContext = {
   isProductionLocked: boolean;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  hasPinSession: boolean;
   hasInternalAdminAccess: boolean;
   hasLocalTestBypass: boolean;
 };
@@ -57,6 +59,7 @@ export async function getRequestAuthContext(request: Request): Promise<AuthBound
   const hasInternalAdminAccess = hasInternalAdminSecret(request);
   const hasLocalTestBypass = hasLocalTestAuthBypass(request);
   const isProductionLocked = isProductionSafetyLocked(request);
+  const hasPinSession = await isValidPinSession(request);
 
   const user = hasLocalTestBypass
     ? null
@@ -73,7 +76,8 @@ export async function getRequestAuthContext(request: Request): Promise<AuthBound
     isProductionLocked,
     hasInternalAdminAccess,
     hasLocalTestBypass,
-    isAuthenticated: Boolean(user || hasInternalAdminAccess || hasLocalTestBypass),
+    hasPinSession,
+    isAuthenticated: Boolean(user || hasPinSession || hasInternalAdminAccess || hasLocalTestBypass),
     isAdmin: Boolean(hasInternalAdminAccess || hasLocalTestBypass || isAdminUser),
   };
 }

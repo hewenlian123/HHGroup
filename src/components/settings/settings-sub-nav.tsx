@@ -10,6 +10,7 @@ const SETTINGS_CHILD_LABELS: Record<string, string> = {
   company: "Company",
   expenses: "Expenses",
   account: "Account",
+  security: "Security",
   users: "Users",
   permissions: "Permissions",
   categories: "Categories",
@@ -27,6 +28,7 @@ function settingsChildLabel(seg: string): string {
 const NAV_ITEMS = [
   { href: "/settings/company", segment: "company", label: "Company" },
   { href: "/settings/expenses", segment: "expenses", label: "Expenses" },
+  { href: "/settings/security", segment: "security", label: "Security" },
 ] as const;
 
 export function SettingsSubNav() {

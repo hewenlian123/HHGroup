@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isValidPinSession } from "@/lib/pin-auth";
 
 const INTERNAL_ADMIN_SECRET_HEADER = "x-internal-admin-secret";
 const PRODUCTION_SAFETY_LOCK_HEADER = "x-hh-production-safety-lock";
@@ -162,6 +163,10 @@ function loginRedirectResponse(request: NextRequest): NextResponse {
   return NextResponse.redirect(target);
 }
 
+function dashboardRedirectResponse(request: NextRequest): NextResponse {
+  return NextResponse.redirect(new URL("/dashboard", request.url));
+}
+
 async function hasSupabaseSessionUser(
   request: NextRequest,
   response: NextResponse
@@ -199,6 +204,10 @@ async function hasSupabaseSessionUser(
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  if (pathname === "/login" && (await isValidPinSession(request))) {
+    return dashboardRedirectResponse(request);
+  }
+
   if (
     (pathname === "/system-tests" || pathname.startsWith("/system-tests/")) &&
     isProductionSafetyLocked(request) &&
@@ -235,6 +244,11 @@ export async function middleware(request: NextRequest) {
     !hasInternalAdminSecret(request) &&
     !hasLocalTestAuthBypass(request)
   ) {
+    const hasPinSession = await isValidPinSession(request);
+    if (hasPinSession) {
+      return isAdminAppPath(pathname) ? forbiddenAdminPageResponse() : NextResponse.next();
+    }
+
     const response = NextResponse.next();
     const auth = await hasSupabaseSessionUser(request, response);
     if (!auth.authenticated) {

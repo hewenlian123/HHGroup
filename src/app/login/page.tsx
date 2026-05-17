@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { LoginForm } from "./login-form";
 import { normalizeAuthRedirect } from "@/lib/auth-redirect";
+import { isValidPinSession } from "@/lib/pin-auth";
 
 type LoginSearchParams = {
   redirect?: string | string[];
@@ -29,10 +30,21 @@ export default async function LoginPage({
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const params = await resolveLoginSearchParams(searchParams);
   const redirectTo = normalizeAuthRedirect(params.redirect);
+  const cookieStore = cookies();
+
+  const hasPinSession = await isValidPinSession({
+    cookies: {
+      get(name) {
+        return cookieStore.get(name);
+      },
+    },
+  });
+  if (hasPinSession) {
+    redirect(redirectTo);
+  }
 
   if (url && anonKey) {
     // Next.js 14: cookies() is synchronous. (Next.js 15 made it async.)
-    const cookieStore = cookies();
     const supabase = createServerClient(url, anonKey, {
       cookies: {
         getAll() {
@@ -53,11 +65,9 @@ export default async function LoginPage({
     <div className="min-h-dvh bg-zinc-50 px-4 py-8 text-zinc-950 dark:bg-background dark:text-foreground sm:px-6">
       <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-md items-center justify-center">
         <LoginForm
-          anonKey={anonKey ?? null}
           initialMessage={Array.isArray(params.message) ? params.message[0] : params.message}
           initialError={Array.isArray(params.error) ? params.error[0] : params.error}
           redirectTo={redirectTo}
-          supabaseUrl={url ?? null}
         />
       </div>
     </div>
