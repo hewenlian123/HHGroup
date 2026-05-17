@@ -164,7 +164,12 @@ async function createLinkedProject(
   await selectCustomer(page, params.customerName);
   await expect(page.getByPlaceholder("Client or company name")).toHaveValue(params.customerName);
   await page.getByPlaceholder("Luxury Villa E").fill(params.projectName);
-  await page.getByPlaceholder("Project address").fill(params.address);
+  await page.locator("#project-address").click();
+  const addressDialog = page.getByRole("dialog", { name: "Address details" });
+  await expect(addressDialog).toBeVisible({ timeout: 10_000 });
+  await addressDialog.getByLabel("Street address").fill(params.address);
+  await addressDialog.getByRole("button", { name: "Save address" }).click();
+  await expect(addressDialog).toBeHidden({ timeout: 10_000 });
   await page.locator('input[name="budget"]').fill("125000");
   await page.locator('select[name="status"]').selectOption("active");
   await page.getByRole("button", { name: "Create Project" }).click();
