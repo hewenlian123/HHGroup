@@ -75,22 +75,28 @@ const AUTO_REPAIR_DDL: string[] = [
    USING (true)`,
   `DROP POLICY IF EXISTS payment_received_attachments_insert_anon_authenticated
    ON public.payment_received_attachments`,
-  `CREATE POLICY payment_received_attachments_insert_anon_authenticated
+  `DROP POLICY IF EXISTS payment_received_attachments_insert_authenticated
+   ON public.payment_received_attachments`,
+  `CREATE POLICY payment_received_attachments_insert_authenticated
    ON public.payment_received_attachments FOR INSERT
-   TO anon, authenticated
+   TO authenticated
    WITH CHECK (true)`,
   `DROP POLICY IF EXISTS payment_received_attachments_update_anon_authenticated
    ON public.payment_received_attachments`,
-  `CREATE POLICY payment_received_attachments_update_anon_authenticated
+  `DROP POLICY IF EXISTS payment_received_attachments_update_authenticated
+   ON public.payment_received_attachments`,
+  `CREATE POLICY payment_received_attachments_update_authenticated
    ON public.payment_received_attachments FOR UPDATE
-   TO anon, authenticated
+   TO authenticated
    USING (true)
    WITH CHECK (true)`,
   `DROP POLICY IF EXISTS payment_received_attachments_delete_anon_authenticated
    ON public.payment_received_attachments`,
-  `CREATE POLICY payment_received_attachments_delete_anon_authenticated
+  `DROP POLICY IF EXISTS payment_received_attachments_delete_authenticated
+   ON public.payment_received_attachments`,
+  `CREATE POLICY payment_received_attachments_delete_authenticated
    ON public.payment_received_attachments FOR DELETE
-   TO anon, authenticated
+   TO authenticated
    USING (true)`,
   `INSERT INTO storage.buckets (id, name, public)
    VALUES ('payment-attachments', 'payment-attachments', false)
@@ -101,20 +107,23 @@ const AUTO_REPAIR_DDL: string[] = [
    TO anon, authenticated
    USING (bucket_id = 'payment-attachments')`,
   `DROP POLICY IF EXISTS "payment_attachments_insert" ON storage.objects`,
-  `CREATE POLICY "payment_attachments_insert"
+  `DROP POLICY IF EXISTS "payment_attachments_insert_authenticated" ON storage.objects`,
+  `CREATE POLICY "payment_attachments_insert_authenticated"
    ON storage.objects FOR INSERT
-   TO anon, authenticated
+   TO authenticated
    WITH CHECK (bucket_id = 'payment-attachments')`,
   `DROP POLICY IF EXISTS "payment_attachments_update" ON storage.objects`,
-  `CREATE POLICY "payment_attachments_update"
+  `DROP POLICY IF EXISTS "payment_attachments_update_authenticated" ON storage.objects`,
+  `CREATE POLICY "payment_attachments_update_authenticated"
    ON storage.objects FOR UPDATE
-   TO anon, authenticated
+   TO authenticated
    USING (bucket_id = 'payment-attachments')
    WITH CHECK (bucket_id = 'payment-attachments')`,
   `DROP POLICY IF EXISTS "payment_attachments_delete" ON storage.objects`,
-  `CREATE POLICY "payment_attachments_delete"
+  `DROP POLICY IF EXISTS "payment_attachments_delete_authenticated" ON storage.objects`,
+  `CREATE POLICY "payment_attachments_delete_authenticated"
    ON storage.objects FOR DELETE
-   TO anon, authenticated
+   TO authenticated
    USING (bucket_id = 'payment-attachments')`,
   `INSERT INTO public.payment_received_attachments (
   payment_id,
@@ -251,7 +260,7 @@ WHERE ip.id = candidates.invoice_payment_id
   `ALTER TABLE public.worker_receipts ADD COLUMN IF NOT EXISTS vendor text`,
   `ALTER TABLE public.worker_receipts ADD COLUMN IF NOT EXISTS description text`,
   `ALTER TABLE public.worker_receipts ADD COLUMN IF NOT EXISTS receipt_date date`,
-  // Allow inserts without worker_id when only worker_name is provided (public upload)
+  // Allow inserts without worker_id when only worker_name is provided.
   `ALTER TABLE public.worker_receipts ALTER COLUMN worker_id DROP NOT NULL`,
   `CREATE INDEX IF NOT EXISTS idx_worker_receipts_expense_type ON public.worker_receipts (expense_type)`,
 
@@ -265,9 +274,10 @@ WHERE ip.id = candidates.invoice_payment_id
    TO anon, authenticated
    USING (bucket_id = 'worker-receipts')`,
   `DROP POLICY IF EXISTS "worker_receipts_anon_insert" ON storage.objects`,
-  `CREATE POLICY "worker_receipts_anon_insert"
+  `DROP POLICY IF EXISTS "worker_receipts_authenticated_insert" ON storage.objects`,
+  `CREATE POLICY "worker_receipts_authenticated_insert"
    ON storage.objects FOR INSERT
-   TO anon, authenticated
+   TO authenticated
    WITH CHECK (bucket_id = 'worker-receipts')`,
 
   // 8. attachments: table + relax entity_type so Quick Expense can insert entity_type = 'expense'
@@ -313,11 +323,13 @@ WHERE ip.id = candidates.invoice_payment_id
   `ALTER TABLE public.commissions ENABLE ROW LEVEL SECURITY`,
   `ALTER TABLE public.commission_payments ENABLE ROW LEVEL SECURITY`,
   `DROP POLICY IF EXISTS commissions_all_anon ON public.commissions`,
-  `CREATE POLICY commissions_all_anon ON public.commissions
-   FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)`,
+  `DROP POLICY IF EXISTS commissions_all_authenticated ON public.commissions`,
+  `CREATE POLICY commissions_all_authenticated ON public.commissions
+   FOR ALL TO authenticated USING (true) WITH CHECK (true)`,
   `DROP POLICY IF EXISTS commission_payments_all_anon ON public.commission_payments`,
-  `CREATE POLICY commission_payments_all_anon ON public.commission_payments
-   FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)`,
+  `DROP POLICY IF EXISTS commission_payments_all_authenticated ON public.commission_payments`,
+  `CREATE POLICY commission_payments_all_authenticated ON public.commission_payments
+   FOR ALL TO authenticated USING (true) WITH CHECK (true)`,
   `NOTIFY pgrst, 'reload schema'`,
 
   // 9b. Backfill commissions / commission_payments from legacy project_commissions / commission_payment_records
@@ -451,7 +463,9 @@ $$`,
   ON public.bank_transactions (linked_expense_id)
   WHERE linked_expense_id IS NOT NULL`,
   `ALTER TABLE public.bank_transactions ENABLE ROW LEVEL SECURITY`,
-  `GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.bank_transactions TO anon, authenticated, service_role`,
+  `GRANT SELECT ON TABLE public.bank_transactions TO anon`,
+  `GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.bank_transactions TO authenticated, service_role`,
+  `REVOKE INSERT, UPDATE, DELETE ON TABLE public.bank_transactions FROM anon`,
   `DROP POLICY IF EXISTS bank_transactions_select_all ON public.bank_transactions`,
   `DROP POLICY IF EXISTS bank_transactions_insert_all ON public.bank_transactions`,
   `DROP POLICY IF EXISTS bank_transactions_update_all ON public.bank_transactions`,
@@ -460,14 +474,8 @@ $$`,
   `CREATE POLICY bank_transactions_anon_select
   ON public.bank_transactions FOR SELECT TO anon USING (true)`,
   `DROP POLICY IF EXISTS bank_transactions_anon_insert ON public.bank_transactions`,
-  `CREATE POLICY bank_transactions_anon_insert
-  ON public.bank_transactions FOR INSERT TO anon WITH CHECK (true)`,
   `DROP POLICY IF EXISTS bank_transactions_anon_update ON public.bank_transactions`,
-  `CREATE POLICY bank_transactions_anon_update
-  ON public.bank_transactions FOR UPDATE TO anon USING (true) WITH CHECK (true)`,
   `DROP POLICY IF EXISTS bank_transactions_anon_delete ON public.bank_transactions`,
-  `CREATE POLICY bank_transactions_anon_delete
-  ON public.bank_transactions FOR DELETE TO anon USING (true)`,
   `DROP POLICY IF EXISTS bank_transactions_authenticated_select ON public.bank_transactions`,
   `CREATE POLICY bank_transactions_authenticated_select
   ON public.bank_transactions FOR SELECT TO authenticated USING (true)`,
@@ -518,14 +526,17 @@ $$`,
   `CREATE POLICY receipt_queue_select_all
   ON public.receipt_queue FOR SELECT TO anon, authenticated USING (true)`,
   `DROP POLICY IF EXISTS receipt_queue_insert_all ON public.receipt_queue`,
-  `CREATE POLICY receipt_queue_insert_all
-  ON public.receipt_queue FOR INSERT TO anon, authenticated WITH CHECK (true)`,
+  `DROP POLICY IF EXISTS receipt_queue_insert_authenticated ON public.receipt_queue`,
+  `CREATE POLICY receipt_queue_insert_authenticated
+  ON public.receipt_queue FOR INSERT TO authenticated WITH CHECK (true)`,
   `DROP POLICY IF EXISTS receipt_queue_update_all ON public.receipt_queue`,
-  `CREATE POLICY receipt_queue_update_all
-  ON public.receipt_queue FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true)`,
+  `DROP POLICY IF EXISTS receipt_queue_update_authenticated ON public.receipt_queue`,
+  `CREATE POLICY receipt_queue_update_authenticated
+  ON public.receipt_queue FOR UPDATE TO authenticated USING (true) WITH CHECK (true)`,
   `DROP POLICY IF EXISTS receipt_queue_delete_all ON public.receipt_queue`,
-  `CREATE POLICY receipt_queue_delete_all
-  ON public.receipt_queue FOR DELETE TO anon, authenticated USING (true)`,
+  `DROP POLICY IF EXISTS receipt_queue_delete_authenticated ON public.receipt_queue`,
+  `CREATE POLICY receipt_queue_delete_authenticated
+  ON public.receipt_queue FOR DELETE TO authenticated USING (true)`,
   `NOTIFY pgrst, 'reload schema'`,
 
   // 10. commission-receipts bucket (private; app uses signed URLs in receipt_url)
@@ -538,9 +549,10 @@ $$`,
    TO anon, authenticated
    USING (bucket_id = 'commission-receipts')`,
   `DROP POLICY IF EXISTS "commission_receipts_anon_insert" ON storage.objects`,
-  `CREATE POLICY "commission_receipts_anon_insert"
+  `DROP POLICY IF EXISTS "commission_receipts_authenticated_insert" ON storage.objects`,
+  `CREATE POLICY "commission_receipts_authenticated_insert"
    ON storage.objects FOR INSERT
-   TO anon, authenticated
+   TO authenticated
    WITH CHECK (bucket_id = 'commission-receipts')`,
 ];
 
