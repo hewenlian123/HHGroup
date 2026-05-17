@@ -4,6 +4,7 @@ import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternal,
 } from "@/lib/supabase-server";
+import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -73,6 +74,42 @@ export async function GET(request: Request) {
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const { searchParams } = new URL(request.url);
+  const view = searchParams.get("view")?.trim() ?? "";
+  if (view === "joined") {
+    try {
+      const [entries, workersRes, projectsRes] = await Promise.all([
+        getLaborEntriesWithJoins(
+          {
+            date_from: searchParams.get("dateFrom")?.trim() || undefined,
+            date_to: searchParams.get("dateTo")?.trim() || undefined,
+            project_id: searchParams.get("projectId")?.trim() || undefined,
+            worker_id: searchParams.get("workerId")?.trim() || undefined,
+          },
+          supabase
+        ),
+        supabase.from("labor_workers").select("id,name").order("name").limit(1000),
+        supabase.from("projects").select("id,name").order("name").limit(1000),
+      ]);
+      if (workersRes.error && !isMissingTableError(workersRes.error))
+        throw new Error(workersRes.error.message);
+      if (projectsRes.error && !isMissingTableError(projectsRes.error))
+        throw new Error(projectsRes.error.message);
+
+      return NextResponse.json(
+        {
+          ok: true,
+          entries,
+          workers: (workersRes.data ?? []) as Array<{ id: string; name: string }>,
+          projects: (projectsRes.data ?? []) as Array<{ id: string; name: string }>,
+        },
+        { headers: NO_CACHE_HEADERS }
+      );
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to load labor entries.";
+      return apiError(500, message);
+    }
+  }
+
   const date = searchParams.get("date")?.trim() ?? "";
 
   try {

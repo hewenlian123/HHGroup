@@ -12,13 +12,7 @@ import {
   MobileListHeader,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import {
-  clearLaborEntry,
-  getProjects,
-  getLaborEntriesWithJoins,
-  getLaborWorkersList,
-} from "@/lib/data";
-import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
+import { type LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { useRegisterLaborOpenDailyEntry } from "@/contexts/labor-add-entry-context";
@@ -147,6 +141,15 @@ function getCalendarGrid(ym: string): (number | null)[][] {
 
 const MONTH_OPTIONS = buildMonthOptions();
 
+type LaborProjectOption = { id: string; name: string };
+type LaborWorkerOption = { id: string; name: string };
+type LaborEntriesResponse = {
+  message?: string;
+  entries?: LaborEntryWithJoins[];
+  projects?: LaborProjectOption[];
+  workers?: LaborWorkerOption[];
+};
+
 export default function LaborPageClient() {
   const router = useRouter();
   const pathname = usePathname();
@@ -210,8 +213,8 @@ export default function LaborPageClient() {
       // ignore storage errors
     }
   }, [pathname, searchParams]);
-  const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
-  const [workers, setWorkers] = React.useState<{ id: string; name: string }[]>([]);
+  const [projects, setProjects] = React.useState<LaborProjectOption[]>([]);
+  const [workers, setWorkers] = React.useState<LaborWorkerOption[]>([]);
   const [monthEntries, setMonthEntries] = React.useState<LaborEntryWithJoins[]>([]);
   const monthEntriesRef = React.useRef(monthEntries);
   const entriesLoadSeqRef = React.useRef(0);
@@ -245,57 +248,40 @@ export default function LaborPageClient() {
     setEditOpen(true);
   }, []);
 
-  const loadProjects = React.useCallback(async () => {
-    setLoadingProjects(true);
-    try {
-      const p = await getProjects();
-      setProjects(p);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load projects.");
-    } finally {
-      setLoadingProjects(false);
-    }
-  }, []);
-
-  const loadWorkers = React.useCallback(async () => {
-    try {
-      const list = await getLaborWorkersList();
-      setWorkers(list ?? []);
-    } catch {
-      setWorkers([]);
-    }
-  }, []);
-
   const loadMonthEntries = React.useCallback(async () => {
     const seq = entriesLoadSeqRef.current + 1;
     entriesLoadSeqRef.current = seq;
     setLoadingEntries(true);
+    setLoadingProjects(true);
     try {
-      const list = await getLaborEntriesWithJoins({
-        date_from: monthStart,
-        date_to: monthEnd,
-        project_id: projectFilter || undefined,
-        worker_id: workerFilter || undefined,
+      const params = new URLSearchParams({
+        view: "joined",
+        dateFrom: monthStart,
+        dateTo: monthEnd,
       });
+      if (projectFilter) params.set("projectId", projectFilter);
+      if (workerFilter) params.set("workerId", workerFilter);
+      const response = await fetch(`/api/labor/entries?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const body = (await response.json().catch(() => ({}))) as LaborEntriesResponse;
+      if (!response.ok) throw new Error(body.message ?? "Failed to load labor entries.");
       if (entriesLoadSeqRef.current !== seq) return;
-      setMonthEntries(list);
+      setMonthEntries(body.entries ?? []);
+      setProjects(body.projects ?? []);
+      setWorkers(body.workers ?? []);
       setError(null);
     } catch (e) {
       if (entriesLoadSeqRef.current !== seq) return;
       setMonthEntries([]);
       setError(e instanceof Error ? e.message : "Failed to load labor entries.");
     } finally {
-      if (entriesLoadSeqRef.current === seq) setLoadingEntries(false);
+      if (entriesLoadSeqRef.current === seq) {
+        setLoadingEntries(false);
+        setLoadingProjects(false);
+      }
     }
   }, [monthStart, monthEnd, projectFilter, workerFilter]);
-
-  React.useEffect(() => {
-    void loadProjects();
-  }, [loadProjects]);
-
-  React.useEffect(() => {
-    void loadWorkers();
-  }, [loadWorkers]);
 
   React.useEffect(() => {
     void loadMonthEntries();
@@ -305,10 +291,8 @@ export default function LaborPageClient() {
     React.useCallback(() => {
       invalidateDataCache("data:");
       void loadMonthEntries();
-      void loadProjects();
-      void loadWorkers();
-    }, [loadMonthEntries, loadProjects, loadWorkers]),
-    [loadMonthEntries, loadProjects, loadWorkers]
+    }, [loadMonthEntries]),
+    [loadMonthEntries]
   );
 
   const handleSaved = React.useCallback(() => {
@@ -337,7 +321,11 @@ export default function LaborPageClient() {
       setMessage("Entry deleted.");
       setError(null);
       try {
-        await clearLaborEntry(e.id);
+        const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(e.id)}`, {
+          method: "DELETE",
+        });
+        const body = (await response.json().catch(() => ({}))) as { message?: string };
+        if (!response.ok) throw new Error(body.message ?? "Failed to delete.");
         void loadMonthEntries();
       } catch (err) {
         setMonthEntries(snapshot);

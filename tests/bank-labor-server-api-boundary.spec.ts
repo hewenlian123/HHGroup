@@ -56,6 +56,7 @@ test.describe("bank and labor server API boundary", () => {
       "/api/financial/bank-transactions?view=reconcile",
       "/api/labor/entries",
       "/api/labor/payments",
+      "/api/labor/worker-payments",
     ]) {
       const response = await request.get(path, { headers: LOCKED_HEADERS });
       expect(response.status(), `GET ${path}`).toBe(401);
@@ -77,6 +78,7 @@ test.describe("bank and labor server API boundary", () => {
       "/api/financial/bank-transactions?view=reconcile",
       "/api/labor/entries",
       "/api/labor/payments",
+      "/api/labor/worker-payments",
     ]) {
       const response = await context.request.get(path);
       expect(response.status(), `GET ${path}`).toBeLessThan(500);
@@ -105,6 +107,20 @@ test.describe("bank and labor server API boundary", () => {
     await page.goto("/financial/bank");
     await expect(page.getByRole("heading", { name: "Bank Reconcile" })).toBeVisible();
     await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
+
+    await page.route(
+      /\/rest\/v1\/(?:labor_entries|labor_payments|worker_payments)(?:\?|$)/,
+      async (route) => {
+        await route.fulfill({
+          status: 403,
+          contentType: "application/json",
+          body: JSON.stringify({
+            code: "42501",
+            message: "permission denied for table blocked_by_boundary_test",
+          }),
+        });
+      }
+    );
 
     await page.goto("/labor");
     await expect(page.getByRole("heading", { name: "Daily Labor" })).toBeVisible();
