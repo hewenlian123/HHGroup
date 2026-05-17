@@ -90,4 +90,34 @@ test.describe("bank and labor server API boundary", () => {
     expect(wipeResponse.status()).toBe(403);
     await context.close();
   });
+
+  test("PIN session can load bank and labor pages through guarded server APIs", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+    const page = await context.newPage();
+
+    const loginResponse = await context.request.post("/api/auth/pin-login", {
+      data: { pin: "1234" },
+    });
+    expect(loginResponse.status()).toBe(200);
+
+    await page.goto("/financial/bank");
+    await expect(page.getByRole("heading", { name: "Bank Reconcile" })).toBeVisible();
+    await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
+
+    await page.goto("/labor");
+    await expect(page.getByRole("heading", { name: "Daily Labor" })).toBeVisible();
+    await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
+
+    await page.goto("/labor/payments");
+    await expect(page.getByRole("heading", { name: "Worker Payments" })).toBeVisible();
+    await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
+
+    await page.goto("/labor/worker-balances");
+    await expect(page.getByRole("heading", { name: "Worker Balances" })).toBeVisible();
+    await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
+
+    await context.close();
+  });
 });
