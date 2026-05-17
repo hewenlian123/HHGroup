@@ -1,0 +1,101 @@
+name: Manual Production Supabase Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type APPLY_PRODUCTION_SUPABASE_MIGRATIONS to apply migrations to production.
+        required: true
+        type: string
+      repair_renamed_migration_history:
+        description: Run the historical renamed-version migration repair before db push.
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: manual-production-supabase-migration
+  cancel-in-progress: false
+
+jobs:
+  production-supabase-migration:
+    name: Requires manual confirmation
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CONFIRMATION: ${{ inputs.confirmation }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+    steps:
+      - name: Requires manual confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$CONFIRMATION" != "APPLY_PRODUCTION_SUPABASE_MIGRATIONS" ]; then
+            echo "::error::Refusing to run. Re-dispatch with the exact confirmation phrase."
+            exit 1
+          fi
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is required for manual production migrations."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Validate SUPABASE_DB_URL format
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+
+          raw = os.environ.get("SUPABASE_DB_URL", "")
+          if not raw:
+              raise SystemExit("SUPABASE_DB_URL is empty.")
+
+          u = urlsplit(raw)
+          if u.scheme not in ("postgres", "postgresql"):
+              raise SystemExit("SUPABASE_DB_URL must start with postgres:// or postgresql://")
+          if not u.hostname:
+              raise SystemExit("SUPABASE_DB_URL is missing host.")
+          if not u.username:
+              raise SystemExit("SUPABASE_DB_URL is missing username.")
+          if u.password is None or u.password == "":
+              raise SystemExit("SUPABASE_DB_URL is missing password.")
+          if (u.path or "").strip("/") != "postgres":
+              raise SystemExit("SUPABASE_DB_URL path must be /postgres.")
+          if u.query and "sslmode=" not in u.query:
+              raise SystemExit("SUPABASE_DB_URL query should include sslmode=require.")
+          print("SUPABASE_DB_URL format looks valid.")
+          PY
+
+      - name: Inspect migration status before apply
+        run: supabase migration list --db-url "$SUPABASE_DB_URL"
+
+      - name: Repair migration history for renamed versions
+        if: ${{ inputs.repair_renamed_migration_history }}
+        run: |
+          set +e
+          supabase migration repair --status reverted --yes \
+            202603260000 202603290000 202603310000 202604020000 \
+            202604081200 202604081300 202604081400 202604081500 202604081600 \
+            202604111000 202604181000 \
+            202604271401 202604271521 \
+            --db-url "$SUPABASE_DB_URL"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            echo "::notice::migration repair exited $rc. Verify migration status before retrying db push."
+            exit "$rc"
+          fi
+
+      - name: Apply production Supabase migrations (manual only)
+        run: supabase db push --db-url "$SUPABASE_DB_URL"

@@ -2,11 +2,8 @@
 # E2E (Playwright) runs locally only — not in this workflow.
 # Secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID
 # Optional: vars.NEXT_PUBLIC_SUPABASE_URL, secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY (for next build if needed)
-#
-# Production DB migrations (before Vercel):
-#   Set secret SUPABASE_DB_URL = Postgres connection URI (Supabase Dashboard → Project Settings →
-#   Database → URI; use direct connection or session pooler per Supabase docs for migrations).
-#   If unset, the migrate step is skipped and deploy still runs (add the secret to enforce).
+# Production Supabase migrations are intentionally not applied from this push workflow.
+# Use the "Manual Production Supabase Migration" workflow_dispatch job for DB changes.
 
 name: CI
 
@@ -73,48 +70,11 @@ jobs:
     needs: ci
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    env:
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Setup Supabase CLI
-        if: ${{ env.SUPABASE_DB_URL != '' }}
-        uses: supabase/setup-cli@v1
-        with:
-          version: latest
-
-      - name: Validate SUPABASE_DB_URL format
-        if: ${{ env.SUPABASE_DB_URL != '' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import os
-          from urllib.parse import urlsplit
-
-          raw = os.environ.get("SUPABASE_DB_URL", "")
-          if not raw:
-              raise SystemExit("SUPABASE_DB_URL is empty.")
-
-          u = urlsplit(raw)
-          if u.scheme not in ("postgres", "postgresql"):
-              raise SystemExit("SUPABASE_DB_URL must start with postgres:// or postgresql://")
-          if not u.hostname:
-              raise SystemExit("SUPABASE_DB_URL is missing host.")
-          if not u.username:
-              raise SystemExit("SUPABASE_DB_URL is missing username.")
-          if u.password is None or u.password == "":
-              raise SystemExit("SUPABASE_DB_URL is missing password.")
-          if (u.path or "").strip("/") != "postgres":
-              raise SystemExit("SUPABASE_DB_URL path must be /postgres.")
-          if u.query and "sslmode=" not in u.query:
-              raise SystemExit("SUPABASE_DB_URL query should include sslmode=require.")
-          print("SUPABASE_DB_URL format looks valid.")
-          PY
 
       - name: Check Vercel deploy secrets
         id: vercel_secrets
@@ -148,29 +108,6 @@ jobs:
             exit 0
           fi
           echo "ok=true" >> "$GITHUB_OUTPUT"
-
-      # Production may still list migration versions from filenames we renamed for
-      # check-migration-order (e.g. 202604081200 → 202604271510). Those rows must be
-      # cleared before db push or the CLI errors: "Remote migration version … not found in local".
-      - name: Repair migration history (renamed version IDs)
-        if: ${{ env.SUPABASE_DB_URL != '' }}
-        run: |
-          set +e
-          supabase migration repair --status reverted --yes \
-            202603260000 202603290000 202603310000 202604020000 \
-            202604081200 202604081300 202604081400 202604081500 202604081600 \
-            202604111000 202604181000 \
-            202604271401 202604271521 \
-            --db-url "$SUPABASE_DB_URL"
-          rc=$?
-          set -e
-          if [ "$rc" -ne 0 ]; then
-            echo "::notice::migration repair exited $rc (often OK if versions were already reverted or DB is fresh)."
-          fi
-
-      - name: Push Supabase migrations (production)
-        if: ${{ env.SUPABASE_DB_URL != '' }}
-        run: supabase db push --db-url "$SUPABASE_DB_URL"
 
       - name: Deploy to Vercel
         if: ${{ steps.vercel_secrets.outputs.ok == 'true' }}
