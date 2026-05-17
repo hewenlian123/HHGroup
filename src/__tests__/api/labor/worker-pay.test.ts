@@ -49,6 +49,7 @@ vi.mock("@/lib/supabase-server", async (importOriginal) => {
     getServerSupabaseAdmin: () => serverLaborPayMock,
     getServerSupabase: () => serverLaborPayMock,
     getServerSupabaseInternal: () => serverLaborPayMock,
+    getServerSupabaseInternalNoStore: () => serverLaborPayMock,
   };
 });
 
