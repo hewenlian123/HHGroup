@@ -40,13 +40,7 @@ import {
 } from "@/components/mobile/mobile-list-chrome";
 import { FilterBar } from "@/components/filter-bar";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-import {
-  deleteWorkerPayment,
-  getProjects,
-  getWorkerPayments,
-  getLaborWorkersList,
-  type WorkerPayment,
-} from "@/lib/data";
+import type { WorkerPayment } from "@/lib/worker-payments-db";
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
@@ -187,8 +181,8 @@ function PaymentRowActionsMenu({
 }
 
 export default function WorkerPaymentsPage() {
-  const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getLaborWorkersList>>>([]);
-  const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
+  const [workers, setWorkers] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [projects, setProjects] = React.useState<Array<{ id: string; name: string }>>([]);
   const [rows, setRows] = React.useState<WorkerPayment[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -210,14 +204,19 @@ export default function WorkerPaymentsPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const [w, p, list] = await Promise.all([
-        getLaborWorkersList(),
-        getProjects(),
-        getWorkerPayments({ limit: 500 }),
-      ]);
-      setWorkers(w);
-      setProjects(p);
-      setRows(list);
+      const response = await fetch("/api/labor/worker-payments?limit=500", {
+        cache: "no-store",
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        payments?: WorkerPayment[];
+        workers?: Array<{ id: string; name: string }>;
+        projects?: Array<{ id: string; name: string }>;
+      };
+      if (!response.ok) throw new Error(body.message ?? "Failed to load worker payments.");
+      setWorkers(body.workers ?? []);
+      setProjects(body.projects ?? []);
+      setRows(body.payments ?? []);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Failed to load.");
       setRows([]);
@@ -319,7 +318,11 @@ export default function WorkerPaymentsPage() {
       return prev.filter((r) => r.id !== id);
     });
     try {
-      await deleteWorkerPayment(id);
+      const response = await fetch(`/api/labor/worker-payments/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) throw new Error(body.message ?? "Delete failed.");
       dispatchClientDataSync({ reason: "worker-payment-deleted" });
       void load();
     } catch (e) {

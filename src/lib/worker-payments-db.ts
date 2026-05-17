@@ -180,14 +180,16 @@ export async function createWorkerPayment(input: CreateWorkerPaymentInput): Prom
   return createWorkerPaymentWithClient(client(), input);
 }
 
-export async function getWorkerPayments(filters?: {
-  workerId?: string;
-  projectId?: string;
-  fromDate?: string;
-  toDate?: string;
-  limit?: number;
-}): Promise<WorkerPayment[]> {
-  const c = client();
+export async function getWorkerPaymentsWithClient(
+  c: SupabaseClient,
+  filters?: {
+    workerId?: string;
+    projectId?: string;
+    fromDate?: string;
+    toDate?: string;
+    limit?: number;
+  }
+): Promise<WorkerPayment[]> {
   async function runSelect(cols: (typeof WORKER_PAYMENTS_SELECT_VARIANTS)[number]) {
     // Dynamic column lists for schema variants — not representable in generated Supabase types.
     let q = c
@@ -215,6 +217,16 @@ export async function getWorkerPayments(filters?: {
     }
   }
   throw new Error(lastError?.message ?? "Failed to load worker payments.");
+}
+
+export async function getWorkerPayments(filters?: {
+  workerId?: string;
+  projectId?: string;
+  fromDate?: string;
+  toDate?: string;
+  limit?: number;
+}): Promise<WorkerPayment[]> {
+  return getWorkerPaymentsWithClient(client(), filters);
 }
 
 export async function getWorkerPaymentById(id: string): Promise<WorkerPayment | null> {

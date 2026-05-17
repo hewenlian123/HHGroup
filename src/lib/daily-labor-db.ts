@@ -7,6 +7,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type LaborEntryStatus = "Draft" | "Submitted" | "Approved" | "Locked";
 
@@ -62,8 +63,8 @@ export type DailyLaborEntryDraft = {
   notes: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -259,9 +260,10 @@ function normalizeStatus(s: unknown): LaborEntryStatus {
 
 /** Fetch labor_entries with joins. Includes status and audit fields when column exists. */
 export async function getLaborEntriesWithJoins(
-  filters: LaborEntriesFilters = {}
+  filters: LaborEntriesFilters = {},
+  explicitClient?: SupabaseClient
 ): Promise<LaborEntryWithJoins[]> {
-  const c = client();
+  const c = client(explicitClient);
   const statusFilter = filters.status;
   let hasWorkerPaymentIdCol = true;
   type QueryResult = { data: unknown[] | null; error: { message?: string } | null };
