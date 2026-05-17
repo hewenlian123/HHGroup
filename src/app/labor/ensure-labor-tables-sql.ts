@@ -72,7 +72,7 @@ alter table public.labor_entries enable row level security;
 alter table public.labor_payments enable row level security;
 
 drop policy if exists workers_select_all on public.workers;
-create policy workers_select_all on public.workers for select to anon using (true);
+create policy workers_select_all on public.workers for select to authenticated using (true);
 drop policy if exists workers_insert_all on public.workers;
 create policy workers_insert_all on public.workers for insert to authenticated with check (true);
 drop policy if exists workers_update_all on public.workers;
@@ -81,7 +81,7 @@ drop policy if exists workers_delete_all on public.workers;
 create policy workers_delete_all on public.workers for delete to authenticated using (true);
 
 drop policy if exists labor_entries_select_all on public.labor_entries;
-create policy labor_entries_select_all on public.labor_entries for select to anon using (true);
+create policy labor_entries_select_all on public.labor_entries for select to authenticated using (true);
 drop policy if exists labor_entries_insert_all on public.labor_entries;
 create policy labor_entries_insert_all on public.labor_entries for insert to authenticated with check (true);
 drop policy if exists labor_entries_update_all on public.labor_entries;
@@ -90,7 +90,7 @@ drop policy if exists labor_entries_delete_all on public.labor_entries;
 create policy labor_entries_delete_all on public.labor_entries for delete to authenticated using (true);
 
 drop policy if exists labor_payments_select_all on public.labor_payments;
-create policy labor_payments_select_all on public.labor_payments for select to anon using (true);
+create policy labor_payments_select_all on public.labor_payments for select to authenticated using (true);
 drop policy if exists labor_payments_insert_all on public.labor_payments;
 create policy labor_payments_insert_all on public.labor_payments for insert to authenticated with check (true);
 drop policy if exists labor_payments_update_all on public.labor_payments;

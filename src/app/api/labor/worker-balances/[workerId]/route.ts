@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
@@ -25,7 +26,10 @@ function paySelectErrorMissingCol(err: { message?: string } | null): boolean {
  * DELETE: Remove a worker from Worker Balances only when balance is ~$0 and they have
  * no labor_entries and no worker_payments rows (matches list `deletable` flag).
  */
-export async function DELETE(_req: Request, { params }: RouteParams) {
+export async function DELETE(req: Request, { params }: RouteParams) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
   const { workerId } = await params;
   let id = workerId?.trim() ?? "";
   try {

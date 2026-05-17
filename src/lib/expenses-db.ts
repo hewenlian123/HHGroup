@@ -170,6 +170,38 @@ const HINT = "Run supabase/migrations/202602280008_create_expenses.sql";
 /** Batch PostgREST `expense_lines` by header ids (avoids N+1 in `getExpenses`). */
 const EXPENSE_LINES_IN_CHUNK = 120;
 
+function isBrowserRuntime(): boolean {
+  return typeof window !== "undefined";
+}
+
+async function fetchLinkedBankTxIdMapFromServerApi(
+  expenseIds: string[]
+): Promise<Map<string, string>> {
+  const unique = [...new Set(expenseIds.filter(Boolean))];
+  const map = new Map<string, string>();
+  for (let i = 0; i < unique.length; i += EXPENSE_LINES_IN_CHUNK) {
+    const slice = unique.slice(i, i + EXPENSE_LINES_IN_CHUNK);
+    const params = new URLSearchParams({
+      view: "linked-expenses",
+      expenseIds: slice.join(","),
+    });
+    const res = await fetch(`/api/financial/bank-transactions?${params.toString()}`, {
+      cache: "no-store",
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      message?: string;
+      links?: Array<{ expenseId?: string | null; bankTxId?: string | null }>;
+    };
+    if (!res.ok) {
+      throw new Error(body.message ?? "Failed to load linked bank transactions.");
+    }
+    for (const link of body.links ?? []) {
+      if (link.expenseId && link.bankTxId) map.set(link.expenseId, link.bankTxId);
+    }
+  }
+  return map;
+}
+
 async function fetchExpenseLinesGroupedByExpenseId(
   c: SupabaseClient,
   expenseIds: string[]
@@ -199,6 +231,10 @@ async function fetchExpenseLinesGroupedByExpenseId(
 }
 
 async function getLinkedBankTxId(expenseId: string): Promise<string | null> {
+  if (isBrowserRuntime()) {
+    return (await fetchLinkedBankTxIdMapFromServerApi([expenseId])).get(expenseId) ?? null;
+  }
+
   const c = client();
   const { data, error } = await c
     .from("bank_transactions")
@@ -216,6 +252,8 @@ async function fetchLinkedBankTxIdMap(
   c: SupabaseClient,
   expenseIds: string[]
 ): Promise<Map<string, string>> {
+  if (isBrowserRuntime()) return fetchLinkedBankTxIdMapFromServerApi(expenseIds);
+
   const unique = [...new Set(expenseIds.filter(Boolean))];
   const map = new Map<string, string>();
   for (let i = 0; i < unique.length; i += EXPENSE_LINES_IN_CHUNK) {

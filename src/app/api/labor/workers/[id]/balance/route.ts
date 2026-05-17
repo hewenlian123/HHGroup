@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
@@ -55,7 +56,10 @@ type PaymentRow = {
  * Uses a per-request Supabase client with cache: "no-store" so Next.js data cache
  * never serves a stale response between balance checks within the same workflow test.
  */
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
   const { id: workerId } = await params;
   if (!workerId) {
     return NextResponse.json({ message: "Worker id required" }, { status: 400 });

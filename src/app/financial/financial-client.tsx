@@ -15,8 +15,6 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { createBrowserClient } from "@/lib/supabase";
-import { getARSummary } from "@/lib/data";
 import { Banknote, Receipt, CheckCircle, AlertCircle, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
@@ -31,16 +29,6 @@ type BankTx = {
   status: "unmatched" | "reconciled";
 };
 
-function safeNumber(v: unknown): number {
-  const n = typeof v === "number" ? v : Number(v);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function isMissingTableError(error: unknown): boolean {
-  const code = (error as { code?: string } | null)?.code;
-  return code === "42P01";
-}
-
 export function FinancialClient() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -54,86 +42,52 @@ export function FinancialClient() {
   const [totalAR, setTotalAR] = React.useState(0);
   const [overdueAR, setOverdueAR] = React.useState(0);
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
-
   const refresh = React.useCallback(async () => {
-    if (!supabase) {
-      setLoading(false);
-      setError(configured ? "Supabase client unavailable." : "Supabase is not configured.");
-      return;
-    }
     setLoading(true);
     setError(null);
 
-    let reconciledTotal = 0;
-    let expTotal = 0;
-
-    const [bankRes, bankRecentRes, expRes, arSummary] = await Promise.all([
-      supabase.from("bank_transactions").select("amount,status").limit(10000),
-      supabase
-        .from("bank_transactions")
-        .select("id,txn_date,description,amount,status")
-        .eq("status", "unmatched")
-        .order("txn_date", { ascending: false })
-        .limit(8),
-      supabase.from("expenses").select("total").limit(10000),
-      getARSummary(),
-    ]);
-
-    if (bankRes.error) {
-      if (!isMissingTableError(bankRes.error)) setError(bankRes.error.message);
+    try {
+      const response = await fetch("/api/financial/bank-transactions?view=summary", {
+        cache: "no-store",
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        summary?: {
+          bankBalance: number;
+          reconciledBankTotal: number;
+          unreconciledBankTotal: number;
+          systemExpenses: number;
+          cashDifference: number;
+          totalAR: number;
+          overdueAR: number;
+          recentUnreconciled: BankTx[];
+        };
+      };
+      if (!response.ok || !body.summary) {
+        throw new Error(body.message ?? "Failed to load financial summary.");
+      }
+      setBankBalance(body.summary.bankBalance);
+      setReconciledBankTotal(body.summary.reconciledBankTotal);
+      setUnreconciledBankTotal(body.summary.unreconciledBankTotal);
+      setRecentUnreconciled(body.summary.recentUnreconciled);
+      setSystemExpenses(body.summary.systemExpenses);
+      setCashDifference(body.summary.cashDifference);
+      setTotalAR(body.summary.totalAR);
+      setOverdueAR(body.summary.overdueAR);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load financial summary.");
       setBankBalance(0);
       setReconciledBankTotal(0);
       setUnreconciledBankTotal(0);
-    } else {
-      const rows = (bankRes.data ?? []) as Array<{
-        amount: number;
-        status: "unmatched" | "reconciled";
-      }>;
-      const all = rows.reduce((sum, r) => sum + safeNumber(r.amount), 0);
-      reconciledTotal = rows.reduce(
-        (sum, r) => (r.status === "reconciled" ? sum + safeNumber(r.amount) : sum),
-        0
-      );
-      const unrec = rows.reduce(
-        (sum, r) => (r.status === "unmatched" ? sum + safeNumber(r.amount) : sum),
-        0
-      );
-      setBankBalance(all);
-      setReconciledBankTotal(reconciledTotal);
-      setUnreconciledBankTotal(unrec);
-    }
-
-    if (bankRecentRes.error) {
-      if (!isMissingTableError(bankRecentRes.error))
-        setError((prev) => prev ?? bankRecentRes.error.message);
       setRecentUnreconciled([]);
-    } else {
-      setRecentUnreconciled((bankRecentRes.data ?? []) as BankTx[]);
-    }
-
-    if (expRes.error) {
-      if (!isMissingTableError(expRes.error)) setError((prev) => prev ?? expRes.error.message);
       setSystemExpenses(0);
-    } else {
-      expTotal = (expRes.data ?? []).reduce(
-        (sum, r) => sum + safeNumber((r as { total?: number }).total),
-        0
-      );
-      setSystemExpenses(expTotal);
+      setCashDifference(0);
+      setTotalAR(0);
+      setOverdueAR(0);
+    } finally {
+      setLoading(false);
     }
-
-    setTotalAR(arSummary.totalAR);
-    setOverdueAR(arSummary.overdueAR);
-    setCashDifference(reconciledTotal - expTotal);
-    setLoading(false);
-  }, [configured, supabase]);
+  }, []);
 
   React.useEffect(() => {
     void refresh();
@@ -268,12 +222,6 @@ export function FinancialClient() {
           ) : null}
         </div>
       </section>
-
-      {!configured ? (
-        <Card className="p-5">
-          <p className="text-sm text-muted-foreground">Supabase is not configured.</p>
-        </Card>
-      ) : null}
     </div>
   );
 }
