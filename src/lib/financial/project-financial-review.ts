@@ -19,6 +19,27 @@ export type ProjectFinancialReviewInput = {
   suspiciousHugeThreshold?: number;
 };
 
+export type ProjectContractReviewInput = ProjectFinancialReviewInput & {
+  id: string;
+  name?: string | null;
+};
+
+export type ProjectContractReviewSummaryRow = {
+  id: string;
+  name: string;
+  issues: ProjectFinancialReviewIssue[];
+  issueCodes: ProjectFinancialReviewIssueCode[];
+};
+
+export type ProjectContractReviewSummary = {
+  totalProjects: number;
+  readyProjectIds: string[];
+  needsReviewCount: number;
+  needsReviewProjectIds: string[];
+  needsReviewProjects: ProjectContractReviewSummaryRow[];
+  issueCounts: Record<ProjectFinancialReviewIssueCode, number>;
+};
+
 export function toNullableMoney(value: unknown): number | null {
   if (value == null) return null;
   const n = typeof value === "string" ? Number(value.trim()) : Number(value);
@@ -87,4 +108,43 @@ export function getProjectContractReviewIssues(
   }
 
   return issues;
+}
+
+export function getProjectContractReviewSummary(
+  projects: ProjectContractReviewInput[]
+): ProjectContractReviewSummary {
+  const issueCounts: Record<ProjectFinancialReviewIssueCode, number> = {
+    contract_value_missing: 0,
+    contract_value_zero: 0,
+    contract_value_placeholder: 0,
+    contract_value_suspicious_huge: 0,
+    budget_contract_mismatch: 0,
+  };
+  const readyProjectIds: string[] = [];
+  const needsReviewProjects: ProjectContractReviewSummaryRow[] = [];
+
+  for (const project of projects) {
+    const issues = getProjectContractReviewIssues(project);
+    if (issues.length === 0) {
+      readyProjectIds.push(project.id);
+      continue;
+    }
+
+    for (const issue of issues) issueCounts[issue.code] += 1;
+    needsReviewProjects.push({
+      id: project.id,
+      name: project.name?.trim() || "Unnamed project",
+      issues,
+      issueCodes: issues.map((issue) => issue.code),
+    });
+  }
+
+  return {
+    totalProjects: projects.length,
+    readyProjectIds,
+    needsReviewCount: needsReviewProjects.length,
+    needsReviewProjectIds: needsReviewProjects.map((project) => project.id),
+    needsReviewProjects,
+    issueCounts,
+  };
 }

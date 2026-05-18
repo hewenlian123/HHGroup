@@ -1,5 +1,6 @@
 import { DashboardKpiStrip } from "./dashboard-kpi-strip";
 import {
+  emptyDashboardContractReview,
   getApBillsSummaryCached,
   getLaborCostThisWeekCached,
   getOverdueInvoicesCached,
@@ -20,7 +21,11 @@ export async function DashboardKpiSection() {
         getRecentTransactionsCached(24),
       ]);
 
+    const readyProjectIds = new Set(
+      (bundle.contractReview ?? emptyDashboardContractReview).readyProjectIds
+    );
     const negativeMarginCount = bundle.projects.reduce((n, p) => {
+      if (!readyProjectIds.has(p.id)) return n;
       const m = bundle.profitMap.get(p.id)?.margin ?? 0;
       return n + (m < 0 ? 1 : 0);
     }, 0);

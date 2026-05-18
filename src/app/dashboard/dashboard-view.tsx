@@ -4,6 +4,7 @@ import Link from "next/link";
 import { StatusBadge } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import type { RecentTransaction, ProjectRiskOverview } from "@/lib/data";
+import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import type { OverdueInvoiceRow } from "@/lib/invoices-db";
 import { TYPO, OS } from "@/lib/typography";
@@ -37,6 +38,8 @@ type ProjectHealthRow = {
   actual: number;
   profit: number;
   marginPct: number;
+  profitReady: boolean;
+  contractReviewLabel: string | null;
 };
 
 type KpiItem = {
@@ -70,6 +73,7 @@ export interface DashboardViewProps {
   profitPositive: boolean;
   /** Set when primary dashboard queries failed (e.g. Supabase misconfiguration). */
   dataLoadWarning?: string | null;
+  contractReview: ProjectContractReviewSummary;
 }
 
 const shell =
@@ -449,6 +453,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
     budgetUsagePct,
     profitPositive,
     dataLoadWarning,
+    contractReview,
   } = props;
 
   const cashSlice = transactions.slice(0, 24);
@@ -465,7 +470,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
   const overduePreview = overdueInvoices.slice(0, 8);
   const subcontractOutstandingTotal = outstandingSubcontracts.reduce((s, r) => s + r.balance, 0);
   const negativeMarginRows = [...projectHealthRows]
-    .filter((p) => p.marginPct < 0)
+    .filter((p) => p.profitReady && p.marginPct < 0)
     .sort((a, b) => a.marginPct - b.marginPct);
   const projectRowsSnapshot = projectHealthRows.slice(0, 8);
   const operatingPressure = apBillsSummary.overdueAmount + laborCostThisWeek;
@@ -884,6 +889,21 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           description="Budget and earnings posture."
         >
           <div className="px-3 py-3 sm:px-4">
+            {contractReview.needsReviewCount > 0 ? (
+              <div
+                className="mb-3 rounded-sm border border-amber-200/80 bg-amber-50/75 px-3 py-2 text-[12px] leading-relaxed text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100"
+                role="status"
+              >
+                <Link
+                  href="/settings/project-financial-review"
+                  className="font-semibold underline-offset-4 hover:underline"
+                >
+                  Contract value review
+                </Link>
+                : {contractReview.needsReviewCount} projects need contract value review and are
+                excluded from budget and profit totals.
+              </div>
+            ) : null}
             <div className="divide-y divide-slate-900/[0.04] dark:divide-border/45">
               {kpis.map((k) => (
                 <div
@@ -1103,7 +1123,9 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             ) : (
               <div className="divide-y divide-slate-900/[0.04] dark:divide-border/45">
                 {projectRowsSnapshot.map((p) => {
-                  const status = getHealthStatus(p.marginPct);
+                  const status = p.profitReady
+                    ? getHealthStatus(p.marginPct)
+                    : { label: "Review", variant: "warning" as const };
                   const risk = riskByProjectId.get(p.id) ?? "LOW";
                   return (
                     <Link
@@ -1114,7 +1136,11 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                       <div className="min-w-0 flex-1">
                         <p className={cn(TYPO.primaryName, "truncate text-[14px]")}>{p.name}</p>
                         <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] text-zinc-500 tabular-nums dark:text-zinc-400">
-                          <span>{fmtPct(p.marginPct)} margin</span>
+                          <span>
+                            {p.profitReady
+                              ? `${fmtPct(p.marginPct)} margin`
+                              : "Contract value needs review"}
+                          </span>
                           <span className="text-zinc-300 dark:text-zinc-600">·</span>
                           <RiskChip risk={risk} />
                         </div>
@@ -1124,12 +1150,14 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                           className={cn(
                             TYPO.amount,
                             "max-w-[44vw] truncate text-[14px] font-semibold tracking-tight",
-                            p.profit >= 0
+                            p.profitReady && p.profit >= 0
                               ? "text-emerald-800/[0.88] dark:text-emerald-400/72"
-                              : "text-rose-600/[0.88] dark:text-rose-400/72"
+                              : p.profitReady
+                                ? "text-rose-600/[0.88] dark:text-rose-400/72"
+                                : "text-zinc-500 dark:text-zinc-400"
                           )}
                         >
-                          {formatCurrency(p.profit)}
+                          {p.profitReady ? formatCurrency(p.profit) : "Review"}
                         </span>
                         <StatusBadge label={status.label} variant={status.variant} />
                       </div>
@@ -1174,9 +1202,12 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     </tr>
                   ) : (
                     projectRowsSnapshot.map((p) => {
-                      const status = getHealthStatus(p.marginPct);
+                      const status = p.profitReady
+                        ? getHealthStatus(p.marginPct)
+                        : { label: "Review", variant: "warning" as const };
                       const risk = riskByProjectId.get(p.id) ?? "LOW";
-                      const progressPct = p.budget > 0 ? (p.actual / p.budget) * 100 : 0;
+                      const progressPct =
+                        p.profitReady && p.budget > 0 ? (p.actual / p.budget) * 100 : 0;
                       const over = progressPct > 100;
                       return (
                         <tr
@@ -1195,7 +1226,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                             </p>
                           </td>
                           <td className={cn(TYPO.amount, "px-2 py-2.5 text-right text-[13px]")}>
-                            {formatCurrency(p.revenue)}
+                            {p.profitReady ? formatCurrency(p.revenue) : "Review"}
                           </td>
                           <td className={cn(TYPO.amount, "px-2 py-2.5 text-right text-[13px]")}>
                             {formatCurrency(p.actual)}
@@ -1204,15 +1235,17 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                             className={cn(
                               TYPO.amount,
                               "px-2 py-2.5 text-right text-[13px]",
-                              p.profit >= 0
+                              p.profitReady && p.profit >= 0
                                 ? "text-emerald-800/[0.88] dark:text-emerald-400/72"
-                                : "text-rose-600/[0.88] dark:text-rose-400/72"
+                                : p.profitReady
+                                  ? "text-rose-600/[0.88] dark:text-rose-400/72"
+                                  : "text-zinc-500 dark:text-zinc-400"
                             )}
                           >
-                            {formatCurrency(p.profit)}
+                            {p.profitReady ? formatCurrency(p.profit) : "Review"}
                           </td>
                           <td className={cn(TYPO.amount, "px-2 py-2.5 text-right text-[13px]")}>
-                            {fmtPct(p.marginPct)}
+                            {p.profitReady ? fmtPct(p.marginPct) : "Review"}
                           </td>
                           <td className="px-2 py-2.5">
                             <RiskChip risk={risk} />
@@ -1225,7 +1258,9 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                                   over ? OS.dangerAmount : "text-zinc-500 dark:text-zinc-400"
                                 )}
                               >
-                                {Number.isFinite(progressPct) ? fmtPct(progressPct) : "—"}
+                                {p.profitReady && Number.isFinite(progressPct)
+                                  ? fmtPct(progressPct)
+                                  : "Review"}
                               </span>
                               <div className="h-[3px] w-[6.5rem] overflow-hidden rounded-full bg-slate-200/55 ring-1 ring-inset ring-slate-900/[0.04] dark:bg-zinc-800/70 dark:ring-white/[0.04]">
                                 <div
@@ -1233,7 +1268,9 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                                     "h-full rounded-full transition-[width] duration-500 ease-out",
                                     over ? "bg-rose-500/75" : "bg-zinc-700/85 dark:bg-zinc-300/65"
                                   )}
-                                  style={{ width: `${Math.min(100, Math.max(0, progressPct))}%` }}
+                                  style={{
+                                    width: `${p.profitReady ? Math.min(100, Math.max(0, progressPct)) : 0}%`,
+                                  }}
                                 />
                               </div>
                             </div>

@@ -18,6 +18,7 @@ import {
   getFinanceOwnerDashboard,
   type FinanceOwnerProjectRow,
 } from "@/lib/finance-owner-dashboard";
+import { getProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 import { cn } from "@/lib/utils";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { FinanceOwnerCashFlowChart } from "./_components/finance-owner-cash-flow-chart";
@@ -45,6 +46,7 @@ const EMPTY_OWNER_DASHBOARD: Awaited<ReturnType<typeof getFinanceOwnerDashboard>
   cashFlow: [],
   topProjects: [] as FinanceOwnerProjectRow[],
   underwaterProjects: [] as FinanceOwnerProjectRow[],
+  contractReview: getProjectContractReviewSummary([]),
   alerts: {
     overdueInvoiceAmount: 0,
     overdueInvoiceCount: 0,
@@ -415,6 +417,22 @@ export default async function FinanceOwnerDashboardPage() {
     Icon: LucideIcon;
     tone: "rose" | "amber" | "slate";
   }[] = [
+    {
+      key: "contract-values",
+      label: "Contract values",
+      subtitle:
+        data.contractReview.needsReviewCount > 0
+          ? `${fmtCount(data.contractReview.needsReviewCount)} projects need contract value review`
+          : "Contract values are ready for profit display",
+      detailTitle:
+        data.contractReview.needsReviewCount > 0
+          ? `${fmtCount(data.contractReview.needsReviewCount)} projects excluded from profit rankings`
+          : undefined,
+      href: "/settings/project-financial-review",
+      active: data.contractReview.needsReviewCount > 0,
+      Icon: FileWarning,
+      tone: "amber",
+    },
     {
       key: "overdue",
       label: "Overdue invoices",
@@ -795,10 +813,29 @@ export default async function FinanceOwnerDashboardPage() {
 
         {/* Projects — premium list */}
         <section className="space-y-10">
+          {data.contractReview.needsReviewCount > 0 ? (
+            <div
+              className={cn(
+                cardBase,
+                "rounded-xl border-amber-200/80 bg-amber-50/75 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100"
+              )}
+              role="status"
+            >
+              <Link
+                href="/settings/project-financial-review"
+                className="font-semibold underline-offset-4 hover:underline"
+              >
+                Contract value review
+              </Link>
+              : {fmtCount(data.contractReview.needsReviewCount)} projects need contract value review
+              and are excluded from owner profit rankings.
+            </div>
+          ) : null}
           <div>
             <SectionHeader label="Top projects" />
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-              By profit (contract + approved CO vs. labor, expenses, sub bills).
+              By profit (contract + approved CO vs. labor, expenses, sub bills), excluding projects
+              that need contract value review.
             </p>
             <div className={cn("mt-6 min-w-0 md:overflow-x-auto", cardBase, "p-4 sm:p-8")}>
               <OwnerProjectList

@@ -9,6 +9,7 @@ import { DollarSign, FolderKanban, TrendingUp, Wallet } from "lucide-react";
 import type { CanonicalProjectProfit } from "@/lib/profit-engine";
 import { formatCompactCurrency } from "@/lib/formatters";
 import {
+  emptyDashboardContractReview,
   getApBillsSummaryCached,
   getExpensesThisMonthCached,
   getLaborCostThisWeekCached,
@@ -18,6 +19,7 @@ import {
   loadDashboardProjectsBundle,
 } from "./dashboard-bundle";
 import { DashboardView } from "./dashboard-view";
+import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 
 const EMPTY_RISK_OVERVIEW: ProjectRiskOverview = {
   summary: {
@@ -46,6 +48,7 @@ export async function DashboardMainSection({
   let riskOverview: ProjectRiskOverview = EMPTY_RISK_OVERVIEW;
   let projects: Awaited<ReturnType<typeof loadDashboardProjectsBundle>>["projects"] = [];
   let profitMap = new Map<string, CanonicalProjectProfit>();
+  let contractReview: ProjectContractReviewSummary = emptyDashboardContractReview;
   let dataLoadWarning: string | null = null;
 
   try {
@@ -59,6 +62,7 @@ export async function DashboardMainSection({
     stats = bundle.stats;
     projects = bundle.projects;
     profitMap = bundle.profitMap;
+    contractReview = bundle.contractReview;
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[dashboard] primary data load failed", e);
@@ -116,10 +120,14 @@ export async function DashboardMainSection({
 
   const projectHealthRows = projects.map((project) => {
     const canonical = profitMap.get(project.id);
+    const contractReviewRow = contractReview.needsReviewProjects.find(
+      (row) => row.id === project.id
+    );
+    const profitReady = contractReviewRow == null;
     const revenue = canonical?.revenue ?? 0;
     const actual = canonical?.actualCost ?? 0;
-    const profit = canonical?.profit ?? 0;
-    const marginPct = (canonical?.margin ?? 0) * 100;
+    const profit = profitReady ? (canonical?.profit ?? 0) : 0;
+    const marginPct = profitReady ? (canonical?.margin ?? 0) * 100 : 0;
     const budget = project.budget ?? 0;
     return {
       id: project.id,
@@ -129,6 +137,8 @@ export async function DashboardMainSection({
       actual,
       profit,
       marginPct,
+      profitReady,
+      contractReviewLabel: contractReviewRow?.issues[0]?.label ?? null,
     };
   });
   const kpis = [
@@ -228,6 +238,7 @@ export async function DashboardMainSection({
       budgetUsagePct={budgetUsagePct}
       profitPositive={profitPositive}
       dataLoadWarning={dataLoadWarning}
+      contractReview={contractReview}
     />
   );
 }
