@@ -174,12 +174,33 @@ export function ProjectFinancialSnapshotComparisonPanel({ projectId }: { project
           <ComparisonMetric label="New snapshot openAR" value={formatMoney(snapshot.openAR)} />
         </div>
 
+        {diagnostics &&
+        (diagnostics.pendingExpenseCost > 0 ||
+          diagnostics.pendingReimbursementCost > 0 ||
+          diagnostics.committedReimbursementCost > 0) ? (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <ComparisonMetric
+              label="Pending expense review"
+              value={`${formatMoney(diagnostics.pendingExpenseCost)} · ${diagnostics.pendingExpenseCount}`}
+            />
+            <ComparisonMetric
+              label="Pending reimbursement review"
+              value={`${formatMoney(diagnostics.pendingReimbursementCost)} · ${diagnostics.pendingReimbursementCount}`}
+            />
+            <ComparisonMetric
+              label="Committed reimbursements"
+              value={`${formatMoney(diagnostics.committedReimbursementCost)} · ${diagnostics.committedReimbursementCount}`}
+            />
+          </div>
+        ) : null}
+
         {diagnostics ? (
           <p className="text-xs text-muted-foreground">
             Diagnostics: expense lines {diagnostics.expenseLinesLoaded}, header fallbacks{" "}
             {diagnostics.expenseHeaderFallbackCount}, approved change orders{" "}
             {diagnostics.approvedChangeOrdersCount}, reimbursement dedupes{" "}
-            {diagnostics.reimbursementDedupedCount}
+            {diagnostics.reimbursementDedupedCount}, pending review costs{" "}
+            {formatMoney(diagnostics.pendingExpenseCost + diagnostics.pendingReimbursementCost)}
           </p>
         ) : null}
 

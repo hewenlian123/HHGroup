@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   calculateProjectFinancialSnapshot,
+  createEmptyProjectFinancialSnapshotDiagnostics,
   projectExpenseCostStatusDecision,
   type ProjectFinancialAmountRow,
   type ProjectFinancialExpenseLineInput,
@@ -233,21 +234,7 @@ function warning(code: string, message: string, sourceId?: string | null): Proje
 }
 
 function createDiagnostics(): ProjectFinancialSnapshotDiagnostics {
-  return {
-    expenseLinesLoaded: 0,
-    expenseHeaderFallbackCount: 0,
-    excludedExpenseCount: 0,
-    changeOrdersLoaded: 0,
-    approvedChangeOrdersCount: 0,
-    reimbursementDedupedCount: 0,
-    subcontractCashOut: 0,
-    openSubcontractAP: 0,
-    openAP: 0,
-    apCashOut: 0,
-    apBillCount: 0,
-    apDiagnosticsWarnings: [],
-    missingSchemaWarnings: [],
-  };
+  return createEmptyProjectFinancialSnapshotDiagnostics();
 }
 
 function diagnosticsFromWarnings(
@@ -619,16 +606,29 @@ export function mapProjectFinancialRowsToSnapshot(
   const snapshot = calculateProjectFinancialSnapshot(input);
   const allWarnings = [...snapshot.warnings, ...warnings];
   const warningDiagnostics = diagnosticsFromWarnings(allWarnings);
+  const snapshotDiagnostics = snapshot.diagnostics ?? createDiagnostics();
   return {
     ...snapshot,
     warnings: allWarnings,
     diagnostics: {
       ...diagnostics,
+      pendingExpenseCost: snapshotDiagnostics.pendingExpenseCost,
+      pendingExpenseCount: snapshotDiagnostics.pendingExpenseCount,
+      pendingReimbursementCost: snapshotDiagnostics.pendingReimbursementCost,
+      pendingReimbursementCount: snapshotDiagnostics.pendingReimbursementCount,
+      committedReimbursementCost: snapshotDiagnostics.committedReimbursementCost,
+      committedReimbursementCount: snapshotDiagnostics.committedReimbursementCount,
       reimbursementDedupedCount: warningDiagnostics.reimbursementDedupedCount,
       missingSchemaWarnings: [
         ...new Set([
           ...diagnostics.missingSchemaWarnings,
           ...warningDiagnostics.missingSchemaWarnings,
+        ]),
+      ],
+      pendingCostReviewWarnings: [
+        ...new Set([
+          ...diagnostics.pendingCostReviewWarnings,
+          ...snapshotDiagnostics.pendingCostReviewWarnings,
         ]),
       ],
     },

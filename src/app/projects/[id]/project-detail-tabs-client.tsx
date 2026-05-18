@@ -164,6 +164,11 @@ function uniqueSnapshotNotes(warnings: ProjectFinancialWarning[]): string[] {
     ap_bills_not_mapped: "AP/subcontract mapping is not final yet.",
     reimbursement_not_finalized: "Some reimbursements still need final review.",
     expense_status_pending: "Some pending expenses need review before final costing.",
+    expense_status_needs_review: "Some pending expenses need review before final costing.",
+    expense_status_unreviewed: "Some pending expenses need review before final costing.",
+    expense_status_missing: "Some pending expenses need review before final costing.",
+    expense_reimbursement_status_source_scope_required:
+      "Some reimbursement-coded expenses need source review.",
     reimbursement_expense_deduped: "A reimbursement represented as an expense was counted once.",
   };
   const notes = new Set<string>();
@@ -172,6 +177,30 @@ function uniqueSnapshotNotes(warnings: ProjectFinancialWarning[]): string[] {
     if (note) notes.add(note);
   }
   return Array.from(notes);
+}
+
+function pendingDiagnosticsLine(
+  diagnostics: ProjectFinancialSnapshotDiagnostics | null | undefined
+): string | null {
+  if (!diagnostics) return null;
+  const parts: string[] = [];
+  if (diagnostics.pendingExpenseCost > 0 || diagnostics.pendingExpenseCount > 0) {
+    parts.push(
+      `Expenses ${fmtExactMoney(diagnostics.pendingExpenseCost)} (${diagnostics.pendingExpenseCount})`
+    );
+  }
+  if (diagnostics.pendingReimbursementCost > 0 || diagnostics.pendingReimbursementCount > 0) {
+    parts.push(
+      `Reimbursements ${fmtExactMoney(diagnostics.pendingReimbursementCost)} (${diagnostics.pendingReimbursementCount})`
+    );
+  }
+  if (diagnostics.committedReimbursementCost > 0 || diagnostics.committedReimbursementCount > 0) {
+    parts.push(
+      `Committed reimbursements ${fmtExactMoney(diagnostics.committedReimbursementCost)} (${diagnostics.committedReimbursementCount})`
+    );
+  }
+  if (parts.length === 0) return null;
+  return `Pending review costs not included: ${parts.join(" · ")}.`;
 }
 
 function SnapshotMetricCard({
@@ -452,7 +481,10 @@ export function ProjectDetailTabsClient({
   const snapshotComparison = snapshotState.status === "ready" ? snapshotState.comparison : null;
   const snapshotWarnings =
     snapshotComparison?.warnings ?? snapshotComparison?.newSnapshot.warnings ?? [];
+  const snapshotDiagnostics =
+    snapshotComparison?.diagnostics ?? snapshotComparison?.newSnapshot.diagnostics ?? null;
   const snapshotNotes = uniqueSnapshotNotes(snapshotWarnings);
+  const pendingCostReviewNote = pendingDiagnosticsLine(snapshotDiagnostics);
   const fallbackCostSummary: SnapshotCostSummary = React.useMemo(
     () => ({
       actualCost: projectCost.breakdown.totalCost,
@@ -1259,6 +1291,12 @@ export function ProjectDetailTabsClient({
                         </li>
                       ))}
                     </ul>
+                  ) : null}
+                  {pendingCostReviewNote ? (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                      <span className="font-medium">Pending review costs are not included.</span>{" "}
+                      {pendingCostReviewNote}
+                    </p>
                   ) : null}
                 </div>
               </div>
