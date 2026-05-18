@@ -110,6 +110,14 @@ test.describe("system owner access", () => {
       expect(response?.status(), path).toBeLessThan(400);
       await expect(page).not.toHaveURL(/\/login/);
       await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+      if (path === "/system-health") {
+        await expect(page.getByText("Required tables")).toBeVisible();
+        await expect(page.getByText("Optional tables")).toBeVisible();
+        await expect(page.getByText("Storage buckets")).toBeVisible();
+        await expect(page.getByText("Company profile status")).toBeVisible();
+        await expect(page.getByText("PIN status")).toBeVisible();
+        await expect(page.getByText("AP bills schema status")).toBeVisible();
+      }
     }
 
     await context.close();
@@ -148,6 +156,24 @@ test.describe("system owner access", () => {
       expect(response.status(), `owner ${path}`).not.toBe(403);
       await expectNoSecrets(await response.text());
     }
+
+    const health = await context.request.get("/api/system-health");
+    const healthBody = (await health.json()) as {
+      summary?: {
+        requiredTables?: unknown[];
+        optionalTables?: unknown[];
+        storageBuckets?: unknown[];
+        companyProfile?: unknown;
+        pin?: unknown;
+        apBills?: unknown[];
+      };
+    };
+    expect(healthBody.summary?.requiredTables?.length ?? 0).toBeGreaterThan(0);
+    expect(healthBody.summary?.optionalTables?.length ?? 0).toBeGreaterThan(0);
+    expect(healthBody.summary?.storageBuckets?.length ?? 0).toBeGreaterThan(0);
+    expect(healthBody.summary?.companyProfile).toBeTruthy();
+    expect(healthBody.summary?.pin).toBeTruthy();
+    expect(healthBody.summary?.apBills?.length ?? 0).toBeGreaterThan(0);
 
     await context.close();
   });

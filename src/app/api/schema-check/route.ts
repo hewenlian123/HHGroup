@@ -148,7 +148,7 @@ export async function GET(request: Request) {
           missing.push(toKey({ table, column }));
         }
       } else {
-        const { error } = await server.from(table).select("id").limit(1).maybeSingle();
+        const { error } = await server.from(table).select("*").limit(1).maybeSingle();
         const code = (error as { code?: string } | null)?.code;
         const msg = (error as { message?: string } | null)?.message ?? "";
         if (
