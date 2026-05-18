@@ -7,6 +7,16 @@ export type ProjectFinancialWarning = {
   sourceId?: string;
 };
 
+export type ProjectFinancialSnapshotDiagnostics = {
+  expenseLinesLoaded: number;
+  expenseHeaderFallbackCount: number;
+  excludedExpenseCount: number;
+  changeOrdersLoaded: number;
+  approvedChangeOrdersCount: number;
+  reimbursementDedupedCount: number;
+  missingSchemaWarnings: string[];
+};
+
 export type ProjectFinancialAmountRow = {
   id?: string | null;
   amount?: number | string | null;
@@ -83,6 +93,7 @@ export type ProjectFinancialSnapshot = {
   cashOut: number;
   cashPosition: number;
   warnings: ProjectFinancialWarning[];
+  diagnostics?: ProjectFinancialSnapshotDiagnostics;
 };
 
 const INCLUDED_PROJECT_EXPENSE_COST_STATUSES = new Set([
