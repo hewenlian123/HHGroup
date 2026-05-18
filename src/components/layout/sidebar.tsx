@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
@@ -45,6 +45,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { readStoredExpenseSort } from "@/lib/expense-list-sort-storage";
 import { countExpensesMatchingInboxPool } from "@/lib/expense-workflow-status";
 import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
+import { OWNER_NAV_PREFETCH_ROUTES, prefetchRoutes, runWhenIdle } from "@/lib/route-prefetch";
 import { companyProfileQueryKey, fetchCompanyProfileForNav } from "@/lib/queries/companyProfile";
 import {
   buildExpensesQueryKey,
@@ -161,13 +162,12 @@ function useReceiptQueueCountAnimKey(count: number) {
   return animKey;
 }
 
-function financialNavPrefetchProps(
+function navIntentPrefetchProps(
   href: string,
   run: (h: string) => void
-): { onPointerEnter?: () => void; onPointerDown?: () => void } {
-  if (href !== "/financial/expenses" && href !== "/financial/inbox") return {};
+): { onFocus: () => void; onPointerDown: () => void; onPointerEnter: () => void } {
   const prefetch = () => run(href);
-  return { onPointerEnter: prefetch, onPointerDown: prefetch };
+  return { onFocus: prefetch, onPointerDown: prefetch, onPointerEnter: prefetch };
 }
 
 export function Sidebar({
@@ -182,7 +182,9 @@ export function Sidebar({
   onToggleCollapsed?: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const queryClient = useQueryClient();
+  const prefetchedNavRoutesRef = React.useRef<Set<string>>(new Set());
   const prefetchSupabase = React.useMemo(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -191,6 +193,20 @@ export function Sidebar({
   const prefetchFinancialNav = React.useCallback(
     (href: string) => prefetchFinancialRoute(queryClient, prefetchSupabase, href),
     [queryClient, prefetchSupabase]
+  );
+  const prefetchNavRoute = React.useCallback(
+    (href: string) => {
+      if (!prefetchedNavRoutesRef.current.has(href)) {
+        prefetchedNavRoutesRef.current.add(href);
+        try {
+          router.prefetch(href);
+        } catch {
+          // Best-effort route warming only.
+        }
+      }
+      prefetchFinancialNav(href);
+    },
+    [prefetchFinancialNav, router]
   );
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>(() => ({}));
   const { data: companyProfile } = useQuery({
@@ -215,6 +231,16 @@ export function Sidebar({
   });
   const expenseInboxPoolAnimKey = useReceiptQueueCountAnimKey(expenseInboxPoolCount);
   const sectionsInitDone = React.useRef(false);
+
+  React.useEffect(() => {
+    return runWhenIdle(() => {
+      for (const href of OWNER_NAV_PREFETCH_ROUTES) {
+        prefetchedNavRoutesRef.current.add(href);
+      }
+      prefetchRoutes(router, OWNER_NAV_PREFETCH_ROUTES);
+    }, 2500);
+  }, [router]);
+
   const activeSectionKey = React.useMemo(() => {
     for (const section of sections) {
       if (
@@ -366,6 +392,7 @@ export function Sidebar({
           <Link
             href="/dashboard"
             onClick={onNavigate}
+            {...navIntentPrefetchProps("/dashboard", prefetchNavRoute)}
             title={collapsed ? "Dashboard" : undefined}
             aria-label={collapsed ? "Dashboard" : undefined}
             className={navRowClass(isActive("/dashboard"))}
@@ -406,7 +433,7 @@ export function Sidebar({
                           key={item.href}
                           href={item.href}
                           onClick={onNavigate}
-                          {...financialNavPrefetchProps(item.href, prefetchFinancialNav)}
+                          {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
                           title={navLabel}
                           aria-label={navLabel}
                           className={navRowClass(active)}
@@ -434,7 +461,7 @@ export function Sidebar({
                         key={item.href}
                         href={item.href}
                         onClick={onNavigate}
-                        {...financialNavPrefetchProps(item.href, prefetchFinancialNav)}
+                        {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
                         title={navLabel}
                         aria-label={navLabel}
                         className={navRowClass(active)}
@@ -493,7 +520,7 @@ export function Sidebar({
                               key={item.href}
                               href={item.href}
                               onClick={onNavigate}
-                              {...financialNavPrefetchProps(item.href, prefetchFinancialNav)}
+                              {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
                               title={collapsed ? navLabel : undefined}
                               aria-label={collapsed ? navLabel : undefined}
                               className={navRowClass(active)}
@@ -516,7 +543,7 @@ export function Sidebar({
                             key={item.href}
                             href={item.href}
                             onClick={onNavigate}
-                            {...financialNavPrefetchProps(item.href, prefetchFinancialNav)}
+                            {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
                             title={collapsed ? navLabel : undefined}
                             aria-label={collapsed ? navLabel : undefined}
                             className={navRowClass(active)}
@@ -543,6 +570,7 @@ export function Sidebar({
                   key={item.href}
                   href={item.href}
                   onClick={onNavigate}
+                  {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
                   title={collapsed ? item.label : undefined}
                   aria-label={collapsed ? item.label : undefined}
                   className={navRowClass(active)}

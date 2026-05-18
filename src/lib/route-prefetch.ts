@@ -20,6 +20,23 @@ export const QUICK_ACTION_ROUTES = [
   "/labor",
 ] as const;
 
+export const OWNER_NAV_PREFETCH_ROUTES = [
+  "/dashboard",
+  "/projects",
+  "/financial",
+  "/financial/inbox",
+  "/financial/expenses",
+  "/financial/invoices",
+  "/financial/bank",
+  "/financial/owner",
+  "/labor",
+  "/labor/payments",
+  "/labor/worker-balances",
+  "/labor/payroll",
+  "/settings",
+  "/system-health",
+] as const;
+
 export type AppRouterLike = { prefetch: (href: string) => void };
 
 export function prefetchRoutes(router: AppRouterLike, hrefs: readonly string[]): void {
