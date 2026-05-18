@@ -5,6 +5,7 @@
  * labor_entries schema: id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 const LABOR_ENTRIES_COLS = "id, worker_id, project_id, work_date, hours, cost_code, notes" as const;
@@ -181,8 +182,8 @@ type LaborPaymentRow = {
   created_at: string;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -277,8 +278,8 @@ function toLaborPayment(r: LaborPaymentRow): LaborPayment {
   };
 }
 
-export async function getWorkers(): Promise<Worker[]> {
-  const c = client();
+export async function getWorkers(explicitClient?: SupabaseClient): Promise<Worker[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c.from("workers").select("*").order("name");
   if (error) {
     if (isMissingTable(error))
@@ -871,8 +872,8 @@ async function nextLaborInvoiceNo(): Promise<string> {
   return `LI-${String(maxSeq + 1).padStart(4, "0")}`;
 }
 
-export async function getLaborInvoices(): Promise<LaborInvoice[]> {
-  const c = client();
+export async function getLaborInvoices(explicitClient?: SupabaseClient): Promise<LaborInvoice[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("labor_invoices")
     .select("*")

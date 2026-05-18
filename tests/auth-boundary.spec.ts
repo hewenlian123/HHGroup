@@ -53,6 +53,14 @@ test.describe("auth and admin boundary", () => {
     await expect(
       (await request.get("/api/system-metrics", { headers: LOCKED_HEADERS })).status()
     ).toBe(403);
+    await expect(
+      (
+        await request.post("/api/settings/company-profile", {
+          headers: LOCKED_HEADERS,
+          data: { org_name: "Blocked E2E production mutation" },
+        })
+      ).status()
+    ).toBe(401);
   });
 
   test("non-production test admin bypass can reach guarded maintenance reads", async ({

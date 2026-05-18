@@ -18,3 +18,20 @@ export function assertE2ESupabaseUrlSafeForMutations(url: string | undefined | n
     );
   }
 }
+
+/**
+ * Blocks browser-driven E2E mutations against production app hosts. This matters for singleton
+ * resources such as company_profile where UI tests can mutate the server-side production DB even
+ * when the local test runner's Supabase env points somewhere safe.
+ */
+export function assertE2EBaseUrlSafeForMutations(url: string | undefined | null): void {
+  if (process.env.E2E_ALLOW_PRODUCTION_APP_MUTATIONS === "1") return;
+  const u = (url ?? "").trim().toLowerCase();
+  if (!u) return;
+  if (u.includes("hhprojectgroup.com")) {
+    throw new Error(
+      "[E2E] Refusing browser mutations against hhprojectgroup.com. " +
+        "Use local app URL for E2E mutations, or set E2E_ALLOW_PRODUCTION_APP_MUTATIONS=1 only for an intentional protected staging run."
+    );
+  }
+}

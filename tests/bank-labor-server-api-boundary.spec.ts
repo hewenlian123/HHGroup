@@ -57,6 +57,7 @@ test.describe("bank and labor server API boundary", () => {
       "/api/labor/entries",
       "/api/labor/payments",
       "/api/labor/worker-payments",
+      "/api/labor/payroll-summary?fromDate=2026-05-01&toDate=2026-05-31",
     ]) {
       const response = await request.get(path, { headers: LOCKED_HEADERS });
       expect(response.status(), `GET ${path}`).toBe(401);
@@ -79,6 +80,7 @@ test.describe("bank and labor server API boundary", () => {
       "/api/labor/entries",
       "/api/labor/payments",
       "/api/labor/worker-payments",
+      "/api/labor/payroll-summary?fromDate=2026-05-01&toDate=2026-05-31",
     ]) {
       const response = await context.request.get(path);
       expect(response.status(), `GET ${path}`).toBeLessThan(500);
@@ -133,6 +135,26 @@ test.describe("bank and labor server API boundary", () => {
     await page.goto("/labor/worker-balances");
     await expect(page.getByRole("heading", { name: "Worker Balances" })).toBeVisible();
     await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
+
+    await page.route(
+      /\/rest\/v1\/(?:worker_reimbursements|worker_advances)(?:\?|$)/,
+      async (route) => {
+        await route.fulfill({
+          status: 403,
+          contentType: "application/json",
+          body: JSON.stringify({
+            code: "42501",
+            message: "permission denied for table blocked_by_boundary_test",
+          }),
+        });
+      }
+    );
+
+    await page.goto("/labor/payroll");
+    await expect(page.getByRole("heading", { name: "Payroll Summary" })).toBeVisible();
+    await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
+    await expect(page.getByText("Total Earned")).toBeVisible();
+    await expect(page.locator("table tbody tr").first()).toBeVisible({ timeout: 30_000 });
 
     await context.close();
   });

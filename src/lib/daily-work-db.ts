@@ -3,6 +3,7 @@
  * Day type: full_day, half_day, absent. Pay = day pay + OT.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type DayType = "full_day" | "half_day" | "absent";
@@ -28,8 +29,8 @@ export type DailyWorkEntryDraft = {
   notes?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -114,9 +115,10 @@ export async function getDailyWorkEntriesByDateAndProject(
 
 export async function getDailyWorkEntriesInRange(
   fromDate: string,
-  toDate: string
+  toDate: string,
+  explicitClient?: SupabaseClient
 ): Promise<DailyWorkEntry[]> {
-  const { data, error } = await client()
+  const { data, error } = await client(explicitClient)
     .from("daily_work_entries")
     .select(COLS)
     .gte("work_date", fromDate)

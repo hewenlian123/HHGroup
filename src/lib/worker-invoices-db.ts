@@ -3,6 +3,7 @@
  * Schema: id, worker_id, project_id, amount, invoice_file, status, created_at.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type WorkerInvoiceStatus = "unpaid" | "paid";
@@ -25,8 +26,8 @@ export type WorkerInvoiceDraft = {
   status?: WorkerInvoiceStatus;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -64,8 +65,8 @@ function isInvoiceInsertFallback(err: { message?: string } | null | undefined): 
   );
 }
 
-export async function getWorkerInvoices(): Promise<WorkerInvoice[]> {
-  const { data, error } = await client()
+export async function getWorkerInvoices(explicitClient?: SupabaseClient): Promise<WorkerInvoice[]> {
+  const { data, error } = await client(explicitClient)
     .from("worker_invoices")
     .select(COLS)
     .order("created_at", { ascending: false });
