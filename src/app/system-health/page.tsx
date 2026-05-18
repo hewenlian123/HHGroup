@@ -100,6 +100,89 @@ type SystemQaResult = {
   sections: SystemQaSection[];
 };
 
+type PartialSystemQaCheck = Partial<SystemQaCheck>;
+type PartialSystemQaSection = Partial<Omit<SystemQaSection, "checks">> & {
+  checks?: PartialSystemQaCheck[];
+};
+type PartialSystemQaResult = Partial<Omit<SystemQaResult, "summary" | "sections">> & {
+  summary?: Partial<SystemQaResult["summary"]>;
+  sections?: PartialSystemQaSection[];
+};
+
+const DEFAULT_QA_SUMMARY: SystemQaResult["summary"] = {
+  status: "pass",
+  critical: 0,
+  warning: 0,
+  pass: 0,
+  total: 0,
+};
+
+function safeNumber(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function safeString(value: unknown, fallback: string): string {
+  return typeof value === "string" && value.trim().length > 0 ? value : fallback;
+}
+
+function normalizeQaStatus(value: unknown): SystemQaStatus {
+  return value === "pass" || value === "warning" || value === "critical" ? value : "warning";
+}
+
+function normalizeQaResult(value: PartialSystemQaResult): SystemQaResult {
+  const summary = value.summary ?? {};
+  const critical = safeNumber(summary.critical);
+  const warning = safeNumber(summary.warning);
+  const pass = safeNumber(summary.pass);
+  const total = safeNumber(summary.total);
+  const status =
+    summary.status === "pass" || summary.status === "warning" || summary.status === "critical"
+      ? summary.status
+      : critical > 0
+        ? "critical"
+        : warning > 0
+          ? "warning"
+          : "pass";
+
+  return {
+    ok: value.ok ?? false,
+    checkedAt: safeString(value.checkedAt, new Date().toISOString()),
+    mode: value.mode === "local-safe" ? "local-safe" : "production-safe",
+    summary: {
+      status,
+      critical,
+      warning,
+      pass,
+      total,
+    },
+    sections: Array.isArray(value.sections)
+      ? value.sections.map((section, index) => ({
+          id: safeString(section.id, `section-${index}`),
+          name: safeString(section.name, "QA section"),
+          status: normalizeQaStatus(section.status),
+          checks: Array.isArray(section.checks)
+            ? section.checks.map((check, checkIndex) => ({
+                id: safeString(check.id, `check-${index}-${checkIndex}`),
+                name: safeString(check.name, "QA check"),
+                status: normalizeQaStatus(check.status),
+                type: safeString(check.type, "system"),
+                page: typeof check.page === "string" ? check.page : undefined,
+                message: safeString(check.message, "No detail provided."),
+                recommendedAction:
+                  typeof check.recommendedAction === "string" ? check.recommendedAction : undefined,
+                diagnosticCode:
+                  typeof check.diagnosticCode === "string" ? check.diagnosticCode : undefined,
+              }))
+            : [],
+        }))
+      : [],
+  };
+}
+
+function integrityCount(check?: { count?: unknown } | null): number {
+  return safeNumber(check?.count);
+}
+
 function StatusDot({ ok }: { ok: boolean }) {
   return (
     <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-[#166534]" : "bg-red-500"}`} />
@@ -252,6 +335,9 @@ function SystemQaPanel({
   error: string | null;
   onRun: () => void;
 }) {
+  const summary = qa?.summary ?? DEFAULT_QA_SUMMARY;
+  const sections = Array.isArray(qa?.sections) ? qa.sections : [];
+
   return (
     <div className="rounded-sm border border-border/70 bg-card p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -282,7 +368,7 @@ function SystemQaPanel({
         <div className="mt-4 space-y-5">
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <span className="flex items-center gap-2 font-medium">
-              Overall: <QaStatusLabel status={qa.summary.status} />
+              Overall: <QaStatusLabel status={summary.status} />
             </span>
             <span className="text-xs text-muted-foreground">
               Mode: {qa.mode === "production-safe" ? "Production safe" : "Local safe"} · Checked{" "}
@@ -294,12 +380,12 @@ function SystemQaPanel({
             </span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <QaSummaryCard label="Critical" value={qa.summary.critical} />
-            <QaSummaryCard label="Warnings" value={qa.summary.warning} />
-            <QaSummaryCard label="Passed" value={qa.summary.pass} />
-            <QaSummaryCard label="Total checks" value={qa.summary.total} />
+            <QaSummaryCard label="Critical" value={summary.critical} />
+            <QaSummaryCard label="Warnings" value={summary.warning} />
+            <QaSummaryCard label="Passed" value={summary.pass} />
+            <QaSummaryCard label="Total checks" value={summary.total} />
           </div>
-          {qa.sections.map((section) => (
+          {sections.map((section) => (
             <SystemQaSectionTable key={section.id} section={section} />
           ))}
         </div>
@@ -453,11 +539,11 @@ export default function SystemHealthPage() {
     setQaError(null);
     try {
       const res = await fetch("/api/system/qa-check", { cache: "no-store" });
-      const data = (await res.json()) as SystemQaResult | { message?: string };
+      const data = (await res.json()) as PartialSystemQaResult | { message?: string };
       if (!res.ok) {
         throw new Error("message" in data && data.message ? data.message : "System QA failed.");
       }
-      setQa(data as SystemQaResult);
+      setQa(normalizeQaResult(data as PartialSystemQaResult));
     } catch (e) {
       setQaError(e instanceof Error ? e.message : "Failed to run System QA");
       setQa(null);
@@ -535,6 +621,13 @@ export default function SystemHealthPage() {
   const apBillNames = new Set(summary?.apBills.map((check) => check.name) ?? []);
   const optionalWithoutAp =
     summary?.optionalTables.filter((check) => !apBillNames.has(check.name)) ?? undefined;
+  const orphanedTaskCount = integrityCount(integrity?.orphanedTasks);
+  const ghostTaskCount = integrityCount(integrity?.ghostTasks);
+  const duplicateTaskCount = integrityCount(integrity?.duplicateTasks);
+  const overdueNotCompletedCount = integrityCount(integrity?.overdueNotCompleted);
+  const staleTaskCount = integrityCount(integrity?.staleTestData?.tasks);
+  const staleProjectCount = integrityCount(integrity?.staleTestData?.projects);
+  const staleTestDataCount = staleTaskCount + staleProjectCount;
 
   return (
     <div className="page-container page-stack py-6">
@@ -760,14 +853,12 @@ export default function SystemHealthPage() {
                   <tr className={listTableRowStaticClassName}>
                     <td className="py-2.5 pr-6 font-medium">Orphaned tasks</td>
                     <td className="py-2.5 pr-6">
-                      <StatusLabel ok={!(integrity?.orphanedTasks.count ?? 0)} />
+                      <StatusLabel ok={orphanedTaskCount === 0} />
                     </td>
                     <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                      {(integrity?.orphanedTasks.count ?? 0) > 0 ? (
+                      {orphanedTaskCount > 0 ? (
                         <>
-                          <span>
-                            {integrity?.orphanedTasks.count ?? 0} task(s) with missing project
-                          </span>
+                          <span>{orphanedTaskCount} task(s) with missing project</span>
                           <Button
                             size="sm"
                             variant="outline"
@@ -786,12 +877,12 @@ export default function SystemHealthPage() {
                   <tr className={listTableRowStaticClassName}>
                     <td className="py-2.5 pr-6 font-medium">Ghost tasks</td>
                     <td className="py-2.5 pr-6">
-                      <StatusLabel ok={!(integrity?.ghostTasks.count ?? 0)} />
+                      <StatusLabel ok={ghostTaskCount === 0} />
                     </td>
                     <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                      {(integrity?.ghostTasks.count ?? 0) > 0 ? (
+                      {ghostTaskCount > 0 ? (
                         <>
-                          <span>{integrity?.ghostTasks.count ?? 0} task(s) with no title</span>
+                          <span>{ghostTaskCount} task(s) with no title</span>
                           <Button
                             size="sm"
                             variant="outline"
@@ -810,14 +901,12 @@ export default function SystemHealthPage() {
                   <tr className={listTableRowStaticClassName}>
                     <td className="py-2.5 pr-6 font-medium">Duplicate tasks</td>
                     <td className="py-2.5 pr-6">
-                      <StatusLabel ok={!(integrity?.duplicateTasks.count ?? 0)} />
+                      <StatusLabel ok={duplicateTaskCount === 0} />
                     </td>
                     <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                      {(integrity?.duplicateTasks.count ?? 0) > 0 ? (
+                      {duplicateTaskCount > 0 ? (
                         <>
-                          <span>
-                            {integrity?.duplicateTasks.count ?? 0} duplicate(s) in same project
-                          </span>
+                          <span>{duplicateTaskCount} duplicate(s) in same project</span>
                           <Button
                             size="sm"
                             variant="outline"
@@ -836,33 +925,24 @@ export default function SystemHealthPage() {
                   <tr className={listTableRowStaticClassName}>
                     <td className="py-2.5 pr-6 font-medium">Overdue not completed</td>
                     <td className="py-2.5 pr-6">
-                      <StatusLabel ok={(integrity?.overdueNotCompleted.count ?? 0) === 0} />
+                      <StatusLabel ok={overdueNotCompletedCount === 0} />
                     </td>
                     <td className="py-2.5 text-xs text-muted-foreground">
-                      {(integrity?.overdueNotCompleted.count ?? 0) > 0
-                        ? `${integrity?.overdueNotCompleted.count} task(s) past due`
+                      {overdueNotCompletedCount > 0
+                        ? `${overdueNotCompletedCount} task(s) past due`
                         : "—"}
                     </td>
                   </tr>
                   <tr className={listTableRowStaticClassName}>
                     <td className="py-2.5 pr-6 font-medium">Stale test data</td>
                     <td className="py-2.5 pr-6">
-                      <StatusLabel
-                        ok={
-                          (integrity?.staleTestData.tasks.count ?? 0) +
-                            (integrity?.staleTestData.projects.count ?? 0) ===
-                          0
-                        }
-                      />
+                      <StatusLabel ok={staleTestDataCount === 0} />
                     </td>
                     <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                      {(integrity?.staleTestData.tasks.count ?? 0) +
-                        (integrity?.staleTestData.projects.count ?? 0) >
-                      0 ? (
+                      {staleTestDataCount > 0 ? (
                         <>
                           <span>
-                            {integrity?.staleTestData.tasks.count ?? 0} task(s),{" "}
-                            {integrity?.staleTestData.projects.count ?? 0} project(s)
+                            {staleTaskCount} task(s), {staleProjectCount} project(s)
                           </span>
                           <Button
                             size="sm"
