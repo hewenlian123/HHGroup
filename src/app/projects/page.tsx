@@ -57,8 +57,17 @@ export default async function ProjectsPage({
       status: p.status,
       budget: p.budget ?? 0,
       revenue,
+      actualCost: totalCost,
+      expenseCost,
       laborCost,
+      reimbursementCost: 0,
+      billedAmount: 0,
+      paidAmount: 0,
+      openAR: 0,
       profit,
+      marginPct: revenue > 0 ? (profit / revenue) * 100 : 0,
+      profitReadinessWarning: null,
+      financialSource: "legacy" as const,
       updatedAt,
     };
   });

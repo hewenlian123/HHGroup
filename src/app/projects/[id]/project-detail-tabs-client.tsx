@@ -34,6 +34,7 @@ import type {
   ProjectFinancialSnapshotDiagnostics,
   ProjectFinancialWarning,
 } from "@/lib/financial/project-financial-snapshot";
+import { getProjectFinancialSnapshotProfitReadinessWarning } from "@/lib/financial/project-financial-display";
 import type { ProjectCostDashboardPayload } from "@/lib/project-cost-dashboard";
 import { ProjectDocumentsTab } from "./project-documents-tab";
 import { ProjectCostLinesTable } from "./project-cost-lines-table";
@@ -212,61 +213,6 @@ function pendingDiagnosticsLine(
   }
   if (parts.length === 0) return null;
   return `Pending review costs not included: ${parts.join(" · ")}.`;
-}
-
-function snapshotWarningCodes(
-  warnings: ProjectFinancialWarning[],
-  diagnostics: ProjectFinancialSnapshotDiagnostics | null | undefined
-): Set<string> {
-  return new Set([
-    ...warnings.map((warning) => warning.code),
-    ...(diagnostics?.missingSchemaWarnings ?? []),
-    ...(diagnostics?.apDiagnosticsWarnings ?? []),
-  ]);
-}
-
-function hasCriticalSnapshotSchemaWarning(codes: Set<string>): boolean {
-  const criticalPrefixes = [
-    "expense_lines",
-    "expense_lines_by_project",
-    "expenses",
-    "labor_entries",
-    "worker_reimbursements",
-    "subcontract_bills",
-    "project_change_orders",
-    "project_change_order_items",
-  ];
-  return criticalPrefixes.some((prefix) =>
-    [...codes].some(
-      (code) =>
-        code.startsWith(prefix) &&
-        (code.includes("unavailable") || code.includes("schema_detail") || code.includes("missing"))
-    )
-  );
-}
-
-function getProfitReadinessWarning(
-  snapshot: ProjectFinancialSnapshot,
-  warnings: ProjectFinancialWarning[],
-  diagnostics: ProjectFinancialSnapshotDiagnostics | null | undefined
-): string | null {
-  const codes = snapshotWarningCodes(warnings, diagnostics);
-  if (snapshot.revisedContractValue <= 0 || snapshot.contractValue <= 0) {
-    return "Contract value needs review before profit can be shown.";
-  }
-  if (snapshot.contractValue === 1) {
-    return "Contract value needs review before profit can be shown.";
-  }
-  if (snapshot.contractValue >= 50_000_000) {
-    return "Contract value needs review before profit can be shown.";
-  }
-  if (codes.has("project_contract_amount_mismatch")) {
-    return "Contract value needs review before profit can be shown.";
-  }
-  if (hasCriticalSnapshotSchemaWarning(codes)) {
-    return "Project cost inputs need review before profit can be shown.";
-  }
-  return null;
 }
 
 function SnapshotMetricCard({
@@ -565,9 +511,9 @@ export function ProjectDetailTabsClient({
   }, [deleteBusy, projectId, router, toast]);
 
   const budgetVal = displayProject.budget ?? financialSummary?.budget ?? 0;
-  const spentVal = financialSummary?.spent ?? projectCost.spentTotal;
-  const profitVal = financialSummary?.profit ?? projectCost.profit;
-  const marginPct = financialSummary?.marginPct ?? projectCost.margin * 100;
+  const legacySpentVal = financialSummary?.spent ?? projectCost.spentTotal;
+  const legacyProfitVal = financialSummary?.profit ?? projectCost.profit;
+  const legacyMarginPct = financialSummary?.marginPct ?? projectCost.margin * 100;
   const snapshotComparison = snapshotState.status === "ready" ? snapshotState.comparison : null;
   const snapshotWarnings =
     snapshotComparison?.warnings ?? snapshotComparison?.newSnapshot.warnings ?? [];
@@ -601,13 +547,30 @@ export function ProjectDetailTabsClient({
       }
     : fallbackCostSummary;
   const profitReadinessWarning = snapshotComparison
-    ? getProfitReadinessWarning(
+    ? getProjectFinancialSnapshotProfitReadinessWarning(
         snapshotComparison.newSnapshot,
         snapshotWarnings,
         snapshotDiagnostics
       )
     : null;
   const showSnapshotProfit = snapshotComparison != null && profitReadinessWarning == null;
+  const headerActualCost = snapshotComparison ? snapshotCostSummary.actualCost : legacySpentVal;
+  const headerProfitValue = showSnapshotProfit
+    ? snapshotComparison.newSnapshot.grossProfit
+    : snapshotState.status === "error"
+      ? legacyProfitVal
+      : null;
+  const headerMarginValue = showSnapshotProfit
+    ? snapshotComparison.newSnapshot.grossMargin * 100
+    : snapshotState.status === "error"
+      ? legacyMarginPct
+      : null;
+  const headerFinancialWarning =
+    snapshotState.status === "error"
+      ? "Using legacy financial summary."
+      : profitReadinessWarning != null
+        ? profitReadinessWarning
+        : null;
 
   const expensesProjectHref = `/financial/expenses?project_id=${encodeURIComponent(projectId)}`;
   const inboxProjectHref = `/financial/inbox?project_id=${encodeURIComponent(projectId)}`;
@@ -740,7 +703,10 @@ export function ProjectDetailTabsClient({
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
                       Budget
                     </p>
-                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary">
+                    <p
+                      data-testid="project-header-contract-value"
+                      className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary"
+                    >
                       {fmtMoney(budgetVal)}
                     </p>
                   </div>
@@ -750,35 +716,59 @@ export function ProjectDetailTabsClient({
                     className="rounded-lg text-left outline-none ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                      Spent
+                      Actual Cost
                     </p>
-                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary underline decoration-border underline-offset-4">
-                      {fmtMoney(spentVal)}
+                    <p
+                      data-testid="project-header-actual-cost"
+                      className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary underline decoration-border underline-offset-4"
+                    >
+                      {fmtMoney(headerActualCost)}
                     </p>
                   </button>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                      Profit
+                      Confirmed Profit
                     </p>
-                    <p
-                      className={cn(
-                        "mt-1 font-mono text-2xl font-bold tabular-nums",
-                        profitVal >= 0 ? "text-hh-profit-positive" : "text-red-600"
-                      )}
-                    >
-                      {profitVal >= 0 ? "" : "−"}
-                      {fmtMoney(Math.abs(profitVal))}
-                    </p>
+                    {headerProfitValue == null ? (
+                      <p
+                        data-testid="project-header-profit"
+                        className="mt-1 text-[13px] font-semibold text-amber-700"
+                      >
+                        {snapshotState.status === "loading" ? "Loading…" : "Needs review"}
+                      </p>
+                    ) : (
+                      <p
+                        data-testid="project-header-profit"
+                        className={cn(
+                          "mt-1 font-mono text-2xl font-bold tabular-nums",
+                          headerProfitValue >= 0 ? "text-hh-profit-positive" : "text-red-600"
+                        )}
+                      >
+                        {headerProfitValue >= 0 ? "" : "−"}
+                        {fmtMoney(Math.abs(headerProfitValue))}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                      Margin
+                      Confirmed Margin
                     </p>
-                    <p className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary">
-                      {marginPct.toFixed(1)}%
+                    <p
+                      data-testid="project-header-margin"
+                      className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary"
+                    >
+                      {headerMarginValue == null ? "—" : `${headerMarginValue.toFixed(1)}%`}
                     </p>
                   </div>
                 </div>
+                {headerFinancialWarning ? (
+                  <p
+                    data-testid="project-header-financial-warning"
+                    className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-800"
+                  >
+                    {headerFinancialWarning}
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
