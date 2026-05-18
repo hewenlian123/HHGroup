@@ -16,6 +16,7 @@ const SETTINGS_CHILD_LABELS: Record<string, string> = {
   categories: "Categories",
   lists: "Lists",
   subcontractors: "Subcontractors",
+  "project-financial-review": "Project Financial Review",
 };
 
 function settingsChildLabel(seg: string): string {
@@ -29,6 +30,11 @@ const NAV_ITEMS = [
   { href: "/settings/company", segment: "company", label: "Company" },
   { href: "/settings/expenses", segment: "expenses", label: "Expenses" },
   { href: "/settings/security", segment: "security", label: "Security" },
+  {
+    href: "/settings/project-financial-review",
+    segment: "project-financial-review",
+    label: "Project Financial Review",
+  },
 ] as const;
 
 export function SettingsSubNav() {
