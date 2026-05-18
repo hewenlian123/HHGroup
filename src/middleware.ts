@@ -32,6 +32,7 @@ const PROTECTED_APP_PREFIXES = [
   "/system-logs",
   "/system-metrics",
   "/system/backups",
+  "/backups",
   "/admin",
   "/tasks",
   "/upload-receipt",
@@ -47,7 +48,7 @@ const PROTECTED_APP_PREFIXES = [
   "/owner",
 ];
 
-const ADMIN_APP_PREFIXES = ["/admin", "/system/backups", "/system-logs", "/system-metrics"];
+const ADMIN_APP_PREFIXES = ["/admin"];
 
 /**
  * Turbopack / other Next builds use different chunk names than webpack `next dev`.
@@ -246,7 +247,7 @@ export async function middleware(request: NextRequest) {
   ) {
     const hasPinSession = await isValidPinSession(request);
     if (hasPinSession) {
-      return isAdminAppPath(pathname) ? forbiddenAdminPageResponse() : NextResponse.next();
+      return NextResponse.next();
     }
 
     const response = NextResponse.next();

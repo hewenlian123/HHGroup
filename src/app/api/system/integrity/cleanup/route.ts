@@ -17,6 +17,7 @@ const TEST_KEYWORDS = ["Workflow Test", "Test Worker", "Test Project", "Test Ven
 
 /** Must match integrity/route.ts: real projects never deleted by stale cleanup. */
 const WHITELIST_PROJECT_IDS = ["9d14a300-a682-498a-9e5e-3bd4a7e070c4"];
+const CLEANUP_CONFIRMATION = "CLEAN UP";
 
 type CleanupCategory = "orphaned" | "ghost" | "duplicate" | "stale";
 
@@ -35,6 +36,15 @@ export async function POST(request: Request) {
           message: "Missing or invalid category. Use: orphaned, ghost, duplicate, stale.",
         },
         { status: 400 }
+      );
+    }
+    if (body?.confirmation !== CLEANUP_CONFIRMATION) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Type CLEAN UP to confirm this integrity cleanup.",
+        },
+        { status: 400, headers: { "Cache-Control": "no-store" } }
       );
     }
   } catch {

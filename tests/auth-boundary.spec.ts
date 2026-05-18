@@ -38,7 +38,7 @@ test.describe("auth and admin boundary", () => {
     await context.close();
   });
 
-  test("production lock blocks admin and maintenance surfaces without admin access", async ({
+  test("production lock blocks unauthenticated system and maintenance surfaces", async ({
     request,
   }) => {
     await expect((await request.get("/system-tests", { headers: LOCKED_HEADERS })).status()).toBe(
@@ -49,10 +49,10 @@ test.describe("auth and admin boundary", () => {
     ).toBe(403);
     await expect(
       (await request.get("/api/system-logs", { headers: LOCKED_HEADERS })).status()
-    ).toBe(403);
+    ).toBe(401);
     await expect(
       (await request.get("/api/system-metrics", { headers: LOCKED_HEADERS })).status()
-    ).toBe(403);
+    ).toBe(401);
     await expect(
       (
         await request.post("/api/settings/company-profile", {
@@ -75,11 +75,11 @@ test.describe("auth and admin boundary", () => {
     expect(response.status()).not.toBe(403);
   });
 
-  test("public health and static asset requests stay outside auth middleware", async ({
+  test("system health requires auth while static asset requests stay outside auth middleware", async ({
     request,
   }) => {
     const health = await request.get("/api/system-health", { headers: LOCKED_HEADERS });
-    expect(health.status()).toBeLessThan(500);
+    expect(health.status()).toBe(401);
     const healthBody = await health.text();
     expect(healthBody).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(healthBody).not.toContain("x-internal-admin-secret");

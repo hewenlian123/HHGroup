@@ -10,10 +10,11 @@
  */
 
 import { NextResponse } from "next/server";
-import { requireInternalAdminAccess } from "@/lib/auth-boundary";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import { guardedInternalFetchHeaders } from "@/lib/production-safety";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { addSystemLog } from "@/lib/system-log-store";
+import { redactSensitiveText, safeErrorMessage } from "@/lib/system-response-safety";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import postgres from "postgres";
 
@@ -36,10 +37,10 @@ export type GuardianResult = {
 async function checkDatabase(c: SupabaseClient): Promise<GuardianCheck> {
   try {
     const { error } = await c.from("projects").select("id").limit(1);
-    if (error) return { name: "Database", ok: false, error: error.message };
+    if (error) return { name: "Database", ok: false, error: redactSensitiveText(error.message) };
     return { name: "Database", ok: true };
   } catch (e) {
-    return { name: "Database", ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+    return { name: "Database", ok: false, error: safeErrorMessage(e, "Unknown error") };
   }
 }
 
@@ -48,10 +49,10 @@ async function checkStorage(c: SupabaseClient): Promise<GuardianCheck> {
     // list() with limit:1 works with anon key when the bucket RLS allows reads.
     // A 404 / StorageApiError means the bucket doesn't exist or is misconfigured.
     const { error } = await c.storage.from("worker-receipts").list("", { limit: 1 });
-    if (error) return { name: "Storage", ok: false, error: error.message };
+    if (error) return { name: "Storage", ok: false, error: redactSensitiveText(error.message) };
     return { name: "Storage", ok: true };
   } catch (e) {
-    return { name: "Storage", ok: false, error: e instanceof Error ? e.message : "Unknown error" };
+    return { name: "Storage", ok: false, error: safeErrorMessage(e, "Unknown error") };
   }
 }
 
@@ -105,7 +106,7 @@ async function checkDataIntegrity(origin: string, headers?: HeadersInit): Promis
     return {
       name: "Data integrity",
       ok: false,
-      error: e instanceof Error ? e.message : "Unreachable",
+      error: safeErrorMessage(e, "Unreachable"),
     };
   }
 }
@@ -134,7 +135,7 @@ async function checkEndpoint(
       ...(ok ? {} : { error: `HTTP ${res.status}` }),
     };
   } catch (e) {
-    return { name: displayName, ok: false, error: e instanceof Error ? e.message : "Unreachable" };
+    return { name: displayName, ok: false, error: safeErrorMessage(e, "Unreachable") };
   } finally {
     clearTimeout(timer);
   }
@@ -148,7 +149,7 @@ async function checkTable(
   try {
     const { error } = await c.from(table).select("id").limit(1);
     if (error) {
-      const msg = error.message ?? "Query failed";
+      const msg = redactSensitiveText(error.message ?? "Query failed");
       const isSchemaCacheMissingTable =
         /could not find the table .* in the schema cache/i.test(msg) ||
         /schema cache/i.test(msg) ||
@@ -197,7 +198,7 @@ async function checkTable(
     return {
       name: displayName,
       ok: false,
-      error: e instanceof Error ? e.message : "Unknown error",
+      error: safeErrorMessage(e, "Unknown error"),
     };
   }
 }
@@ -205,7 +206,7 @@ async function checkTable(
 // ── route handler ─────────────────────────────────────────────────────────────
 
 export async function GET(request: Request): Promise<NextResponse<GuardianResult>> {
-  const guard = await requireInternalAdminAccess(request);
+  const guard = await requireAuthenticatedUser(request);
   if (!guard.ok) return guard.response as NextResponse<GuardianResult>;
 
   const safeResult = (checks: GuardianCheck[], ok: boolean): NextResponse<GuardianResult> =>
@@ -217,8 +218,10 @@ export async function GET(request: Request): Promise<NextResponse<GuardianResult
 
   try {
     const origin = new URL(request.url).origin;
-    const c = getServerSupabase();
+    const c = getServerSupabaseInternal();
     const internalHeaders = guardedInternalFetchHeaders(request);
+    const cookie = request.headers.get("cookie");
+    if (cookie) internalHeaders.set("cookie", cookie);
 
     const notConfigured = (name: string): GuardianCheck => ({
       name,
@@ -335,7 +338,7 @@ export async function GET(request: Request): Promise<NextResponse<GuardianResult
           addSystemLog({
             module: "Guardian",
             type: "Error",
-            message: `${ch.name} check failed: ${ch.error ?? "unknown"}`,
+            message: `${ch.name} check failed: ${redactSensitiveText(ch.error ?? "unknown")}`,
           });
         }
       }
@@ -345,7 +348,7 @@ export async function GET(request: Request): Promise<NextResponse<GuardianResult
 
     return safeResult(checks, ok);
   } catch (e) {
-    const message = e instanceof Error ? e.message : String(e);
+    const message = safeErrorMessage(e);
     const checks: GuardianCheck[] = [{ name: "Guardian", ok: false, error: message }];
     return safeResult(checks, false);
   }

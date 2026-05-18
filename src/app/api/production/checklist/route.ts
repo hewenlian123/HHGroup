@@ -152,7 +152,10 @@ async function runChecklist(origin: string, doCleanup: boolean, request: Request
   const apiChecks: CheckResult[] = [];
   for (const { path, name } of apiRoutes) {
     try {
-      const res = await fetch(`${origin}${path}`, { cache: "no-store" });
+      const res = await fetch(`${origin}${path}`, {
+        cache: "no-store",
+        headers: guardedInternalFetchHeaders(request),
+      });
       const ok = res.ok && res.status < 500;
       apiChecks.push(ok ? { name, ok: true } : { name, ok: false, error: `HTTP ${res.status}` });
       if (!ok) report.apiStatus = "error";

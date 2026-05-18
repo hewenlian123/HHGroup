@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireInternalAdminAccess } from "@/lib/auth-boundary";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import { getSystemLogs } from "@/lib/system-log-store";
+import { sanitizeSystemLogEntry } from "@/lib/system-response-safety";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +10,11 @@ export const dynamic = "force-dynamic";
  * Query: limit (default 100).
  */
 export async function GET(req: Request) {
-  const guard = await requireInternalAdminAccess(req);
+  const guard = await requireAuthenticatedUser(req);
   if (!guard.ok) return guard.response;
 
   const { searchParams } = new URL(req.url);
   const limit = Math.min(500, Math.max(1, parseInt(searchParams.get("limit") ?? "100", 10) || 100));
-  const logs = getSystemLogs(limit);
+  const logs = getSystemLogs(limit).map(sanitizeSystemLogEntry);
   return NextResponse.json({ logs });
 }

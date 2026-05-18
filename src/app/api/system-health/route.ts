@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
+import { safeErrorMessage } from "@/lib/system-response-safety";
 
 export const dynamic = "force-dynamic";
 
@@ -42,10 +44,13 @@ const MODULES: { name: string; table: string }[] = [
  * status === "warning" when any module fails or when schema-check returns error.
  */
 export async function GET(request: Request) {
+  const guard = await requireAuthenticatedUser(request);
+  if (!guard.ok) return guard.response;
+
   const modules: SystemHealthModule[] = [];
   let status: SystemHealthStatus = "ok";
 
-  const server = getServerSupabase();
+  const server = getServerSupabaseInternal();
   if (!server) {
     for (const m of MODULES) {
       modules.push({ name: m.name, status: "fail", message: "Not configured" });
@@ -67,13 +72,13 @@ export async function GET(request: Request) {
     try {
       const { error } = await server.from(table).select("id").limit(1).maybeSingle();
       if (error) {
-        message = error.message ?? "Query failed";
+        message = safeErrorMessage(error.message ?? "Query failed");
         status = "warning";
       } else {
         ok = true;
       }
     } catch (e) {
-      message = e instanceof Error ? e.message : "Unknown error";
+      message = safeErrorMessage(e, "Unknown error");
       status = "warning";
     }
     for (const name of names) {
@@ -85,7 +90,16 @@ export async function GET(request: Request) {
   let schemaMissing: string[] | undefined;
   try {
     const origin = new URL(request.url).origin;
-    const schemaRes = await fetch(`${origin}/api/schema-check`, { cache: "no-store" });
+    const headers = new Headers();
+    const cookie = request.headers.get("cookie");
+    if (cookie) headers.set("cookie", cookie);
+    const lock = request.headers.get("x-hh-production-safety-lock");
+    if (lock) headers.set("x-hh-production-safety-lock", lock);
+    const bypass = request.headers.get("x-hh-test-auth-bypass");
+    if (bypass) headers.set("x-hh-test-auth-bypass", bypass);
+    const internalSecret = request.headers.get("x-internal-admin-secret");
+    if (internalSecret) headers.set("x-internal-admin-secret", internalSecret);
+    const schemaRes = await fetch(`${origin}/api/schema-check`, { cache: "no-store", headers });
     const schemaData = (await schemaRes.json().catch(() => ({}))) as {
       status?: string;
       missing?: string[];
