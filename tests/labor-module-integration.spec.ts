@@ -181,6 +181,7 @@ test.describe("Labor module integration", () => {
       timeout: 30_000,
     });
     await expect(page.getByText("Loading…").first()).not.toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
     // Avoid brittle responsive duplicate nodes (mobile/desktop) — assert the table renders.
     await expect(page.locator("table tbody tr").first()).toBeVisible({ timeout: 30_000 });
 

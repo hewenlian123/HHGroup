@@ -3,6 +3,7 @@
  * Table: projects.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type ProjectStatus = "active" | "pending" | "completed";
@@ -68,8 +69,8 @@ export type Project = {
   } | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -235,8 +236,8 @@ const COLS_WITH_CUSTOMER = `${COLS},customers(name)`;
 /** Legacy-safe minimal columns for partially migrated local schemas. */
 const COLS_BASE = "id,name,status,budget,spent,created_at,updated_at,client,address";
 
-export async function getProjects(): Promise<Project[]> {
-  const c = client();
+export async function getProjects(explicitClient?: SupabaseClient): Promise<Project[]> {
+  const c = client(explicitClient);
   let rows: ProjectRow[] | null = null;
   let error: { message?: string } | null = null;
   for (const cols of [COLS_WITH_CUSTOMER, COLS, COLS_BASE]) {

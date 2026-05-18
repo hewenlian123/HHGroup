@@ -5,6 +5,7 @@
  * Status: pending | paid.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type WorkerReimbursementStatus = "pending" | "paid";
@@ -57,8 +58,8 @@ export type WorkerReimbursementPayment = {
   createdAt: string;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -85,8 +86,11 @@ const COLS_LEGACY =
 const COLS_LEGACY_NO_PAY =
   "id, worker_id, project_id, vendor, amount, description, receipt_url, status, created_at, paid_at";
 
-async function enrichNames(rows: WorkerReimbursement[]): Promise<WorkerReimbursement[]> {
-  const c = client();
+async function enrichNames(
+  rows: WorkerReimbursement[],
+  explicitClient?: SupabaseClient
+): Promise<WorkerReimbursement[]> {
+  const c = client(explicitClient);
   const workerIds = Array.from(new Set(rows.map((r) => r.workerId).filter(Boolean))) as string[];
   const projectIds = Array.from(new Set(rows.map((r) => r.projectId).filter(Boolean))) as string[];
 
@@ -193,8 +197,10 @@ export async function sumPaidWorkerReimbursementsForProject(projectId: string): 
   }
 }
 
-export async function getWorkerReimbursements(): Promise<WorkerReimbursement[]> {
-  const c = client();
+export async function getWorkerReimbursements(
+  explicitClient?: SupabaseClient
+): Promise<WorkerReimbursement[]> {
+  const c = client(explicitClient);
   let { data, error } = await c
     .from(TABLE_NAME)
     .select(COLS)
@@ -221,7 +227,7 @@ export async function getWorkerReimbursements(): Promise<WorkerReimbursement[]> 
     throw new Error(error.message ?? "Failed to load worker reimbursements.");
   }
   const rows = ((data ?? []) as Record<string, unknown>[]).map(fromRow);
-  return enrichNames(rows);
+  return enrichNames(rows, explicitClient);
 }
 
 /** Get a single reimbursement by id. Returns null if not found. */

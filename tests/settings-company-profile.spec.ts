@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { MAX_COMPANY_LOGO_BYTES } from "../src/lib/company-profile-form-validation";
 import { tryCreateDraftInvoiceNavigateToDetail } from "./e2e-helpers";
+import { assertE2EBaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 /** Set `E2E_BRANDING_FULL=1` to fail (not skip) when storage blocks logo upload. */
@@ -109,6 +110,10 @@ test.describe("Settings → Company Profile", () => {
 
   // Nested serial kept for clarity; outer describe is already serial.
   test.describe.serial("Company profile mutations (shared row)", () => {
+    test.beforeEach(() => {
+      assertE2EBaseUrlSafeForMutations(BASE);
+    });
+
     test("company name (org_name) changes from HH Group and persists after reload", async ({
       page,
     }) => {

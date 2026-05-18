@@ -1,4 +1,5 @@
 import { totalPayForEntry, type DailyWorkEntry } from "@/lib/daily-work-db";
+import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import type { WorkerReimbursement } from "@/lib/worker-reimbursements-db";
 import type { WorkerInvoice } from "@/lib/worker-invoices-db";
 import type { LaborInvoice } from "@/lib/labor-db";
@@ -17,6 +18,71 @@ export type PayrollSummaryComputeRow = {
   paid: number;
   balance: number;
 };
+
+function payrollAmountFingerprint(
+  workerId: string,
+  workDate: string,
+  projectId: string | null,
+  amount: number
+): string {
+  return [
+    workerId,
+    workDate.slice(0, 10),
+    projectId ?? "",
+    (Math.round(amount * 100) / 100).toFixed(2),
+  ].join("|");
+}
+
+function laborEntryTotal(entry: LaborEntryWithJoins): number {
+  return Number(entry.cost_amount) || 0;
+}
+
+export function laborEntryToDailyWorkEntry(entry: LaborEntryWithJoins): DailyWorkEntry {
+  const amount = laborEntryTotal(entry);
+  return {
+    id: entry.id,
+    workDate: entry.work_date.slice(0, 10),
+    workerId: entry.worker_id,
+    projectId: entry.project_id,
+    dayType: "full_day",
+    dailyRate: amount,
+    otAmount: 0,
+    notes: entry.notes,
+    createdAt: entry.submitted_at ?? entry.work_date,
+  };
+}
+
+export function mergePayrollLaborEntries(
+  dailyWorkEntries: DailyWorkEntry[],
+  laborEntries: LaborEntryWithJoins[]
+): DailyWorkEntry[] {
+  const ledgerEntries = laborEntries.map(laborEntryToDailyWorkEntry);
+  const ledgerKeys = new Set(
+    ledgerEntries.map((entry) =>
+      payrollAmountFingerprint(
+        entry.workerId,
+        entry.workDate,
+        entry.projectId,
+        entry.dailyRate + entry.otAmount
+      )
+    )
+  );
+
+  return [
+    ...dailyWorkEntries.filter(
+      (entry) =>
+        !ledgerKeys.has(
+          payrollAmountFingerprint(
+            entry.workerId,
+            entry.workDate,
+            entry.projectId,
+            entry.dailyRate + entry.otAmount
+          )
+        )
+    ),
+    ...ledgerEntries,
+  ];
+}
 
 export function balanceStatusLabel(balance: number): "Unpaid" | "Balanced" | "Overpaid" {
   const r = Math.round(balance * 100) / 100;

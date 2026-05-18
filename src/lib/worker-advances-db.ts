@@ -121,8 +121,8 @@ export type UpdateWorkerAdvanceInput = {
   notes?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -176,15 +176,18 @@ export async function createWorkerAdvance(input: CreateWorkerAdvanceInput): Prom
   return fromRow(data as Record<string, unknown>);
 }
 
-export async function getWorkerAdvances(filters?: {
-  workerId?: string;
-  projectId?: string;
-  status?: WorkerAdvanceStatus | "active";
-  fromDate?: string;
-  toDate?: string;
-  limit?: number;
-}): Promise<WorkerAdvance[]> {
-  const c = client();
+export async function getWorkerAdvances(
+  filters?: {
+    workerId?: string;
+    projectId?: string;
+    status?: WorkerAdvanceStatus | "active";
+    fromDate?: string;
+    toDate?: string;
+    limit?: number;
+  },
+  explicitClient?: SupabaseClient
+): Promise<WorkerAdvance[]> {
+  const c = client(explicitClient);
   let q = c
     .from("worker_advances")
     .select(COLS)

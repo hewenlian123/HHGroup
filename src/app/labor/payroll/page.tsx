@@ -7,27 +7,7 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  getWorkers,
-  getProjects,
-  getDailyWorkEntriesInRange,
-  getLaborEntriesWithJoins,
-  getWorkerReimbursements,
-  getWorkerInvoices,
-  getLaborInvoices,
-  getWorkerPayments,
-  getWorkerAdvances,
-  includeLaborInvoicesInProjectLabor,
-  type DailyWorkEntry,
-  type LaborEntryWithJoins,
-  type WorkerReimbursement,
-  type WorkerInvoice,
-} from "@/lib/data";
-import {
-  balanceStatusLabel,
-  buildPayrollSummaryRows,
-  type PayrollSummaryComputeRow,
-} from "./compute-payroll-summary-rows";
+import { balanceStatusLabel, type PayrollSummaryComputeRow } from "./compute-payroll-summary-rows";
 import { PayWorkerModal } from "./pay-worker-modal";
 import { WorkerPaymentReceiptPreviewModal } from "@/components/labor/worker-payment-receipt-preview-modal";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
@@ -60,70 +40,21 @@ import { formatCurrency } from "@/lib/formatters";
 
 type Row = PayrollSummaryComputeRow;
 
-function payrollAmountFingerprint(
-  workerId: string,
-  workDate: string,
-  projectId: string | null,
-  amount: number
-): string {
-  return [
-    workerId,
-    workDate.slice(0, 10),
-    projectId ?? "",
-    (Math.round(amount * 100) / 100).toFixed(2),
-  ].join("|");
-}
+type ProjectOption = {
+  id: string;
+  name: string;
+};
 
-function laborEntryTotal(entry: LaborEntryWithJoins): number {
-  return Number(entry.cost_amount) || 0;
-}
-
-function laborEntryToDailyWorkEntry(entry: LaborEntryWithJoins): DailyWorkEntry {
-  const amount = laborEntryTotal(entry);
-  return {
-    id: entry.id,
-    workDate: entry.work_date.slice(0, 10),
-    workerId: entry.worker_id,
-    projectId: entry.project_id,
-    dayType: "full_day",
-    dailyRate: amount,
-    otAmount: 0,
-    notes: entry.notes,
-    createdAt: entry.submitted_at ?? entry.work_date,
-  };
-}
-
-function mergePayrollLaborEntries(
-  dailyWorkEntries: DailyWorkEntry[],
-  laborEntries: LaborEntryWithJoins[]
-): DailyWorkEntry[] {
-  const ledgerEntries = laborEntries.map(laborEntryToDailyWorkEntry);
-  const ledgerKeys = new Set(
-    ledgerEntries.map((entry) =>
-      payrollAmountFingerprint(
-        entry.workerId,
-        entry.workDate,
-        entry.projectId,
-        entry.dailyRate + entry.otAmount
-      )
-    )
-  );
-
-  return [
-    ...dailyWorkEntries.filter(
-      (entry) =>
-        !ledgerKeys.has(
-          payrollAmountFingerprint(
-            entry.workerId,
-            entry.workDate,
-            entry.projectId,
-            entry.dailyRate + entry.otAmount
-          )
-        )
-    ),
-    ...ledgerEntries,
-  ];
-}
+type PayrollSummaryResponse =
+  | {
+      ok: true;
+      projects: ProjectOption[];
+      rows: Row[];
+    }
+  | {
+      ok: false;
+      message?: string;
+    };
 
 const psShell =
   "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
@@ -222,7 +153,7 @@ export default function PayrollSummaryPage() {
   const [page, setPage] = React.useState(1);
   const pageSize = 12;
 
-  const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
+  const [projects, setProjects] = React.useState<ProjectOption[]>([]);
   const [rows, setRows] = React.useState<Row[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState<string | null>(null);
@@ -236,49 +167,18 @@ export default function PayrollSummaryPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const [
-        w,
-        p,
-        dailyWorkEntries,
-        laborEntries,
-        reimbursementsAll,
-        invoicesAll,
-        laborInvoicesAll,
-        paymentsAll,
-        advancesAll,
-      ] = await Promise.all([
-        getWorkers(),
-        getProjects(),
-        getDailyWorkEntriesInRange(fromDate, toDate),
-        getLaborEntriesWithJoins({ date_from: fromDate, date_to: toDate }),
-        getWorkerReimbursements(),
-        getWorkerInvoices(),
-        getLaborInvoices(),
-        getWorkerPayments({ fromDate, toDate }),
-        getWorkerAdvances({ fromDate, toDate }),
-      ]);
-      setProjects(p);
-
-      const projectFilter = projectId || null;
-
-      const out = buildPayrollSummaryRows({
-        fromDate,
-        toDate,
-        projectFilter,
-        includeLaborInvoices: includeLaborInvoicesInProjectLabor,
-        workers: w,
-        laborEntries: mergePayrollLaborEntries(
-          dailyWorkEntries as DailyWorkEntry[],
-          laborEntries as LaborEntryWithJoins[]
-        ),
-        reimbursementsAll: reimbursementsAll as WorkerReimbursement[],
-        workerInvoicesAll: invoicesAll as WorkerInvoice[],
-        laborInvoicesAll,
-        paymentsAll,
-        advancesAll,
+      const params = new URLSearchParams({ fromDate, toDate });
+      if (projectId) params.set("projectId", projectId);
+      const res = await fetch(`/api/labor/payroll-summary?${params.toString()}`, {
+        cache: "no-store",
       });
-
-      setRows(out);
+      const body = (await res.json().catch(() => null)) as PayrollSummaryResponse | null;
+      if (!res.ok || !body || body.ok !== true) {
+        const message = body && "message" in body ? body.message : null;
+        throw new Error(message ?? "Failed to load payroll summary.");
+      }
+      setProjects(body.projects);
+      setRows(body.rows);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Failed to load.");
       setRows([]);

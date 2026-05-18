@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import {
   getServerSupabaseAdmin,
   getSupabaseUserFromRequest,
@@ -38,14 +39,13 @@ export async function GET() {
 }
 
 /**
- * Save company profile with service role (bypasses RLS). Falls back to browser client when 503.
- *
- * Session: If `SUPABASE_SERVICE_ROLE_KEY` is set, saves are allowed **without** a Supabase browser
- * session (single-tenant / apps that do not use Supabase Auth in middleware). Set
- * `REQUIRE_SUPABASE_SESSION_FOR_SETTINGS_API=1` to require Bearer/cookie session anyway.
- * `ALLOW_COMPANY_LOGO_SERVER_WITHOUT_SESSION=1` still acts as an explicit bypass when strict mode is on.
+ * Save company profile with service role after the app auth/PIN boundary has admitted the request.
+ * The service role is server-only here; browser callers still need a valid app session.
  */
 export async function POST(req: Request) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
   const admin = getServerSupabaseAdmin();
   if (!admin) {
     return NextResponse.json(
