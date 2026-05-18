@@ -60,6 +60,8 @@ export default function SystemBackupsPage() {
 
   const [creating, setCreating] = React.useState(false);
   const [createResult, setCreateResult] = React.useState<CreateResult | null>(null);
+  const [confirmingCreate, setConfirmingCreate] = React.useState(false);
+  const [confirmation, setConfirmation] = React.useState("");
 
   // ── load backup list ────────────────────────────────────────────────────────
   const loadList = React.useCallback(async () => {
@@ -96,10 +98,14 @@ export default function SystemBackupsPage() {
       const res = await fetch("/api/system/backup", {
         method: "POST",
         cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation: confirmation.trim() }),
       });
       const data: CreateResult = await res.json();
       setCreateResult(data);
       if (data.ok) {
+        setConfirmingCreate(false);
+        setConfirmation("");
         // Refresh the list after a successful backup
         await loadList();
       }
@@ -111,7 +117,7 @@ export default function SystemBackupsPage() {
     } finally {
       setCreating(false);
     }
-  }, [loadList]);
+  }, [confirmation, loadList]);
 
   return (
     <div className="page-container page-stack py-6">
@@ -123,13 +129,55 @@ export default function SystemBackupsPage() {
             size="sm"
             variant="outline"
             className="min-h-[44px] sm:min-h-0 w-full sm:w-auto"
-            onClick={handleCreate}
+            onClick={() => setConfirmingCreate(true)}
             disabled={creating}
           >
             {creating ? "Creating Backup…" : "Create Backup Now"}
           </Button>
         }
       />
+
+      {confirmingCreate ? (
+        <div className="rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-200">
+          <p className="font-medium">Confirm backup export</p>
+          <p className="mt-1 text-xs">
+            This creates a database JSON export for the owner account. Type{" "}
+            <span className="font-mono font-semibold">BACKUP</span> to continue.
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              placeholder="BACKUP"
+              className="min-h-[44px] w-full rounded-sm border border-border bg-background px-3 text-sm outline-none focus:border-foreground sm:max-w-[220px]"
+              autoComplete="off"
+            />
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="min-h-[44px] sm:min-h-0"
+                onClick={handleCreate}
+                disabled={creating || confirmation.trim() !== "BACKUP"}
+              >
+                Create Backup
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="min-h-[44px] sm:min-h-0"
+                onClick={() => {
+                  setConfirmingCreate(false);
+                  setConfirmation("");
+                }}
+                disabled={creating}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {/* Create result banner */}
       {createResult && (

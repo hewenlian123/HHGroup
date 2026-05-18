@@ -12,7 +12,8 @@
  */
 
 import { NextResponse } from "next/server";
-import { requireInternalAdminAccess } from "@/lib/auth-boundary";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { safeErrorMessage } from "@/lib/system-response-safety";
 import postgres from "postgres";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ export type DataIntegrityResult = {
 };
 
 export async function GET(request: Request): Promise<NextResponse<DataIntegrityResult>> {
-  const guard = await requireInternalAdminAccess(request);
+  const guard = await requireAuthenticatedUser(request);
   if (!guard.ok) return guard.response as NextResponse<DataIntegrityResult>;
 
   const url = process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL;
@@ -82,7 +83,7 @@ export async function GET(request: Request): Promise<NextResponse<DataIntegrityR
       const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
       orphanedTasks = { ok: ids.length === 0, count: ids.length, ids };
     } catch (e) {
-      errors.push(`Orphan: ${e instanceof Error ? e.message : String(e)}`);
+      errors.push(`Orphan: ${safeErrorMessage(e)}`);
     }
 
     // 2. Ghost tasks — no title or empty title (project_id is NOT NULL in schema)
@@ -95,7 +96,7 @@ export async function GET(request: Request): Promise<NextResponse<DataIntegrityR
       const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
       ghostTasks = { ok: ids.length === 0, count: ids.length, ids };
     } catch (e) {
-      errors.push(`Ghost: ${e instanceof Error ? e.message : String(e)}`);
+      errors.push(`Ghost: ${safeErrorMessage(e)}`);
     }
 
     // 3. Duplicate tasks — same (project_id, title) with count > 1; return IDs to delete (keep one per group)
@@ -112,7 +113,7 @@ export async function GET(request: Request): Promise<NextResponse<DataIntegrityR
       const ids = (rows as unknown as { id: string }[]).map((r) => r.id);
       duplicateTasks = { ok: ids.length === 0, count: ids.length, ids };
     } catch (e) {
-      errors.push(`Duplicate: ${e instanceof Error ? e.message : String(e)}`);
+      errors.push(`Duplicate: ${safeErrorMessage(e)}`);
     }
 
     // 4. Overdue not completed — count only
@@ -125,7 +126,7 @@ export async function GET(request: Request): Promise<NextResponse<DataIntegrityR
       `;
       overdueCount = Number((rows[0] as { c: number })?.c ?? 0);
     } catch (e) {
-      errors.push(`Overdue: ${e instanceof Error ? e.message : String(e)}`);
+      errors.push(`Overdue: ${safeErrorMessage(e)}`);
     }
 
     // 5. Stale test data — word-boundary match so "Test Project" doesn't match "Testing Ground" or "Contest"
@@ -151,7 +152,7 @@ export async function GET(request: Request): Promise<NextResponse<DataIntegrityR
         (id) => !WHITELIST_PROJECT_IDS.includes(id)
       );
     } catch (e) {
-      errors.push(`Stale: ${e instanceof Error ? e.message : String(e)}`);
+      errors.push(`Stale: ${safeErrorMessage(e)}`);
     }
 
     await sql.end();
@@ -196,7 +197,7 @@ export async function GET(request: Request): Promise<NextResponse<DataIntegrityR
           tasks: { ok: false, count: 0 },
           projects: { ok: false, count: 0 },
         },
-        errors: [e instanceof Error ? e.message : String(e)],
+        errors: [safeErrorMessage(e)],
       },
       { status: 500 }
     );

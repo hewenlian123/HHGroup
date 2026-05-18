@@ -15,9 +15,10 @@
  */
 
 import { NextResponse } from "next/server";
-import { requireInternalAdminAccess } from "@/lib/auth-boundary";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { addSystemLog } from "@/lib/system-log-store";
+import { safeErrorMessage } from "@/lib/system-response-safety";
 import fs from "fs";
 import path from "path";
 
@@ -54,6 +55,8 @@ export type BackupDocument = {
   tables: Partial<Record<TableName, unknown[]>>;
 };
 
+const BACKUP_CONFIRMATION = "BACKUP";
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 function backupDir(): string {
@@ -72,10 +75,21 @@ function todayStr(): string {
 // ── POST — create backup ──────────────────────────────────────────────────────
 
 export async function POST(request: Request): Promise<NextResponse> {
-  const guard = await requireInternalAdminAccess(request);
+  const guard = await requireAuthenticatedUser(request);
   if (!guard.ok) return guard.response;
 
-  const c = getServerSupabase();
+  const body = (await request.json().catch(() => ({}))) as { confirmation?: unknown };
+  if (body.confirmation !== BACKUP_CONFIRMATION) {
+    return NextResponse.json(
+      {
+        ok: false,
+        message: "Type BACKUP to create a database backup export.",
+      },
+      { status: 400, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  const c = getServerSupabaseInternal();
   if (!c) {
     addSystemLog({
       module: "Backup",
@@ -97,13 +111,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     try {
       const { data, error } = await c.from(table).select("*");
       if (error) {
-        tableErrors.push(`${table}: ${error.message}`);
+        tableErrors.push(`${table}: ${safeErrorMessage(error.message)}`);
         tables[table] = [];
       } else {
         tables[table] = data ?? [];
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : "Unknown error";
+      const msg = safeErrorMessage(e, "Unknown error");
       tableErrors.push(`${table}: ${msg}`);
       tables[table] = [];
     }
@@ -122,7 +136,7 @@ export async function POST(request: Request): Promise<NextResponse> {
     fs.writeFileSync(path.join(backupDir(), filename), json, "utf-8");
     saved = true;
   } catch (e) {
-    saveError = e instanceof Error ? e.message : "Write failed";
+    saveError = safeErrorMessage(e, "Write failed");
   }
 
   // ── log outcome ─────────────────────────────────────────────────────────────
@@ -166,7 +180,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 // ── GET — list backups ────────────────────────────────────────────────────────
 
 export async function GET(request: Request): Promise<NextResponse> {
-  const guard = await requireInternalAdminAccess(request);
+  const guard = await requireAuthenticatedUser(request);
   if (!guard.ok) return guard.response;
 
   try {
@@ -196,7 +210,7 @@ export async function GET(request: Request): Promise<NextResponse> {
     return NextResponse.json({ ok: true, backups });
   } catch (e) {
     return NextResponse.json(
-      { ok: false, backups: [], error: e instanceof Error ? e.message : "Unknown error" },
+      { ok: false, backups: [], error: safeErrorMessage(e, "Unknown error") },
       { status: 500 }
     );
   }

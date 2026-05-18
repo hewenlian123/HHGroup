@@ -387,7 +387,15 @@ export function Sidebar({
                 >
                   {section.items.map((item) => {
                     const active = isActive(item.href);
-                    const Icon = item.icon;
+                    const isSystemHealthWarning =
+                      item.href === "/system-health" && systemHealth.status === "warning";
+                    const Icon = isSystemHealthWarning ? AlertTriangle : item.icon;
+                    const iconClass = isSystemHealthWarning
+                      ? cn(
+                          "h-[15px] w-[15px] shrink-0",
+                          active ? "text-amber-300" : "text-amber-400"
+                        )
+                      : navIconClass(active);
                     const navLabel =
                       item.href === "/financial/inbox"
                         ? `Inbox draft (${expenseInboxPoolCount})`
@@ -404,7 +412,7 @@ export function Sidebar({
                           className={navRowClass(active)}
                         >
                           <div className="relative flex shrink-0 items-center justify-center">
-                            <Icon className={navIconClass(active)} strokeWidth={1.75} />
+                            <Icon className={iconClass} strokeWidth={1.75} />
                             {expenseInboxPoolCount > 0 ? (
                               <span
                                 key={expenseInboxPoolAnimKey}
@@ -431,7 +439,7 @@ export function Sidebar({
                         aria-label={navLabel}
                         className={navRowClass(active)}
                       >
-                        {Icon ? <Icon className={navIconClass(active)} strokeWidth={1.75} /> : null}
+                        {Icon ? <Icon className={iconClass} strokeWidth={1.75} /> : null}
                       </Link>
                     );
                   })}
@@ -466,7 +474,15 @@ export function Sidebar({
                     <div className="flex flex-col gap-1">
                       {section.items.map((item) => {
                         const active = isActive(item.href);
-                        const Icon = item.icon;
+                        const isSystemHealthWarning =
+                          item.href === "/system-health" && systemHealth.status === "warning";
+                        const Icon = isSystemHealthWarning ? AlertTriangle : item.icon;
+                        const iconClass = isSystemHealthWarning
+                          ? cn(
+                              "h-[15px] w-[15px] shrink-0",
+                              active ? "text-amber-300" : "text-amber-400"
+                            )
+                          : navIconClass(active);
                         const navLabel =
                           item.href === "/financial/inbox"
                             ? `Inbox draft (${expenseInboxPoolCount})`
@@ -482,7 +498,7 @@ export function Sidebar({
                               aria-label={collapsed ? navLabel : undefined}
                               className={navRowClass(active)}
                             >
-                              <Icon className={navIconClass(active)} strokeWidth={1.75} />
+                              <Icon className={iconClass} strokeWidth={1.75} />
                               <span className="flex min-w-0 flex-1 items-baseline gap-0">
                                 <span className="truncate">Inbox draft </span>
                                 <span
@@ -505,9 +521,7 @@ export function Sidebar({
                             aria-label={collapsed ? navLabel : undefined}
                             className={navRowClass(active)}
                           >
-                            {Icon ? (
-                              <Icon className={navIconClass(active)} strokeWidth={1.75} />
-                            ) : null}
+                            {Icon ? <Icon className={iconClass} strokeWidth={1.75} /> : null}
                             {!collapsed && <span className="truncate">{navLabel}</span>}
                           </Link>
                         );
@@ -518,28 +532,6 @@ export function Sidebar({
               </div>
             );
           })}
-
-          {/* System Health warning indicator */}
-          {systemHealth.status === "warning" && (
-            <div className="mt-6 flex flex-col gap-1">
-              <Link
-                href="/system-health"
-                onClick={onNavigate}
-                className={navRowClass(isActive("/system-health"))}
-                title="System Health"
-              >
-                <AlertTriangle
-                  className={cn(
-                    "h-[15px] w-[15px] shrink-0",
-                    isActive("/system-health") ? "text-amber-300" : "text-amber-400"
-                  )}
-                  strokeWidth={1.75}
-                  aria-hidden
-                />
-                {!collapsed && <span className="truncate">⚠ System Health</span>}
-              </Link>
-            </div>
-          )}
 
           {/* Documents & Settings */}
           <div className="mt-6 flex flex-col gap-1">

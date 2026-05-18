@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import postgres from "postgres";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import { getServerSupabase } from "@/lib/supabase-server";
+import { safeErrorMessage } from "@/lib/system-response-safety";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +70,9 @@ function isSafeIdentifier(value: string): boolean {
 }
 
 export async function GET(request: Request) {
+  const guard = await requireAuthenticatedUser(request);
+  if (!guard.ok) return guard.response;
+
   const { searchParams } = new URL(request.url);
   const requestedTable = searchParams.get("table")?.trim() ?? "";
   const requestedColumn = searchParams.get("column")?.trim() ?? "";
@@ -109,7 +114,7 @@ export async function GET(request: Request) {
       }
       return NextResponse.json({ status: "error", missing });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = safeErrorMessage(e);
       return NextResponse.json({ status: "error", missing: [], message: msg }, { status: 500 });
     }
   }

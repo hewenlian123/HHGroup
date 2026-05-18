@@ -43,7 +43,6 @@ test.describe("production safety guards", () => {
     await expectProductionForbidden(request, "POST", "/api/system/integrity/cleanup", {
       category: "stale",
     });
-    await expectProductionForbidden(request, "POST", "/api/system/backup");
     await expectProductionForbidden(request, "POST", "/api/test/full-system-test");
     await expectProductionForbidden(request, "POST", "/api/test/financial-workflows");
     await expectProductionForbidden(request, "POST", "/api/test/labor-reimbursement-workflow");

@@ -99,12 +99,14 @@ export default function SystemHealthPage() {
 
   const runCleanup = React.useCallback(
     async (category: CleanupCategory) => {
+      const confirmation = window.prompt("Type CLEAN UP to confirm this integrity cleanup.");
+      if (confirmation !== "CLEAN UP") return;
       setCleanupBusy(category);
       try {
         const res = await fetch("/api/system/integrity/cleanup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ category }),
+          body: JSON.stringify({ category, confirmation }),
         });
         if (res.ok) {
           await fetchIntegrity();
