@@ -33,6 +33,7 @@ type QuickExpenseRequest = {
   notes?: unknown;
   projectId?: unknown;
   paymentAccountId?: unknown;
+  referenceNo?: unknown;
   attachments?: unknown;
 };
 
@@ -117,6 +118,7 @@ export async function POST(request: Request) {
       notes: optionalString(body.notes) ?? undefined,
       projectId: optionalString(body.projectId),
       paymentAccountId: optionalString(body.paymentAccountId),
+      referenceNo: optionalString(body.referenceNo),
     });
 
     for (const attachment of normalizeAttachments(body.attachments)) {

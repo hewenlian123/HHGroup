@@ -129,7 +129,25 @@ test.describe("Inbox View Receipt preview UX", () => {
       await expect(
         preview.locator('[aria-busy="true"], .animate-pulse, img, iframe').first()
       ).toBeVisible({ timeout: 8_000 });
-      await expect(preview.locator("img").first()).toBeVisible({ timeout: 120_000 });
+      const viewport = preview.getByTestId("attachment-preview-viewport").first();
+      await expect(viewport).toBeVisible({ timeout: 8_000 });
+      const beforeMediaBox = await viewport.boundingBox();
+      await expect(preview.getByTestId("receipt-preview-image-area")).toHaveAttribute(
+        "data-preview-stage",
+        "ready",
+        { timeout: 120_000 }
+      );
+      const afterMediaBox = await viewport.boundingBox();
+      expect(beforeMediaBox, "preview viewport has a stable loading box").not.toBeNull();
+      expect(afterMediaBox, "preview viewport remains mounted after image load").not.toBeNull();
+      expect(
+        Math.abs(afterMediaBox!.height - beforeMediaBox!.height),
+        "image load should not change preview viewport height"
+      ).toBeLessThanOrEqual(4);
+      expect(
+        Math.abs(afterMediaBox!.width - beforeMediaBox!.width),
+        "image load should not change preview viewport width"
+      ).toBeLessThanOrEqual(4);
       const box = await preview.boundingBox();
       expect(box, "modal has layout box").not.toBeNull();
       const vw = (await page.viewportSize())!.width;

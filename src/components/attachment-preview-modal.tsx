@@ -106,6 +106,8 @@ const FRICTION = 0.93;
 const MIN_VEL = 0.42;
 const INERTIA_MULT = 1.45;
 const PREVIEW_IMAGE_WARM_CACHE_LIMIT = 80;
+const PREVIEW_VIEWPORT_CLASS =
+  "h-[min(72dvh,620px)] w-full max-w-[min(100vw-1rem,72rem)] max-md:h-[min(62dvh,520px)]";
 
 const warmedPreviewImageUrls = new Set<string>();
 const inflightPreviewImageWarmups = new Map<string, Promise<void>>();
@@ -263,6 +265,7 @@ function ZoomableImageFrame({
   onImgLoad,
   onImgError,
   onZoomPanChange,
+  showLoadingSkeleton = false,
 }: {
   effectiveUrl: string;
   imgPhase: "loading" | "ready" | "error";
@@ -270,6 +273,7 @@ function ZoomableImageFrame({
   onImgLoad: (e: React.SyntheticEvent<HTMLImageElement>) => void;
   onImgError: () => void;
   onZoomPanChange?: (zoomed: boolean) => void;
+  showLoadingSkeleton?: boolean;
 }) {
   const [scale, setScale] = React.useState(1);
   const [tx, setTx] = React.useState(0);
@@ -617,8 +621,10 @@ function ZoomableImageFrame({
   return (
     <div
       ref={containerRef}
+      data-testid="attachment-preview-viewport"
       className={cn(
-        "relative flex max-h-[min(92dvh,calc(100dvh-6.5rem))] w-full max-w-[min(100vw-1rem,72rem)] touch-none items-center justify-center overflow-hidden",
+        "relative flex shrink-0 touch-none items-center justify-center overflow-hidden",
+        PREVIEW_VIEWPORT_CLASS,
         zoomed ? "cursor-grab active:cursor-grabbing" : ""
       )}
       style={{ touchAction: "none" }}
@@ -631,6 +637,12 @@ function ZoomableImageFrame({
       onTouchEnd={onTouchEnd}
       onTouchCancel={onTouchEnd}
     >
+      {showLoadingSkeleton ? (
+        <Skeleton
+          data-testid="attachment-preview-viewport-skeleton"
+          className="pointer-events-none absolute inset-0 z-[2] rounded-sm bg-zinc-800/90"
+        />
+      ) : null}
       {zoomIndicator ? (
         <div
           className={cn(
@@ -642,11 +654,11 @@ function ZoomableImageFrame({
           {zoomIndicator}
         </div>
       ) : null}
-      <div className="rounded-sm bg-zinc-900/35 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_56px_-14px_rgba(0,0,0,0.72)] ring-1 ring-white/10">
+      <div className="relative z-[1] h-full w-full rounded-sm bg-zinc-900/35 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_56px_-14px_rgba(0,0,0,0.72)] ring-1 ring-white/10">
         <div
           role="presentation"
           onDoubleClick={onDoubleClick}
-          className="flex max-h-full max-w-full items-center justify-center overflow-hidden rounded-sm"
+          className="flex h-full w-full items-center justify-center overflow-hidden rounded-sm"
           style={{
             transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`,
             transformOrigin: "center center",
@@ -683,9 +695,11 @@ function ZoomableImageFrame({
 
 function PdfPreviewFrame({ src, title }: { src: string; title: string }) {
   const loadedRef = React.useRef(false);
+  const [loaded, setLoaded] = React.useState(false);
   const [showFallback, setShowFallback] = React.useState(false);
   React.useEffect(() => {
     loadedRef.current = false;
+    setLoaded(false);
     setShowFallback(false);
     const t = window.setTimeout(() => {
       if (!loadedRef.current) setShowFallback(true);
@@ -694,16 +708,29 @@ function PdfPreviewFrame({ src, title }: { src: string; title: string }) {
   }, [src]);
 
   return (
-    <div className="relative flex min-h-[50dvh] w-full max-w-[min(100vw-1rem,72rem)] flex-1 flex-col rounded-sm bg-zinc-900/40 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_56px_-14px_rgba(0,0,0,0.72)] ring-1 ring-white/10">
+    <div
+      data-testid="attachment-preview-viewport"
+      className={cn(
+        "relative flex shrink-0 flex-col rounded-sm bg-zinc-900/40 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_56px_-14px_rgba(0,0,0,0.72)] ring-1 ring-white/10",
+        PREVIEW_VIEWPORT_CLASS
+      )}
+    >
       <iframe
         title={title}
         src={src}
         onLoad={() => {
           loadedRef.current = true;
+          setLoaded(true);
           setShowFallback(false);
         }}
-        className="min-h-[50dvh] h-[min(88dvh,calc(100dvh-6.5rem))] w-full flex-1 rounded-sm border-0 bg-zinc-950"
+        className={cn(
+          "h-full w-full flex-1 rounded-sm border-0 bg-zinc-950 transition-opacity duration-200 ease-out",
+          loaded ? "opacity-100" : "opacity-0"
+        )}
       />
+      {!loaded && !showFallback ? (
+        <Skeleton className="pointer-events-none absolute inset-[1px] rounded-sm bg-zinc-800/90" />
+      ) : null}
       {showFallback ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 px-4 text-center">
           <p className="text-sm text-zinc-300">PDF preview is unavailable in-app.</p>
@@ -877,20 +904,30 @@ function ReceiptPreviewImageArea({
       data-testid="receipt-preview-image-area"
       data-preview-stage={previewStage}
     >
-      <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-4 px-2 py-2">
+      <div
+        data-testid="attachment-preview-viewport"
+        className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-4 overflow-hidden px-2 py-2"
+      >
         {preflightPhase === "checking" ? (
           <div
-            className="flex w-full max-w-[min(100vw-2rem,56rem)] flex-col items-center gap-2"
+            data-testid="attachment-preview-viewport"
+            className={cn(
+              "relative flex shrink-0 items-center justify-center overflow-hidden",
+              PREVIEW_VIEWPORT_CLASS
+            )}
             aria-busy
           >
-            <Skeleton className="h-[min(72dvh,560px)] w-full rounded-sm bg-zinc-800/90" />
+            <Skeleton className="pointer-events-none absolute inset-0 rounded-sm bg-zinc-800/90" />
             <span className="sr-only">Checking preview URL</span>
           </div>
         ) : null}
 
         {preflightHardFail ? (
           <div
-            className="flex max-w-md flex-col items-center gap-3 text-center"
+            className={cn(
+              "flex flex-col items-center justify-center gap-3 px-4 text-center",
+              PREVIEW_VIEWPORT_CLASS
+            )}
             data-testid="receipt-preview-preflight-error"
           >
             <p className="text-sm text-zinc-400">
@@ -925,11 +962,14 @@ function ReceiptPreviewImageArea({
         {preflightPhase === "ok" ? (
           <>
             {imgPhase === "loading" ? (
-              <Skeleton className="pointer-events-none absolute inset-x-2 top-6 h-[min(68dvh,520px)] w-[min(calc(100%-1rem),56rem)] max-w-full rounded-sm bg-zinc-800/90" />
+              <span className="sr-only">Loading receipt preview</span>
             ) : null}
             {imgPhase === "error" ? (
               <div
-                className="flex max-w-md flex-col items-center gap-3 text-center"
+                className={cn(
+                  "flex flex-col items-center justify-center gap-3 px-4 text-center",
+                  PREVIEW_VIEWPORT_CLASS
+                )}
                 data-testid="receipt-preview-img-error"
               >
                 <p className="text-sm text-zinc-400">Unable to load receipt</p>
@@ -953,8 +993,9 @@ function ReceiptPreviewImageArea({
                 effectiveUrl={effectiveUrl}
                 imgPhase={imgPhase}
                 onZoomPanChange={onZoomPanChange}
+                showLoadingSkeleton={imgPhase === "loading"}
                 imgClassName={cn(
-                  "max-h-[min(92dvh,calc(100dvh-6.5rem))] max-w-[min(100vw-1rem,100%)] object-contain select-none",
+                  "h-full w-full select-none object-contain",
                   fastMotion
                     ? "transition-opacity duration-75 ease-out"
                     : "transition-opacity duration-300 ease-out",
@@ -1326,7 +1367,7 @@ export function AttachmentPreviewModal({
                   className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4"
                   aria-busy
                 >
-                  <Skeleton className="h-[min(72dvh,560px)] w-full max-w-[min(100vw-2rem,56rem)] rounded-sm bg-zinc-800/90" />
+                  <Skeleton className={cn("rounded-sm bg-zinc-800/90", PREVIEW_VIEWPORT_CLASS)} />
                   <span className="sr-only">Loading preview</span>
                 </div>
               ) : unsupported ? (
@@ -1338,7 +1379,7 @@ export function AttachmentPreviewModal({
                   className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4"
                   aria-busy
                 >
-                  <Skeleton className="h-[min(72dvh,560px)] w-full max-w-[min(100vw-2rem,56rem)] rounded-sm bg-zinc-800/90" />
+                  <Skeleton className={cn("rounded-sm bg-zinc-800/90", PREVIEW_VIEWPORT_CLASS)} />
                   <span className="sr-only">Loading receipt preview</span>
                 </div>
               ) : !fileUrl && signedUrlResolveFailed ? (
