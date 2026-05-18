@@ -6,6 +6,7 @@ import {
   type CostCode,
 } from "@/lib/data";
 import { ChevronRight } from "lucide-react";
+import { formatCurrency } from "@/lib/formatters";
 
 export type EstimateReadOnlyPayload = {
   estimateId: string;
@@ -97,7 +98,7 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
           <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-border">
             <span className="font-semibold text-foreground">Grand Total</span>
             <span className="font-semibold tabular-nums text-foreground">
-              ${grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              {formatCurrency(grandTotal)}
             </span>
           </div>
         </div>
@@ -131,7 +132,7 @@ function CostCodeSectionReadOnly({
             <span className="font-medium text-foreground">{headerLabel}</span>
           </div>
           <span className="text-sm font-medium tabular-nums text-foreground">
-            ${sectionSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            {formatCurrency(sectionSubtotal)}
           </span>
         </summary>
         <div className="border-t border-gray-100 dark:border-border">
@@ -169,16 +170,13 @@ function CostCodeSectionReadOnly({
                     <td className="px-4 py-3 text-right tabular-nums text-foreground">{row.qty}</td>
                     <td className="px-4 py-3 text-muted-foreground">{row.unit}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-foreground">
-                      ${row.unitCost.toLocaleString()}
+                      {formatCurrency(row.unitCost)}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                       {(row.markupPct * 100).toFixed(0)}%
                     </td>
                     <td className="px-4 py-3 text-right font-medium tabular-nums text-foreground">
-                      $
-                      {estimateLineTotal(row).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                      })}
+                      {formatCurrency(estimateLineTotal(row))}
                     </td>
                   </tr>
                 ))}
@@ -195,9 +193,7 @@ function SummaryRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center justify-between text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium tabular-nums text-foreground">
-        ${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-      </span>
+      <span className="font-medium tabular-nums text-foreground">{formatCurrency(value)}</span>
     </div>
   );
 }

@@ -54,6 +54,8 @@ async function fillNewEstimate(
     clientName: string;
     projectName: string;
     lineTitle: string;
+    quantity?: string;
+    unitPrice?: string;
   }
 ): Promise<void> {
   await page.getByPlaceholder("Client or company name").fill(params.clientName);
@@ -65,8 +67,8 @@ async function fillNewEstimate(
 
   await expect(page.getByLabel("Line item 1 title")).toBeVisible({ timeout: 15_000 });
   await page.getByLabel("Line item 1 title").fill(params.lineTitle);
-  await page.getByLabel("Line item 1 quantity").fill("2");
-  await page.getByLabel("Line item 1 unit price").fill("125.5");
+  await page.getByLabel("Line item 1 quantity").fill(params.quantity ?? "2");
+  await page.getByLabel("Line item 1 unit price").fill(params.unitPrice ?? "125.5");
 }
 
 async function createEstimate(
@@ -239,6 +241,57 @@ test("opens approved estimate conversion without creating a project", async ({ p
   await page.getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByText("Set up project")).toHaveCount(0, { timeout: 10_000 });
   await expect(page).toHaveURL(/\/estimates\/[^/?#]+/, { timeout: 10_000 });
+});
+
+test("formats fractional-cent estimate amounts as standard currency", async ({ page }) => {
+  test.setTimeout(120_000);
+
+  const rawFractionalCurrency = /\$0\.(?:011|012|014)(?!\d)/;
+  const suffix = Date.now();
+  const clientName = `PW Estimate Precision ${suffix}`;
+  const projectName = `PW Estimate Precision Project ${suffix}`;
+  const lineTitle = `PW fractional-cent line ${suffix}`;
+  createdClientNames.add(clientName);
+  createdProjectNames.add(projectName);
+
+  await page.goto("/estimates/new");
+  await page.waitForLoadState("domcontentloaded");
+  await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await fillNewEstimate(page, {
+    clientName,
+    projectName,
+    lineTitle,
+    quantity: "1",
+    unitPrice: "0.011",
+  });
+
+  const saveEstimate = page.getByRole("button", { name: "Save Estimate" });
+  await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
+  await saveEstimate.click();
+  await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
+
+  const detailUrl = page.url();
+  await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
+  await expect(page.getByText("$0.01").first()).toBeVisible({ timeout: 30_000 });
+
+  await page.goto("/estimates");
+  await page.waitForLoadState("domcontentloaded");
+  const listSearch = page.locator('input[placeholder="Search estimates…"]:visible').first();
+  await expect(listSearch).toBeVisible({ timeout: 30_000 });
+  await listSearch.fill(clientName);
+  await expect(page.getByText(clientName, { exact: true }).first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
+  await expect(page.getByText("$0.01").first()).toBeVisible({ timeout: 30_000 });
+
+  await page.goto(`${detailUrl}/preview`);
+  await page.waitForLoadState("domcontentloaded");
+  await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
+  await expect(page.getByText("$0.01").first()).toBeVisible({ timeout: 30_000 });
 });
 
 test("keeps estimate actions usable on mobile", async ({ page }) => {

@@ -72,6 +72,7 @@ import { LineItemDescriptionBodyPreview } from "./line-item-description-body-pre
 import { CostCategoryTitleMenu, type CostCategoryOption } from "./cost-category-title-menu";
 import { pickNextUniqueCostCode } from "@/lib/estimate-cost-code-suggest";
 import type { LineItemDescriptionRichTextHandle } from "./line-item-description-rich-text";
+import { formatCurrency } from "@/lib/formatters";
 
 /** TipTap must not load on the server — Next 14 can emit a broken `vendor-chunks/@tiptap.js` ref and 500 the page. */
 const LineItemDescriptionRichText = dynamic(
@@ -811,7 +812,7 @@ export function EstimateEditor({
                           )}
                         </div>
                         <span className="tabular-nums text-sm font-medium text-foreground">
-                          ${sectionTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {formatCurrency(sectionTotal)}
                         </span>
                       </summary>
                       <div className="border-t border-zinc-200 dark:border-border">
@@ -1275,7 +1276,7 @@ function LineItemRow({
         </td>
         <td className="py-2 px-4 text-right align-top">
           {isLocked ? (
-            `$${row.unitCost.toLocaleString()}`
+            formatCurrency(row.unitCost)
           ) : (
             <Input
               form={formId}
@@ -1292,7 +1293,7 @@ function LineItemRow({
         </td>
         <td className="py-2 px-4 align-top text-muted-foreground text-xs">{categoryId}</td>
         <td className="py-2 px-4 align-top text-right tabular-nums font-semibold">
-          ${lineTotalDisplay.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          {formatCurrency(lineTotalDisplay)}
         </td>
         {!isLocked && (
           <td className="py-2 px-2 align-top">

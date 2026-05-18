@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ArrowLeft, Send, CheckCircle, FolderKanban, Lock, FileText } from "lucide-react";
+import { formatCurrency } from "@/lib/formatters";
 
 type Status = "Draft" | "Sent" | "Approved" | "Rejected" | "Converted";
 
@@ -209,7 +210,7 @@ export function EstimateHeader({
                         <span className="text-xs text-muted-foreground">{s.createdAt}</span>
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        ${withOverhead.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(withOverhead)}
                       </div>
                     </Link>
                   );

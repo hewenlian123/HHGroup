@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import type { EstimateListItem } from "@/lib/data";
+import { formatCurrency } from "@/lib/formatters";
 import { EstimateStatusBadge } from "./_components/estimate-status-badge";
 
 export function EstimateMobileList({
@@ -49,7 +50,7 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <span className="text-sm font-medium tabular-nums text-foreground">
-            ${row.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+            {formatCurrency(row.total)}
           </span>
           <EstimateStatusBadge status={row.status} />
         </div>
@@ -101,7 +102,7 @@ export const EstimateListRow = memo(function EstimateListRow({
         <EstimateStatusBadge status={row.status} />
       </TableCell>
       <TableCell className="text-right tabular-nums font-medium text-foreground">
-        ${row.total.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        {formatCurrency(row.total)}
       </TableCell>
       <TableCell className="text-muted-foreground">{row.updatedAt}</TableCell>
       <TableCell className="w-10 text-right" onClick={(e) => e.stopPropagation()}>
