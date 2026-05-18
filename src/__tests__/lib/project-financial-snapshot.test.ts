@@ -53,12 +53,28 @@ describe("project financial snapshot", () => {
     expect(snapshot.reimbursementCost).toBe(125);
     expect(snapshot.subcontractCost).toBe(750);
     expect(snapshot.apCost).toBe(300);
-    expect(snapshot.actualCost).toBe(3675);
-    expect(snapshot.grossProfit).toBe(7825);
-    expect(snapshot.grossMargin).toBeCloseTo(7825 / 11500, 6);
+    expect(snapshot.actualCost).toBe(3375);
+    expect(snapshot.grossProfit).toBe(8125);
+    expect(snapshot.grossMargin).toBeCloseTo(8125 / 11500, 6);
     expect(snapshot.cashCollected).toBe(2500);
     expect(snapshot.cashOut).toBe(1200);
     expect(snapshot.cashPosition).toBe(1300);
+  });
+
+  it("keeps generic AP cost diagnostic-only so it cannot double count actual cost", () => {
+    const snapshot = calculateProjectFinancialSnapshot({
+      projectId: "project-1",
+      contractValue: 5000,
+      expenseLines: [{ id: "expense-1", amount: 800, status: "paid" }],
+      subcontractCosts: [{ id: "subcontract-1", amount: 900, status: "Approved" }],
+      apCosts: [{ id: "ap-1", amount: 1200, status: "Pending" }],
+      cashOutPayments: [{ id: "ap-payment-1", amount: 400, status: "Paid" }],
+    });
+
+    expect(snapshot.apCost).toBe(1200);
+    expect(snapshot.actualCost).toBe(1700);
+    expect(snapshot.grossProfit).toBe(3300);
+    expect(snapshot.cashOut).toBe(400);
   });
 
   it("does not count a worker reimbursement twice when it has a reimbursement expense line", () => {

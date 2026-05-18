@@ -83,6 +83,68 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+type ApSummaryBill = {
+  amount?: number | string | null;
+  paid_amount?: number | string | null;
+  balance_amount?: number | string | null;
+  status?: string | null;
+  due_date?: string | null;
+};
+
+type ApSummaryWindow = {
+  today: string;
+  weekStart: string;
+  weekEnd: string;
+  paidThisMonthAmount: number;
+};
+
+function apOutstandingBalance(bill: ApSummaryBill): number {
+  if (bill.balance_amount != null) return Math.max(0, toNum(bill.balance_amount));
+  return Math.max(0, toNum(bill.amount) - toNum(bill.paid_amount));
+}
+
+export function summarizeApBillsForDashboard(
+  bills: ApSummaryBill[],
+  window: ApSummaryWindow
+): {
+  totalOutstanding: number;
+  overdueCount: number;
+  overdueAmount: number;
+  dueThisWeekCount: number;
+  dueThisWeekAmount: number;
+  paidThisMonthAmount: number;
+} {
+  let totalOutstanding = 0;
+  let overdueCount = 0;
+  let overdueAmount = 0;
+  let dueThisWeekCount = 0;
+  let dueThisWeekAmount = 0;
+
+  for (const bill of bills) {
+    const balance = apOutstandingBalance(bill);
+    if (balance <= 0) continue;
+    totalOutstanding += balance;
+    const due = bill.due_date ?? "";
+    if (due && due < window.today) {
+      overdueCount++;
+      overdueAmount += balance;
+    }
+    if (due && due >= window.weekStart && due <= window.weekEnd) {
+      dueThisWeekCount++;
+      dueThisWeekAmount += balance;
+    }
+  }
+
+  return {
+    totalOutstanding,
+    overdueCount,
+    overdueAmount,
+    dueThisWeekCount,
+    dueThisWeekAmount,
+    paidThisMonthAmount: window.paidThisMonthAmount,
+  };
+}
+
 function mapBill(r: Record<string, unknown>): ApBillRow {
   const amount = toNum(r.amount);
   return {
@@ -418,7 +480,7 @@ export async function getApBillsSummary(): Promise<{
 
   const { data: bills, error } = await c
     .from(BILLS_TABLE)
-    .select("id, amount, status, due_date")
+    .select("id, amount, paid_amount, balance_amount, status, due_date")
     .not("status", "eq", "Void");
   if (error) {
     // Table missing or other error — return zeroed summary rather than crashing.
@@ -431,28 +493,7 @@ export async function getApBillsSummary(): Promise<{
       paidThisMonthAmount: 0,
     };
   }
-  const list = (bills ?? []) as Array<{ due_date?: string | null; amount?: number }>;
-
-  let totalOutstanding = 0;
-  let overdueCount = 0;
-  let overdueAmount = 0;
-  let dueThisWeekCount = 0;
-  let dueThisWeekAmount = 0;
-
-  for (const b of list) {
-    const balance = toNum(b.amount);
-    if (balance <= 0) continue;
-    totalOutstanding += balance;
-    const due = b.due_date ?? "";
-    if (due && balance > 0 && due < today) {
-      overdueCount++;
-      overdueAmount += balance;
-    }
-    if (due && balance > 0 && due >= weekStart && due <= weekEnd) {
-      dueThisWeekCount++;
-      dueThisWeekAmount += balance;
-    }
-  }
+  const list = (bills ?? []) as ApSummaryBill[];
 
   let paidThisMonthAmount = 0;
   try {
@@ -472,12 +513,10 @@ export async function getApBillsSummary(): Promise<{
     // ap_bill_payments may not exist
   }
 
-  return {
-    totalOutstanding,
-    overdueCount,
-    overdueAmount,
-    dueThisWeekCount,
-    dueThisWeekAmount,
+  return summarizeApBillsForDashboard(list, {
+    today,
+    weekStart,
+    weekEnd,
     paidThisMonthAmount,
-  };
+  });
 }

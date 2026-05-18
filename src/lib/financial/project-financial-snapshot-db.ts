@@ -76,11 +76,19 @@ type ProjectFinancialWorkerReimbursementRow = ProjectFinancialAmountRow & {
 
 type ProjectFinancialSubcontractBillRow = ProjectFinancialAmountRow & {
   project_id?: string | null;
+  subcontract_id?: string | null;
+};
+
+type ProjectFinancialSubcontractPaymentRow = ProjectFinancialAmountRow & {
+  subcontract_id?: string | null;
+  bill_id?: string | null;
 };
 
 type ProjectFinancialApBillRow = ProjectFinancialAmountRow & {
   project_id?: string | null;
+  bill_type?: string | null;
   paid_amount?: number | string | null;
+  balance_amount?: number | string | null;
 };
 
 export type ProjectFinancialSnapshotDbRows = {
@@ -94,6 +102,7 @@ export type ProjectFinancialSnapshotDbRows = {
   laborEntries: ProjectFinancialLaborEntryRow[];
   workerReimbursements: ProjectFinancialWorkerReimbursementRow[];
   subcontractBills: ProjectFinancialSubcontractBillRow[];
+  subcontractPayments?: ProjectFinancialSubcontractPaymentRow[];
   apBills: ProjectFinancialApBillRow[];
 };
 
@@ -159,9 +168,27 @@ function isPaidLikeStatus(status: string | null | undefined): boolean {
   return s === "paid" || s === "done" || s === "completed";
 }
 
+function isSubcontractCostStatus(status: string | null | undefined): boolean {
+  const s = normalizeStatus(status);
+  return (
+    s === "approved" ||
+    s === "paid" ||
+    s === "partial" ||
+    s === "partially_paid" ||
+    s === "done" ||
+    s === "completed"
+  );
+}
+
+function isDraftLikeStatus(status: string | null | undefined): boolean {
+  return normalizeStatus(status) === "draft";
+}
+
 function isVoidLikeStatus(status: string | null | undefined): boolean {
   const s = normalizeStatus(status);
-  return s === "void" || s === "voided" || s === "cancelled" || s === "canceled";
+  return (
+    s === "void" || s === "voided" || s === "cancelled" || s === "canceled" || s === "rejected"
+  );
 }
 
 function amountFromRow(row: ProjectFinancialAmountRow): number {
@@ -173,6 +200,27 @@ function amountFromRow(row: ProjectFinancialAmountRow): number {
       row.costAmount ??
       row.cost_amount
   );
+}
+
+function paymentSumByBillId(
+  payments: ProjectFinancialSubcontractPaymentRow[] | undefined
+): Map<string, number> {
+  const byBillId = new Map<string, number>();
+  for (const payment of payments ?? []) {
+    const billId = String(payment.bill_id ?? "").trim();
+    if (!billId) continue;
+    byBillId.set(billId, (byBillId.get(billId) ?? 0) + amountFromRow(payment));
+  }
+  return byBillId;
+}
+
+function apBillOpenBalance(bill: ProjectFinancialApBillRow): number {
+  if (bill.balance_amount != null) return Math.max(0, toMoney(bill.balance_amount));
+  return Math.max(0, toMoney(amountFromRow(bill) - toMoney(bill.paid_amount)));
+}
+
+function isActiveApBillForDiagnostics(bill: ProjectFinancialApBillRow): boolean {
+  return !isVoidLikeStatus(bill.status) && !isDraftLikeStatus(bill.status);
 }
 
 function warning(code: string, message: string, sourceId?: string | null): ProjectFinancialWarning {
@@ -192,6 +240,12 @@ function createDiagnostics(): ProjectFinancialSnapshotDiagnostics {
     changeOrdersLoaded: 0,
     approvedChangeOrdersCount: 0,
     reimbursementDedupedCount: 0,
+    subcontractCashOut: 0,
+    openSubcontractAP: 0,
+    openAP: 0,
+    apCashOut: 0,
+    apBillCount: 0,
+    apDiagnosticsWarnings: [],
     missingSchemaWarnings: [],
   };
 }
@@ -393,7 +447,16 @@ function buildCashOutPayments(
       });
     }
   }
+  const subcontractPayments = rows.subcontractPayments ?? [];
+  const subcontractPaymentBillIds = new Set<string>();
+  for (const payment of subcontractPayments) {
+    const billId = String(payment.bill_id ?? "").trim();
+    if (billId) subcontractPaymentBillIds.add(billId);
+    cashRows.push({ id: payment.id, amount: amountFromRow(payment), status: payment.status });
+  }
   for (const bill of rows.subcontractBills) {
+    const billId = String(bill.id ?? "").trim();
+    if (billId && subcontractPaymentBillIds.has(billId)) continue;
     if (isPaidLikeStatus(bill.status)) {
       cashRows.push({ id: bill.id, amount: amountFromRow(bill), status: bill.status });
     }
@@ -470,12 +533,64 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
       status: reimbursement.status ?? null,
     })
   );
-  const subcontractCosts: ProjectFinancialAmountRow[] = rows.subcontractBills
-    .filter((bill) => isApprovedStatus(bill.status))
-    .map((bill) => ({ id: bill.id, amount: amountFromRow(bill), status: bill.status }));
-  const apCosts: ProjectFinancialAmountRow[] = rows.apBills
-    .filter((bill) => !isVoidLikeStatus(bill.status) && normalizeStatus(bill.status) !== "draft")
-    .map((bill) => ({ id: bill.id, amount: amountFromRow(bill), status: bill.status }));
+  const subcontractPaymentTotals = paymentSumByBillId(rows.subcontractPayments);
+  const subcontractCosts: ProjectFinancialAmountRow[] = [];
+  for (const bill of rows.subcontractBills) {
+    const amount = amountFromRow(bill);
+    const status = bill.status ?? null;
+    const billId = String(bill.id ?? "").trim();
+    if (isSubcontractCostStatus(status)) {
+      subcontractCosts.push({ id: bill.id, amount, status });
+      diagnostics.openSubcontractAP += Math.max(
+        0,
+        amount - (subcontractPaymentTotals.get(billId) ?? 0)
+      );
+      continue;
+    }
+    if (!isVoidLikeStatus(status) && !isDraftLikeStatus(status)) {
+      mapperWarnings.push(
+        warning(
+          "subcontract_bill_not_finalized",
+          "Subcontract bill is not included in project actual cost until it is approved or paid.",
+          bill.id ?? null
+        )
+      );
+    }
+  }
+
+  diagnostics.subcontractCashOut = toMoney(
+    (rows.subcontractPayments ?? []).reduce((sum, payment) => sum + amountFromRow(payment), 0)
+  );
+
+  const activeApBills = rows.apBills.filter(isActiveApBillForDiagnostics);
+  const apCosts: ProjectFinancialAmountRow[] = activeApBills.map((bill) => ({
+    id: bill.id,
+    amount: amountFromRow(bill),
+    status: bill.status,
+  }));
+  diagnostics.apBillCount = activeApBills.length;
+  diagnostics.openAP = toMoney(
+    activeApBills.reduce((sum, bill) => sum + apBillOpenBalance(bill), 0)
+  );
+  diagnostics.apCashOut = toMoney(
+    activeApBills.reduce((sum, bill) => sum + toMoney(bill.paid_amount), 0)
+  );
+  if (activeApBills.length > 0) {
+    diagnostics.apDiagnosticsWarnings.push("ap_bills_not_in_actual_cost");
+    const hasMappedCost =
+      expenseLines.length > 0 ||
+      laborEntries.length > 0 ||
+      subcontractCosts.length > 0 ||
+      activeApBills.some((bill) => normalizeStatus(bill.bill_type).includes("labor"));
+    if (hasMappedCost) diagnostics.apDiagnosticsWarnings.push("ap_bills_possible_duplicate_cost");
+    mapperWarnings.push(
+      warning(
+        "ap_bills_possible_duplicate_cost",
+        "AP bills are shown as diagnostics only because they may duplicate expense, labor, or subcontract costs already mapped into actual cost."
+      )
+    );
+  }
+  diagnostics.openSubcontractAP = toMoney(diagnostics.openSubcontractAP);
 
   diagnostics.missingSchemaWarnings = diagnosticsFromWarnings(mapperWarnings).missingSchemaWarnings;
 
@@ -816,6 +931,38 @@ function selectChangeOrdersByProject(
   );
 }
 
+function selectApBillsByProject(
+  supabase: ReturnType<typeof getServerSupabaseInternalNoStore>,
+  projectId: string
+) {
+  if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const cols = [
+    "id,project_id,bill_type,amount,paid_amount,balance_amount,status",
+    "id,project_id,bill_type,amount,paid_amount,status",
+    "id,project_id,amount,paid_amount,status",
+    "id,project_id,amount,status",
+  ];
+  return safeSelectFallback<ProjectFinancialApBillRow>(
+    "ap_bills",
+    cols.map((col) => () => supabase.from("ap_bills").select(col).eq("project_id", projectId))
+  );
+}
+
+function selectSubcontractPaymentsByBillIds(
+  supabase: ReturnType<typeof getServerSupabaseInternalNoStore>,
+  billIds: string[]
+) {
+  if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  if (billIds.length === 0) return Promise.resolve({ data: [], warnings: [] });
+  return safeSelect<ProjectFinancialSubcontractPaymentRow>(
+    "subcontract_payments",
+    supabase
+      .from("subcontract_payments")
+      .select("id,subcontract_id,bill_id,amount")
+      .in("bill_id", billIds)
+  );
+}
+
 async function selectChangeOrderItemsByIds(
   supabase: ReturnType<typeof getServerSupabaseInternalNoStore>,
   changeOrderIds: string[]
@@ -874,6 +1021,7 @@ async function fetchProjectFinancialSnapshotRows(
     laborRes,
     reimbursementRes,
     subcontractRes,
+    apBillsRes,
   ] = await Promise.all([
     supabase.from("projects").select("id,budget,contract_amount").eq("id", projectId).maybeSingle(),
     selectChangeOrdersByProject(supabase, projectId),
@@ -907,6 +1055,7 @@ async function fetchProjectFinancialSnapshotRows(
         .select("id,project_id,amount,status")
         .eq("project_id", projectId)
     ),
+    selectApBillsByProject(supabase, projectId),
   ]);
 
   if (projectRes.error) throw new Error(projectRes.error.message ?? "Failed to load project.");
@@ -956,6 +1105,14 @@ async function fetchProjectFinancialSnapshotRows(
             .in("invoice_id", invoiceIds)
         )
       : { data: [], warnings: [] };
+  const subcontractBillIds = subcontractRes.data
+    .map((bill) => String(bill.id ?? "").trim())
+    .filter(Boolean);
+  const subcontractPaymentsRes = await selectSubcontractPaymentsByBillIds(
+    supabase,
+    subcontractBillIds
+  );
+  const apUnavailable = apBillsRes.warnings.length > 0;
 
   return {
     rows: {
@@ -969,8 +1126,8 @@ async function fetchProjectFinancialSnapshotRows(
       laborEntries: laborRes.data,
       workerReimbursements: reimbursementRes.data,
       subcontractBills: subcontractRes.data,
-      // AP is intentionally left unmapped until the ap_bills table is present in the verified schema.
-      apBills: [],
+      subcontractPayments: subcontractPaymentsRes.data,
+      apBills: apBillsRes.data,
     },
     warnings: [
       ...changeOrdersRes.warnings,
@@ -981,12 +1138,18 @@ async function fetchProjectFinancialSnapshotRows(
       ...laborRes.warnings,
       ...reimbursementRes.warnings,
       ...subcontractRes.warnings,
+      ...subcontractPaymentsRes.warnings,
+      ...apBillsRes.warnings,
       ...invoicePaymentsRes.warnings,
       ...extraWarnings,
-      warning(
-        "ap_bills_not_mapped",
-        "AP bills are not included yet because the local verified schema does not expose ap_bills."
-      ),
+      ...(apUnavailable
+        ? [
+            warning(
+              "ap_bills_not_mapped",
+              "AP bills are not included in diagnostics because the AP schema is unavailable."
+            ),
+          ]
+        : []),
     ],
   };
 }
