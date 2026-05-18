@@ -266,4 +266,56 @@ test.describe("System QA check", () => {
 
     await context.close();
   });
+
+  test("System Health tolerates partial QA and integrity responses", async ({ browser }) => {
+    const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+    await loginOwner(context.request);
+    const page = await context.newPage();
+    const pageErrors: string[] = [];
+    page.on("pageerror", (error) => pageErrors.push(error.message));
+
+    await page.route("**/api/system/qa-check", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          checkedAt: new Date().toISOString(),
+          mode: "production-safe",
+          summary: {
+            status: "warning",
+            warning: 1,
+          },
+          sections: [
+            {
+              id: "partial",
+              name: "Partial QA section",
+              status: "warning",
+            },
+          ],
+        }),
+      });
+    });
+    await page.route("**/api/system/integrity", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+        }),
+      });
+    });
+
+    await page.goto("/system-health", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "System Health" })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByRole("heading", { name: "System QA" })).toBeVisible();
+    await expect(page.getByText("Partial QA section")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Warnings", { exact: true })).toBeVisible();
+    await expect(page.getByText("Total checks", { exact: true })).toBeVisible();
+    expect(pageErrors).toEqual([]);
+
+    await context.close();
+  });
 });
