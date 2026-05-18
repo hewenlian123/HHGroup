@@ -63,7 +63,32 @@ async function deleteProject(projectId: string): Promise<void> {
   await supabase.from("projects").delete().eq("id", projectId);
 }
 
-function snapshotComparisonBody(projectId: string) {
+type SnapshotComparisonOverride = {
+  contractValue?: number;
+  revisedContractValue?: number;
+  grossProfit?: number;
+  grossMargin?: number;
+  warnings?: Array<{ code: string; severity: "info" | "warning"; message: string }>;
+};
+
+function snapshotComparisonBody(projectId: string, override: SnapshotComparisonOverride = {}) {
+  const contractValue = override.contractValue ?? 1000;
+  const revisedContractValue = override.revisedContractValue ?? contractValue;
+  const grossProfit = override.grossProfit ?? revisedContractValue - 7321.5;
+  const grossMargin = override.grossMargin ?? grossProfit / revisedContractValue;
+  const warnings = override.warnings ?? [
+    {
+      code: "ap_bills_not_mapped",
+      severity: "warning" as const,
+      message: "AP bills are not included yet.",
+    },
+    {
+      code: "reimbursement_not_finalized",
+      severity: "warning" as const,
+      message: "Some reimbursements are not finalized.",
+    },
+  ];
+
   return {
     ok: true,
     comparison: {
@@ -88,9 +113,9 @@ function snapshotComparisonBody(projectId: string) {
       },
       newSnapshot: {
         projectId,
-        contractValue: 1000,
+        contractValue,
         approvedChangeOrders: 0,
-        revisedContractValue: 1000,
+        revisedContractValue,
         billedAmount: 975,
         paidAmount: 400,
         openAR: 575,
@@ -100,23 +125,12 @@ function snapshotComparisonBody(projectId: string) {
         reimbursementCost: 400.25,
         subcontractCost: 0,
         apCost: 0,
-        grossProfit: -6321.5,
-        grossMargin: -6.3215,
+        grossProfit,
+        grossMargin,
         cashCollected: 400,
         cashOut: 0,
         cashPosition: 400,
-        warnings: [
-          {
-            code: "ap_bills_not_mapped",
-            severity: "warning",
-            message: "AP bills are not included yet.",
-          },
-          {
-            code: "reimbursement_not_finalized",
-            severity: "warning",
-            message: "Some reimbursements are not finalized.",
-          },
-        ],
+        warnings,
         diagnostics: {
           expenseLinesLoaded: 2,
           expenseHeaderFallbackCount: 0,
@@ -141,18 +155,7 @@ function snapshotComparisonBody(projectId: string) {
         },
       },
       differences: [],
-      warnings: [
-        {
-          code: "ap_bills_not_mapped",
-          severity: "warning",
-          message: "AP bills are not included yet.",
-        },
-        {
-          code: "reimbursement_not_finalized",
-          severity: "warning",
-          message: "Some reimbursements are not finalized.",
-        },
-      ],
+      warnings,
       diagnostics: {
         expenseLinesLoaded: 2,
         expenseHeaderFallbackCount: 0,
@@ -295,11 +298,63 @@ test.describe("project financial snapshot API", () => {
       await expect(page.getByTestId("snapshot-ar-billed")).toContainText("$975");
       await expect(page.getByTestId("snapshot-ar-paid")).toContainText("$400");
       await expect(page.getByTestId("snapshot-ar-open")).toContainText("$575");
+      await expect(page.getByTestId("snapshot-profit-gross")).toContainText("-$6,321.50");
+      await expect(page.getByTestId("snapshot-profit-margin")).toContainText("-632.2%");
+      await expect(page.getByText("Confirmed Gross Profit")).toBeVisible();
+      await expect(page.getByText("Confirmed Margin")).toBeVisible();
+      await expect(
+        page.getByText("Contract value needs review before profit can be shown.")
+      ).toHaveCount(0);
       await expect(page.getByText("AP/subcontract mapping is not final yet.")).toBeVisible();
       await expect(page.getByText("Some reimbursements still need final review.")).toBeVisible();
       await expect(page.getByText("Pending review costs are not included.")).toBeVisible();
       await expect(page.getByText(/Pending review costs not included/)).toBeVisible();
       await expect(page.getByText("Financial Snapshot Comparison", { exact: true })).toHaveCount(0);
+      await context.close();
+    } finally {
+      await deleteProject(projectId);
+    }
+  });
+
+  test("project cost tab hides snapshot profit when contract value needs review", async ({
+    browser,
+  }) => {
+    const projectId = await createProject();
+
+    try {
+      const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const page = await context.newPage();
+      await page.route(`**/api/projects/${projectId}/financial-snapshot`, async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(
+            snapshotComparisonBody(projectId, {
+              contractValue: 1,
+              revisedContractValue: 1,
+              grossProfit: -7320.5,
+              grossMargin: -7320.5,
+            })
+          ),
+        });
+      });
+
+      await page.goto(`/projects/${projectId}?tab=cost`, { waitUntil: "domcontentloaded" });
+
+      await expect(page.getByRole("heading", { name: /\[E2E\] Snapshot API/i })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByTestId("snapshot-cost-actual")).toContainText("$7,321.50");
+      await expect(
+        page.getByText("Contract value needs review before profit can be shown.")
+      ).toBeVisible();
+      await expect(page.getByText("Confirmed Gross Profit")).toHaveCount(0);
+      await expect(page.getByText("Confirmed Margin")).toHaveCount(0);
       await context.close();
     } finally {
       await deleteProject(projectId);

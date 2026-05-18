@@ -94,9 +94,20 @@ const exactMoneyFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
+const percentFormatter = new Intl.NumberFormat("en-US", {
+  style: "percent",
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
 function fmtExactMoney(n: number | null | undefined) {
   if (n == null || !Number.isFinite(n)) return "—";
   return exactMoneyFormatter.format(n);
+}
+
+function fmtPercentRatio(n: number | null | undefined) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return percentFormatter.format(n);
 }
 
 type CostBucketFilter = null | "expenses" | "labor" | "reimbursements" | "bills";
@@ -203,6 +214,61 @@ function pendingDiagnosticsLine(
   return `Pending review costs not included: ${parts.join(" · ")}.`;
 }
 
+function snapshotWarningCodes(
+  warnings: ProjectFinancialWarning[],
+  diagnostics: ProjectFinancialSnapshotDiagnostics | null | undefined
+): Set<string> {
+  return new Set([
+    ...warnings.map((warning) => warning.code),
+    ...(diagnostics?.missingSchemaWarnings ?? []),
+    ...(diagnostics?.apDiagnosticsWarnings ?? []),
+  ]);
+}
+
+function hasCriticalSnapshotSchemaWarning(codes: Set<string>): boolean {
+  const criticalPrefixes = [
+    "expense_lines",
+    "expense_lines_by_project",
+    "expenses",
+    "labor_entries",
+    "worker_reimbursements",
+    "subcontract_bills",
+    "project_change_orders",
+    "project_change_order_items",
+  ];
+  return criticalPrefixes.some((prefix) =>
+    [...codes].some(
+      (code) =>
+        code.startsWith(prefix) &&
+        (code.includes("unavailable") || code.includes("schema_detail") || code.includes("missing"))
+    )
+  );
+}
+
+function getProfitReadinessWarning(
+  snapshot: ProjectFinancialSnapshot,
+  warnings: ProjectFinancialWarning[],
+  diagnostics: ProjectFinancialSnapshotDiagnostics | null | undefined
+): string | null {
+  const codes = snapshotWarningCodes(warnings, diagnostics);
+  if (snapshot.revisedContractValue <= 0 || snapshot.contractValue <= 0) {
+    return "Contract value needs review before profit can be shown.";
+  }
+  if (snapshot.contractValue === 1) {
+    return "Contract value needs review before profit can be shown.";
+  }
+  if (snapshot.contractValue >= 50_000_000) {
+    return "Contract value needs review before profit can be shown.";
+  }
+  if (codes.has("project_contract_amount_mismatch")) {
+    return "Contract value needs review before profit can be shown.";
+  }
+  if (hasCriticalSnapshotSchemaWarning(codes)) {
+    return "Project cost inputs need review before profit can be shown.";
+  }
+  return null;
+}
+
 function SnapshotMetricCard({
   label,
   value,
@@ -243,6 +309,30 @@ function SnapshotMetricCard({
     <button type="button" onClick={onClick} className={className}>
       {body}
     </button>
+  );
+}
+
+function SnapshotTextMetricCard({
+  label,
+  value,
+  testId,
+}: {
+  label: string;
+  value: string;
+  testId: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-white px-3 py-3 text-left">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p
+        data-testid={testId}
+        className="mt-1 font-mono text-[16px] font-semibold tabular-nums text-text-primary"
+      >
+        {value}
+      </p>
+    </div>
   );
 }
 
@@ -510,6 +600,14 @@ export function ProjectDetailTabsClient({
         openAR: snapshotComparison.newSnapshot.openAR,
       }
     : fallbackCostSummary;
+  const profitReadinessWarning = snapshotComparison
+    ? getProfitReadinessWarning(
+        snapshotComparison.newSnapshot,
+        snapshotWarnings,
+        snapshotDiagnostics
+      )
+    : null;
+  const showSnapshotProfit = snapshotComparison != null && profitReadinessWarning == null;
 
   const expensesProjectHref = `/financial/expenses?project_id=${encodeURIComponent(projectId)}`;
   const inboxProjectHref = `/financial/inbox?project_id=${encodeURIComponent(projectId)}`;
@@ -1276,9 +1374,9 @@ export function ProjectDetailTabsClient({
                     <p>Loading project financial snapshot…</p>
                   ) : null}
                   <p>
-                    Actual cost = snapshot expense + labor + reimbursements. AP/subcontract costs
-                    stay flagged until AP mapping is complete; profit and margin remain on the
-                    existing official path.
+                    Actual cost = snapshot expense + labor + reimbursements. Confirmed profit uses
+                    snapshot cost when the contract value is ready; pending review costs and generic
+                    AP stay separate.
                   </p>
                   {snapshotNotes.length > 0 ? (
                     <ul className="flex flex-wrap gap-2">
@@ -1300,6 +1398,46 @@ export function ProjectDetailTabsClient({
                   ) : null}
                 </div>
               </div>
+
+              {snapshotComparison ? (
+                <div>
+                  <SectionHeader
+                    label="Confirmed profit"
+                    className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                  />
+                  <Divider />
+                  {showSnapshotProfit ? (
+                    <>
+                      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <SnapshotTextMetricCard
+                          label="Confirmed Gross Profit"
+                          value={fmtExactMoney(snapshotComparison.newSnapshot.grossProfit)}
+                          testId="snapshot-profit-gross"
+                        />
+                        <SnapshotTextMetricCard
+                          label="Confirmed Margin"
+                          value={fmtPercentRatio(snapshotComparison.newSnapshot.grossMargin)}
+                          testId="snapshot-profit-margin"
+                        />
+                        <SnapshotMetricCard
+                          label="Confirmed Actual Cost"
+                          value={snapshotCostSummary.actualCost}
+                          testId="snapshot-profit-actual-cost"
+                        />
+                      </div>
+                      <p className="mt-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-[12px] text-muted-foreground">
+                        Profit is based on confirmed costs only. Pending review costs, unpaid
+                        reimbursements, and generic AP are shown separately and are not included
+                        yet.
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-800">
+                      {profitReadinessWarning}
+                    </p>
+                  )}
+                </div>
+              ) : null}
 
               <div>
                 <SectionHeader
