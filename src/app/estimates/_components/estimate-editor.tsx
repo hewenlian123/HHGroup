@@ -72,7 +72,7 @@ import { LineItemDescriptionBodyPreview } from "./line-item-description-body-pre
 import { CostCategoryTitleMenu, type CostCategoryOption } from "./cost-category-title-menu";
 import { pickNextUniqueCostCode } from "@/lib/estimate-cost-code-suggest";
 import type { LineItemDescriptionRichTextHandle } from "./line-item-description-rich-text";
-import { formatCurrency } from "@/lib/formatters";
+import { formatEstimateCurrency, roundEstimateCurrencyValue } from "./estimate-currency";
 
 /** TipTap must not load on the server — Next 14 can emit a broken `vendor-chunks/@tiptap.js` ref and 500 the page. */
 const LineItemDescriptionRichText = dynamic(
@@ -812,7 +812,7 @@ export function EstimateEditor({
                           )}
                         </div>
                         <span className="tabular-nums text-sm font-medium text-foreground">
-                          {formatCurrency(sectionTotal)}
+                          {formatEstimateCurrency(sectionTotal)}
                         </span>
                       </summary>
                       <div className="border-t border-zinc-200 dark:border-border">
@@ -1165,7 +1165,7 @@ function LineItemRow({
   });
   const [qty, setQty] = React.useState(row.qty);
   const [unit, setUnit] = React.useState(row.unit);
-  const [unitCost, setUnitCost] = React.useState(row.unitCost);
+  const [unitCost, setUnitCost] = React.useState(roundEstimateCurrencyValue(row.unitCost));
   const combinedDesc = desc.trim() ? `${title}\n${desc}` : title;
   const formId = `line-${row.id}`;
 
@@ -1201,7 +1201,7 @@ function LineItemRow({
     setDesc(i < 0 ? "" : row.desc.slice(i + 1));
     setQty(row.qty);
     setUnit(row.unit);
-    setUnitCost(row.unitCost);
+    setUnitCost(roundEstimateCurrencyValue(row.unitCost));
   }, [row.id, row.desc, row.qty, row.unit, row.unitCost]);
 
   const lineTotalDisplay = React.useMemo(() => {
@@ -1276,7 +1276,7 @@ function LineItemRow({
         </td>
         <td className="py-2 px-4 text-right align-top">
           {isLocked ? (
-            formatCurrency(row.unitCost)
+            formatEstimateCurrency(row.unitCost)
           ) : (
             <Input
               form={formId}
@@ -1293,7 +1293,7 @@ function LineItemRow({
         </td>
         <td className="py-2 px-4 align-top text-muted-foreground text-xs">{categoryId}</td>
         <td className="py-2 px-4 align-top text-right tabular-nums font-semibold">
-          {formatCurrency(lineTotalDisplay)}
+          {formatEstimateCurrency(lineTotalDisplay)}
         </td>
         {!isLocked && (
           <td className="py-2 px-2 align-top">

@@ -267,6 +267,8 @@ test("formats fractional-cent estimate amounts as standard currency", async ({ p
     quantity: "1",
     unitPrice: "0.011",
   });
+  await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
+  await expect(page.getByText("$0.01").first()).toBeVisible({ timeout: 30_000 });
 
   const saveEstimate = page.getByRole("button", { name: "Save Estimate" });
   await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
@@ -276,6 +278,12 @@ test("formats fractional-cent estimate amounts as standard currency", async ({ p
   const detailUrl = page.url();
   await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
   await expect(page.getByText("$0.01").first()).toBeVisible({ timeout: 30_000 });
+
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
+  await expect(page.getByText("$0.01").first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator('input[name="unitCost"]').first()).toHaveValue("0.01");
+  await page.getByRole("button", { name: "Cancel" }).click();
 
   await page.goto("/estimates");
   await page.waitForLoadState("domcontentloaded");

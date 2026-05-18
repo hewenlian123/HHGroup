@@ -15,7 +15,7 @@ import type { EstimateListItem, EstimateStatus } from "@/lib/estimates-db";
 import { ConfirmDialog } from "@/components/base";
 import { useToast } from "@/components/toast/toast-provider";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
-import { formatCurrency } from "@/lib/formatters";
+import { formatEstimateCurrency } from "./_components/estimate-currency";
 import {
   MobileEmptyState,
   MobileFabPlus,
@@ -163,7 +163,9 @@ export function EstimatesListClient({
           </div>
           <div className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px] dark:border-border">
             <p className="kpi-metric-label">Total Value</p>
-            <p className="kpi-metric-value mt-0.5 tabular-nums">{formatCurrency(totalValue)}</p>
+            <p className="kpi-metric-value mt-0.5 tabular-nums">
+              {formatEstimateCurrency(totalValue)}
+            </p>
           </div>
         </div>
       ) : null}
