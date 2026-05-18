@@ -8,6 +8,7 @@ import type { PaymentScheduleItem, PaymentScheduleTemplate } from "@/lib/data";
 import { paymentMilestoneAmount } from "@/lib/data";
 import { Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCurrency } from "@/lib/formatters";
 
 type AddAction = (formData: FormData) => Promise<void>;
 type UpdateAction = (formData: FormData) => Promise<void>;
@@ -17,7 +18,7 @@ type ReorderAction = (formData: FormData) => Promise<void>;
 type ApplyTemplateAction = (formData: FormData) => Promise<void>;
 type CreateTemplateAction = (formData: FormData) => Promise<void>;
 
-const fmt = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2 });
+const fmt = formatCurrency;
 
 export function EstimatePaymentSchedule(props: {
   estimateId: string;
@@ -75,9 +76,7 @@ export function EstimatePaymentSchedule(props: {
         <div className="px-4 py-3 flex flex-wrap items-center gap-6 text-sm border-b border-zinc-200/60 dark:border-border">
           <span className="text-muted-foreground">
             Estimate total{" "}
-            <span className="font-semibold text-foreground tabular-nums">
-              ${fmt(estimateTotal)}
-            </span>
+            <span className="font-semibold text-foreground tabular-nums">{fmt(estimateTotal)}</span>
           </span>
           <span className="text-muted-foreground">
             Scheduled{" "}
@@ -89,7 +88,7 @@ export function EstimatePaymentSchedule(props: {
                   : "text-foreground"
               )}
             >
-              ${fmt(totalScheduled)}
+              {fmt(totalScheduled)}
             </span>
           </span>
           <span className="text-muted-foreground">
@@ -102,7 +101,7 @@ export function EstimatePaymentSchedule(props: {
                   : "text-foreground"
               )}
             >
-              ${fmt(remaining)}
+              {fmt(remaining)}
             </span>
           </span>
         </div>
@@ -149,7 +148,7 @@ export function EstimatePaymentSchedule(props: {
                         {item.title || "—"}
                       </td>
                       <td className="py-2.5 px-4 text-right tabular-nums font-medium text-foreground">
-                        ${fmt(amount)}
+                        {fmt(amount)}
                         {item.amountType === "percent" && (
                           <span className="ml-2 text-xs text-muted-foreground">
                             ({item.value}%)

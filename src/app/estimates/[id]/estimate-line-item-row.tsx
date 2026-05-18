@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { EstimateItemRow, CostCode } from "@/lib/data";
 import { Copy, Trash2 } from "lucide-react";
+import { formatCurrency } from "@/lib/formatters";
 
 function parseDesc(desc: string): { title: string; description: string } {
   const idx = desc.indexOf("\n");
@@ -135,7 +136,7 @@ export function EstimateLineItemRow({
         </td>
         <td className="py-2 px-4 text-right align-top">
           {isLocked ? (
-            `$${row.unitCost.toLocaleString()}`
+            formatCurrency(row.unitCost)
           ) : (
             <Input
               form={formId}
@@ -151,7 +152,7 @@ export function EstimateLineItemRow({
         </td>
         <td className="py-2 px-4 align-top text-muted-foreground text-xs">{code.code}</td>
         <td className="py-2 px-4 align-top text-right tabular-nums font-medium">
-          ${lineTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          {formatCurrency(lineTotal)}
         </td>
         {!isLocked && (
           <td className="py-2 px-2 align-top">

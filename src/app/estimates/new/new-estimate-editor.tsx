@@ -15,6 +15,7 @@ import { useToast } from "@/components/toast/toast-provider";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { createBrowserClient } from "@/lib/supabase";
 import { getCompanyProfile } from "@/lib/company-profile";
+import { formatCurrency } from "@/lib/formatters";
 import {
   CustomerSelectWithAdd,
   type CustomerOption,
@@ -666,7 +667,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                     />
                   </div>
                   <span className="tabular-nums text-sm font-medium text-foreground">
-                    ${sectionSubtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {formatCurrency(sectionSubtotal)}
                   </span>
                 </summary>
                 <div className="border-t border-zinc-200/60 dark:border-border">
@@ -749,10 +750,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                                 {row.costCode}
                               </td>
                               <td className="py-2 px-4 align-top text-right tabular-nums font-semibold">
-                                $
-                                {lineTotal(row).toLocaleString(undefined, {
-                                  minimumFractionDigits: 2,
-                                })}
+                                {formatCurrency(lineTotal(row))}
                               </td>
                               <td className="py-2 px-2 align-top">
                                 <div className="flex items-center gap-1">
@@ -855,19 +853,19 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
           <span className="text-muted-foreground">
             Estimate total{" "}
             <span className="font-semibold text-foreground tabular-nums">
-              ${summary.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              {formatCurrency(summary.grandTotal)}
             </span>
           </span>
           <span className="text-muted-foreground">
             Scheduled{" "}
             <span className="font-semibold text-foreground tabular-nums">
-              ${totalScheduled.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              {formatCurrency(totalScheduled)}
             </span>
           </span>
           <span className="text-muted-foreground">
             Remaining{" "}
             <span className="font-semibold text-foreground tabular-nums">
-              ${remaining.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              {formatCurrency(remaining)}
             </span>
           </span>
         </div>
@@ -908,7 +906,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                     >
                       <td className="py-2 px-4 font-medium text-foreground">{m.title}</td>
                       <td className="py-2 px-4 text-right tabular-nums font-medium text-foreground">
-                        ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        {formatCurrency(amount)}
                       </td>
                       <td className="py-2 px-4 text-muted-foreground">{m.dueRule || "—"}</td>
                       <td className="py-2 px-4 text-muted-foreground tabular-nums">
@@ -1099,7 +1097,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             <div className="flex justify-between items-center pt-3 mt-2 border-t border-zinc-200/60 dark:border-border">
               <span className="font-semibold text-foreground">Total</span>
               <span className="tabular-nums font-semibold text-foreground">
-                ${summary.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                {formatCurrency(summary.grandTotal)}
               </span>
             </div>
           </div>
@@ -1131,9 +1129,7 @@ function SummaryRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex justify-between items-center text-sm">
       <span className="text-muted-foreground">{label}</span>
-      <span className="tabular-nums font-medium text-foreground">
-        ${value.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-      </span>
+      <span className="tabular-nums font-medium text-foreground">{formatCurrency(value)}</span>
     </div>
   );
 }
