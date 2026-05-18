@@ -113,4 +113,75 @@ test.describe("project financial snapshot API", () => {
       await deleteProject(projectId);
     }
   });
+
+  test("project cost tab only shows the comparison panel when explicitly requested", async ({
+    browser,
+  }) => {
+    const projectId = await createProject();
+
+    try {
+      const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const page = await context.newPage();
+      await page.goto(`/projects/${projectId}?tab=cost`, { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("heading", { name: /\[E2E\] Snapshot API/i })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByText("Financial Snapshot Comparison", { exact: true })).toHaveCount(0);
+
+      await page.goto(`/projects/${projectId}?tab=cost&debugFinancial=1`, {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(page.getByText("Financial Snapshot Comparison", { exact: true })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByText("Internal comparison only")).toBeVisible();
+      await expect(page.getByText("New snapshot actual cost")).toBeVisible();
+      await expect(page.getByText("Current UI actual cost")).toBeVisible();
+      await context.close();
+    } finally {
+      await deleteProject(projectId);
+    }
+  });
+
+  test("project cost tab survives financial snapshot comparison API failures", async ({
+    browser,
+  }) => {
+    const projectId = await createProject();
+
+    try {
+      const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const page = await context.newPage();
+      await page.route(`**/api/projects/${projectId}/financial-snapshot`, async (route) => {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ ok: false, message: "Forced comparison failure" }),
+        });
+      });
+
+      await page.goto(`/projects/${projectId}?tab=cost&debugFinancial=1`, {
+        waitUntil: "domcontentloaded",
+      });
+
+      await expect(page.getByRole("heading", { name: /\[E2E\] Snapshot API/i })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByText("Financial Snapshot Comparison", { exact: true })).toBeVisible();
+      await expect(page.getByText("Financial snapshot comparison unavailable.")).toBeVisible();
+      await expect(page.locator("body")).not.toContainText("Application error");
+      await context.close();
+    } finally {
+      await deleteProject(projectId);
+    }
+  });
 });

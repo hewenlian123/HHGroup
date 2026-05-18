@@ -40,6 +40,7 @@ import { ProjectCloseoutTab } from "./project-closeout-tab";
 import { ProjectMaterialsTab } from "./project-materials-tab";
 import { ProjectCommissionTab } from "./project-commission-tab";
 import { ProjectPunchListTab } from "./project-punch-list-tab";
+import { ProjectFinancialSnapshotComparisonPanel } from "./project-financial-snapshot-comparison-panel";
 import { RecentExpenseLines } from "./recent-expense-lines";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { archiveProjectAction, deleteProjectAction, updateProjectAction } from "../actions";
@@ -109,6 +110,7 @@ export interface ProjectDetailTabsClientProps {
   project: Project;
   financialSummary: (ProjectFinancialSummary & { marginPct?: number }) | null;
   projectCost: ProjectCostDashboardPayload;
+  showFinancialSnapshotComparison?: boolean;
   billingSummary: {
     invoicedTotal: number;
     paidTotal: number;
@@ -146,6 +148,7 @@ export function ProjectDetailTabsClient({
   project,
   financialSummary,
   projectCost,
+  showFinancialSnapshotComparison = false,
   billingSummary,
   canonicalProfit,
   initialTab,
@@ -1083,6 +1086,10 @@ export function ProjectDetailTabsClient({
                   />
                 </div>
               </div>
+
+              {showFinancialSnapshotComparison ? (
+                <ProjectFinancialSnapshotComparisonPanel projectId={projectId} />
+              ) : null}
 
               <div className="border-t border-border/60 pt-6">
                 <SectionHeader
