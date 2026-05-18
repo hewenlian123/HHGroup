@@ -54,16 +54,26 @@ type TabKey =
   | "commission"
   | "punch-list";
 
+type ProjectDetailSearchParams = {
+  tab?: string | string[];
+  debugFinancial?: string | string[];
+};
+
+function firstSearchParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default async function ProjectDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ tab?: string }>;
+  searchParams?: Promise<ProjectDetailSearchParams>;
 }) {
   const { id } = await params;
   const sp = (await searchParams) ?? {};
-  const rawTab = (sp.tab ?? "overview").toString().toLowerCase();
+  const rawTab = (firstSearchParam(sp.tab) ?? "overview").toString().toLowerCase();
+  const showFinancialSnapshotComparison = firstSearchParam(sp.debugFinancial) === "1";
   const tabParam = LEGACY_TAB_MAP[rawTab] ?? rawTab;
   const validTabs: TabKey[] = [
     "overview",
@@ -237,6 +247,7 @@ export default async function ProjectDetailPage({
       billingSummary={billingSummary}
       canonicalProfit={canonical}
       projectCost={costDashboard}
+      showFinancialSnapshotComparison={showFinancialSnapshotComparison}
       initialTab={tab}
       tasks={tasks ?? []}
       workers={workers ?? []}
