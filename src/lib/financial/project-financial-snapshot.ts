@@ -11,9 +11,15 @@ export type ProjectFinancialSnapshotDiagnostics = {
   expenseLinesLoaded: number;
   expenseHeaderFallbackCount: number;
   excludedExpenseCount: number;
+  pendingExpenseCost: number;
+  pendingExpenseCount: number;
   changeOrdersLoaded: number;
   approvedChangeOrdersCount: number;
   reimbursementDedupedCount: number;
+  pendingReimbursementCost: number;
+  pendingReimbursementCount: number;
+  committedReimbursementCost: number;
+  committedReimbursementCount: number;
   subcontractCashOut: number;
   openSubcontractAP: number;
   openAP: number;
@@ -21,6 +27,7 @@ export type ProjectFinancialSnapshotDiagnostics = {
   apBillCount: number;
   apDiagnosticsWarnings: string[];
   missingSchemaWarnings: string[];
+  pendingCostReviewWarnings: string[];
 };
 
 export type ProjectFinancialAmountRow = {
@@ -122,9 +129,42 @@ const EXCLUDED_PROJECT_EXPENSE_COST_STATUSES = new Set([
 const REVIEW_REQUIRED_PROJECT_EXPENSE_COST_STATUSES = new Set([
   "needs_review",
   "pending",
-  "reimbursable",
-  "reimbursed",
+  "unreviewed",
 ]);
+
+const REIMBURSEMENT_SCOPED_EXPENSE_STATUSES = new Set(["reimbursable", "reimbursed"]);
+
+const FINALIZED_REIMBURSEMENT_COST_STATUSES = new Set(["paid", "done", "completed"]);
+const PENDING_REIMBURSEMENT_COST_STATUSES = new Set(["needs_review", "pending", "unreviewed"]);
+const COMMITTED_REIMBURSEMENT_COST_STATUSES = new Set([
+  "approved",
+  ...PENDING_REIMBURSEMENT_COST_STATUSES,
+]);
+
+export function createEmptyProjectFinancialSnapshotDiagnostics(): ProjectFinancialSnapshotDiagnostics {
+  return {
+    expenseLinesLoaded: 0,
+    expenseHeaderFallbackCount: 0,
+    excludedExpenseCount: 0,
+    pendingExpenseCost: 0,
+    pendingExpenseCount: 0,
+    changeOrdersLoaded: 0,
+    approvedChangeOrdersCount: 0,
+    reimbursementDedupedCount: 0,
+    pendingReimbursementCost: 0,
+    pendingReimbursementCount: 0,
+    committedReimbursementCost: 0,
+    committedReimbursementCount: 0,
+    subcontractCashOut: 0,
+    openSubcontractAP: 0,
+    openAP: 0,
+    apCashOut: 0,
+    apBillCount: 0,
+    apDiagnosticsWarnings: [],
+    missingSchemaWarnings: [],
+    pendingCostReviewWarnings: [],
+  };
+}
 
 function normalizeStatus(status: string | null | undefined): string {
   return String(status ?? "")
@@ -190,16 +230,28 @@ export function projectExpenseCostStatusDecision(
     return {
       status: normalized,
       included: false,
-      reason: "review_required_before_project_cost",
+      reason: "pending_review_cost_status",
       warningCode:
-        normalized === "needs_review" ? "expense_status_needs_review" : "expense_status_pending",
+        normalized === "needs_review"
+          ? "expense_status_needs_review"
+          : normalized === "unreviewed"
+            ? "expense_status_unreviewed"
+            : "expense_status_pending",
+    };
+  }
+  if (REIMBURSEMENT_SCOPED_EXPENSE_STATUSES.has(normalized)) {
+    return {
+      status: normalized,
+      included: false,
+      reason: "reimbursement_source_scope_required",
+      warningCode: "expense_reimbursement_status_source_scope_required",
     };
   }
   if (!normalized) {
     return {
       status: normalized,
       included: false,
-      reason: "missing_status",
+      reason: "pending_review_cost_status",
       warningCode: "expense_status_missing",
     };
   }
@@ -215,6 +267,12 @@ export function expenseStatusCountsTowardProjectCost(status: string | null | und
   return projectExpenseCostStatusDecision(status).included;
 }
 
+export function expenseStatusCountsTowardPendingCostReview(
+  status: string | null | undefined
+): boolean {
+  return projectExpenseCostStatusDecision(status).reason === "pending_review_cost_status";
+}
+
 function reimbursementKeyFromExpenseLine(line: ProjectFinancialExpenseLineInput): string | null {
   const source = normalizeStatus(line.source);
   const category = normalizeStatus(line.category);
@@ -228,9 +286,18 @@ function reimbursementKeyFromExpenseLine(line: ProjectFinancialExpenseLineInput)
 function calculateExpenseCost(
   expenseLines: ProjectFinancialExpenseLineInput[] | undefined,
   warnings: ProjectFinancialWarning[]
-): { expenseCost: number; reimbursementExpenseIds: Set<string> } {
+): {
+  expenseCost: number;
+  reimbursementExpenseIds: Set<string>;
+  pendingExpenseCost: number;
+  pendingExpenseCount: number;
+  pendingCostReviewWarnings: string[];
+} {
   let expenseCost = 0;
+  let pendingExpenseCost = 0;
+  let pendingExpenseCount = 0;
   const reimbursementExpenseIds = new Set<string>();
+  const pendingCostReviewWarnings = new Set<string>();
 
   for (const line of expenseLines ?? []) {
     const decision = projectExpenseCostStatusDecision(line.status);
@@ -244,36 +311,71 @@ function calculateExpenseCost(
         )
       );
     }
-    if (!decision.included) continue;
+    if (!decision.included) {
+      if (decision.reason === "pending_review_cost_status") {
+        pendingExpenseCost += rowAmount(line);
+        pendingExpenseCount += 1;
+        if (decision.warningCode) pendingCostReviewWarnings.add(decision.warningCode);
+      }
+      continue;
+    }
 
     expenseCost += rowAmount(line);
     const reimbKey = reimbursementKeyFromExpenseLine(line);
     if (reimbKey) reimbursementExpenseIds.add(reimbKey);
   }
 
-  return { expenseCost: toMoney(expenseCost), reimbursementExpenseIds };
+  return {
+    expenseCost: toMoney(expenseCost),
+    reimbursementExpenseIds,
+    pendingExpenseCost: toMoney(pendingExpenseCost),
+    pendingExpenseCount,
+    pendingCostReviewWarnings: Array.from(pendingCostReviewWarnings),
+  };
 }
 
 function reimbursementCountsTowardProjectCost(status: string | null | undefined): boolean {
   const normalized = normalizeStatus(status);
-  if (!normalized) return false;
-  if (EXCLUDED_PROJECT_EXPENSE_COST_STATUSES.has(normalized)) return false;
-  if (normalized === "pending" || normalized === "needs_review") return false;
-  return true;
+  return FINALIZED_REIMBURSEMENT_COST_STATUSES.has(normalized);
+}
+
+function reimbursementCountsTowardPendingDiagnostics(status: string | null | undefined): boolean {
+  const normalized = normalizeStatus(status);
+  return !normalized || PENDING_REIMBURSEMENT_COST_STATUSES.has(normalized);
+}
+
+function reimbursementCountsTowardCommittedDiagnostics(status: string | null | undefined): boolean {
+  const normalized = normalizeStatus(status);
+  return !normalized || COMMITTED_REIMBURSEMENT_COST_STATUSES.has(normalized);
 }
 
 function calculateReimbursementCost(
   reimbursements: ProjectFinancialReimbursementInput[] | undefined,
   reimbursementExpenseIds: Set<string>,
   warnings: ProjectFinancialWarning[]
-): number {
+): {
+  reimbursementCost: number;
+  pendingReimbursementCost: number;
+  pendingReimbursementCount: number;
+  committedReimbursementCost: number;
+  committedReimbursementCount: number;
+  reimbursementDedupedCount: number;
+  pendingCostReviewWarnings: string[];
+} {
   let total = 0;
+  let pendingReimbursementCost = 0;
+  let pendingReimbursementCount = 0;
+  let committedReimbursementCost = 0;
+  let committedReimbursementCount = 0;
+  let reimbursementDedupedCount = 0;
+  const pendingCostReviewWarnings = new Set<string>();
   for (const reimb of reimbursements ?? []) {
     const id = String(reimb.id ?? "").trim();
     const convertedExpenseId = String(
       reimb.convertedExpenseId ?? reimb.sourceExpenseId ?? ""
     ).trim();
     if ((id && reimbursementExpenseIds.has(id)) || convertedExpenseId) {
+      reimbursementDedupedCount += 1;
       warnings.push(
         warning(
           "reimbursement_expense_deduped",
@@ -284,7 +386,18 @@ function calculateReimbursementCost(
       );
       continue;
     }
+    const amount = rowAmount(reimb);
     if (!reimbursementCountsTowardProjectCost(reimb.status)) {
+      if (reimbursementCountsTowardPendingDiagnostics(reimb.status)) {
+        pendingReimbursementCost += amount;
+        pendingReimbursementCount += 1;
+        pendingCostReviewWarnings.add("reimbursement_pending_review");
+      }
+      if (reimbursementCountsTowardCommittedDiagnostics(reimb.status)) {
+        committedReimbursementCost += amount;
+        committedReimbursementCount += 1;
+        pendingCostReviewWarnings.add("reimbursement_committed_not_paid");
+      }
       warnings.push(
         warning(
           "reimbursement_not_finalized",
@@ -295,9 +408,17 @@ function calculateReimbursementCost(
       );
       continue;
     }
-    total += rowAmount(reimb);
+    total += amount;
   }
-  return toMoney(total);
+  return {
+    reimbursementCost: toMoney(total),
+    pendingReimbursementCost: toMoney(pendingReimbursementCost),
+    pendingReimbursementCount,
+    committedReimbursementCost: toMoney(committedReimbursementCost),
+    committedReimbursementCount,
+    reimbursementDedupedCount,
+    pendingCostReviewWarnings: Array.from(pendingCostReviewWarnings),
+  };
 }
 
 function calculateLaborCost(laborEntries: ProjectFinancialLaborEntryInput[] | undefined): number {
@@ -337,15 +458,22 @@ export function calculateProjectFinancialSnapshot(
   const approvedChangeOrders = toMoney(input.approvedChangeOrders);
   const revisedContractValue = toMoney(contractValue + approvedChangeOrders);
   const { billedAmount, paidAmount } = calculateInvoiceAmounts(input.invoices);
-  const { expenseCost, reimbursementExpenseIds } = calculateExpenseCost(
-    input.expenseLines,
-    warnings
-  );
-  const reimbursementCost = calculateReimbursementCost(
-    input.workerReimbursements,
+  const {
+    expenseCost,
     reimbursementExpenseIds,
-    warnings
-  );
+    pendingExpenseCost,
+    pendingExpenseCount,
+    pendingCostReviewWarnings: pendingExpenseWarnings,
+  } = calculateExpenseCost(input.expenseLines, warnings);
+  const {
+    reimbursementCost,
+    pendingReimbursementCost,
+    pendingReimbursementCount,
+    committedReimbursementCost,
+    committedReimbursementCount,
+    reimbursementDedupedCount,
+    pendingCostReviewWarnings: pendingReimbursementWarnings,
+  } = calculateReimbursementCost(input.workerReimbursements, reimbursementExpenseIds, warnings);
   const laborCost = calculateLaborCost(input.laborEntries);
   const subcontractCost = sumNonVoidRows(input.subcontractCosts);
   const apCost = sumNonVoidRows(input.apCosts);
@@ -378,6 +506,18 @@ export function calculateProjectFinancialSnapshot(
     );
   }
 
+  const diagnostics = createEmptyProjectFinancialSnapshotDiagnostics();
+  diagnostics.pendingExpenseCost = pendingExpenseCost;
+  diagnostics.pendingExpenseCount = pendingExpenseCount;
+  diagnostics.pendingReimbursementCost = pendingReimbursementCost;
+  diagnostics.pendingReimbursementCount = pendingReimbursementCount;
+  diagnostics.committedReimbursementCost = committedReimbursementCost;
+  diagnostics.committedReimbursementCount = committedReimbursementCount;
+  diagnostics.reimbursementDedupedCount = reimbursementDedupedCount;
+  diagnostics.pendingCostReviewWarnings = Array.from(
+    new Set([...pendingExpenseWarnings, ...pendingReimbursementWarnings])
+  );
+
   return {
     projectId: input.projectId,
     contractValue,
@@ -398,5 +538,6 @@ export function calculateProjectFinancialSnapshot(
     cashOut,
     cashPosition: toMoney(cashCollected - cashOut),
     warnings,
+    diagnostics,
   };
 }

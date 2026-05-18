@@ -50,15 +50,23 @@ describe("project financial snapshot", () => {
     expect(snapshot.openAR).toBe(3500);
     expect(snapshot.expenseCost).toBe(1200);
     expect(snapshot.laborCost).toBe(1300);
-    expect(snapshot.reimbursementCost).toBe(125);
+    expect(snapshot.reimbursementCost).toBe(0);
     expect(snapshot.subcontractCost).toBe(750);
     expect(snapshot.apCost).toBe(300);
-    expect(snapshot.actualCost).toBe(3375);
-    expect(snapshot.grossProfit).toBe(8125);
-    expect(snapshot.grossMargin).toBeCloseTo(8125 / 11500, 6);
+    expect(snapshot.actualCost).toBe(3250);
+    expect(snapshot.grossProfit).toBe(8250);
+    expect(snapshot.grossMargin).toBeCloseTo(8250 / 11500, 6);
     expect(snapshot.cashCollected).toBe(2500);
     expect(snapshot.cashOut).toBe(1200);
     expect(snapshot.cashPosition).toBe(1300);
+    expect(snapshot.diagnostics).toEqual(
+      expect.objectContaining({
+        pendingReimbursementCost: 200,
+        pendingReimbursementCount: 1,
+        committedReimbursementCost: 325,
+        committedReimbursementCount: 2,
+      })
+    );
   });
 
   it("keeps generic AP cost diagnostic-only so it cannot double count actual cost", () => {
@@ -104,6 +112,7 @@ describe("project financial snapshot", () => {
         }),
       ])
     );
+    expect(snapshot.diagnostics?.reimbursementDedupedCount).toBe(1);
   });
 
   it("uses a single expense status matrix for project actual cost eligibility", () => {
@@ -120,5 +129,70 @@ describe("project financial snapshot", () => {
     const needsReview = projectExpenseCostStatusDecision("needs_review");
     expect(needsReview.included).toBe(false);
     expect(needsReview.warningCode).toBe("expense_status_needs_review");
+  });
+
+  it("keeps pending expense review amounts out of actual cost but reports diagnostics", () => {
+    const snapshot = calculateProjectFinancialSnapshot({
+      projectId: "project-1",
+      contractValue: 1000,
+      expenseLines: [
+        { id: "paid", amount: 20, status: "paid" },
+        { id: "pending", amount: 25, status: "pending" },
+        { id: "needs-review", amount: 50, status: "needs_review" },
+        { id: "unreviewed", amount: 10, status: "unreviewed" },
+        { id: "missing", amount: 5, status: null },
+        { id: "draft", amount: 100, status: "draft" },
+        { id: "rejected", amount: 100, status: "rejected" },
+        { id: "void", amount: 100, status: "void" },
+        { id: "reimbursable", amount: 90, status: "reimbursable" },
+      ],
+    });
+
+    expect(snapshot.expenseCost).toBe(20);
+    expect(snapshot.actualCost).toBe(20);
+    expect(snapshot.diagnostics).toEqual(
+      expect.objectContaining({
+        pendingExpenseCost: 90,
+        pendingExpenseCount: 4,
+        pendingCostReviewWarnings: expect.arrayContaining([
+          "expense_status_pending",
+          "expense_status_needs_review",
+          "expense_status_unreviewed",
+          "expense_status_missing",
+        ]),
+      })
+    );
+    expect(snapshot.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "expense_reimbursement_status_source_scope_required" }),
+      ])
+    );
+  });
+
+  it("keeps unpaid reimbursements out of actual cost while reporting committed risk", () => {
+    const snapshot = calculateProjectFinancialSnapshot({
+      projectId: "project-1",
+      contractValue: 1000,
+      workerReimbursements: [
+        { id: "pending", amount: 100, status: "pending" },
+        { id: "approved", amount: 200, status: "approved" },
+        { id: "paid", amount: 300, status: "paid" },
+      ],
+    });
+
+    expect(snapshot.reimbursementCost).toBe(300);
+    expect(snapshot.actualCost).toBe(300);
+    expect(snapshot.diagnostics).toEqual(
+      expect.objectContaining({
+        pendingReimbursementCost: 100,
+        pendingReimbursementCount: 1,
+        committedReimbursementCost: 300,
+        committedReimbursementCount: 2,
+        pendingCostReviewWarnings: expect.arrayContaining([
+          "reimbursement_pending_review",
+          "reimbursement_committed_not_paid",
+        ]),
+      })
+    );
   });
 });

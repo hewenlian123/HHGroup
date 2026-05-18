@@ -105,10 +105,10 @@ describe("project financial snapshot DB mapper", () => {
     expect(snapshot.openAR).toBe(3500);
     expect(snapshot.expenseCost).toBe(300);
     expect(snapshot.laborCost).toBe(1300);
-    expect(snapshot.reimbursementCost).toBe(125);
+    expect(snapshot.reimbursementCost).toBe(0);
     expect(snapshot.subcontractCost).toBe(900);
     expect(snapshot.apCost).toBe(50);
-    expect(snapshot.actualCost).toBe(2625);
+    expect(snapshot.actualCost).toBe(2500);
     expect(snapshot.cashCollected).toBe(2500);
     expect(snapshot.warnings).toEqual(
       expect.arrayContaining([
@@ -126,6 +126,10 @@ describe("project financial snapshot DB mapper", () => {
         apCashOut: 10,
         apBillCount: 1,
         reimbursementDedupedCount: 1,
+        pendingExpenseCost: 111,
+        pendingExpenseCount: 1,
+        committedReimbursementCost: 125,
+        committedReimbursementCount: 1,
       })
     );
   });

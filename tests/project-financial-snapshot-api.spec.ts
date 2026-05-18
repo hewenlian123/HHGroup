@@ -121,10 +121,23 @@ function snapshotComparisonBody(projectId: string) {
           expenseLinesLoaded: 2,
           expenseHeaderFallbackCount: 0,
           excludedExpenseCount: 0,
+          pendingExpenseCost: 125,
+          pendingExpenseCount: 2,
           changeOrdersLoaded: 0,
           approvedChangeOrdersCount: 0,
           reimbursementDedupedCount: 0,
+          pendingReimbursementCost: 200,
+          pendingReimbursementCount: 1,
+          committedReimbursementCost: 325,
+          committedReimbursementCount: 2,
+          subcontractCashOut: 0,
+          openSubcontractAP: 0,
+          openAP: 0,
+          apCashOut: 0,
+          apBillCount: 0,
+          apDiagnosticsWarnings: [],
           missingSchemaWarnings: ["ap_bills_not_mapped"],
+          pendingCostReviewWarnings: ["expense_status_pending", "reimbursement_committed_not_paid"],
         },
       },
       differences: [],
@@ -144,10 +157,23 @@ function snapshotComparisonBody(projectId: string) {
         expenseLinesLoaded: 2,
         expenseHeaderFallbackCount: 0,
         excludedExpenseCount: 0,
+        pendingExpenseCost: 125,
+        pendingExpenseCount: 2,
         changeOrdersLoaded: 0,
         approvedChangeOrdersCount: 0,
         reimbursementDedupedCount: 0,
+        pendingReimbursementCost: 200,
+        pendingReimbursementCount: 1,
+        committedReimbursementCost: 325,
+        committedReimbursementCount: 2,
+        subcontractCashOut: 0,
+        openSubcontractAP: 0,
+        openAP: 0,
+        apCashOut: 0,
+        apBillCount: 0,
+        apDiagnosticsWarnings: [],
         missingSchemaWarnings: ["ap_bills_not_mapped"],
+        pendingCostReviewWarnings: ["expense_status_pending", "reimbursement_committed_not_paid"],
       },
     },
   };
@@ -271,6 +297,8 @@ test.describe("project financial snapshot API", () => {
       await expect(page.getByTestId("snapshot-ar-open")).toContainText("$575");
       await expect(page.getByText("AP/subcontract mapping is not final yet.")).toBeVisible();
       await expect(page.getByText("Some reimbursements still need final review.")).toBeVisible();
+      await expect(page.getByText("Pending review costs are not included.")).toBeVisible();
+      await expect(page.getByText(/Pending review costs not included/)).toBeVisible();
       await expect(page.getByText("Financial Snapshot Comparison", { exact: true })).toHaveCount(0);
       await context.close();
     } finally {
