@@ -74,9 +74,27 @@ describe("project financial snapshot DB mapper", () => {
       ],
       subcontractBills: [
         { id: "sub-1", project_id: "project-1", amount: 700, status: "Approved" },
+        { id: "sub-paid", project_id: "project-1", amount: 200, status: "Paid" },
         { id: "sub-pending", project_id: "project-1", amount: 300, status: "Pending" },
       ],
-      apBills: [{ id: "ap-1", project_id: "project-1", amount: 50, status: "Pending" }],
+      subcontractPayments: [
+        {
+          id: "sub-payment-1",
+          subcontract_id: "subcontract-1",
+          bill_id: "sub-1",
+          amount: 250,
+        },
+      ],
+      apBills: [
+        {
+          id: "ap-1",
+          project_id: "project-1",
+          amount: 50,
+          paid_amount: 10,
+          balance_amount: 40,
+          status: "Pending",
+        },
+      ],
     });
 
     expect(snapshot.contractValue).toBe(10000);
@@ -88,21 +106,120 @@ describe("project financial snapshot DB mapper", () => {
     expect(snapshot.expenseCost).toBe(300);
     expect(snapshot.laborCost).toBe(1300);
     expect(snapshot.reimbursementCost).toBe(125);
-    expect(snapshot.subcontractCost).toBe(700);
+    expect(snapshot.subcontractCost).toBe(900);
     expect(snapshot.apCost).toBe(50);
-    expect(snapshot.actualCost).toBe(2475);
+    expect(snapshot.actualCost).toBe(2625);
     expect(snapshot.cashCollected).toBe(2500);
     expect(snapshot.warnings).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: "project_contract_amount_mismatch" }),
         expect.objectContaining({ code: "expense_status_needs_review" }),
         expect.objectContaining({ code: "reimbursement_expense_deduped" }),
+        expect.objectContaining({ code: "ap_bills_not_in_actual_cost" }),
       ])
     );
     expect(snapshot.diagnostics).toEqual(
       expect.objectContaining({
+        subcontractCashOut: 250,
+        openSubcontractAP: 650,
+        openAP: 40,
+        apCashOut: 10,
+        apBillCount: 1,
         reimbursementDedupedCount: 1,
       })
+    );
+  });
+
+  it("excludes non-final subcontract bills and keeps subcontract payments out of actual cost", () => {
+    const snapshot = mapProjectFinancialRowsToSnapshot({
+      projectId: "project-1",
+      project: { id: "project-1", budget: 5000 },
+      changeOrders: [],
+      invoices: [],
+      invoicePayments: [],
+      expenses: [],
+      expenseLines: [],
+      laborEntries: [],
+      workerReimbursements: [],
+      subcontractBills: [
+        { id: "sub-approved", amount: 1000, status: "Approved" },
+        { id: "sub-paid", amount: 500, status: "Paid" },
+        { id: "sub-draft", amount: 900, status: "Draft" },
+        { id: "sub-void", amount: 800, status: "Void" },
+        { id: "sub-rejected", amount: 700, status: "Rejected" },
+        { id: "sub-cancelled", amount: 600, status: "Cancelled" },
+      ],
+      subcontractPayments: [
+        { id: "payment-approved", bill_id: "sub-approved", amount: 250 },
+        { id: "payment-paid", bill_id: "sub-paid", amount: 500 },
+      ],
+      apBills: [],
+    });
+
+    expect(snapshot.subcontractCost).toBe(1500);
+    expect(snapshot.actualCost).toBe(1500);
+    expect(snapshot.cashOut).toBe(750);
+    expect(snapshot.diagnostics).toEqual(
+      expect.objectContaining({
+        subcontractCashOut: 750,
+        openSubcontractAP: 750,
+      })
+    );
+  });
+
+  it("keeps generic AP bills out of actual cost and emits duplicate-risk diagnostics", () => {
+    const snapshot = mapProjectFinancialRowsToSnapshot({
+      projectId: "project-1",
+      project: { id: "project-1", budget: 4000 },
+      changeOrders: [],
+      invoices: [],
+      invoicePayments: [],
+      expenses: [{ id: "expense-1", project_id: "project-1", status: "paid", total: 1000 }],
+      expenseLines: [{ id: "line-1", expense_id: "expense-1", amount: 1000 }],
+      laborEntries: [],
+      workerReimbursements: [],
+      subcontractBills: [],
+      apBills: [
+        {
+          id: "ap-1",
+          project_id: "project-1",
+          amount: 1000,
+          paid_amount: 250,
+          balance_amount: 750,
+          status: "Partially Paid",
+          bill_type: "Vendor",
+        },
+        {
+          id: "ap-labor",
+          project_id: "project-1",
+          amount: 300,
+          paid_amount: 0,
+          balance_amount: 300,
+          status: "Pending",
+          bill_type: "Labor",
+        },
+      ],
+    });
+
+    expect(snapshot.expenseCost).toBe(1000);
+    expect(snapshot.apCost).toBe(1300);
+    expect(snapshot.actualCost).toBe(1000);
+    expect(snapshot.diagnostics).toEqual(
+      expect.objectContaining({
+        openAP: 1050,
+        apCashOut: 250,
+        apBillCount: 2,
+        apDiagnosticsWarnings: expect.arrayContaining([
+          "ap_bills_not_in_actual_cost",
+          "ap_bills_possible_duplicate_cost",
+        ]),
+      })
+    );
+    expect(snapshot.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "ap_bills_not_in_actual_cost" }),
+        expect.objectContaining({ code: "ap_bills_possible_duplicate_cost" }),
+      ])
     );
   });
 

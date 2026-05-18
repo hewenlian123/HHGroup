@@ -14,6 +14,12 @@ export type ProjectFinancialSnapshotDiagnostics = {
   changeOrdersLoaded: number;
   approvedChangeOrdersCount: number;
   reimbursementDedupedCount: number;
+  subcontractCashOut: number;
+  openSubcontractAP: number;
+  openAP: number;
+  apCashOut: number;
+  apBillCount: number;
+  apDiagnosticsWarnings: string[];
   missingSchemaWarnings: string[];
 };
 
@@ -343,16 +349,24 @@ export function calculateProjectFinancialSnapshot(
   const laborCost = calculateLaborCost(input.laborEntries);
   const subcontractCost = sumNonVoidRows(input.subcontractCosts);
   const apCost = sumNonVoidRows(input.apCosts);
-  const actualCost = toMoney(
-    expenseCost + laborCost + reimbursementCost + subcontractCost + apCost
-  );
+  const actualCost = toMoney(expenseCost + laborCost + reimbursementCost + subcontractCost);
   const grossProfit = toMoney(revisedContractValue - actualCost);
   const grossMargin = revisedContractValue > 0 ? grossProfit / revisedContractValue : 0;
   const cashCollected = paidAmount;
   const cashOut =
     input.cashOutPayments !== undefined
       ? sumNonVoidRows(input.cashOutPayments)
-      : toMoney(expenseCost + reimbursementCost + laborCost + subcontractCost + apCost);
+      : toMoney(expenseCost + reimbursementCost + laborCost + subcontractCost);
+
+  if (apCost > 0) {
+    warnings.push(
+      warning(
+        "ap_bills_not_in_actual_cost",
+        "warning",
+        "AP bills are reported as diagnostics only and are not included in project actual cost until duplicate-cost rules are explicit."
+      )
+    );
+  }
 
   if (input.cashOutPayments === undefined) {
     warnings.push(
