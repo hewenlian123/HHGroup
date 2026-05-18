@@ -82,8 +82,14 @@ type ProjectFinancialSnapshotComparisonView = {
   diagnostics?: ProjectFinancialSnapshotDiagnostics;
 };
 
-type SnapshotComparisonResponse =
-  | { ok: true; comparison: ProjectFinancialSnapshotComparisonView }
+type SnapshotBatchResponse =
+  | {
+      ok: true;
+      results: Array<
+        | { id: string; ok: true; comparison: ProjectFinancialSnapshotComparisonView }
+        | { id: string; ok: false; message?: string }
+      >;
+    }
   | { ok: false; message?: string };
 
 const PAGE_BG = "bg-page";
@@ -201,35 +207,37 @@ export function ProjectsListClient({
     const controller = new AbortController();
 
     async function loadSnapshotFinancials() {
-      const results = await Promise.all(
-        rows.map(async (row) => {
-          try {
-            const response = await fetch(`/api/projects/${row.id}/financial-snapshot`, {
-              cache: "no-store",
-              signal: controller.signal,
-            });
-            const body = (await response
-              .json()
-              .catch(() => null)) as SnapshotComparisonResponse | null;
-            if (!response.ok || !body?.ok) return null;
-            return { id: row.id, comparison: body.comparison };
-          } catch {
-            if (controller.signal.aborted) return null;
-            return null;
+      const ids = rows.map((row) => row.id).filter(Boolean);
+      let results: Array<{ id: string; comparison: ProjectFinancialSnapshotComparisonView }> = [];
+      try {
+        const response = await fetch(
+          `/api/projects/financial-snapshots?ids=${encodeURIComponent(ids.join(","))}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
           }
-        })
-      );
+        );
+        const body = (await response.json().catch(() => null)) as SnapshotBatchResponse | null;
+        if (response.ok && body?.ok) {
+          results = body.results
+            .filter(
+              (
+                result
+              ): result is {
+                id: string;
+                ok: true;
+                comparison: ProjectFinancialSnapshotComparisonView;
+              } => result.ok
+            )
+            .map((result) => ({ id: result.id, comparison: result.comparison }));
+        }
+      } catch {
+        if (controller.signal.aborted) return;
+      }
 
       if (controller.signal.aborted) return;
       const comparisonByProjectId = new Map(
-        results
-          .filter(
-            (
-              result
-            ): result is { id: string; comparison: ProjectFinancialSnapshotComparisonView } =>
-              result != null
-          )
-          .map((result) => [result.id, result.comparison])
+        results.map((result) => [result.id, result.comparison])
       );
       setLocalRows((currentRows) =>
         currentRows.map((row) => {

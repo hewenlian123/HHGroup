@@ -185,6 +185,19 @@ function snapshotComparisonBody(projectId: string, override: SnapshotComparisonO
   };
 }
 
+function snapshotBatchBody(projectId: string, override: SnapshotComparisonOverride = {}) {
+  return {
+    ok: true,
+    results: [
+      {
+        id: projectId,
+        ok: true,
+        comparison: snapshotComparisonBody(projectId, override).comparison,
+      },
+    ],
+  };
+}
+
 test.describe("project financial snapshot API", () => {
   test.describe.configure({ mode: "serial", timeout: 60_000 });
 
@@ -199,11 +212,14 @@ test.describe("project financial snapshot API", () => {
   test("requires auth and returns old vs new comparison for a PIN session", async ({ browser }) => {
     const projectId = await createProject();
     const path = `/api/projects/${projectId}/financial-snapshot`;
+    const batchPath = `/api/projects/financial-snapshots?ids=${projectId}`;
 
     try {
       const unauthContext = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
       const unauthResponse = await unauthContext.request.get(path);
       expect(unauthResponse.status()).toBe(401);
+      const unauthBatchResponse = await unauthContext.request.get(batchPath);
+      expect(unauthBatchResponse.status()).toBe(401);
       await unauthContext.close();
 
       const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
@@ -230,6 +246,22 @@ test.describe("project financial snapshot API", () => {
       expect(body.comparison?.newSnapshot?.revisedContractValue).toBe(1000);
       expect(Array.isArray(body.comparison?.differences)).toBe(true);
       expect(Array.isArray(body.comparison?.warnings)).toBe(true);
+
+      const batchResponse = await context.request.get(batchPath);
+      expect(batchResponse.status()).toBe(200);
+      const batchBody = (await batchResponse.json()) as {
+        ok?: boolean;
+        results?: Array<{
+          id?: string;
+          ok?: boolean;
+          comparison?: { newSnapshot?: { projectId?: string } };
+        }>;
+      };
+      expect(batchBody.ok).toBe(true);
+      expect(batchBody.results).toHaveLength(1);
+      expect(batchBody.results?.[0]?.ok).toBe(true);
+      expect(batchBody.results?.[0]?.id).toBe(projectId);
+      expect(batchBody.results?.[0]?.comparison?.newSnapshot?.projectId).toBe(projectId);
       await context.close();
     } finally {
       await deleteProject(projectId);
@@ -512,11 +544,11 @@ test.describe("project financial snapshot API", () => {
       expect(loginResponse.status()).toBe(200);
 
       const page = await context.newPage();
-      await page.route(`**/api/projects/${projectId}/financial-snapshot`, async (route) => {
+      await page.route("**/api/projects/financial-snapshots?**", async (route) => {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify(snapshotComparisonBody(projectId)),
+          body: JSON.stringify(snapshotBatchBody(projectId)),
         });
       });
 
@@ -555,12 +587,12 @@ test.describe("project financial snapshot API", () => {
       expect(loginResponse.status()).toBe(200);
 
       const page = await context.newPage();
-      await page.route(`**/api/projects/${projectId}/financial-snapshot`, async (route) => {
+      await page.route("**/api/projects/financial-snapshots?**", async (route) => {
         await route.fulfill({
           status: 200,
           contentType: "application/json",
           body: JSON.stringify(
-            snapshotComparisonBody(projectId, {
+            snapshotBatchBody(projectId, {
               contractValue: 1,
               revisedContractValue: 1,
               grossProfit: -7320.5,
