@@ -6,6 +6,7 @@ import { safeErrorMessage } from "@/lib/system-response-safety";
 export const dynamic = "force-dynamic";
 
 export type SystemHealthStatus = "ok" | "warning";
+export type SystemHealthCheckStatus = "ok" | "warning" | "fail";
 
 export type SystemHealthModule = {
   name: string;
@@ -13,81 +14,329 @@ export type SystemHealthModule = {
   message?: string;
 };
 
-const MODULES: { name: string; table: string }[] = [
-  { name: "Database", table: "projects" },
+export type SystemHealthCheck = {
+  name: string;
+  status: SystemHealthCheckStatus;
+  message?: string;
+  code?: string;
+};
+
+type HealthTarget = {
+  name: string;
+  table: string;
+  optional?: boolean;
+};
+
+type StorageTarget = {
+  name: string;
+  bucket: string;
+  optional?: boolean;
+};
+
+type UnknownRow = Record<string, unknown>;
+
+const REQUIRED_TABLES: HealthTarget[] = [
   { name: "Projects", table: "projects" },
-  { name: "Labor", table: "labor_entries" },
-  { name: "Reimbursements", table: "worker_reimbursements" },
-  { name: "Expenses", table: "expenses" },
-  { name: "Worker Payments", table: "worker_payments" },
-  { name: "Invoices", table: "invoices" },
   { name: "Customers", table: "customers" },
-  { name: "Commission Payments", table: "commissions" },
-  { name: "Payments Received", table: "payments_received" },
-  { name: "Deposits", table: "deposits" },
-  { name: "Bills", table: "bills" },
-  { name: "Worker Advances", table: "worker_advances" },
-  { name: "Accounts", table: "accounts" },
-  { name: "Worker Invoices", table: "worker_invoices" },
-  { name: "Vendors", table: "vendors" },
-  { name: "Subcontractors", table: "subcontractors" },
-  { name: "Receipt Uploads", table: "worker_receipts" },
-  { name: "Documents", table: "documents" },
+  { name: "Expenses", table: "expenses" },
+  { name: "Expense lines", table: "expense_lines" },
+  { name: "Invoices", table: "invoices" },
+  { name: "Invoice items", table: "invoice_items" },
+  { name: "Labor entries", table: "labor_entries" },
   { name: "Workers", table: "workers" },
-  { name: "Activity Logs", table: "activity_logs" },
+  { name: "Worker payments", table: "worker_payments" },
+  { name: "Worker advances", table: "worker_advances" },
+  { name: "Worker reimbursements", table: "worker_reimbursements" },
+  { name: "Bank transactions", table: "bank_transactions" },
+  { name: "Company profile", table: "company_profile" },
+  { name: "App security settings", table: "app_security_settings" },
 ];
 
-/**
- * GET: System health check.
- * Verifies each module with select id from table limit 1, then calls /api/schema-check.
- * Returns { status: "ok" | "warning", modules: [{ name, status }, ...], schemaMissing?: string[] }.
- * status === "warning" when any module fails or when schema-check returns error.
- */
-export async function GET(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
-  if (!guard.ok) return guard.response;
+const OPTIONAL_TABLES: HealthTarget[] = [
+  { name: "AP bills", table: "ap_bills", optional: true },
+  { name: "AP bill payments", table: "ap_bill_payments", optional: true },
+  { name: "Payments received", table: "payments_received", optional: true },
+  { name: "Payment received attachments", table: "payment_received_attachments", optional: true },
+  { name: "Project change orders", table: "project_change_orders", optional: true },
+  { name: "Project change order items", table: "project_change_order_items", optional: true },
+  { name: "Estimates", table: "estimates", optional: true },
+  { name: "Estimate items", table: "estimate_items", optional: true },
+  { name: "Worker receipts", table: "worker_receipts", optional: true },
+  { name: "Subcontract bills", table: "subcontract_bills", optional: true },
+  { name: "Subcontract payments", table: "subcontract_payments", optional: true },
+  { name: "Activity logs", table: "activity_logs", optional: true },
+];
 
-  const modules: SystemHealthModule[] = [];
-  let status: SystemHealthStatus = "ok";
+const STORAGE_BUCKETS: StorageTarget[] = [
+  { name: "Branding", bucket: "branding", optional: true },
+  { name: "Worker receipts", bucket: "worker-receipts", optional: true },
+  { name: "Expense attachments", bucket: "expense-attachments", optional: true },
+  { name: "Payment attachments", bucket: "payment-attachments", optional: true },
+  { name: "Attachments", bucket: "attachments", optional: true },
+];
 
-  const server = getServerSupabaseInternal();
+const COMPANY_PROFILE_E2E_MARKERS = [/E2E-ST/i, /E2E-ZIP/i];
+
+function checkToModule(check: SystemHealthCheck): SystemHealthModule {
+  return {
+    name: check.name,
+    status: check.status === "ok" ? "ok" : "fail",
+    ...(check.message ? { message: check.message } : {}),
+  };
+}
+
+function normalizeError(error: unknown, fallback = "Check failed"): string {
+  return safeErrorMessage(error, fallback);
+}
+
+function hasMissingRelationError(error: unknown): boolean {
+  const code = (error as { code?: string } | null)?.code ?? "";
+  const message = (error as { message?: string } | null)?.message ?? "";
+  return (
+    code === "42P01" || /relation.*does not exist|does not exist|not found|not exist/i.test(message)
+  );
+}
+
+async function checkTable(
+  server: ReturnType<typeof getServerSupabaseInternal>,
+  target: HealthTarget
+): Promise<SystemHealthCheck> {
   if (!server) {
-    for (const m of MODULES) {
-      modules.push({ name: m.name, status: "fail", message: "Not configured" });
-    }
-    return NextResponse.json({ status: "warning", modules });
+    return {
+      name: target.name,
+      status: target.optional ? "warning" : "fail",
+      message: "Supabase is not configured on the server.",
+      code: "supabase_not_configured",
+    };
   }
 
-  const tableToNames = new Map<string, string[]>();
-  for (const { name, table } of MODULES) {
-    const list = tableToNames.get(table) ?? [];
-    list.push(name);
-    tableToNames.set(table, list);
-  }
-  const uniqueTables = Array.from(tableToNames.entries());
-
-  for (const [table, names] of uniqueTables) {
-    let ok = false;
-    let message: string | undefined;
-    try {
-      const { error } = await server.from(table).select("id").limit(1).maybeSingle();
-      if (error) {
-        message = safeErrorMessage(error.message ?? "Query failed");
-        status = "warning";
-      } else {
-        ok = true;
-      }
-    } catch (e) {
-      message = safeErrorMessage(e, "Unknown error");
-      status = "warning";
+  try {
+    const { error } = await server.from(target.table).select("*").limit(1);
+    if (error) {
+      const missing = hasMissingRelationError(error);
+      return {
+        name: target.name,
+        status: target.optional || missing ? "warning" : "fail",
+        message: missing
+          ? `${target.table} is not available.`
+          : normalizeError(error.message ?? "Table check failed"),
+        code: missing
+          ? "missing_table"
+          : ((error as { code?: string }).code ?? "table_check_failed"),
+      };
     }
-    for (const name of names) {
-      modules.push(ok ? { name, status: "ok" } : { name, status: "fail", message });
-    }
+    return { name: target.name, status: "ok", message: `${target.table} is reachable.` };
+  } catch (error) {
+    return {
+      name: target.name,
+      status: target.optional ? "warning" : "fail",
+      message: normalizeError(error),
+      code: "table_check_exception",
+    };
+  }
+}
+
+async function checkStorageBucket(
+  server: ReturnType<typeof getServerSupabaseInternal>,
+  target: StorageTarget
+): Promise<SystemHealthCheck> {
+  if (!server) {
+    return {
+      name: target.name,
+      status: target.optional ? "warning" : "fail",
+      message: "Supabase is not configured on the server.",
+      code: "supabase_not_configured",
+    };
   }
 
-  // Call schema-check; if it returns error, set status to warning and include missing fields
-  let schemaMissing: string[] | undefined;
+  try {
+    const { error } = await server.storage.from(target.bucket).list("", { limit: 1 });
+    if (error) {
+      return {
+        name: target.name,
+        status: target.optional ? "warning" : "fail",
+        message: normalizeError(error.message ?? "Storage bucket check failed"),
+        code:
+          (error as { statusCode?: string; code?: string }).code ?? "storage_bucket_check_failed",
+      };
+    }
+    return { name: target.name, status: "ok", message: `${target.bucket} is reachable.` };
+  } catch (error) {
+    return {
+      name: target.name,
+      status: target.optional ? "warning" : "fail",
+      message: normalizeError(error),
+      code: "storage_bucket_check_exception",
+    };
+  }
+}
+
+function rowHasE2EMarker(row: UnknownRow): boolean {
+  return Object.values(row).some(
+    (value) =>
+      typeof value === "string" && COMPANY_PROFILE_E2E_MARKERS.some((marker) => marker.test(value))
+  );
+}
+
+async function checkCompanyProfile(
+  server: ReturnType<typeof getServerSupabaseInternal>
+): Promise<SystemHealthCheck> {
+  if (!server) {
+    return {
+      name: "Company Profile",
+      status: "fail",
+      message: "Supabase is not configured on the server.",
+      code: "supabase_not_configured",
+    };
+  }
+
+  try {
+    const { data, error } = await server.from("company_profile").select("*").limit(3);
+    if (error) {
+      return {
+        name: "Company Profile",
+        status: hasMissingRelationError(error) ? "warning" : "fail",
+        message: hasMissingRelationError(error)
+          ? "company_profile is not available."
+          : normalizeError(error.message ?? "Company profile check failed"),
+        code: hasMissingRelationError(error)
+          ? "missing_table"
+          : ((error as { code?: string }).code ?? "company_profile_check_failed"),
+      };
+    }
+
+    const rows = (data ?? []) as UnknownRow[];
+    if (rows.length === 0) {
+      return {
+        name: "Company Profile",
+        status: "warning",
+        message: "Company profile has not been configured.",
+        code: "company_profile_missing",
+      };
+    }
+    if (rows.some(rowHasE2EMarker)) {
+      return {
+        name: "Company Profile",
+        status: "warning",
+        message: "E2E test marker detected in company profile data.",
+        code: "company_profile_e2e_marker",
+      };
+    }
+    return {
+      name: "Company Profile",
+      status: "ok",
+      message: "Company profile is configured without test markers.",
+    };
+  } catch (error) {
+    return {
+      name: "Company Profile",
+      status: "fail",
+      message: normalizeError(error),
+      code: "company_profile_check_exception",
+    };
+  }
+}
+
+async function checkPinSettings(
+  server: ReturnType<typeof getServerSupabaseInternal>
+): Promise<SystemHealthCheck> {
+  if (!server) {
+    return {
+      name: "App Security / PIN",
+      status: "fail",
+      message: "Supabase is not configured on the server.",
+      code: "supabase_not_configured",
+    };
+  }
+
+  try {
+    const { data, error } = await server.from("app_security_settings").select("*").limit(10);
+    if (error) {
+      return {
+        name: "App Security / PIN",
+        status: hasMissingRelationError(error) ? "fail" : "warning",
+        message: hasMissingRelationError(error)
+          ? "app_security_settings is not available."
+          : normalizeError(error.message ?? "PIN settings check failed"),
+        code: hasMissingRelationError(error)
+          ? "missing_table"
+          : ((error as { code?: string }).code ?? "pin_settings_check_failed"),
+      };
+    }
+
+    const rows = (data ?? []) as UnknownRow[];
+    const loginPin = rows.find((row) => row.key === "login_pin");
+    if (!loginPin) {
+      return {
+        name: "App Security / PIN",
+        status: "fail",
+        message: "login_pin row is missing.",
+        code: "login_pin_missing",
+      };
+    }
+    const hasHash = typeof loginPin.pin_hash === "string" && loginPin.pin_hash.length > 0;
+    const hasSalt = typeof loginPin.pin_salt === "string" && loginPin.pin_salt.length > 0;
+    if (!hasHash || !hasSalt) {
+      return {
+        name: "App Security / PIN",
+        status: "warning",
+        message: "PIN row exists but the PIN is not initialized.",
+        code: "login_pin_not_initialized",
+      };
+    }
+    return {
+      name: "App Security / PIN",
+      status: "ok",
+      message: "PIN session settings are initialized.",
+    };
+  } catch (error) {
+    return {
+      name: "App Security / PIN",
+      status: "fail",
+      message: normalizeError(error),
+      code: "pin_settings_check_exception",
+    };
+  }
+}
+
+function summarizeProjectFinancialSnapshot(requiredTables: SystemHealthCheck[]): SystemHealthCheck {
+  const missingCore = requiredTables.filter(
+    (check) =>
+      check.status === "fail" &&
+      [
+        "Projects",
+        "Expenses",
+        "Expense lines",
+        "Invoices",
+        "Invoice items",
+        "Labor entries",
+        "Worker reimbursements",
+      ].includes(check.name)
+  );
+
+  if (missingCore.length > 0) {
+    return {
+      name: "Project Financial Snapshot",
+      status: "fail",
+      message: `${missingCore.length} required financial table(s) are unavailable.`,
+      code: "project_snapshot_required_tables_missing",
+    };
+  }
+
+  return {
+    name: "Project Financial Snapshot",
+    status: "ok",
+    message: "Core snapshot tables are reachable.",
+  };
+}
+
+function collectWarnings(checks: SystemHealthCheck[]): string[] {
+  return checks
+    .filter((check) => check.status !== "ok")
+    .map((check) => `${check.name}: ${check.message ?? check.code ?? "Needs review"}`);
+}
+
+async function fetchSchemaCheck(request: Request): Promise<string[] | undefined> {
   try {
     const origin = new URL(request.url).origin;
     const headers = new Headers();
@@ -109,23 +358,104 @@ export async function GET(request: Request) {
       Array.isArray(schemaData.missing) &&
       schemaData.missing.length > 0
     ) {
-      status = "warning";
-      schemaMissing = schemaData.missing;
+      return schemaData.missing.map((item) => safeErrorMessage(item));
     }
+    return undefined;
   } catch {
-    status = "warning";
-    schemaMissing = [];
+    return [];
   }
+}
 
-  const body: {
-    status: SystemHealthStatus;
-    modules: SystemHealthModule[];
-    schemaMissing?: string[];
-  } = {
+export async function GET(request: Request) {
+  const guard = await requireAuthenticatedUser(request);
+  if (!guard.ok) return guard.response;
+
+  const checkedAt = new Date().toISOString();
+  const server = getServerSupabaseInternal();
+
+  const appCheck: SystemHealthCheck = {
+    name: "App Status",
+    status: "ok",
+    message: "Application route is responding.",
+  };
+  const supabaseCheck: SystemHealthCheck = server
+    ? {
+        name: "Supabase Connection",
+        status: "ok",
+        message: "Supabase client is configured on the server.",
+      }
+    : {
+        name: "Supabase Connection",
+        status: "fail",
+        message: "Supabase server configuration is missing.",
+        code: "supabase_not_configured",
+      };
+
+  const requiredTables = await Promise.all(
+    REQUIRED_TABLES.map((target) => checkTable(server, target))
+  );
+  const optionalTables = await Promise.all(
+    OPTIONAL_TABLES.map((target) => checkTable(server, target))
+  );
+  const storageBuckets = await Promise.all(
+    STORAGE_BUCKETS.map((target) => checkStorageBucket(server, target))
+  );
+  const companyProfile = await checkCompanyProfile(server);
+  const pin = await checkPinSettings(server);
+  const apBills = optionalTables.filter((check) =>
+    ["AP bills", "AP bill payments"].includes(check.name)
+  );
+  const projectFinancialSnapshot = summarizeProjectFinancialSnapshot(requiredTables);
+  const schemaMissing = await fetchSchemaCheck(request);
+
+  const checks = [
+    appCheck,
+    supabaseCheck,
+    ...requiredTables,
+    ...optionalTables,
+    ...storageBuckets,
+    companyProfile,
+    pin,
+    projectFinancialSnapshot,
+  ];
+  const status: SystemHealthStatus =
+    checks.some((check) => check.status !== "ok") || (schemaMissing?.length ?? 0) > 0
+      ? "warning"
+      : "ok";
+  const schemaWarnings =
+    schemaMissing && schemaMissing.length > 0
+      ? [`Schema check missing: ${schemaMissing.join(", ")}`]
+      : [];
+  const warnings = [...collectWarnings(checks), ...schemaWarnings].map((warning) =>
+    safeErrorMessage(warning)
+  );
+  const modules = checks.map(checkToModule);
+
+  return NextResponse.json({
     status,
     modules,
-  };
-  if (schemaMissing !== undefined) body.schemaMissing = schemaMissing;
-
-  return NextResponse.json(body);
+    ...(schemaMissing !== undefined ? { schemaMissing } : {}),
+    checkedAt,
+    environment: {
+      nodeEnv: process.env.NODE_ENV ?? "unknown",
+      vercelEnv: process.env.VERCEL_ENV ?? null,
+      commit:
+        process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+        process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ??
+        null,
+    },
+    summary: {
+      app: appCheck,
+      supabase: supabaseCheck,
+      requiredTables,
+      optionalTables,
+      storageBuckets,
+      companyProfile,
+      pin,
+      apBills,
+      projectFinancialSnapshot,
+      warnings,
+      checkedAt,
+    },
+  });
 }
