@@ -7,6 +7,11 @@ export const dynamic = "force-dynamic";
 
 export type SystemHealthStatus = "ok" | "warning";
 export type SystemHealthCheckStatus = "ok" | "warning" | "fail";
+export type SystemHealthIssueCategory =
+  | "actionRequired"
+  | "optionalModule"
+  | "dataCleanup"
+  | "informational";
 
 export type SystemHealthModule = {
   name: string;
@@ -19,6 +24,8 @@ export type SystemHealthCheck = {
   status: SystemHealthCheckStatus;
   message?: string;
   code?: string;
+  category?: SystemHealthIssueCategory;
+  href?: string;
 };
 
 type HealthTarget = {
@@ -105,20 +112,30 @@ function hasMissingRelationError(error: unknown): boolean {
 
 function optionalUnavailableMessage(target: HealthTarget | StorageTarget): string {
   if (target.name === "AP bills" || target.name === "AP bill payments") {
-    return "AP Bills module is not configured yet.";
+    return "AP Bills module is optional and not configured.";
   }
   if (target.name === "Expense options") {
     return "Expense options are not installed in this environment.";
   }
   if (target.name === "Legacy payment methods") {
-    return "Legacy payment_methods table is not configured; expense_options/fallbacks should be used.";
+    return "Legacy payment methods are optional and disabled; expense_options/fallbacks are active.";
   }
   return `${target.name} is optional and is not installed in this environment.`;
 }
 
-function isInformationalWarning(check: SystemHealthCheck): boolean {
+function isOptionalDisabledTarget(target: HealthTarget | StorageTarget): boolean {
   return (
-    check.code === "optional_table_missing" || check.code === "optional_storage_bucket_missing"
+    target.name === "AP bills" ||
+    target.name === "AP bill payments" ||
+    target.name === "Legacy payment methods"
+  );
+}
+
+function isActionableWarning(check: SystemHealthCheck): boolean {
+  return (
+    check.status !== "ok" &&
+    check.category !== "optionalModule" &&
+    check.category !== "informational"
   );
 }
 
@@ -139,6 +156,15 @@ async function checkTable(
     const { error } = await server.from(target.table).select("*").limit(1);
     if (error) {
       const missing = hasMissingRelationError(error);
+      if (target.optional && missing && isOptionalDisabledTarget(target)) {
+        return {
+          name: target.name,
+          status: "ok",
+          message: optionalUnavailableMessage(target),
+          code: "optional_module_disabled",
+          category: "optionalModule",
+        };
+      }
       return {
         name: target.name,
         status: target.optional ? "warning" : missing ? "fail" : "fail",
@@ -152,6 +178,7 @@ async function checkTable(
             ? "optional_table_missing"
             : "missing_table"
           : ((error as { code?: string }).code ?? "table_check_failed"),
+        category: target.optional ? "actionRequired" : undefined,
       };
     }
     return { name: target.name, status: "ok", message: `${target.table} is reachable.` };
@@ -214,6 +241,21 @@ function rowHasE2EMarker(row: UnknownRow): boolean {
   );
 }
 
+function collectCompanyProfileE2EFields(rows: UnknownRow[]): string[] {
+  const fields = new Set<string>();
+  for (const row of rows) {
+    for (const [field, value] of Object.entries(row)) {
+      if (
+        typeof value === "string" &&
+        COMPANY_PROFILE_E2E_MARKERS.some((marker) => marker.test(value))
+      ) {
+        fields.add(field);
+      }
+    }
+  }
+  return Array.from(fields).sort();
+}
+
 async function checkCompanyProfile(
   server: ReturnType<typeof getServerSupabaseInternal>
 ): Promise<SystemHealthCheck> {
@@ -251,11 +293,16 @@ async function checkCompanyProfile(
       };
     }
     if (rows.some(rowHasE2EMarker)) {
+      const fields = collectCompanyProfileE2EFields(rows);
       return {
         name: "Company Profile",
         status: "warning",
-        message: "E2E test marker detected in company profile data.",
+        message: `Company profile contains test marker data. Update in Settings -> Company Profile.${
+          fields.length > 0 ? ` Fields: ${fields.join(", ")}.` : ""
+        }`,
         code: "company_profile_e2e_marker",
+        category: "dataCleanup",
+        href: "/settings/company",
       };
     }
     return {
@@ -368,7 +415,7 @@ function summarizeProjectFinancialSnapshot(requiredTables: SystemHealthCheck[]):
 
 function collectWarnings(checks: SystemHealthCheck[]): string[] {
   return checks
-    .filter((check) => check.status !== "ok")
+    .filter(isActionableWarning)
     .map((check) => `${check.name}: ${check.message ?? check.code ?? "Needs review"}`);
 }
 
@@ -380,14 +427,6 @@ function collectSchemaDriftWarnings(checks: SystemHealthCheck[]): string[] {
       warnings.push(
         "Expense options schema is missing in this environment; compare local and production before changing expense settings."
       );
-    }
-    if (check.name === "Legacy payment methods") {
-      warnings.push(
-        "Legacy payment_methods schema is missing; this is acceptable only while expense_options/fallbacks cover the app flow."
-      );
-    }
-    if (check.name === "AP bills" || check.name === "AP bill payments") {
-      warnings.push("AP Bills module is not configured yet.");
     }
   }
   return Array.from(new Set(warnings));
@@ -474,10 +513,7 @@ export async function GET(request: Request) {
     projectFinancialSnapshot,
   ];
   const status: SystemHealthStatus =
-    checks.some((check) => check.status !== "ok" && !isInformationalWarning(check)) ||
-    (schemaMissing?.length ?? 0) > 0
-      ? "warning"
-      : "ok";
+    checks.some(isActionableWarning) || (schemaMissing?.length ?? 0) > 0 ? "warning" : "ok";
   const schemaWarnings =
     schemaMissing && schemaMissing.length > 0
       ? [`Schema check missing: ${schemaMissing.join(", ")}`]

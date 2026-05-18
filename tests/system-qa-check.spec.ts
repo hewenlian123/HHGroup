@@ -27,6 +27,7 @@ type SystemQaBody = {
       id?: string;
       name?: string;
       status?: string;
+      category?: string;
       page?: string;
       message?: string;
       diagnosticCode?: string;
@@ -222,15 +223,29 @@ test.describe("System QA check", () => {
       );
 
       const checks = allChecks(body);
-      expect(checks.some((check) => check.diagnosticCode === "company_profile_e2e_marker")).toBe(
-        true
+      const companyProfileMarkers = checks.filter(
+        (check) => check.diagnosticCode === "company_profile_e2e_marker"
       );
-      expect(checks.some((check) => check.diagnosticCode === "contract_value_review_needed")).toBe(
-        true
+      expect(companyProfileMarkers).toHaveLength(1);
+      expect(companyProfileMarkers[0]?.category).toBe("dataCleanup");
+      expect(companyProfileMarkers[0]?.message).toContain("Update in Settings");
+
+      const contractReview = checks.find(
+        (check) => check.diagnosticCode === "contract_value_review_needed"
       );
+      expect(contractReview).toBeTruthy();
+      expect(contractReview?.category).toBe("actionRequired");
+      expect(contractReview?.message).toContain("need contract value review");
       expect(checks.some((check) => check.diagnosticCode === "contract_placeholder_values")).toBe(
-        true
+        false
       );
+      expect(checks.some((check) => check.diagnosticCode === "contract_suspicious_huge")).toBe(
+        false
+      );
+      expect(checks.some((check) => check.diagnosticCode === "optional_schema_warning")).toBe(
+        false
+      );
+      expect(text).not.toMatch(/public\.ap_bills|schema cache|Could not find/i);
 
       const destructive = body.sections?.find((section) => section.id === "destructive-safety");
       expect(destructive?.checks?.length ?? 0).toBeGreaterThan(0);
@@ -246,25 +261,34 @@ test.describe("System QA check", () => {
   });
 
   test("System Health shows System QA panel for owner session", async ({ browser }) => {
+    const fixture = await createQaFixture();
     const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
-    await loginOwner(context.request);
-    const page = await context.newPage();
+    try {
+      await loginOwner(context.request);
+      const page = await context.newPage();
 
-    await page.goto("/system-health", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "System Health" })).toBeVisible({
-      timeout: 30_000,
-    });
-    await expect(page.getByRole("heading", { name: "System QA" })).toBeVisible();
+      await page.goto("/system-health", { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("heading", { name: "System Health" })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByRole("heading", { name: "System QA" })).toBeVisible();
+      await expect(page.getByText("Needs attention")).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByText("Optional modules", { exact: true })).toBeVisible();
+      await expect(
+        page.getByText("AP Bills module is optional and not configured.").first()
+      ).toBeVisible();
 
-    await page.getByRole("button", { name: /Run System QA|Running QA/ }).click();
-    await expect(page.getByText("Page availability and visible errors")).toBeVisible({
-      timeout: 60_000,
-    });
-    await expect(page.getByRole("heading", { name: "Destructive action safety" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Schema and system health" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Financial data guardrails" })).toBeVisible();
-
-    await context.close();
+      await page.getByRole("button", { name: /Run System QA|Running QA/ }).click();
+      await expect(page.getByText("Page availability and visible errors")).toBeVisible({
+        timeout: 60_000,
+      });
+      await expect(page.getByRole("heading", { name: "Destructive action safety" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Schema and system health" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Financial data guardrails" })).toBeVisible();
+    } finally {
+      await context.close();
+      await cleanupQaFixture(fixture);
+    }
   });
 
   test("System Health tolerates partial QA and integrity responses", async ({ browser }) => {

@@ -22,12 +22,15 @@ type GuardianResult = {
 };
 
 type HealthCheckStatus = "ok" | "warning" | "fail";
+type IssueCategory = "actionRequired" | "optionalModule" | "dataCleanup" | "informational";
 
 type HealthCheck = {
   name: string;
   status: HealthCheckStatus;
   message?: string;
   code?: string;
+  category?: IssueCategory;
+  href?: string;
 };
 
 type SystemHealthResult = {
@@ -73,6 +76,7 @@ type SystemQaCheck = {
   name: string;
   status: SystemQaStatus;
   type: string;
+  category?: IssueCategory;
   page?: string;
   message: string;
   recommendedAction?: string;
@@ -166,6 +170,13 @@ function normalizeQaResult(value: PartialSystemQaResult): SystemQaResult {
                 name: safeString(check.name, "QA check"),
                 status: normalizeQaStatus(check.status),
                 type: safeString(check.type, "system"),
+                category:
+                  check.category === "actionRequired" ||
+                  check.category === "optionalModule" ||
+                  check.category === "dataCleanup" ||
+                  check.category === "informational"
+                    ? check.category
+                    : undefined,
                 page: typeof check.page === "string" ? check.page : undefined,
                 message: safeString(check.message, "No detail provided."),
                 recommendedAction:
@@ -419,6 +430,71 @@ function HealthCard({ title, check }: { title: string; check?: HealthCheck }) {
   );
 }
 
+function isOptionalModuleCheck(check?: HealthCheck | null): boolean {
+  return check?.category === "optionalModule" || check?.code === "optional_module_disabled";
+}
+
+function isInformationalCheck(check?: HealthCheck | null): boolean {
+  return check?.category === "informational";
+}
+
+function isActionableHealthCheck(check?: HealthCheck | null): boolean {
+  return Boolean(
+    check && check.status !== "ok" && !isOptionalModuleCheck(check) && !isInformationalCheck(check)
+  );
+}
+
+function uniqueHealthChecks(checks: HealthCheck[]): HealthCheck[] {
+  const seen = new Set<string>();
+  const unique: HealthCheck[] = [];
+  for (const check of checks) {
+    const key = `${check.name}:${check.code ?? ""}:${check.message ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(check);
+  }
+  return unique;
+}
+
+function IssueList({
+  title,
+  checks,
+  tone = "neutral",
+}: {
+  title: string;
+  checks: HealthCheck[];
+  tone?: "critical" | "attention" | "optional" | "neutral";
+}) {
+  if (checks.length === 0) return null;
+  const toneClass =
+    tone === "critical"
+      ? "border-red-200 bg-red-50 text-red-800 dark:border-red-800/40 dark:bg-red-950/20 dark:text-red-300"
+      : tone === "attention"
+        ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-200"
+        : "border-border/70 bg-card text-foreground";
+
+  return (
+    <div className={`rounded-sm border px-4 py-3 text-sm ${toneClass}`}>
+      <p className="font-medium">{title}</p>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5">
+        {checks.map((check) => (
+          <li key={`${check.name}:${check.code ?? ""}:${check.message ?? ""}`}>
+            {check.href ? (
+              <Link href={check.href} className="underline underline-offset-2">
+                {check.name}
+              </Link>
+            ) : (
+              <span>{check.name}</span>
+            )}
+            {": "}
+            <span>{check.message ?? check.code ?? "Needs review"}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function HealthTable({ title, checks }: { title: string; checks?: HealthCheck[] }) {
   return (
     <div className="border-t border-border/60 pt-5">
@@ -621,6 +697,34 @@ export default function SystemHealthPage() {
   const apBillNames = new Set(summary?.apBills.map((check) => check.name) ?? []);
   const optionalWithoutAp =
     summary?.optionalTables.filter((check) => !apBillNames.has(check.name)) ?? undefined;
+  const healthChecks = summary
+    ? [
+        summary.app,
+        summary.supabase,
+        summary.companyProfile,
+        summary.pin,
+        summary.projectFinancialSnapshot,
+        ...summary.requiredTables,
+        ...summary.optionalTables,
+        ...summary.storageBuckets,
+      ]
+    : [];
+  const criticalIssues = uniqueHealthChecks(
+    healthChecks.filter((check) => check.status === "fail")
+  );
+  const needsAttention = uniqueHealthChecks(
+    healthChecks.filter((check) => check.status === "warning" && isActionableHealthCheck(check))
+  );
+  const optionalModules = uniqueHealthChecks(healthChecks.filter(isOptionalModuleCheck));
+  const informationalItems = uniqueHealthChecks(
+    (summary?.schemaDriftWarnings ?? []).map((message) => ({
+      name: "Schema comparison",
+      status: "ok" as const,
+      category: "informational" as const,
+      message,
+      code: "schema_drift_info",
+    }))
+  );
   const orphanedTaskCount = integrityCount(integrity?.orphanedTasks);
   const ghostTaskCount = integrityCount(integrity?.ghostTasks);
   const duplicateTaskCount = integrityCount(integrity?.duplicateTasks);
@@ -729,27 +833,10 @@ export default function SystemHealthPage() {
           </div>
         </div>
 
-        {summary?.warnings?.length ? (
-          <div className="rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-200">
-            <p className="font-medium">Recent warnings</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5">
-              {summary.warnings.slice(0, 8).map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-
-        {summary?.schemaDriftWarnings?.length ? (
-          <div className="rounded-sm border border-border/70 bg-card px-4 py-3 text-sm">
-            <p className="font-medium text-foreground">Schema drift warnings</p>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5 text-muted-foreground">
-              {summary.schemaDriftWarnings.map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+        <IssueList title="Critical issues" checks={criticalIssues} tone="critical" />
+        <IssueList title="Needs attention" checks={needsAttention} tone="attention" />
+        <IssueList title="Optional modules" checks={optionalModules} tone="optional" />
+        <IssueList title="Info" checks={informationalItems} />
 
         <HealthTable title="Required tables" checks={summary?.requiredTables} />
         <HealthTable title="Optional tables" checks={optionalWithoutAp} />
