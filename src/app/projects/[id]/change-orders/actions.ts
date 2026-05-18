@@ -7,8 +7,9 @@ import {
   updateChangeOrder as updateCO,
   addChangeOrderItem as addItem,
   deleteChangeOrderItem as deleteItem,
-  createChangeOrder,
 } from "@/lib/data";
+import { createChangeOrderWithClient } from "@/lib/change-orders-db";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import type { ChangeOrderStatus } from "@/lib/data";
 
 export async function createChangeOrderAction(
@@ -27,7 +28,9 @@ export async function createChangeOrderAction(
       scheduleImpactDaysRaw != null && scheduleImpactDaysRaw !== ""
         ? Number(scheduleImpactDaysRaw)
         : null;
-    const co = await createChangeOrder(projectId, {
+    const server = getServerSupabaseInternalNoStore();
+    if (!server) return { ok: false, error: "Server Supabase is not configured." };
+    const co = await createChangeOrderWithClient(server, projectId, {
       title: title || null,
       description,
       amount: amount != null && Number.isFinite(amount) ? amount : null,

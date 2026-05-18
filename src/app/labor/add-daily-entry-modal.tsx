@@ -14,8 +14,6 @@ import { Input } from "@/components/ui/input";
 import {
   getProjects,
   getLaborWorkers,
-  getFullDayLaborEntriesByDate,
-  insertDailyLaborEntriesAmPm,
   type LaborWorker,
   type DailyLaborRowInput,
 } from "@/lib/data";
@@ -221,10 +219,17 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
       return;
     }
     let cancelled = false;
-    getFullDayLaborEntriesByDate(workDate)
+    fetch(`/api/labor/entries?date=${encodeURIComponent(workDate)}`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return [];
+        const body = (await response.json().catch(() => null)) as {
+          entries?: Array<{ worker_id?: string; workerId?: string }>;
+        } | null;
+        return body?.entries ?? [];
+      })
       .then((entries) => {
         if (!cancelled) {
-          setDisabledWorkerIds(new Set(entries.map((e) => e.workerId)));
+          setDisabledWorkerIds(new Set(entries.map((e) => e.worker_id ?? e.workerId ?? "")));
         }
       })
       .catch(() => {
@@ -293,10 +298,19 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
     setError(null);
     setBusy(true);
     try {
-      await insertDailyLaborEntriesAmPm(projectId, workDate, toSave, {
-        notes: notes.trim() || undefined,
-        costCode: costCode.trim() || undefined,
+      const response = await fetch("/api/labor/entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId,
+          workDate,
+          rows: toSave,
+          notes: notes.trim() || undefined,
+          costCode: costCode.trim() || undefined,
+        }),
       });
+      const body = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) throw new Error(body?.message ?? "Failed to save entries.");
       onOpenChange(false);
       onSuccess();
     } catch (err) {

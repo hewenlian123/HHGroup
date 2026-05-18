@@ -6,6 +6,7 @@
  * Only Approved change orders affect revenue (canonical profit model: amount or total).
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type ChangeOrderStatus = "Draft" | "Pending Approval" | "Approved" | "Rejected";
@@ -98,8 +99,8 @@ export type ProjectBudgetItemRow = {
   total: number;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -318,10 +319,7 @@ export async function getProjectBudgetItems(projectId: string): Promise<ProjectB
 
 // —— Create ——
 
-async function getNextChangeOrderNumber(
-  c: ReturnType<typeof client>,
-  projectId: string
-): Promise<string> {
+async function getNextChangeOrderNumber(c: SupabaseClient, projectId: string): Promise<string> {
   const { data: numRow, error: numErr } = await c.rpc("next_change_order_number", {
     p_project_id: projectId,
   });
@@ -367,7 +365,15 @@ export async function createChangeOrder(
   projectId: string,
   input?: CreateChangeOrderInput
 ): Promise<ChangeOrder> {
-  const c = client();
+  return createChangeOrderWithClient(undefined, projectId, input);
+}
+
+export async function createChangeOrderWithClient(
+  explicitClient: SupabaseClient | undefined,
+  projectId: string,
+  input?: CreateChangeOrderInput
+): Promise<ChangeOrder> {
+  const c = client(explicitClient);
   const number = await getNextChangeOrderNumber(c, projectId);
   const sequence = parseInt(number.replace(/^CO-0*/, "") || "0", 10) || 1;
   const date = new Date().toISOString().slice(0, 10);

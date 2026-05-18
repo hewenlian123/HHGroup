@@ -17,15 +17,6 @@ import {
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
 import { Search, Users } from "lucide-react";
-import {
-  getWorkers,
-  getLaborEntriesWithJoins,
-  getDailyWorkEntriesInRange,
-  getWorkerInvoices,
-  getWorkerPayments,
-  totalPayForEntry,
-  type WorkerInvoice,
-} from "@/lib/data";
 import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { deleteWorkerAction } from "../actions";
 import {
@@ -51,6 +42,12 @@ type Row = {
   earned: number;
   paid: number;
   outstanding: number;
+};
+
+type WorkerSummaryResponse = {
+  ok?: boolean;
+  message?: string;
+  rows?: Row[];
 };
 
 type SortKey = keyof Omit<Row, "workerId">;
@@ -97,68 +94,13 @@ export default function WorkerSummaryPage() {
     setLoading(true);
     setMessage(null);
     try {
-      const [workers, laborEntries, invoicesAll, payments] = await Promise.all([
-        getWorkers(),
-        getLaborEntriesWithJoins({ date_from: fromDate, date_to: toDate }).catch(() => []),
-        getWorkerInvoices().catch(() => [] as WorkerInvoice[]),
-        getWorkerPayments({ fromDate, toDate, limit: 5000 }).catch(() => []),
-      ]);
-
-      const laborByWorker = new Map<string, number>();
-      const workDaysByWorker = new Map<string, number>();
-      for (const e of laborEntries) {
-        const wid = e.worker_id;
-        if (!wid) continue;
-        const amt = Number(e.cost_amount ?? 0) || 0;
-        laborByWorker.set(wid, (laborByWorker.get(wid) ?? 0) + amt);
-        workDaysByWorker.set(wid, (workDaysByWorker.get(wid) ?? 0) + 1);
-      }
-
-      if (laborEntries.length === 0) {
-        const daily = await getDailyWorkEntriesInRange(fromDate, toDate).catch(() => []);
-        for (const e of daily) {
-          laborByWorker.set(e.workerId, (laborByWorker.get(e.workerId) ?? 0) + totalPayForEntry(e));
-          if (e.dayType !== "absent") {
-            workDaysByWorker.set(e.workerId, (workDaysByWorker.get(e.workerId) ?? 0) + 1);
-          }
-        }
-      }
-
-      const invoiceByWorker = new Map<string, number>();
-      for (const inv of invoicesAll as WorkerInvoice[]) {
-        const d = inv.createdAt?.slice(0, 10) ?? "";
-        if (d && (d < fromDate || d > toDate)) continue;
-        invoiceByWorker.set(
-          inv.workerId,
-          (invoiceByWorker.get(inv.workerId) ?? 0) + (Number(inv.amount) || 0)
-        );
-      }
-
-      const paidByWorker = new Map<string, number>();
-      for (const p of payments) {
-        paidByWorker.set(p.workerId, (paidByWorker.get(p.workerId) ?? 0) + (Number(p.amount) || 0));
-      }
-
-      const nameById = new Map(workers.map((w) => [w.id, w.name] as const));
-
-      const out: Row[] = workers.map((w) => {
-        const labor = laborByWorker.get(w.id) ?? 0;
-        const inv = invoiceByWorker.get(w.id) ?? 0;
-        const earned = labor + inv;
-        const paid = paidByWorker.get(w.id) ?? 0;
-        const outstanding = earned - paid;
-        const workDays = workDaysByWorker.get(w.id) ?? 0;
-        return {
-          workerId: w.id,
-          workerName: nameById.get(w.id) ?? w.name ?? w.id,
-          workDays,
-          earned,
-          paid,
-          outstanding,
-        };
+      const params = new URLSearchParams({ fromDate, toDate });
+      const response = await fetch(`/api/workers/summary?${params.toString()}`, {
+        cache: "no-store",
       });
-
-      setRows(out);
+      const body = (await response.json().catch(() => ({}))) as WorkerSummaryResponse;
+      if (!response.ok) throw new Error(body.message ?? "Failed to load worker summary.");
+      setRows(body.rows ?? []);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Failed to load.");
       setRows([]);

@@ -117,8 +117,8 @@ type ExpenseLineRow = {
 
 const WORKER_REIMBURSEMENT_SOURCE = "worker_reimbursement";
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -230,12 +230,15 @@ async function fetchExpenseLinesGroupedByExpenseId(
   return map;
 }
 
-async function getLinkedBankTxId(expenseId: string): Promise<string | null> {
+async function getLinkedBankTxId(
+  expenseId: string,
+  explicitClient?: SupabaseClient
+): Promise<string | null> {
   if (isBrowserRuntime()) {
     return (await fetchLinkedBankTxIdMapFromServerApi([expenseId])).get(expenseId) ?? null;
   }
 
-  const c = client();
+  const c = client(explicitClient);
   const { data, error } = await c
     .from("bank_transactions")
     .select("id")
@@ -275,8 +278,11 @@ async function fetchLinkedBankTxIdMap(
   return map;
 }
 
-async function getLegacyAttachmentsFromTable(expenseId: string): Promise<ExpenseAttachment[]> {
-  const c = client();
+async function getLegacyAttachmentsFromTable(
+  expenseId: string,
+  explicitClient?: SupabaseClient
+): Promise<ExpenseAttachment[]> {
+  const c = client(explicitClient);
   const { data: rows } = await c
     .from("attachments")
     .select("id, file_name, mime_type, size_bytes, file_path, created_at")
@@ -294,8 +300,11 @@ async function getLegacyAttachmentsFromTable(expenseId: string): Promise<Expense
 }
 
 /** Rows from public.expense_attachments (file_url holds storage path in expense-attachments bucket). */
-async function getExpenseAttachmentRows(expenseId: string): Promise<ExpenseAttachment[]> {
-  const c = client();
+async function getExpenseAttachmentRows(
+  expenseId: string,
+  explicitClient?: SupabaseClient
+): Promise<ExpenseAttachment[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("expense_attachments")
     .select("id, file_url, file_type, created_at")
@@ -314,10 +323,13 @@ async function getExpenseAttachmentRows(expenseId: string): Promise<ExpenseAttac
   });
 }
 
-async function getAttachments(expenseId: string): Promise<ExpenseAttachment[]> {
+async function getAttachments(
+  expenseId: string,
+  explicitClient?: SupabaseClient
+): Promise<ExpenseAttachment[]> {
   const [legacy, dedicated] = await Promise.all([
-    getLegacyAttachmentsFromTable(expenseId),
-    getExpenseAttachmentRows(expenseId),
+    getLegacyAttachmentsFromTable(expenseId, explicitClient),
+    getExpenseAttachmentRows(expenseId, explicitClient),
   ]);
   return dedupeExpenseAttachmentsByStorageKey([...legacy, ...dedicated]);
 }
@@ -396,11 +408,12 @@ function normalizeExpenseStatus(s: string | null | undefined): NonNullable<Expen
 }
 
 async function fetchPaymentAccountNameMap(
-  ids: (string | null | undefined)[]
+  ids: (string | null | undefined)[],
+  explicitClient?: SupabaseClient
 ): Promise<Map<string, string>> {
   const unique = [...new Set(ids.filter((x): x is string => Boolean(x)))];
   if (unique.length === 0) return new Map();
-  const c = client();
+  const c = client(explicitClient);
   const m = new Map<string, string>();
   const { data, error } = await c.from("payment_accounts").select("id,name").in("id", unique);
   if (error && isMissingTable(error)) return m;
@@ -688,8 +701,11 @@ export async function getExpenses(
   return result;
 }
 
-export async function getExpenseById(expenseId: string): Promise<Expense | null> {
-  const c = client();
+export async function getExpenseById(
+  expenseId: string,
+  explicitClient?: SupabaseClient
+): Promise<Expense | null> {
+  const c = client(explicitClient);
   const res = await c.from("expenses").select("*").eq("id", expenseId).maybeSingle();
   let row: ExpenseRow | null = null;
   if (res.error) {
@@ -763,11 +779,14 @@ export async function getExpenseById(expenseId: string): Promise<Expense | null>
     row = res.data as ExpenseRow | null;
   }
   if (!row) return null;
-  const paymentNameMap = await fetchPaymentAccountNameMap([(row as ExpenseRow).payment_account_id]);
+  const paymentNameMap = await fetchPaymentAccountNameMap(
+    [(row as ExpenseRow).payment_account_id],
+    explicitClient
+  );
   const { data: lineRows } = await c.from("expense_lines").select("*").eq("expense_id", expenseId);
   const lines = (lineRows ?? []) as ExpenseLineRow[];
-  const attachments = await getAttachments(expenseId);
-  const linkedBankTxId = await getLinkedBankTxId(expenseId);
+  const attachments = await getAttachments(expenseId, explicitClient);
+  const linkedBankTxId = await getLinkedBankTxId(expenseId, explicitClient);
   return toExpense(row, lines, attachments, linkedBankTxId, paymentNameMap);
 }
 
@@ -1015,7 +1034,30 @@ export async function createQuickExpense(payload: {
   /** When set, overrides default status (receipt → needs_review, else pending). */
   initialStatus?: NonNullable<Expense["status"]>;
 }): Promise<Expense> {
-  const c = client();
+  return createQuickExpenseWithClient(undefined, payload);
+}
+
+export async function createQuickExpenseWithClient(
+  explicitClient: SupabaseClient | undefined,
+  payload: {
+    date: string;
+    vendorName: string;
+    totalAmount: number;
+    /** Omit or empty when saving without a receipt file. */
+    receiptUrl?: string | null;
+    category?: string;
+    notes?: string;
+    projectId?: string | null;
+    paymentAccountId?: string | null;
+    /** Dedupe key for inbox upload drafts (`INBOX-UP-…`); optional for other callers. */
+    referenceNo?: string | null;
+    /** Defaults: receipt_upload when receiptUrl set, else company. */
+    sourceType?: "company" | "receipt_upload" | "reimbursement" | "bank_import";
+    /** When set, overrides default status (receipt → needs_review, else pending). */
+    initialStatus?: NonNullable<Expense["status"]>;
+  }
+): Promise<Expense> {
+  const c = client(explicitClient);
   const date = payload.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
   const vendor = (payload.vendorName ?? "").trim() || "Unknown";
   const total = Number(payload.totalAmount) || 0;
@@ -1194,7 +1236,7 @@ export async function createQuickExpense(payload: {
     }
   }
 
-  const exp = await getExpenseById(expenseId);
+  const exp = await getExpenseById(expenseId, explicitClient);
   if (!exp) throw new Error("Failed to load created expense.");
   return exp;
 }
@@ -1788,7 +1830,15 @@ export async function addExpenseAttachment(
   expenseId: string,
   att: ExpenseAttachment
 ): Promise<Expense | null> {
-  const c = client();
+  return addExpenseAttachmentWithClient(undefined, expenseId, att);
+}
+
+export async function addExpenseAttachmentWithClient(
+  explicitClient: SupabaseClient | undefined,
+  expenseId: string,
+  att: ExpenseAttachment
+): Promise<Expense | null> {
+  const c = client(explicitClient);
   const { error } = await c.from("attachments").insert({
     entity_type: "expense",
     entity_id: expenseId,
@@ -1798,7 +1848,7 @@ export async function addExpenseAttachment(
     size_bytes: att.size,
   });
   if (error) throw new Error(error.message ?? "Failed to save attachment record.");
-  return getExpenseById(expenseId);
+  return getExpenseById(expenseId, explicitClient);
 }
 
 function isMissingExpenseAttachmentsTable(error: { message?: string; code?: string }): boolean {

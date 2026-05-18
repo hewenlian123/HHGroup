@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuthenticatedUser } from "@/lib/auth-boundary";
-import { createWorker } from "@/lib/data";
+import { createWorkerWithClient } from "@/lib/labor-db";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternal,
@@ -63,11 +63,12 @@ export async function POST(req: Request) {
     const name = (body.name as string)?.trim() ?? "";
     if (!name) return NextResponse.json({ message: "Name is required." }, { status: 400 });
     const halfDayRate = Number(body.half_day_rate ?? body.halfDayRate ?? 0) || 0;
-    const worker = await createWorker({
+    const worker = await createWorkerWithClient(admin, {
       name,
       phone: (body.phone as string)?.trim() || undefined,
       trade: ((body.role ?? body.trade) as string)?.trim() || undefined,
       halfDayRate,
+      notes: (body.notes as string)?.trim() || undefined,
       status: body.status === "inactive" ? "inactive" : "active",
     });
     return NextResponse.json(worker);

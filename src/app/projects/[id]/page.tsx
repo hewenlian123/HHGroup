@@ -4,7 +4,6 @@ import {
   getProjectBillingSummary,
   getProjectTasks,
   getWorkers,
-  getLaborEntriesWithJoins,
   getDocumentsByProject,
   getCommissionsWithPaidByProject,
   getSelectionsByProject,
@@ -22,8 +21,10 @@ import {
   getInvoicesWithDerived,
   getEstimateList,
 } from "@/lib/data";
+import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { getProjectCostDashboard } from "@/lib/project-cost-dashboard";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { ProjectDetailTabsClient } from "./project-detail-tabs-client";
@@ -118,6 +119,7 @@ export default async function ProjectDetailPage({
       return fallback;
     }
   };
+  const internalSupabase = getServerSupabaseInternalNoStore();
 
   const [
     canonical,
@@ -162,7 +164,13 @@ export default async function ProjectDetailPage({
     }),
     safe(() => getProjectTasks(id), []),
     safe(() => getWorkers(), []),
-    safe(() => getLaborEntriesWithJoins({ project_id: id }), []),
+    safe(
+      () =>
+        internalSupabase
+          ? getLaborEntriesWithJoins({ project_id: id }, internalSupabase)
+          : getLaborEntriesWithJoins({ project_id: id }),
+      []
+    ),
     safe(() => getDocumentsByProject(id), []),
     (async () => {
       try {

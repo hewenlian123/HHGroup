@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import { deleteWorker, updateWorker } from "@/lib/data";
+import { getWorkerByIdWithClient, getWorkerUsageWithClient } from "@/lib/labor-db";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternal,
@@ -9,6 +10,36 @@ import {
 export const dynamic = "force-dynamic";
 
 type RouteParams = { params: Promise<{ id: string }> };
+
+export async function GET(req: Request, { params }: RouteParams) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
+  const { id } = await params;
+  if (!id?.trim()) {
+    return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
+  }
+  const admin = getServerSupabaseInternal();
+  if (!admin) {
+    return NextResponse.json(
+      { ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },
+      { status: 503 }
+    );
+  }
+  try {
+    const [worker, usage] = await Promise.all([
+      getWorkerByIdWithClient(admin, id),
+      getWorkerUsageWithClient(admin, id).catch(() => ({ used: false })),
+    ]);
+    if (!worker) {
+      return NextResponse.json({ ok: false, message: "Worker not found." }, { status: 404 });
+    }
+    return NextResponse.json({ ok: true, worker, usage });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to load worker.";
+    return NextResponse.json({ ok: false, message }, { status: 500 });
+  }
+}
 
 /**
  * PATCH: Update a worker (uses admin client).
