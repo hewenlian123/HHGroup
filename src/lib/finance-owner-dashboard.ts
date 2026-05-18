@@ -4,6 +4,8 @@ import * as invoicesDb from "@/lib/invoices-db";
 import * as laborDb from "@/lib/labor-db";
 import * as projectsDb from "@/lib/projects-db";
 import * as workerReimbursementsDb from "@/lib/worker-reimbursements-db";
+import { getProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
+import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 import { getCanonicalProjectProfitBatch, type CanonicalProjectProfit } from "@/lib/profit-engine";
 import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { fetchWorkerBalances } from "@/lib/worker-balances-list";
@@ -50,6 +52,7 @@ export type FinanceOwnerDashboard = {
   topProjects: FinanceOwnerProjectRow[];
   /** Negative-profit projects (worst first), max 5 — surfaces losses when topProjects are all winners. */
   underwaterProjects: FinanceOwnerProjectRow[];
+  contractReview: ProjectContractReviewSummary;
   alerts: {
     overdueInvoiceAmount: number;
     overdueInvoiceCount: number;
@@ -186,10 +189,19 @@ export async function getFinanceOwnerDashboard(): Promise<FinanceOwnerDashboard>
   const profitMap = await getCanonicalProjectProfitBatch(projectIds).catch(
     () => new Map<string, CanonicalProjectProfit>()
   );
+  const contractReview = getProjectContractReviewSummary(
+    projects.map((project) => ({
+      id: project.id,
+      name: project.name,
+      budget: profitMap.get(project.id)?.revenue ?? project.budget,
+    }))
+  );
+  const readyProjectIds = new Set(contractReview.readyProjectIds);
 
   let projectsInLossCount = 0;
   const projectRows: FinanceOwnerProjectRow[] = [];
   for (const p of projects) {
+    if (!readyProjectIds.has(p.id)) continue;
     const c = profitMap.get(p.id);
     if (!c) continue;
     const revenue = c.revenue;
@@ -252,6 +264,7 @@ export async function getFinanceOwnerDashboard(): Promise<FinanceOwnerDashboard>
     cashFlow,
     topProjects,
     underwaterProjects,
+    contractReview,
     alerts: {
       overdueInvoiceAmount,
       overdueInvoiceCount,

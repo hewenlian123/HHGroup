@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CONTRACT_VALUE_SUSPICIOUS_HUGE_THRESHOLD,
   getProjectContractReviewIssues,
+  getProjectContractReviewSummary,
 } from "@/lib/financial/project-financial-review";
 
 describe("getProjectContractReviewIssues", () => {
@@ -41,5 +42,26 @@ describe("getProjectContractReviewIssues", () => {
     expect(
       getProjectContractReviewIssues({ budget: 1, contractAmount: null }).map((issue) => issue.code)
     ).not.toContain("budget_contract_mismatch");
+  });
+
+  it("summarizes projects that should be excluded from profit totals", () => {
+    const summary = getProjectContractReviewSummary([
+      { id: "safe", name: "Safe Project", budget: 250_000, contractAmount: 250_000 },
+      { id: "placeholder", name: "Placeholder Project", budget: 1 },
+      {
+        id: "huge",
+        name: "Huge Project",
+        budget: CONTRACT_VALUE_SUSPICIOUS_HUGE_THRESHOLD + 1,
+      },
+      { id: "mismatch", name: "Mismatch Project", budget: 500_000, contractAmount: 450_000 },
+    ]);
+
+    expect(summary.totalProjects).toBe(4);
+    expect(summary.readyProjectIds).toEqual(["safe"]);
+    expect(summary.needsReviewCount).toBe(3);
+    expect(summary.needsReviewProjectIds).toEqual(["placeholder", "huge", "mismatch"]);
+    expect(summary.issueCounts.contract_value_placeholder).toBe(1);
+    expect(summary.issueCounts.contract_value_suspicious_huge).toBe(1);
+    expect(summary.issueCounts.budget_contract_mismatch).toBe(1);
   });
 });
