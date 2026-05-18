@@ -21,6 +21,7 @@ import {
   getInvoicesWithDerived,
   getEstimateList,
 } from "@/lib/data";
+import { getProjectByIdWithClient } from "@/lib/projects-db";
 import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { getProjectCostDashboard } from "@/lib/project-cost-dashboard";
@@ -95,10 +96,13 @@ export default async function ProjectDetailPage({
     "punch-list",
   ];
   const tab: TabKey = validTabs.includes(tabParam as TabKey) ? (tabParam as TabKey) : "overview";
+  const internalSupabase = getServerSupabaseInternalNoStore();
 
   let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
   try {
-    project = await getProjectById(id);
+    project = internalSupabase
+      ? ((await getProjectByIdWithClient(internalSupabase, id)) ?? undefined)
+      : await getProjectById(id);
   } catch (e) {
     logServerPageDataError(`projects/${id}`, e);
     return (
@@ -119,8 +123,6 @@ export default async function ProjectDetailPage({
       return fallback;
     }
   };
-  const internalSupabase = getServerSupabaseInternalNoStore();
-
   const [
     canonical,
     billingSummary,

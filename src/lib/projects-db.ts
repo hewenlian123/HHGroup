@@ -16,6 +16,7 @@ export type ProjectRow = {
   name: string | null;
   status: string | null;
   budget: number | null;
+  contract_amount?: number | null;
   spent: number | null;
   created_at: string | null;
   updated_at: string | null;
@@ -46,6 +47,7 @@ export type Project = {
   name: string;
   status: ProjectStatus;
   budget: number;
+  contractAmount?: number | null;
   spent: number;
   updated: string;
   created_at?: string | null;
@@ -196,6 +198,7 @@ function toProject(r: ProjectRow): Project {
     name: r.name ?? "",
     status,
     budget: Number(r.budget) || 0,
+    contractAmount: r.contract_amount == null ? null : Number(r.contract_amount) || 0,
     spent: Number(r.spent) || 0,
     updated: r.updated_at ?? r.created_at ?? new Date().toISOString().slice(0, 10),
     created_at: r.created_at ?? null,
@@ -229,7 +232,7 @@ function toProject(r: ProjectRow): Project {
 }
 
 const COLS =
-  "id,name,status,budget,spent,created_at,updated_at,client,client_name,customer_id,address,project_manager,start_date,end_date,notes,estimate_ref,source_estimate_id,snapshot_revenue,snapshot_budget_cost,snapshot_breakdown";
+  "id,name,status,budget,contract_amount,spent,created_at,updated_at,client,client_name,customer_id,address,project_manager,start_date,end_date,notes,estimate_ref,source_estimate_id,snapshot_revenue,snapshot_budget_cost,snapshot_breakdown";
 
 /** Same as COLS plus linked customer name for list/detail when `client` / `client_name` are empty. */
 const COLS_WITH_CUSTOMER = `${COLS},customers(name)`;
@@ -296,8 +299,11 @@ export async function getProjectsDashboard(
   });
 }
 
-export async function getProjectById(id: string): Promise<Project | null> {
-  const c = client();
+export async function getProjectByIdWithClient(
+  explicitClient: SupabaseClient,
+  id: string
+): Promise<Project | null> {
+  const c = client(explicitClient);
   let r: ProjectRow | null = null;
   let error: { message?: string } | null = null;
   for (const cols of [COLS_WITH_CUSTOMER, COLS, COLS_BASE]) {
@@ -311,6 +317,10 @@ export async function getProjectById(id: string): Promise<Project | null> {
     throw new Error(error.message ? `${error.message} ${HINT}` : HINT);
   }
   return r ? toProject(r as ProjectRow) : null;
+}
+
+export async function getProjectById(id: string): Promise<Project | null> {
+  return getProjectByIdWithClient(client(), id);
 }
 
 /** Used to prevent duplicate convert-from-estimate: one estimate → one project. */
@@ -415,6 +425,7 @@ export type UpdateProjectPatch = Partial<{
   name: string;
   status: ProjectStatus;
   budget: number;
+  contractAmount: number;
   spent: number;
   client: string;
   customerId: string | null;
@@ -430,15 +441,19 @@ export type UpdateProjectPatch = Partial<{
   snapshotBreakdown: { materials: number; labor: number; vendor: number; other: number } | null;
 }>;
 
-export async function updateProject(
+export async function updateProjectWithClient(
+  explicitClient: SupabaseClient,
   id: string,
   patch: UpdateProjectPatch
 ): Promise<Project | null> {
-  const c = client();
+  const c = client(explicitClient);
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row.name = patch.name.trim();
   if (patch.status !== undefined) row.status = patch.status;
   if (patch.budget !== undefined) row.budget = Math.max(0, Number(patch.budget));
+  if (patch.contractAmount !== undefined) {
+    row.contract_amount = Math.max(0, Number(patch.contractAmount));
+  }
   if (patch.spent !== undefined) row.spent = Math.max(0, Number(patch.spent));
   if (patch.customerId !== undefined) {
     row.customer_id = patch.customerId?.trim() || null;
@@ -483,6 +498,13 @@ export async function updateProject(
     throw new Error(error.message ?? HINT);
   }
   return updated ? toProject(updated as ProjectRow) : null;
+}
+
+export async function updateProject(
+  id: string,
+  patch: UpdateProjectPatch
+): Promise<Project | null> {
+  return updateProjectWithClient(client(), id, patch);
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
