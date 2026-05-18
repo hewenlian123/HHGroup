@@ -1,7 +1,7 @@
 import type { EstimateSummaryResult } from "@/lib/data";
-import { formatCurrency } from "@/lib/formatters";
+import { formatEstimateCurrency } from "../_components/estimate-currency";
 
-const fmt = formatCurrency;
+const fmt = formatEstimateCurrency;
 
 export function EstimateSummarySidebar({ summary }: { summary: EstimateSummaryResult | null }) {
   if (!summary) {

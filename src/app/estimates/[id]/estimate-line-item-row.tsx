@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { EstimateItemRow, CostCode } from "@/lib/data";
 import { Copy, Trash2 } from "lucide-react";
-import { formatCurrency } from "@/lib/formatters";
+import {
+  formatEstimateCurrency,
+  roundEstimateCurrencyValue,
+} from "../_components/estimate-currency";
 
 function parseDesc(desc: string): { title: string; description: string } {
   const idx = desc.indexOf("\n");
@@ -70,7 +73,7 @@ export function EstimateLineItemRow({
   const [description, setDescription] = React.useState(parsed.description);
   const [qty, setQty] = React.useState(row.qty);
   const [unit, setUnit] = React.useState(row.unit);
-  const [unitCost, setUnitCost] = React.useState(row.unitCost);
+  const [unitCost, setUnitCost] = React.useState(roundEstimateCurrencyValue(row.unitCost));
   const formRef = React.useRef<HTMLFormElement>(null);
 
   React.useEffect(() => {
@@ -78,7 +81,7 @@ export function EstimateLineItemRow({
     setDescription(parsed.description);
     setQty(row.qty);
     setUnit(row.unit);
-    setUnitCost(row.unitCost);
+    setUnitCost(roundEstimateCurrencyValue(row.unitCost));
   }, [row.id, row.desc, row.qty, row.unit, row.unitCost, parsed.title, parsed.description]);
 
   const combinedDesc = description.trim() ? `${title}\n${description}` : title;
@@ -136,7 +139,7 @@ export function EstimateLineItemRow({
         </td>
         <td className="py-2 px-4 text-right align-top">
           {isLocked ? (
-            formatCurrency(row.unitCost)
+            formatEstimateCurrency(row.unitCost)
           ) : (
             <Input
               form={formId}
@@ -152,7 +155,7 @@ export function EstimateLineItemRow({
         </td>
         <td className="py-2 px-4 align-top text-muted-foreground text-xs">{code.code}</td>
         <td className="py-2 px-4 align-top text-right tabular-nums font-medium">
-          {formatCurrency(lineTotal)}
+          {formatEstimateCurrency(lineTotal)}
         </td>
         {!isLocked && (
           <td className="py-2 px-2 align-top">

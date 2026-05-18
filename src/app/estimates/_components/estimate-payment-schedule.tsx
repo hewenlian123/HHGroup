@@ -8,7 +8,7 @@ import type { PaymentScheduleItem, PaymentScheduleTemplate } from "@/lib/data";
 import { paymentMilestoneAmount } from "@/lib/data";
 import { Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/formatters";
+import { formatEstimateCurrency } from "./estimate-currency";
 
 type AddAction = (formData: FormData) => Promise<void>;
 type UpdateAction = (formData: FormData) => Promise<void>;
@@ -18,7 +18,7 @@ type ReorderAction = (formData: FormData) => Promise<void>;
 type ApplyTemplateAction = (formData: FormData) => Promise<void>;
 type CreateTemplateAction = (formData: FormData) => Promise<void>;
 
-const fmt = formatCurrency;
+const fmt = formatEstimateCurrency;
 
 export function EstimatePaymentSchedule(props: {
   estimateId: string;

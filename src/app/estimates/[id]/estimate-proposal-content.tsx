@@ -2,7 +2,7 @@ import { estimateLineTotal, type EstimateItemRow, type CostCode } from "@/lib/da
 import type { EstimateSummaryResult } from "@/lib/data";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
-import { formatCurrency } from "@/lib/formatters";
+import { formatEstimateCurrency } from "../_components/estimate-currency";
 
 type EstimateForProposal = { number: string; status: string; updatedAt: string };
 type MetaForProposal = {
@@ -111,20 +111,20 @@ export function EstimateProposalContent({
                         </td>
                         <td className="py-2 px-2 text-zinc-600">{row.unit}</td>
                         <td className="py-2 px-2 text-right tabular-nums text-zinc-900">
-                          {formatCurrency(row.unitCost)}
+                          {formatEstimateCurrency(row.unitCost)}
                         </td>
                         <td className="py-2 px-2 text-right tabular-nums text-zinc-600">
                           {(row.markupPct * 100).toFixed(0)}%
                         </td>
                         <td className="py-2 pl-4 text-right tabular-nums font-medium text-zinc-900">
-                          {formatCurrency(estimateLineTotal(row))}
+                          {formatEstimateCurrency(estimateLineTotal(row))}
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 <p className="text-right text-sm font-medium tabular-nums text-zinc-900 mt-2">
-                  Section Subtotal: {formatCurrency(sectionSubtotal)}
+                  Section Subtotal: {formatEstimateCurrency(sectionSubtotal)}
                 </p>
               </div>
             );
@@ -137,7 +137,7 @@ export function EstimateProposalContent({
           <div className="flex justify-between py-1">
             <span className="text-zinc-600">Subtotal</span>
             <span className="tabular-nums font-medium text-zinc-900">
-              {formatCurrency(summary.subtotal)}
+              {formatEstimateCurrency(summary.subtotal)}
             </span>
           </div>
           <div className="flex justify-between py-1">
@@ -145,20 +145,20 @@ export function EstimateProposalContent({
               Overhead ({(summary.overheadPct * 100).toFixed(0)}%)
             </span>
             <span className="tabular-nums font-medium text-zinc-900">
-              {formatCurrency(summary.overhead)}
+              {formatEstimateCurrency(summary.overhead)}
             </span>
           </div>
           <div className="flex justify-between py-1">
             <span className="text-zinc-600">Profit ({(summary.profitPct * 100).toFixed(0)}%)</span>
             <span className="tabular-nums font-medium text-zinc-900">
-              {formatCurrency(summary.profit)}
+              {formatEstimateCurrency(summary.profit)}
             </span>
           </div>
           {summary.tax !== 0 && (
             <div className="flex justify-between py-1">
               <span className="text-zinc-600">Tax</span>
               <span className="tabular-nums font-medium text-zinc-900">
-                {formatCurrency(summary.tax)}
+                {formatEstimateCurrency(summary.tax)}
               </span>
             </div>
           )}
@@ -166,13 +166,15 @@ export function EstimateProposalContent({
             <div className="flex justify-between py-1">
               <span className="text-zinc-600">Discount</span>
               <span className="tabular-nums font-medium text-zinc-900">
-                {formatCurrency(-summary.discount)}
+                {formatEstimateCurrency(-summary.discount)}
               </span>
             </div>
           )}
           <div className="flex justify-between pt-2 mt-2 border-t border-zinc-200 font-semibold">
             <span className="text-zinc-900">Grand Total</span>
-            <span className="tabular-nums text-zinc-900">{formatCurrency(summary.grandTotal)}</span>
+            <span className="tabular-nums text-zinc-900">
+              {formatEstimateCurrency(summary.grandTotal)}
+            </span>
           </div>
         </div>
       </div>
