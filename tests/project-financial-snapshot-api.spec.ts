@@ -63,6 +63,96 @@ async function deleteProject(projectId: string): Promise<void> {
   await supabase.from("projects").delete().eq("id", projectId);
 }
 
+function snapshotComparisonBody(projectId: string) {
+  return {
+    ok: true,
+    comparison: {
+      projectId,
+      oldCanonicalProfit: {
+        revenue: 1000,
+        actualCost: 0,
+        profit: 1000,
+        margin: 1,
+        budget: 1000,
+        approvedChangeOrders: 0,
+        laborCost: 0,
+        expenseCost: 0,
+        subcontractCost: 0,
+      },
+      oldProjectCostDashboard: {
+        breakdown: { totalCost: 0, materials: 0, labor: 0, bills: 0, other: 0 },
+        spentTotal: 0,
+        profit: 1000,
+        margin: 1,
+        revenue: 1000,
+      },
+      newSnapshot: {
+        projectId,
+        contractValue: 1000,
+        approvedChangeOrders: 0,
+        revisedContractValue: 1000,
+        billedAmount: 975,
+        paidAmount: 400,
+        openAR: 575,
+        actualCost: 7321.5,
+        expenseCost: 2031.25,
+        laborCost: 4890,
+        reimbursementCost: 400.25,
+        subcontractCost: 0,
+        apCost: 0,
+        grossProfit: -6321.5,
+        grossMargin: -6.3215,
+        cashCollected: 400,
+        cashOut: 0,
+        cashPosition: 400,
+        warnings: [
+          {
+            code: "ap_bills_not_mapped",
+            severity: "warning",
+            message: "AP bills are not included yet.",
+          },
+          {
+            code: "reimbursement_not_finalized",
+            severity: "warning",
+            message: "Some reimbursements are not finalized.",
+          },
+        ],
+        diagnostics: {
+          expenseLinesLoaded: 2,
+          expenseHeaderFallbackCount: 0,
+          excludedExpenseCount: 0,
+          changeOrdersLoaded: 0,
+          approvedChangeOrdersCount: 0,
+          reimbursementDedupedCount: 0,
+          missingSchemaWarnings: ["ap_bills_not_mapped"],
+        },
+      },
+      differences: [],
+      warnings: [
+        {
+          code: "ap_bills_not_mapped",
+          severity: "warning",
+          message: "AP bills are not included yet.",
+        },
+        {
+          code: "reimbursement_not_finalized",
+          severity: "warning",
+          message: "Some reimbursements are not finalized.",
+        },
+      ],
+      diagnostics: {
+        expenseLinesLoaded: 2,
+        expenseHeaderFallbackCount: 0,
+        excludedExpenseCount: 0,
+        changeOrdersLoaded: 0,
+        approvedChangeOrdersCount: 0,
+        reimbursementDedupedCount: 0,
+        missingSchemaWarnings: ["ap_bills_not_mapped"],
+      },
+    },
+  };
+}
+
 test.describe("project financial snapshot API", () => {
   test.describe.configure({ mode: "serial", timeout: 60_000 });
 
@@ -148,6 +238,46 @@ test.describe("project financial snapshot API", () => {
     }
   });
 
+  test("project cost tab shows snapshot-backed cost and AR fields", async ({ browser }) => {
+    const projectId = await createProject();
+
+    try {
+      const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const page = await context.newPage();
+      await page.route(`**/api/projects/${projectId}/financial-snapshot`, async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(snapshotComparisonBody(projectId)),
+        });
+      });
+
+      await page.goto(`/projects/${projectId}?tab=cost`, { waitUntil: "domcontentloaded" });
+
+      await expect(page.getByRole("heading", { name: /\[E2E\] Snapshot API/i })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByTestId("snapshot-cost-actual")).toContainText("$7,321.50");
+      await expect(page.getByTestId("snapshot-cost-expense")).toContainText("$2,031.25");
+      await expect(page.getByTestId("snapshot-cost-labor")).toContainText("$4,890");
+      await expect(page.getByTestId("snapshot-cost-reimbursement")).toContainText("$400.25");
+      await expect(page.getByTestId("snapshot-ar-billed")).toContainText("$975");
+      await expect(page.getByTestId("snapshot-ar-paid")).toContainText("$400");
+      await expect(page.getByTestId("snapshot-ar-open")).toContainText("$575");
+      await expect(page.getByText("AP/subcontract mapping is not final yet.")).toBeVisible();
+      await expect(page.getByText("Some reimbursements still need final review.")).toBeVisible();
+      await expect(page.getByText("Financial Snapshot Comparison", { exact: true })).toHaveCount(0);
+      await context.close();
+    } finally {
+      await deleteProject(projectId);
+    }
+  });
+
   test("project cost tab survives financial snapshot comparison API failures", async ({
     browser,
   }) => {
@@ -176,6 +306,9 @@ test.describe("project financial snapshot API", () => {
       await expect(page.getByRole("heading", { name: /\[E2E\] Snapshot API/i })).toBeVisible({
         timeout: 30_000,
       });
+      await expect(page.getByTestId("snapshot-cost-status")).toContainText(
+        "Using legacy cost data"
+      );
       await expect(page.getByText("Financial Snapshot Comparison", { exact: true })).toBeVisible();
       await expect(page.getByText("Financial snapshot comparison unavailable.")).toBeVisible();
       await expect(page.locator("body")).not.toContainText("Application error");

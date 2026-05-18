@@ -29,10 +29,12 @@ import { useToast } from "@/components/toast/toast-provider";
 import type { Project, ProjectFinancialSummary } from "@/lib/data";
 import type { EstimateListItem } from "@/lib/estimates-db";
 import type { CanonicalProjectProfit } from "@/lib/profit-engine";
-import {
-  categoryLooksMaterials,
-  type ProjectCostDashboardPayload,
-} from "@/lib/project-cost-dashboard";
+import type {
+  ProjectFinancialSnapshot,
+  ProjectFinancialSnapshotDiagnostics,
+  ProjectFinancialWarning,
+} from "@/lib/financial/project-financial-snapshot";
+import type { ProjectCostDashboardPayload } from "@/lib/project-cost-dashboard";
 import { ProjectDocumentsTab } from "./project-documents-tab";
 import { ProjectCostLinesTable } from "./project-cost-lines-table";
 import { ProjectTasksTab } from "./project-tasks-tab";
@@ -85,7 +87,135 @@ function fmtMoney(n: number, opts?: { maximumFractionDigits?: number }) {
   return `$${Number(n).toLocaleString("en-US", { maximumFractionDigits: fd })}`;
 }
 
-type CostBucketFilter = null | "materials" | "labor" | "bills" | "other";
+const exactMoneyFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function fmtExactMoney(n: number | null | undefined) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return exactMoneyFormatter.format(n);
+}
+
+type CostBucketFilter = null | "expenses" | "labor" | "reimbursements" | "bills";
+
+type ProjectFinancialSnapshotComparisonView = {
+  newSnapshot: ProjectFinancialSnapshot;
+  warnings?: ProjectFinancialWarning[];
+  diagnostics?: ProjectFinancialSnapshotDiagnostics;
+};
+
+type SnapshotComparisonResponse =
+  | { ok: true; comparison: ProjectFinancialSnapshotComparisonView }
+  | { ok: false; message?: string };
+
+type SnapshotLoadState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "ready"; comparison: ProjectFinancialSnapshotComparisonView };
+
+type SnapshotCostSummary = {
+  actualCost: number;
+  expenseCost: number;
+  laborCost: number;
+  reimbursementCost: number;
+  subcontractCost: number;
+  billedAmount: number;
+  paidAmount: number;
+  openAR: number;
+};
+
+function useProjectFinancialSnapshotSummary(projectId: string): SnapshotLoadState {
+  const [state, setState] = React.useState<SnapshotLoadState>({ status: "loading" });
+
+  React.useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadSnapshot() {
+      setState({ status: "loading" });
+      try {
+        const response = await fetch(`/api/projects/${projectId}/financial-snapshot`, {
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const body = (await response.json().catch(() => null)) as SnapshotComparisonResponse | null;
+        if (!response.ok || !body?.ok) {
+          throw new Error("Project financial snapshot unavailable.");
+        }
+        setState({ status: "ready", comparison: body.comparison });
+      } catch {
+        if (controller.signal.aborted) return;
+        setState({ status: "error" });
+      }
+    }
+
+    void loadSnapshot();
+
+    return () => controller.abort();
+  }, [projectId]);
+
+  return state;
+}
+
+function uniqueSnapshotNotes(warnings: ProjectFinancialWarning[]): string[] {
+  const noteByCode: Record<string, string> = {
+    ap_bills_not_mapped: "AP/subcontract mapping is not final yet.",
+    reimbursement_not_finalized: "Some reimbursements still need final review.",
+    expense_status_pending: "Some pending expenses need review before final costing.",
+    reimbursement_expense_deduped: "A reimbursement represented as an expense was counted once.",
+  };
+  const notes = new Set<string>();
+  for (const warning of warnings) {
+    const note = noteByCode[warning.code] ?? warning.message;
+    if (note) notes.add(note);
+  }
+  return Array.from(notes);
+}
+
+function SnapshotMetricCard({
+  label,
+  value,
+  testId,
+  onClick,
+  active = false,
+}: {
+  label: string;
+  value: number;
+  testId: string;
+  onClick?: () => void;
+  active?: boolean;
+}) {
+  const className = cn(
+    "rounded-xl border border-border/60 bg-white px-3 py-3 text-left transition-colors",
+    onClick && (active ? "bg-muted/20 ring-1 ring-foreground/20" : "hover:bg-muted/10")
+  );
+
+  const body = (
+    <>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p
+        data-testid={testId}
+        className="mt-1 font-mono text-[16px] font-semibold tabular-nums text-text-primary"
+      >
+        {fmtExactMoney(value)}
+      </p>
+    </>
+  );
+
+  if (!onClick) {
+    return <div className={className}>{body}</div>;
+  }
+
+  return (
+    <button type="button" onClick={onClick} className={className}>
+      {body}
+    </button>
+  );
+}
 
 type TabKey =
   | "overview"
@@ -198,6 +328,8 @@ export function ProjectDetailTabsClient({
       setCostBucketFilter(null);
     }
   }, [tab]);
+
+  const snapshotState = useProjectFinancialSnapshotSummary(projectId);
 
   React.useEffect(() => {
     let t: ReturnType<typeof setTimeout> | null = null;
@@ -317,6 +449,35 @@ export function ProjectDetailTabsClient({
   const spentVal = financialSummary?.spent ?? projectCost.spentTotal;
   const profitVal = financialSummary?.profit ?? projectCost.profit;
   const marginPct = financialSummary?.marginPct ?? projectCost.margin * 100;
+  const snapshotComparison = snapshotState.status === "ready" ? snapshotState.comparison : null;
+  const snapshotWarnings =
+    snapshotComparison?.warnings ?? snapshotComparison?.newSnapshot.warnings ?? [];
+  const snapshotNotes = uniqueSnapshotNotes(snapshotWarnings);
+  const fallbackCostSummary: SnapshotCostSummary = React.useMemo(
+    () => ({
+      actualCost: projectCost.breakdown.totalCost,
+      expenseCost: projectCost.breakdown.materials + projectCost.breakdown.other,
+      laborCost: projectCost.breakdown.labor,
+      reimbursementCost: 0,
+      subcontractCost: projectCost.breakdown.bills,
+      billedAmount: billingSummary.invoicedTotal,
+      paidAmount: billingSummary.paidTotal,
+      openAR: billingSummary.arBalance,
+    }),
+    [billingSummary.arBalance, billingSummary.invoicedTotal, billingSummary.paidTotal, projectCost]
+  );
+  const snapshotCostSummary: SnapshotCostSummary = snapshotComparison
+    ? {
+        actualCost: snapshotComparison.newSnapshot.actualCost,
+        expenseCost: snapshotComparison.newSnapshot.expenseCost,
+        laborCost: snapshotComparison.newSnapshot.laborCost,
+        reimbursementCost: snapshotComparison.newSnapshot.reimbursementCost,
+        subcontractCost: snapshotComparison.newSnapshot.subcontractCost,
+        billedAmount: snapshotComparison.newSnapshot.billedAmount,
+        paidAmount: snapshotComparison.newSnapshot.paidAmount,
+        openAR: snapshotComparison.newSnapshot.openAR,
+      }
+    : fallbackCostSummary;
 
   const expensesProjectHref = `/financial/expenses?project_id=${encodeURIComponent(projectId)}`;
   const inboxProjectHref = `/financial/inbox?project_id=${encodeURIComponent(projectId)}`;
@@ -328,30 +489,31 @@ export function ProjectDetailTabsClient({
   const filteredCostRows = React.useMemo(() => {
     const rows = projectCost.doneCostRows;
     if (costBucketFilter === null) return rows;
-    if (costBucketFilter === "materials")
-      return rows.filter((r) => categoryLooksMaterials(r.category));
-    if (costBucketFilter === "other")
-      return rows.filter((r) => !categoryLooksMaterials(r.category));
+    if (costBucketFilter === "expenses") return rows;
     return [];
   }, [projectCost.doneCostRows, costBucketFilter]);
 
   const costTableHint = React.useMemo(() => {
     const parts: string[] = [];
+    if (costBucketFilter === "expenses") {
+      parts.push(
+        "Showing expense line detail. Header-only expense fallbacks can be included in the snapshot total even when no line row is available."
+      );
+    }
     if (costBucketFilter === "labor") {
       parts.push(
         "Labor is included in Total but comes from labor entries, not this expense table. Use More → Labor."
       );
     }
-    if (costBucketFilter === "bills") {
+    if (costBucketFilter === "reimbursements") {
       parts.push(
-        "Bills / Subcontracts are included in Total from approved subcontract bills. Use More → Subcontracts or Bills."
+        "Reimbursements are included in Total from worker reimbursement data. Use Labor → Reimbursements for line-level review."
       );
     }
-    if (costBucketFilter === "materials") {
-      parts.push("Showing expense lines classified as Materials only.");
-    }
-    if (costBucketFilter === "other") {
-      parts.push("Showing expense lines in the Other bucket only (non-material categories).");
+    if (costBucketFilter === "bills") {
+      parts.push(
+        "AP / subcontract mapping is not final yet. Use More → Subcontracts or Bills for source records."
+      );
     }
     return parts.length ? parts.join(" ") : null;
   }, [costBucketFilter]);
@@ -1023,21 +1185,34 @@ export function ProjectDetailTabsClient({
                     [
                       {
                         key: "total" as const,
-                        label: "Total cost",
-                        value: projectCost.breakdown.totalCost,
+                        label: "Actual cost",
+                        value: snapshotCostSummary.actualCost,
+                        testId: "snapshot-cost-actual",
                       },
                       {
-                        key: "materials" as const,
-                        label: "Materials",
-                        value: projectCost.breakdown.materials,
+                        key: "expenses" as const,
+                        label: "Expenses",
+                        value: snapshotCostSummary.expenseCost,
+                        testId: "snapshot-cost-expense",
                       },
-                      { key: "labor" as const, label: "Labor", value: projectCost.breakdown.labor },
+                      {
+                        key: "labor" as const,
+                        label: "Labor",
+                        value: snapshotCostSummary.laborCost,
+                        testId: "snapshot-cost-labor",
+                      },
+                      {
+                        key: "reimbursements" as const,
+                        label: "Reimbursements",
+                        value: snapshotCostSummary.reimbursementCost,
+                        testId: "snapshot-cost-reimbursement",
+                      },
                       {
                         key: "bills" as const,
                         label: "Bills / Subcontracts",
-                        value: projectCost.breakdown.bills,
+                        value: snapshotCostSummary.subcontractCost,
+                        testId: "snapshot-cost-subcontracts",
                       },
-                      { key: "other" as const, label: "Other", value: projectCost.breakdown.other },
                     ] as const
                   ).map((cell) => {
                     const active =
@@ -1045,30 +1220,47 @@ export function ProjectDetailTabsClient({
                         ? costBucketFilter === null
                         : costBucketFilter === cell.key;
                     return (
-                      <button
+                      <SnapshotMetricCard
                         key={cell.key}
-                        type="button"
+                        label={cell.label}
+                        value={cell.value}
+                        testId={cell.testId}
+                        active={active}
                         onClick={() => pickBreakdown(cell.key)}
-                        className={cn(
-                          "rounded-xl border border-border/60 bg-white px-3 py-3 text-left transition-colors",
-                          active ? "ring-1 ring-foreground/20 bg-muted/20" : "hover:bg-muted/10"
-                        )}
-                      >
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          {cell.label}
-                        </p>
-                        <p className="mt-1 font-mono text-[16px] font-semibold tabular-nums text-text-primary">
-                          {fmtMoney(cell.value)}
-                        </p>
-                      </button>
+                      />
                     );
                   })}
                 </div>
-                <p className="mt-2 text-[12px] text-muted-foreground">
-                  Spent = confirmed expense lines (done, reviewed, approved, paid) on this project +
-                  labor + approved subcontract bills + paid reimbursements. Click a card to filter
-                  the table; Total clears the filter.
-                </p>
+                <div
+                  data-testid="snapshot-cost-status"
+                  className="mt-2 space-y-1 text-[12px] text-muted-foreground"
+                >
+                  {snapshotState.status === "error" ? (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                      Using legacy cost data. Snapshot unavailable.
+                    </p>
+                  ) : null}
+                  {snapshotState.status === "loading" ? (
+                    <p>Loading project financial snapshot…</p>
+                  ) : null}
+                  <p>
+                    Actual cost = snapshot expense + labor + reimbursements. AP/subcontract costs
+                    stay flagged until AP mapping is complete; profit and margin remain on the
+                    existing official path.
+                  </p>
+                  {snapshotNotes.length > 0 ? (
+                    <ul className="flex flex-wrap gap-2">
+                      {snapshotNotes.slice(0, 4).map((note) => (
+                        <li
+                          key={note}
+                          className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800"
+                        >
+                          {note}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
               </div>
 
               <div>
@@ -1098,9 +1290,18 @@ export function ProjectDetailTabsClient({
                 />
                 <Divider />
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Invoiced {fmtMoney(billingSummary.invoicedTotal)} · Collected{" "}
-                  {fmtMoney(billingSummary.paidTotal)} · AR balance{" "}
-                  {fmtMoney(billingSummary.arBalance)}
+                  Billed{" "}
+                  <span data-testid="snapshot-ar-billed">
+                    {fmtExactMoney(snapshotCostSummary.billedAmount)}
+                  </span>{" "}
+                  · Paid{" "}
+                  <span data-testid="snapshot-ar-paid">
+                    {fmtExactMoney(snapshotCostSummary.paidAmount)}
+                  </span>{" "}
+                  · Open AR{" "}
+                  <span data-testid="snapshot-ar-open">
+                    {fmtExactMoney(snapshotCostSummary.openAR)}
+                  </span>
                 </p>
                 {projectInvoices.length === 0 ? (
                   <p className="py-6 text-sm text-muted-foreground">
