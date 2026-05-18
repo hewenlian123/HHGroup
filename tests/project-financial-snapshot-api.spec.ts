@@ -52,6 +52,9 @@ async function createProject(): Promise<string> {
     name: `[E2E] Snapshot API ${id.slice(0, 8)}`,
     status: "active",
     budget: 1000,
+    client: "E2E Client",
+    client_name: "E2E Client",
+    address: "123 E2E Snapshot Way",
     spent: 0,
   });
   if (error) throw new Error(`Failed to create test project: ${error.message}`);
@@ -313,6 +316,90 @@ test.describe("project financial snapshot API", () => {
       await expect(page.getByText("Pending review costs are not included.")).toBeVisible();
       await expect(page.getByText(/Pending review costs not included/)).toBeVisible();
       await expect(page.getByText("Financial Snapshot Comparison", { exact: true })).toHaveCount(0);
+      await context.close();
+    } finally {
+      await deleteProject(projectId);
+    }
+  });
+
+  test("project header contract value follows the financial snapshot when project props are stale", async ({
+    browser,
+  }) => {
+    const projectId = await createProject();
+
+    try {
+      const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const page = await context.newPage();
+      await page.route(`**/api/projects/${projectId}/financial-snapshot`, async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(
+            snapshotComparisonBody(projectId, {
+              contractValue: 568000,
+              revisedContractValue: 568000,
+              grossProfit: 560678.5,
+              grossMargin: 560678.5 / 568000,
+            })
+          ),
+        });
+      });
+
+      await page.goto(`/projects/${projectId}?tab=cost`, { waitUntil: "domcontentloaded" });
+
+      await expect(page.getByRole("heading", { name: /\[E2E\] Snapshot API/i })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByTestId("project-header-contract-value")).toContainText("$568,000");
+      await expect(page.getByTestId("project-header-contract-value")).not.toContainText("$1,000");
+      await context.close();
+    } finally {
+      await deleteProject(projectId);
+    }
+  });
+
+  test("project edit saves contract value to budget and contract amount", async ({ browser }) => {
+    const projectId = await createProject();
+
+    try {
+      const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const page = await context.newPage();
+      await page.goto(`/projects/${projectId}?tab=cost`, { waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("heading", { name: /\[E2E\] Snapshot API/i })).toBeVisible({
+        timeout: 30_000,
+      });
+
+      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      await page.locator("#edit-project-budget").fill("250000");
+      await expect(page.locator("#edit-project-budget")).toHaveValue("250,000");
+      await page.getByRole("button", { name: "Save", exact: true }).click();
+      await expect(page.getByText("Project updated")).toBeVisible({ timeout: 30_000 });
+
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await expect(page.getByRole("heading", { name: /\[E2E\] Snapshot API/i })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByTestId("project-header-contract-value")).toContainText("$250,000");
+
+      const supabase = serviceRoleClient();
+      const { data, error } = await supabase
+        .from("projects")
+        .select("budget,contract_amount")
+        .eq("id", projectId)
+        .single();
+      expect(error).toBeNull();
+      expect(Number(data?.budget)).toBe(250000);
+      expect(Number(data?.contract_amount)).toBe(250000);
       await context.close();
     } finally {
       await deleteProject(projectId);

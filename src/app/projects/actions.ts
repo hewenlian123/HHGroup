@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import {
   deleteProject,
   forceDeleteProject,
@@ -13,12 +14,13 @@ import {
   deleteProjectTaskWithClient,
   insertActivityLog,
 } from "@/lib/data";
-import { createProjectWithClient } from "@/lib/projects-db";
+import { createProjectWithClient, updateProjectWithClient } from "@/lib/projects-db";
 import {
   getServerSupabase,
   getServerSupabaseAdmin,
   getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
+import { isValidPinSession } from "@/lib/pin-auth";
 import type { ProjectUsageCounts } from "@/lib/data";
 import type { DeleteBlockedPayload } from "@/lib/projects-db";
 import type { ProjectTask, ProjectTaskStatus } from "@/lib/project-tasks-db";
@@ -93,11 +95,23 @@ export async function updateProjectAction(
   const budget = Number(patch.budget);
   if (!Number.isFinite(budget) || budget < 0) return { error: "Budget must be 0 or greater." };
   try {
-    await updateProject(projectId, {
+    const cookieStore = await cookies();
+    const hasPinSession = await isValidPinSession({
+      cookies: {
+        get: (name: string) => cookieStore.get(name),
+      },
+    });
+    if (!hasPinSession) return { error: "Authentication required." };
+
+    const server = getServerSupabaseInternalNoStore();
+    if (!server) return { error: "Server Supabase is not configured." };
+
+    await updateProjectWithClient(server, projectId, {
       name,
       client,
       address,
       budget,
+      contractAmount: budget,
       ...(patch.customerId !== undefined ? { customerId: patch.customerId?.trim() || null } : {}),
     });
     revalidatePath("/projects");

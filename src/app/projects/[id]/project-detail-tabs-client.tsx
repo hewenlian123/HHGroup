@@ -424,6 +424,7 @@ export function ProjectDetailTabsClient({
           client: patch.client,
           address: patch.address,
           budget: patch.budget,
+          contractAmount: patch.budget,
         }));
         setEditModalOpen(false);
       });
@@ -510,11 +511,16 @@ export function ProjectDetailTabsClient({
     }
   }, [deleteBusy, projectId, router, toast]);
 
-  const budgetVal = displayProject.budget ?? financialSummary?.budget ?? 0;
   const legacySpentVal = financialSummary?.spent ?? projectCost.spentTotal;
   const legacyProfitVal = financialSummary?.profit ?? projectCost.profit;
   const legacyMarginPct = financialSummary?.marginPct ?? projectCost.margin * 100;
   const snapshotComparison = snapshotState.status === "ready" ? snapshotState.comparison : null;
+  const budgetVal =
+    snapshotComparison?.newSnapshot.contractValue ??
+    displayProject.contractAmount ??
+    displayProject.budget ??
+    financialSummary?.budget ??
+    0;
   const snapshotWarnings =
     snapshotComparison?.warnings ?? snapshotComparison?.newSnapshot.warnings ?? [];
   const snapshotDiagnostics =
@@ -783,7 +789,7 @@ export function ProjectDetailTabsClient({
           name: displayProject.name,
           client: displayProject.client ?? "",
           address: displayProject.address ?? "",
-          budget: displayProject.budget,
+          budget: budgetVal,
           customerId: displayProject.customerId ?? null,
         }}
         onSave={handleProjectSave}
