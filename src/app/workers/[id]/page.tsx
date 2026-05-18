@@ -6,14 +6,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import {
-  getWorkerById,
-  getWorkerUsage,
-  getLaborEntriesWithJoins,
-  getWorkerInvoices,
-  getWorkerPayments,
-  type WorkerInvoice,
-} from "@/lib/data";
+import { getWorkerInvoices, type WorkerInvoice } from "@/lib/data";
+import type { Worker } from "@/lib/labor-db";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { formatLaborEntrySessionLabel } from "@/lib/daily-labor-db";
 import { ChevronRight } from "lucide-react";
@@ -113,10 +107,11 @@ export default function WorkerDashboardPage() {
   const params = useParams();
   const id = params?.id as string | undefined;
 
-  const [worker, setWorker] = React.useState<Awaited<ReturnType<typeof getWorkerById>> | undefined>(
-    undefined
-  );
-  const [usage, setUsage] = React.useState<Awaited<ReturnType<typeof getWorkerUsage>> | null>(null);
+  const [worker, setWorker] = React.useState<Worker | null | undefined>(undefined);
+  const [usage, setUsage] = React.useState<{
+    used: boolean;
+    reason?: "entries" | "invoices";
+  } | null>(null);
   const [laborLedgerEntries, setLaborLedgerEntries] = React.useState<LaborEntryWithJoins[] | null>(
     null
   );
@@ -140,13 +135,29 @@ export default function WorkerDashboardPage() {
 
   const refreshAll = React.useCallback(async () => {
     if (!id) return;
-    const [w, u] = await Promise.all([getWorkerById(id), getWorkerUsage(id)]);
+    const workerResponse = await fetch(`/api/labor/workers/${id}`, { cache: "no-store" }).catch(
+      () => null
+    );
+    const workerJson = workerResponse?.ok
+      ? ((await workerResponse.json().catch(() => null)) as {
+          worker?: Worker;
+          usage?: { used: boolean; reason?: "entries" | "invoices" };
+        } | null)
+      : null;
+    const w = workerJson?.worker ?? null;
     setWorker(w);
-    setUsage(u);
+    setUsage(workerJson?.usage ?? { used: false });
     if (w) {
-      const ledger = await getLaborEntriesWithJoins({ worker_id: id }).catch(
-        () => [] as LaborEntryWithJoins[]
-      );
+      const ledgerResponse = await fetch(
+        `/api/labor/entries?view=joined&workerId=${encodeURIComponent(id)}`,
+        { cache: "no-store" }
+      ).catch(() => null);
+      const ledgerJson = ledgerResponse?.ok
+        ? ((await ledgerResponse.json().catch(() => null)) as {
+            entries?: LaborEntryWithJoins[];
+          } | null)
+        : null;
+      const ledger = ledgerJson?.entries ?? [];
       setLaborLedgerEntries(ledger);
 
       try {
@@ -163,12 +174,16 @@ export default function WorkerDashboardPage() {
       const from = start.toISOString().slice(0, 10);
       const to = new Date().toISOString().slice(0, 10);
       try {
-        const [invoicesAll, payments] = await Promise.all([
+        const [invoicesAll, balanceResponse] = await Promise.all([
           getWorkerInvoices().catch(() => [] as WorkerInvoice[]),
-          getWorkerPayments({ workerId: id, fromDate: from, toDate: to, limit: 500 }).catch(
-            () => []
-          ),
+          fetch(`/api/labor/workers/${id}/balance`, { cache: "no-store" }).catch(() => null),
         ]);
+        const balanceJson = balanceResponse?.ok
+          ? ((await balanceResponse.json().catch(() => null)) as {
+              payments?: Array<{ amount?: number; createdAt?: string }>;
+            } | null)
+          : null;
+        const payments = balanceJson?.payments ?? [];
         let labor = 0;
         for (const e of ledger) {
           if (e.work_date < from || e.work_date > to) continue;
@@ -183,6 +198,8 @@ export default function WorkerDashboardPage() {
         }
         let paid = 0;
         for (const p of payments) {
+          const d = p.createdAt?.slice(0, 10) ?? "";
+          if (d < from || d > to) continue;
           paid += Number(p.amount) || 0;
         }
         const earned = labor + inv;

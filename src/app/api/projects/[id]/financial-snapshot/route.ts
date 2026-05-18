@@ -28,7 +28,9 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to load project financial snapshot.";
-    const status = message === "Project not found." ? 404 : 500;
-    return jsonError(status, message);
+    if (message === "Project not found.") {
+      return jsonError(200, message);
+    }
+    return jsonError(500, message);
   }
 }

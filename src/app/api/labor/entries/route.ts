@@ -5,6 +5,7 @@ import {
   getServerSupabaseInternal,
 } from "@/lib/supabase-server";
 import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
+import { insertDailyLaborEntriesWithClient } from "@/lib/labor-db";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -22,6 +23,14 @@ type LaborEntryPayload = {
   costCode?: unknown;
   notes?: unknown;
   costAmount?: unknown;
+  rows?: unknown;
+};
+
+type DailyLaborInput = {
+  workerId?: unknown;
+  morning?: unknown;
+  afternoon?: unknown;
+  otHours?: unknown;
 };
 
 function safeNumber(v: unknown): number {
@@ -165,6 +174,29 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => null)) as LaborEntryPayload | null;
     if (!body) return apiError(400, "Invalid JSON body.");
+    if (Array.isArray(body.rows)) {
+      const projectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
+      const workDate =
+        typeof body.workDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(body.workDate)
+          ? body.workDate.slice(0, 10)
+          : "";
+      if (!projectId) return apiError(400, "Project is required.");
+      if (!workDate) return apiError(400, "Work date is required.");
+
+      const rows = (body.rows as DailyLaborInput[])
+        .map((row) => ({
+          workerId: typeof row.workerId === "string" ? row.workerId.trim() : "",
+          morning: row.morning === true,
+          afternoon: row.afternoon === true,
+          otHours: safeNumber(row.otHours),
+        }))
+        .filter((row) => row.workerId && (row.morning || row.afternoon));
+      const entries = await insertDailyLaborEntriesWithClient(supabase, projectId, workDate, rows, {
+        notes: typeof body.notes === "string" ? body.notes : undefined,
+        costCode: typeof body.costCode === "string" ? body.costCode : undefined,
+      });
+      return NextResponse.json({ ok: true, entries }, { headers: NO_CACHE_HEADERS });
+    }
     const payload = toPayload(body);
     const { data, error } = await supabase
       .from("labor_entries")

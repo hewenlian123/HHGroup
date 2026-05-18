@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
-  createProject,
   deleteProject,
   forceDeleteProject,
   getProjectUsageCounts,
@@ -14,7 +13,12 @@ import {
   deleteProjectTaskWithClient,
   insertActivityLog,
 } from "@/lib/data";
-import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { createProjectWithClient } from "@/lib/projects-db";
+import {
+  getServerSupabase,
+  getServerSupabaseAdmin,
+  getServerSupabaseInternalNoStore,
+} from "@/lib/supabase-server";
 import type { ProjectUsageCounts } from "@/lib/data";
 import type { DeleteBlockedPayload } from "@/lib/projects-db";
 import type { ProjectTask, ProjectTaskStatus } from "@/lib/project-tasks-db";
@@ -35,7 +39,9 @@ export async function createProjectAction(
   if (!address) return { error: "Project address is required." };
   if (!Number.isFinite(budget) || budget <= 0) return { error: "Budget must be greater than 0." };
   // projects.budget is the canonical contract value used by profit-engine (revenue base).
-  await createProject({ name, client, customerId, address, budget, status });
+  const server = getServerSupabaseInternalNoStore();
+  if (!server) return { error: "Server Supabase is not configured." };
+  await createProjectWithClient(server, { name, client, customerId, address, budget, status });
   revalidatePath("/projects");
   redirect("/projects");
 }

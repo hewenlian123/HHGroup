@@ -3,6 +3,7 @@
  * Tables: estimates, estimate_meta, estimate_categories, estimate_items.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 import { generateCode } from "@/lib/estimate-cost-code-suggest";
 
@@ -225,22 +226,24 @@ async function grandTotalForList(
 
 // —— Create ——
 
-export async function createEstimate(payload: {
-  clientName: string;
-  projectName: string;
-  address: string;
-  clientPhone?: string;
-  clientEmail?: string;
-  estimateDate?: string;
-  validUntil?: string;
-  notes?: string;
-  salesPerson?: string;
-  tax?: number;
-  discount?: number;
-  overheadPct?: number;
-  profitPct?: number;
-}): Promise<string> {
-  const c = client();
+export async function createEstimateWithClient(
+  c: SupabaseClient,
+  payload: {
+    clientName: string;
+    projectName: string;
+    address: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    estimateDate?: string;
+    validUntil?: string;
+    notes?: string;
+    salesPerson?: string;
+    tax?: number;
+    discount?: number;
+    overheadPct?: number;
+    profitPct?: number;
+  }
+): Promise<string> {
   let number: string;
   const { data: numData } = await c.rpc("next_estimate_number");
   if (typeof numData === "string") number = numData;
@@ -302,7 +305,7 @@ export async function createEstimate(payload: {
   return row.id;
 }
 
-export async function createEstimateWithItems(payload: {
+export async function createEstimate(payload: {
   clientName: string;
   projectName: string;
   address: string;
@@ -316,25 +319,46 @@ export async function createEstimateWithItems(payload: {
   discount?: number;
   overheadPct?: number;
   profitPct?: number;
-  categoryNames?: Record<string, string>;
-  items: Array<{
-    costCode: string;
-    desc: string;
-    qty: number;
-    unit: string;
-    unitCost: number;
-    markupPct: number;
-  }>;
-  paymentSchedule?: Array<{
-    title: string;
-    amountType: "percent" | "fixed";
-    value: number;
-    dueRule: string;
-    dueDate?: string | null;
-    notes?: string | null;
-  }>;
 }): Promise<string> {
-  const id = await createEstimate({
+  return createEstimateWithClient(client(), payload);
+}
+
+export async function createEstimateWithItemsWithClient(
+  c: SupabaseClient,
+  payload: {
+    clientName: string;
+    projectName: string;
+    address: string;
+    clientPhone?: string;
+    clientEmail?: string;
+    estimateDate?: string;
+    validUntil?: string;
+    notes?: string;
+    salesPerson?: string;
+    tax?: number;
+    discount?: number;
+    overheadPct?: number;
+    profitPct?: number;
+    categoryNames?: Record<string, string>;
+    items: Array<{
+      costCode: string;
+      desc: string;
+      qty: number;
+      unit: string;
+      unitCost: number;
+      markupPct: number;
+    }>;
+    paymentSchedule?: Array<{
+      title: string;
+      amountType: "percent" | "fixed";
+      value: number;
+      dueRule: string;
+      dueDate?: string | null;
+      notes?: string | null;
+    }>;
+  }
+): Promise<string> {
+  const id = await createEstimateWithClient(c, {
     clientName: payload.clientName,
     projectName: payload.projectName,
     address: payload.address,
@@ -349,7 +373,6 @@ export async function createEstimateWithItems(payload: {
     overheadPct: payload.overheadPct,
     profitPct: payload.profitPct,
   });
-  const c = client();
   try {
     if (payload.categoryNames && Object.keys(payload.categoryNames).length > 0) {
       let orderIdx = 0;
@@ -396,6 +419,41 @@ export async function createEstimateWithItems(payload: {
     throw error;
   }
   return id;
+}
+
+export async function createEstimateWithItems(payload: {
+  clientName: string;
+  projectName: string;
+  address: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  estimateDate?: string;
+  validUntil?: string;
+  notes?: string;
+  salesPerson?: string;
+  tax?: number;
+  discount?: number;
+  overheadPct?: number;
+  profitPct?: number;
+  categoryNames?: Record<string, string>;
+  items: Array<{
+    costCode: string;
+    desc: string;
+    qty: number;
+    unit: string;
+    unitCost: number;
+    markupPct: number;
+  }>;
+  paymentSchedule?: Array<{
+    title: string;
+    amountType: "percent" | "fixed";
+    value: number;
+    dueRule: string;
+    dueDate?: string | null;
+    notes?: string | null;
+  }>;
+}): Promise<string> {
+  return createEstimateWithItemsWithClient(client(), payload);
 }
 
 // —— Read ——

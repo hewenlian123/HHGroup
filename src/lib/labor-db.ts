@@ -303,7 +303,14 @@ export async function getLaborWorkers(): Promise<Worker[]> {
 }
 
 export async function getWorkerById(id: string): Promise<Worker | null> {
-  const c = client();
+  return getWorkerByIdWithClient(undefined, id);
+}
+
+export async function getWorkerByIdWithClient(
+  explicitClient: SupabaseClient | undefined,
+  id: string
+): Promise<Worker | null> {
+  const c = client(explicitClient);
   const { data: row, error } = await c.from("workers").select("*").eq("id", id).maybeSingle();
   if (error) {
     if (isMissingColumn(error)) {
@@ -330,7 +337,22 @@ export async function createWorker(input: {
   dailyRate?: number;
   notes?: string;
 }): Promise<Worker> {
-  const c = client();
+  return createWorkerWithClient(undefined, input);
+}
+
+export async function createWorkerWithClient(
+  explicitClient: SupabaseClient | undefined,
+  input: {
+    name: string;
+    phone?: string;
+    trade?: string;
+    status?: "active" | "inactive";
+    halfDayRate?: number;
+    dailyRate?: number;
+    notes?: string;
+  }
+): Promise<Worker> {
+  const c = client(explicitClient);
   const dailyRate = input.dailyRate != null ? Number(input.dailyRate) : undefined;
   const halfDayRate =
     input.halfDayRate != null ? Number(input.halfDayRate) : dailyRate != null ? dailyRate / 2 : 0;
@@ -555,13 +577,25 @@ export async function insertDailyLaborEntries(
   rows: DailyLaborRowInput[],
   options?: { notes?: string; costCode?: string }
 ): Promise<LaborEntry[]> {
-  const c = client();
+  return insertDailyLaborEntriesWithClient(undefined, projectId, workDate, rows, options);
+}
+
+export async function insertDailyLaborEntriesWithClient(
+  explicitClient: SupabaseClient | undefined,
+  projectId: string,
+  workDate: string,
+  rows: DailyLaborRowInput[],
+  options?: { notes?: string; costCode?: string }
+): Promise<LaborEntry[]> {
+  const c = client(explicitClient);
   const date = workDate.slice(0, 10);
   const toInsert = rows.filter((r) => r.morning || r.afternoon);
   if (toInsert.length === 0) return [];
 
   const workerIds = Array.from(new Set(toInsert.map((r) => r.workerId)));
-  const workers = await Promise.all(workerIds.map((id) => getWorkerById(id)));
+  const workers = await Promise.all(
+    workerIds.map((id) => getWorkerByIdWithClient(explicitClient, id))
+  );
   const workerMap = new Map(workers.filter((w): w is Worker => w != null).map((w) => [w.id, w]));
 
   // Safety: ensure labor_workers has rows for selected workers.
@@ -1075,11 +1109,36 @@ export async function getWorkerUsage(
   id: string,
   options?: { hasExpenseLabor?: boolean }
 ): Promise<{ used: boolean; reason?: "entries" | "invoices" }> {
+  return getWorkerUsageWithClient(client(), id, options);
+}
+
+export async function getWorkerUsageWithClient(
+  explicitClient: SupabaseClient,
+  id: string,
+  options?: { hasExpenseLabor?: boolean }
+): Promise<{ used: boolean; reason?: "entries" | "invoices" }> {
   void options; // reserved for future filtering
-  const [entries, invoices] = await Promise.all([getLaborEntries(), getLaborInvoices()]);
+  const [entries, invoices] = await Promise.all([
+    getLaborEntriesWithClient(explicitClient),
+    getLaborInvoices(explicitClient),
+  ]);
   const hasEntries = entries.some((e) => e.workerId === id);
   if (hasEntries) return { used: true, reason: "entries" };
   const hasInvoices = invoices.some((inv) => inv.workerId === id);
   if (hasInvoices) return { used: true, reason: "invoices" };
   return { used: false };
+}
+
+async function getLaborEntriesWithClient(explicitClient: SupabaseClient): Promise<LaborEntry[]> {
+  const c = client(explicitClient);
+  const { data: rows, error } = await c
+    .from("labor_entries")
+    .select(LABOR_ENTRIES_COLS)
+    .order("work_date", { ascending: false })
+    .order("id");
+  if (error) {
+    if (isMissingTable(error)) throw new Error("labor_entries: table not found. Run migrations.");
+    throw new Error(error.message ?? "Failed to load labor_entries.");
+  }
+  return (rows ?? []).map((r) => toLaborEntry(r as LaborEntryRow));
 }

@@ -10,7 +10,7 @@ export type SystemHealthCheckStatus = "ok" | "warning" | "fail";
 
 export type SystemHealthModule = {
   name: string;
-  status: "ok" | "fail";
+  status: "ok" | "warning" | "fail";
   message?: string;
 };
 
@@ -53,6 +53,8 @@ const REQUIRED_TABLES: HealthTarget[] = [
 ];
 
 const OPTIONAL_TABLES: HealthTarget[] = [
+  { name: "Expense options", table: "expense_options", optional: true },
+  { name: "Legacy payment methods", table: "payment_methods", optional: true },
   { name: "AP bills", table: "ap_bills", optional: true },
   { name: "AP bill payments", table: "ap_bill_payments", optional: true },
   { name: "Payments received", table: "payments_received", optional: true },
@@ -80,7 +82,7 @@ const COMPANY_PROFILE_E2E_MARKERS = [/E2E-ST/i, /E2E-ZIP/i];
 function checkToModule(check: SystemHealthCheck): SystemHealthModule {
   return {
     name: check.name,
-    status: check.status === "ok" ? "ok" : "fail",
+    status: check.status,
     ...(check.message ? { message: check.message } : {}),
   };
 }
@@ -93,7 +95,30 @@ function hasMissingRelationError(error: unknown): boolean {
   const code = (error as { code?: string } | null)?.code ?? "";
   const message = (error as { message?: string } | null)?.message ?? "";
   return (
-    code === "42P01" || /relation.*does not exist|does not exist|not found|not exist/i.test(message)
+    code === "42P01" ||
+    code === "PGRST205" ||
+    /relation.*does not exist|does not exist|not found|not exist|could not find.*(?:table|relation)|schema cache/i.test(
+      message
+    )
+  );
+}
+
+function optionalUnavailableMessage(target: HealthTarget | StorageTarget): string {
+  if (target.name === "AP bills" || target.name === "AP bill payments") {
+    return "AP Bills module is not configured yet.";
+  }
+  if (target.name === "Expense options") {
+    return "Expense options are not installed in this environment.";
+  }
+  if (target.name === "Legacy payment methods") {
+    return "Legacy payment_methods table is not configured; expense_options/fallbacks should be used.";
+  }
+  return `${target.name} is optional and is not installed in this environment.`;
+}
+
+function isInformationalWarning(check: SystemHealthCheck): boolean {
+  return (
+    check.code === "optional_table_missing" || check.code === "optional_storage_bucket_missing"
   );
 }
 
@@ -116,12 +141,16 @@ async function checkTable(
       const missing = hasMissingRelationError(error);
       return {
         name: target.name,
-        status: target.optional || missing ? "warning" : "fail",
+        status: target.optional ? "warning" : missing ? "fail" : "fail",
         message: missing
-          ? `${target.table} is not available.`
+          ? target.optional
+            ? optionalUnavailableMessage(target)
+            : `${target.table} is not available.`
           : normalizeError(error.message ?? "Table check failed"),
         code: missing
-          ? "missing_table"
+          ? target.optional
+            ? "optional_table_missing"
+            : "missing_table"
           : ((error as { code?: string }).code ?? "table_check_failed"),
       };
     }
@@ -152,12 +181,19 @@ async function checkStorageBucket(
   try {
     const { error } = await server.storage.from(target.bucket).list("", { limit: 1 });
     if (error) {
+      const missing = hasMissingRelationError(error);
       return {
         name: target.name,
         status: target.optional ? "warning" : "fail",
-        message: normalizeError(error.message ?? "Storage bucket check failed"),
+        message:
+          target.optional && missing
+            ? optionalUnavailableMessage(target)
+            : normalizeError(error.message ?? "Storage bucket check failed"),
         code:
-          (error as { statusCode?: string; code?: string }).code ?? "storage_bucket_check_failed",
+          target.optional && missing
+            ? "optional_storage_bucket_missing"
+            : ((error as { statusCode?: string; code?: string }).code ??
+              "storage_bucket_check_failed"),
       };
     }
     return { name: target.name, status: "ok", message: `${target.bucket} is reachable.` };
@@ -336,6 +372,27 @@ function collectWarnings(checks: SystemHealthCheck[]): string[] {
     .map((check) => `${check.name}: ${check.message ?? check.code ?? "Needs review"}`);
 }
 
+function collectSchemaDriftWarnings(checks: SystemHealthCheck[]): string[] {
+  const warnings: string[] = [];
+  for (const check of checks) {
+    if (check.status === "ok") continue;
+    if (check.name === "Expense options") {
+      warnings.push(
+        "Expense options schema is missing in this environment; compare local and production before changing expense settings."
+      );
+    }
+    if (check.name === "Legacy payment methods") {
+      warnings.push(
+        "Legacy payment_methods schema is missing; this is acceptable only while expense_options/fallbacks cover the app flow."
+      );
+    }
+    if (check.name === "AP bills" || check.name === "AP bill payments") {
+      warnings.push("AP Bills module is not configured yet.");
+    }
+  }
+  return Array.from(new Set(warnings));
+}
+
 async function fetchSchemaCheck(request: Request): Promise<string[] | undefined> {
   try {
     const origin = new URL(request.url).origin;
@@ -346,8 +403,6 @@ async function fetchSchemaCheck(request: Request): Promise<string[] | undefined>
     if (lock) headers.set("x-hh-production-safety-lock", lock);
     const bypass = request.headers.get("x-hh-test-auth-bypass");
     if (bypass) headers.set("x-hh-test-auth-bypass", bypass);
-    const internalSecret = request.headers.get("x-internal-admin-secret");
-    if (internalSecret) headers.set("x-internal-admin-secret", internalSecret);
     const schemaRes = await fetch(`${origin}/api/schema-check`, { cache: "no-store", headers });
     const schemaData = (await schemaRes.json().catch(() => ({}))) as {
       status?: string;
@@ -419,13 +474,15 @@ export async function GET(request: Request) {
     projectFinancialSnapshot,
   ];
   const status: SystemHealthStatus =
-    checks.some((check) => check.status !== "ok") || (schemaMissing?.length ?? 0) > 0
+    checks.some((check) => check.status !== "ok" && !isInformationalWarning(check)) ||
+    (schemaMissing?.length ?? 0) > 0
       ? "warning"
       : "ok";
   const schemaWarnings =
     schemaMissing && schemaMissing.length > 0
       ? [`Schema check missing: ${schemaMissing.join(", ")}`]
       : [];
+  const schemaDriftWarnings = collectSchemaDriftWarnings(optionalTables);
   const warnings = [...collectWarnings(checks), ...schemaWarnings].map((warning) =>
     safeErrorMessage(warning)
   );
@@ -454,6 +511,7 @@ export async function GET(request: Request) {
       pin,
       apBills,
       projectFinancialSnapshot,
+      schemaDriftWarnings,
       warnings,
       checkedAt,
     },

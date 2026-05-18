@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
-import { createEstimateWithItems } from "@/lib/data";
+import { createEstimateWithItemsWithClient } from "@/lib/estimates-db";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 export type CreateEstimatePayload = {
   clientName: string;
@@ -61,7 +62,10 @@ export async function createEstimateWithItemsAction(
   }
 
   try {
-    const id = await createEstimateWithItems({
+    const server = getServerSupabaseInternalNoStore();
+    if (!server) return { ok: false, error: "Server Supabase is not configured." };
+
+    const id = await createEstimateWithItemsWithClient(server, {
       clientName,
       projectName,
       address: payload.address?.trim() ?? "",
@@ -75,7 +79,7 @@ export async function createEstimateWithItemsAction(
       discount: payload.discount ?? 0,
       overheadPct: payload.overheadPct ?? 0.05,
       profitPct: payload.profitPct ?? 0.1,
-      costCategoryNames: payload.costCategoryNames,
+      categoryNames: payload.costCategoryNames,
       items: items.map((i) => ({
         costCode: i.costCode,
         desc: i.desc,

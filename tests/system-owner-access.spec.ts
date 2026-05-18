@@ -158,7 +158,9 @@ test.describe("system owner access", () => {
     }
 
     const health = await context.request.get("/api/system-health");
-    const healthBody = (await health.json()) as {
+    const healthText = await health.text();
+    expect(healthText).not.toMatch(/schema cache|Could not find the table/i);
+    const healthBody = JSON.parse(healthText) as {
       summary?: {
         requiredTables?: unknown[];
         optionalTables?: unknown[];

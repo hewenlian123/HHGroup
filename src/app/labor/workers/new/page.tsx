@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createWorker } from "@/lib/data";
+import type { Worker } from "@/lib/labor-db";
 
 export default function NewWorkerPage() {
   const router = useRouter();
@@ -17,14 +17,23 @@ export default function NewWorkerPage() {
 
   const handleCreate = async () => {
     if (!name.trim()) return;
-    const next = await createWorker({
-      name: name.trim(),
-      phone,
-      trade,
-      halfDayRate: Number.isFinite(halfDayRate) ? Math.max(0, halfDayRate) : 0,
-      notes,
-      status: "active",
+    const response = await fetch("/api/labor/workers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name.trim(),
+        phone,
+        trade,
+        halfDayRate: Number.isFinite(halfDayRate) ? Math.max(0, halfDayRate) : 0,
+        notes,
+        status: "active",
+      }),
     });
+    const next = (await response.json().catch(() => null)) as Worker | { message?: string } | null;
+    if (!response.ok || !next || !("id" in next)) {
+      const message = next && "message" in next ? next.message : null;
+      throw new Error(message || "Failed to create worker.");
+    }
     router.push(`/workers/${next.id}`);
   };
 

@@ -17,11 +17,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { eventTargetsAttachmentPreviewModal } from "@/components/attachment-preview-modal";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import {
-  addExpenseAttachment,
-  createQuickExpense,
   getExpenseTotal,
   getPaymentAccounts,
   type Expense,
+  type ExpenseAttachment,
   type PaymentAccountRow,
 } from "@/lib/data";
 import {
@@ -61,6 +60,37 @@ import {
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
 type QuickExpenseAttachmentSlot = ExpenseReceiptUploadSlot;
+
+type QuickExpenseSavePayload = {
+  date: string;
+  vendorName: string;
+  totalAmount: number;
+  receiptUrl?: string | null;
+  sourceType?: "company" | "receipt_upload" | "reimbursement" | "bank_import";
+  category?: string;
+  initialStatus?: NonNullable<Expense["status"]>;
+  notes?: string;
+  projectId?: string | null;
+  paymentAccountId?: string | null;
+  attachments?: ExpenseAttachment[];
+};
+
+async function saveQuickExpenseViaApi(payload: QuickExpenseSavePayload): Promise<Expense> {
+  const response = await fetch("/api/financial/expenses/quick-expense", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const body = (await response.json().catch(() => null)) as {
+    ok?: boolean;
+    expense?: Expense;
+    message?: string;
+  } | null;
+  if (!response.ok || !body?.ok || !body.expense) {
+    throw new Error(body?.message || "Failed to save quick expense.");
+  }
+  return body.expense;
+}
 
 const FIELD_LABEL = "block text-xs uppercase tracking-wide text-muted-foreground";
 /** iOS Safari avoids input zoom at 16px+; 48px controls; 12px radius on mobile (Stripe / Settings feel). */
@@ -969,7 +999,18 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       const firstPublic = slotsToSave.find((s) => s.receiptsPublicUrl)?.receiptsPublicUrl ?? "";
       const hasStoragePath = slotsToSave.some((s) => s.attachmentPath);
 
-      const created = await createQuickExpense({
+      const attachmentsToSave: ExpenseAttachment[] = slotsToSave
+        .filter((s) => s.attachmentPath)
+        .map((s) => ({
+          id: crypto.randomUUID(),
+          fileName: "receipt",
+          mimeType: "image/jpeg",
+          size: 0,
+          url: s.attachmentPath ?? "",
+          createdAt: new Date().toISOString(),
+        }));
+
+      await saveQuickExpenseViaApi({
         date: date || new Date().toISOString().slice(0, 10),
         vendorName: effectiveVendorName || "Unknown",
         totalAmount,
@@ -986,19 +1027,8 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         })(),
         projectId: projectId || null,
         paymentAccountId: effectivePaymentAccountId || null,
+        attachments: attachmentsToSave,
       });
-      for (const s of slotsToSave) {
-        if (s.attachmentPath) {
-          await addExpenseAttachment(created.id, {
-            id: crypto.randomUUID(),
-            fileName: "receipt",
-            mimeType: "image/jpeg",
-            size: 0,
-            url: s.attachmentPath,
-            createdAt: new Date().toISOString(),
-          });
-        }
-      }
       toast({
         title: "Expense saved",
         description: `${effectiveVendorName || "Unknown"} - ${formatCurrency(totalAmount)}`,

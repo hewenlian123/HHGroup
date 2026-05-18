@@ -354,8 +354,11 @@ export type CreateProjectInput = {
 };
 
 /** Single INSERT; id is uuid from DB. Prevents duplicate by design (no idempotency key; use sourceEstimateId for convert flow). */
-export async function createProject(input: CreateProjectInput): Promise<Project> {
-  const c = client();
+export async function createProjectWithClient(
+  explicitClient: SupabaseClient,
+  input: CreateProjectInput
+): Promise<Project> {
+  const c = client(explicitClient);
   const name = input.name.trim();
   const budget = Math.max(0, Number(input.budget) || 0);
   const status = input.status ?? "pending";
@@ -402,6 +405,10 @@ export async function createProject(input: CreateProjectInput): Promise<Project>
   }
   if (!inserted) throw new Error("Failed to create project: no id returned.");
   return toProject(inserted as ProjectRow);
+}
+
+export async function createProject(input: CreateProjectInput): Promise<Project> {
+  return createProjectWithClient(client(), input);
 }
 
 export type UpdateProjectPatch = Partial<{
