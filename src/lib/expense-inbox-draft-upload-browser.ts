@@ -1,4 +1,3 @@
-import { addExpenseAttachment, createQuickExpense } from "@/lib/data";
 import { uploadReceiptToStorage } from "@/lib/expense-receipt-upload-browser";
 import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
 import { inboxUploadDedupeReference } from "@/lib/inbox-upload-constants";
@@ -19,6 +18,51 @@ export type InboxDraftUploadResult =
   | { ok: true; expenseId: string; duplicate: false; referenceNo: string }
   | { ok: true; expenseId: string; duplicate: true; referenceNo: string }
   | { ok: false; message: string };
+
+type InboxDraftAttachmentPayload = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  createdAt: string;
+};
+
+type QuickExpenseApiResponse = {
+  ok?: boolean;
+  message?: string;
+  expense?: { id?: unknown };
+};
+
+async function createInboxDraftExpenseViaServer(payload: {
+  date: string;
+  vendorName: string;
+  totalAmount: number;
+  receiptUrl: string;
+  category: string;
+  sourceType: "receipt_upload";
+  initialStatus: "draft";
+  referenceNo: string;
+  attachments: InboxDraftAttachmentPayload[];
+}): Promise<{ id: string }> {
+  const res = await fetch("/api/financial/expenses/quick-expense", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  let body: QuickExpenseApiResponse = {};
+  try {
+    body = (await res.json()) as QuickExpenseApiResponse;
+  } catch {
+    body = {};
+  }
+  const id = body.expense?.id;
+  if (!res.ok || !body.ok || typeof id !== "string") {
+    throw new Error(body.message || "Could not create draft expense.");
+  }
+  return { id };
+}
 
 /**
  * Upload receipt to storage, create a `draft` expense (inbox), dedupe by `reference_no` hash.
@@ -68,7 +112,8 @@ export async function createInboxDraftFromReceiptFile(
   }
 
   const today = new Date().toISOString().slice(0, 10);
-  const created = await createQuickExpense({
+  const attachmentUrl = slot.attachmentPath?.trim() || receiptUrl;
+  const created = await createInboxDraftExpenseViaServer({
     date: today,
     vendorName: "Unknown",
     totalAmount: 0.01,
@@ -77,18 +122,19 @@ export async function createInboxDraftFromReceiptFile(
     sourceType: "receipt_upload",
     initialStatus: "draft",
     referenceNo: ref,
+    attachments: attachmentUrl
+      ? [
+          {
+            id: crypto.randomUUID(),
+            fileName: prepared.name || "receipt",
+            mimeType: prepared.type || "image/jpeg",
+            size: prepared.size || 0,
+            url: attachmentUrl,
+            createdAt: new Date().toISOString(),
+          },
+        ]
+      : [],
   });
-  const attachmentUrl = slot.attachmentPath?.trim() || receiptUrl;
-  if (attachmentUrl) {
-    await addExpenseAttachment(created.id, {
-      id: crypto.randomUUID(),
-      fileName: prepared.name || "receipt",
-      mimeType: prepared.type || "image/jpeg",
-      size: prepared.size || 0,
-      url: attachmentUrl,
-      createdAt: new Date().toISOString(),
-    });
-  }
 
   scheduleInboxDraftExpenseOcr(created.id, prepared);
   return { ok: true, expenseId: created.id, duplicate: false, referenceNo: ref };
