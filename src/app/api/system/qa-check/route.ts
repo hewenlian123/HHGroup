@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 type QaStatus = "pass" | "warning" | "critical";
+type QaCategory = "actionRequired" | "optionalModule" | "dataCleanup" | "informational";
 type QaType =
   | "page"
   | "auth"
@@ -23,6 +24,7 @@ type QaCheck = {
   name: string;
   status: QaStatus;
   type: QaType;
+  category?: QaCategory;
   page?: string;
   message: string;
   recommendedAction?: string;
@@ -57,6 +59,8 @@ type HealthCheck = {
   status?: HealthCheckStatus;
   message?: string;
   code?: string;
+  category?: QaCategory;
+  href?: string;
 };
 
 type SystemHealthResponse = {
@@ -151,6 +155,26 @@ function sectionStatus(checks: QaCheck[]): QaStatus {
 
 function makeSection(id: string, name: string, checks: QaCheck[]): QaSection {
   return { id, name, status: sectionStatus(checks), checks };
+}
+
+function isOptionalModuleCheck(check: HealthCheck): boolean {
+  return (
+    check.category === "optionalModule" ||
+    (check.code === "optional_module_disabled" &&
+      (check.name === "AP bills" ||
+        check.name === "AP bill payments" ||
+        check.name === "Legacy payment methods"))
+  );
+}
+
+function companyProfileMarkerFields(rows: Array<Record<string, unknown>>): string[] {
+  const fields = new Set<string>();
+  for (const row of rows) {
+    for (const [field, value] of Object.entries(row)) {
+      if (typeof value === "string" && /E2E-ST|E2E-ZIP/i.test(value)) fields.add(field);
+    }
+  }
+  return Array.from(fields).sort();
 }
 
 function visibleTextFromHtml(html: string): string {
@@ -476,14 +500,19 @@ async function buildCompanyProfileSection(
   const hasE2E = rows.some((row) =>
     Object.values(row).some((value) => typeof value === "string" && /E2E-ST|E2E-ZIP/i.test(value))
   );
+  const fields = companyProfileMarkerFields(rows);
   return makeSection("company-profile", "Company profile data quality", [
     {
       id: "company-profile-e2e-marker",
       name: "Company profile E2E marker",
       status: hasE2E ? "warning" : "pass",
       type: "data-quality",
+      category: hasE2E ? "dataCleanup" : "informational",
+      page: "/settings/company",
       message: hasE2E
-        ? "E2E-ST / E2E-ZIP marker detected in company profile data."
+        ? `Company profile contains test marker data. Update in Settings -> Company Profile.${
+            fields.length > 0 ? ` Fields: ${fields.join(", ")}.` : ""
+          }`
         : "No E2E company profile marker found in recent rows.",
       recommendedAction: hasE2E
         ? "Clean the company profile in Settings after confirming the correct production values."
@@ -497,6 +526,22 @@ function healthCheckToQa(
   check: HealthCheck,
   options?: { criticalOnFail?: boolean; idPrefix?: string; type?: QaType }
 ): QaCheck {
+  if (isOptionalModuleCheck(check)) {
+    const name = check.name ?? "Optional module";
+    return {
+      id: `${options?.idPrefix ?? "schema"}-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+      name,
+      status: "pass",
+      type: options?.type ?? "schema",
+      category: "optionalModule",
+      message: check.message
+        ? redactSensitiveText(check.message)
+        : "Optional module is disabled in this environment.",
+      recommendedAction: "No action required unless you decide to enable this module.",
+      diagnosticCode: check.code,
+    };
+  }
+
   const status: QaStatus =
     check.status === "ok"
       ? "pass"
@@ -509,6 +554,13 @@ function healthCheckToQa(
     name,
     status,
     type: options?.type ?? "schema",
+    category:
+      check.category ??
+      (status === "pass"
+        ? "informational"
+        : check.code === "company_profile_e2e_marker"
+          ? "dataCleanup"
+          : "actionRequired"),
     message: check.message
       ? redactSensitiveText(check.message)
       : status === "pass"
@@ -568,8 +620,29 @@ async function buildSchemaSection(request: Request): Promise<QaSection> {
     const storage = summary.storageBuckets ?? [];
     const requiredFailures = required.filter((check) => check.status === "fail");
     const optionalWarnings = optional.filter((check) => check.status !== "ok");
+    const optionalDisabled = optional.filter(isOptionalModuleCheck);
     const storageWarnings = storage.filter((check) => check.status !== "ok");
-    const driftWarnings = summary.schemaDriftWarnings ?? [];
+    const driftWarnings = (summary.schemaDriftWarnings ?? []).filter(
+      (warning) => !/AP Bills module|payment_methods/i.test(warning)
+    );
+    const companyProfileCheck: QaCheck =
+      summary.companyProfile?.code === "company_profile_e2e_marker"
+        ? {
+            id: "schema-company-profile-data-cleanup-tracked",
+            name: "Company Profile",
+            status: "pass",
+            type: "data-quality",
+            category: "informational",
+            page: "/settings/company",
+            message: "Company profile data cleanup is tracked in the Company Profile section.",
+            recommendedAction:
+              "Update Settings -> Company Profile after confirming the correct production values.",
+            diagnosticCode: "company_profile_data_cleanup_tracked",
+          }
+        : healthCheckToQa(summary.companyProfile ?? {}, {
+            idPrefix: "schema",
+            type: "data-quality",
+          });
 
     const checks: QaCheck[] = [
       {
@@ -593,15 +666,20 @@ async function buildSchemaSection(request: Request): Promise<QaSection> {
         name: "Optional tables",
         status: optionalWarnings.length > 0 ? "warning" : "pass",
         type: "schema",
+        category: optionalWarnings.length > 0 ? "actionRequired" : "optionalModule",
         page: "/system-health",
         message:
           optionalWarnings.length > 0
             ? `${optionalWarnings.length} optional table warning(s).`
-            : `${optional.length} optional table check(s) passed.`,
+            : optionalDisabled.length > 0
+              ? `${optionalDisabled.length} optional module(s) are disabled by design.`
+              : `${optional.length} optional table check(s) passed.`,
         recommendedAction:
           optionalWarnings.length > 0
-            ? "Optional modules should stay warnings unless the app depends on them."
-            : undefined,
+            ? "Review whether this optional schema is required by the current app flow."
+            : optionalDisabled.length > 0
+              ? "No action required unless you decide to enable one of these modules."
+              : undefined,
         diagnosticCode: optionalWarnings.length > 0 ? "optional_schema_warning" : undefined,
       },
       {
@@ -618,10 +696,7 @@ async function buildSchemaSection(request: Request): Promise<QaSection> {
           storageWarnings.length > 0 ? "Review storage bucket existence and policies." : undefined,
         diagnosticCode: storageWarnings.length > 0 ? "storage_schema_warning" : undefined,
       },
-      healthCheckToQa(summary.companyProfile ?? {}, {
-        idPrefix: "schema",
-        type: "data-quality",
-      }),
+      companyProfileCheck,
       healthCheckToQa(summary.pin ?? {}, {
         criticalOnFail: true,
         idPrefix: "schema",
@@ -638,6 +713,7 @@ async function buildSchemaSection(request: Request): Promise<QaSection> {
         name: "Schema drift warning",
         status: "warning",
         type: "schema",
+        category: "actionRequired",
         page: "/system-health",
         message: redactSensitiveText(warning),
         recommendedAction: "Compare local and production schema before changing this module.",
@@ -666,16 +742,19 @@ async function buildFinancialSection(): Promise<QaSection> {
   try {
     const review = await getProjectFinancialReview();
     const flagged = review.flaggedProjects;
+    const placeholderCount = review.summary.placeholder + review.summary.zero;
+    const suspiciousHugeCount = review.summary.suspiciousHuge;
     const checks: QaCheck[] = [
       {
         id: "contract-value-review",
         name: "Contract value review",
         status: flagged.length > 0 ? "warning" : "pass",
         type: "financial",
+        category: flagged.length > 0 ? "actionRequired" : "informational",
         page: "/settings/project-financial-review",
         message:
           flagged.length > 0
-            ? `${flagged.length} project(s) need contract value review before profit totals are final.`
+            ? `${flagged.length} project(s) need contract value review before profit totals are final (${placeholderCount} placeholder/zero, ${suspiciousHugeCount} suspicious huge).`
             : "No contract value review issues found.",
         recommendedAction:
           flagged.length > 0
@@ -684,33 +763,6 @@ async function buildFinancialSection(): Promise<QaSection> {
         diagnosticCode: flagged.length > 0 ? "contract_value_review_needed" : undefined,
       },
     ];
-
-    const placeholderCount = review.summary.placeholder + review.summary.zero;
-    if (placeholderCount > 0) {
-      checks.push({
-        id: "contract-placeholder-values",
-        name: "$0 / $1 contract placeholders",
-        status: "warning",
-        type: "financial",
-        page: "/settings/project-financial-review",
-        message: `${placeholderCount} project(s) have $0 or $1 contract placeholders.`,
-        recommendedAction: "Update contract values before relying on gross profit or margin.",
-        diagnosticCode: "contract_placeholder_values",
-      });
-    }
-
-    if (review.summary.suspiciousHuge > 0) {
-      checks.push({
-        id: "contract-suspicious-huge",
-        name: "Suspicious huge contract values",
-        status: "warning",
-        type: "financial",
-        page: "/settings/project-financial-review",
-        message: `${review.summary.suspiciousHuge} project(s) have suspiciously large contract values.`,
-        recommendedAction: "Review contract value data entry for extra zeros.",
-        diagnosticCode: "contract_suspicious_huge",
-      });
-    }
 
     return makeSection("financial", "Financial data guardrails", checks);
   } catch (error) {
