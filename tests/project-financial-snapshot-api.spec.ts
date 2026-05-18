@@ -300,8 +300,11 @@ test.describe("project financial snapshot API", () => {
       await expect(page.getByTestId("snapshot-ar-open")).toContainText("$575");
       await expect(page.getByTestId("snapshot-profit-gross")).toContainText("-$6,321.50");
       await expect(page.getByTestId("snapshot-profit-margin")).toContainText("-632.2%");
-      await expect(page.getByText("Confirmed Gross Profit")).toBeVisible();
-      await expect(page.getByText("Confirmed Margin")).toBeVisible();
+      await expect(page.getByTestId("project-header-actual-cost")).toContainText("$7,322");
+      await expect(page.getByTestId("project-header-profit")).toContainText("$6,322");
+      await expect(page.getByTestId("project-header-margin")).toContainText("-632.2%");
+      await expect(page.getByText("Confirmed Gross Profit").first()).toBeVisible();
+      await expect(page.getByText("Confirmed Margin").first()).toBeVisible();
       await expect(
         page.getByText("Contract value needs review before profit can be shown.")
       ).toHaveCount(0);
@@ -350,11 +353,17 @@ test.describe("project financial snapshot API", () => {
         timeout: 30_000,
       });
       await expect(page.getByTestId("snapshot-cost-actual")).toContainText("$7,321.50");
+      await expect(page.getByTestId("project-header-actual-cost")).toContainText("$7,322");
+      await expect(page.getByTestId("project-header-profit")).toContainText("Needs review");
+      await expect(page.getByTestId("project-header-margin")).toContainText("—");
+      await expect(page.getByTestId("project-header-financial-warning")).toContainText(
+        "Contract value needs review before profit can be shown."
+      );
       await expect(
-        page.getByText("Contract value needs review before profit can be shown.")
+        page.getByText("Contract value needs review before profit can be shown.").first()
       ).toBeVisible();
-      await expect(page.getByText("Confirmed Gross Profit")).toHaveCount(0);
-      await expect(page.getByText("Confirmed Margin")).toHaveCount(0);
+      await expect(page.getByTestId("snapshot-profit-gross")).toHaveCount(0);
+      await expect(page.getByTestId("snapshot-profit-margin")).toHaveCount(0);
       await context.close();
     } finally {
       await deleteProject(projectId);
@@ -392,9 +401,102 @@ test.describe("project financial snapshot API", () => {
       await expect(page.getByTestId("snapshot-cost-status")).toContainText(
         "Using legacy cost data"
       );
+      await expect(page.getByTestId("project-header-financial-warning")).toContainText(
+        "Using legacy financial summary"
+      );
       await expect(page.getByText("Financial Snapshot Comparison", { exact: true })).toBeVisible();
       await expect(page.getByText("Financial snapshot comparison unavailable.")).toBeVisible();
       await expect(page.locator("body")).not.toContainText("Application error");
+      await context.close();
+    } finally {
+      await deleteProject(projectId);
+    }
+  });
+
+  test("projects list overlays snapshot actual cost and guarded profit", async ({ browser }) => {
+    const projectId = await createProject();
+    const projectName = `[E2E] Snapshot API ${projectId.slice(0, 8)}`;
+
+    try {
+      const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const page = await context.newPage();
+      await page.route(`**/api/projects/${projectId}/financial-snapshot`, async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(snapshotComparisonBody(projectId)),
+        });
+      });
+
+      await page.goto("/projects", { waitUntil: "domcontentloaded" });
+      await expect(page.getByTestId("projects-list-search-desktop")).toBeVisible({
+        timeout: 30_000,
+      });
+      await page.getByTestId("projects-list-search-desktop").fill(projectName);
+      await expect(page.getByRole("link", { name: `Open project ${projectName}` })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByRole("columnheader", { name: "Actual Cost" })).toBeVisible();
+      await expect(page.getByTestId(`project-list-actual-cost-${projectId}`).first()).toContainText(
+        "$7,322"
+      );
+      await expect(page.getByTestId(`project-list-profit-${projectId}`).first()).toContainText(
+        "$6,322"
+      );
+      await context.close();
+    } finally {
+      await deleteProject(projectId);
+    }
+  });
+
+  test("projects list hides snapshot profit when contract value needs review", async ({
+    browser,
+  }) => {
+    const projectId = await createProject();
+    const projectName = `[E2E] Snapshot API ${projectId.slice(0, 8)}`;
+
+    try {
+      const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const page = await context.newPage();
+      await page.route(`**/api/projects/${projectId}/financial-snapshot`, async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(
+            snapshotComparisonBody(projectId, {
+              contractValue: 1,
+              revisedContractValue: 1,
+              grossProfit: -7320.5,
+              grossMargin: -7320.5,
+            })
+          ),
+        });
+      });
+
+      await page.goto("/projects", { waitUntil: "domcontentloaded" });
+      await expect(page.getByTestId("projects-list-search-desktop")).toBeVisible({
+        timeout: 30_000,
+      });
+      await page.getByTestId("projects-list-search-desktop").fill(projectName);
+      await expect(page.getByRole("link", { name: `Open project ${projectName}` })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByTestId(`project-list-actual-cost-${projectId}`).first()).toContainText(
+        "$7,322"
+      );
+      await expect(page.getByTestId(`project-list-profit-${projectId}`).first()).toContainText(
+        "Needs review"
+      );
       await context.close();
     } finally {
       await deleteProject(projectId);

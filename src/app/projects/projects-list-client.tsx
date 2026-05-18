@@ -48,6 +48,12 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
+import type {
+  ProjectFinancialSnapshot,
+  ProjectFinancialSnapshotDiagnostics,
+  ProjectFinancialWarning,
+} from "@/lib/financial/project-financial-snapshot";
+import { getProjectFinancialSnapshotProfitReadinessWarning } from "@/lib/financial/project-financial-display";
 
 export type ProjectsListRow = {
   id: string;
@@ -56,10 +62,29 @@ export type ProjectsListRow = {
   status: string;
   budget: number;
   revenue: number;
+  actualCost: number;
+  expenseCost: number;
   laborCost: number;
+  reimbursementCost: number;
+  billedAmount: number;
+  paidAmount: number;
+  openAR: number;
   profit: number;
+  marginPct: number;
+  profitReadinessWarning: string | null;
+  financialSource: "snapshot" | "legacy";
   updatedAt: string;
 };
+
+type ProjectFinancialSnapshotComparisonView = {
+  newSnapshot: ProjectFinancialSnapshot;
+  warnings?: ProjectFinancialWarning[];
+  diagnostics?: ProjectFinancialSnapshotDiagnostics;
+};
+
+type SnapshotComparisonResponse =
+  | { ok: true; comparison: ProjectFinancialSnapshotComparisonView }
+  | { ok: false; message?: string };
 
 const PAGE_BG = "bg-page";
 const FIELD =
@@ -68,13 +93,43 @@ const MODAL =
   "max-w-[480px] w-full gap-0 border-[0.5px] border-gray-100 p-8 shadow-modal rounded-modal sm:max-w-[480px]";
 
 function fmtUsd0(n: number): string {
-  return `$${Math.round(n).toLocaleString("en-US")}`;
+  const rounded = Math.round(Math.abs(n));
+  return `${n < -0.005 ? "−" : ""}$${rounded.toLocaleString("en-US")}`;
 }
 
 function profitClass(n: number): string {
   if (n > 0.005) return "text-[#166534]";
   if (n < -0.005) return "text-red-600";
   return "text-text-secondary";
+}
+
+function applySnapshotFinancials(
+  row: ProjectsListRow,
+  comparison: ProjectFinancialSnapshotComparisonView
+): ProjectsListRow {
+  const snapshot = comparison.newSnapshot;
+  const warnings = comparison.warnings ?? snapshot.warnings ?? [];
+  const diagnostics = comparison.diagnostics ?? snapshot.diagnostics ?? null;
+  const profitReadinessWarning = getProjectFinancialSnapshotProfitReadinessWarning(
+    snapshot,
+    warnings,
+    diagnostics
+  );
+  return {
+    ...row,
+    revenue: snapshot.revisedContractValue,
+    actualCost: snapshot.actualCost,
+    expenseCost: snapshot.expenseCost,
+    laborCost: snapshot.laborCost,
+    reimbursementCost: snapshot.reimbursementCost,
+    billedAmount: snapshot.billedAmount,
+    paidAmount: snapshot.paidAmount,
+    openAR: snapshot.openAR,
+    profit: snapshot.grossProfit,
+    marginPct: snapshot.grossMargin * 100,
+    profitReadinessWarning,
+    financialSource: "snapshot",
+  };
 }
 
 export type ProjectListStatusFilter = "all" | "active" | "completed" | "pending" | "on_hold";
@@ -122,6 +177,7 @@ export function ProjectsListClient({
   const { toast } = useToast();
   const [localRows, setLocalRows] = React.useState<ProjectsListRow[]>(rows);
   React.useEffect(() => setLocalRows(rows), [rows]);
+  const [snapshotListWarning, setSnapshotListWarning] = React.useState<string | null>(null);
   const [statusFilter, setStatusFilter] =
     React.useState<ProjectListStatusFilter>(initialStatusFilter);
   const [sortBy, setSortBy] = React.useState<"updated" | "name" | "revenue" | "profit">("updated");
@@ -135,6 +191,63 @@ export function ProjectsListClient({
   const [deleteBlockedProjectId, setDeleteBlockedProjectId] = React.useState<string | null>(null);
   const [forceDeleteInProgress, setForceDeleteInProgress] = React.useState(false);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (rows.length === 0) {
+      setSnapshotListWarning(null);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadSnapshotFinancials() {
+      const results = await Promise.all(
+        rows.map(async (row) => {
+          try {
+            const response = await fetch(`/api/projects/${row.id}/financial-snapshot`, {
+              cache: "no-store",
+              signal: controller.signal,
+            });
+            const body = (await response
+              .json()
+              .catch(() => null)) as SnapshotComparisonResponse | null;
+            if (!response.ok || !body?.ok) return null;
+            return { id: row.id, comparison: body.comparison };
+          } catch {
+            if (controller.signal.aborted) return null;
+            return null;
+          }
+        })
+      );
+
+      if (controller.signal.aborted) return;
+      const comparisonByProjectId = new Map(
+        results
+          .filter(
+            (
+              result
+            ): result is { id: string; comparison: ProjectFinancialSnapshotComparisonView } =>
+              result != null
+          )
+          .map((result) => [result.id, result.comparison])
+      );
+      setLocalRows((currentRows) =>
+        currentRows.map((row) => {
+          const comparison = comparisonByProjectId.get(row.id);
+          return comparison ? applySnapshotFinancials(row, comparison) : row;
+        })
+      );
+      setSnapshotListWarning(
+        comparisonByProjectId.size === rows.length
+          ? null
+          : "Some projects are using legacy financial summary."
+      );
+    }
+
+    void loadSnapshotFinancials();
+
+    return () => controller.abort();
+  }, [rows]);
 
   const activeDrawerFilterCount = (statusFilter !== "all" ? 1 : 0) + (sortBy !== "updated" ? 1 : 0);
 
@@ -244,6 +357,14 @@ export function ProjectsListClient({
           {dataLoadWarning}
         </p>
       ) : null}
+      {snapshotListWarning ? (
+        <p
+          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-800"
+          role="status"
+        >
+          {snapshotListWarning}
+        </p>
+      ) : null}
 
       <MobileListHeader
         title="Projects"
@@ -259,7 +380,7 @@ export function ProjectsListClient({
             Projects
           </h1>
           <p className="mt-1 max-w-xl text-[14px] text-text-secondary">
-            Revenue, labor cost, and profit — click a row or View to open a project.
+            Revenue, actual cost, and guarded profit — click a row or View to open a project.
           </p>
         </div>
         <Button
@@ -440,8 +561,20 @@ export function ProjectsListClient({
                     </p>
                   </div>
                   <div className="flex min-w-[4.5rem] shrink-0 flex-col items-end gap-1 text-right">
-                    <span className={cn("text-sm font-medium tabular-nums", profitClass(r.profit))}>
-                      {fmtUsd0(r.profit)}
+                    <span
+                      className="text-xs font-medium tabular-nums text-text-secondary"
+                      data-testid={`project-list-actual-cost-${r.id}`}
+                    >
+                      Cost {fmtUsd0(r.actualCost)}
+                    </span>
+                    <span
+                      className={cn(
+                        "text-sm font-medium tabular-nums",
+                        r.profitReadinessWarning ? "text-amber-700" : profitClass(r.profit)
+                      )}
+                      data-testid={`project-list-profit-${r.id}`}
+                    >
+                      {r.profitReadinessWarning ? "Needs review" : fmtUsd0(r.profit)}
                     </span>
                     <ProjectListStatusPill status={r.status} />
                   </div>
@@ -486,7 +619,7 @@ export function ProjectsListClient({
                     <th className={tableRawThClass}>Client</th>
                     <th className={tableRawThClass}>Status</th>
                     <th className={cn(tableRawThClass, "text-right tabular-nums")}>Revenue</th>
-                    <th className={cn(tableRawThClass, "text-right tabular-nums")}>Labor</th>
+                    <th className={cn(tableRawThClass, "text-right tabular-nums")}>Actual Cost</th>
                     <th className={cn(tableRawThClass, "text-right tabular-nums")}>Profit</th>
                     <th className={tableRawThClass}>Updated</th>
                     <th className={cn(tableRawThClass, "text-right")}>Actions</th>
@@ -528,17 +661,19 @@ export function ProjectsListClient({
                           tableRawTdClass,
                           "text-right font-mono tabular-nums text-text-secondary"
                         )}
+                        data-testid={`project-list-actual-cost-${r.id}`}
                       >
-                        {fmtUsd0(r.laborCost)}
+                        {fmtUsd0(r.actualCost)}
                       </td>
                       <td
                         className={cn(
                           tableRawTdClass,
                           "text-right font-mono text-base font-semibold tabular-nums",
-                          profitClass(r.profit)
+                          r.profitReadinessWarning ? "text-amber-700" : profitClass(r.profit)
                         )}
+                        data-testid={`project-list-profit-${r.id}`}
                       >
-                        {fmtUsd0(r.profit)}
+                        {r.profitReadinessWarning ? "Needs review" : fmtUsd0(r.profit)}
                       </td>
                       <td
                         className={cn(tableRawTdClass, "font-mono text-[13px] text-text-secondary")}
