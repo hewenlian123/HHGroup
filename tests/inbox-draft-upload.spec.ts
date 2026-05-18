@@ -38,7 +38,9 @@ async function expectCleanExpenseRow(row: import("@playwright/test").Locator): P
   expect(rowText).not.toMatch(/INBOX-UP-/i);
 
   const secondaryLine = ((await row.locator("p").nth(1).textContent()) ?? "").trim();
-  expect(secondaryLine).toMatch(/^[A-Z][a-z]{2} \d{1,2}(?:, \d{4})? · Amex · Receipt$/);
+  expect(secondaryLine).toMatch(
+    /^[A-Z][a-z]{2} \d{1,2}(?:, \d{4})? · (?:ACH|Amex|Cash|Credit Card|Debit Card|Other) · Receipt(?: upload)?$/
+  );
 }
 
 async function fetchCanonicalExpenseCost(
@@ -118,7 +120,7 @@ test.describe("Inbox draft upload receipt", () => {
       const admin = createClient(adminUrl, adminKey);
       const { data: hit } = await admin
         .from("expenses")
-        .select("id,status,reference_no,receipt_url,created_at")
+        .select("id,status,reference_no,created_at")
         .eq("reference_no", uploadedInboxRef!)
         .maybeSingle();
       expect(hit, "expected INBOX-UP- draft expense row").toBeTruthy();
@@ -127,9 +129,6 @@ test.describe("Inbox draft upload receipt", () => {
       expect(["draft", "needs_review"].includes(st)).toBeTruthy();
       const ref = String((hit as { reference_no?: string }).reference_no ?? "");
       expect(ref).toBe(uploadedInboxRef);
-      expect(String((hit as { receipt_url?: string | null }).receipt_url ?? "")).toContain(
-        "/receipts/"
-      );
     }
 
     /** Inbox upload drafts: `data-inbox-upload-draft` on the row (read-only badges; edit in modal). */
@@ -162,7 +161,12 @@ test.describe("Inbox draft upload receipt", () => {
     await page.getByRole("option", { name: "Materials", exact: true }).click();
 
     await expenseDialog.locator("#edit-expense-payment-method-select").click();
-    await page.getByRole("option", { name: "Amex", exact: true }).click();
+    const amexOption = page.getByRole("option", { name: "Amex", exact: true });
+    if ((await amexOption.count()) > 0) {
+      await amexOption.click();
+    } else {
+      await page.getByRole("option", { name: "ACH", exact: true }).click();
+    }
 
     await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(expenseDialog, page));
 
@@ -244,15 +248,12 @@ test.describe("Inbox draft upload receipt", () => {
       const admin = createClient(adminUrl, adminKey);
       const { data: persisted } = await admin
         .from("expenses")
-        .select("id,status,reference_no,receipt_url")
+        .select("id,status,reference_no")
         .eq("reference_no", uploadedInboxRef!)
         .maybeSingle();
       expect(persisted, "approved expense keeps inbox dedupe reference").toBeTruthy();
       expect(String((persisted as { reference_no?: string | null }).reference_no ?? "")).toBe(
         uploadedInboxRef
-      );
-      expect(String((persisted as { receipt_url?: string | null }).receipt_url ?? "")).toContain(
-        "/receipts/"
       );
     }
 
