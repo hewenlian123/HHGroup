@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildProjectFinancialSnapshotInput,
   buildProjectFinancialSnapshotComparison,
   mapProjectFinancialRowsToSnapshot,
 } from "@/lib/financial/project-financial-snapshot-db";
@@ -98,6 +99,184 @@ describe("project financial snapshot DB mapper", () => {
         expect.objectContaining({ code: "reimbursement_expense_deduped" }),
       ])
     );
+    expect(snapshot.diagnostics).toEqual(
+      expect.objectContaining({
+        reimbursementDedupedCount: 1,
+      })
+    );
+  });
+
+  it("uses project expense lines first, falls back to headers only when needed, and explains diagnostics", () => {
+    const { input, warnings, diagnostics } = buildProjectFinancialSnapshotInput({
+      projectId: "project-1",
+      project: { id: "project-1", budget: 10000 },
+      changeOrders: [],
+      invoices: [],
+      invoicePayments: [],
+      expenses: [
+        {
+          id: "expense-line-backed",
+          project_id: "project-1",
+          status: "paid",
+          total: 9999,
+        },
+        {
+          id: "expense-header-only",
+          project_id: "project-1",
+          status: "reviewed",
+          total: 75,
+        },
+        {
+          id: "expense-draft",
+          project_id: "project-1",
+          status: "draft",
+          total: 50,
+        },
+        {
+          id: "expense-void",
+          project_id: "project-1",
+          status: "void",
+          total: 60,
+        },
+        {
+          id: "expense-rejected",
+          project_id: "project-1",
+          status: "rejected",
+          total: 70,
+        },
+      ],
+      expenseLines: [
+        {
+          id: "line-prefers-total",
+          expense_id: "expense-line-backed",
+          project_id: "project-1",
+          amount: 0.01,
+          total: 2081.49,
+          category: "Materials",
+        },
+      ],
+      laborEntries: [],
+      workerReimbursements: [],
+      subcontractBills: [],
+      apBills: [],
+    });
+
+    const snapshot = mapProjectFinancialRowsToSnapshot({
+      projectId: "project-1",
+      project: { id: "project-1", budget: 10000 },
+      changeOrders: [],
+      invoices: [],
+      invoicePayments: [],
+      expenses: [
+        {
+          id: "expense-line-backed",
+          project_id: "project-1",
+          status: "paid",
+          total: 9999,
+        },
+        {
+          id: "expense-header-only",
+          project_id: "project-1",
+          status: "reviewed",
+          total: 75,
+        },
+        {
+          id: "expense-draft",
+          project_id: "project-1",
+          status: "draft",
+          total: 50,
+        },
+        {
+          id: "expense-void",
+          project_id: "project-1",
+          status: "void",
+          total: 60,
+        },
+        {
+          id: "expense-rejected",
+          project_id: "project-1",
+          status: "rejected",
+          total: 70,
+        },
+      ],
+      expenseLines: [
+        {
+          id: "line-prefers-total",
+          expense_id: "expense-line-backed",
+          project_id: "project-1",
+          amount: 0.01,
+          total: 2081.49,
+          category: "Materials",
+        },
+      ],
+      laborEntries: [],
+      workerReimbursements: [],
+      subcontractBills: [],
+      apBills: [],
+    });
+
+    expect(input.expenseLines).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "line-prefers-total", amount: 2081.49 }),
+        expect.objectContaining({ id: "expense-header:expense-header-only", amount: 75 }),
+      ])
+    );
+    expect(snapshot.expenseCost).toBe(2156.49);
+    expect(snapshot.expenseCost).not.toBe(0.01);
+    expect(diagnostics).toEqual(
+      expect.objectContaining({
+        expenseLinesLoaded: 1,
+        expenseHeaderFallbackCount: 1,
+        excludedExpenseCount: 3,
+      })
+    );
+    expect(warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "expense_line_amount_total_mismatch" }),
+        expect.objectContaining({ code: "expense_header_without_lines_used" }),
+      ])
+    );
+  });
+
+  it("includes approved change orders and excludes non-approved change orders with diagnostics", () => {
+    const snapshot = mapProjectFinancialRowsToSnapshot({
+      projectId: "project-1",
+      project: { id: "project-1", budget: 1000 },
+      changeOrders: [
+        { id: "co-approved", project_id: "project-1", status: "Approved", total: 150 },
+        {
+          id: "co-items-backed",
+          project_id: "project-1",
+          status: "approved",
+          total: 0,
+          item_total: 75,
+        },
+        { id: "co-draft", project_id: "project-1", status: "Draft", total: 900 },
+        { id: "co-rejected", project_id: "project-1", status: "Rejected", total: 800 },
+      ],
+      invoices: [],
+      invoicePayments: [],
+      expenses: [],
+      expenseLines: [],
+      laborEntries: [],
+      workerReimbursements: [],
+      subcontractBills: [],
+      apBills: [],
+    });
+
+    const comparison = buildProjectFinancialSnapshotComparison({
+      projectId: "project-1",
+      newSnapshot: snapshot,
+    });
+
+    expect(snapshot.approvedChangeOrders).toBe(225);
+    expect(snapshot.revisedContractValue).toBe(1225);
+    expect(comparison.diagnostics).toEqual(
+      expect.objectContaining({
+        changeOrdersLoaded: 4,
+        approvedChangeOrdersCount: 2,
+      })
+    );
   });
 
   it("reports old vs new differences with stable keys and rounded deltas", () => {
@@ -156,5 +335,35 @@ describe("project financial snapshot DB mapper", () => {
         }),
       ])
     );
+  });
+
+  it("summarizes missing schema warnings in comparison diagnostics", () => {
+    const snapshot = mapProjectFinancialRowsToSnapshot({
+      projectId: "project-1",
+      project: { id: "project-1", budget: 1000, contract_amount: null },
+      changeOrders: [],
+      invoices: [],
+      invoicePayments: [],
+      expenses: [],
+      expenseLines: [],
+      laborEntries: [],
+      workerReimbursements: [],
+      subcontractBills: [],
+      apBills: [],
+    });
+
+    const comparison = buildProjectFinancialSnapshotComparison({
+      projectId: "project-1",
+      newSnapshot: snapshot,
+      warnings: [
+        {
+          code: "expense_lines_unavailable",
+          severity: "warning",
+          message: "expense_lines could not be loaded because a column is unavailable.",
+        },
+      ],
+    });
+
+    expect(comparison.diagnostics.missingSchemaWarnings).toContain("expense_lines_unavailable");
   });
 });

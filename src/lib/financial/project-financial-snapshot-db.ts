@@ -2,12 +2,14 @@ import "server-only";
 
 import {
   calculateProjectFinancialSnapshot,
+  projectExpenseCostStatusDecision,
   type ProjectFinancialAmountRow,
   type ProjectFinancialExpenseLineInput,
   type ProjectFinancialInvoiceInput,
   type ProjectFinancialLaborEntryInput,
   type ProjectFinancialReimbursementInput,
   type ProjectFinancialSnapshot,
+  type ProjectFinancialSnapshotDiagnostics,
   type ProjectFinancialSnapshotInput,
   type ProjectFinancialWarning,
 } from "@/lib/financial/project-financial-snapshot";
@@ -35,6 +37,7 @@ type ProjectFinancialProjectRow = {
 type ProjectFinancialChangeOrderRow = ProjectFinancialAmountRow & {
   project_id?: string | null;
   total_amount?: number | string | null;
+  item_total?: number | string | null;
 };
 
 type ProjectFinancialInvoiceRow = ProjectFinancialAmountRow & {
@@ -112,6 +115,7 @@ export type ProjectFinancialSnapshotComparison = {
   newSnapshot: ProjectFinancialSnapshot;
   differences: ProjectFinancialSnapshotDifference[];
   warnings: ProjectFinancialWarning[];
+  diagnostics: ProjectFinancialSnapshotDiagnostics;
 };
 
 type ComparisonInput = {
@@ -123,6 +127,7 @@ type ComparisonInput = {
     "breakdown" | "spentTotal" | "profit" | "margin" | "revenue"
   > | null;
   warnings?: ProjectFinancialWarning[];
+  diagnostics?: ProjectFinancialSnapshotDiagnostics;
 };
 
 function toMoney(value: unknown): number {
@@ -179,6 +184,43 @@ function warning(code: string, message: string, sourceId?: string | null): Proje
   };
 }
 
+function createDiagnostics(): ProjectFinancialSnapshotDiagnostics {
+  return {
+    expenseLinesLoaded: 0,
+    expenseHeaderFallbackCount: 0,
+    excludedExpenseCount: 0,
+    changeOrdersLoaded: 0,
+    approvedChangeOrdersCount: 0,
+    reimbursementDedupedCount: 0,
+    missingSchemaWarnings: [],
+  };
+}
+
+function diagnosticsFromWarnings(
+  warnings: ProjectFinancialWarning[]
+): Pick<
+  ProjectFinancialSnapshotDiagnostics,
+  "reimbursementDedupedCount" | "missingSchemaWarnings"
+> {
+  return {
+    reimbursementDedupedCount: warnings.filter(
+      (item) => item.code === "reimbursement_expense_deduped"
+    ).length,
+    missingSchemaWarnings: [
+      ...new Set(
+        warnings
+          .filter(
+            (item) =>
+              item.code.includes("unavailable") ||
+              item.code.includes("missing") ||
+              /schema|column|table/i.test(item.message)
+          )
+          .map((item) => item.code)
+      ),
+    ],
+  };
+}
+
 function missingTableOrColumn(error: DbErrorLike | null | undefined): boolean {
   if (!error) return false;
   if (error.code === "42P01" || error.code === "42703") return true;
@@ -193,12 +235,48 @@ function expenseSourceId(expense: ProjectFinancialExpenseRow | null | undefined)
   return value || null;
 }
 
+function expenseLineAmountFromRow(
+  line: ProjectFinancialExpenseLineRow,
+  mapperWarnings: ProjectFinancialWarning[]
+): number {
+  const amount = toMoney(line.amount);
+  const total = toMoney(line.total ?? line.totalAmount ?? line.total_amount);
+  if (total > 0 && amount > 0 && Math.abs(total - amount) > 0.01) {
+    mapperWarnings.push(
+      warning(
+        "expense_line_amount_total_mismatch",
+        "Expense line amount and total differ; snapshot uses line total as the safer project cost value.",
+        line.id ?? line.expense_id ?? null
+      )
+    );
+    return total;
+  }
+  if (total > 0) return total;
+  if (amount > 0) return amount;
+  if (
+    line.amount == null &&
+    line.total == null &&
+    line.totalAmount == null &&
+    line.total_amount == null
+  ) {
+    mapperWarnings.push(
+      warning(
+        "expense_line_amount_unavailable",
+        "Expense line did not expose amount or total; header fallback may be used if available.",
+        line.id ?? line.expense_id ?? null
+      )
+    );
+  }
+  return 0;
+}
+
 function buildExpenseInputs(
   rows: ProjectFinancialSnapshotDbRows,
-  mapperWarnings: ProjectFinancialWarning[]
+  mapperWarnings: ProjectFinancialWarning[],
+  diagnostics: ProjectFinancialSnapshotDiagnostics
 ): ProjectFinancialExpenseLineInput[] {
   const expenseMap = new Map(rows.expenses.map((expense) => [expense.id ?? "", expense]));
-  const includedExpenseIds = new Set<string>();
+  const lineBackedExpenseIds = new Set<string>();
   const inputs: ProjectFinancialExpenseLineInput[] = [];
 
   for (const line of rows.expenseLines) {
@@ -212,12 +290,17 @@ function buildExpenseInputs(
     ) {
       continue;
     }
-    includedExpenseIds.add(expenseId);
+    const status = expense?.status ?? line.status ?? null;
+    const decision = projectExpenseCostStatusDecision(status);
+    if (!decision.included) diagnostics.excludedExpenseCount += 1;
+    const amount = expenseLineAmountFromRow(line, mapperWarnings);
+    diagnostics.expenseLinesLoaded += 1;
+    if (expenseId && amount > 0) lineBackedExpenseIds.add(expenseId);
     inputs.push({
       id: line.id,
       expenseId,
-      amount: amountFromRow(line),
-      status: expense?.status ?? line.status ?? null,
+      amount,
+      status,
       referenceNo: expense?.reference_no ?? null,
       source: expense?.source ?? null,
       sourceId: expenseSourceId(expense),
@@ -228,10 +311,13 @@ function buildExpenseInputs(
 
   for (const expense of rows.expenses) {
     const expenseId = String(expense.id ?? "").trim();
-    if (!expenseId || includedExpenseIds.has(expenseId)) continue;
+    if (!expenseId || lineBackedExpenseIds.has(expenseId)) continue;
     if (String(expense.project_id ?? "").trim() !== rows.projectId) continue;
     const amount = amountFromRow(expense);
     if (amount <= 0) continue;
+    const decision = projectExpenseCostStatusDecision(expense.status);
+    if (!decision.included) diagnostics.excludedExpenseCount += 1;
+    if (decision.included) diagnostics.expenseHeaderFallbackCount += 1;
     mapperWarnings.push(
       warning(
         "expense_header_without_lines_used",
@@ -253,6 +339,26 @@ function buildExpenseInputs(
   }
 
   return inputs;
+}
+
+function changeOrderAmountFromRow(
+  row: ProjectFinancialChangeOrderRow,
+  mapperWarnings: ProjectFinancialWarning[]
+): number {
+  const rowAmount = amountFromRow(row);
+  if (rowAmount > 0) return rowAmount;
+  const itemTotal = toMoney(row.item_total);
+  if (itemTotal > 0) {
+    mapperWarnings.push(
+      warning(
+        "change_order_item_total_used",
+        "Approved change order header total was empty; snapshot uses summed line item total.",
+        row.id ?? null
+      )
+    );
+    return itemTotal;
+  }
+  return 0;
 }
 
 function buildCashOutPayments(
@@ -307,8 +413,10 @@ function buildCashOutPayments(
 export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapshotDbRows): {
   input: ProjectFinancialSnapshotInput;
   warnings: ProjectFinancialWarning[];
+  diagnostics: ProjectFinancialSnapshotDiagnostics;
 } {
   const mapperWarnings: ProjectFinancialWarning[] = [];
+  const diagnostics = createDiagnostics();
   const projectBudget = toMoney(rows.project?.budget);
   const projectContractAmount = toMoney(rows.project?.contract_amount);
   if (projectBudget > 0 && projectContractAmount > 0 && projectBudget !== projectContractAmount) {
@@ -321,9 +429,13 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
     );
   }
 
+  diagnostics.changeOrdersLoaded = rows.changeOrders.length;
   const approvedChangeOrders = rows.changeOrders
     .filter((row) => isApprovedStatus(row.status))
-    .reduce((sum, row) => sum + amountFromRow(row), 0);
+    .reduce((sum, row) => {
+      diagnostics.approvedChangeOrdersCount += 1;
+      return sum + changeOrderAmountFromRow(row, mapperWarnings);
+    }, 0);
   const paymentsByInvoiceId = new Map<string, ProjectFinancialInvoicePaymentRow[]>();
   for (const payment of rows.invoicePayments) {
     const invoiceId = String(payment.invoice_id ?? "").trim();
@@ -344,7 +456,7 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
     };
   });
 
-  const expenseLines = buildExpenseInputs(rows, mapperWarnings);
+  const expenseLines = buildExpenseInputs(rows, mapperWarnings, diagnostics);
   const laborEntries: ProjectFinancialLaborEntryInput[] = rows.laborEntries.map((entry) => ({
     id: entry.id,
     amount: amountFromRow(entry),
@@ -365,6 +477,8 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
     .filter((bill) => !isVoidLikeStatus(bill.status) && normalizeStatus(bill.status) !== "draft")
     .map((bill) => ({ id: bill.id, amount: amountFromRow(bill), status: bill.status }));
 
+  diagnostics.missingSchemaWarnings = diagnosticsFromWarnings(mapperWarnings).missingSchemaWarnings;
+
   return {
     input: {
       projectId: rows.projectId,
@@ -379,15 +493,31 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
       cashOutPayments: buildCashOutPayments(rows, expenseLines),
     },
     warnings: mapperWarnings,
+    diagnostics,
   };
 }
 
 export function mapProjectFinancialRowsToSnapshot(
   rows: ProjectFinancialSnapshotDbRows
 ): ProjectFinancialSnapshot {
-  const { input, warnings } = buildProjectFinancialSnapshotInput(rows);
+  const { input, warnings, diagnostics } = buildProjectFinancialSnapshotInput(rows);
   const snapshot = calculateProjectFinancialSnapshot(input);
-  return { ...snapshot, warnings: [...snapshot.warnings, ...warnings] };
+  const allWarnings = [...snapshot.warnings, ...warnings];
+  const warningDiagnostics = diagnosticsFromWarnings(allWarnings);
+  return {
+    ...snapshot,
+    warnings: allWarnings,
+    diagnostics: {
+      ...diagnostics,
+      reimbursementDedupedCount: warningDiagnostics.reimbursementDedupedCount,
+      missingSchemaWarnings: [
+        ...new Set([
+          ...diagnostics.missingSchemaWarnings,
+          ...warningDiagnostics.missingSchemaWarnings,
+        ]),
+      ],
+    },
+  };
 }
 
 function addDifference(
@@ -514,13 +644,26 @@ export function buildProjectFinancialSnapshotComparison(
     );
   }
 
+  const allWarnings = [...(input.warnings ?? []), ...newSnapshot.warnings];
+  const warningDiagnostics = diagnosticsFromWarnings(allWarnings);
+  const diagnostics = {
+    ...createDiagnostics(),
+    ...(newSnapshot.diagnostics ?? {}),
+    ...(input.diagnostics ?? {}),
+  };
+  diagnostics.reimbursementDedupedCount = warningDiagnostics.reimbursementDedupedCount;
+  diagnostics.missingSchemaWarnings = [
+    ...new Set([...diagnostics.missingSchemaWarnings, ...warningDiagnostics.missingSchemaWarnings]),
+  ];
+
   return {
     projectId: input.projectId,
     oldCanonicalProfit: input.oldCanonicalProfit ?? null,
     oldProjectCostDashboard: input.oldProjectCostDashboard ?? null,
     newSnapshot,
     differences,
-    warnings: [...(input.warnings ?? []), ...newSnapshot.warnings],
+    warnings: allWarnings,
+    diagnostics,
   };
 }
 
@@ -546,6 +689,176 @@ async function safeSelect<T>(
   return { data: (Array.isArray(data) ? data : []) as T[], warnings: [] };
 }
 
+async function safeSelectFallback<T>(
+  label: string,
+  attempts: Array<() => PromiseLike<{ data: unknown; error: DbErrorLike | null }>>
+): Promise<{ data: T[]; warnings: ProjectFinancialWarning[] }> {
+  let lastMissing: DbErrorLike | null = null;
+  for (const attempt of attempts) {
+    const { data, error } = await attempt();
+    if (!error) return { data: (Array.isArray(data) ? data : []) as T[], warnings: [] };
+    if (!missingTableOrColumn(error)) {
+      throw new Error(error.message ?? `Failed to load ${label}.`);
+    }
+    lastMissing = error;
+  }
+  return {
+    data: [],
+    warnings: [
+      warning(
+        `${label}_unavailable`,
+        `${label} could not be loaded because the table or column is unavailable.`
+      ),
+      ...(lastMissing?.message
+        ? [
+            warning(
+              `${label}_schema_detail`,
+              `Last ${label} schema error: ${lastMissing.message.slice(0, 180)}`
+            ),
+          ]
+        : []),
+    ],
+  };
+}
+
+function selectExpensesByProject(
+  supabase: ReturnType<typeof getServerSupabaseInternalNoStore>,
+  projectId: string
+) {
+  if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const cols = [
+    "id,project_id,status,total,amount,reference_no,source,source_id,category",
+    "id,project_id,status,total,amount,reference_no,source,source_id",
+    "id,project_id,status,total,amount,reference_no",
+    "id,project_id,status,total,amount",
+    "id,project_id,status,total",
+    "id,project_id,status,amount",
+  ];
+  return safeSelectFallback<ProjectFinancialExpenseRow>(
+    "expenses",
+    cols.map((col) => () => supabase.from("expenses").select(col).eq("project_id", projectId))
+  );
+}
+
+function selectExpensesByIds(
+  supabase: ReturnType<typeof getServerSupabaseInternalNoStore>,
+  expenseIds: string[]
+) {
+  if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const cols = [
+    "id,project_id,status,total,amount,reference_no,source,source_id,category",
+    "id,project_id,status,total,amount,reference_no,source,source_id",
+    "id,project_id,status,total,amount,reference_no",
+    "id,project_id,status,total,amount",
+    "id,project_id,status,total",
+    "id,project_id,status,amount",
+  ];
+  return safeSelectFallback<ProjectFinancialExpenseRow>(
+    "expenses",
+    cols.map((col) => () => supabase.from("expenses").select(col).in("id", expenseIds))
+  );
+}
+
+function selectExpenseLinesByProject(
+  supabase: ReturnType<typeof getServerSupabaseInternalNoStore>,
+  projectId: string
+) {
+  if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const cols = [
+    "id,expense_id,project_id,total,amount,category,memo",
+    "id,expense_id,project_id,total,amount",
+    "id,expense_id,project_id,amount",
+    "id,expense_id,project_id,total",
+  ];
+  return safeSelectFallback<ProjectFinancialExpenseLineRow>(
+    "expense_lines_by_project",
+    cols.map((col) => () => supabase.from("expense_lines").select(col).eq("project_id", projectId))
+  );
+}
+
+function selectExpenseLinesByExpenseIds(
+  supabase: ReturnType<typeof getServerSupabaseInternalNoStore>,
+  expenseIds: string[]
+) {
+  if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const cols = [
+    "id,expense_id,project_id,total,amount,category,memo",
+    "id,expense_id,project_id,total,amount",
+    "id,expense_id,total,amount,category,memo",
+    "id,expense_id,total,amount",
+    "id,expense_id,amount",
+    "id,expense_id,total",
+  ];
+  return safeSelectFallback<ProjectFinancialExpenseLineRow>(
+    "expense_lines",
+    cols.map((col) => () => supabase.from("expense_lines").select(col).in("expense_id", expenseIds))
+  );
+}
+
+function selectChangeOrdersByProject(
+  supabase: ReturnType<typeof getServerSupabaseInternalNoStore>,
+  projectId: string
+) {
+  if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const cols = [
+    "id,project_id,status,total,total_amount,amount",
+    "id,project_id,status,total,total_amount",
+    "id,project_id,status,total",
+    "id,project_id,status,total_amount",
+    "id,project_id,status,amount",
+    "id,project_id,status",
+  ];
+  return safeSelectFallback<ProjectFinancialChangeOrderRow>(
+    "project_change_orders",
+    cols.map(
+      (col) => () => supabase.from("project_change_orders").select(col).eq("project_id", projectId)
+    )
+  );
+}
+
+async function selectChangeOrderItemsByIds(
+  supabase: ReturnType<typeof getServerSupabaseInternalNoStore>,
+  changeOrderIds: string[]
+): Promise<{
+  itemTotalsByChangeOrderId: Map<string, number>;
+  warnings: ProjectFinancialWarning[];
+}> {
+  if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  if (changeOrderIds.length === 0) return { itemTotalsByChangeOrderId: new Map(), warnings: [] };
+  const result = await safeSelectFallback<{ change_order_id?: string | null; total?: unknown }>(
+    "project_change_order_items",
+    [
+      () =>
+        supabase
+          .from("project_change_order_items")
+          .select("change_order_id,total")
+          .in("change_order_id", changeOrderIds),
+    ]
+  );
+  const itemTotalsByChangeOrderId = new Map<string, number>();
+  for (const row of result.data) {
+    const id = String(row.change_order_id ?? "").trim();
+    if (!id) continue;
+    itemTotalsByChangeOrderId.set(
+      id,
+      (itemTotalsByChangeOrderId.get(id) ?? 0) + toMoney(row.total)
+    );
+  }
+  return { itemTotalsByChangeOrderId, warnings: result.warnings };
+}
+
+function mergeById<T extends { id?: string | null }>(...lists: T[][]): T[] {
+  const merged = new Map<string, T>();
+  for (const list of lists) {
+    for (const row of list) {
+      const id = String(row.id ?? "").trim();
+      if (!id) continue;
+      merged.set(id, { ...(merged.get(id) ?? {}), ...row });
+    }
+  }
+  return [...merged.values()];
+}
+
 async function fetchProjectFinancialSnapshotRows(
   projectId: string
 ): Promise<{ rows: ProjectFinancialSnapshotDbRows; warnings: ProjectFinancialWarning[] }> {
@@ -563,13 +876,7 @@ async function fetchProjectFinancialSnapshotRows(
     subcontractRes,
   ] = await Promise.all([
     supabase.from("projects").select("id,budget,contract_amount").eq("id", projectId).maybeSingle(),
-    safeSelect<ProjectFinancialChangeOrderRow>(
-      "project_change_orders",
-      supabase
-        .from("project_change_orders")
-        .select("id,project_id,status,amount,total,total_amount")
-        .eq("project_id", projectId)
-    ),
+    selectChangeOrdersByProject(supabase, projectId),
     safeSelect<ProjectFinancialInvoiceRow>(
       "invoices",
       supabase
@@ -577,20 +884,8 @@ async function fetchProjectFinancialSnapshotRows(
         .select("id,project_id,status,total,paid_total,balance_due")
         .eq("project_id", projectId)
     ),
-    safeSelect<ProjectFinancialExpenseLineRow>(
-      "expense_lines",
-      supabase
-        .from("expense_lines")
-        .select("id,expense_id,project_id,amount,total,category,memo")
-        .eq("project_id", projectId)
-    ),
-    safeSelect<ProjectFinancialExpenseRow>(
-      "expenses",
-      supabase
-        .from("expenses")
-        .select("id,project_id,status,total,amount,reference_no,source,source_id,category")
-        .eq("project_id", projectId)
-    ),
+    selectExpenseLinesByProject(supabase, projectId),
+    selectExpensesByProject(supabase, projectId),
     safeSelect<ProjectFinancialLaborEntryRow>(
       "labor_entries",
       supabase
@@ -617,6 +912,16 @@ async function fetchProjectFinancialSnapshotRows(
   if (projectRes.error) throw new Error(projectRes.error.message ?? "Failed to load project.");
   if (!projectRes.data) throw new Error("Project not found.");
 
+  const changeOrderIds = changeOrdersRes.data
+    .map((order) => String(order.id ?? "").trim())
+    .filter(Boolean);
+  const changeOrderItemsRes = await selectChangeOrderItemsByIds(supabase, changeOrderIds);
+  const changeOrders = changeOrdersRes.data.map((order) => {
+    const id = String(order.id ?? "").trim();
+    const itemTotal = id ? changeOrderItemsRes.itemTotalsByChangeOrderId.get(id) : undefined;
+    return itemTotal != null ? { ...order, item_total: itemTotal } : order;
+  });
+
   const initialExpenseIds = [
     ...(directExpenseLinesRes.data ?? []).map((line) => line.expense_id),
     ...(expensesByProjectRes.data ?? []).map((expense) => expense.id),
@@ -630,23 +935,11 @@ async function fetchProjectFinancialSnapshotRows(
 
   if (expenseIds.length > 0) {
     const [headersByIdRes, linesByExpenseRes] = await Promise.all([
-      safeSelect<ProjectFinancialExpenseRow>(
-        "expenses",
-        supabase
-          .from("expenses")
-          .select("id,project_id,status,total,amount,reference_no,source,source_id,category")
-          .in("id", expenseIds)
-      ),
-      safeSelect<ProjectFinancialExpenseLineRow>(
-        "expense_lines",
-        supabase
-          .from("expense_lines")
-          .select("id,expense_id,project_id,amount,total,category,memo")
-          .in("expense_id", expenseIds)
-      ),
+      selectExpensesByIds(supabase, expenseIds),
+      selectExpenseLinesByExpenseIds(supabase, expenseIds),
     ]);
-    expenses = headersByIdRes.data.length > 0 ? headersByIdRes.data : expenses;
-    expenseLines = linesByExpenseRes.data.length > 0 ? linesByExpenseRes.data : expenseLines;
+    expenses = mergeById(expenses ?? [], headersByIdRes.data);
+    expenseLines = mergeById(expenseLines ?? [], linesByExpenseRes.data);
     extraWarnings.push(...headersByIdRes.warnings, ...linesByExpenseRes.warnings);
   }
 
@@ -668,7 +961,7 @@ async function fetchProjectFinancialSnapshotRows(
     rows: {
       projectId,
       project: projectRes.data as ProjectFinancialProjectRow,
-      changeOrders: changeOrdersRes.data,
+      changeOrders,
       invoices: invoicesRes.data,
       invoicePayments: invoicePaymentsRes.data,
       expenses,
@@ -681,6 +974,7 @@ async function fetchProjectFinancialSnapshotRows(
     },
     warnings: [
       ...changeOrdersRes.warnings,
+      ...changeOrderItemsRes.warnings,
       ...invoicesRes.warnings,
       ...directExpenseLinesRes.warnings,
       ...expensesByProjectRes.warnings,
