@@ -19,19 +19,10 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  getProjects,
-  getLaborWorkersList,
-  getLaborEntriesWithJoins,
-  updateDailyLaborEntry,
-  deleteDailyLaborEntry,
-  submitLaborEntries,
-  approveLaborEntries,
-  lockLaborEntries,
   type LaborEntryWithJoins,
   type LaborEntriesFilters,
   type DailyLaborEntryDraft,
-  type DailyLaborEntryOldForReallocate,
-} from "@/lib/data";
+} from "@/lib/daily-labor-db";
 import { StatusBadge } from "@/components/base";
 import {
   MobileEmptyState,
@@ -205,8 +196,8 @@ function DailyEntriesPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [entries, setEntries] = React.useState<LaborEntryWithJoins[]>([]);
-  const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
-  const [workers, setWorkers] = React.useState<Awaited<ReturnType<typeof getLaborWorkersList>>>([]);
+  const [projects, setProjects] = React.useState<Array<{ id: string; name: string }>>([]);
+  const [workers, setWorkers] = React.useState<Array<{ id: string; name: string }>>([]);
   const [filters, setFilters] = React.useState<LaborEntriesFilters>({});
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -258,18 +249,29 @@ function DailyEntriesPageInner() {
     [router, searchParams]
   );
 
-  const loadMeta = React.useCallback(async () => {
-    const [p, w] = await Promise.all([getProjects(), getLaborWorkersList()]);
-    setProjects(p);
-    setWorkers(w);
-  }, []);
-
   const loadEntries = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const list = await getLaborEntriesWithJoins(filters);
-      setEntries(list);
+      const params = new URLSearchParams({ view: "joined" });
+      if (filters.date_from) params.set("dateFrom", filters.date_from);
+      if (filters.date_to) params.set("dateTo", filters.date_to);
+      if (filters.worker_id) params.set("workerId", filters.worker_id);
+      if (filters.project_id) params.set("projectId", filters.project_id);
+      if (filters.status) params.set("status", filters.status);
+      const response = await fetch(`/api/labor/entries?${params.toString()}`, {
+        cache: "no-store",
+      });
+      const body = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        entries?: LaborEntryWithJoins[];
+        projects?: Array<{ id: string; name: string }>;
+        workers?: Array<{ id: string; name: string }>;
+      };
+      if (!response.ok) throw new Error(body.message ?? "Failed to load entries.");
+      setEntries(body.entries ?? []);
+      setProjects(body.projects ?? []);
+      setWorkers(body.workers ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load entries.");
       setEntries([]);
@@ -279,19 +281,14 @@ function DailyEntriesPageInner() {
   }, [filters]);
 
   React.useEffect(() => {
-    loadMeta();
-  }, [loadMeta]);
-
-  React.useEffect(() => {
     loadEntries();
   }, [loadEntries]);
 
   useOnAppSync(
     React.useCallback(() => {
-      void loadMeta();
       void loadEntries();
-    }, [loadMeta, loadEntries]),
-    [loadMeta, loadEntries]
+    }, [loadEntries]),
+    [loadEntries]
   );
 
   const openEdit = React.useCallback((row: LaborEntryWithJoins) => {
@@ -316,13 +313,21 @@ function DailyEntriesPageInner() {
     setSaving(true);
     setError(null);
     try {
-      const oldValues: DailyLaborEntryOldForReallocate = {
-        project_id: editEntry.project_id,
-        hours: editEntry.hours,
-        cost_code: editEntry.cost_code,
-        notes: editEntry.notes,
-      };
-      await updateDailyLaborEntry(editEntry.id, oldValues, editDraft);
+      const response = await fetch("/api/labor/entries", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "daily-entry",
+          id: editEntry.id,
+          workerId: editDraft.worker_id,
+          projectId: editDraft.project_id,
+          hours: editDraft.hours,
+          costCode: editDraft.cost_code,
+          notes: editDraft.notes,
+        }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) throw new Error(body.message ?? "Failed to update entry.");
       setMessage("Entry updated.");
       closeEdit();
       await loadEntries();
@@ -340,7 +345,11 @@ function DailyEntriesPageInner() {
       setDeletingId(row.id);
       setError(null);
       try {
-        await deleteDailyLaborEntry(row.id);
+        const response = await fetch(`/api/labor/entries?id=${encodeURIComponent(row.id)}`, {
+          method: "DELETE",
+        });
+        const body = (await response.json().catch(() => ({}))) as { message?: string };
+        if (!response.ok) throw new Error(body.message ?? "Failed to delete entry.");
         setMessage("Entry deleted.");
         await loadEntries();
       } catch (e) {
@@ -374,7 +383,13 @@ function DailyEntriesPageInner() {
     setBulkAction("submit");
     setError(null);
     try {
-      await submitLaborEntries(ids);
+      const response = await fetch("/api/labor/entries", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "submit", ids }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) throw new Error(body.message ?? "Failed to submit.");
       setMessage(`Submitted ${ids.length} entr${ids.length === 1 ? "y" : "ies"}.`);
       setSelectedIds(new Set());
       await loadEntries();
@@ -391,7 +406,13 @@ function DailyEntriesPageInner() {
     setBulkAction("approve");
     setError(null);
     try {
-      await approveLaborEntries(ids);
+      const response = await fetch("/api/labor/entries", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve", ids }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) throw new Error(body.message ?? "Failed to approve.");
       setMessage(`Approved ${ids.length} entr${ids.length === 1 ? "y" : "ies"}.`);
       setSelectedIds(new Set());
       await loadEntries();
@@ -408,7 +429,13 @@ function DailyEntriesPageInner() {
     setBulkAction("lock");
     setError(null);
     try {
-      await lockLaborEntries(ids);
+      const response = await fetch("/api/labor/entries", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "lock", ids }),
+      });
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      if (!response.ok) throw new Error(body.message ?? "Failed to lock.");
       setMessage(`Locked ${ids.length} entr${ids.length === 1 ? "y" : "ies"}.`);
       setSelectedIds(new Set());
       await loadEntries();

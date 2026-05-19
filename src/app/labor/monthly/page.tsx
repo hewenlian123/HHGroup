@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
-import { getLaborEntriesWithJoins, getLaborPaymentsByDateRange, getWorkers } from "@/lib/data";
+import { getLaborEntriesWithJoins, getLaborPaymentsByDateRange } from "@/lib/daily-labor-db";
+import { getWorkers } from "@/lib/labor-db";
+import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { MonthlyLaborMonthSelect } from "./monthly-month-select";
 import { formatCurrency } from "@/lib/formatters";
 
@@ -25,11 +27,15 @@ export default async function MonthlyLaborPage({ searchParams }: Props) {
   const { month: monthParam } = await searchParams;
   const month = monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : getDefaultMonth();
   const { dateFrom, dateTo } = monthBounds(month);
+  const supabase = getServerSupabaseInternal();
+  if (!supabase) {
+    throw new Error("Supabase is not configured.");
+  }
 
   const [entries, payments, workersList] = await Promise.all([
-    getLaborEntriesWithJoins({ date_from: dateFrom, date_to: dateTo }),
-    getLaborPaymentsByDateRange(dateFrom, dateTo),
-    getWorkers(),
+    getLaborEntriesWithJoins({ date_from: dateFrom, date_to: dateTo }, supabase),
+    getLaborPaymentsByDateRange(dateFrom, dateTo, supabase),
+    getWorkers(supabase),
   ]);
   const workerNameMap = new Map(workersList.map((w) => [w.id, w.name]));
   const hourlyRateMap = new Map(workersList.map((w) => [w.id, (w.halfDayRate ?? 0) / 4]));

@@ -554,9 +554,10 @@ export type LaborPaymentInRangeRow = LaborPaymentRow & { worker_id: string };
 /** Fetch labor_payments where payment_date between dateFrom and dateTo (inclusive). */
 export async function getLaborPaymentsByDateRange(
   dateFrom: string,
-  dateTo: string
+  dateTo: string,
+  explicitClient?: SupabaseClient
 ): Promise<LaborPaymentInRangeRow[]> {
-  const c = client();
+  const c = client(explicitClient);
   const from = dateFrom.slice(0, 10);
   const to = dateTo.slice(0, 10);
   const { data: rows, error } = await c

@@ -16,13 +16,23 @@ const NO_CACHE_HEADERS = {
 };
 
 type LaborEntryPayload = {
+  id?: unknown;
+  action?: unknown;
+  ids?: unknown;
+  mode?: unknown;
   workerId?: unknown;
+  worker_id?: unknown;
   projectId?: unknown;
+  project_id?: unknown;
   workDate?: unknown;
+  work_date?: unknown;
   hours?: unknown;
   costCode?: unknown;
+  cost_code?: unknown;
   notes?: unknown;
   costAmount?: unknown;
+  cost_amount?: unknown;
+  session?: unknown;
   rows?: unknown;
 };
 
@@ -38,6 +48,15 @@ function safeNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function safeString(v: unknown): string {
+  return typeof v === "string" ? v.trim() : "";
+}
+
+function safeDate(v: unknown): string {
+  const text = safeString(v);
+  return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : "";
+}
+
 function isMissingTableError(error: unknown): boolean {
   const e = error as { code?: string; message?: string } | null;
   if (!e) return false;
@@ -51,12 +70,9 @@ function apiError(status: number, message: string): NextResponse {
 }
 
 function toPayload(input: LaborEntryPayload) {
-  const workerId = typeof input.workerId === "string" ? input.workerId.trim() : "";
-  const projectId = typeof input.projectId === "string" ? input.projectId.trim() : "";
-  const workDate =
-    typeof input.workDate === "string" && /^\d{4}-\d{2}-\d{2}/.test(input.workDate)
-      ? input.workDate.slice(0, 10)
-      : "";
+  const workerId = safeString(input.workerId ?? input.worker_id);
+  const projectId = safeString(input.projectId ?? input.project_id);
+  const workDate = safeDate(input.workDate ?? input.work_date);
   const hours = safeNumber(input.hours);
   if (!workerId) throw new Error("Worker is required.");
   if (!projectId) throw new Error("Project is required.");
@@ -68,11 +84,177 @@ function toPayload(input: LaborEntryPayload) {
     project_id: projectId,
     work_date: workDate,
     hours,
-    cost_code:
-      typeof input.costCode === "string" && input.costCode.trim() ? input.costCode.trim() : null,
-    notes: typeof input.notes === "string" && input.notes.trim() ? input.notes.trim() : null,
-    cost_amount: safeNumber(input.costAmount),
+    cost_code: safeString(input.costCode ?? input.cost_code) || null,
+    notes: safeString(input.notes) || null,
+    cost_amount: safeNumber(input.costAmount ?? input.cost_amount),
   };
+}
+
+type LaborSession = "morning" | "afternoon" | "full_day";
+
+function toSession(value: unknown): LaborSession | null {
+  const session = safeString(value).toLowerCase();
+  if (session === "morning" || session === "afternoon" || session === "full_day") {
+    return session;
+  }
+  return null;
+}
+
+function toSessionFlags(session: LaborSession): { morning: boolean; afternoon: boolean } {
+  if (session === "morning") return { morning: true, afternoon: false };
+  if (session === "afternoon") return { morning: false, afternoon: true };
+  return { morning: true, afternoon: true };
+}
+
+async function ensureNotDuplicateSession(
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  input: {
+    entryId: string;
+    workerId: string;
+    workDate: string;
+    session: LaborSession;
+  }
+): Promise<void> {
+  const flags = toSessionFlags(input.session);
+  const { data, error } = await supabase
+    .from("labor_entries")
+    .select("id")
+    .eq("worker_id", input.workerId)
+    .eq("work_date", input.workDate.slice(0, 10))
+    .eq("morning", flags.morning)
+    .eq("afternoon", flags.afternoon)
+    .neq("id", input.entryId)
+    .limit(1);
+  if (error) throw new Error(error.message ?? "Failed to validate duplicate labor entry.");
+  if ((data ?? []).length > 0) {
+    throw new Error("This worker already has an entry for the selected session on this date.");
+  }
+}
+
+async function resolveHourlyRate(
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  workerId: string
+): Promise<number> {
+  const { data, error } = await supabase
+    .from("workers")
+    .select("id, half_day_rate, daily_rate")
+    .eq("id", workerId)
+    .maybeSingle();
+  if (error) throw new Error(error.message ?? "Failed to load worker rate.");
+  const row = (data ?? {}) as { half_day_rate?: number | null; daily_rate?: number | null };
+  const dailyRate =
+    row.daily_rate != null && Number(row.daily_rate) > 0
+      ? Number(row.daily_rate)
+      : Number(row.half_day_rate) || 0;
+  return dailyRate > 0 ? dailyRate / 8 : 0;
+}
+
+async function updateSessionEntry(
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  body: LaborEntryPayload
+): Promise<void> {
+  const id = safeString(body.id);
+  if (!id) throw new Error("Labor entry id is required.");
+
+  const { data: current, error: curErr } = await supabase
+    .from("labor_entries")
+    .select("id, worker_id, work_date, morning, afternoon, status")
+    .eq("id", id)
+    .maybeSingle();
+  if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
+  if (!current) throw new Error("Labor entry not found.");
+
+  const row = current as {
+    worker_id: string;
+    work_date: string;
+    morning?: boolean | null;
+    afternoon?: boolean | null;
+    status?: string | null;
+  };
+  if (row.status === "Locked") throw new Error("Cannot edit a locked labor entry.");
+
+  const session =
+    toSession(body.session) ??
+    (row.morning && row.afternoon ? "full_day" : row.morning ? "morning" : "afternoon");
+  await ensureNotDuplicateSession(supabase, {
+    entryId: id,
+    workerId: row.worker_id,
+    workDate: row.work_date,
+    session,
+  });
+
+  const flags = toSessionFlags(session);
+  const payload: Record<string, unknown> = {
+    project_id: safeString(body.projectId ?? body.project_id) || null,
+    hours: safeNumber(body.hours),
+    cost_amount: safeNumber(body.costAmount ?? body.cost_amount),
+    notes: safeString(body.notes) || null,
+    morning: flags.morning,
+    afternoon: flags.afternoon,
+  };
+
+  const { error } = await supabase.from("labor_entries").update(payload).eq("id", id);
+  if (error) throw new Error(error.message ?? "Failed to update labor entry.");
+}
+
+async function updateDailyEntry(
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  body: LaborEntryPayload
+): Promise<void> {
+  const id = safeString(body.id);
+  if (!id) throw new Error("Labor entry id is required.");
+
+  const { data: current, error: curErr } = await supabase
+    .from("labor_entries")
+    .select("id, status")
+    .eq("id", id)
+    .maybeSingle();
+  if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
+  if (!current) throw new Error("Labor entry not found.");
+  if ((current as { status?: string | null }).status === "Locked") {
+    throw new Error("Cannot edit a locked labor entry.");
+  }
+
+  const workerId = safeString(body.workerId ?? body.worker_id);
+  if (!workerId) throw new Error("Worker is required.");
+  const hours = safeNumber(body.hours);
+  const hourlyRate = await resolveHourlyRate(supabase, workerId);
+  const payload = {
+    worker_id: workerId,
+    project_id: safeString(body.projectId ?? body.project_id) || null,
+    hours,
+    cost_code: safeString(body.costCode ?? body.cost_code) || null,
+    notes: safeString(body.notes) || null,
+    cost_amount: hours * hourlyRate,
+  };
+
+  const { error } = await supabase.from("labor_entries").update(payload).eq("id", id);
+  if (error) throw new Error(error.message ?? "Failed to update labor entry.");
+}
+
+async function runBulkAction(
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  body: LaborEntryPayload
+): Promise<void> {
+  const action = safeString(body.action).toLowerCase();
+  if (!["submit", "approve", "lock"].includes(action)) throw new Error("Invalid labor action.");
+  const ids = Array.isArray(body.ids) ? body.ids.map((id) => safeString(id)).filter(Boolean) : [];
+  if (ids.length === 0) return;
+  const now = new Date().toISOString();
+  const patch =
+    action === "submit"
+      ? { status: "Submitted", submitted_at: now, submitted_by: "pin-owner" }
+      : action === "approve"
+        ? { status: "Approved", approved_at: now, approved_by: "pin-owner" }
+        : { status: "Locked", locked_at: now, locked_by: "pin-owner" };
+  const expectedStatus =
+    action === "submit" ? "Draft" : action === "approve" ? "Submitted" : "Approved";
+  const { error } = await supabase
+    .from("labor_entries")
+    .update(patch)
+    .in("id", ids)
+    .eq("status", expectedStatus);
+  if (error) throw new Error(error.message ?? `Failed to ${action} labor entries.`);
 }
 
 export async function GET(request: Request) {
@@ -93,6 +275,13 @@ export async function GET(request: Request) {
             date_to: searchParams.get("dateTo")?.trim() || undefined,
             project_id: searchParams.get("projectId")?.trim() || undefined,
             worker_id: searchParams.get("workerId")?.trim() || undefined,
+            status:
+              (searchParams.get("status")?.trim() as
+                | "Draft"
+                | "Submitted"
+                | "Approved"
+                | "Locked"
+                | undefined) || undefined,
           },
           supabase
         ),
@@ -134,7 +323,11 @@ export async function GET(request: Request) {
 
     const [entriesRes, workersRes, projectsRes] = await Promise.all([
       entryQuery,
-      supabase.from("workers").select("id,name,half_day_rate").order("name").limit(500),
+      supabase
+        .from("workers")
+        .select("id,name,half_day_rate,daily_rate,status")
+        .order("name")
+        .limit(500),
       supabase.from("projects").select("id,name").order("name").limit(500),
     ]);
 
@@ -150,10 +343,24 @@ export async function GET(request: Request) {
         ok: true,
         missingLaborTable,
         entries: entriesRes.error ? [] : (entriesRes.data ?? []),
-        workers: (workersRes.data ?? []).map((w) => {
-          const row = w as { id: string; name: string; half_day_rate?: number | null };
-          return { id: row.id, name: row.name ?? "", halfDayRate: safeNumber(row.half_day_rate) };
-        }),
+        workers: (workersRes.data ?? [])
+          .map((w) => {
+            const row = w as {
+              id: string;
+              name: string;
+              half_day_rate?: number | null;
+              daily_rate?: number | null;
+              status?: string | null;
+            };
+            return {
+              id: row.id,
+              name: row.name ?? "",
+              halfDayRate: safeNumber(row.half_day_rate),
+              dailyRate: safeNumber(row.daily_rate) || safeNumber(row.half_day_rate),
+              status: row.status ?? "active",
+            };
+          })
+          .filter((w) => w.status !== "inactive"),
         projects: (projectsRes.data ?? []) as Array<{ id: string; name: string }>,
       },
       { headers: NO_CACHE_HEADERS }
@@ -226,11 +433,19 @@ export async function PATCH(request: Request) {
       | (LaborEntryPayload & { id?: unknown })
       | null;
     if (!body) return apiError(400, "Invalid JSON body.");
-    const id = typeof body.id === "string" ? body.id.trim() : "";
-    if (!id) return apiError(400, "Labor entry id is required.");
-    const payload = toPayload(body);
-    const { error } = await supabase.from("labor_entries").update(payload).eq("id", id);
-    if (error) throw new Error(error.message);
+    if (safeString(body.action)) {
+      await runBulkAction(supabase, body);
+    } else if (safeString(body.mode) === "daily-entry") {
+      await updateDailyEntry(supabase, body);
+    } else if (safeString(body.mode) === "session-entry" || toSession(body.session)) {
+      await updateSessionEntry(supabase, body);
+    } else {
+      const id = safeString(body.id);
+      if (!id) return apiError(400, "Labor entry id is required.");
+      const payload = toPayload(body);
+      const { error } = await supabase.from("labor_entries").update(payload).eq("id", id);
+      if (error) throw new Error(error.message);
+    }
     return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to save labor entry.";
