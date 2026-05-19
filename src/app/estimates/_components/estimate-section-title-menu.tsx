@@ -25,41 +25,34 @@ import { useToast } from "@/components/toast/toast-provider";
 import {
   moveEstimateItemsToCostCodeAction,
   saveCostCategoryNameInlineAction,
-  createEstimateCategoryWithCodeAction,
+  createCustomEstimateCategoryAction,
 } from "@/app/estimates/[id]/actions";
-import { generateCode } from "@/lib/estimate-cost-code-suggest";
 import { cn } from "@/lib/utils";
 
-export type CostCategoryOption = { code: string; label: string };
+export type EstimateSectionOption = { code: string; label: string };
 
-type AddCategoryModalProps = {
+/** @deprecated Use EstimateSectionOption */
+export type CostCategoryOption = EstimateSectionOption;
+
+type AddSectionModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   estimateId: string;
-  /** Existing cost codes on this estimate (same set used for duplicate checks). */
-  categories: ReadonlySet<string>;
-  onCategoryCreated: (costCode: string, displayName: string) => void;
+  onSectionCreated: (costCode: string, displayName: string) => void;
 };
 
-function AddCategoryModal({
+function AddSectionModal({
   open,
   onOpenChange,
   estimateId,
-  categories,
-  onCategoryCreated,
-}: AddCategoryModalProps) {
+  onSectionCreated,
+}: AddSectionModalProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const [addCodeDraft, setAddCodeDraft] = React.useState("");
   const [addNameDraft, setAddNameDraft] = React.useState("");
   const [addSaving, setAddSaving] = React.useState(false);
   const addDisplayNameRef = React.useRef<HTMLInputElement>(null);
   const wasOpenRef = React.useRef(false);
-
-  React.useEffect(() => {
-    if (!open) return;
-    setAddCodeDraft(generateCode(categories));
-  }, [open, categories]);
 
   React.useEffect(() => {
     if (open && !wasOpenRef.current) {
@@ -76,38 +69,24 @@ function AddCategoryModal({
     return () => window.cancelAnimationFrame(id);
   }, [open]);
 
-  const commitAddCategory = React.useCallback(async () => {
-    const code = addCodeDraft.trim();
+  const commitAddSection = React.useCallback(async () => {
     const name = addNameDraft.trim();
-    if (!code) {
-      toast({ title: "Code required", description: "Enter a cost code.", variant: "error" });
-      return;
-    }
     if (!name) {
-      toast({ title: "Name required", description: "Enter a display name.", variant: "error" });
+      toast({ title: "Name required", description: "Enter a section name.", variant: "error" });
       addDisplayNameRef.current?.focus();
-      return;
-    }
-    if (categories.has(code)) {
-      toast({
-        title: "Code already exists",
-        description:
-          "This code is already used on this estimate. Change the code or use the generated value.",
-        variant: "error",
-      });
       return;
     }
     setAddSaving(true);
     try {
-      const res = await createEstimateCategoryWithCodeAction(estimateId, code, name);
+      const res = await createCustomEstimateCategoryAction(estimateId, name);
       if (res.ok && res.costCode) {
-        onCategoryCreated(res.costCode, name);
+        onSectionCreated(res.costCode, name);
         syncRouterNonBlocking(router);
         onOpenChange(false);
-        toast({ title: "Category created", variant: "success" });
+        toast({ title: "Section created", variant: "success" });
       } else {
         toast({
-          title: "Could not create category",
+          title: "Could not create section",
           description: res.error ?? "Try again.",
           variant: "error",
         });
@@ -115,16 +94,7 @@ function AddCategoryModal({
     } finally {
       setAddSaving(false);
     }
-  }, [
-    addCodeDraft,
-    addNameDraft,
-    categories,
-    estimateId,
-    onCategoryCreated,
-    onOpenChange,
-    router,
-    toast,
-  ]);
+  }, [addNameDraft, estimateId, onSectionCreated, onOpenChange, router, toast]);
 
   return (
     <Dialog
@@ -136,45 +106,31 @@ function AddCategoryModal({
     >
       <DialogContent className="gap-0 sm:max-w-md rounded-sm border-border/60 p-4 shadow-[var(--shadow-popover)]">
         <DialogHeader className="space-y-1 pb-3">
-          <DialogTitle className="text-base">Add new category</DialogTitle>
+          <DialogTitle className="text-base">Add section</DialogTitle>
           <p className="text-xs text-muted-foreground">
-            Creates a cost code and first line on this estimate.
+            Creates a scope section and first line on this estimate.
           </p>
         </DialogHeader>
-        <div className="space-y-3 pb-4">
-          <div className="space-y-1.5">
-            <Label htmlFor={`cat-add-code-${estimateId}`} className="text-xs">
-              Code
-            </Label>
-            <Input
-              id={`cat-add-code-${estimateId}`}
-              value={addCodeDraft}
-              onChange={(e) => setAddCodeDraft(e.target.value)}
-              className="h-8 rounded-sm text-sm tabular-nums"
-              disabled={addSaving}
-              autoComplete="off"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor={`cat-add-name-${estimateId}`} className="text-xs">
-              Display name
-            </Label>
-            <Input
-              ref={addDisplayNameRef}
-              id={`cat-add-name-${estimateId}`}
-              value={addNameDraft}
-              onChange={(e) => setAddNameDraft(e.target.value)}
-              className="h-8 rounded-sm text-sm"
-              disabled={addSaving}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  void commitAddCategory();
-                }
-              }}
-              autoComplete="off"
-            />
-          </div>
+        <div className="space-y-1.5 pb-4">
+          <Label htmlFor={`section-add-name-${estimateId}`} className="text-xs">
+            Section name
+          </Label>
+          <Input
+            ref={addDisplayNameRef}
+            id={`section-add-name-${estimateId}`}
+            value={addNameDraft}
+            onChange={(e) => setAddNameDraft(e.target.value)}
+            className="h-8 rounded-sm text-sm"
+            disabled={addSaving}
+            placeholder="e.g. Demolition"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void commitAddSection();
+              }
+            }}
+            autoComplete="off"
+          />
         </div>
         <DialogFooter className="border-t-0 pt-0 sm:justify-end gap-2">
           <Button
@@ -192,7 +148,7 @@ function AddCategoryModal({
             size="sm"
             className="rounded-sm h-8"
             disabled={addSaving}
-            onClick={() => void commitAddCategory()}
+            onClick={() => void commitAddSection()}
           >
             <SubmitSpinner loading={addSaving} className="mr-2" />
             {addSaving ? "Saving…" : "Save"}
@@ -203,37 +159,34 @@ function AddCategoryModal({
   );
 }
 
-type Props = {
+type EstimateSectionTitleMenuProps = {
   estimateId: string;
   currentCostCode: string;
   displayName: string;
   itemIds: string[];
-  categoryOptions: CostCategoryOption[];
-  /** Resolved display name for upsert when moving to a code (catalog or saved label). */
+  sectionOptions: EstimateSectionOption[];
+  /** Resolved display name for upsert when moving to a section (catalog or saved label). */
   getDisplayNameHint: (code: string) => string;
   onMoved: (newCostCode: string) => void;
   onNameSaved: (costCode: string, nextDisplayName: string) => void;
-  /** Cost codes already used on this estimate (items + categories) for suggestions and client-side checks. */
-  usedCostCodes: ReadonlySet<string>;
-  /** After a successful create from the Add category modal — parent refreshes selection / local state. */
-  onCategoryCreated: (costCode: string, displayName: string) => void;
+  /** After a successful create from the Add section modal — parent refreshes selection / local state. */
+  onSectionCreated: (costCode: string, displayName: string) => void;
 };
 
 /**
- * Cost breakdown category row: looks like plain text; click opens menu to switch category, add category, or rename.
+ * Section row: plain label; click opens menu to switch section, add section, or rename.
  */
-export function CostCategoryTitleMenu({
+export function EstimateSectionTitleMenu({
   estimateId,
   currentCostCode,
   displayName,
   itemIds,
-  categoryOptions,
+  sectionOptions,
   getDisplayNameHint,
   onMoved,
   onNameSaved,
-  usedCostCodes,
-  onCategoryCreated,
-}: Props) {
+  onSectionCreated,
+}: EstimateSectionTitleMenuProps): React.ReactElement {
   const { toast } = useToast();
   const [moving, setMoving] = React.useState(false);
   const [renameOpen, setRenameOpen] = React.useState(false);
@@ -241,9 +194,9 @@ export function CostCategoryTitleMenu({
   const [renameSaving, setRenameSaving] = React.useState(false);
   const [addOpen, setAddOpen] = React.useState(false);
 
+  const headerLabel = displayName.trim() || "Section";
+
   React.useEffect(() => {
-    // Keep draft in sync when label changes outside the dialog.
-    // Do not clobber user typing while the rename dialog is open.
     if (renameOpen) return;
     setRenameDraft(displayName);
   }, [displayName, renameOpen]);
@@ -259,7 +212,7 @@ export function CostCategoryTitleMenu({
           onMoved(newCode);
         } else {
           toast({
-            title: "Could not move category",
+            title: "Could not move section",
             description: res.error ?? "Try again.",
             variant: "error",
           });
@@ -274,7 +227,7 @@ export function CostCategoryTitleMenu({
   const commitRename = React.useCallback(async () => {
     const next = renameDraft.trim();
     if (!next) {
-      toast({ title: "Name required", description: "Enter a category label.", variant: "error" });
+      toast({ title: "Name required", description: "Enter a section name.", variant: "error" });
       return;
     }
     if (next === displayName.trim()) {
@@ -308,28 +261,22 @@ export function CostCategoryTitleMenu({
             disabled={moving}
             className={cn(
               "h-7 min-w-0 flex-1 text-left flex items-center gap-1.5 rounded-sm px-0.5 -mx-0.5",
-              "font-medium text-sm text-foreground",
+              "text-[15px] font-semibold tracking-tight text-foreground",
               "hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               moving && "opacity-60 pointer-events-none"
             )}
             onMouseDown={(e) => e.preventDefault()}
             onClick={(e) => e.stopPropagation()}
-            aria-label="Category: open menu to change cost code"
+            aria-label={`Section: ${headerLabel}. Open menu to change or rename.`}
           >
-            <span className="text-muted-foreground font-normal tabular-nums shrink-0">
-              {currentCostCode}
-            </span>
-            <span className="text-muted-foreground/50 shrink-0" aria-hidden>
-              –
-            </span>
-            <span className="truncate min-w-0">{displayName || currentCostCode}</span>
+            <span className="truncate min-w-0">{headerLabel}</span>
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
-          className="min-w-[16rem] max-h-72 overflow-y-auto rounded-md z-[120]"
+          className="min-w-[16rem] max-h-72 overflow-y-auto rounded-md border-border/15 z-[120]"
         >
-          {categoryOptions.map((o) => (
+          {sectionOptions.map((o) => (
             <DropdownMenuItem
               key={o.code}
               disabled={o.code === currentCostCode}
@@ -346,7 +293,7 @@ export function CostCategoryTitleMenu({
               window.setTimeout(() => openAddModal(), 0);
             }}
           >
-            + Add new category
+            + Add section
           </DropdownMenuItem>
           <DropdownMenuItem
             className="text-sm"
@@ -355,31 +302,29 @@ export function CostCategoryTitleMenu({
               setRenameOpen(true);
             }}
           >
-            Edit display name…
+            Rename section…
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AddCategoryModal
+      <AddSectionModal
         open={addOpen}
         onOpenChange={setAddOpen}
         estimateId={estimateId}
-        categories={usedCostCodes}
-        onCategoryCreated={onCategoryCreated}
+        onSectionCreated={onSectionCreated}
       />
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
         <DialogContent className="gap-0 sm:max-w-md rounded-sm border-border/60 p-4 shadow-[var(--shadow-popover)]">
           <DialogHeader className="space-y-1 pb-3">
-            <DialogTitle className="text-base">Category display name</DialogTitle>
-            <p className="text-xs text-muted-foreground tabular-nums">{currentCostCode}</p>
+            <DialogTitle className="text-base">Rename section</DialogTitle>
           </DialogHeader>
           <div className="space-y-1.5 pb-4">
-            <Label htmlFor={`cat-rename-${currentCostCode}`} className="text-xs">
+            <Label htmlFor={`section-rename-${currentCostCode}`} className="text-xs">
               Name
             </Label>
             <Input
-              id={`cat-rename-${currentCostCode}`}
+              id={`section-rename-${currentCostCode}`}
               value={renameDraft}
               onChange={(e) => setRenameDraft(e.target.value)}
               className="h-8 rounded-sm text-sm"
@@ -418,3 +363,6 @@ export function CostCategoryTitleMenu({
     </>
   );
 }
+
+/** @deprecated Use EstimateSectionTitleMenu */
+export const CostCategoryTitleMenu = EstimateSectionTitleMenu;

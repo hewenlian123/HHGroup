@@ -96,10 +96,10 @@ export function EstimatePrintDocument({
         </section>
       )}
 
-      {/* Cost breakdown by category */}
+      {/* Scope sections */}
       <section className="mb-8 print:break-inside-avoid">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">
-          Cost Breakdown
+          Scope of work
         </h2>
         {costSections.length === 0 ? (
           <p className="text-sm text-zinc-500 py-4">No line items.</p>
@@ -115,7 +115,6 @@ export function EstimatePrintDocument({
                       <th className="text-right py-2 px-2 font-medium tabular-nums w-16">Qty</th>
                       <th className="text-left py-2 px-2 font-medium w-14">Unit</th>
                       <th className="text-right py-2 px-2 font-medium tabular-nums">Unit Price</th>
-                      <th className="text-left py-2 px-2 font-medium text-zinc-600">Cost Code</th>
                       <th className="text-right py-2 pl-4 font-medium tabular-nums">Total</th>
                     </tr>
                   </thead>
@@ -139,7 +138,6 @@ export function EstimatePrintDocument({
                           <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">
                             ${fmt(row.unitCost)}
                           </td>
-                          <td className="py-2.5 px-2 text-zinc-600 text-xs">{row.costCode}</td>
                           <td className="py-2.5 pl-4 text-right tabular-nums font-medium text-zinc-900">
                             ${fmt(estimateLineTotal(row))}
                           </td>

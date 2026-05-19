@@ -144,7 +144,7 @@ export function EstimateNewCustomerSection({
           <p className={EB.readValueMuted}>{estimateDate}</p>
         </div>
 
-        <EstimateBuilderAdvanced title="Advanced settings">
+        <EstimateBuilderAdvanced title="More details">
           <div className={EB.coreGrid}>
             <div className={EB.fieldStack}>
               <Label htmlFor="clientPhone" className={EB.label}>

@@ -68,15 +68,3 @@ export function createEmptyLineItem(costCode: string, markupPct = 0.1): EditorLi
     markupPct,
   };
 }
-
-export function pickCostCodeForPreset(
-  costCodes: { code: string }[],
-  usedCodes: Set<string>,
-  hint?: string
-): string | undefined {
-  if (hint) {
-    const match = costCodes.find((c) => c.code === hint);
-    if (match) return match.code;
-  }
-  return costCodes.find((c) => !usedCodes.has(c.code))?.code ?? costCodes[0]?.code;
-}

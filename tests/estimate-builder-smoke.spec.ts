@@ -75,9 +75,9 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   await page.getByPlaceholder("Client or company name").fill(clientName);
   await page.getByPlaceholder("Project name").fill(projectName);
 
-  const addCategory = page.getByRole("button", { name: /^Add Category$/i }).first();
-  await expect(addCategory).toBeVisible({ timeout: 30_000 });
-  await addCategory.click();
+  const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
+  await expect(addSection).toBeVisible({ timeout: 30_000 });
+  await addSection.click();
 
   const lineTitleInput = page.getByLabel("Line item 1 title").locator("visible=true");
   await expect(lineTitleInput).toBeVisible({ timeout: 15_000 });
@@ -112,4 +112,34 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
     timeout: 15_000,
   });
   await expect(page.locator("main")).toContainText(lineTitle, { timeout: 15_000 });
+
+  const secondLineTitle = `PW second line ${suffix}`;
+  await page.getByRole("button", { name: "Add line" }).first().click();
+  await page.waitForLoadState("networkidle");
+  const secondDesc = page.getByLabel("Line item description").locator("visible=true").nth(1);
+  await expect(secondDesc).toBeVisible({ timeout: 30_000 });
+  await secondDesc.fill(secondLineTitle);
+  await secondDesc.blur();
+  await page.getByLabel("Line item quantity").locator("visible=true").nth(1).fill("1");
+  await page.getByLabel("Line item quantity").locator("visible=true").nth(1).blur();
+  await page.getByLabel("Line item unit price").locator("visible=true").nth(1).fill("50");
+  await page.getByLabel("Line item unit price").locator("visible=true").nth(1).blur();
+  await expect(page.locator("main")).toContainText(secondLineTitle, { timeout: 15_000 });
+
+  const sectionName = `PW Section ${suffix}`;
+  const addSectionInput = page.getByRole("textbox", { name: "Search or add section" });
+  await addSectionInput.scrollIntoViewIfNeeded();
+  await addSectionInput.fill(sectionName);
+  await page.getByRole("button", { name: "Add Section", exact: true }).click();
+  await expect(
+    page.getByText("Section created").or(page.getByText("Section added")).first()
+  ).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.reload();
+  await page.waitForLoadState("domcontentloaded");
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.locator("main")).toContainText(secondLineTitle, { timeout: 30_000 });
+  await expect(page.locator("main")).toContainText(sectionName, { timeout: 30_000 });
 });

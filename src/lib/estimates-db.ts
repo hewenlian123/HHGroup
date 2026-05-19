@@ -153,7 +153,7 @@ export function groupEstimateItemsByCategoryId(
     const sectionTotal = rows.reduce((s, r) => s + lineTotal(r), 0);
     sections.push({
       categoryId: cat.costCode,
-      title: cat.displayName?.trim() || cat.costCode,
+      title: cat.displayName?.trim() || catalogNameByCode?.[cat.costCode]?.trim() || "Category",
       rows,
       sectionTotal,
     });
@@ -169,7 +169,7 @@ export function groupEstimateItemsByCategoryId(
     const catalogLabel = catalogNameByCode?.[categoryId]?.trim();
     sections.push({
       categoryId,
-      title: catalogLabel || categoryId,
+      title: catalogLabel || "Category",
       rows,
       sectionTotal,
     });
@@ -1022,18 +1022,33 @@ export async function reorderEstimateCategories(
   return true;
 }
 
-export async function addLineItem(
+type LineItemInsertPayload = {
+  costCode: string;
+  desc: string;
+  qty: number;
+  unit: string;
+  unitCost: number;
+  markupPct: number;
+};
+
+function mapEstimateItemRow(r: Record<string, unknown>): EstimateItemRow {
+  return {
+    id: r.id as string,
+    estimateId: r.estimate_id as string,
+    costCode: (r.cost_code as string) ?? "",
+    desc: (r.desc as string) ?? "",
+    qty: Number(r.qty),
+    unit: (r.unit as string) ?? "EA",
+    unitCost: Number(r.unit_cost),
+    markupPct: Number(r.markup_pct),
+  };
+}
+
+export async function addLineItemWithClient(
+  c: SupabaseClient,
   estimateId: string,
-  item: {
-    costCode: string;
-    desc: string;
-    qty: number;
-    unit: string;
-    unitCost: number;
-    markupPct: number;
-  }
+  item: LineItemInsertPayload
 ): Promise<EstimateItemRow | null> {
-  const c = client();
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return null;
   const { data: inserted, error } = await c
@@ -1052,17 +1067,14 @@ export async function addLineItem(
   if (error || !inserted) return null;
   const now = new Date().toISOString().slice(0, 10);
   await c.from("estimates").update({ updated_at: now }).eq("id", estimateId);
-  const r = inserted as Record<string, unknown>;
-  return {
-    id: r.id as string,
-    estimateId: r.estimate_id as string,
-    costCode: (r.cost_code as string) ?? "",
-    desc: (r.desc as string) ?? "",
-    qty: Number(r.qty),
-    unit: (r.unit as string) ?? "EA",
-    unitCost: Number(r.unit_cost),
-    markupPct: Number(r.markup_pct),
-  };
+  return mapEstimateItemRow(inserted as Record<string, unknown>);
+}
+
+export async function addLineItem(
+  estimateId: string,
+  item: LineItemInsertPayload
+): Promise<EstimateItemRow | null> {
+  return addLineItemWithClient(client(), estimateId, item);
 }
 
 async function generateUniqueCustomCostCode(
@@ -1095,7 +1107,8 @@ async function generateUniqueCustomCostCode(
 }
 
 /** Create a custom cost category (generated cost code + display name) and one placeholder line item. */
-export async function createCustomEstimateCategory(
+export async function createCustomEstimateCategoryWithClient(
+  c: SupabaseClient,
   estimateId: string,
   displayName: string
 ): Promise<{ ok: true; costCode: string; item: EstimateItemRow } | { ok: false; error: string }> {
@@ -1103,7 +1116,6 @@ export async function createCustomEstimateCategory(
   if (!estimateIdSafe) return { ok: false, error: "Estimate id is required." };
   const trimmed = displayName.trim();
   if (!trimmed) return { ok: false, error: "Name is required." };
-  const c = client();
   const { data: est } = await c
     .from("estimates")
     .select("status")
@@ -1134,7 +1146,7 @@ export async function createCustomEstimateCategory(
         { onConflict: "estimate_id,cost_code" }
       );
     if (!fallbackErr) {
-      const item = await addLineItem(estimateIdSafe, {
+      const item = await addLineItemWithClient(c, estimateIdSafe, {
         costCode,
         desc: "New item",
         qty: 1,
@@ -1160,7 +1172,7 @@ export async function createCustomEstimateCategory(
     return { ok: false, error: eCat.message || "Could not create category." };
   }
 
-  const item = await addLineItem(estimateIdSafe, {
+  const item = await addLineItemWithClient(c, estimateIdSafe, {
     costCode,
     desc: "New item",
     qty: 1,
@@ -1179,8 +1191,16 @@ export async function createCustomEstimateCategory(
   return { ok: true, costCode, item };
 }
 
+export async function createCustomEstimateCategory(
+  estimateId: string,
+  displayName: string
+): Promise<{ ok: true; costCode: string; item: EstimateItemRow } | { ok: false; error: string }> {
+  return createCustomEstimateCategoryWithClient(client(), estimateId, displayName);
+}
+
 /** Create category with an explicit cost code + display name and one placeholder line item. */
-export async function createEstimateCategoryWithExplicitCode(
+export async function createEstimateCategoryWithExplicitCodeWithClient(
+  c: SupabaseClient,
   estimateId: string,
   costCodeRaw: string,
   displayNameRaw: string
@@ -1191,8 +1211,6 @@ export async function createEstimateCategoryWithExplicitCode(
   const displayName = displayNameRaw.trim();
   if (!displayName) return { ok: false, error: "Name is required." };
   if (!costCode) return { ok: false, error: "Code is required." };
-
-  const c = client();
   const { data: est } = await c
     .from("estimates")
     .select("status")
@@ -1235,7 +1253,7 @@ export async function createEstimateCategoryWithExplicitCode(
       display_name: displayName,
     });
     if (!fallbackErr) {
-      const item = await addLineItem(estimateIdSafe, {
+      const item = await addLineItemWithClient(c, estimateIdSafe, {
         costCode,
         desc: "New item",
         qty: 1,
@@ -1261,7 +1279,7 @@ export async function createEstimateCategoryWithExplicitCode(
     return { ok: false, error: eCat.message || "Could not create category." };
   }
 
-  const item = await addLineItem(estimateIdSafe, {
+  const item = await addLineItemWithClient(c, estimateIdSafe, {
     costCode,
     desc: "New item",
     qty: 1,
@@ -1278,6 +1296,19 @@ export async function createEstimateCategoryWithExplicitCode(
     return { ok: false, error: "Could not create category line item." };
   }
   return { ok: true, costCode, item };
+}
+
+export async function createEstimateCategoryWithExplicitCode(
+  estimateId: string,
+  costCodeRaw: string,
+  displayNameRaw: string
+): Promise<{ ok: true; costCode: string; item: EstimateItemRow } | { ok: false; error: string }> {
+  return createEstimateCategoryWithExplicitCodeWithClient(
+    client(),
+    estimateId,
+    costCodeRaw,
+    displayNameRaw
+  );
 }
 
 /** Update only one category display_name, without touching estimate meta fields. */
@@ -1324,12 +1355,12 @@ export async function updateEstimateCategoryDisplayName(
   return true;
 }
 
-export async function updateLineItem(
+export async function updateLineItemWithClient(
+  c: SupabaseClient,
   estimateId: string,
   itemId: string,
   payload: { desc?: string; qty?: number; unit?: string; unitCost?: number; markupPct?: number }
 ): Promise<boolean> {
-  const c = client();
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
   const up: Record<string, unknown> = {};
@@ -1350,6 +1381,14 @@ export async function updateLineItem(
     .update({ updated_at: new Date().toISOString().slice(0, 10) })
     .eq("id", estimateId);
   return true;
+}
+
+export async function updateLineItem(
+  estimateId: string,
+  itemId: string,
+  payload: { desc?: string; qty?: number; unit?: string; unitCost?: number; markupPct?: number }
+): Promise<boolean> {
+  return updateLineItemWithClient(client(), estimateId, itemId, payload);
 }
 
 /** Move line items to another cost code (category). Creates `estimate_categories` row if missing. */
@@ -1395,8 +1434,11 @@ export async function moveEstimateItemsToCostCode(
   return true;
 }
 
-export async function deleteLineItem(estimateId: string, itemId: string): Promise<boolean> {
-  const c = client();
+export async function deleteLineItemWithClient(
+  c: SupabaseClient,
+  estimateId: string,
+  itemId: string
+): Promise<boolean> {
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
   const { error } = await c
@@ -1412,21 +1454,38 @@ export async function deleteLineItem(estimateId: string, itemId: string): Promis
   return true;
 }
 
+export async function deleteLineItem(estimateId: string, itemId: string): Promise<boolean> {
+  return deleteLineItemWithClient(client(), estimateId, itemId);
+}
+
+export async function duplicateLineItemWithClient(
+  c: SupabaseClient,
+  estimateId: string,
+  itemId: string
+): Promise<EstimateItemRow | null> {
+  const { data: rows, error } = await c
+    .from("estimate_items")
+    .select("*")
+    .eq("estimate_id", estimateId);
+  if (error) return null;
+  const src = (rows ?? []).find((r) => String((r as { id?: string }).id) === itemId);
+  if (!src) return null;
+  const row = src as Record<string, unknown>;
+  return addLineItemWithClient(c, estimateId, {
+    costCode: (row.cost_code as string) ?? "",
+    desc: `${(row.desc as string) ?? ""} (copy)`,
+    qty: Number(row.qty),
+    unit: (row.unit as string) ?? "EA",
+    unitCost: Number(row.unit_cost),
+    markupPct: Number(row.markup_pct),
+  });
+}
+
 export async function duplicateLineItem(
   estimateId: string,
   itemId: string
 ): Promise<EstimateItemRow | null> {
-  const items = await getEstimateItems(estimateId);
-  const src = items.find((i) => i.id === itemId);
-  if (!src) return null;
-  return addLineItem(estimateId, {
-    costCode: src.costCode,
-    desc: src.desc + " (copy)",
-    qty: src.qty,
-    unit: src.unit,
-    unitCost: src.unitCost,
-    markupPct: src.markupPct,
-  });
+  return duplicateLineItemWithClient(client(), estimateId, itemId);
 }
 
 // —— Payment schedule ——

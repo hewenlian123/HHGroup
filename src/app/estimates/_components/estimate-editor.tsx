@@ -31,7 +31,7 @@ import {
   saveEstimateMetaAction,
   addLineItemAction,
   addLineItemCatalogInlineAction,
-  createEstimateCategoryWithCodeAction,
+  createCustomEstimateCategoryAction,
   updateLineItemAction,
   updateLineItemInlineAction,
   deleteLineItemAction,
@@ -62,12 +62,27 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronRight, ChevronDown, Plus, Copy, Trash2, GripVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  ChevronRight,
+  ChevronDown,
+  Plus,
+  Copy,
+  Trash2,
+  GripVertical,
+  MoreHorizontal,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EstimatePaymentSchedule } from "./estimate-payment-schedule";
 import { LineItemDescriptionBodyPreview } from "./line-item-description-body-preview";
-import { CostCategoryTitleMenu, type CostCategoryOption } from "./cost-category-title-menu";
-import { pickNextUniqueCostCode } from "@/lib/estimate-cost-code-suggest";
+import {
+  EstimateSectionTitleMenu,
+  type EstimateSectionOption,
+} from "./estimate-section-title-menu";
 import type { LineItemDescriptionRichTextHandle } from "./line-item-description-rich-text";
 import { formatEstimateCurrency, roundEstimateCurrencyValue } from "./estimate-currency";
 import { EstimateBuilderSummary } from "./estimate-builder-summary";
@@ -75,8 +90,6 @@ import { EstimateBuilderAdvanced } from "./estimate-builder-advanced";
 import { EstimateEditCustomerSection } from "./estimate-edit-customer-section";
 import { EB, ebInput } from "./estimate-builder-ui";
 import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
-import { ESTIMATE_LINE_ITEM_PRESETS } from "./estimate-line-item-presets";
-import { pickCostCodeForPreset } from "./estimate-line-item-model";
 import { EstimateLineItemPersistedMobile } from "./estimate-line-item-persisted-mobile";
 
 /** TipTap must not load on the server — Next 14 can emit a broken `vendor-chunks/@tiptap.js` ref and 500 the page. */
@@ -121,7 +134,7 @@ function SortableCategorySection({
     <button
       type="button"
       className="flex h-8 w-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm text-muted-foreground hover:bg-muted/50 active:cursor-grabbing"
-      aria-label="Reorder category"
+      aria-label="Reorder section"
       {...attributes}
       {...listeners}
     >
@@ -131,11 +144,11 @@ function SortableCategorySection({
   return (
     <div
       ref={setNodeRef}
-      data-estimate-category-id={id}
+      data-estimate-section-id={id}
       aria-current={isSelectedCategory ? "true" : undefined}
       style={style}
       className={cn(
-        "border-b border-zinc-200 dark:border-border transition-all duration-300",
+        "border-b border-border/10 transition-all duration-300",
         isDragging && "opacity-55 relative z-[2]",
         highlightFlash && "bg-primary/10 dark:bg-primary/15"
       )}
@@ -242,21 +255,22 @@ export function EstimateEditor({
     setLocalItems(items);
   }, [items]);
 
-  const categoryDropdownOptions = React.useMemo((): CostCategoryOption[] => {
+  const sectionDropdownOptions = React.useMemo((): EstimateSectionOption[] => {
     const codes = new Set<string>();
     for (const c of costCodes) codes.add(c.code);
     for (const ec of estimateCategories) codes.add(ec.costCode);
     for (const it of localItems) codes.add(it.costCode);
     return Array.from(codes)
-      .sort((a, b) => a.localeCompare(b))
       .map((code) => ({
         code,
-        label: `${code} – ${localCategoryNames[code] ?? catalogNameByCode[code] ?? code}`,
-      }));
+        label: (localCategoryNames[code] ?? catalogNameByCode[code] ?? "").trim() || "Section",
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [costCodes, estimateCategories, localItems, localCategoryNames, catalogNameByCode]);
 
   const getCategoryDisplayNameHint = React.useCallback(
-    (code: string) => localCategoryNames[code] ?? catalogNameByCode[code] ?? code,
+    (code: string) =>
+      (localCategoryNames[code] ?? catalogNameByCode[code] ?? "").trim() || "Section",
     [localCategoryNames, catalogNameByCode]
   );
 
@@ -341,13 +355,6 @@ export function EstimateEditor({
     setExpandedCategoryIds([]);
   }, [costBreakdownCollapseNonce]);
 
-  const usedCostCodesOnEstimate = React.useMemo(() => {
-    const s = new Set<string>();
-    for (const it of localItems) s.add(it.costCode);
-    for (const ec of estimateCategories) s.add(ec.costCode);
-    return s;
-  }, [localItems, estimateCategories]);
-
   const [pendingSelectNewCategory, setPendingSelectNewCategory] = React.useState<{
     code: string;
     displayName: string;
@@ -373,7 +380,7 @@ export function EstimateEditor({
     if (!costBreakdownSections.some((s) => s.categoryId === target)) return;
 
     const el = document.querySelector<HTMLElement>(
-      `[data-estimate-category-id="${cssEscapeAttrSelector(target)}"]`
+      `[data-estimate-section-id="${cssEscapeAttrSelector(target)}"]`
     );
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
     setFlashHighlightCategoryId(target);
@@ -421,7 +428,7 @@ export function EstimateEditor({
         syncRouterNonBlocking(router);
       } else {
         toast({
-          title: "Could not save category order",
+          title: "Could not save section order",
           description: res.error ?? "Try again.",
           variant: "error",
         });
@@ -536,31 +543,6 @@ export function EstimateEditor({
 
   const lastPersistedRowId = flatPersistedRows[flatPersistedRows.length - 1]?.row.id;
 
-  const applyPresetPersisted = React.useCallback(
-    async (presetId: string) => {
-      const preset = ESTIMATE_LINE_ITEM_PRESETS.find((p) => p.id === presetId);
-      if (!preset) return;
-      const code = pickCostCodeForPreset(costCodes, usedCostCodesOnEstimate, preset.costCodeHint);
-      if (!code) return;
-      const res = await addLineItemCatalogInlineAction(
-        estimateId,
-        code,
-        preset.title.trim() || preset.label
-      );
-      if (res.ok) {
-        syncRouterNonBlocking(router);
-        toast({ title: "Line added", variant: "success" });
-      } else {
-        toast({
-          title: "Could not add line",
-          description: res.error ?? "Try again.",
-          variant: "error",
-        });
-      }
-    },
-    [costCodes, estimateId, router, toast, usedCostCodesOnEstimate]
-  );
-
   return (
     <React.Fragment>
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-10 lg:items-start">
@@ -581,17 +563,19 @@ export function EstimateEditor({
           />
 
           <section className={EB.section}>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-              <h2 className={EB.sectionTitle}>Line items</h2>
+            <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className={EB.scopeHeading}>Scope of work</h2>
+                <p className={EB.scopeSubtitle}>Line items grouped by section</p>
+              </div>
               {!isReadOnly ? (
                 <EstimateLineItemsToolbar
-                  onAddCategory={() => {
-                    document.getElementById("estimate-add-category")?.scrollIntoView({
+                  onAddSection={() => {
+                    document.getElementById("estimate-add-section")?.scrollIntoView({
                       behavior: "smooth",
                       block: "center",
                     });
                   }}
-                  onApplyPreset={(id) => void applyPresetPersisted(id)}
                 />
               ) : null}
             </div>
@@ -618,9 +602,7 @@ export function EstimateEditor({
                           void addLineItemCatalogInlineAction(
                             estimateId,
                             categoryId,
-                            localCategoryNames[categoryId] ??
-                              catalogNameByCode[categoryId] ??
-                              categoryId
+                            getCategoryDisplayNameHint(categoryId)
                           ).then((res) => {
                             if (res.ok) syncRouterNonBlocking(router);
                           });
@@ -647,7 +629,7 @@ export function EstimateEditor({
                     const categorySectionBody = (dragHandle: React.ReactNode | null) => (
                       <React.Fragment>
                         <summary
-                          className="flex list-none flex-wrap items-center justify-between gap-2 cursor-pointer px-1 py-2.5 hover:bg-muted/10 transition-colors"
+                          className={cn(EB.scopeBlockHeader, "list-none flex-wrap")}
                           onMouseDown={(e) => {
                             const el = e.target as HTMLElement;
                             if (el.closest("button, a[href], [role='button'], [role='menuitem']"))
@@ -660,16 +642,16 @@ export function EstimateEditor({
                             {dragHandle}
                             <ChevronRight className="h-4 w-4 text-muted-foreground group-open:rotate-90 transition-transform shrink-0" />
                             {isReadOnly ? (
-                              <span className="font-medium text-foreground text-sm">
-                                {categoryId} – {displayName}
+                              <span className={EB.scopeBlockTitle}>
+                                {displayName.trim() || "Section"}
                               </span>
                             ) : (
-                              <CostCategoryTitleMenu
+                              <EstimateSectionTitleMenu
                                 estimateId={estimateId}
                                 currentCostCode={categoryId}
                                 displayName={displayName}
                                 itemIds={rows.map((r) => r.id)}
-                                categoryOptions={categoryDropdownOptions}
+                                sectionOptions={sectionDropdownOptions}
                                 getDisplayNameHint={getCategoryDisplayNameHint}
                                 onMoved={(newCode) => {
                                   const idSet = new Set(rows.map((r) => r.id));
@@ -681,48 +663,45 @@ export function EstimateEditor({
                                   setLocalCategoryNames((prev) => ({
                                     ...prev,
                                     [newCode]:
-                                      prev[newCode] ?? catalogNameByCode[newCode] ?? newCode,
+                                      prev[newCode] ??
+                                      catalogNameByCode[newCode] ??
+                                      getCategoryDisplayNameHint(newCode),
                                   }));
                                 }}
                                 onNameSaved={(code, name) =>
                                   setLocalCategoryNames((prev) => ({ ...prev, [code]: name }))
                                 }
-                                usedCostCodes={usedCostCodesOnEstimate}
-                                onCategoryCreated={handleNewCategoryCreated}
+                                onSectionCreated={handleNewCategoryCreated}
                               />
                             )}
                           </div>
-                          <span className="tabular-nums text-sm font-medium text-foreground">
+                          <span className={EB.scopeBlockTotal}>
                             {formatEstimateCurrency(sectionTotal)}
                           </span>
                         </summary>
-                        <div className="border-t border-zinc-200 dark:border-border">
+                        <div className="border-t border-border/10">
                           <div className="overflow-x-auto">
                             {isReadOnly ? (
                               <table className="w-full text-sm">
                                 <thead>
-                                  <tr className="border-b border-zinc-200 dark:border-border bg-muted/10">
-                                    <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                                      Description
-                                    </th>
-                                    <th className="hidden md:table-cell text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-20">
+                                  <tr className={EB.lineTableHead}>
+                                    <th className="text-left py-2 px-4 font-normal">Description</th>
+                                    <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-20">
                                       Qty
                                     </th>
-                                    <th className="hidden md:table-cell text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">
-                                      Unit Price
+                                    <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-28">
+                                      Unit price
                                     </th>
-                                    <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">
+                                    <th className="text-right py-2 px-4 font-normal tabular-nums w-28">
                                       Total
                                     </th>
                                   </tr>
                                 </thead>
-                                <tbody>
-                                  {rows.map((row) => (
+                                {rows.map((row) => (
+                                  <tbody key={row.id} className="group/line">
                                     <LineItemRow
-                                      key={row.id}
                                       row={row}
                                       estimateId={estimateId}
-                                      categoryId={categoryId}
                                       isLocked
                                       updateLineItemAction={updateLineItemAction}
                                       duplicateLineItemAction={duplicateLineItemAction}
@@ -731,8 +710,8 @@ export function EstimateEditor({
                                       lineLiveValuesRef={lineLiveValuesRef}
                                       lineDescriptionApplyRef={lineDescriptionApplyRef}
                                     />
-                                  ))}
-                                </tbody>
+                                  </tbody>
+                                ))}
                               </table>
                             ) : (
                               <DndContext
@@ -746,18 +725,18 @@ export function EstimateEditor({
                                 >
                                   <table className="w-full text-sm">
                                     <thead>
-                                      <tr className="border-b border-zinc-200 dark:border-border bg-muted/10">
+                                      <tr className={EB.lineTableHead}>
                                         <th className="w-9 py-2 px-1" aria-label="Reorder" />
-                                        <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                                        <th className="text-left py-2 px-4 font-normal">
                                           Description
                                         </th>
-                                        <th className="hidden md:table-cell text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-20">
+                                        <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-20">
                                           Qty
                                         </th>
-                                        <th className="hidden md:table-cell text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">
-                                          Unit Price
+                                        <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-28">
+                                          Unit price
                                         </th>
-                                        <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">
+                                        <th className="text-right py-2 px-4 font-normal tabular-nums w-28">
                                           Total
                                         </th>
                                         <th className="w-20" />
@@ -768,7 +747,6 @@ export function EstimateEditor({
                                         key={row.id}
                                         row={row}
                                         estimateId={estimateId}
-                                        categoryId={categoryId}
                                         updateLineItemAction={updateLineItemAction}
                                         duplicateLineItemAction={duplicateLineItemAction}
                                         deleteLineItemAction={deleteLineItemAction}
@@ -783,19 +761,14 @@ export function EstimateEditor({
                             )}
                           </div>
                           {!isReadOnly && (
-                            <div className="px-4 py-2 border-t border-zinc-100 dark:border-border/50">
+                            <div className="px-3 py-2">
                               <form action={addLineItemAction} className="inline-block">
                                 <input type="hidden" name="estimateId" value={estimateId} />
                                 <input type="hidden" name="costCode" value={categoryId} />
-                                <Button
-                                  type="submit"
-                                  variant="outline"
-                                  size="sm"
-                                  className="btn-outline-ghost h-7 text-xs rounded-md border border-dashed border-zinc-300 dark:border-border text-muted-foreground hover:text-foreground"
-                                >
-                                  <Plus className="h-3.5 w-3.5 mr-1.5" />
-                                  Add line item
-                                </Button>
+                                <button type="submit" className={EB.addLineLink}>
+                                  <Plus className="h-3 w-3" aria-hidden />
+                                  Add line
+                                </button>
                               </form>
                             </div>
                           )}
@@ -804,7 +777,7 @@ export function EstimateEditor({
                     );
 
                     return isReadOnly ? (
-                      <div key={categoryId} className="border-b border-zinc-200 dark:border-border">
+                      <div key={categoryId} className={cn(EB.categoryGroup, "mb-4")}>
                         <details className="group" open={expandedCategoryIds.includes(categoryId)}>
                           {categorySectionBody(null)}
                         </details>
@@ -848,9 +821,8 @@ export function EstimateEditor({
               {!isReadOnly && (
                 <AddCategoryBlock
                   estimateId={estimateId}
-                  allCategoryCodes={categoryDropdownOptions.map((o) => o.code)}
+                  allCategoryCodes={sectionDropdownOptions.map((o) => o.code)}
                   getCategoryDisplayName={getCategoryDisplayNameHint}
-                  usedCostCodes={usedCostCodesOnEstimate}
                   pendingSelectNewCategory={pendingSelectNewCategory}
                   onPendingSelectNewCategoryConsumed={consumePendingSelectNewCategory}
                   onPostCreateCategoryUx={handleNewCategoryCreated}
@@ -936,18 +908,20 @@ export function EstimateEditor({
           </EstimateBuilderAdvanced>
         </div>
 
-        <aside className="hidden lg:block lg:sticky lg:top-6">
+        <aside className="hidden lg:block lg:sticky lg:top-6 lg:pl-2">
           <EstimateBuilderSummary summary={summary} showInternal={editing && !isReadOnly} />
         </aside>
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-4 py-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-sm lg:hidden"
+        className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/40 bg-background/95 px-4 py-4 shadow-[0_-8px_32px_rgba(0,0,0,0.04)] backdrop-blur-sm lg:hidden"
         aria-label="Estimate total"
       >
         <div className="flex items-baseline justify-between gap-4">
-          <span className="text-sm font-medium text-muted-foreground">Total</span>
-          <span className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+          <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground/50">
+            Total
+          </span>
+          <span className="text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight text-foreground">
             {summary ? formatEstimateCurrency(summary.grandTotal) : "—"}
           </span>
         </div>
@@ -959,7 +933,6 @@ export function EstimateEditor({
 function SortableLineItemGroup({
   row,
   estimateId,
-  categoryId,
   updateLineItemAction,
   duplicateLineItemAction,
   deleteLineItemAction,
@@ -969,7 +942,6 @@ function SortableLineItemGroup({
 }: {
   row: EstimateItemRow;
   estimateId: string;
-  categoryId: string;
   updateLineItemAction: (fd: FormData) => Promise<void>;
   duplicateLineItemAction: (fd: FormData) => Promise<void>;
   deleteLineItemAction: (fd: FormData) => Promise<void>;
@@ -989,11 +961,10 @@ function SortableLineItemGroup({
     transition,
   };
   return (
-    <tbody ref={setNodeRef} style={style} className={isDragging ? "opacity-60" : undefined}>
+    <tbody ref={setNodeRef} style={style} className={cn("group/line", isDragging && "opacity-60")}>
       <LineItemRow
         row={row}
         estimateId={estimateId}
-        categoryId={categoryId}
         isLocked={false}
         dragHandleProps={{ ...attributes, ...listeners }}
         updateLineItemAction={updateLineItemAction}
@@ -1010,7 +981,6 @@ function SortableLineItemGroup({
 function LineItemRow({
   row,
   estimateId,
-  categoryId,
   isLocked,
   dragHandleProps,
   updateLineItemAction,
@@ -1022,8 +992,6 @@ function LineItemRow({
 }: {
   row: EstimateItemRow;
   estimateId: string;
-  /** Same as row.cost_code / category key */
-  categoryId: string;
   isLocked: boolean;
   /** When set, first column is a drag handle (dnd-kit listeners + attributes on the button). */
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
@@ -1092,12 +1060,12 @@ function LineItemRow({
     return estimateLineTotal({ ...row, qty, unit, unitCost });
   }, [isLocked, row, qty, unit, unitCost]);
 
-  const [advancedOpen, setAdvancedOpen] = React.useState(false);
   const colSpan = isLocked ? 4 : dragHandleProps ? 6 : 5;
+  const showUnitInline = Boolean(unit.trim()) && unit.trim() !== "EA";
 
   return (
     <>
-      <tr className={cn("hidden md:table-row", EB.lineTableRow)}>
+      <tr className={cn("hidden md:table-row group/line", EB.lineTableRow)}>
         {dragHandleProps ? (
           <td className="py-2 px-1 align-top w-9">
             <button
@@ -1140,7 +1108,7 @@ function LineItemRow({
               value={qty}
               onChange={(e) => setQty(Number(e.target.value) || 0)}
               onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-              className={ebInput(`w-20 ${EB.inputNumeric} text-muted-foreground`)}
+              className={ebInput(`w-20 ${EB.inputNumeric} ${EB.inputMuted}`)}
               aria-label="Line item quantity"
             />
           )}
@@ -1157,7 +1125,7 @@ function LineItemRow({
               value={unitCost}
               onChange={(e) => setUnitCost(Number(e.target.value) || 0)}
               onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-              className={ebInput(`w-28 ${EB.inputNumeric} text-muted-foreground`)}
+              className={ebInput(`w-28 ${EB.inputNumeric} ${EB.inputMuted}`)}
               aria-label="Line item unit price"
             />
           )}
@@ -1166,38 +1134,74 @@ function LineItemRow({
           {formatEstimateCurrency(lineTotalDisplay)}
         </td>
         {!isLocked && (
-          <td className="py-2 px-2 align-top">
-            <form action={duplicateLineItemAction} className="inline">
-              <input type="hidden" name="estimateId" value={estimateId} />
-              <input type="hidden" name="itemId" value={row.id} />
-              <Button
-                type="submit"
-                variant="outline"
-                size="icon"
-                className="btn-outline-ghost h-8 w-8"
-                aria-label="Duplicate line item"
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </form>
-            <form action={deleteLineItemAction} className="inline">
-              <input type="hidden" name="estimateId" value={estimateId} />
-              <input type="hidden" name="itemId" value={row.id} />
-              <Button
-                type="submit"
-                variant="outline"
-                size="icon"
-                className="btn-outline-ghost h-8 w-8 text-destructive"
-                aria-label="Remove line item"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </form>
+          <td className={cn("py-2 px-2 align-top", EB.lineRowActions)}>
+            <div className="flex items-center justify-end gap-0.5">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 border-0 bg-transparent text-muted-foreground/50 shadow-none hover:bg-muted/40 hover:text-foreground"
+                    aria-label="Line item options"
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-36 p-2">
+                  <Label
+                    htmlFor={`${formId}-unit-menu`}
+                    className="text-[10px] text-muted-foreground/60"
+                  >
+                    Unit
+                  </Label>
+                  <Input
+                    id={`${formId}-unit-menu`}
+                    form={formId}
+                    name="unit"
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    onBlur={() =>
+                      (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()
+                    }
+                    className={ebInput("mt-1 h-7 w-full text-xs")}
+                    placeholder="EA"
+                    aria-label="Line item unit"
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <form action={duplicateLineItemAction} className="inline">
+                <input type="hidden" name="estimateId" value={estimateId} />
+                <input type="hidden" name="itemId" value={row.id} />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 border-0 bg-transparent text-muted-foreground/60 shadow-none hover:bg-muted/40 hover:text-foreground"
+                  aria-label="Duplicate line item"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </form>
+              <form action={deleteLineItemAction} className="inline">
+                <input type="hidden" name="estimateId" value={estimateId} />
+                <input type="hidden" name="itemId" value={row.id} />
+                <Button
+                  type="submit"
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 border-0 bg-transparent text-muted-foreground/50 shadow-none hover:bg-destructive/10 hover:text-destructive"
+                  aria-label="Remove line item"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </form>
+            </div>
           </td>
         )}
       </tr>
-      <tr className="hidden border-b border-border/40 bg-muted/5 md:table-row">
-        <td colSpan={colSpan} className="py-2 px-4 align-top">
+      <tr className="hidden border-b border-border/[0.07] md:table-row">
+        <td colSpan={colSpan} className="py-1.5 px-4 align-top">
           {!isLocked ? (
             <form id={formId} action={updateLineItemAction} className="hidden" aria-hidden>
               <input type="hidden" name="estimateId" value={estimateId} />
@@ -1217,35 +1221,17 @@ function LineItemRow({
               />
             ) : null
           ) : (
-            <button
-              type="button"
-              onClick={() => onOpenDescriptionEditor(row.id, title, desc)}
-              className="text-left text-sm text-muted-foreground cursor-pointer hover:underline w-full min-w-0"
-            >
-              {desc.trim() ? (
-                <span className="block line-clamp-2 overflow-hidden">
-                  <LineItemDescriptionBodyPreview
-                    body={desc}
-                    className="text-sm text-muted-foreground"
-                  />
-                </span>
-              ) : (
-                "Add details"
-              )}
-            </button>
-          )}
-          {!isLocked ? (
-            <details
-              className="mt-2 text-xs"
-              open={advancedOpen}
-              onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
-            >
-              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                Advanced
-              </summary>
-              <div className="mt-2 flex flex-wrap gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Unit</Label>
+            <div className="flex min-h-[1.25rem] flex-wrap items-center gap-x-3 gap-y-0.5">
+              <button
+                type="button"
+                onClick={() => onOpenDescriptionEditor(row.id, title, desc)}
+                className={EB.lineDetailsLink}
+              >
+                {desc.trim() ? "Edit details" : "Add details"}
+              </button>
+              {showUnitInline ? (
+                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/45">
+                  <span className="sr-only">Unit</span>
                   <Input
                     form={formId}
                     name="unit"
@@ -1254,17 +1240,14 @@ function LineItemRow({
                     onBlur={() =>
                       (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()
                     }
-                    className="h-9 w-20"
+                    className={ebInput("h-6 w-12 px-1 text-[11px]")}
+                    placeholder="Unit"
                     aria-label="Line item unit"
                   />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Category</Label>
-                  <span className="block pt-2 text-sm text-muted-foreground">{categoryId}</span>
-                </div>
-              </div>
-            </details>
-          ) : null}
+                </span>
+              ) : null}
+            </div>
+          )}
         </td>
       </tr>
     </>
@@ -1275,7 +1258,6 @@ function AddCategoryBlock({
   estimateId,
   allCategoryCodes,
   getCategoryDisplayName,
-  usedCostCodes,
   pendingSelectNewCategory,
   onPendingSelectNewCategoryConsumed,
   onPostCreateCategoryUx,
@@ -1283,7 +1265,6 @@ function AddCategoryBlock({
   estimateId: string;
   allCategoryCodes: string[];
   getCategoryDisplayName: (code: string) => string;
-  usedCostCodes: ReadonlySet<string>;
   pendingSelectNewCategory?: { code: string; displayName: string } | null;
   onPendingSelectNewCategoryConsumed?: () => void;
   /** Scroll + highlight + bottom-bar selection after creating a category from this block. */
@@ -1318,10 +1299,7 @@ function AddCategoryBlock({
   const filtered = React.useMemo(
     () =>
       allCodesWithLabels.filter(
-        (cc) =>
-          !searchLower ||
-          cc.code.toLowerCase().includes(searchLower) ||
-          (cc.name && cc.name.toLowerCase().includes(searchLower))
+        (cc) => !searchLower || (cc.name && cc.name.toLowerCase().includes(searchLower))
       ),
     [allCodesWithLabels, searchLower]
   );
@@ -1329,10 +1307,6 @@ function AddCategoryBlock({
   const hasMore = false;
   const noMatch = search.trim().length > 0 && filtered.length === 0;
   const canInstantCreate = search.trim().length > 0 && filtered.length === 0;
-  const nextGeneratedCode = React.useMemo(
-    () => pickNextUniqueCostCode(usedCostCodes),
-    [usedCostCodes]
-  );
 
   React.useEffect(() => {
     if (!pendingSelectNewCategory || !onPendingSelectNewCategoryConsumed) return;
@@ -1414,8 +1388,7 @@ function AddCategoryBlock({
       if (!trimmed) return;
       setBusy(true);
       try {
-        const nextCode = pickNextUniqueCostCode(usedCostCodes);
-        const res = await createEstimateCategoryWithCodeAction(estimateId, nextCode, trimmed);
+        const res = await createCustomEstimateCategoryAction(estimateId, trimmed);
         if (res.ok && res.costCode) {
           onPostCreateCategoryUx?.(res.costCode, trimmed);
           setSelectedCode(res.costCode);
@@ -1423,10 +1396,10 @@ function AddCategoryBlock({
           setSearch("");
           setOpen(false);
           syncRouterNonBlocking(router);
-          toast({ title: "Category created", variant: "success" });
+          toast({ title: "Section created", variant: "success" });
         } else {
           toast({
-            title: "Could not create category",
+            title: "Could not create section",
             description: res.error ?? "Try again.",
             variant: "error",
           });
@@ -1435,7 +1408,7 @@ function AddCategoryBlock({
         setBusy(false);
       }
     },
-    [estimateId, onPostCreateCategoryUx, router, toast, usedCostCodes]
+    [estimateId, onPostCreateCategoryUx, router, toast]
   );
 
   const handleInstantCreateCategory = () => {
@@ -1463,10 +1436,10 @@ function AddCategoryBlock({
           setCustomCategoryLabel(null);
           setOpen(false);
           syncRouterNonBlocking(router);
-          toast({ title: "Category added", variant: "success" });
+          toast({ title: "Section added", variant: "success" });
         } else {
           toast({
-            title: "Could not add category",
+            title: "Could not add section",
             description: res.error ?? "Try again.",
             variant: "error",
           });
@@ -1479,8 +1452,8 @@ function AddCategoryBlock({
     inputRef.current?.focus();
     setOpen(true);
     toast({
-      title: "Enter a category name",
-      description: "Type a name to create one, or pick a code from the list.",
+      title: "Enter a section name",
+      description: "Type a name to create one, or pick a section from the list.",
       variant: "error",
     });
   }, [
@@ -1546,28 +1519,25 @@ function AddCategoryBlock({
 
   const selectedCategoryDisplayValue = React.useMemo(() => {
     if (!selectedCode) return search;
-    const label = (customCategoryLabel ?? getCategoryDisplayName(selectedCode) ?? "").trim();
-    return label && label !== selectedCode ? `${selectedCode} - ${label}` : selectedCode;
+    return (customCategoryLabel ?? getCategoryDisplayName(selectedCode) ?? "").trim();
   }, [customCategoryLabel, getCategoryDisplayName, search, selectedCode]);
 
   return (
     <div
-      id="estimate-add-category"
+      id="estimate-add-section"
       ref={containerRef}
-      className="px-4 py-3 border-t border-zinc-200 dark:border-border"
+      className="border-t border-border/10 px-1 py-4"
     >
       <div className="flex flex-wrap items-end gap-3">
         <div className="relative flex-1 min-w-[220px] max-w-[300px]">
-          <Label
-            htmlFor="add-category-input"
-            className="text-xs font-medium text-muted-foreground mb-1.5 block"
-          >
-            Add category
+          <Label htmlFor="add-section-input" className={EB.label}>
+            Add section
           </Label>
           <div ref={anchorRef} className="relative">
             <Input
               ref={inputRef}
-              id="add-category-input"
+              id="add-section-input"
+              aria-label="Search or add section"
               type="text"
               value={open ? search : selectedCode ? selectedCategoryDisplayValue : search}
               onChange={(e) => {
@@ -1587,8 +1557,8 @@ function AddCategoryBlock({
               }}
               onFocus={() => setOpen(true)}
               onKeyDown={handleKeyDown}
-              placeholder="Search or select category…"
-              className="h-9 rounded-lg border border-zinc-200/60 dark:border-border bg-background px-3 text-sm pr-9"
+              placeholder="Search or add section…"
+              className={ebInput("h-9 pr-9")}
               autoComplete="off"
             />
             <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
@@ -1606,15 +1576,15 @@ function AddCategoryBlock({
                       width: menuPos.width,
                       maxHeight: menuPos.maxHeight,
                     }}
-                    className="z-[100] overflow-y-auto rounded-lg border border-zinc-200/60 dark:border-border bg-background py-1 shadow-lg"
+                    className={EB.commandMenu}
                   >
                     {visibleOptions.length === 0 && !canInstantCreate ? (
                       <li className="px-3 py-2 text-sm text-muted-foreground">
                         {noMatch
-                          ? "No matching category"
+                          ? "No matching section"
                           : allCodesWithLabels.length === 0
-                            ? "Type a name to create a category"
-                            : "No categories to add"}
+                            ? "Type a name to create a section"
+                            : "No sections to add"}
                       </li>
                     ) : (
                       <>
@@ -1623,11 +1593,14 @@ function AddCategoryBlock({
                             key={cc.code}
                             role="option"
                             aria-selected={highlightIndex === i}
-                            className={`cursor-pointer px-3 py-2 text-sm ${highlightIndex === i ? "bg-zinc-100 dark:bg-zinc-800 text-foreground" : "text-foreground hover:bg-zinc-50 dark:hover:bg-zinc-800/50"}`}
+                            className={cn(
+                              EB.commandMenuItem,
+                              highlightIndex === i && EB.commandMenuItemActive
+                            )}
                             onMouseEnter={() => setHighlightIndex(i)}
                             onClick={() => handleSelect(cc.code)}
                           >
-                            {cc.code} – {cc.name}
+                            {cc.name}
                           </li>
                         ))}
                         {canInstantCreate ? (
@@ -1651,9 +1624,7 @@ function AddCategoryBlock({
                             onClick={() => handleInstantCreateCategory()}
                           >
                             <Plus className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-                            <span>
-                              Create &quot;{nextGeneratedCode} - {search.trim()}&quot;
-                            </span>
+                            <span>Create &quot;{search.trim()}&quot;</span>
                           </li>
                         ) : null}
                       </>
@@ -1682,7 +1653,7 @@ function AddCategoryBlock({
           ) : (
             <Plus className="h-4 w-4 mr-2" aria-hidden />
           )}
-          {busy ? "Adding…" : "Add category"}
+          {busy ? "Adding…" : "Add Section"}
         </Button>
       </div>
     </div>

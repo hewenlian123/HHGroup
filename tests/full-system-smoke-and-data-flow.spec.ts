@@ -555,7 +555,7 @@ async function createEstimateForProject(
   await selectCustomer(page, params.customerName);
   await page.getByPlaceholder("Project name").fill(params.projectName);
   await page
-    .getByRole("button", { name: /^Add Category$/i })
+    .getByRole("button", { name: /^Add Section$/i })
     .first()
     .click();
   await page.getByLabel("Line item 1 title").fill(params.lineTitle);

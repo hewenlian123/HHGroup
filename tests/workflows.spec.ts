@@ -124,9 +124,9 @@ test.describe("workflows", () => {
       await projectInput.fill("Playwright Project");
     }
 
-    const addCategoryBtn = page.getByRole("button", { name: /^Add Category$/i }).first();
-    await expect(addCategoryBtn).toBeVisible({ timeout: 15_000 });
-    await addCategoryBtn.click();
+    const addSectionBtn = page.getByRole("button", { name: /^Add Section$/i }).first();
+    await expect(addSectionBtn).toBeVisible({ timeout: 15_000 });
+    await addSectionBtn.click();
 
     const categoryNameInput = page.locator("details input[placeholder]").first();
     await expect(categoryNameInput).toBeVisible({ timeout: 10_000 });

@@ -21,8 +21,8 @@ export function EstimateBuilderSummary({
 }: EstimateBuilderSummaryProps): React.ReactElement {
   if (!summary) {
     return (
-      <div className={cn("py-1", className)} aria-label="Estimate summary">
-        <p className="text-sm text-muted-foreground/70">Add line items to see totals.</p>
+      <div className={cn("py-2", className)} aria-label="Estimate summary">
+        <p className="text-xs text-muted-foreground/45">Add scope lines to see totals.</p>
       </div>
     );
   }
@@ -39,30 +39,30 @@ export function EstimateBuilderSummary({
   } = summary;
 
   return (
-    <div className={cn("space-y-5", className)} aria-label="Estimate summary">
+    <div className={cn("flex flex-col pt-1", className)} aria-label="Estimate summary">
       {showInternal ? (
-        <div className="space-y-1 text-xs text-muted-foreground/65">
-          <p className="font-medium uppercase tracking-[0.08em] text-muted-foreground/55">
+        <div className="mb-6 space-y-0.5">
+          <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/35">
             Internal
           </p>
-          <SummaryLine label="Material" value={materialCost} />
-          <SummaryLine label="Labor" value={laborCost} />
-          <SummaryLine label="Subcontractor" value={subcontractorCost} />
+          <InternalLine label="Material" value={materialCost} />
+          <InternalLine label="Labor" value={laborCost} />
+          <InternalLine label="Subcontractor" value={subcontractorCost} />
         </div>
       ) : null}
 
-      <div className="space-y-1.5">
+      <div className="space-y-0.5">
         <SummaryLine label="Subtotal" value={subtotal} />
         {discount > 0 ? <SummaryLine label="Discount" value={-discount} /> : null}
         {tax > 0 ? <SummaryLine label="Tax" value={tax} /> : null}
-        {showInternal && markup > 0 ? <SummaryLine label="Markup" value={markup} /> : null}
+        {showInternal && markup > 0 ? <SummaryLine label="Markup" value={markup} muted /> : null}
       </div>
 
-      <div className="space-y-1 pt-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground/55">
+      <div className="mt-8 pt-2">
+        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/40">
           Total
         </p>
-        <p className="text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+        <p className="mt-3 text-[2.25rem] font-semibold leading-none tabular-nums tracking-tight text-foreground">
           {fmt(grandTotal)}
         </p>
       </div>
@@ -70,11 +70,35 @@ export function EstimateBuilderSummary({
   );
 }
 
-function SummaryLine({ label, value }: { label: string; value: number }): React.ReactElement {
+function SummaryLine({
+  label,
+  value,
+  muted = false,
+}: {
+  label: string;
+  value: number;
+  muted?: boolean;
+}): React.ReactElement {
   return (
-    <div className="flex items-baseline justify-between gap-3 text-sm">
-      <span className="text-muted-foreground/70">{label}</span>
-      <span className="tabular-nums text-muted-foreground/85">{fmt(value)}</span>
+    <div className="flex items-baseline justify-between gap-3 py-0.5">
+      <span className="text-[11px] text-muted-foreground/45">{label}</span>
+      <span
+        className={cn(
+          "text-[11px] tabular-nums",
+          muted ? "text-muted-foreground/35" : "text-muted-foreground/55"
+        )}
+      >
+        {fmt(value)}
+      </span>
+    </div>
+  );
+}
+
+function InternalLine({ label, value }: { label: string; value: number }): React.ReactElement {
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-0.5">
+      <span className="text-[11px] text-muted-foreground/40">{label}</span>
+      <span className="text-[11px] tabular-nums text-muted-foreground/45">{fmt(value)}</span>
     </div>
   );
 }
