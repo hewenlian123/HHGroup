@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChevronDown, Copy, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ebInput } from "./estimate-builder-ui";
 import { formatEstimateCurrency } from "./estimate-currency";
 import type { EditorLineItem } from "./estimate-line-item-model";
 import { editorLineTotal } from "./estimate-line-item-model";
@@ -55,8 +56,8 @@ export function EstimateLineItemMobileCard({
   return (
     <article
       className={cn(
-        "rounded-sm border border-border/60 bg-background",
-        expanded && "ring-1 ring-border/80"
+        "rounded-sm border border-border/35 bg-background",
+        expanded && "border-border/50"
       )}
     >
       <button
@@ -88,9 +89,9 @@ export function EstimateLineItemMobileCard({
       </button>
 
       {expanded ? (
-        <div className="space-y-3 border-t border-border/60 px-3 pb-3 pt-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Description</Label>
+        <div className="space-y-3 border-t border-border/30 px-3 pb-3 pt-2">
+          <div className="space-y-1">
+            <Label className="text-[11px] font-medium text-muted-foreground/70">Description</Label>
             {readOnly ? (
               <p className="text-sm text-foreground">{item.title || "—"}</p>
             ) : (
@@ -99,7 +100,7 @@ export function EstimateLineItemMobileCard({
                 onChange={(e) => onChange({ title: e.target.value })}
                 onBlur={onBlurField}
                 onKeyDown={handleEnter}
-                className="min-h-11 text-sm"
+                className={ebInput("min-h-11 font-medium")}
                 placeholder="Description"
                 aria-label={`Line item ${rowIndex} title`}
                 aria-invalid={titleInvalid}
@@ -109,7 +110,7 @@ export function EstimateLineItemMobileCard({
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Qty</Label>
+              <Label className="text-[11px] font-medium text-muted-foreground/70">Qty</Label>
               {readOnly ? (
                 <p className="text-sm tabular-nums">{item.qty}</p>
               ) : (
@@ -121,14 +122,14 @@ export function EstimateLineItemMobileCard({
                   onChange={(e) => onChange({ qty: Number(e.target.value) || 0 })}
                   onBlur={onBlurField}
                   onKeyDown={handleEnter}
-                  className="min-h-11 text-right tabular-nums"
+                  className={ebInput("min-h-11 text-muted-foreground")}
                   aria-label={`Line item ${rowIndex} quantity`}
                   disabled={disabled}
                 />
               )}
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Unit price</Label>
+              <Label className="text-[11px] font-medium text-muted-foreground/70">Unit price</Label>
               {readOnly ? (
                 <p className="text-sm tabular-nums text-right">
                   {formatEstimateCurrency(item.unitPrice)}
@@ -142,7 +143,7 @@ export function EstimateLineItemMobileCard({
                   onChange={(e) => onChange({ unitPrice: Number(e.target.value) || 0 })}
                   onBlur={onBlurField}
                   onKeyDown={handleEnter}
-                  className="min-h-11 text-right tabular-nums"
+                  className={ebInput("min-h-11 text-muted-foreground")}
                   aria-label={`Line item ${rowIndex} unit price`}
                   disabled={disabled}
                 />

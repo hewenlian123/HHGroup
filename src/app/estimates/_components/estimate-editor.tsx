@@ -73,6 +73,8 @@ import type { LineItemDescriptionRichTextHandle } from "./line-item-description-
 import { formatEstimateCurrency, roundEstimateCurrencyValue } from "./estimate-currency";
 import { EstimateBuilderSummary } from "./estimate-builder-summary";
 import { EstimateBuilderAdvanced } from "./estimate-builder-advanced";
+import { EstimateEditCustomerSection } from "./estimate-edit-customer-section";
+import { EB, ebInput } from "./estimate-builder-ui";
 import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { ESTIMATE_LINE_ITEM_PRESETS } from "./estimate-line-item-presets";
 import { pickCostCodeForPreset } from "./estimate-line-item-model";
@@ -564,260 +566,24 @@ export function EstimateEditor({
     <React.Fragment>
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-10 lg:items-start">
         <div className="min-w-0 space-y-8 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
-          <section className="border-b border-border/60 pb-6">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <h2 className="text-sm font-semibold text-foreground">Customer & project</h2>
-                <p className="mt-0.5 text-sm text-muted-foreground truncate">
-                  {meta.client.name || "Add customer"}
-                  {meta.project.name ? ` · ${meta.project.name}` : ""}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="btn-outline-ghost rounded-md h-8 text-muted-foreground hover:text-foreground"
-                onClick={() => setInfoOpen(!infoOpen)}
-              >
-                {infoOpen ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-                {infoOpen ? "Done" : "Edit details"}
-              </Button>
-            </div>
-            <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-              <div className="min-w-0">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                  Client
-                </div>
-                <div className="truncate font-medium text-foreground">
-                  {meta.client.name || "—"}
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                  Project
-                </div>
-                <div className="truncate font-medium text-foreground">
-                  {meta.project.name || "—"}
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                  Estimate #
-                </div>
-                <div className="truncate font-medium text-foreground tabular-nums">
-                  {estimateNumber}
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                  Status
-                </div>
-                <div className="pt-0.5">
-                  <EstimateStatusBadge
-                    status={status === "Converted" ? "Converted" : status}
-                    label={status === "Converted" ? "Converted to Project" : undefined}
-                    className="text-xs"
-                  />
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                  Address
-                </div>
-                <div className="truncate text-muted-foreground">{meta.client.address || "—"}</div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                  Estimate Date
-                </div>
-                <div className="tabular-nums text-muted-foreground">
-                  {meta.estimateDate ?? today}
-                </div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                  Valid Until
-                </div>
-                <div className="tabular-nums text-muted-foreground">{meta.validUntil ?? "—"}</div>
-              </div>
-              <div className="min-w-0">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                  Sales
-                </div>
-                <div className="truncate text-muted-foreground">{meta.salesPerson ?? "—"}</div>
-              </div>
-            </div>
+          <EstimateEditCustomerSection
+            meta={meta}
+            estimateId={estimateId}
+            estimateNumber={estimateNumber}
+            status={status}
+            today={today}
+            infoOpen={infoOpen}
+            onToggleInfo={() => setInfoOpen(!infoOpen)}
+            isReadOnly={isReadOnly}
+            markupPct={markupPct}
+            tax={summary?.tax ?? 0}
+            discount={summary?.discount ?? 0}
+            saveEstimateMetaAction={saveEstimateMetaAction}
+          />
 
-            {infoOpen && (
-              <form
-                id="estimate-meta-form"
-                action={saveEstimateMetaAction}
-                className="p-4 pt-0 space-y-4"
-              >
-                <input type="hidden" name="estimateId" value={estimateId} />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="clientName" className="text-xs">
-                      Client / Customer
-                    </Label>
-                    <Input
-                      id="clientName"
-                      name="clientName"
-                      defaultValue={meta.client.name}
-                      placeholder="Client or company name"
-                      className="h-8 rounded-md text-sm"
-                      readOnly={isReadOnly}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="projectName" className="text-xs">
-                      Project
-                    </Label>
-                    <Input
-                      id="projectName"
-                      name="projectName"
-                      defaultValue={meta.project.name}
-                      placeholder="Project name"
-                      className="h-8 rounded-md text-sm"
-                      readOnly={isReadOnly}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5 pt-2 border-t border-zinc-200 dark:border-border">
-                  <Label htmlFor="address" className="text-xs">
-                    Address
-                  </Label>
-                  <Input
-                    id="address"
-                    name="address"
-                    defaultValue={meta.client.address}
-                    placeholder="Site or client address"
-                    className="h-8 rounded-md text-sm"
-                    readOnly={isReadOnly}
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200 dark:border-border">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Estimate Number</Label>
-                    <Input
-                      value={estimateNumber}
-                      className="h-8 rounded-md text-sm bg-muted/50"
-                      readOnly
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="estimateDate" className="text-xs">
-                      Estimate Date
-                    </Label>
-                    <Input
-                      id="estimateDate"
-                      name="estimateDate"
-                      type="date"
-                      defaultValue={meta.estimateDate ?? today}
-                      className="h-8 rounded-md text-sm"
-                      readOnly={isReadOnly}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="validUntil" className="text-xs">
-                      Valid Until
-                    </Label>
-                    <Input
-                      id="validUntil"
-                      name="validUntil"
-                      type="date"
-                      defaultValue={meta.validUntil ?? ""}
-                      className="h-8 rounded-md text-sm"
-                      readOnly={isReadOnly}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200 dark:border-border">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="salesPerson" className="text-xs">
-                      Sales Person
-                    </Label>
-                    <Input
-                      id="salesPerson"
-                      name="salesPerson"
-                      defaultValue={meta.salesPerson ?? ""}
-                      placeholder="Optional"
-                      className="h-8 rounded-md text-sm"
-                      readOnly={isReadOnly}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="notes" className="text-xs">
-                      Notes
-                    </Label>
-                    <Input
-                      id="notes"
-                      name="notes"
-                      defaultValue={meta.notes ?? ""}
-                      placeholder="Optional notes"
-                      className="h-8 rounded-md text-sm"
-                      readOnly={isReadOnly}
-                    />
-                  </div>
-                </div>
-                {summary && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-zinc-200 dark:border-border">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="tax" className="text-xs">
-                        Tax ($)
-                      </Label>
-                      <Input
-                        id="tax"
-                        name="tax"
-                        type="number"
-                        step="0.01"
-                        defaultValue={summary.tax}
-                        className="h-8 rounded-md text-sm"
-                        readOnly={isReadOnly}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="discount" className="text-xs">
-                        Discount ($)
-                      </Label>
-                      <Input
-                        id="discount"
-                        name="discount"
-                        type="number"
-                        step="0.01"
-                        defaultValue={summary.discount}
-                        className="h-8 rounded-md text-sm"
-                        readOnly={isReadOnly}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="markupPct" className="text-xs">
-                        Markup (%)
-                      </Label>
-                      <Input
-                        id="markupPct"
-                        name="markupPct"
-                        type="number"
-                        step="0.1"
-                        defaultValue={markupPct}
-                        className="h-8 rounded-md text-sm"
-                        readOnly={isReadOnly}
-                      />
-                    </div>
-                  </div>
-                )}
-              </form>
-            )}
-          </section>
-
-          <section className="border-b border-border/60 pb-8">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-foreground">Line items</h2>
+          <section className={EB.section}>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <h2 className={EB.sectionTitle}>Line items</h2>
               {!isReadOnly ? (
                 <EstimateLineItemsToolbar
                   onAddCategory={() => {
@@ -1332,7 +1098,7 @@ function LineItemRow({
 
   return (
     <>
-      <tr className="hidden border-b border-border/40 hover:bg-muted/10 transition-colors md:table-row">
+      <tr className={cn("hidden md:table-row", EB.lineTableRow)}>
         {dragHandleProps ? (
           <td className="py-2 px-1 align-top w-9">
             <button
@@ -1356,7 +1122,7 @@ function LineItemRow({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-                className="h-9 text-sm"
+                className={ebInput("font-medium")}
                 placeholder="Description"
                 aria-label="Line item description"
               />
@@ -1375,7 +1141,7 @@ function LineItemRow({
               value={qty}
               onChange={(e) => setQty(Number(e.target.value) || 0)}
               onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-              className="h-9 w-20 text-right tabular-nums"
+              className={ebInput(`w-20 ${EB.inputNumeric} text-muted-foreground`)}
               aria-label="Line item quantity"
             />
           )}
@@ -1392,12 +1158,12 @@ function LineItemRow({
               value={unitCost}
               onChange={(e) => setUnitCost(Number(e.target.value) || 0)}
               onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-              className="h-9 w-28 text-right tabular-nums"
+              className={ebInput(`w-28 ${EB.inputNumeric} text-muted-foreground`)}
               aria-label="Line item unit price"
             />
           )}
         </td>
-        <td className="py-2 px-4 align-top text-right tabular-nums font-semibold">
+        <td className={cn("py-3 px-4 align-top text-right", EB.lineTotal)}>
           {formatEstimateCurrency(lineTotalDisplay)}
         </td>
         {!isLocked && (

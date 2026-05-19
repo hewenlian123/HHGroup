@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Copy, Trash2, ChevronRight } from "lucide-react";
 import type { CostCode } from "@/lib/data";
+import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
 import {
   type EditorLineItem,
@@ -15,6 +16,7 @@ import {
 import { ESTIMATE_LINE_ITEM_PRESETS } from "./estimate-line-item-presets";
 import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { EstimateLineItemMobileCard } from "./estimate-line-item-mobile-card";
+import { EB, ebInput } from "./estimate-builder-ui";
 
 function AutoExpandTextarea({
   value,
@@ -154,9 +156,9 @@ export function EstimateLineItemsLocal({
   };
 
   return (
-    <section className="border-b border-border/60 pb-8">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-foreground">Line items</h2>
+    <section className={EB.section}>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h2 className={EB.sectionTitle}>Line items</h2>
         <EstimateLineItemsToolbar
           onAddCategory={addCategory}
           addCategoryDisabled={disabled || codesWithoutItems.length === 0}
@@ -211,7 +213,7 @@ export function EstimateLineItemsLocal({
           const rows = itemsByCode[code];
           const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
           return (
-            <div key={code} className="border-b border-border/40 pb-4 last:border-0">
+            <div key={code} className="pb-6 last:pb-0">
               <details className="group" open>
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2 [&::-webkit-details-marker]:hidden">
                   <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -219,7 +221,7 @@ export function EstimateLineItemsLocal({
                     <Input
                       value={displayName}
                       onChange={(e) => setCategoryName(code, e.target.value)}
-                      className="h-8 max-w-[240px] border-0 bg-transparent font-medium text-sm shadow-none focus-visible:ring-1"
+                      className="h-8 max-w-[240px] border-0 bg-transparent px-0 font-medium text-sm shadow-none focus-visible:ring-0"
                       placeholder={cc.name}
                       onClick={(e) => e.stopPropagation()}
                       onPointerDown={(e) => e.stopPropagation()}
@@ -233,11 +235,11 @@ export function EstimateLineItemsLocal({
                 <div className="mt-2">
                   <table className="w-full table-fixed text-sm">
                     <thead>
-                      <tr className="border-b border-border/60 text-xs text-muted-foreground">
-                        <th className="pb-2 text-left font-medium">Description</th>
-                        <th className="w-20 pb-2 text-right font-medium">Qty</th>
-                        <th className="w-28 pb-2 text-right font-medium">Unit Price</th>
-                        <th className="w-28 pb-2 text-right font-medium">Total</th>
+                      <tr className={EB.lineTableHead}>
+                        <th className="pb-2.5 text-left font-medium">Description</th>
+                        <th className="w-20 pb-2.5 text-right font-medium">Qty</th>
+                        <th className="w-28 pb-2.5 text-right font-medium">Unit price</th>
+                        <th className="w-28 pb-2.5 text-right font-medium">Total</th>
                         <th className="w-20 pb-2" />
                       </tr>
                     </thead>
@@ -249,8 +251,8 @@ export function EstimateLineItemsLocal({
                         const isLast = row.id === lastItemId;
                         return (
                           <React.Fragment key={row.id}>
-                            <tr className="border-b border-border/30">
-                              <td className="py-2 pr-2 align-top">
+                            <tr className={EB.lineTableRow}>
+                              <td className="py-3 pr-3 align-top">
                                 <Input
                                   value={row.title}
                                   onChange={(e) => updateItem(row.id, { title: e.target.value })}
@@ -260,7 +262,7 @@ export function EstimateLineItemsLocal({
                                       handleEnterAddNext(code);
                                     }
                                   }}
-                                  className="h-9 text-sm"
+                                  className={ebInput("font-medium")}
                                   placeholder="Description"
                                   aria-label={`Line item ${globalIdx} title`}
                                   aria-invalid={
@@ -269,7 +271,7 @@ export function EstimateLineItemsLocal({
                                   disabled={disabled}
                                 />
                               </td>
-                              <td className="py-2 pr-2 align-top">
+                              <td className="py-3 pr-2 align-top">
                                 <Input
                                   type="number"
                                   min={0}
@@ -284,12 +286,14 @@ export function EstimateLineItemsLocal({
                                       handleEnterAddNext(code);
                                     }
                                   }}
-                                  className="h-9 w-full text-right tabular-nums"
+                                  className={ebInput(
+                                    `w-full ${EB.inputNumeric} text-muted-foreground`
+                                  )}
                                   aria-label={`Line item ${globalIdx} quantity`}
                                   disabled={disabled}
                                 />
                               </td>
-                              <td className="py-2 pr-2 align-top">
+                              <td className="py-3 pr-2 align-top">
                                 <Input
                                   type="number"
                                   min={0}
@@ -304,15 +308,17 @@ export function EstimateLineItemsLocal({
                                       handleEnterAddNext(code);
                                     }
                                   }}
-                                  className="h-9 w-full text-right tabular-nums"
+                                  className={ebInput(
+                                    `w-full ${EB.inputNumeric} text-muted-foreground`
+                                  )}
                                   aria-label={`Line item ${globalIdx} unit price`}
                                   disabled={disabled}
                                 />
                               </td>
-                              <td className="py-2 pr-2 text-right align-top tabular-nums font-semibold">
+                              <td className={cn("py-3 pr-2 text-right align-top", EB.lineTotal)}>
                                 {formatEstimateCurrency(editorLineTotal(row))}
                               </td>
-                              <td className="py-2 align-top">
+                              <td className="py-3 align-top">
                                 <div className="flex justify-end gap-1">
                                   <Button
                                     type="button"
