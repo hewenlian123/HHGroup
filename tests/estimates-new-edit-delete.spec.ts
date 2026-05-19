@@ -6,6 +6,11 @@ import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 const createdClientNames = new Set<string>();
 const createdProjectNames = new Set<string>();
 
+function isEstimatesListUrl(url: URL): boolean {
+  const pathname = url.pathname;
+  return pathname === "/estimates" || pathname === "/estimates/";
+}
+
 async function cleanupEstimateTestData(
   clientNames: Iterable<string>,
   projectNames: Iterable<string>
@@ -65,10 +70,35 @@ async function fillNewEstimate(
   await expect(addCategory).toBeVisible({ timeout: 30_000 });
   await addCategory.click();
 
-  await expect(page.getByLabel("Line item 1 title")).toBeVisible({ timeout: 15_000 });
-  await page.getByLabel("Line item 1 title").fill(params.lineTitle);
-  await page.getByLabel("Line item 1 quantity").fill(params.quantity ?? "2");
-  await page.getByLabel("Line item 1 unit price").fill(params.unitPrice ?? "125.5");
+  const lineTitleInput = page.getByLabel("Line item 1 title").locator("visible=true");
+  await expect(lineTitleInput).toBeVisible({ timeout: 15_000 });
+  await lineTitleInput.fill(params.lineTitle);
+  await page
+    .getByLabel("Line item 1 quantity")
+    .locator("visible=true")
+    .fill(params.quantity ?? "2");
+  await page
+    .getByLabel("Line item 1 unit price")
+    .locator("visible=true")
+    .fill(params.unitPrice ?? "125.5");
+}
+
+/** Wait until no estimate list row links mention this client (post-delete). */
+async function expectNoEstimateListRowForClient(page: Page, clientName: string): Promise<void> {
+  const listSearch = page.locator('input[placeholder="Search estimates…"]:visible').first();
+  await expect(listSearch).toBeVisible({ timeout: 30_000 });
+  await listSearch.fill(clientName);
+  await expect
+    .poll(
+      async () =>
+        page
+          .locator("main")
+          .locator('a[href^="/estimates/"]')
+          .filter({ hasText: clientName })
+          .count(),
+      { timeout: 30_000 }
+    )
+    .toBe(0);
 }
 
 async function createEstimate(
@@ -96,7 +126,9 @@ async function createEstimate(
   await expect(page.getByText(params.clientName, { exact: true }).first()).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByText(params.lineTitle, { exact: true }).first()).toBeVisible({
+  await expect(
+    page.getByText(params.lineTitle, { exact: true }).locator("visible=true")
+  ).toBeVisible({
     timeout: 30_000,
   });
   return page.url();
@@ -129,7 +161,7 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   const estimatesLink = page.locator('main a[href="/financial/estimates"]').first();
   await expect(estimatesLink).toBeVisible({ timeout: 30_000 });
   await estimatesLink.click();
-  await expect(page).toHaveURL(/\/estimates(?:[/?#]|$)/, { timeout: 30_000 });
+  await expect(page).toHaveURL(isEstimatesListUrl, { timeout: 30_000 });
 
   await page.locator('main a[href="/estimates/new"]:visible').first().click();
   await expect(page).toHaveURL(/\/estimates\/new(?:[/?#]|$)/, { timeout: 30_000 });
@@ -146,9 +178,15 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
 
   await fillNewEstimate(page, { clientName, projectName, lineTitle });
   await page.getByRole("button", { name: /Add Line Item/i }).click();
-  await expect(page.getByLabel("Line item 2 title")).toBeVisible({ timeout: 10_000 });
-  await page.getByRole("button", { name: "Remove line item" }).last().click();
-  await expect(page.getByLabel("Line item 2 title")).toHaveCount(0);
+  await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toBeVisible({
+    timeout: 10_000,
+  });
+  await page
+    .getByRole("button", { name: "Remove line item" })
+    .locator("visible=true")
+    .last()
+    .click();
+  await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toHaveCount(0);
 
   const saveEstimate = page.getByRole("button", { name: "Save Estimate" });
   await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
@@ -157,7 +195,7 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   await expect(page.getByText(clientName, { exact: true }).first()).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByText(lineTitle, { exact: true }).first()).toBeVisible({
+  await expect(page.getByText(lineTitle, { exact: true }).locator("visible=true")).toBeVisible({
     timeout: 30_000,
   });
 
@@ -186,32 +224,36 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   const saveButton = page.getByRole("button", { name: "Save", exact: true });
   await expect(saveButton).toBeEnabled({ timeout: 10_000 });
   await saveButton.click();
-  await expect(page.getByText(savedClientName, { exact: true }).first()).toBeVisible({
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
     timeout: 30_000,
   });
+  await expect
+    .poll(async () => {
+      const subtitle = page.locator("header").locator("p").first();
+      return (await subtitle.textContent())?.includes(savedClientName) ?? false;
+    })
+    .toBe(true);
 
-  await page.getByRole("button", { name: "Delete" }).click();
+  await page.getByRole("button", { name: "Delete estimate" }).click();
   let deleteDialog = page.getByRole("dialog", { name: "Delete estimate?" });
   await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
   await deleteDialog.getByRole("button", { name: "Cancel" }).click();
-  await expect(page.getByText(savedClientName, { exact: true }).first()).toBeVisible({
+  await expect(
+    page.getByText(savedClientName, { exact: true }).locator("visible=true")
+  ).toBeVisible({
     timeout: 10_000,
   });
 
-  await page.getByRole("button", { name: "Delete" }).click();
+  await page.getByRole("button", { name: "Delete estimate" }).click();
   deleteDialog = page.getByRole("dialog", { name: "Delete estimate?" });
   await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
-  await Promise.all([
-    page.waitForURL(/\/estimates(?:[/?#]|$)/, { timeout: 30_000 }),
-    deleteDialog.getByRole("button", { name: "Delete" }).click({ force: true }),
-  ]);
+  await deleteDialog.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(page).toHaveURL(isEstimatesListUrl, { timeout: 30_000 });
+  await expect(
+    page.getByRole("heading", { name: "Estimates", level: 1 }).locator("visible=true")
+  ).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("body")).not.toContainText("Something went wrong");
-
-  await expect(listSearch).toBeVisible({ timeout: 30_000 });
-  await listSearch.fill(savedClientName);
-  await expect(page.getByText(savedClientName, { exact: true })).toHaveCount(0, {
-    timeout: 30_000,
-  });
+  await expectNoEstimateListRowForClient(page, savedClientName);
 });
 
 test("opens approved estimate conversion without creating a project", async ({ page }) => {
@@ -224,15 +266,17 @@ test("opens approved estimate conversion without creating a project", async ({ p
 
   await createEstimate(page, { clientName, projectName, lineTitle });
 
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator("header").getByText("Sent", { exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+
   const statusButton = page.getByRole("button", { name: /^Status/i });
   await expect(statusButton).toBeEnabled({ timeout: 15_000 });
   await statusButton.click();
-  await page.getByRole("menuitem", { name: "Send" }).click();
-  await expect(page.locator("header").getByText("Sent")).toBeVisible({ timeout: 30_000 });
-
-  await expect(statusButton).toBeEnabled({ timeout: 15_000 });
-  await statusButton.click();
-  await page.getByRole("menuitem", { name: "Mark accepted" }).click();
+  const markAccepted = page.getByRole("menuitem", { name: /Mark accepted/i });
+  await expect(markAccepted).toBeVisible({ timeout: 15_000 });
+  await markAccepted.click();
   await expect(page.locator("header").getByText("Approved")).toBeVisible({ timeout: 30_000 });
 
   await page.getByRole("button", { name: "Convert to Project" }).click();
@@ -268,7 +312,9 @@ test("formats fractional-cent estimate amounts as standard currency", async ({ p
     unitPrice: "0.011",
   });
   await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
-  await expect(page.getByText("$0.01").first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("$0.01").locator("visible=true").first()).toBeVisible({
+    timeout: 30_000,
+  });
 
   const saveEstimate = page.getByRole("button", { name: "Save Estimate" });
   await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
@@ -277,12 +323,16 @@ test("formats fractional-cent estimate amounts as standard currency", async ({ p
 
   const detailUrl = page.url();
   await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
-  await expect(page.getByText("$0.01").first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("$0.01").locator("visible=true").first()).toBeVisible({
+    timeout: 30_000,
+  });
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
-  await expect(page.getByText("$0.01").first()).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('input[name="unitCost"]').first()).toHaveValue("0.01");
+  await expect(page.getByText("$0.01").locator("visible=true").first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.locator('input[name="unitCost"]').locator("visible=true")).toHaveValue("0.01");
   await page.getByRole("button", { name: "Cancel" }).click();
 
   await page.goto("/estimates");
@@ -294,23 +344,27 @@ test("formats fractional-cent estimate amounts as standard currency", async ({ p
     timeout: 30_000,
   });
   await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
-  await expect(page.getByText("$0.01").first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("$0.01").locator("visible=true").first()).toBeVisible({
+    timeout: 30_000,
+  });
 
   await page.goto(`${detailUrl}/preview`);
   await page.waitForLoadState("domcontentloaded");
   await expect(page.locator("body")).not.toContainText(rawFractionalCurrency);
-  await expect(page.getByText("$0.01").first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("$0.01").locator("visible=true").first()).toBeVisible({
+    timeout: 30_000,
+  });
 });
 
 test("keeps estimate actions usable on mobile", async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
 
   await page.goto("/financial/estimates");
   await page.waitForLoadState("domcontentloaded");
-  await expect(page).toHaveURL(/\/estimates(?:[/?#]|$)/, { timeout: 30_000 });
+  await expect(page).toHaveURL(isEstimatesListUrl, { timeout: 30_000 });
   await expect(page.locator("body")).not.toContainText("Something went wrong");
-  await expect(page.getByRole("heading", { name: "Estimates" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: "Estimates", level: 1 })).toBeVisible({
     timeout: 30_000,
   });
   await expect(page.getByLabel("New estimate")).toBeVisible({ timeout: 30_000 });
@@ -328,4 +382,44 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   await expect(page.getByText("Client name is required.").first()).toBeVisible();
   await expect(page.getByText("Project name is required.").first()).toBeVisible();
   await expect(page.getByText("At least one line item is required.").first()).toBeVisible();
+
+  const suffix = Date.now();
+  const clientName = `PW Estimate Mobile ${suffix}`;
+  const projectName = `PW Estimate Mobile Project ${suffix}`;
+  const lineTitle = `PW mobile line ${suffix}`;
+  createdClientNames.add(clientName);
+  createdProjectNames.add(projectName);
+
+  await page.getByPlaceholder("Client or company name").fill(clientName);
+  await page.getByPlaceholder("Project name").fill(projectName);
+  await page
+    .getByRole("button", { name: /^Add Category$/i })
+    .first()
+    .click();
+
+  const lineCard = page.getByRole("article").first();
+  await expect(lineCard).toBeVisible({ timeout: 15_000 });
+  await lineCard.getByRole("button", { expanded: false }).first().click();
+  await expect(lineCard.getByLabel("Line item 1 title")).toBeVisible({ timeout: 10_000 });
+  await lineCard.getByLabel("Line item 1 title").fill(lineTitle);
+  await lineCard.getByLabel("Line item 1 quantity").fill("2");
+  await lineCard.getByLabel("Line item 1 unit price").fill("50");
+  await expect(lineCard.getByText(/\$110\.00/)).toBeVisible({ timeout: 10_000 });
+
+  await lineCard.getByText("Advanced", { exact: true }).click();
+  await expect(lineCard.getByLabel("Line item 1 unit", { exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+
+  const overflow = await page.evaluate(() => ({
+    sw: document.documentElement.scrollWidth,
+    cw: document.documentElement.clientWidth,
+  }));
+  expect(overflow.sw).toBeLessThanOrEqual(overflow.cw + 1);
+
+  const stickyTotal = page.getByLabel("Estimate total");
+  await expect(stickyTotal).toBeVisible();
+  await stickyTotal.scrollIntoViewIfNeeded();
+  const saveBtn = page.getByRole("button", { name: "Save Estimate" });
+  await expect(saveBtn).toBeVisible();
 });
