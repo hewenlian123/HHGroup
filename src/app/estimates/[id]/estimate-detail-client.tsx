@@ -24,6 +24,7 @@ import {
 } from "./actions";
 import { deleteEstimateAction } from "../actions";
 import { EstimateDetailHeader } from "./estimate-detail-header";
+import type { EstimateSaveStatus } from "../_components/estimate-builder-save-status";
 import { ConvertToProjectDrawer } from "./convert-to-project-drawer";
 import { EstimateEditor } from "../_components/estimate-editor";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
@@ -68,8 +69,27 @@ export function EstimateDetailClient({
   const [infoCollapseNonce, setInfoCollapseNonce] = React.useState(0);
   const [costBreakdownCollapseNonce, setCostBreakdownCollapseNonce] = React.useState(0);
   const [pending, startTransition] = React.useTransition();
+  const [dirty, setDirty] = React.useState(false);
+  const [saveStatus, setSaveStatus] = React.useState<EstimateSaveStatus>("idle");
 
   const isLocked = !["Draft", "Sent"].includes(status);
+
+  React.useEffect(() => {
+    if (!editing) {
+      setDirty(false);
+      setSaveStatus("idle");
+    }
+  }, [editing]);
+
+  React.useEffect(() => {
+    if (!editing) return;
+    const onDirty = (): void => {
+      setDirty(true);
+      setSaveStatus("unsaved");
+    };
+    window.addEventListener("estimate-editor-dirty", onDirty);
+    return () => window.removeEventListener("estimate-editor-dirty", onDirty);
+  }, [editing]);
 
   React.useEffect(() => {
     setStatus(initialStatus);
@@ -85,20 +105,27 @@ export function EstimateDetailClient({
   const onCancelEditing = () => {
     setEditing(false);
     setResetNonce((n) => n + 1);
+    setDirty(false);
+    setSaveStatus("idle");
   };
 
   const onSave = () => {
     const run = (form: HTMLFormElement) => {
       const fd = new FormData(form);
+      setSaveStatus("saving");
       startTransition(async () => {
         const res = await saveEstimateMetaInlineAction(fd);
         if (res.ok) {
           toast({ title: "Saved", description: "Estimate updated.", variant: "success" });
           setInfoCollapseNonce((n) => n + 1);
           setCostBreakdownCollapseNonce((n) => n + 1);
-          syncRouterNonBlocking(router);
           setEditing(false);
+          syncRouterNonBlocking(router);
+          setDirty(false);
+          setSaveStatus("saved");
+          window.setTimeout(() => setSaveStatus("idle"), 2000);
         } else {
+          setSaveStatus(dirty ? "unsaved" : "idle");
           toast({
             title: "Save failed",
             description: res.error ?? "Please try again.",
@@ -148,35 +175,33 @@ export function EstimateDetailClient({
     });
   };
 
-  const onDelete = () => {
-    if (deleteBusy || pending) return;
+  const onDelete = async (): Promise<void> => {
+    if (deleteBusy) return;
     setDeleteBusy(true);
     const formData = new FormData();
     formData.set("estimateId", estimateId);
-    startTransition(async () => {
-      try {
-        const res = await deleteEstimateAction(formData);
-        if (!res.ok) {
-          toast({
-            title: "Could not delete estimate",
-            description: res.error ?? "Please try again.",
-            variant: "error",
-          });
-          return;
-        }
-        setDeleteConfirmOpen(false);
-        toast({ title: "Estimate deleted", variant: "success" });
-        router.push("/estimates");
-      } catch (error) {
+    try {
+      const res = await deleteEstimateAction(formData);
+      if (!res.ok) {
         toast({
           title: "Could not delete estimate",
-          description: error instanceof Error ? error.message : "Please try again.",
+          description: res.error ?? "Please try again.",
           variant: "error",
         });
-      } finally {
-        setDeleteBusy(false);
+        return;
       }
-    });
+      toast({ title: "Estimate deleted", variant: "success" });
+      syncRouterNonBlocking(router);
+      router.replace("/estimates");
+    } catch (error) {
+      toast({
+        title: "Could not delete estimate",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setDeleteBusy(false);
+    }
   };
 
   const onConvertSuccess = (projectId: string) => {
@@ -192,9 +217,13 @@ export function EstimateDetailClient({
       <EstimateDetailHeader
         estimateId={estimateId}
         estimateNumber={estimateNumber}
+        clientName={meta.client.name}
+        projectName={meta.project.name}
+        siteAddress={meta.project.siteAddress ?? meta.client.address}
         status={status}
         editing={editing}
         pending={pending}
+        saveStatus={editing ? (pending ? "saving" : saveStatus) : "idle"}
         isLocked={isLocked}
         onEdit={() => setEditing(true)}
         onSave={onSave}

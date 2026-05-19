@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { setEstimateStatusWithClient } from "@/lib/estimates-db";
 import {
   createNewVersionFromSnapshot,
   convertEstimateSnapshotToProject,
@@ -143,7 +145,10 @@ export async function sendEstimateInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const ok = await setEstimateStatus(estimateId, "Sent");
+    const admin = getServerSupabaseAdmin();
+    const ok = admin
+      ? await setEstimateStatusWithClient(estimateId, "Sent", admin)
+      : await setEstimateStatus(estimateId, "Sent");
     if (ok) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
@@ -158,7 +163,10 @@ export async function approveEstimateInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const ok = await setEstimateStatus(estimateId, "Approved");
+    const admin = getServerSupabaseAdmin();
+    const ok = admin
+      ? await setEstimateStatusWithClient(estimateId, "Approved", admin)
+      : await setEstimateStatus(estimateId, "Approved");
     if (ok) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");

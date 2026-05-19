@@ -3,7 +3,6 @@
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
@@ -20,7 +19,6 @@ import type {
   PaymentScheduleTemplate,
 } from "@/lib/data";
 import { estimateLineTotal, groupEstimateItemsByCategoryId } from "@/lib/data";
-import { EstimateSummarySidebar } from "../[id]/estimate-summary-sidebar";
 import { useToast } from "@/components/toast/toast-provider";
 import {
   Dialog,
@@ -73,6 +71,12 @@ import { CostCategoryTitleMenu, type CostCategoryOption } from "./cost-category-
 import { pickNextUniqueCostCode } from "@/lib/estimate-cost-code-suggest";
 import type { LineItemDescriptionRichTextHandle } from "./line-item-description-rich-text";
 import { formatEstimateCurrency, roundEstimateCurrencyValue } from "./estimate-currency";
+import { EstimateBuilderSummary } from "./estimate-builder-summary";
+import { EstimateBuilderAdvanced } from "./estimate-builder-advanced";
+import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
+import { ESTIMATE_LINE_ITEM_PRESETS } from "./estimate-line-item-presets";
+import { pickCostCodeForPreset } from "./estimate-line-item-model";
+import { EstimateLineItemPersistedMobile } from "./estimate-line-item-persisted-mobile";
 
 /** TipTap must not load on the server — Next 14 can emit a broken `vendor-chunks/@tiptap.js` ref and 500 the page. */
 const LineItemDescriptionRichText = dynamic(
@@ -191,6 +195,21 @@ export function EstimateEditor({
   React.useEffect(() => {
     if (editing) setInfoOpen(true);
   }, [editing]);
+
+  React.useEffect(() => {
+    if (!editing) return;
+    const form = document.getElementById("estimate-meta-form");
+    if (!form) return;
+    const markDirty = (): void => {
+      window.dispatchEvent(new Event("estimate-editor-dirty"));
+    };
+    form.addEventListener("input", markDirty);
+    form.addEventListener("change", markDirty);
+    return () => {
+      form.removeEventListener("input", markDirty);
+      form.removeEventListener("change", markDirty);
+    };
+  }, [editing, infoOpen]);
 
   React.useEffect(() => {
     if (!infoCollapseNonce) return;
@@ -498,408 +517,448 @@ export function EstimateEditor({
     }
   }, [editingItem, modalItemName, modalItemDescription, estimateId, localItems, toast]);
 
+  const flatPersistedRows = React.useMemo(() => {
+    let idx = 0;
+    const out: {
+      row: EstimateItemRow;
+      categoryId: string;
+      rowIndex: number;
+    }[] = [];
+    for (const section of costBreakdownSections) {
+      for (const row of section.rows) {
+        idx += 1;
+        out.push({ row, categoryId: section.categoryId, rowIndex: idx });
+      }
+    }
+    return out;
+  }, [costBreakdownSections]);
+
+  const lastPersistedRowId = flatPersistedRows[flatPersistedRows.length - 1]?.row.id;
+
+  const applyPresetPersisted = React.useCallback(
+    async (presetId: string) => {
+      const preset = ESTIMATE_LINE_ITEM_PRESETS.find((p) => p.id === presetId);
+      if (!preset) return;
+      const code = pickCostCodeForPreset(costCodes, usedCostCodesOnEstimate, preset.costCodeHint);
+      if (!code) return;
+      const res = await addLineItemCatalogInlineAction(
+        estimateId,
+        code,
+        preset.title.trim() || preset.label
+      );
+      if (res.ok) {
+        syncRouterNonBlocking(router);
+        toast({ title: "Line added", variant: "success" });
+      } else {
+        toast({
+          title: "Could not add line",
+          description: res.error ?? "Try again.",
+          variant: "error",
+        });
+      }
+    },
+    [costCodes, estimateId, router, toast, usedCostCodesOnEstimate]
+  );
+
   return (
     <React.Fragment>
-      <div className="space-y-6">
-        {/* Info bar + details */}
-        <div className="border border-zinc-200 dark:border-border rounded-lg overflow-hidden bg-background">
-          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-zinc-200 dark:border-border bg-muted/20">
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-foreground">Client / Project</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                {meta.client.name} • {meta.project.name}
-              </p>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-10 lg:items-start">
+        <div className="min-w-0 space-y-8 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <section className="border-b border-border/60 pb-6">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-foreground">Customer & project</h2>
+                <p className="mt-0.5 text-sm text-muted-foreground truncate">
+                  {meta.client.name || "Add customer"}
+                  {meta.project.name ? ` · ${meta.project.name}` : ""}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="btn-outline-ghost rounded-md h-8 text-muted-foreground hover:text-foreground"
+                onClick={() => setInfoOpen(!infoOpen)}
+              >
+                {infoOpen ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+                {infoOpen ? "Done" : "Edit details"}
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="btn-outline-ghost rounded-md h-8 text-muted-foreground hover:text-foreground"
-              onClick={() => setInfoOpen(!infoOpen)}
-            >
-              {infoOpen ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
-              )}
-              {infoOpen ? "Hide details" : "Edit details"}
-            </Button>
-          </div>
-          <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Client
-              </div>
-              <div className="truncate font-medium text-foreground">{meta.client.name || "—"}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Project
-              </div>
-              <div className="truncate font-medium text-foreground">{meta.project.name || "—"}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Estimate #
-              </div>
-              <div className="truncate font-medium text-foreground tabular-nums">
-                {estimateNumber}
-              </div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Status
-              </div>
-              <div className="pt-0.5">
-                <EstimateStatusBadge
-                  status={status === "Converted" ? "Converted" : status}
-                  label={status === "Converted" ? "Converted to Project" : undefined}
-                  className="text-xs"
-                />
-              </div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Address
-              </div>
-              <div className="truncate text-muted-foreground">{meta.client.address || "—"}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Estimate Date
-              </div>
-              <div className="tabular-nums text-muted-foreground">{meta.estimateDate ?? today}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Valid Until
-              </div>
-              <div className="tabular-nums text-muted-foreground">{meta.validUntil ?? "—"}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Sales
-              </div>
-              <div className="truncate text-muted-foreground">{meta.salesPerson ?? "—"}</div>
-            </div>
-          </div>
-
-          {infoOpen && (
-            <form
-              id="estimate-meta-form"
-              action={saveEstimateMetaAction}
-              className="p-4 pt-0 space-y-4"
-            >
-              <input type="hidden" name="estimateId" value={estimateId} />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="clientName" className="text-xs">
-                    Client / Customer
-                  </Label>
-                  <Input
-                    id="clientName"
-                    name="clientName"
-                    defaultValue={meta.client.name}
-                    placeholder="Client or company name"
-                    className="h-8 rounded-md text-sm"
-                    readOnly={isReadOnly}
-                  />
+            <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Client
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="projectName" className="text-xs">
-                    Project
-                  </Label>
-                  <Input
-                    id="projectName"
-                    name="projectName"
-                    defaultValue={meta.project.name}
-                    placeholder="Project name"
-                    className="h-8 rounded-md text-sm"
-                    readOnly={isReadOnly}
+                <div className="truncate font-medium text-foreground">
+                  {meta.client.name || "—"}
+                </div>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Project
+                </div>
+                <div className="truncate font-medium text-foreground">
+                  {meta.project.name || "—"}
+                </div>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Estimate #
+                </div>
+                <div className="truncate font-medium text-foreground tabular-nums">
+                  {estimateNumber}
+                </div>
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Status
+                </div>
+                <div className="pt-0.5">
+                  <EstimateStatusBadge
+                    status={status === "Converted" ? "Converted" : status}
+                    label={status === "Converted" ? "Converted to Project" : undefined}
+                    className="text-xs"
                   />
                 </div>
               </div>
-              <div className="space-y-1.5 pt-2 border-t border-zinc-200 dark:border-border">
-                <Label htmlFor="address" className="text-xs">
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
                   Address
-                </Label>
-                <Input
-                  id="address"
-                  name="address"
-                  defaultValue={meta.client.address}
-                  placeholder="Site or client address"
-                  className="h-8 rounded-md text-sm"
-                  readOnly={isReadOnly}
-                />
+                </div>
+                <div className="truncate text-muted-foreground">{meta.client.address || "—"}</div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200 dark:border-border">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Estimate Number</Label>
-                  <Input
-                    value={estimateNumber}
-                    className="h-8 rounded-md text-sm bg-muted/50"
-                    readOnly
-                  />
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Estimate Date
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="estimateDate" className="text-xs">
-                    Estimate Date
-                  </Label>
-                  <Input
-                    id="estimateDate"
-                    name="estimateDate"
-                    type="date"
-                    defaultValue={meta.estimateDate ?? today}
-                    className="h-8 rounded-md text-sm"
-                    readOnly={isReadOnly}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="validUntil" className="text-xs">
-                    Valid Until
-                  </Label>
-                  <Input
-                    id="validUntil"
-                    name="validUntil"
-                    type="date"
-                    defaultValue={meta.validUntil ?? ""}
-                    className="h-8 rounded-md text-sm"
-                    readOnly={isReadOnly}
-                  />
+                <div className="tabular-nums text-muted-foreground">
+                  {meta.estimateDate ?? today}
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200 dark:border-border">
-                <div className="space-y-1.5">
-                  <Label htmlFor="salesPerson" className="text-xs">
-                    Sales Person
-                  </Label>
-                  <Input
-                    id="salesPerson"
-                    name="salesPerson"
-                    defaultValue={meta.salesPerson ?? ""}
-                    placeholder="Optional"
-                    className="h-8 rounded-md text-sm"
-                    readOnly={isReadOnly}
-                  />
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Valid Until
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="notes" className="text-xs">
-                    Notes
-                  </Label>
-                  <Input
-                    id="notes"
-                    name="notes"
-                    defaultValue={meta.notes ?? ""}
-                    placeholder="Optional notes"
-                    className="h-8 rounded-md text-sm"
-                    readOnly={isReadOnly}
-                  />
-                </div>
+                <div className="tabular-nums text-muted-foreground">{meta.validUntil ?? "—"}</div>
               </div>
-              {summary && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-zinc-200 dark:border-border">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="tax" className="text-xs">
-                      Tax ($)
-                    </Label>
-                    <Input
-                      id="tax"
-                      name="tax"
-                      type="number"
-                      step="0.01"
-                      defaultValue={summary.tax}
-                      className="h-8 rounded-md text-sm"
-                      readOnly={isReadOnly}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="discount" className="text-xs">
-                      Discount ($)
-                    </Label>
-                    <Input
-                      id="discount"
-                      name="discount"
-                      type="number"
-                      step="0.01"
-                      defaultValue={summary.discount}
-                      className="h-8 rounded-md text-sm"
-                      readOnly={isReadOnly}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="markupPct" className="text-xs">
-                      Markup (%)
-                    </Label>
-                    <Input
-                      id="markupPct"
-                      name="markupPct"
-                      type="number"
-                      step="0.1"
-                      defaultValue={markupPct}
-                      className="h-8 rounded-md text-sm"
-                      readOnly={isReadOnly}
-                    />
-                  </div>
+              <div className="min-w-0">
+                <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                  Sales
                 </div>
-              )}
-            </form>
-          )}
-        </div>
+                <div className="truncate text-muted-foreground">{meta.salesPerson ?? "—"}</div>
+              </div>
+            </div>
 
-        {/* Cost Breakdown — full width table */}
-        <div className="border border-zinc-200 dark:border-border rounded-lg overflow-hidden">
-          <div className="px-4 py-3 border-b border-zinc-200 dark:border-border bg-muted/20">
-            <h2 className="text-sm font-semibold text-foreground">Cost Breakdown</h2>
-          </div>
-          <div>
-            {(() => {
-              const categoryNodes = costBreakdownSections.map(
-                ({ categoryId, title, rows, sectionTotal }) => {
-                  const displayName =
-                    localCategoryNames[categoryId] ?? catalogNameByCode[categoryId] ?? title;
-                  const toggleCategory = (categoryIdToToggle: string) => {
-                    setExpandedCategoryIds((prev) =>
-                      prev.includes(categoryIdToToggle)
-                        ? prev.filter((x) => x !== categoryIdToToggle)
-                        : [...prev, categoryIdToToggle]
-                    );
-                  };
-                  const categorySectionBody = (dragHandle: React.ReactNode | null) => (
-                    <React.Fragment>
-                      <summary
-                        className="flex list-none flex-wrap items-center justify-between gap-2 cursor-pointer px-4 py-2.5 bg-muted/20 hover:bg-muted/30 transition-colors"
-                        onMouseDown={(e) => {
-                          const el = e.target as HTMLElement;
-                          if (el.closest("button, a[href], [role='button'], [role='menuitem']"))
-                            return;
-                          e.preventDefault();
-                          toggleCategory(categoryId);
-                        }}
-                      >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          {dragHandle}
-                          <ChevronRight className="h-4 w-4 text-muted-foreground group-open:rotate-90 transition-transform shrink-0" />
-                          {isReadOnly ? (
-                            <span className="font-medium text-foreground text-sm">
-                              {categoryId} – {displayName}
-                            </span>
-                          ) : (
-                            <CostCategoryTitleMenu
-                              estimateId={estimateId}
-                              currentCostCode={categoryId}
-                              displayName={displayName}
-                              itemIds={rows.map((r) => r.id)}
-                              categoryOptions={categoryDropdownOptions}
-                              getDisplayNameHint={getCategoryDisplayNameHint}
-                              onMoved={(newCode) => {
-                                const idSet = new Set(rows.map((r) => r.id));
-                                setLocalItems((prev) =>
-                                  prev.map((it) =>
-                                    idSet.has(it.id) ? { ...it, costCode: newCode } : it
-                                  )
-                                );
-                                setLocalCategoryNames((prev) => ({
-                                  ...prev,
-                                  [newCode]: prev[newCode] ?? catalogNameByCode[newCode] ?? newCode,
-                                }));
-                              }}
-                              onNameSaved={(code, name) =>
-                                setLocalCategoryNames((prev) => ({ ...prev, [code]: name }))
-                              }
-                              usedCostCodes={usedCostCodesOnEstimate}
-                              onCategoryCreated={handleNewCategoryCreated}
-                            />
-                          )}
-                        </div>
-                        <span className="tabular-nums text-sm font-medium text-foreground">
-                          {formatEstimateCurrency(sectionTotal)}
-                        </span>
-                      </summary>
-                      <div className="border-t border-zinc-200 dark:border-border">
-                        <div className="overflow-x-auto">
-                          {isReadOnly ? (
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="border-b border-zinc-200 dark:border-border bg-muted/10">
-                                  <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                                    Title
-                                  </th>
-                                  <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                                    Qty
-                                  </th>
-                                  <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                                    Unit
-                                  </th>
-                                  <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                                    Unit Price
-                                  </th>
-                                  <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                                    Cost Code
-                                  </th>
-                                  <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                                    Total
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {rows.map((row) => (
-                                  <LineItemRow
-                                    key={row.id}
-                                    row={row}
-                                    estimateId={estimateId}
-                                    categoryId={categoryId}
-                                    isLocked
-                                    updateLineItemAction={updateLineItemAction}
-                                    duplicateLineItemAction={duplicateLineItemAction}
-                                    deleteLineItemAction={deleteLineItemAction}
-                                    onOpenDescriptionEditor={openItemDescriptionModal}
-                                    lineLiveValuesRef={lineLiveValuesRef}
-                                    lineDescriptionApplyRef={lineDescriptionApplyRef}
-                                  />
-                                ))}
-                              </tbody>
-                            </table>
-                          ) : (
-                            <DndContext
-                              sensors={lineItemSensors}
-                              collisionDetection={closestCenter}
-                              onDragEnd={(e) => handleLineItemsDragEnd(categoryId, e)}
-                            >
-                              <SortableContext
-                                items={rows.map((r) => r.id)}
-                                strategy={verticalListSortingStrategy}
-                              >
-                                <table className="w-full text-sm">
-                                  <thead>
-                                    <tr className="border-b border-zinc-200 dark:border-border bg-muted/10">
-                                      <th className="w-9 py-2 px-1" aria-label="Reorder" />
-                                      <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                                        Title
-                                      </th>
-                                      <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                                        Qty
-                                      </th>
-                                      <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                                        Unit
-                                      </th>
-                                      <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                                        Unit Price
-                                      </th>
-                                      <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                                        Cost Code
-                                      </th>
-                                      <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                                        Total
-                                      </th>
-                                      <th className="w-20" />
-                                    </tr>
-                                  </thead>
+            {infoOpen && (
+              <form
+                id="estimate-meta-form"
+                action={saveEstimateMetaAction}
+                className="p-4 pt-0 space-y-4"
+              >
+                <input type="hidden" name="estimateId" value={estimateId} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="clientName" className="text-xs">
+                      Client / Customer
+                    </Label>
+                    <Input
+                      id="clientName"
+                      name="clientName"
+                      defaultValue={meta.client.name}
+                      placeholder="Client or company name"
+                      className="h-8 rounded-md text-sm"
+                      readOnly={isReadOnly}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="projectName" className="text-xs">
+                      Project
+                    </Label>
+                    <Input
+                      id="projectName"
+                      name="projectName"
+                      defaultValue={meta.project.name}
+                      placeholder="Project name"
+                      className="h-8 rounded-md text-sm"
+                      readOnly={isReadOnly}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5 pt-2 border-t border-zinc-200 dark:border-border">
+                  <Label htmlFor="address" className="text-xs">
+                    Address
+                  </Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    defaultValue={meta.client.address}
+                    placeholder="Site or client address"
+                    className="h-8 rounded-md text-sm"
+                    readOnly={isReadOnly}
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200 dark:border-border">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Estimate Number</Label>
+                    <Input
+                      value={estimateNumber}
+                      className="h-8 rounded-md text-sm bg-muted/50"
+                      readOnly
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="estimateDate" className="text-xs">
+                      Estimate Date
+                    </Label>
+                    <Input
+                      id="estimateDate"
+                      name="estimateDate"
+                      type="date"
+                      defaultValue={meta.estimateDate ?? today}
+                      className="h-8 rounded-md text-sm"
+                      readOnly={isReadOnly}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="validUntil" className="text-xs">
+                      Valid Until
+                    </Label>
+                    <Input
+                      id="validUntil"
+                      name="validUntil"
+                      type="date"
+                      defaultValue={meta.validUntil ?? ""}
+                      className="h-8 rounded-md text-sm"
+                      readOnly={isReadOnly}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200 dark:border-border">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="salesPerson" className="text-xs">
+                      Sales Person
+                    </Label>
+                    <Input
+                      id="salesPerson"
+                      name="salesPerson"
+                      defaultValue={meta.salesPerson ?? ""}
+                      placeholder="Optional"
+                      className="h-8 rounded-md text-sm"
+                      readOnly={isReadOnly}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="notes" className="text-xs">
+                      Notes
+                    </Label>
+                    <Input
+                      id="notes"
+                      name="notes"
+                      defaultValue={meta.notes ?? ""}
+                      placeholder="Optional notes"
+                      className="h-8 rounded-md text-sm"
+                      readOnly={isReadOnly}
+                    />
+                  </div>
+                </div>
+                {summary && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-zinc-200 dark:border-border">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="tax" className="text-xs">
+                        Tax ($)
+                      </Label>
+                      <Input
+                        id="tax"
+                        name="tax"
+                        type="number"
+                        step="0.01"
+                        defaultValue={summary.tax}
+                        className="h-8 rounded-md text-sm"
+                        readOnly={isReadOnly}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="discount" className="text-xs">
+                        Discount ($)
+                      </Label>
+                      <Input
+                        id="discount"
+                        name="discount"
+                        type="number"
+                        step="0.01"
+                        defaultValue={summary.discount}
+                        className="h-8 rounded-md text-sm"
+                        readOnly={isReadOnly}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="markupPct" className="text-xs">
+                        Markup (%)
+                      </Label>
+                      <Input
+                        id="markupPct"
+                        name="markupPct"
+                        type="number"
+                        step="0.1"
+                        defaultValue={markupPct}
+                        className="h-8 rounded-md text-sm"
+                        readOnly={isReadOnly}
+                      />
+                    </div>
+                  </div>
+                )}
+              </form>
+            )}
+          </section>
+
+          <section className="border-b border-border/60 pb-8">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold text-foreground">Line items</h2>
+              {!isReadOnly ? (
+                <EstimateLineItemsToolbar
+                  onAddCategory={() => {
+                    document.getElementById("estimate-add-category")?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "center",
+                    });
+                  }}
+                  onApplyPreset={(id) => void applyPresetPersisted(id)}
+                />
+              ) : null}
+            </div>
+
+            <div className="mb-4 space-y-3 md:hidden">
+              {flatPersistedRows.map(({ row, categoryId, rowIndex }) => (
+                <EstimateLineItemPersistedMobile
+                  key={row.id}
+                  row={row}
+                  rowIndex={rowIndex}
+                  estimateId={estimateId}
+                  categoryId={categoryId}
+                  isReadOnly={isReadOnly}
+                  updateLineItemAction={updateLineItemAction}
+                  duplicateLineItemAction={duplicateLineItemAction}
+                  deleteLineItemAction={deleteLineItemAction}
+                  onOpenDescriptionEditor={openItemDescriptionModal}
+                  lineLiveValuesRef={lineLiveValuesRef}
+                  lineDescriptionApplyRef={lineDescriptionApplyRef}
+                  isLastRow={row.id === lastPersistedRowId}
+                  onEnterAddNext={
+                    !isReadOnly && row.id === lastPersistedRowId
+                      ? () => {
+                          void addLineItemCatalogInlineAction(
+                            estimateId,
+                            categoryId,
+                            localCategoryNames[categoryId] ??
+                              catalogNameByCode[categoryId] ??
+                              categoryId
+                          ).then((res) => {
+                            if (res.ok) syncRouterNonBlocking(router);
+                          });
+                        }
+                      : undefined
+                  }
+                />
+              ))}
+            </div>
+
+            <div className="hidden md:block">
+              {(() => {
+                const categoryNodes = costBreakdownSections.map(
+                  ({ categoryId, title, rows, sectionTotal }) => {
+                    const displayName =
+                      localCategoryNames[categoryId] ?? catalogNameByCode[categoryId] ?? title;
+                    const toggleCategory = (categoryIdToToggle: string) => {
+                      setExpandedCategoryIds((prev) =>
+                        prev.includes(categoryIdToToggle)
+                          ? prev.filter((x) => x !== categoryIdToToggle)
+                          : [...prev, categoryIdToToggle]
+                      );
+                    };
+                    const categorySectionBody = (dragHandle: React.ReactNode | null) => (
+                      <React.Fragment>
+                        <summary
+                          className="flex list-none flex-wrap items-center justify-between gap-2 cursor-pointer px-1 py-2.5 hover:bg-muted/10 transition-colors"
+                          onMouseDown={(e) => {
+                            const el = e.target as HTMLElement;
+                            if (el.closest("button, a[href], [role='button'], [role='menuitem']"))
+                              return;
+                            e.preventDefault();
+                            toggleCategory(categoryId);
+                          }}
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            {dragHandle}
+                            <ChevronRight className="h-4 w-4 text-muted-foreground group-open:rotate-90 transition-transform shrink-0" />
+                            {isReadOnly ? (
+                              <span className="font-medium text-foreground text-sm">
+                                {categoryId} – {displayName}
+                              </span>
+                            ) : (
+                              <CostCategoryTitleMenu
+                                estimateId={estimateId}
+                                currentCostCode={categoryId}
+                                displayName={displayName}
+                                itemIds={rows.map((r) => r.id)}
+                                categoryOptions={categoryDropdownOptions}
+                                getDisplayNameHint={getCategoryDisplayNameHint}
+                                onMoved={(newCode) => {
+                                  const idSet = new Set(rows.map((r) => r.id));
+                                  setLocalItems((prev) =>
+                                    prev.map((it) =>
+                                      idSet.has(it.id) ? { ...it, costCode: newCode } : it
+                                    )
+                                  );
+                                  setLocalCategoryNames((prev) => ({
+                                    ...prev,
+                                    [newCode]:
+                                      prev[newCode] ?? catalogNameByCode[newCode] ?? newCode,
+                                  }));
+                                }}
+                                onNameSaved={(code, name) =>
+                                  setLocalCategoryNames((prev) => ({ ...prev, [code]: name }))
+                                }
+                                usedCostCodes={usedCostCodesOnEstimate}
+                                onCategoryCreated={handleNewCategoryCreated}
+                              />
+                            )}
+                          </div>
+                          <span className="tabular-nums text-sm font-medium text-foreground">
+                            {formatEstimateCurrency(sectionTotal)}
+                          </span>
+                        </summary>
+                        <div className="border-t border-zinc-200 dark:border-border">
+                          <div className="overflow-x-auto">
+                            {isReadOnly ? (
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-zinc-200 dark:border-border bg-muted/10">
+                                    <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                                      Description
+                                    </th>
+                                    <th className="hidden md:table-cell text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-20">
+                                      Qty
+                                    </th>
+                                    <th className="hidden md:table-cell text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">
+                                      Unit Price
+                                    </th>
+                                    <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">
+                                      Total
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
                                   {rows.map((row) => (
-                                    <SortableLineItemGroup
+                                    <LineItemRow
                                       key={row.id}
                                       row={row}
                                       estimateId={estimateId}
                                       categoryId={categoryId}
+                                      isLocked
                                       updateLineItemAction={updateLineItemAction}
                                       duplicateLineItemAction={duplicateLineItemAction}
                                       deleteLineItemAction={deleteLineItemAction}
@@ -908,165 +967,224 @@ export function EstimateEditor({
                                       lineDescriptionApplyRef={lineDescriptionApplyRef}
                                     />
                                   ))}
-                                </table>
-                              </SortableContext>
-                            </DndContext>
+                                </tbody>
+                              </table>
+                            ) : (
+                              <DndContext
+                                sensors={lineItemSensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={(e) => handleLineItemsDragEnd(categoryId, e)}
+                              >
+                                <SortableContext
+                                  items={rows.map((r) => r.id)}
+                                  strategy={verticalListSortingStrategy}
+                                >
+                                  <table className="w-full text-sm">
+                                    <thead>
+                                      <tr className="border-b border-zinc-200 dark:border-border bg-muted/10">
+                                        <th className="w-9 py-2 px-1" aria-label="Reorder" />
+                                        <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                                          Description
+                                        </th>
+                                        <th className="hidden md:table-cell text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-20">
+                                          Qty
+                                        </th>
+                                        <th className="hidden md:table-cell text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">
+                                          Unit Price
+                                        </th>
+                                        <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums w-28">
+                                          Total
+                                        </th>
+                                        <th className="w-20" />
+                                      </tr>
+                                    </thead>
+                                    {rows.map((row) => (
+                                      <SortableLineItemGroup
+                                        key={row.id}
+                                        row={row}
+                                        estimateId={estimateId}
+                                        categoryId={categoryId}
+                                        updateLineItemAction={updateLineItemAction}
+                                        duplicateLineItemAction={duplicateLineItemAction}
+                                        deleteLineItemAction={deleteLineItemAction}
+                                        onOpenDescriptionEditor={openItemDescriptionModal}
+                                        lineLiveValuesRef={lineLiveValuesRef}
+                                        lineDescriptionApplyRef={lineDescriptionApplyRef}
+                                      />
+                                    ))}
+                                  </table>
+                                </SortableContext>
+                              </DndContext>
+                            )}
+                          </div>
+                          {!isReadOnly && (
+                            <div className="px-4 py-2 border-t border-zinc-100 dark:border-border/50">
+                              <form action={addLineItemAction} className="inline-block">
+                                <input type="hidden" name="estimateId" value={estimateId} />
+                                <input type="hidden" name="costCode" value={categoryId} />
+                                <Button
+                                  type="submit"
+                                  variant="outline"
+                                  size="sm"
+                                  className="btn-outline-ghost h-7 text-xs rounded-md border border-dashed border-zinc-300 dark:border-border text-muted-foreground hover:text-foreground"
+                                >
+                                  <Plus className="h-3.5 w-3.5 mr-1.5" />
+                                  Add line item
+                                </Button>
+                              </form>
+                            </div>
                           )}
                         </div>
-                        {!isReadOnly && (
-                          <div className="px-4 py-2 border-t border-zinc-100 dark:border-border/50">
-                            <form action={addLineItemAction} className="inline-block">
-                              <input type="hidden" name="estimateId" value={estimateId} />
-                              <input type="hidden" name="costCode" value={categoryId} />
-                              <Button
-                                type="submit"
-                                variant="outline"
-                                size="sm"
-                                className="btn-outline-ghost h-7 text-xs rounded-md border border-dashed border-zinc-300 dark:border-border text-muted-foreground hover:text-foreground"
-                              >
-                                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                                Add line item
-                              </Button>
-                            </form>
-                          </div>
-                        )}
-                      </div>
-                    </React.Fragment>
-                  );
+                      </React.Fragment>
+                    );
 
-                  return isReadOnly ? (
-                    <div key={categoryId} className="border-b border-zinc-200 dark:border-border">
-                      <details className="group" open={expandedCategoryIds.includes(categoryId)}>
-                        {categorySectionBody(null)}
-                      </details>
-                    </div>
-                  ) : (
-                    <SortableCategorySection
-                      key={categoryId}
-                      id={categoryId}
-                      highlightFlash={flashHighlightCategoryId === categoryId}
-                      isSelectedCategory={selectedCategoryId === categoryId}
-                    >
-                      {(dh) => (
+                    return isReadOnly ? (
+                      <div key={categoryId} className="border-b border-zinc-200 dark:border-border">
                         <details className="group" open={expandedCategoryIds.includes(categoryId)}>
-                          {categorySectionBody(dh)}
+                          {categorySectionBody(null)}
                         </details>
-                      )}
-                    </SortableCategorySection>
-                  );
-                }
-              );
-              return isReadOnly ? (
-                <>{categoryNodes}</>
-              ) : (
-                <DndContext
-                  sensors={categorySensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={(e) => void handleCategoryDragEnd(e)}
-                >
-                  <SortableContext
-                    items={costBreakdownSections.map((s) => s.categoryId)}
-                    strategy={verticalListSortingStrategy}
+                      </div>
+                    ) : (
+                      <SortableCategorySection
+                        key={categoryId}
+                        id={categoryId}
+                        highlightFlash={flashHighlightCategoryId === categoryId}
+                        isSelectedCategory={selectedCategoryId === categoryId}
+                      >
+                        {(dh) => (
+                          <details
+                            className="group"
+                            open={expandedCategoryIds.includes(categoryId)}
+                          >
+                            {categorySectionBody(dh)}
+                          </details>
+                        )}
+                      </SortableCategorySection>
+                    );
+                  }
+                );
+                return isReadOnly ? (
+                  <>{categoryNodes}</>
+                ) : (
+                  <DndContext
+                    sensors={categorySensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={(e) => void handleCategoryDragEnd(e)}
                   >
-                    {categoryNodes}
-                  </SortableContext>
-                </DndContext>
-              );
-            })()}
-            {!isReadOnly && (
-              <AddCategoryBlock
-                estimateId={estimateId}
-                allCategoryCodes={categoryDropdownOptions.map((o) => o.code)}
-                getCategoryDisplayName={getCategoryDisplayNameHint}
-                usedCostCodes={usedCostCodesOnEstimate}
-                pendingSelectNewCategory={pendingSelectNewCategory}
-                onPendingSelectNewCategoryConsumed={consumePendingSelectNewCategory}
-                onPostCreateCategoryUx={handleNewCategoryCreated}
-              />
-            )}
-          </div>
+                    <SortableContext
+                      items={costBreakdownSections.map((s) => s.categoryId)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {categoryNodes}
+                    </SortableContext>
+                  </DndContext>
+                );
+              })()}
+              {!isReadOnly && (
+                <AddCategoryBlock
+                  estimateId={estimateId}
+                  allCategoryCodes={categoryDropdownOptions.map((o) => o.code)}
+                  getCategoryDisplayName={getCategoryDisplayNameHint}
+                  usedCostCodes={usedCostCodesOnEstimate}
+                  pendingSelectNewCategory={pendingSelectNewCategory}
+                  onPendingSelectNewCategoryConsumed={consumePendingSelectNewCategory}
+                  onPostCreateCategoryUx={handleNewCategoryCreated}
+                />
+              )}
+            </div>
+          </section>
+
+          {!isReadOnly ? (
+            <Dialog
+              open={editingItem !== null}
+              onOpenChange={handleItemDescriptionDialogOpenChange}
+            >
+              <DialogContent className="gap-0 sm:max-w-md">
+                <DialogHeader className="space-y-1 pb-4">
+                  <DialogTitle>Item Description</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 pb-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="estimate-line-desc-modal-name" className="text-xs">
+                      Name
+                    </Label>
+                    <Input
+                      id="estimate-line-desc-modal-name"
+                      value={modalItemName}
+                      onChange={(e) => setModalItemName(e.target.value)}
+                      placeholder="Line item name"
+                      className="h-8 rounded-md text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Description</Label>
+                    <LineItemDescriptionRichText
+                      ref={lineDescEditorRef}
+                      key={editingItem ?? "closed"}
+                      value={modalItemDescription}
+                      onChange={setModalItemDescription}
+                      disabled={descModalSaving}
+                      placeholder="Optional details"
+                    />
+                  </div>
+                </div>
+                <DialogFooter className="border-t-0 pt-0 sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="rounded-sm h-8"
+                    onClick={() => setEditingItem(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="rounded-sm h-8"
+                    disabled={descModalSaving}
+                    onClick={() => void handleSaveItemDescription()}
+                  >
+                    <SubmitSpinner loading={descModalSaving} className="mr-2" />
+                    {descModalSaving ? "Saving…" : "Save"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ) : null}
+
+          <EstimateBuilderAdvanced title="Payment schedule">
+            <EstimatePaymentSchedule
+              estimateId={estimateId}
+              paymentSchedule={paymentSchedule}
+              estimateTotal={summary?.grandTotal ?? 0}
+              isLocked={isReadOnly}
+              paymentTemplates={paymentTemplates}
+              addPaymentMilestoneAction={addPaymentMilestoneAction}
+              updatePaymentMilestoneAction={updatePaymentMilestoneAction}
+              deletePaymentMilestoneAction={deletePaymentMilestoneAction}
+              markPaymentMilestonePaidAction={markPaymentMilestonePaidAction}
+              reorderPaymentScheduleAction={reorderPaymentScheduleAction}
+              applyPaymentTemplateAction={applyPaymentTemplateAction}
+              createPaymentTemplateAction={createPaymentTemplateAction}
+            />
+          </EstimateBuilderAdvanced>
         </div>
 
-        {!isReadOnly ? (
-          <Dialog open={editingItem !== null} onOpenChange={handleItemDescriptionDialogOpenChange}>
-            <DialogContent className="gap-0 sm:max-w-md">
-              <DialogHeader className="space-y-1 pb-4">
-                <DialogTitle>Item Description</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pb-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="estimate-line-desc-modal-name" className="text-xs">
-                    Name
-                  </Label>
-                  <Input
-                    id="estimate-line-desc-modal-name"
-                    value={modalItemName}
-                    onChange={(e) => setModalItemName(e.target.value)}
-                    placeholder="Line item name"
-                    className="h-8 rounded-md text-sm"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Description</Label>
-                  <LineItemDescriptionRichText
-                    ref={lineDescEditorRef}
-                    key={editingItem ?? "closed"}
-                    value={modalItemDescription}
-                    onChange={setModalItemDescription}
-                    disabled={descModalSaving}
-                    placeholder="Optional details"
-                  />
-                </div>
-              </div>
-              <DialogFooter className="border-t-0 pt-0 sm:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="rounded-sm h-8"
-                  onClick={() => setEditingItem(null)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="rounded-sm h-8"
-                  disabled={descModalSaving}
-                  onClick={() => void handleSaveItemDescription()}
-                >
-                  <SubmitSpinner loading={descModalSaving} className="mr-2" />
-                  {descModalSaving ? "Saving…" : "Save"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        ) : null}
+        <aside className="hidden lg:block lg:sticky lg:top-6">
+          <EstimateBuilderSummary summary={summary} showInternal={editing && !isReadOnly} />
+        </aside>
+      </div>
 
-        {/* Payment Schedule — full width */}
-        <EstimatePaymentSchedule
-          estimateId={estimateId}
-          paymentSchedule={paymentSchedule}
-          estimateTotal={summary?.grandTotal ?? 0}
-          isLocked={isReadOnly}
-          paymentTemplates={paymentTemplates}
-          addPaymentMilestoneAction={addPaymentMilestoneAction}
-          updatePaymentMilestoneAction={updatePaymentMilestoneAction}
-          deletePaymentMilestoneAction={deletePaymentMilestoneAction}
-          markPaymentMilestonePaidAction={markPaymentMilestonePaidAction}
-          reorderPaymentScheduleAction={reorderPaymentScheduleAction}
-          applyPaymentTemplateAction={applyPaymentTemplateAction}
-          createPaymentTemplateAction={createPaymentTemplateAction}
-        />
-
-        {/* Estimate Summary — totals block at bottom */}
-        <EstimateSummarySidebar summary={summary} />
-
-        {/* Actions */}
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline" size="sm" asChild className="rounded-md h-8">
-            <Link href="/estimates">Back to list</Link>
-          </Button>
+      <div
+        className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-4 py-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-sm lg:hidden"
+        aria-label="Estimate total"
+      >
+        <div className="flex items-baseline justify-between gap-4">
+          <span className="text-sm font-medium text-muted-foreground">Total</span>
+          <span className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+            {summary ? formatEstimateCurrency(summary.grandTotal) : "—"}
+          </span>
         </div>
       </div>
     </React.Fragment>
@@ -1209,11 +1327,12 @@ function LineItemRow({
     return estimateLineTotal({ ...row, qty, unit, unitCost });
   }, [isLocked, row, qty, unit, unitCost]);
 
-  const descColSpan = isLocked ? 6 : dragHandleProps ? 8 : 7;
+  const [advancedOpen, setAdvancedOpen] = React.useState(false);
+  const colSpan = isLocked ? 4 : dragHandleProps ? 6 : 5;
 
   return (
     <>
-      <tr className="border-b border-zinc-100/50 dark:border-border/30 hover:bg-muted/20 transition-colors">
+      <tr className="hidden border-b border-border/40 hover:bg-muted/10 transition-colors md:table-row">
         {dragHandleProps ? (
           <td className="py-2 px-1 align-top w-9">
             <button
@@ -1232,17 +1351,19 @@ function LineItemRow({
           {isLocked ? (
             <span className="font-medium">{title || row.desc}</span>
           ) : (
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-              className="h-8 text-sm"
-              placeholder="Title"
-              aria-label="Line item title"
-            />
+            <>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
+                className="h-9 text-sm"
+                placeholder="Description"
+                aria-label="Line item description"
+              />
+            </>
           )}
         </td>
-        <td className="py-2 px-4 text-right align-top">
+        <td className="hidden py-2 px-4 text-right align-top md:table-cell">
           {isLocked ? (
             row.qty
           ) : (
@@ -1254,27 +1375,12 @@ function LineItemRow({
               value={qty}
               onChange={(e) => setQty(Number(e.target.value) || 0)}
               onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-              className="h-8 w-16 text-right"
+              className="h-9 w-20 text-right tabular-nums"
               aria-label="Line item quantity"
             />
           )}
         </td>
-        <td className="py-2 px-4 align-top">
-          {isLocked ? (
-            row.unit
-          ) : (
-            <Input
-              form={formId}
-              name="unit"
-              value={unit}
-              onChange={(e) => setUnit(e.target.value)}
-              onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-              className="h-8 w-14"
-              aria-label="Line item unit"
-            />
-          )}
-        </td>
-        <td className="py-2 px-4 text-right align-top">
+        <td className="hidden py-2 px-4 text-right align-top md:table-cell">
           {isLocked ? (
             formatEstimateCurrency(row.unitCost)
           ) : (
@@ -1286,12 +1392,11 @@ function LineItemRow({
               value={unitCost}
               onChange={(e) => setUnitCost(Number(e.target.value) || 0)}
               onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-              className="h-8 w-20 text-right"
-              aria-label="Line item unit cost"
+              className="h-9 w-28 text-right tabular-nums"
+              aria-label="Line item unit price"
             />
           )}
         </td>
-        <td className="py-2 px-4 align-top text-muted-foreground text-xs">{categoryId}</td>
         <td className="py-2 px-4 align-top text-right tabular-nums font-semibold">
           {formatEstimateCurrency(lineTotalDisplay)}
         </td>
@@ -1326,8 +1431,8 @@ function LineItemRow({
           </td>
         )}
       </tr>
-      <tr className="border-b border-zinc-100/50 dark:border-border/30 bg-zinc-50/30 dark:bg-zinc-900/20">
-        <td colSpan={descColSpan} className="py-1.5 px-4 align-top">
+      <tr className="hidden border-b border-border/40 bg-muted/5 md:table-row">
+        <td colSpan={colSpan} className="py-2 px-4 align-top">
           {!isLocked ? (
             <form id={formId} action={updateLineItemAction} className="hidden" aria-hidden>
               <input type="hidden" name="estimateId" value={estimateId} />
@@ -1360,10 +1465,41 @@ function LineItemRow({
                   />
                 </span>
               ) : (
-                "Add a description"
+                "Add details"
               )}
             </button>
           )}
+          {!isLocked ? (
+            <details
+              className="mt-2 text-xs"
+              open={advancedOpen}
+              onToggle={(e) => setAdvancedOpen((e.target as HTMLDetailsElement).open)}
+            >
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                Advanced
+              </summary>
+              <div className="mt-2 flex flex-wrap gap-3">
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Unit</Label>
+                  <Input
+                    form={formId}
+                    name="unit"
+                    value={unit}
+                    onChange={(e) => setUnit(e.target.value)}
+                    onBlur={() =>
+                      (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()
+                    }
+                    className="h-9 w-20"
+                    aria-label="Line item unit"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] text-muted-foreground">Category</Label>
+                  <span className="block pt-2 text-sm text-muted-foreground">{categoryId}</span>
+                </div>
+              </div>
+            </details>
+          ) : null}
         </td>
       </tr>
     </>

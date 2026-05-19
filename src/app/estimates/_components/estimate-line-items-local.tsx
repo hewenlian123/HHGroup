@@ -1,0 +1,391 @@
+"use client";
+
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Plus, Copy, Trash2, ChevronRight } from "lucide-react";
+import type { CostCode } from "@/lib/data";
+import { formatEstimateCurrency } from "./estimate-currency";
+import {
+  type EditorLineItem,
+  createEmptyLineItem,
+  editorLineTotal,
+  pickCostCodeForPreset,
+} from "./estimate-line-item-model";
+import { ESTIMATE_LINE_ITEM_PRESETS } from "./estimate-line-item-presets";
+import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
+import { EstimateLineItemMobileCard } from "./estimate-line-item-mobile-card";
+
+function AutoExpandTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+}): React.ReactElement {
+  const ref = React.useRef<HTMLTextAreaElement>(null);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "0";
+    el.style.height = `${Math.max(52, el.scrollHeight)}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={className}
+      rows={2}
+    />
+  );
+}
+
+export type EstimateLineItemsLocalProps = {
+  costCodes: CostCode[];
+  lineItems: EditorLineItem[];
+  onLineItemsChange: (items: EditorLineItem[]) => void;
+  categoryNames: Record<string, string>;
+  onCategoryNamesChange: (names: Record<string, string>) => void;
+  disabled?: boolean;
+  submitAttempted?: boolean;
+  lineItemsError?: string | null;
+};
+
+export function EstimateLineItemsLocal({
+  costCodes,
+  lineItems,
+  onLineItemsChange,
+  categoryNames,
+  onCategoryNamesChange,
+  disabled = false,
+  submitAttempted = false,
+  lineItemsError,
+}: EstimateLineItemsLocalProps): React.ReactElement {
+  const itemsByCode = React.useMemo(() => {
+    const acc: Record<string, EditorLineItem[]> = {};
+    lineItems.forEach((li) => {
+      if (!acc[li.costCode]) acc[li.costCode] = [];
+      acc[li.costCode].push(li);
+    });
+    return acc;
+  }, [lineItems]);
+
+  const codesWithItems = Object.keys(itemsByCode);
+  const codesWithoutItems = costCodes.filter((c) => !itemsByCode[c.code]);
+
+  const flatWithIndex = React.useMemo(() => {
+    let idx = 0;
+    const out: { item: EditorLineItem; rowIndex: number; code: string }[] = [];
+    for (const code of codesWithItems) {
+      for (const item of itemsByCode[code] ?? []) {
+        idx += 1;
+        out.push({ item, rowIndex: idx, code });
+      }
+    }
+    return out;
+  }, [codesWithItems, itemsByCode]);
+
+  const lastItemId = flatWithIndex[flatWithIndex.length - 1]?.item.id;
+
+  const updateItem = (id: string, patch: Partial<EditorLineItem>): void => {
+    onLineItemsChange(lineItems.map((li) => (li.id === id ? { ...li, ...patch } : li)));
+  };
+
+  const addLineItem = (costCode: string): void => {
+    onLineItemsChange([...lineItems, createEmptyLineItem(costCode)]);
+  };
+
+  const addCategory = (): void => {
+    const used = new Set(lineItems.map((li) => li.costCode));
+    const first = costCodes.find((c) => !used.has(c.code));
+    if (first) addLineItem(first.code);
+  };
+
+  const duplicateItem = (id: string): void => {
+    const src = lineItems.find((li) => li.id === id);
+    if (!src) return;
+    onLineItemsChange([
+      ...lineItems,
+      {
+        ...src,
+        id: `li-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        title: src.title ? `${src.title} (copy)` : "Copy",
+      },
+    ]);
+  };
+
+  const deleteItem = (id: string): void => {
+    onLineItemsChange(lineItems.filter((li) => li.id !== id));
+  };
+
+  const setCategoryName = (code: string, name: string): void => {
+    onCategoryNamesChange({ ...categoryNames, [code]: name });
+  };
+
+  const applyPreset = (presetId: string): void => {
+    const preset = ESTIMATE_LINE_ITEM_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    const used = new Set(lineItems.map((li) => li.costCode));
+    const code = pickCostCodeForPreset(costCodes, used, preset.costCodeHint);
+    if (!code) return;
+    onLineItemsChange([
+      ...lineItems,
+      {
+        id: `li-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        costCode: code,
+        title: preset.title,
+        description: preset.description ?? "",
+        qty: preset.qty,
+        unit: preset.unit,
+        unitPrice: preset.unitPrice,
+        markupPct: preset.markupPct,
+      },
+    ]);
+  };
+
+  const handleEnterAddNext = (costCode: string): void => {
+    addLineItem(costCode);
+  };
+
+  return (
+    <section className="border-b border-border/60 pb-8">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold text-foreground">Line items</h2>
+        <EstimateLineItemsToolbar
+          onAddCategory={addCategory}
+          addCategoryDisabled={disabled || codesWithoutItems.length === 0}
+          onApplyPreset={applyPreset}
+          presetsDisabled={disabled || costCodes.length === 0}
+        />
+      </div>
+      {lineItemsError ? (
+        <p className="mb-3 text-xs text-muted-foreground">{lineItemsError}</p>
+      ) : null}
+
+      {/* Mobile: card list */}
+      <div className="space-y-3 md:hidden">
+        {flatWithIndex.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">No line items yet.</p>
+        ) : (
+          flatWithIndex.map(({ item, rowIndex, code }) => (
+            <EstimateLineItemMobileCard
+              key={item.id}
+              item={item}
+              rowIndex={rowIndex}
+              disabled={disabled}
+              submitAttempted={submitAttempted}
+              isLastRow={item.id === lastItemId}
+              onChange={(patch) => updateItem(item.id, patch)}
+              onDuplicate={() => duplicateItem(item.id)}
+              onDelete={() => deleteItem(item.id)}
+              onEnterAddNext={() => handleEnterAddNext(code)}
+            />
+          ))
+        )}
+        {codesWithItems.length === 0 && !disabled ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-11 w-full rounded-sm"
+            onClick={addCategory}
+            disabled={costCodes.length === 0}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Category
+          </Button>
+        ) : null}
+      </div>
+
+      {/* Desktop: compact table by category */}
+      <div className="max-md:hidden space-y-6">
+        {codesWithItems.map((code) => {
+          const cc = costCodes.find((c) => c.code === code)!;
+          const displayName = categoryNames[code] ?? cc.name;
+          const rows = itemsByCode[code];
+          const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
+          return (
+            <div key={code} className="border-b border-border/40 pb-4 last:border-0">
+              <details className="group" open>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2 [&::-webkit-details-marker]:hidden">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
+                    <Input
+                      value={displayName}
+                      onChange={(e) => setCategoryName(code, e.target.value)}
+                      className="h-8 max-w-[240px] border-0 bg-transparent font-medium text-sm shadow-none focus-visible:ring-1"
+                      placeholder={cc.name}
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      disabled={disabled}
+                    />
+                  </div>
+                  <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
+                    {formatEstimateCurrency(sectionSubtotal)}
+                  </span>
+                </summary>
+                <div className="mt-2">
+                  <table className="w-full table-fixed text-sm">
+                    <thead>
+                      <tr className="border-b border-border/60 text-xs text-muted-foreground">
+                        <th className="pb-2 text-left font-medium">Description</th>
+                        <th className="w-20 pb-2 text-right font-medium">Qty</th>
+                        <th className="w-28 pb-2 text-right font-medium">Unit Price</th>
+                        <th className="w-28 pb-2 text-right font-medium">Total</th>
+                        <th className="w-20 pb-2" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, rowIndexInCat) => {
+                        const globalIdx =
+                          flatWithIndex.find((f) => f.item.id === row.id)?.rowIndex ??
+                          rowIndexInCat + 1;
+                        const isLast = row.id === lastItemId;
+                        return (
+                          <React.Fragment key={row.id}>
+                            <tr className="border-b border-border/30">
+                              <td className="py-2 pr-2 align-top">
+                                <Input
+                                  value={row.title}
+                                  onChange={(e) => updateItem(row.id, { title: e.target.value })}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey && isLast) {
+                                      e.preventDefault();
+                                      handleEnterAddNext(code);
+                                    }
+                                  }}
+                                  className="h-9 text-sm"
+                                  placeholder="Description"
+                                  aria-label={`Line item ${globalIdx} title`}
+                                  aria-invalid={
+                                    submitAttempted && !row.title.trim() && !row.description.trim()
+                                  }
+                                  disabled={disabled}
+                                />
+                              </td>
+                              <td className="py-2 pr-2 align-top">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  value={row.qty}
+                                  onChange={(e) =>
+                                    updateItem(row.id, { qty: Number(e.target.value) || 0 })
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey && isLast) {
+                                      e.preventDefault();
+                                      handleEnterAddNext(code);
+                                    }
+                                  }}
+                                  className="h-9 w-full text-right tabular-nums"
+                                  aria-label={`Line item ${globalIdx} quantity`}
+                                  disabled={disabled}
+                                />
+                              </td>
+                              <td className="py-2 pr-2 align-top">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step={0.01}
+                                  value={row.unitPrice}
+                                  onChange={(e) =>
+                                    updateItem(row.id, { unitPrice: Number(e.target.value) || 0 })
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey && isLast) {
+                                      e.preventDefault();
+                                      handleEnterAddNext(code);
+                                    }
+                                  }}
+                                  className="h-9 w-full text-right tabular-nums"
+                                  aria-label={`Line item ${globalIdx} unit price`}
+                                  disabled={disabled}
+                                />
+                              </td>
+                              <td className="py-2 pr-2 text-right align-top tabular-nums font-semibold">
+                                {formatEstimateCurrency(editorLineTotal(row))}
+                              </td>
+                              <td className="py-2 align-top">
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9"
+                                    onClick={() => duplicateItem(row.id)}
+                                    aria-label="Duplicate line item"
+                                    disabled={disabled}
+                                  >
+                                    <Copy className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                                    onClick={() => deleteItem(row.id)}
+                                    aria-label="Remove line item"
+                                    disabled={disabled}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                            <tr className="border-b border-border/20">
+                              <td colSpan={5} className="pb-2 pt-0">
+                                <AutoExpandTextarea
+                                  value={row.description}
+                                  onChange={(v) => updateItem(row.id, { description: v })}
+                                  placeholder="Notes (optional)"
+                                  className="min-h-[40px] w-full resize-none bg-transparent text-sm text-muted-foreground focus:outline-none"
+                                />
+                              </td>
+                            </tr>
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 h-9 text-muted-foreground"
+                    onClick={() => addLineItem(code)}
+                    disabled={disabled}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Line Item
+                  </Button>
+                </div>
+              </details>
+            </div>
+          );
+        })}
+        {codesWithItems.length === 0 && !disabled ? (
+          <div className="py-8 text-center">
+            <p className="mb-3 text-sm text-muted-foreground">No line items yet.</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-sm"
+              onClick={addCategory}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Category
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}

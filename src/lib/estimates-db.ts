@@ -1741,7 +1741,22 @@ export async function setEstimateStatus(
   estimateId: string,
   nextStatus: EstimateStatus
 ): Promise<boolean> {
-  const c = client();
+  return applyEstimateStatusTransition(estimateId, nextStatus, client());
+}
+
+export async function setEstimateStatusWithClient(
+  estimateId: string,
+  nextStatus: EstimateStatus,
+  db: SupabaseClient
+): Promise<boolean> {
+  return applyEstimateStatusTransition(estimateId, nextStatus, db);
+}
+
+async function applyEstimateStatusTransition(
+  estimateId: string,
+  nextStatus: EstimateStatus,
+  c: SupabaseClient
+): Promise<boolean> {
   const { data: est, error: fetchErr } = await c
     .from("estimates")
     .select("status")

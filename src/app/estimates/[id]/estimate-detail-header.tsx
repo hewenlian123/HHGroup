@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { EstimateStatusBadge } from "../_components/estimate-status-badge";
 import {
   DropdownMenu,
@@ -11,13 +12,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ArrowLeft, ChevronDown, Trash2 } from "lucide-react";
+import {
+  EstimateBuilderSaveStatus,
+  type EstimateSaveStatus,
+} from "../_components/estimate-builder-save-status";
 
 export function EstimateDetailHeader({
   estimateId,
   estimateNumber,
+  clientName,
+  projectName,
+  siteAddress,
   status,
   editing,
   pending,
+  saveStatus = "idle",
   isLocked,
   onEdit,
   onSave,
@@ -31,9 +40,13 @@ export function EstimateDetailHeader({
 }: {
   estimateId: string;
   estimateNumber: string;
+  clientName?: string;
+  projectName?: string;
+  siteAddress?: string;
   status: string;
   editing: boolean;
   pending: boolean;
+  saveStatus?: EstimateSaveStatus;
   isLocked: boolean;
   onEdit: () => void;
   onSave: () => void;
@@ -45,11 +58,12 @@ export function EstimateDetailHeader({
   /** Opens the Convert-to-Project setup drawer (no immediate convert). */
   onConvertClick?: () => void;
   onDeleteClick: () => void;
-}) {
+}): React.ReactElement {
   const canConvert = status === "Approved";
+  const canSend = status === "Draft" && !editing;
   const statusActions =
     status === "Draft"
-      ? [{ label: "Send", action: onSend, destructive: false }]
+      ? [{ label: "Mark as Draft", action: onMarkDraft, destructive: false }]
       : status === "Sent"
         ? [
             { label: "Mark accepted", action: onApprove, destructive: false },
@@ -60,55 +74,88 @@ export function EstimateDetailHeader({
           ? [{ label: "Mark as Draft", action: onMarkDraft, destructive: false }]
           : [];
 
+  const subtitle = [clientName, projectName].filter(Boolean).join(" · ");
+
   return (
-    <header className="border-b border-zinc-200 dark:border-border">
-      <div className="flex flex-wrap items-center justify-between gap-3 py-3">
-        <div className="flex items-center min-w-0 gap-2">
+    <header className="border-b border-border/60 pb-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-2">
           <Link
             href="/estimates"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+            className="inline-flex min-h-11 items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" />
             Estimates
           </Link>
-          <span className="text-muted-foreground">/</span>
-          <span className="text-sm font-semibold text-foreground tabular-nums">
-            {estimateNumber}
-          </span>
-          <EstimateStatusBadge
-            status={status === "Converted" ? "Converted" : status}
-            className="shrink-0 rounded-md text-xs"
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-semibold tracking-tight text-foreground tabular-nums">
+              {estimateNumber}
+            </h1>
+            <EstimateStatusBadge
+              status={status === "Converted" ? "Converted" : status}
+              className="shrink-0 text-xs"
+            />
+          </div>
+          {subtitle ? <p className="text-sm text-muted-foreground truncate">{subtitle}</p> : null}
+          {siteAddress?.trim() ? (
+            <p className="text-xs text-muted-foreground/90 truncate">{siteAddress}</p>
+          ) : null}
+          {editing ? <EstimateBuilderSaveStatus status={saveStatus} className="pt-0.5" /> : null}
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 max-md:w-full max-md:[&>*]:flex-1">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 max-md:w-full">
           {!editing ? (
-            <Button
-              type="button"
-              variant={canConvert ? "outline" : "default"}
-              size="sm"
-              className={canConvert ? "btn-outline-ghost rounded-md h-8" : "rounded-md h-8"}
-              disabled={isLocked || pending}
-              onClick={onEdit}
-            >
-              Edit
-            </Button>
+            <>
+              {!isLocked ? (
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  className="min-h-11 rounded-sm px-4 max-md:flex-1"
+                  disabled={pending}
+                  onClick={onEdit}
+                >
+                  Edit
+                </Button>
+              ) : null}
+              {canSend ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="min-h-11 rounded-sm px-4 max-md:flex-1"
+                  disabled={pending}
+                  onClick={onSend}
+                >
+                  Send
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-11 rounded-sm px-4 max-md:flex-1"
+                asChild
+              >
+                <Link href={`/estimates/${estimateId}/preview`}>Preview</Link>
+              </Button>
+            </>
           ) : (
             <>
               <Button
                 type="button"
                 size="sm"
-                className="rounded-md h-8"
+                className="min-h-11 rounded-sm px-4 max-md:flex-1"
                 disabled={pending}
                 onClick={onSave}
               >
-                Save
+                <SubmitSpinner loading={pending} className="mr-2" />
+                {pending ? "Saving…" : "Save"}
               </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="rounded-md h-8"
+                className="min-h-11 rounded-sm px-4 max-md:flex-1"
                 disabled={pending}
                 onClick={onCancel}
               >
@@ -124,7 +171,7 @@ export function EstimateDetailHeader({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="rounded-md h-8"
+                  className="min-h-11 rounded-sm px-3"
                   disabled={pending}
                 >
                   Status <ChevronDown className="ml-2 h-4 w-4" />
@@ -144,35 +191,30 @@ export function EstimateDetailHeader({
             </DropdownMenu>
           ) : null}
 
-          {!editing && canConvert && onConvertClick && (
+          {!editing && canConvert && onConvertClick ? (
             <Button
               type="button"
+              variant="outline"
               size="sm"
-              className="rounded-md h-8"
+              className="min-h-11 rounded-sm px-4"
               disabled={pending}
               onClick={onConvertClick}
             >
               Convert to Project
-            </Button>
-          )}
-
-          {!editing ? (
-            <Button variant="outline" size="sm" className="rounded-md h-8 shrink-0" asChild>
-              <Link href={`/estimates/${estimateId}/preview`}>Preview</Link>
             </Button>
           ) : null}
 
           {!editing ? (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="btn-outline-destructive rounded-md h-8 shrink-0"
+              className="min-h-11 rounded-sm text-muted-foreground hover:text-destructive"
               disabled={pending}
               onClick={onDeleteClick}
+              aria-label="Delete estimate"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
+              <Trash2 className="h-4 w-4" />
             </Button>
           ) : null}
         </div>
