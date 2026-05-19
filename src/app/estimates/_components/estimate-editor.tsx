@@ -64,7 +64,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronRight, ChevronDown, Plus, Copy, Trash2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { EstimateStatusBadge } from "./estimate-status-badge";
 import { EstimatePaymentSchedule } from "./estimate-payment-schedule";
 import { LineItemDescriptionBodyPreview } from "./line-item-description-body-preview";
 import { CostCategoryTitleMenu, type CostCategoryOption } from "./cost-category-title-menu";

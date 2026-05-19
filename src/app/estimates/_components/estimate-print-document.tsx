@@ -204,20 +204,8 @@ export function EstimatePrintDocument({
             Summary
           </h2>
           <div className="max-w-xs ml-auto border border-zinc-200 rounded-lg p-5 text-sm space-y-2">
-            <div className="flex justify-between text-zinc-600">
-              <span>Material Cost</span>
-              <span className="tabular-nums text-zinc-900">${fmt(summary.materialCost)}</span>
-            </div>
-            <div className="flex justify-between text-zinc-600">
-              <span>Labor Cost</span>
-              <span className="tabular-nums text-zinc-900">${fmt(summary.laborCost)}</span>
-            </div>
-            <div className="flex justify-between text-zinc-600">
-              <span>Subcontractor Cost</span>
-              <span className="tabular-nums text-zinc-900">${fmt(summary.subcontractorCost)}</span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-zinc-200 font-medium">
-              <span className="text-zinc-700">Subtotal</span>
+            <div className="flex justify-between font-medium text-zinc-700">
+              <span>Subtotal</span>
               <span className="tabular-nums text-zinc-900">${fmt(summary.subtotal)}</span>
             </div>
             <div className="flex justify-between text-zinc-600">
@@ -226,11 +214,7 @@ export function EstimatePrintDocument({
             </div>
             <div className="flex justify-between text-zinc-600">
               <span>Discount</span>
-              <span className="tabular-nums text-zinc-900">-${fmt(summary.discount)}</span>
-            </div>
-            <div className="flex justify-between text-zinc-600">
-              <span>Markup</span>
-              <span className="tabular-nums text-zinc-900">${fmt(summary.markup)}</span>
+              <span className="tabular-nums text-zinc-900">−${fmt(summary.discount)}</span>
             </div>
             <div className="flex justify-between pt-3 mt-2 border-t-2 border-zinc-300 font-semibold text-zinc-900">
               <span>Total</span>
