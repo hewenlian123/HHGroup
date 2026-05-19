@@ -11,13 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
-import {
-  getProjects,
-  getLaborWorkers,
-  type LaborWorker,
-  type DailyLaborRowInput,
-} from "@/lib/data";
-import { fetchCached } from "@/lib/client-data-cache";
 import { VirtualScrollList } from "@/components/ui/virtual-scroll-list";
 import { cn } from "@/lib/utils";
 
@@ -29,6 +22,29 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+};
+
+type LaborWorker = {
+  id: string;
+  name: string;
+  halfDayRate?: number | null;
+  dailyRate?: number | null;
+};
+
+type LaborProjectOption = { id: string; name: string };
+
+type LaborEntryOptionResponse = {
+  message?: string;
+  entries?: Array<{ worker_id?: string; workerId?: string }>;
+  workers?: LaborWorker[];
+  projects?: LaborProjectOption[];
+};
+
+type DailyLaborRowInput = {
+  workerId: string;
+  morning: boolean;
+  afternoon: boolean;
+  otHours?: number;
 };
 
 const OT_MULTIPLIER = 1.5;
@@ -181,7 +197,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
 export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
   const [projectId, setProjectId] = React.useState("");
   const [workDate, setWorkDate] = React.useState(() => new Date().toISOString().slice(0, 10));
-  const [projects, setProjects] = React.useState<{ id: string; name: string }[]>([]);
+  const [projects, setProjects] = React.useState<LaborProjectOption[]>([]);
   const [workers, setWorkers] = React.useState<LaborWorker[]>([]);
   const [selectionByWorkerId, setSelectionByWorkerId] = React.useState<Record<string, Sel>>({});
   const selectionRef = React.useRef(selectionByWorkerId);
@@ -195,25 +211,6 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
   const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    Promise.all([
-      fetchCached("data:projects", getProjects),
-      fetchCached("data:laborWorkers", getLaborWorkers),
-    ]).then(([p, w]) => {
-      if (cancelled) return;
-      setProjects(p);
-      setWorkers(w);
-      setSelectionByWorkerId(
-        Object.fromEntries(w.map((worker) => [worker.id, defaultSel()])) as Record<string, Sel>
-      );
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
-
-  React.useEffect(() => {
     if (!open || !workDate) {
       setDisabledWorkerIds(new Set());
       return;
@@ -221,19 +218,33 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
     let cancelled = false;
     fetch(`/api/labor/entries?date=${encodeURIComponent(workDate)}`, { cache: "no-store" })
       .then(async (response) => {
-        if (!response.ok) return [];
-        const body = (await response.json().catch(() => null)) as {
-          entries?: Array<{ worker_id?: string; workerId?: string }>;
-        } | null;
-        return body?.entries ?? [];
+        const body = (await response.json().catch(() => ({}))) as LaborEntryOptionResponse;
+        if (!response.ok) throw new Error(body.message ?? "Failed to load labor options.");
+        return body;
       })
-      .then((entries) => {
-        if (!cancelled) {
-          setDisabledWorkerIds(new Set(entries.map((e) => e.worker_id ?? e.workerId ?? "")));
-        }
+      .then((body) => {
+        if (cancelled) return;
+        const nextWorkers = body.workers ?? [];
+        setProjects(body.projects ?? []);
+        setWorkers(nextWorkers);
+        setSelectionByWorkerId((prev) => {
+          const next = Object.fromEntries(
+            nextWorkers.map((worker) => [worker.id, prev[worker.id] ?? defaultSel()])
+          ) as Record<string, Sel>;
+          return next;
+        });
+        setDisabledWorkerIds(
+          new Set((body.entries ?? []).map((e) => e.worker_id ?? e.workerId ?? ""))
+        );
+        setError(null);
       })
       .catch(() => {
-        if (!cancelled) setDisabledWorkerIds(new Set());
+        if (!cancelled) {
+          setDisabledWorkerIds(new Set());
+          setProjects([]);
+          setWorkers([]);
+          setError("Failed to load labor options.");
+        }
       });
     return () => {
       cancelled = true;

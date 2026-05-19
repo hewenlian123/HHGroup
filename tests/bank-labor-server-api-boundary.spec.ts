@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { pbkdf2Sync, randomBytes } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const LOCKED_HEADERS = {
   "x-hh-production-safety-lock": "1",
@@ -39,6 +39,15 @@ async function seedTestLoginPin(pin = "1234"): Promise<void> {
   if (error) throw new Error(`Failed to seed login PIN: ${error.message}`);
 }
 
+function serviceRoleClient(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) {
+    throw new Error("Boundary tests require NEXT_PUBLIC_SUPABASE_URL and service role key.");
+  }
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+}
+
 test.describe("bank and labor server API boundary", () => {
   test.describe.configure({ mode: "serial", timeout: 60_000 });
 
@@ -62,6 +71,12 @@ test.describe("bank and labor server API boundary", () => {
       const response = await request.get(path, { headers: LOCKED_HEADERS });
       expect(response.status(), `GET ${path}`).toBe(401);
     }
+
+    const patchResponse = await request.patch("/api/labor/entries", {
+      headers: LOCKED_HEADERS,
+      data: { action: "submit", ids: ["00000000-0000-0000-0000-000000000000"] },
+    });
+    expect(patchResponse.status()).toBe(401);
   });
 
   test("PIN session can read bank and labor server APIs but cannot bypass destructive routes", async ({
@@ -128,6 +143,10 @@ test.describe("bank and labor server API boundary", () => {
     await expect(page.getByRole("heading", { name: "Daily Labor" })).toBeVisible();
     await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
 
+    await page.goto("/labor/entries");
+    await expect(page.getByRole("heading", { name: "Daily Entries" })).toBeVisible();
+    await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
+
     await page.goto("/labor/payments");
     await expect(page.getByRole("heading", { name: "Worker Payments" })).toBeVisible();
     await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
@@ -156,6 +175,75 @@ test.describe("bank and labor server API boundary", () => {
     await expect(page.getByText("Total Earned")).toBeVisible();
     await expect(page.locator("table tbody tr").first()).toBeVisible({ timeout: 30_000 });
 
+    await context.close();
+  });
+
+  test("PIN session can create edit and delete time entries through guarded labor API", async ({
+    browser,
+  }) => {
+    const db = serviceRoleClient();
+    const tag = `rls-${Date.now()}`;
+    const { data: project, error: projectError } = await db
+      .from("projects")
+      .insert({ name: `[E2E] Time Entries ${tag}`, status: "Active", budget: 0, spent: 0 })
+      .select("id")
+      .single();
+    expect(projectError).toBeNull();
+
+    const { data: worker, error: workerError } = await db
+      .from("workers")
+      .insert({
+        name: `[E2E] Time Worker ${tag}`,
+        half_day_rate: 100,
+        daily_rate: 100,
+        status: "active",
+      })
+      .select("id")
+      .single();
+    expect(workerError).toBeNull();
+
+    const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+    const loginResponse = await context.request.post("/api/auth/pin-login", {
+      data: { pin: "1234" },
+    });
+    expect(loginResponse.status()).toBe(200);
+
+    const workDate = new Date().toISOString().slice(0, 10);
+    const createResponse = await context.request.post("/api/labor/entries", {
+      data: {
+        projectId: project!.id,
+        workDate,
+        rows: [{ workerId: worker!.id, morning: true, afternoon: false, otHours: 0 }],
+      },
+    });
+    expect(createResponse.status()).toBe(200);
+    const createBody = (await createResponse.json()) as { entries?: Array<{ id?: string }> };
+    const entryId = createBody.entries?.[0]?.id;
+    expect(entryId).toBeTruthy();
+
+    const editResponse = await context.request.patch("/api/labor/entries", {
+      data: {
+        mode: "session-entry",
+        id: entryId,
+        workerId: worker!.id,
+        workDate,
+        projectId: project!.id,
+        session: "full_day",
+        costAmount: 100,
+        hours: 1,
+        notes: "boundary edit",
+      },
+    });
+    expect(editResponse.status()).toBe(200);
+
+    const deleteResponse = await context.request.delete(
+      `/api/labor/entries?id=${encodeURIComponent(entryId!)}`
+    );
+    expect(deleteResponse.status()).toBe(200);
+
+    await db.from("projects").delete().eq("id", project!.id);
+    await db.from("labor_workers").delete().eq("id", worker!.id);
+    await db.from("workers").delete().eq("id", worker!.id);
     await context.close();
   });
 });

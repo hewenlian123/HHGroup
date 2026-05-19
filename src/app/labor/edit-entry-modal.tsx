@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
-import { updateLaborEntry } from "@/lib/data";
 
 export type LaborSession = "morning" | "afternoon" | "full_day";
 
@@ -80,13 +79,23 @@ export function EditEntryModal(props: {
     setBusy(true);
     setError(null);
     try {
-      await updateLaborEntry(entry.id, {
-        project_id: projectId || null,
-        session,
-        cost_amount: amt,
-        hours: hrs,
-        notes: notes.trim() || null,
+      const response = await fetch("/api/labor/entries", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "session-entry",
+          id: entry.id,
+          workerId: entry.worker_id,
+          workDate: entry.work_date,
+          projectId: projectId || null,
+          session,
+          costAmount: amt,
+          hours: hrs,
+          notes: notes.trim() || null,
+        }),
       });
+      const body = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) throw new Error(body?.message ?? "Failed to update.");
       onOpenChange(false);
       onSaved();
     } catch (e) {
