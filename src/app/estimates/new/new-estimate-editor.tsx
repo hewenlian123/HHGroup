@@ -18,6 +18,8 @@ import { getCompanyProfile } from "@/lib/company-profile";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
 import { EstimateBuilderSummary } from "../_components/estimate-builder-summary";
 import { EstimateBuilderAdvanced } from "../_components/estimate-builder-advanced";
+import { EB, ebInput } from "../_components/estimate-builder-ui";
+import { EstimateNewCustomerSection } from "../_components/estimate-new-customer-section";
 import { EstimateLineItemsLocal } from "../_components/estimate-line-items-local";
 import type { EditorLineItem } from "../_components/estimate-line-item-model";
 import {
@@ -78,8 +80,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   const [saving, setSaving] = React.useState(false);
   const [submitAttempted, setSubmitAttempted] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
-  /** Estimate Information: read-only summary by default; Edit opens the form. */
-  const [isEditing, setIsEditing] = React.useState(true);
   const [paymentMilestones, setPaymentMilestones] = React.useState<PaymentMilestoneLocal[]>([]);
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const [pmTitle, setPmTitle] = React.useState("");
@@ -200,10 +200,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     [applyCustomerSelection]
   );
 
-  const beginEstimateInfoEdit = () => {
-    setIsEditing(true);
-  };
-
   const handleSave = async () => {
     if (saving) return;
     setSubmitAttempted(true);
@@ -212,7 +208,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     if (validationErrors.length > 0) {
       const msg = validationErrors[0] ?? "Please complete the estimate.";
       setFormError(msg);
-      setIsEditing(true);
       toast({ title: "Estimate is incomplete", description: msg, variant: "error" });
       return;
     }
@@ -266,7 +261,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         toast({ title: "Create failed", description: msg, variant: "error" });
         return;
       }
-      setIsEditing(false);
       toast({ title: "Created", description: "Estimate created.", variant: "success" });
       router.push(`/estimates/${res.estimateId}?created=1`);
     } finally {
@@ -332,252 +326,37 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
           </div>
         ) : null}
 
-        {/* B. Compact Estimate Information */}
-        <section className="border-b border-border/60 pb-6">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-foreground">Customer & project</h2>
-              <p className="mt-0.5 text-xs text-muted-foreground truncate">
-                {clientName || "Client"} · {projectName || "Project"} · Draft
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {isEditing ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="btn-outline-ghost rounded-md h-8"
-                  onClick={() => setIsEditing(false)}
-                  disabled={saving}
-                >
-                  Hide details
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="btn-outline-ghost rounded-md h-8 text-muted-foreground hover:text-foreground"
-                  onClick={beginEstimateInfoEdit}
-                >
-                  Edit
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="px-4 py-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Client
-              </div>
-              <div className="truncate font-medium text-foreground">{clientName || "—"}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Project
-              </div>
-              <div className="truncate font-medium text-foreground">{projectName || "—"}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Estimate #
-              </div>
-              <div className="truncate font-medium text-foreground tabular-nums">
-                Auto-generated
-              </div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Status
-              </div>
-              <div className="truncate font-medium text-foreground">Draft</div>
-            </div>
-            <div className="min-w-0 md:col-span-2">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Address
-              </div>
-              <div className="truncate text-muted-foreground">{address || "—"}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Phone
-              </div>
-              <div className="truncate text-muted-foreground">{phone || "—"}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Email
-              </div>
-              <div className="truncate text-muted-foreground">{email || "—"}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Estimate Date
-              </div>
-              <div className="tabular-nums text-muted-foreground">{estimateDate}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Valid Until
-              </div>
-              <div className="tabular-nums text-muted-foreground">{validUntil || "—"}</div>
-            </div>
-            <div className="min-w-0">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Sales
-              </div>
-              <div className="truncate text-muted-foreground">{salesPerson || "—"}</div>
-            </div>
-            <div className="min-w-0 md:col-span-2 lg:col-span-3">
-              <div className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-                Notes
-              </div>
-              <div className="truncate text-muted-foreground">{notes || "—"}</div>
-            </div>
-          </div>
-
-          {isEditing && (
-            <div className="p-4 pt-0 space-y-4 border-t border-zinc-200/60 dark:border-border animate-in fade-in-0 transition-all duration-200 ease-in-out">
-              <div className="border-b border-zinc-200/60 dark:border-border pb-4">
-                <CustomerSelectWithAdd
-                  label="Select customer"
-                  value={selectedCustomer?.id ?? null}
-                  onChange={handleCustomerPickerChange}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="clientName" className="text-xs">
-                    Client / Customer
-                  </Label>
-                  <Input
-                    id="clientName"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    placeholder="Client or company name"
-                    className="h-8 rounded-md text-sm"
-                    aria-invalid={submitAttempted && !clientName.trim()}
-                    required
-                  />
-                  {submitAttempted && !clientName.trim() ? (
-                    <p className="text-xs text-rose-600">Client name is required.</p>
-                  ) : null}
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="projectName" className="text-xs">
-                    Project
-                  </Label>
-                  <Input
-                    id="projectName"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    placeholder="Project name"
-                    className="h-8 rounded-md text-sm"
-                    aria-invalid={submitAttempted && !projectName.trim()}
-                    required
-                  />
-                  {submitAttempted && !projectName.trim() ? (
-                    <p className="text-xs text-rose-600">Project name is required.</p>
-                  ) : null}
-                </div>
-              </div>
-              <div className="space-y-1.5 pt-2 border-t border-zinc-200/60 dark:border-border">
-                <Label htmlFor="address" className="text-xs">
-                  Address
-                </Label>
-                <Input
-                  id="address"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Site or client address"
-                  className="h-8 rounded-md text-sm"
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200/60 dark:border-border">
-                <div className="space-y-1.5">
-                  <Label htmlFor="clientPhone" className="text-xs">
-                    Phone
-                  </Label>
-                  <Input
-                    id="clientPhone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="Phone"
-                    className="h-8 rounded-md text-sm"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="clientEmail" className="text-xs">
-                    Email
-                  </Label>
-                  <Input
-                    id="clientEmail"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Email"
-                    className="h-8 rounded-md text-sm"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200/60 dark:border-border">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Estimate Number</Label>
-                  <Input
-                    placeholder="Auto-generated"
-                    className="h-8 rounded-md text-sm bg-muted/50"
-                    disabled
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Estimate Date</Label>
-                  <Input
-                    type="date"
-                    value={estimateDate}
-                    className="h-8 rounded-md text-sm"
-                    readOnly
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Valid Until</Label>
-                  <Input
-                    type="date"
-                    value={validUntil}
-                    onChange={(e) => setValidUntil(e.target.value)}
-                    className="h-8 rounded-md text-sm"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Status</Label>
-                  <Input value="Draft" className="h-8 rounded-md text-sm bg-muted/50" readOnly />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-zinc-200/60 dark:border-border">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Sales Person</Label>
-                  <Input
-                    value={salesPerson}
-                    onChange={(e) => setSalesPerson(e.target.value)}
-                    placeholder="Optional"
-                    className="h-8 rounded-md text-sm"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Notes</Label>
-                  <Input
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Optional notes"
-                    className="h-8 rounded-md text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
+        <EstimateNewCustomerSection
+          clientName={clientName}
+          projectName={projectName}
+          address={address}
+          phone={phone}
+          email={email}
+          estimateDate={estimateDate}
+          validUntil={validUntil}
+          salesPerson={salesPerson}
+          notes={notes}
+          tax={tax}
+          discount={discount}
+          overheadPct={overheadPct}
+          profitPct={profitPct}
+          selectedCustomer={selectedCustomer}
+          submitAttempted={submitAttempted}
+          onClientNameChange={setClientName}
+          onProjectNameChange={setProjectName}
+          onAddressChange={setAddress}
+          onPhoneChange={setPhone}
+          onEmailChange={setEmail}
+          onValidUntilChange={setValidUntil}
+          onSalesPersonChange={setSalesPerson}
+          onNotesChange={setNotes}
+          onTaxChange={setTax}
+          onTaxTouched={() => setTaxTouched(true)}
+          onDiscountChange={setDiscount}
+          onOverheadPctChange={setOverheadPct}
+          onProfitPctChange={setProfitPct}
+          onCustomerPickerChange={handleCustomerPickerChange}
+        />
 
         <EstimateLineItemsLocal
           costCodes={costCodes}
@@ -594,8 +373,8 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
 
         <EstimateBuilderAdvanced title="Payment schedule">
           <section>
-            <div className="px-4 py-3 border-b border-zinc-200/60 dark:border-border bg-muted/20 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold text-foreground">Payment Schedule</h2>
+            <div className="flex items-center justify-between gap-3 py-2">
+              <h3 className="text-sm font-medium text-foreground">Payment schedule</h3>
               <Button
                 type="button"
                 variant="outline"
@@ -608,7 +387,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                 Schedule Payment
               </Button>
             </div>
-            <div className="px-4 py-3 flex flex-wrap items-center gap-6 text-sm border-b border-zinc-200/60 dark:border-border">
+            <div className="flex flex-wrap items-center gap-6 py-2 text-sm text-muted-foreground/80">
               <span className="text-muted-foreground">
                 Estimate total{" "}
                 <span className="font-semibold text-foreground tabular-nums">
@@ -631,7 +410,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-200/60 dark:border-border bg-muted/10">
+                  <tr className="border-b border-border/25">
                     <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
                       Payment Name
                     </th>
@@ -664,7 +443,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                       return (
                         <tr
                           key={m.id}
-                          className="table-row-compact border-b border-zinc-100/50 dark:border-border/30 hover:bg-muted/20 transition-colors"
+                          className="border-b border-border/20 transition-colors hover:bg-muted/[0.03]"
                         >
                           <td className="py-2 px-4 font-medium text-foreground">{m.title}</td>
                           <td className="py-2 px-4 text-right tabular-nums font-medium text-foreground">
@@ -816,18 +595,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             profit: summary.profit,
           }}
           showInternal
-          editable={{
-            tax,
-            discount,
-            markupPct: overheadPct + profitPct,
-            onTaxChange: setTax,
-            onDiscountChange: setDiscount,
-            onMarkupPctChange: (v) => {
-              setOverheadPct(v / 2);
-              setProfitPct(v / 2);
-            },
-            onTaxTouched: () => setTaxTouched(true),
-          }}
         />
       </aside>
 

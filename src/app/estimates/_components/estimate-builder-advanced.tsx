@@ -16,15 +16,12 @@ export function EstimateBuilderAdvanced({
   className?: string;
 }): React.ReactElement {
   return (
-    <details
-      className={cn("group border-b border-border/60", className)}
-      open={defaultOpen || undefined}
-    >
-      <summary className="flex cursor-pointer list-none items-center gap-2 py-3 text-sm font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden">
-        <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+    <details className={cn("group", className)} open={defaultOpen || undefined}>
+      <summary className="flex cursor-pointer list-none items-center gap-1.5 py-2 text-xs font-medium text-muted-foreground/80 hover:text-foreground [&::-webkit-details-marker]:hidden">
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 transition-transform group-open:rotate-180" />
         {title}
       </summary>
-      <div className="pb-4 pt-1">{children}</div>
+      <div className="space-y-3 pb-1 pt-2">{children}</div>
     </details>
   );
 }
