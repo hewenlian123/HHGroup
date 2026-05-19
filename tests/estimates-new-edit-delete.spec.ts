@@ -66,9 +66,9 @@ async function fillNewEstimate(
   await page.getByPlaceholder("Client or company name").fill(params.clientName);
   await page.getByPlaceholder("Project name").fill(params.projectName);
 
-  const addCategory = page.getByRole("button", { name: /^Add Category$/i }).first();
-  await expect(addCategory).toBeVisible({ timeout: 30_000 });
-  await addCategory.click();
+  const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
+  await expect(addSection).toBeVisible({ timeout: 30_000 });
+  await addSection.click();
 
   const lineTitleInput = page.getByLabel("Line item 1 title").locator("visible=true");
   await expect(lineTitleInput).toBeVisible({ timeout: 15_000 });
@@ -177,7 +177,10 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   await expect(page.getByText("At least one line item is required.").first()).toBeVisible();
 
   await fillNewEstimate(page, { clientName, projectName, lineTitle });
-  await page.getByRole("button", { name: /Add Line Item/i }).click();
+  await page
+    .getByRole("button", { name: /^Add line$/i })
+    .first()
+    .click();
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toBeVisible({
     timeout: 10_000,
   });
@@ -374,7 +377,7 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByRole("button", { name: /^Add Category$/i }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Add Section$/i }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: "Cancel" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Save Estimate" })).toBeVisible();
 
@@ -393,7 +396,7 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   await page.getByPlaceholder("Client or company name").fill(clientName);
   await page.getByPlaceholder("Project name").fill(projectName);
   await page
-    .getByRole("button", { name: /^Add Category$/i })
+    .getByRole("button", { name: /^Add Section$/i })
     .first()
     .click();
 
@@ -406,10 +409,15 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   await lineCard.getByLabel("Line item 1 unit price").fill("50");
   await expect(lineCard.getByText(/\$110\.00/)).toBeVisible({ timeout: 10_000 });
 
-  await lineCard.getByText("Advanced", { exact: true }).click();
-  await expect(lineCard.getByLabel("Line item 1 unit", { exact: true })).toBeVisible({
+  await expect(lineCard.getByRole("button", { name: "Add details" })).toBeVisible({
     timeout: 10_000,
   });
+  await expect(lineCard.getByText("More", { exact: true })).toHaveCount(0);
+  await lineCard.getByRole("button", { name: "Line item options" }).click();
+  await expect(page.getByLabel("Line item 1 unit", { exact: true })).toBeVisible({
+    timeout: 10_000,
+  });
+  await page.keyboard.press("Escape");
 
   const overflow = await page.evaluate(() => ({
     sw: document.documentElement.scrollWidth,

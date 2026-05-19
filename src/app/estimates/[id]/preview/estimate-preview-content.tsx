@@ -65,8 +65,8 @@ function LineItemsTable({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: numbe
   return (
     <table className="w-full border-collapse text-sm">
       <thead>
-        <tr className="border-b border-zinc-300 text-zinc-700">
-          <th className="pb-2 pr-3 text-left font-medium">Item</th>
+        <tr className="border-b border-zinc-200/80 text-zinc-600">
+          <th className="pb-2 pr-3 text-left font-medium">Description</th>
           <th className="w-14 pb-2 px-2 text-right font-medium tabular-nums">Qty</th>
           <th className="w-16 pb-2 px-2 text-left font-medium">Unit</th>
           <th className="w-28 pb-2 px-2 text-right font-medium tabular-nums">Unit Price</th>
@@ -77,7 +77,7 @@ function LineItemsTable({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: numbe
         {rows.map((row) => {
           const { title: itemTitle, body } = splitLineItemDesc(row.desc ?? "");
           return (
-            <tr key={row.id} className="border-b border-zinc-200">
+            <tr key={row.id} className="border-b border-zinc-100">
               <td className="py-2 pr-3 align-top">
                 <p className="font-medium text-zinc-900">{itemTitle || row.desc}</p>
                 {body.trim() ? (
@@ -169,10 +169,10 @@ export function EstimatePreviewContent({
 
         <div className="border-b border-zinc-300 my-4" />
 
-        {/* Cost breakdown */}
+        {/* Scope sections */}
         <section>
           <h2 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-3">
-            Cost breakdown
+            Scope of work
           </h2>
           {costSections.length === 0 ? (
             <p className="text-sm text-zinc-500 py-2">No line items.</p>
@@ -182,8 +182,8 @@ export function EstimatePreviewContent({
                 <div key={categoryId} className="mb-5 last:mb-0">
                   <p className="text-sm font-semibold text-zinc-900 mb-2">{title}</p>
                   <LineItemsTable rows={rows} fmt={fmt} />
-                  <p className="text-right font-medium tabular-nums text-zinc-900 mt-2">
-                    Section total: ${fmt(sectionTotal)}
+                  <p className="text-right text-xs tabular-nums text-zinc-500 mt-2">
+                    ${fmt(sectionTotal)}
                   </p>
                 </div>
               ))}
@@ -202,7 +202,7 @@ export function EstimatePreviewContent({
           ) : (
             <table className="w-full border-collapse text-sm">
               <thead>
-                <tr className="border-b border-zinc-300 text-zinc-700">
+                <tr className="border-b border-zinc-200/80 text-zinc-600">
                   <th className="pb-2 pr-3 text-left font-medium">Payment</th>
                   <th className="w-28 pb-2 px-2 text-right font-medium tabular-nums">Amount</th>
                   <th className="pb-2 px-2 text-left font-medium">Terms</th>

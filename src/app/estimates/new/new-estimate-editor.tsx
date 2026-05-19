@@ -300,17 +300,17 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   return (
     <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-10 lg:items-start">
       <div className="min-w-0 space-y-8 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
-        <header className="border-b border-border/60 pb-4">
+        <header className="border-b border-border/30 pb-6">
           <Link
             href="/estimates"
-            className="inline-flex min-h-11 items-center text-sm text-muted-foreground hover:text-foreground"
+            className="inline-flex min-h-11 items-center text-xs text-muted-foreground/65 hover:text-foreground"
           >
             ← Estimates
           </Link>
-          <h1 className="mt-2 text-xl font-semibold tracking-tight text-foreground">
+          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
             New Estimate
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Draft · {estimateDate}</p>
+          <p className="mt-1.5 text-xs text-muted-foreground/55">Draft · {estimateDate}</p>
         </header>
 
         {formError ? (
@@ -574,7 +574,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         </EstimateBuilderAdvanced>
       </div>
 
-      <aside className="hidden lg:block lg:sticky lg:top-6">
+      <aside className="hidden lg:block lg:sticky lg:top-6 lg:pl-2">
         <EstimateBuilderSummary
           summary={{
             materialCost: summary.materialCost,
@@ -598,17 +598,28 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-4 py-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-sm lg:hidden"
         aria-label="Estimate total"
       >
-        <div className="mb-3 flex items-baseline justify-between">
-          <span className="text-sm font-medium text-muted-foreground">Total</span>
-          <span className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+        <div className="mb-4 flex items-baseline justify-between gap-4">
+          <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground/50">
+            Total
+          </span>
+          <span className="text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight text-foreground">
             {formatEstimateCurrency(summary.grandTotal)}
           </span>
         </div>
         <div className="flex gap-2">
-          <Button type="button" variant="outline" asChild className="min-h-11 flex-1 rounded-sm">
+          <Button
+            type="button"
+            variant="ghost"
+            asChild
+            className="min-h-11 flex-1 rounded-sm text-muted-foreground"
+          >
             <Link href="/estimates">Cancel</Link>
           </Button>
-          <Button onClick={handleSave} disabled={saving} className="min-h-11 flex-1 rounded-sm">
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="min-h-11 flex-1 rounded-sm font-medium shadow-sm"
+          >
             <SubmitSpinner loading={saving} className="mr-2" />
             {saving ? "Saving…" : "Save Estimate"}
           </Button>
@@ -618,11 +629,20 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         ) : null}
       </div>
 
-      <div className="hidden lg:col-span-2 lg:flex lg:justify-end lg:gap-2 lg:pt-2">
-        <Button type="button" variant="outline" asChild className="min-h-11 rounded-sm">
+      <div className="hidden lg:col-span-2 lg:flex lg:justify-end lg:gap-2 lg:pt-4">
+        <Button
+          type="button"
+          variant="ghost"
+          asChild
+          className="min-h-11 rounded-sm text-muted-foreground"
+        >
           <Link href="/estimates">Cancel</Link>
         </Button>
-        <Button onClick={handleSave} disabled={saving} className="min-h-11 rounded-sm px-6">
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="min-h-11 rounded-sm px-6 font-medium shadow-sm"
+        >
           <SubmitSpinner loading={saving} className="mr-2" />
           {saving ? "Saving…" : "Save Estimate"}
         </Button>

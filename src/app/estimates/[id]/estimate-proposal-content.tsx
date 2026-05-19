@@ -67,7 +67,9 @@ export function EstimateProposalContent({
       )}
 
       <div className="mb-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">Scope</h2>
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">
+          Scope of work
+        </h2>
         {Object.entries(itemsByCode).length === 0 ? (
           <p className="text-sm text-zinc-500 py-4">No line items.</p>
         ) : (
@@ -76,9 +78,7 @@ export function EstimateProposalContent({
             const sectionSubtotal = rows.reduce((s, r) => s + estimateLineTotal(r), 0);
             return (
               <div key={code} className="mb-6 estimate-print-section">
-                <p className="text-sm font-semibold text-zinc-900 mb-2">
-                  {cc.code} 00 00 – {cc.name}
-                </p>
+                <p className="text-sm font-semibold text-zinc-900 mb-2">{cc.name}</p>
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="border-b border-zinc-200">
@@ -92,10 +92,7 @@ export function EstimateProposalContent({
                         Unit
                       </th>
                       <th className="text-right py-2 px-2 text-xs font-semibold text-zinc-600 tabular-nums">
-                        Unit Cost
-                      </th>
-                      <th className="text-right py-2 px-2 text-xs font-semibold text-zinc-600 tabular-nums">
-                        Markup
+                        Unit price
                       </th>
                       <th className="text-right py-2 pl-4 text-xs font-semibold text-zinc-600 tabular-nums">
                         Total
@@ -113,9 +110,6 @@ export function EstimateProposalContent({
                         <td className="py-2 px-2 text-right tabular-nums text-zinc-900">
                           {formatEstimateCurrency(row.unitCost)}
                         </td>
-                        <td className="py-2 px-2 text-right tabular-nums text-zinc-600">
-                          {(row.markupPct * 100).toFixed(0)}%
-                        </td>
                         <td className="py-2 pl-4 text-right tabular-nums font-medium text-zinc-900">
                           {formatEstimateCurrency(estimateLineTotal(row))}
                         </td>
@@ -123,8 +117,8 @@ export function EstimateProposalContent({
                     ))}
                   </tbody>
                 </table>
-                <p className="text-right text-sm font-medium tabular-nums text-zinc-900 mt-2">
-                  Section Subtotal: {formatEstimateCurrency(sectionSubtotal)}
+                <p className="text-right text-xs tabular-nums text-zinc-500 mt-2">
+                  {formatEstimateCurrency(sectionSubtotal)}
                 </p>
               </div>
             );
@@ -133,7 +127,7 @@ export function EstimateProposalContent({
       </div>
 
       <div className="flex justify-end mb-6 estimate-print-section">
-        <div className="w-56 border border-zinc-200 rounded-lg p-4 text-sm">
+        <div className="w-56 border-t border-zinc-200 pt-4 text-sm">
           <div className="flex justify-between py-1">
             <span className="text-zinc-600">Subtotal</span>
             <span className="tabular-nums font-medium text-zinc-900">

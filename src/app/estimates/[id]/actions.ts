@@ -3,22 +3,25 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
-import { setEstimateStatusWithClient } from "@/lib/estimates-db";
+import {
+  setEstimateStatusWithClient,
+  addLineItemWithClient,
+  updateLineItemWithClient,
+  duplicateLineItemWithClient,
+  deleteLineItemWithClient,
+  createCustomEstimateCategoryWithClient,
+  createEstimateCategoryWithExplicitCodeWithClient,
+} from "@/lib/estimates-db";
 import {
   createNewVersionFromSnapshot,
   convertEstimateSnapshotToProject,
   convertEstimateToProjectWithSetup,
-  addLineItem,
-  createCustomEstimateCategory,
-  createEstimateCategoryWithExplicitCode,
   updateEstimateCategoryDisplayName,
   setEstimateStatus,
   updateEstimateStatus,
   updateEstimateMeta,
-  updateLineItem,
-  duplicateLineItem,
-  deleteLineItem,
   moveEstimateItemsToCostCode,
   reorderEstimateCategories,
   addPaymentMilestone,
@@ -31,6 +34,10 @@ import {
 } from "@/lib/data";
 
 export type EstimateStatus = "Draft" | "Sent" | "Approved" | "Rejected" | "Converted";
+
+function getEstimateWriteClient(): SupabaseClient | null {
+  return getServerSupabaseAdmin();
+}
 
 export async function approveEstimateAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
@@ -431,7 +438,9 @@ export async function addLineItemAction(formData: FormData) {
   if (typeof estimateId !== "string" || typeof costCode !== "string") return;
   const categoryDisplayName = (formData.get("categoryDisplayName") as string)?.trim() || "";
   try {
-    const item = await addLineItem(estimateId, {
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    const item = await addLineItemWithClient(db, estimateId, {
       costCode,
       desc: (formData.get("desc") as string)?.trim() || "New item",
       qty: Number(formData.get("qty")) || 1,
@@ -459,7 +468,9 @@ export async function addLineItemCatalogInlineAction(
   categoryDisplayName: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const item = await addLineItem(estimateId, {
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const item = await addLineItemWithClient(db, estimateId, {
       costCode,
       desc: "New item",
       qty: 1,
@@ -487,13 +498,15 @@ export async function createCustomEstimateCategoryAction(
 ): Promise<{ ok: boolean; costCode?: string; error?: string }> {
   if (!estimateId.trim()) return { ok: false, error: "Estimate id is required." };
   try {
-    const out = await createCustomEstimateCategory(estimateId, displayName);
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const out = await createCustomEstimateCategoryWithClient(db, estimateId, displayName);
     if (!out.ok) return { ok: false, error: out.error };
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
     return { ok: true, costCode: out.costCode };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not create category." };
+    return { ok: false, error: e instanceof Error ? e.message : "Could not create section." };
   }
 }
 
@@ -504,13 +517,20 @@ export async function createEstimateCategoryWithCodeAction(
 ): Promise<{ ok: boolean; costCode?: string; error?: string }> {
   if (!estimateId.trim()) return { ok: false, error: "Estimate id is required." };
   try {
-    const out = await createEstimateCategoryWithExplicitCode(estimateId, costCode, displayName);
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const out = await createEstimateCategoryWithExplicitCodeWithClient(
+      db,
+      estimateId,
+      costCode,
+      displayName
+    );
     if (!out.ok) return { ok: false, error: out.error };
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
     return { ok: true, costCode: out.costCode };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not create category." };
+    return { ok: false, error: e instanceof Error ? e.message : "Could not create section." };
   }
 }
 
@@ -524,13 +544,16 @@ export async function updateLineItemAction(formData: FormData) {
     const unit = formData.get("unit") as string | null;
     const unitCost = formData.get("unitCost");
     const markupPct = formData.get("markupPct");
-    await updateLineItem(estimateId, itemId, {
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    const ok = await updateLineItemWithClient(db, estimateId, itemId, {
       ...(desc != null ? { desc } : {}),
       ...(qty != null && qty !== "" ? { qty: Number(qty) } : {}),
       ...(unit != null ? { unit } : {}),
       ...(unitCost != null && unitCost !== "" ? { unitCost: Number(unitCost) } : {}),
       ...(markupPct != null && markupPct !== "" ? { markupPct: Number(markupPct) / 100 } : {}),
     });
+    if (!ok) return;
     revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
@@ -547,12 +570,14 @@ export async function updateLineItemInlineAction(
   if (typeof estimateId !== "string" || typeof itemId !== "string")
     return { ok: false, error: "Missing estimate or item id" };
   try {
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
     const desc = formData.get("desc") as string | null;
     const qty = formData.get("qty");
     const unit = formData.get("unit") as string | null;
     const unitCost = formData.get("unitCost");
     const markupPct = formData.get("markupPct");
-    const ok = await updateLineItem(estimateId, itemId, {
+    const ok = await updateLineItemWithClient(db, estimateId, itemId, {
       ...(desc != null ? { desc } : {}),
       ...(qty != null && qty !== "" ? { qty: Number(qty) } : {}),
       ...(unit != null ? { unit } : {}),
@@ -574,7 +599,9 @@ export async function duplicateLineItemAction(formData: FormData) {
   const itemId = formData.get("itemId");
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
-    const item = await duplicateLineItem(estimateId, itemId);
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    const item = await duplicateLineItemWithClient(db, estimateId, itemId);
     if (!item) return;
     revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
@@ -588,7 +615,9 @@ export async function deleteLineItemAction(formData: FormData) {
   const itemId = formData.get("itemId");
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
-    await deleteLineItem(estimateId, itemId);
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    await deleteLineItemWithClient(db, estimateId, itemId);
     revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
@@ -662,11 +691,11 @@ export async function reorderEstimateCategoriesAction(
   try {
     if (orderedCostCodes.length === 0) return { ok: true };
     const ok = await reorderEstimateCategories(estimateId, orderedCostCodes, displayNamesByCode);
-    if (!ok) return { ok: false, error: "Could not save category order." };
+    if (!ok) return { ok: false, error: "Could not save section order." };
     revalidateEstimatePaths(estimateId);
     return { ok: true };
   } catch {
-    return { ok: false, error: "Could not save category order." };
+    return { ok: false, error: "Could not save section order." };
   }
 }
 
@@ -679,11 +708,11 @@ export async function moveEstimateItemsToCostCodeAction(
   try {
     if (itemIds.length === 0) return { ok: true };
     const ok = await moveEstimateItemsToCostCode(estimateId, itemIds, newCostCode, displayNameHint);
-    if (!ok) return { ok: false, error: "Could not move items to this category." };
+    if (!ok) return { ok: false, error: "Could not move items to this section." };
     revalidateEstimatePaths(estimateId);
     return { ok: true };
   } catch {
-    return { ok: false, error: "Could not move items to this category." };
+    return { ok: false, error: "Could not move items to this section." };
   }
 }
 
@@ -702,12 +731,12 @@ export async function saveCostCategoryNameInlineAction(
       const legacyOk = await updateEstimateMeta(estimateId, {
         costCategoryNames: { [costCode]: trimmed },
       });
-      if (!legacyOk) return { ok: false, error: "Could not save category name." };
+      if (!legacyOk) return { ok: false, error: "Could not save section name." };
     }
     revalidateEstimatePaths(estimateId);
     return { ok: true };
   } catch (e) {
     console.error(e);
-    return { ok: false, error: e instanceof Error ? e.message : "Could not save category name." };
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save section name." };
   }
 }

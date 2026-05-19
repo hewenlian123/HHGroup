@@ -151,7 +151,7 @@ export function EstimateEditCustomerSection({
             />
           </div>
 
-          <EstimateBuilderAdvanced title="Advanced settings">
+          <EstimateBuilderAdvanced title="More details">
             <div className={EB.coreGrid}>
               <div className={EB.fieldStack}>
                 <Label className={EB.label}>Estimate #</Label>

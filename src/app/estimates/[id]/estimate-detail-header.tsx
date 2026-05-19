@@ -88,7 +88,7 @@ export function EstimateDetailHeader({
             Estimates
           </Link>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight text-foreground tabular-nums">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
               {estimateNumber}
             </h1>
             <EstimateStatusBadge
@@ -96,9 +96,11 @@ export function EstimateDetailHeader({
               className="shrink-0 text-xs"
             />
           </div>
-          {subtitle ? <p className="text-sm text-muted-foreground truncate">{subtitle}</p> : null}
+          {subtitle ? (
+            <p className="text-sm text-muted-foreground/70 truncate">{subtitle}</p>
+          ) : null}
           {siteAddress?.trim() ? (
-            <p className="text-xs text-muted-foreground/90 truncate">{siteAddress}</p>
+            <p className="text-xs text-muted-foreground/50 truncate">{siteAddress}</p>
           ) : null}
           {editing ? <EstimateBuilderSaveStatus status={saveStatus} className="pt-0.5" /> : null}
         </div>
@@ -144,7 +146,7 @@ export function EstimateDetailHeader({
               <Button
                 type="button"
                 size="sm"
-                className="min-h-11 rounded-sm px-4 max-md:flex-1"
+                className="min-h-11 rounded-sm px-5 font-medium shadow-sm max-md:flex-1"
                 disabled={pending}
                 onClick={onSave}
               >
@@ -153,9 +155,9 @@ export function EstimateDetailHeader({
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="min-h-11 rounded-sm px-4 max-md:flex-1"
+                className="min-h-11 rounded-sm px-4 text-muted-foreground max-md:flex-1"
                 disabled={pending}
                 onClick={onCancel}
               >

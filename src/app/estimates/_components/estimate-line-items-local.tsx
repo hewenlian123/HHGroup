@@ -11,9 +11,7 @@ import {
   type EditorLineItem,
   createEmptyLineItem,
   editorLineTotal,
-  pickCostCodeForPreset,
 } from "./estimate-line-item-model";
-import { ESTIMATE_LINE_ITEM_PRESETS } from "./estimate-line-item-presets";
 import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { EstimateLineItemMobileCard } from "./estimate-line-item-mobile-card";
 import { EB, ebInput } from "./estimate-builder-ui";
@@ -130,40 +128,20 @@ export function EstimateLineItemsLocal({
     onCategoryNamesChange({ ...categoryNames, [code]: name });
   };
 
-  const applyPreset = (presetId: string): void => {
-    const preset = ESTIMATE_LINE_ITEM_PRESETS.find((p) => p.id === presetId);
-    if (!preset) return;
-    const used = new Set(lineItems.map((li) => li.costCode));
-    const code = pickCostCodeForPreset(costCodes, used, preset.costCodeHint);
-    if (!code) return;
-    onLineItemsChange([
-      ...lineItems,
-      {
-        id: `li-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        costCode: code,
-        title: preset.title,
-        description: preset.description ?? "",
-        qty: preset.qty,
-        unit: preset.unit,
-        unitPrice: preset.unitPrice,
-        markupPct: preset.markupPct,
-      },
-    ]);
-  };
-
   const handleEnterAddNext = (costCode: string): void => {
     addLineItem(costCode);
   };
 
   return (
     <section className={EB.section}>
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h2 className={EB.sectionTitle}>Line items</h2>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className={EB.scopeHeading}>Scope of work</h2>
+          <p className={EB.scopeSubtitle}>Line items grouped by section</p>
+        </div>
         <EstimateLineItemsToolbar
-          onAddCategory={addCategory}
-          addCategoryDisabled={disabled || codesWithoutItems.length === 0}
-          onApplyPreset={applyPreset}
-          presetsDisabled={disabled || costCodes.length === 0}
+          onAddSection={addCategory}
+          disabled={disabled || codesWithoutItems.length === 0}
         />
       </div>
       {lineItemsError ? (
@@ -200,12 +178,12 @@ export function EstimateLineItemsLocal({
             disabled={costCodes.length === 0}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Category
+            Add Section
           </Button>
         ) : null}
       </div>
 
-      {/* Desktop: compact table by category */}
+      {/* Desktop: scope sections */}
       <div className="max-md:hidden space-y-6">
         {codesWithItems.map((code) => {
           const cc = costCodes.find((c) => c.code === code)!;
@@ -213,22 +191,29 @@ export function EstimateLineItemsLocal({
           const rows = itemsByCode[code];
           const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
           return (
-            <div key={code} className="pb-6 last:pb-0">
+            <div key={code} className={cn(EB.categoryGroup, "mb-4")}>
               <details className="group" open>
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-2 [&::-webkit-details-marker]:hidden">
+                <summary
+                  className={cn(
+                    EB.scopeBlockHeader,
+                    "list-none px-1 [&::-webkit-details-marker]:hidden"
+                  )}
+                >
                   <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-90" />
+                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform group-open:rotate-90" />
                     <Input
                       value={displayName}
                       onChange={(e) => setCategoryName(code, e.target.value)}
-                      className="h-8 max-w-[240px] border-0 bg-transparent px-0 font-medium text-sm shadow-none focus-visible:ring-0"
+                      className={ebInput(
+                        "h-8 max-w-[280px] border-0 px-0 text-[15px] font-semibold shadow-none focus-visible:ring-0"
+                      )}
                       placeholder={cc.name}
                       onClick={(e) => e.stopPropagation()}
                       onPointerDown={(e) => e.stopPropagation()}
                       disabled={disabled}
                     />
                   </div>
-                  <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
+                  <span className={EB.scopeBlockTotal}>
                     {formatEstimateCurrency(sectionSubtotal)}
                   </span>
                 </summary>
@@ -251,7 +236,7 @@ export function EstimateLineItemsLocal({
                         const isLast = row.id === lastItemId;
                         return (
                           <React.Fragment key={row.id}>
-                            <tr className={EB.lineTableRow}>
+                            <tr className={cn("group/line", EB.lineTableRow)}>
                               <td className="py-3 pr-3 align-top">
                                 <Input
                                   value={row.title}
@@ -286,9 +271,7 @@ export function EstimateLineItemsLocal({
                                       handleEnterAddNext(code);
                                     }
                                   }}
-                                  className={ebInput(
-                                    `w-full ${EB.inputNumeric} text-muted-foreground`
-                                  )}
+                                  className={ebInput(`w-full ${EB.inputNumeric} ${EB.inputMuted}`)}
                                   aria-label={`Line item ${globalIdx} quantity`}
                                   disabled={disabled}
                                 />
@@ -308,9 +291,7 @@ export function EstimateLineItemsLocal({
                                       handleEnterAddNext(code);
                                     }
                                   }}
-                                  className={ebInput(
-                                    `w-full ${EB.inputNumeric} text-muted-foreground`
-                                  )}
+                                  className={ebInput(`w-full ${EB.inputNumeric} ${EB.inputMuted}`)}
                                   aria-label={`Line item ${globalIdx} unit price`}
                                   disabled={disabled}
                                 />
@@ -318,13 +299,13 @@ export function EstimateLineItemsLocal({
                               <td className={cn("py-3 pr-2 text-right align-top", EB.lineTotal)}>
                                 {formatEstimateCurrency(editorLineTotal(row))}
                               </td>
-                              <td className="py-3 align-top">
-                                <div className="flex justify-end gap-1">
+                              <td className={cn("py-3 align-top", EB.lineRowActions)}>
+                                <div className="flex justify-end gap-0.5">
                                   <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className="h-9 w-9"
+                                    className="h-8 w-8 text-muted-foreground/55 hover:text-foreground"
                                     onClick={() => duplicateItem(row.id)}
                                     aria-label="Duplicate line item"
                                     disabled={disabled}
@@ -335,7 +316,7 @@ export function EstimateLineItemsLocal({
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                                    className="h-8 w-8 text-muted-foreground/45 hover:text-destructive"
                                     onClick={() => deleteItem(row.id)}
                                     aria-label="Remove line item"
                                     disabled={disabled}
@@ -360,17 +341,15 @@ export function EstimateLineItemsLocal({
                       })}
                     </tbody>
                   </table>
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 h-9 text-muted-foreground"
+                    className={cn(EB.addLineLink, "mt-2")}
                     onClick={() => addLineItem(code)}
                     disabled={disabled}
                   >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Line Item
-                  </Button>
+                    <Plus className="h-3 w-3" aria-hidden />
+                    Add line
+                  </button>
                 </div>
               </details>
             </div>
@@ -387,7 +366,7 @@ export function EstimateLineItemsLocal({
               onClick={addCategory}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Category
+              Add Section
             </Button>
           </div>
         ) : null}
