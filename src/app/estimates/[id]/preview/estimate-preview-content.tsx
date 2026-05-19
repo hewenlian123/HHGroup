@@ -27,7 +27,6 @@ type EstimatePreviewProps = {
     subtotal: number;
     tax: number;
     discount: number;
-    markup: number;
     grandTotal: number;
   } | null;
 };
@@ -246,10 +245,6 @@ export function EstimatePreviewContent({
               <div className="flex justify-between gap-6">
                 <span className="text-zinc-600">Discount</span>
                 <span className="tabular-nums text-zinc-900">−${fmt(summary.discount)}</span>
-              </div>
-              <div className="flex justify-between gap-6">
-                <span className="text-zinc-600">Markup</span>
-                <span className="tabular-nums text-zinc-900">${fmt(summary.markup)}</span>
               </div>
             </div>
             <p className="text-right text-lg font-semibold tabular-nums text-zinc-900 mt-6">

@@ -18,14 +18,10 @@ import { getCompanyProfile } from "@/lib/company-profile";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
 import { EstimateBuilderSummary } from "../_components/estimate-builder-summary";
 import { EstimateBuilderAdvanced } from "../_components/estimate-builder-advanced";
-import { EB, ebInput } from "../_components/estimate-builder-ui";
 import { EstimateNewCustomerSection } from "../_components/estimate-new-customer-section";
 import { EstimateLineItemsLocal } from "../_components/estimate-line-items-local";
 import type { EditorLineItem } from "../_components/estimate-line-item-model";
-import {
-  CustomerSelectWithAdd,
-  type CustomerOption,
-} from "@/components/customers/customer-select-with-add";
+import type { CustomerOption } from "@/components/customers/customer-select-with-add";
 
 type CostCodeType = "material" | "labor" | "subcontractor";
 
