@@ -209,24 +209,13 @@ test.describe("project financial snapshot API", () => {
     await seedTestLoginPin("1234");
   });
 
-  test("requires auth and returns old vs new comparison for a PIN session", async ({ browser }) => {
+  test("returns old vs new comparison in owner no-login mode", async ({ browser }) => {
     const projectId = await createProject();
     const path = `/api/projects/${projectId}/financial-snapshot`;
     const batchPath = `/api/projects/financial-snapshots?ids=${projectId}`;
 
     try {
-      const unauthContext = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
-      const unauthResponse = await unauthContext.request.get(path);
-      expect(unauthResponse.status()).toBe(401);
-      const unauthBatchResponse = await unauthContext.request.get(batchPath);
-      expect(unauthBatchResponse.status()).toBe(401);
-      await unauthContext.close();
-
       const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
-      const loginResponse = await context.request.post("/api/auth/pin-login", {
-        data: { pin: "1234" },
-      });
-      expect(loginResponse.status()).toBe(200);
 
       const response = await context.request.get(path);
       expect(response.status()).toBe(200);

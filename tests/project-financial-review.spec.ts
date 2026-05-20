@@ -78,7 +78,7 @@ test.describe("project financial review", () => {
     await seedTestLoginPin("1234");
   });
 
-  test("API requires auth and flags placeholder, suspicious, and mismatch contract values", async ({
+  test("API flags placeholder, suspicious, and mismatch contract values in owner no-login mode", async ({
     browser,
   }) => {
     const projects: TestProject[] = [
@@ -110,16 +110,7 @@ test.describe("project financial review", () => {
     try {
       await Promise.all(projects.map(createProject));
 
-      const unauthContext = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
-      const unauthResponse = await unauthContext.request.get("/api/projects/financial-review");
-      expect(unauthResponse.status()).toBe(401);
-      await unauthContext.close();
-
       const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
-      const loginResponse = await context.request.post("/api/auth/pin-login", {
-        data: { pin: "1234" },
-      });
-      expect(loginResponse.status()).toBe(200);
 
       const response = await context.request.get("/api/projects/financial-review");
       expect(response.status()).toBe(200);

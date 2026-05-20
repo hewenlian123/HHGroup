@@ -195,14 +195,10 @@ test.describe("System QA check", () => {
     await seedTestLoginPin();
   });
 
-  test("requires PIN auth and returns sanitized QA findings", async ({ browser, request }) => {
+  test("returns sanitized QA findings in owner no-login mode", async ({ browser }) => {
     const fixture = await createQaFixture();
     try {
-      const unauth = await request.get("/api/system/qa-check", { headers: LOCKED_HEADERS });
-      expect(unauth.status()).toBe(401);
-
       const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
-      await loginOwner(context.request);
       const response = await context.request.get("/api/system/qa-check");
       expect(response.status()).toBe(200);
       const text = await response.text();

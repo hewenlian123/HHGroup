@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { isValidPinSession } from "@/lib/pin-auth";
+import { isOwnerInternalNoLoginEnabled } from "@/lib/owner-access-mode";
 
 const INTERNAL_ADMIN_SECRET_HEADER = "x-internal-admin-secret";
 const PRODUCTION_SAFETY_LOCK_HEADER = "x-hh-production-safety-lock";
@@ -205,6 +206,10 @@ async function hasSupabaseSessionUser(
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
+  if (pathname === "/login" && isOwnerInternalNoLoginEnabled()) {
+    return dashboardRedirectResponse(request);
+  }
+
   if (pathname === "/login" && (await isValidPinSession(request))) {
     return dashboardRedirectResponse(request);
   }
@@ -245,6 +250,19 @@ export async function middleware(request: NextRequest) {
     !hasInternalAdminSecret(request) &&
     !hasLocalTestAuthBypass(request)
   ) {
+    if (isAdminAppPath(pathname)) {
+      const response = NextResponse.next();
+      const auth = await hasSupabaseSessionUser(request, response);
+      if (!auth.authenticated || !auth.admin) {
+        return forbiddenAdminPageResponse();
+      }
+      return response;
+    }
+
+    if (isOwnerInternalNoLoginEnabled() && !isAdminAppPath(pathname)) {
+      return NextResponse.next();
+    }
+
     const hasPinSession = await isValidPinSession(request);
     if (hasPinSession) {
       return NextResponse.next();

@@ -1,53 +1,8 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
-import { pbkdf2Sync, randomBytes } from "node:crypto";
-import { createClient } from "@supabase/supabase-js";
+import { expect, test } from "@playwright/test";
 
 const LOCKED_HEADERS = {
   "x-hh-production-safety-lock": "1",
 };
-
-const OWNER_PIN = "1234";
-
-function hashTestPin(pin: string): { hash: string; salt: string } {
-  const salt = randomBytes(16);
-  const hash = pbkdf2Sync(pin, salt, 210_000, 32, "sha256");
-  return {
-    hash: hash.toString("base64url"),
-    salt: salt.toString("base64url"),
-  };
-}
-
-async function seedTestLoginPin(pin = OWNER_PIN): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!url || !key) {
-    throw new Error("System owner tests require local Supabase URL and service role key.");
-  }
-
-  const { hash, salt } = hashTestPin(pin);
-  const supabase = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { error } = await supabase.from("app_security_settings").upsert(
-    {
-      key: "login_pin",
-      pin_hash: hash,
-      pin_salt: salt,
-      session_version: 1,
-      updated_by: "playwright-system-owner",
-    },
-    { onConflict: "key" }
-  );
-  if (error) throw new Error(`Failed to seed login PIN: ${error.message}`);
-}
-
-async function loginOwner(request: APIRequestContext): Promise<void> {
-  const response = await request.post("/api/auth/pin-login", {
-    headers: LOCKED_HEADERS,
-    data: { pin: OWNER_PIN },
-  });
-  expect(response.status()).toBe(200);
-}
 
 function configuredSecretValues(): string[] {
   return [
@@ -74,19 +29,10 @@ async function expectNoSecrets(responseText: string): Promise<void> {
 test.describe("system owner access", () => {
   test.describe.configure({ mode: "serial", timeout: 90_000 });
 
-  test.beforeEach(async () => {
-    await seedTestLoginPin();
-  });
-
-  test.afterEach(async () => {
-    await seedTestLoginPin();
-  });
-
-  test("PIN owner session can open system pages and sidebar links are not duplicated", async ({
+  test("owner no-login mode can open system pages and sidebar links are not duplicated", async ({
     browser,
   }) => {
     const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
-    await loginOwner(context.request);
     const page = await context.newPage();
 
     await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
@@ -108,6 +54,9 @@ test.describe("system owner access", () => {
     ] as const) {
       const response = await page.goto(path, { waitUntil: "domcontentloaded" });
       expect(response?.status(), path).toBeLessThan(400);
+      if (path === "/settings/system-health") {
+        await page.waitForURL(/\/system-health(?:[?#]|$)/, { timeout: 10_000 });
+      }
       await expect(page).not.toHaveURL(/\/login/);
       await expect(page.getByRole("heading", { name: heading })).toBeVisible();
       if (path === "/system-health") {
@@ -123,24 +72,10 @@ test.describe("system owner access", () => {
     await context.close();
   });
 
-  test("system read APIs require auth, allow PIN owner, and sanitize secret values", async ({
+  test("system read APIs allow owner no-login mode and sanitize secret values", async ({
     browser,
-    request,
   }) => {
-    for (const path of [
-      "/api/system-health",
-      "/api/schema-check",
-      "/api/system-metrics",
-      "/api/system-logs",
-      "/api/system/backup",
-      "/api/system/integrity",
-    ]) {
-      const unauth = await request.get(path, { headers: LOCKED_HEADERS });
-      expect([401, 403], `unauth ${path}`).toContain(unauth.status());
-    }
-
     const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
-    await loginOwner(context.request);
 
     for (const path of [
       "/api/system-health",
@@ -180,11 +115,10 @@ test.describe("system owner access", () => {
     await context.close();
   });
 
-  test("PIN owner session does not bypass destructive maintenance safeguards", async ({
+  test("owner no-login mode does not bypass destructive maintenance safeguards", async ({
     browser,
   }) => {
     const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
-    await loginOwner(context.request);
 
     const wipe = await context.request.post("/api/production/wipe-database", { data: {} });
     expect(wipe.status()).toBe(403);
@@ -195,9 +129,7 @@ test.describe("system owner access", () => {
     expect([400, 403]).toContain(cleanup.status());
 
     const backup = await context.request.post("/api/system/backup", { data: {} });
-    expect(backup.status()).toBe(400);
-    const backupBody = (await backup.json().catch(() => ({}))) as { message?: string };
-    expect(String(backupBody.message ?? "")).toContain("BACKUP");
+    expect(backup.status()).toBe(403);
 
     for (const path of [
       "/api/production/wipe-database",
