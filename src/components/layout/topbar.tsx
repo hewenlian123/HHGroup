@@ -155,6 +155,7 @@ export function Topbar({
 
   return (
     <header
+      data-app-topbar
       className={cn(
         "sticky top-0 z-40 flex h-11 min-h-11 shrink-0 items-center border-b border-border/60 bg-white/80 px-3 backdrop-blur-md backdrop-saturate-150 sm:min-h-0 sm:px-6 dark:border-border dark:bg-background/80",
         "flex-row gap-3 sm:gap-4"
@@ -219,7 +220,7 @@ export function Topbar({
           <Button
             variant="outline"
             size="icon"
-            className="btn-outline-ghost flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-md border-[0.5px] border-gray-300 bg-white shadow-none transition-all duration-150 ease-out dark:border-border dark:bg-card"
+            className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md border-[0.5px] border-gray-300 bg-white shadow-none transition-all duration-150 ease-out sm:h-[30px] sm:w-[30px] sm:min-h-0 sm:min-w-0 dark:border-border dark:bg-card"
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4 text-text-secondary dark:text-muted-foreground" />

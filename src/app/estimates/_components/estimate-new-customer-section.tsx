@@ -7,8 +7,10 @@ import {
   CustomerSelectWithAdd,
   type CustomerOption,
 } from "@/components/customers/customer-select-with-add";
+import { FinanceDatePicker } from "@/components/ui/date-picker";
 import { EstimateBuilderAdvanced } from "./estimate-builder-advanced";
-import { EB, ebInput } from "./estimate-builder-ui";
+import { EB, ebGlassCustomerPanel, ebInput } from "./estimate-builder-ui";
+import { cn } from "@/lib/utils";
 
 export type EstimateNewCustomerSectionProps = {
   clientName: string;
@@ -75,189 +77,194 @@ export function EstimateNewCustomerSection({
 }: EstimateNewCustomerSectionProps): React.ReactElement {
   return (
     <section className={EB.section}>
-      <div className="mb-4">
-        <h2 className={EB.sectionTitle}>Customer & project</h2>
-        <p className={EB.sectionSubtitle}>
-          {clientName || "Customer"} · {projectName || "Project"}
-        </p>
-      </div>
-
-      <div className="space-y-4">
-        <CustomerSelectWithAdd
-          label="Select customer"
-          value={selectedCustomer?.id ?? null}
-          onChange={onCustomerPickerChange}
-        />
-
-        <div className={EB.coreGrid}>
-          <div className={EB.fieldStack}>
-            <Label htmlFor="clientName" className={EB.label}>
-              Customer
-            </Label>
-            <Input
-              id="clientName"
-              value={clientName}
-              onChange={(e) => onClientNameChange(e.target.value)}
-              placeholder="Client or company name"
-              className={ebInput()}
-              aria-invalid={submitAttempted && !clientName.trim()}
-              required
-            />
-            {submitAttempted && !clientName.trim() ? (
-              <p className="text-xs text-rose-600">Client name is required.</p>
-            ) : null}
-          </div>
-          <div className={EB.fieldStack}>
-            <Label htmlFor="projectName" className={EB.label}>
-              Project
-            </Label>
-            <Input
-              id="projectName"
-              value={projectName}
-              onChange={(e) => onProjectNameChange(e.target.value)}
-              placeholder="Project name"
-              className={ebInput()}
-              aria-invalid={submitAttempted && !projectName.trim()}
-              required
-            />
-            {submitAttempted && !projectName.trim() ? (
-              <p className="text-xs text-rose-600">Project name is required.</p>
-            ) : null}
-          </div>
+      <div className={ebGlassCustomerPanel()}>
+        <div className="mb-4">
+          <h2 className={EB.sectionTitle}>Customer & project</h2>
+          <p className={EB.sectionSubtitle}>
+            {clientName || "Customer"} · {projectName || "Project"}
+          </p>
         </div>
 
-        <div className={EB.fieldStack}>
-          <Label htmlFor="address" className={EB.label}>
-            Address
-          </Label>
-          <Input
-            id="address"
-            value={address}
-            onChange={(e) => onAddressChange(e.target.value)}
-            placeholder="Site or client address"
-            className={ebInput()}
+        <div className="space-y-4">
+          <CustomerSelectWithAdd
+            label="Select customer"
+            value={selectedCustomer?.id ?? null}
+            onChange={onCustomerPickerChange}
+            triggerClassName={cn(ebInput("!h-11 !min-h-11"), "justify-between")}
           />
-        </div>
 
-        <div className={EB.fieldStack}>
-          <Label className={EB.label}>Estimate date</Label>
-          <p className={EB.readValueMuted}>{estimateDate}</p>
-        </div>
-
-        <EstimateBuilderAdvanced title="More details">
           <div className={EB.coreGrid}>
             <div className={EB.fieldStack}>
-              <Label htmlFor="clientPhone" className={EB.label}>
-                Phone
+              <Label htmlFor="clientName" className={EB.label}>
+                Customer
               </Label>
               <Input
-                id="clientPhone"
-                type="tel"
-                value={phone}
-                onChange={(e) => onPhoneChange(e.target.value)}
-                placeholder="Optional"
+                id="clientName"
+                value={clientName}
+                onChange={(e) => onClientNameChange(e.target.value)}
+                placeholder="Client or company name"
                 className={ebInput()}
+                aria-invalid={submitAttempted && !clientName.trim()}
+                required
               />
+              {submitAttempted && !clientName.trim() ? (
+                <p className="text-xs text-rose-600">Client name is required.</p>
+              ) : null}
             </div>
             <div className={EB.fieldStack}>
-              <Label htmlFor="clientEmail" className={EB.label}>
-                Email
+              <Label htmlFor="projectName" className={EB.label}>
+                Project
               </Label>
               <Input
-                id="clientEmail"
-                type="email"
-                value={email}
-                onChange={(e) => onEmailChange(e.target.value)}
-                placeholder="Optional"
+                id="projectName"
+                value={projectName}
+                onChange={(e) => onProjectNameChange(e.target.value)}
+                placeholder="Project name"
                 className={ebInput()}
+                aria-invalid={submitAttempted && !projectName.trim()}
+                required
               />
-            </div>
-            <div className={EB.fieldStack}>
-              <Label className={EB.label}>Valid until</Label>
-              <Input
-                type="date"
-                value={validUntil}
-                onChange={(e) => onValidUntilChange(e.target.value)}
-                className={ebInput()}
-              />
-            </div>
-            <div className={EB.fieldStack}>
-              <Label className={EB.label}>Sales</Label>
-              <Input
-                value={salesPerson}
-                onChange={(e) => onSalesPersonChange(e.target.value)}
-                placeholder="Optional"
-                className={ebInput()}
-              />
+              {submitAttempted && !projectName.trim() ? (
+                <p className="text-xs text-rose-600">Project name is required.</p>
+              ) : null}
             </div>
           </div>
+
           <div className={EB.fieldStack}>
-            <Label className={EB.label}>Notes</Label>
+            <Label htmlFor="address" className={EB.label}>
+              Address
+            </Label>
             <Input
-              value={notes}
-              onChange={(e) => onNotesChange(e.target.value)}
-              placeholder="Optional notes"
+              id="address"
+              value={address}
+              onChange={(e) => onAddressChange(e.target.value)}
+              placeholder="Site or client address"
               className={ebInput()}
             />
           </div>
-          <div className={EB.coreGrid}>
-            <div className={EB.fieldStack}>
-              <Label htmlFor="builder-tax" className={EB.label}>
-                Tax
-              </Label>
-              <Input
-                id="builder-tax"
-                type="number"
-                step="0.01"
-                value={tax}
-                onChange={(e) => {
-                  onTaxTouched();
-                  onTaxChange(Number(e.target.value) || 0);
-                }}
-                className={ebInput(EB.inputNumeric)}
-              />
-            </div>
-            <div className={EB.fieldStack}>
-              <Label htmlFor="builder-discount" className={EB.label}>
-                Discount
-              </Label>
-              <Input
-                id="builder-discount"
-                type="number"
-                step="0.01"
-                value={discount}
-                onChange={(e) => onDiscountChange(Number(e.target.value) || 0)}
-                className={ebInput(EB.inputNumeric)}
-              />
-            </div>
-            <div className={EB.fieldStack}>
-              <Label htmlFor="builder-overhead" className={EB.label}>
-                Overhead %
-              </Label>
-              <Input
-                id="builder-overhead"
-                type="number"
-                step="0.1"
-                value={overheadPct}
-                onChange={(e) => onOverheadPctChange(Number(e.target.value) || 0)}
-                className={ebInput(EB.inputNumeric)}
-              />
-            </div>
-            <div className={EB.fieldStack}>
-              <Label htmlFor="builder-profit" className={EB.label}>
-                Profit %
-              </Label>
-              <Input
-                id="builder-profit"
-                type="number"
-                step="0.1"
-                value={profitPct}
-                onChange={(e) => onProfitPctChange(Number(e.target.value) || 0)}
-                className={ebInput(EB.inputNumeric)}
-              />
-            </div>
+
+          <div className={EB.fieldStack}>
+            <Label className={EB.label}>Estimate date</Label>
+            <p className={EB.readValueMuted}>{estimateDate}</p>
           </div>
-        </EstimateBuilderAdvanced>
+
+          <EstimateBuilderAdvanced title="More details">
+            <div className={EB.coreGrid}>
+              <div className={EB.fieldStack}>
+                <Label htmlFor="clientPhone" className={EB.label}>
+                  Phone
+                </Label>
+                <Input
+                  id="clientPhone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => onPhoneChange(e.target.value)}
+                  placeholder="Optional"
+                  className={ebInput()}
+                />
+              </div>
+              <div className={EB.fieldStack}>
+                <Label htmlFor="clientEmail" className={EB.label}>
+                  Email
+                </Label>
+                <Input
+                  id="clientEmail"
+                  type="email"
+                  value={email}
+                  onChange={(e) => onEmailChange(e.target.value)}
+                  placeholder="Optional"
+                  className={ebInput()}
+                />
+              </div>
+              <div className={EB.fieldStack}>
+                <Label className={EB.label}>Valid until</Label>
+                <FinanceDatePicker
+                  appearance="glass"
+                  size="md"
+                  value={validUntil}
+                  onChange={onValidUntilChange}
+                  className={ebInput(cn(EB.dateField, "!h-11 !min-h-11"))}
+                  allowClear
+                />
+              </div>
+              <div className={EB.fieldStack}>
+                <Label className={EB.label}>Sales</Label>
+                <Input
+                  value={salesPerson}
+                  onChange={(e) => onSalesPersonChange(e.target.value)}
+                  placeholder="Optional"
+                  className={ebInput()}
+                />
+              </div>
+            </div>
+            <div className={EB.fieldStack}>
+              <Label className={EB.label}>Notes</Label>
+              <Input
+                value={notes}
+                onChange={(e) => onNotesChange(e.target.value)}
+                placeholder="Optional notes"
+                className={ebInput()}
+              />
+            </div>
+            <div className={EB.coreGrid}>
+              <div className={EB.fieldStack}>
+                <Label htmlFor="builder-tax" className={EB.label}>
+                  Tax
+                </Label>
+                <Input
+                  id="builder-tax"
+                  type="number"
+                  step="0.01"
+                  value={tax}
+                  onChange={(e) => {
+                    onTaxTouched();
+                    onTaxChange(Number(e.target.value) || 0);
+                  }}
+                  className={ebInput(EB.inputNumeric)}
+                />
+              </div>
+              <div className={EB.fieldStack}>
+                <Label htmlFor="builder-discount" className={EB.label}>
+                  Discount
+                </Label>
+                <Input
+                  id="builder-discount"
+                  type="number"
+                  step="0.01"
+                  value={discount}
+                  onChange={(e) => onDiscountChange(Number(e.target.value) || 0)}
+                  className={ebInput(EB.inputNumeric)}
+                />
+              </div>
+              <div className={EB.fieldStack}>
+                <Label htmlFor="builder-overhead" className={EB.label}>
+                  Overhead %
+                </Label>
+                <Input
+                  id="builder-overhead"
+                  type="number"
+                  step="0.1"
+                  value={overheadPct}
+                  onChange={(e) => onOverheadPctChange(Number(e.target.value) || 0)}
+                  className={ebInput(EB.inputNumeric)}
+                />
+              </div>
+              <div className={EB.fieldStack}>
+                <Label htmlFor="builder-profit" className={EB.label}>
+                  Profit %
+                </Label>
+                <Input
+                  id="builder-profit"
+                  type="number"
+                  step="0.1"
+                  value={profitPct}
+                  onChange={(e) => onProfitPctChange(Number(e.target.value) || 0)}
+                  className={ebInput(EB.inputNumeric)}
+                />
+              </div>
+            </div>
+          </EstimateBuilderAdvanced>
+        </div>
       </div>
     </section>
   );

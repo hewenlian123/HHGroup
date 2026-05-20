@@ -1,54 +1,90 @@
 import { cn } from "@/lib/utils";
 
-/** Shared Estimate Builder surface tokens (Stripe / Linear / Notion). */
+/** Estimate Builder — dark glass tokens (see estimate-builder-glass.css). */
 export const EB = {
-  pageTitle: "text-2xl font-semibold tracking-tight text-foreground",
-  pageMeta: "text-xs text-muted-foreground/50",
-  section: "border-b border-border/15 pb-10 last:border-0",
-  sectionTitle: "text-lg font-semibold tracking-tight text-foreground",
-  sectionSubtitle: "mt-0.5 text-xs text-muted-foreground/50",
-  scopeHeading: "text-base font-semibold tracking-tight text-foreground",
-  scopeSubtitle: "mt-0.5 text-[11px] text-muted-foreground/45",
+  shell: "estimate-builder",
+  glassPanel: "eb-glass-panel",
+  glassPanelCustomer: "eb-glass-panel eb-glass-panel-customer",
+  dateField: "eb-date-field",
+  glassScope: "eb-glass-scope",
+  glassSidebar: "eb-glass-sidebar",
+  glassSidebarFloat: "eb-glass-sidebar eb-glass-sidebar-float",
+  glassMobileBar: "eb-glass-mobile-bar",
+  glassHeader: "eb-glass-header",
+  glassCommand: "eb-glass-command",
+  glassNotes: "eb-glass-notes",
+  scopeTableWrap: "eb-scope-table-wrap",
+  goldTotal: "eb-gold-total",
+  goldLink: "eb-gold-link",
+  goldAccent: "eb-gold-accent",
+
+  btnPrimary: "eb-btn-primary",
+  btnGhost: "eb-btn-ghost",
+
+  pageTitle: "text-xl font-semibold tracking-tight text-zinc-50",
+  pageMeta: "text-xs text-zinc-500",
+  section: "pb-5 last:pb-0",
+  sectionTitle: "text-sm font-semibold tracking-tight text-zinc-100",
+  sectionSubtitle: "mt-0.5 text-[11px] text-zinc-500",
+  scopeHeading: "text-sm font-semibold tracking-tight text-zinc-100",
+  scopeSubtitle: "mt-0.5 text-[11px] text-zinc-500",
   fieldStack: "space-y-1",
   label: "sr-only",
-  coreGrid: "grid grid-cols-1 gap-4 sm:grid-cols-2",
-  readGrid: "grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4",
+  coreGrid: "grid grid-cols-1 gap-3 sm:grid-cols-2",
+  readGrid: "grid grid-cols-2 gap-x-5 gap-y-3.5 sm:grid-cols-4",
   readRow: "space-y-0.5 min-w-0",
-  readLabel: "text-[10px] font-medium uppercase tracking-[0.06em] text-muted-foreground/45",
-  readValue: "text-sm font-medium text-foreground truncate",
-  readValueMuted: "text-sm text-muted-foreground/70 truncate tabular-nums",
+  readLabel: "text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-400",
+  readValue: "text-sm font-medium text-zinc-100 truncate",
+  readValueMuted: "text-sm text-zinc-300 truncate tabular-nums",
   input:
-    "h-7 rounded-[3px] border-0 border-b border-transparent bg-transparent px-0.5 py-0.5 text-sm font-medium text-foreground shadow-none transition-[color,border-color] placeholder:text-muted-foreground/35 placeholder:font-normal hover:border-border/30 focus-visible:border-border/50 focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-[44px] max-md:px-2 max-md:text-base md:min-h-7",
-  inputMuted:
-    "font-normal text-muted-foreground/75 hover:text-foreground/90 focus-visible:text-foreground",
+    "eb-input h-8 w-full rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-sm font-normal text-zinc-100 transition-[border-color,background] duration-100 placeholder:text-zinc-600 placeholder:font-normal hover:border-white/[0.09] hover:bg-white/[0.035] focus-visible:border-white/[0.14] focus-visible:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-[0_0_0_2px_rgba(255,255,255,0.05)] disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-[44px] max-md:px-3 max-md:text-base md:min-h-8",
+  inputMuted: "font-normal text-zinc-400 hover:text-zinc-200 focus-visible:text-zinc-50",
   inputNumeric: "text-right tabular-nums",
   lineTableHead:
-    "border-b border-border/10 pb-2 text-[10px] font-normal tracking-wide text-muted-foreground/45",
+    "border-b border-white/[0.06] pb-2 text-[10px] font-medium uppercase tracking-[0.07em] text-zinc-400",
   lineTableRow:
-    "border-b border-border/[0.07] transition-colors group/line hover:bg-muted/[0.025] last:border-0",
-  lineRowActions: "opacity-0 group-hover/line:opacity-100 transition-opacity duration-150",
+    "eb-line-row border-b border-white/[0.04] transition-colors duration-150 group/line last:border-0",
+  lineRowActions:
+    "opacity-0 group-hover/line:opacity-100 transition-opacity duration-150 max-md:opacity-100",
   lineDetailsLink:
-    "text-[11px] text-muted-foreground/30 opacity-0 transition-opacity duration-150 group-hover/line:opacity-100 hover:text-muted-foreground/55 focus-visible:opacity-100 focus-visible:outline-none",
-  lineTotal: "text-sm font-medium tabular-nums text-muted-foreground/80",
-  scopeBlock: "mb-8 last:mb-0",
+    "text-[11px] opacity-0 transition-[opacity,color] duration-150 group-hover/line:opacity-100 focus-visible:opacity-100 focus-visible:outline-none max-md:opacity-100 eb-gold-link",
+  lineTotal: "text-sm font-medium tabular-nums text-zinc-200",
+  scopeBlock: "mb-2 last:mb-0",
   scopeBlockHeader:
-    "flex list-none cursor-pointer items-center justify-between gap-3 border-b border-border/10 py-2.5 hover:bg-transparent",
-  scopeBlockTitle: "text-[15px] font-semibold tracking-tight text-foreground",
-  scopeBlockTotal: "text-xs font-normal tabular-nums text-muted-foreground/45",
+    "eb-scope-section-header flex list-none cursor-pointer items-center justify-between gap-2 px-3 py-2.5 transition-colors hover:bg-white/[0.015]",
+  addSectionComposer: "eb-add-section-composer",
+  scopeBlockTitle: "text-sm font-medium text-zinc-200",
+  scopeBlockTotal: "text-xs font-normal tabular-nums text-zinc-500",
   composerAddSection:
-    "inline-flex h-7 items-center gap-1 rounded-[3px] px-2 text-xs font-medium text-muted-foreground/70 transition-colors hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-40",
-  commandMenu:
-    "z-[100] overflow-y-auto rounded-md border border-border/15 bg-popover py-1 shadow-[var(--shadow-popover)]",
+    "eb-add-section inline-flex min-h-11 items-center gap-1.5 px-3 text-xs font-medium md:h-8 md:min-h-8",
+  commandMenu: "z-[100] max-h-64 overflow-y-auto rounded-xl border py-1 eb-glass-command",
   commandMenuItem:
-    "mx-1 cursor-pointer rounded-[3px] px-2.5 py-1.5 text-sm text-foreground/90 hover:bg-muted/50",
-  commandMenuItemActive: "bg-muted/55 text-foreground",
+    "mx-1 cursor-pointer rounded-lg px-2.5 py-2 text-sm text-zinc-200 transition-colors hover:bg-white/[0.08]",
+  commandMenuItemActive: "bg-white/[0.08] text-zinc-50",
   addLineLink:
-    "inline-flex h-7 items-center gap-1 px-1 text-xs text-muted-foreground/45 transition-colors hover:text-foreground",
-  /** @deprecated alias — use scopeBlock */
-  categoryGroup: "mb-8 last:mb-0",
-  categorySectionTotal: "text-xs font-normal tabular-nums text-muted-foreground/45",
+    "inline-flex h-8 items-center gap-1 px-2 text-xs font-medium text-zinc-400 transition-colors eb-gold-link max-md:min-h-11",
+  categoryGroup: "mb-3 last:mb-0",
+  categorySectionTotal: "text-xs font-normal tabular-nums text-zinc-400",
+  backLink:
+    "inline-flex min-h-11 items-center gap-1 text-sm text-zinc-400 transition-colors hover:text-zinc-200",
+  summaryInternalLabel: "text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-500",
+  summaryLineLabel: "text-xs text-zinc-500",
+  summaryLineValue: "text-xs tabular-nums text-zinc-300",
+  summaryLineValueMuted: "text-xs tabular-nums text-zinc-600",
 } as const;
 
 export function ebInput(className?: string): string {
   return cn(EB.input, className);
+}
+
+export function ebGlassPanel(className?: string): string {
+  return cn(EB.glassPanel, "rounded-lg p-3 sm:p-4", className);
+}
+
+export function ebGlassCustomerPanel(className?: string): string {
+  return cn(EB.glassPanelCustomer, "rounded-lg p-3 sm:p-4", className);
+}
+
+export function ebGlassScope(className?: string): string {
+  return cn(EB.glassScope, "rounded-md", className);
 }

@@ -15,7 +15,7 @@ export function EstimateLineItemsToolbar({
   return (
     <button
       type="button"
-      className={cn(EB.composerAddSection, "max-md:min-h-10")}
+      className={cn(EB.composerAddSection)}
       onClick={onAddSection}
       disabled={disabled}
       aria-label="Add section"

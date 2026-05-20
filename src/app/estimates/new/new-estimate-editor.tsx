@@ -15,11 +15,14 @@ import { useToast } from "@/components/toast/toast-provider";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { createBrowserClient } from "@/lib/supabase";
 import { getCompanyProfile } from "@/lib/company-profile";
+import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
 import { EstimateBuilderSummary } from "../_components/estimate-builder-summary";
 import { EstimateBuilderAdvanced } from "../_components/estimate-builder-advanced";
 import { EstimateNewCustomerSection } from "../_components/estimate-new-customer-section";
+import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
 import { EstimateLineItemsLocal } from "../_components/estimate-line-items-local";
+import { EB } from "../_components/estimate-builder-ui";
 import type { EditorLineItem } from "../_components/estimate-line-item-model";
 import type { CustomerOption } from "@/components/customers/customer-select-with-add";
 
@@ -298,355 +301,362 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   };
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-10 lg:items-start">
-      <div className="min-w-0 space-y-8 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
-        <header className="border-b border-border/30 pb-6">
-          <Link
-            href="/estimates"
-            className="inline-flex min-h-11 items-center text-xs text-muted-foreground/65 hover:text-foreground"
-          >
-            ← Estimates
-          </Link>
-          <h1 className="mt-3 text-2xl font-semibold tracking-tight text-foreground">
-            New Estimate
-          </h1>
-          <p className="mt-1.5 text-xs text-muted-foreground/55">Draft · {estimateDate}</p>
-        </header>
+    <EstimateBuilderShell>
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-10 lg:items-start">
+        <div className="min-w-0 space-y-5 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <header className={EB.glassHeader}>
+            <Link href="/estimates" className={cn(EB.backLink, "text-xs")}>
+              ← Estimates
+            </Link>
+            <h1 className={cn("mt-3", EB.pageTitle)}>New Estimate</h1>
+            <p className={cn("mt-1.5", EB.pageMeta)}>Draft · {estimateDate}</p>
+          </header>
 
-        {formError ? (
-          <div
-            role="alert"
-            className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"
-          >
-            {formError}
-          </div>
-        ) : null}
-
-        <EstimateNewCustomerSection
-          clientName={clientName}
-          projectName={projectName}
-          address={address}
-          phone={phone}
-          email={email}
-          estimateDate={estimateDate}
-          validUntil={validUntil}
-          salesPerson={salesPerson}
-          notes={notes}
-          tax={tax}
-          discount={discount}
-          overheadPct={overheadPct}
-          profitPct={profitPct}
-          selectedCustomer={selectedCustomer}
-          submitAttempted={submitAttempted}
-          onClientNameChange={setClientName}
-          onProjectNameChange={setProjectName}
-          onAddressChange={setAddress}
-          onPhoneChange={setPhone}
-          onEmailChange={setEmail}
-          onValidUntilChange={setValidUntil}
-          onSalesPersonChange={setSalesPerson}
-          onNotesChange={setNotes}
-          onTaxChange={setTax}
-          onTaxTouched={() => setTaxTouched(true)}
-          onDiscountChange={setDiscount}
-          onOverheadPctChange={setOverheadPct}
-          onProfitPctChange={setProfitPct}
-          onCustomerPickerChange={handleCustomerPickerChange}
-        />
-
-        <EstimateLineItemsLocal
-          costCodes={costCodes}
-          lineItems={lineItems as EditorLineItem[]}
-          onLineItemsChange={(items) => setLineItems(items as LineItem[])}
-          categoryNames={categoryNames}
-          onCategoryNamesChange={setCategoryNames}
-          disabled={saving}
-          submitAttempted={submitAttempted}
-          lineItemsError={
-            submitAttempted && !hasValidLineItem ? "At least one line item is required." : null
-          }
-        />
-
-        <EstimateBuilderAdvanced title="Payment schedule">
-          <section>
-            <div className="flex items-center justify-between gap-3 py-2">
-              <h3 className="text-sm font-medium text-foreground">Payment schedule</h3>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="rounded-md h-8"
-                onClick={() => setScheduleOpen(true)}
-                disabled={saving}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Schedule Payment
-              </Button>
-            </div>
-            <div className="flex flex-wrap items-center gap-6 py-2 text-sm text-muted-foreground/80">
-              <span className="text-muted-foreground">
-                Estimate total{" "}
-                <span className="font-semibold text-foreground tabular-nums">
-                  {formatEstimateCurrency(summary.grandTotal)}
-                </span>
-              </span>
-              <span className="text-muted-foreground">
-                Scheduled{" "}
-                <span className="font-semibold text-foreground tabular-nums">
-                  {formatEstimateCurrency(totalScheduled)}
-                </span>
-              </span>
-              <span className="text-muted-foreground">
-                Remaining{" "}
-                <span className="font-semibold text-foreground tabular-nums">
-                  {formatEstimateCurrency(remaining)}
-                </span>
-              </span>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/25">
-                    <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                      Payment Name
-                    </th>
-                    <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                      Amount
-                    </th>
-                    <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                      Payment Terms
-                    </th>
-                    <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                      Due Date
-                    </th>
-                    <th className="w-16" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {paymentMilestones.length === 0 ? (
-                    <tr className="border-b border-zinc-100/50 dark:border-border/30">
-                      <td
-                        colSpan={5}
-                        className="py-8 px-4 text-center text-sm text-muted-foreground"
-                      >
-                        No payment milestones yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    paymentMilestones.map((m) => {
-                      const amount =
-                        m.amountType === "percent" ? (summary.grandTotal * m.value) / 100 : m.value;
-                      return (
-                        <tr
-                          key={m.id}
-                          className="border-b border-border/20 transition-colors hover:bg-muted/[0.03]"
-                        >
-                          <td className="py-2 px-4 font-medium text-foreground">{m.title}</td>
-                          <td className="py-2 px-4 text-right tabular-nums font-medium text-foreground">
-                            {formatEstimateCurrency(amount)}
-                          </td>
-                          <td className="py-2 px-4 text-muted-foreground">{m.dueRule || "—"}</td>
-                          <td className="py-2 px-4 text-muted-foreground tabular-nums">
-                            {m.dueDate || "—"}
-                          </td>
-                          <td className="py-2 px-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className="btn-outline-ghost h-8 w-8 text-destructive"
-                              onClick={() =>
-                                setPaymentMilestones((prev) => prev.filter((x) => x.id !== m.id))
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <Sheet
-              open={scheduleOpen}
-              onOpenChange={(open) => {
-                setScheduleOpen(open);
-                if (!open) resetPaymentDraft();
-              }}
+          {formError ? (
+            <div
+              role="alert"
+              className="rounded-lg border border-rose-300/20 bg-rose-500/10 p-3 text-sm text-rose-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
             >
-              <SheetContent side="right" className="w-[420px] sm:w-[480px]">
-                <SheetHeader>
-                  <SheetTitle>Schedule Payment</SheetTitle>
-                </SheetHeader>
-                <div className="mt-4 space-y-4">
-                  <div className="space-y-1">
-                    <Label htmlFor="pm-title" className="text-xs">
-                      Payment Name
-                    </Label>
-                    <Input
-                      id="pm-title"
-                      value={pmTitle}
-                      onChange={(e) => setPmTitle(e.target.value)}
-                      placeholder="e.g. Deposit"
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Amount</Label>
-                    <div className="flex gap-2">
-                      <select
-                        value={pmAmountType}
-                        onChange={(e) => setPmAmountType(e.target.value as "percent" | "fixed")}
-                        className="h-9 rounded-md border border-input bg-background px-2 text-sm flex-1"
-                      >
-                        <option value="fixed">Fixed</option>
-                        <option value="percent">Percent</option>
-                      </select>
+              {formError}
+            </div>
+          ) : null}
+
+          <EstimateNewCustomerSection
+            clientName={clientName}
+            projectName={projectName}
+            address={address}
+            phone={phone}
+            email={email}
+            estimateDate={estimateDate}
+            validUntil={validUntil}
+            salesPerson={salesPerson}
+            notes={notes}
+            tax={tax}
+            discount={discount}
+            overheadPct={overheadPct}
+            profitPct={profitPct}
+            selectedCustomer={selectedCustomer}
+            submitAttempted={submitAttempted}
+            onClientNameChange={setClientName}
+            onProjectNameChange={setProjectName}
+            onAddressChange={setAddress}
+            onPhoneChange={setPhone}
+            onEmailChange={setEmail}
+            onValidUntilChange={setValidUntil}
+            onSalesPersonChange={setSalesPerson}
+            onNotesChange={setNotes}
+            onTaxChange={setTax}
+            onTaxTouched={() => setTaxTouched(true)}
+            onDiscountChange={setDiscount}
+            onOverheadPctChange={setOverheadPct}
+            onProfitPctChange={setProfitPct}
+            onCustomerPickerChange={handleCustomerPickerChange}
+          />
+
+          <EstimateLineItemsLocal
+            costCodes={costCodes}
+            lineItems={lineItems as EditorLineItem[]}
+            onLineItemsChange={(items) => setLineItems(items as LineItem[])}
+            categoryNames={categoryNames}
+            onCategoryNamesChange={setCategoryNames}
+            disabled={saving}
+            submitAttempted={submitAttempted}
+            lineItemsError={
+              submitAttempted && !hasValidLineItem ? "At least one line item is required." : null
+            }
+          />
+
+          <EstimateBuilderAdvanced title="Payment schedule">
+            <section>
+              <div className="flex items-center justify-between gap-3 py-2">
+                <h3 className="text-sm font-medium text-foreground">Payment schedule</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-md h-8"
+                  onClick={() => setScheduleOpen(true)}
+                  disabled={saving}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Schedule Payment
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-center gap-6 py-2 text-sm text-muted-foreground/80">
+                <span className="text-muted-foreground">
+                  Estimate total{" "}
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {formatEstimateCurrency(summary.grandTotal)}
+                  </span>
+                </span>
+                <span className="text-muted-foreground">
+                  Scheduled{" "}
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {formatEstimateCurrency(totalScheduled)}
+                  </span>
+                </span>
+                <span className="text-muted-foreground">
+                  Remaining{" "}
+                  <span className="font-semibold text-foreground tabular-nums">
+                    {formatEstimateCurrency(remaining)}
+                  </span>
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border/25">
+                      <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                        Payment Name
+                      </th>
+                      <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
+                        Amount
+                      </th>
+                      <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                        Payment Terms
+                      </th>
+                      <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                        Due Date
+                      </th>
+                      <th className="w-16" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentMilestones.length === 0 ? (
+                      <tr className="border-b border-zinc-100/50 dark:border-border/30">
+                        <td
+                          colSpan={5}
+                          className="py-8 px-4 text-center text-sm text-muted-foreground"
+                        >
+                          No payment milestones yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      paymentMilestones.map((m) => {
+                        const amount =
+                          m.amountType === "percent"
+                            ? (summary.grandTotal * m.value) / 100
+                            : m.value;
+                        return (
+                          <tr
+                            key={m.id}
+                            className="border-b border-border/20 transition-colors hover:bg-muted/[0.03]"
+                          >
+                            <td className="py-2 px-4 font-medium text-foreground">{m.title}</td>
+                            <td className="py-2 px-4 text-right tabular-nums font-medium text-foreground">
+                              {formatEstimateCurrency(amount)}
+                            </td>
+                            <td className="py-2 px-4 text-muted-foreground">{m.dueRule || "—"}</td>
+                            <td className="py-2 px-4 text-muted-foreground tabular-nums">
+                              {m.dueDate || "—"}
+                            </td>
+                            <td className="py-2 px-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="btn-outline-ghost h-8 w-8 text-destructive"
+                                onClick={() =>
+                                  setPaymentMilestones((prev) => prev.filter((x) => x.id !== m.id))
+                                }
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <Sheet
+                open={scheduleOpen}
+                onOpenChange={(open) => {
+                  setScheduleOpen(open);
+                  if (!open) resetPaymentDraft();
+                }}
+              >
+                <SheetContent side="right" className="w-[420px] sm:w-[480px]">
+                  <SheetHeader>
+                    <SheetTitle>Schedule Payment</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4 space-y-4">
+                    <div className="space-y-1">
+                      <Label htmlFor="pm-title" className="text-xs">
+                        Payment Name
+                      </Label>
                       <Input
-                        value={pmValue}
-                        onChange={(e) => setPmValue(e.target.value)}
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        placeholder={pmAmountType === "percent" ? "30" : "2500"}
-                        className="h-9 w-28 text-right"
+                        id="pm-title"
+                        value={pmTitle}
+                        onChange={(e) => setPmTitle(e.target.value)}
+                        placeholder="e.g. Deposit"
+                        className="h-9"
                       />
                     </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Amount</Label>
+                      <div className="flex gap-2">
+                        <select
+                          value={pmAmountType}
+                          onChange={(e) => setPmAmountType(e.target.value as "percent" | "fixed")}
+                          className="h-9 rounded-md border border-input bg-background px-2 text-sm flex-1"
+                        >
+                          <option value="fixed">Fixed</option>
+                          <option value="percent">Percent</option>
+                        </select>
+                        <Input
+                          value={pmValue}
+                          onChange={(e) => setPmValue(e.target.value)}
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          placeholder={pmAmountType === "percent" ? "30" : "2500"}
+                          className="h-9 w-28 text-right"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="pm-terms" className="text-xs">
+                        Payment Terms
+                      </Label>
+                      <Input
+                        id="pm-terms"
+                        value={pmDueRule}
+                        onChange={(e) => setPmDueRule(e.target.value)}
+                        placeholder="e.g. Due on signing"
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="pm-dueDate" className="text-xs">
+                        Due Date
+                      </Label>
+                      <Input
+                        id="pm-dueDate"
+                        value={pmDueDate}
+                        onChange={(e) => setPmDueDate(e.target.value)}
+                        type="date"
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="pm-notes" className="text-xs">
+                        Notes
+                      </Label>
+                      <textarea
+                        id="pm-notes"
+                        value={pmNotes}
+                        onChange={(e) => setPmNotes(e.target.value)}
+                        placeholder="Optional"
+                        className="min-h-[96px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                      <Button
+                        type="button"
+                        className="rounded-md"
+                        onClick={addPaymentMilestoneLocal}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-md"
+                        onClick={() => {
+                          setScheduleOpen(false);
+                          resetPaymentDraft();
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="pm-terms" className="text-xs">
-                      Payment Terms
-                    </Label>
-                    <Input
-                      id="pm-terms"
-                      value={pmDueRule}
-                      onChange={(e) => setPmDueRule(e.target.value)}
-                      placeholder="e.g. Due on signing"
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="pm-dueDate" className="text-xs">
-                      Due Date
-                    </Label>
-                    <Input
-                      id="pm-dueDate"
-                      value={pmDueDate}
-                      onChange={(e) => setPmDueDate(e.target.value)}
-                      type="date"
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="pm-notes" className="text-xs">
-                      Notes
-                    </Label>
-                    <textarea
-                      id="pm-notes"
-                      value={pmNotes}
-                      onChange={(e) => setPmNotes(e.target.value)}
-                      placeholder="Optional"
-                      className="min-h-[96px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 pt-2">
-                    <Button type="button" className="rounded-md" onClick={addPaymentMilestoneLocal}>
-                      Save
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="rounded-md"
-                      onClick={() => {
-                        setScheduleOpen(false);
-                        resetPaymentDraft();
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </section>
-        </EstimateBuilderAdvanced>
-      </div>
-
-      <aside className="hidden lg:block lg:sticky lg:top-6 lg:pl-2">
-        <EstimateBuilderSummary
-          summary={{
-            materialCost: summary.materialCost,
-            laborCost: summary.laborCost,
-            subcontractorCost: summary.subcontractorCost,
-            subtotal: summary.subtotal,
-            tax: summary.tax,
-            discount: summary.discount,
-            markup: summary.overhead + summary.profit,
-            grandTotal: summary.grandTotal,
-            overheadPct: overheadPct / 100,
-            profitPct: profitPct / 100,
-            overhead: summary.overhead,
-            profit: summary.profit,
-          }}
-          showInternal
-        />
-      </aside>
-
-      <div
-        className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/60 bg-background/95 px-4 py-3 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] backdrop-blur-sm lg:hidden"
-        aria-label="Estimate total"
-      >
-        <div className="mb-4 flex items-baseline justify-between gap-4">
-          <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground/50">
-            Total
-          </span>
-          <span className="text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight text-foreground">
-            {formatEstimateCurrency(summary.grandTotal)}
-          </span>
+                </SheetContent>
+              </Sheet>
+            </section>
+          </EstimateBuilderAdvanced>
         </div>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            asChild
-            className="min-h-11 flex-1 rounded-sm text-muted-foreground"
-          >
+
+        <aside className="hidden lg:block lg:pl-1">
+          <EstimateBuilderSummary
+            floating
+            summary={{
+              materialCost: summary.materialCost,
+              laborCost: summary.laborCost,
+              subcontractorCost: summary.subcontractorCost,
+              subtotal: summary.subtotal,
+              tax: summary.tax,
+              discount: summary.discount,
+              markup: summary.overhead + summary.profit,
+              grandTotal: summary.grandTotal,
+              overheadPct: overheadPct / 100,
+              profitPct: profitPct / 100,
+              overhead: summary.overhead,
+              profit: summary.profit,
+            }}
+            showInternal
+          />
+        </aside>
+
+        <div
+          className={cn(
+            "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 py-3 lg:hidden",
+            EB.glassMobileBar
+          )}
+          aria-label="Estimate total"
+        >
+          <div className="mb-4 flex items-baseline justify-between gap-4">
+            <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
+              Total
+            </span>
+            <span
+              className={cn(
+                "text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight",
+                EB.goldTotal
+              )}
+            >
+              {formatEstimateCurrency(summary.grandTotal)}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              asChild
+              className={cn("min-h-11 flex-1", EB.btnGhost)}
+            >
+              <Link href="/estimates">Cancel</Link>
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className={cn("min-h-11 flex-1 font-medium", EB.btnPrimary)}
+            >
+              <SubmitSpinner loading={saving} className="mr-2" />
+              {saving ? "Saving…" : "Save Estimate"}
+            </Button>
+          </div>
+          {submitAttempted && validationErrors.length > 0 ? (
+            <p className="mt-2 text-center text-xs text-muted-foreground">{validationErrors[0]}</p>
+          ) : null}
+        </div>
+
+        <div className="hidden lg:col-span-2 lg:flex lg:justify-end lg:gap-2 lg:pt-4">
+          <Button type="button" variant="ghost" asChild className={cn("min-h-11", EB.btnGhost)}>
             <Link href="/estimates">Cancel</Link>
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="min-h-11 flex-1 rounded-sm font-medium shadow-sm"
+            className={cn("min-h-11 px-6 font-medium", EB.btnPrimary)}
           >
             <SubmitSpinner loading={saving} className="mr-2" />
             {saving ? "Saving…" : "Save Estimate"}
           </Button>
         </div>
-        {submitAttempted && validationErrors.length > 0 ? (
-          <p className="mt-2 text-center text-xs text-muted-foreground">{validationErrors[0]}</p>
-        ) : null}
       </div>
-
-      <div className="hidden lg:col-span-2 lg:flex lg:justify-end lg:gap-2 lg:pt-4">
-        <Button
-          type="button"
-          variant="ghost"
-          asChild
-          className="min-h-11 rounded-sm text-muted-foreground"
-        >
-          <Link href="/estimates">Cancel</Link>
-        </Button>
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          className="min-h-11 rounded-sm px-6 font-medium shadow-sm"
-        >
-          <SubmitSpinner loading={saving} className="mr-2" />
-          {saving ? "Saving…" : "Save Estimate"}
-        </Button>
-      </div>
-    </div>
+    </EstimateBuilderShell>
   );
 }

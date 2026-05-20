@@ -37,6 +37,7 @@ export function shouldHideFloatingQuickActionFab(pathname: string | null | undef
   ]);
 
   if (exact.has(p)) return true;
+  if (p.startsWith("/estimates/")) return true;
   if (p.startsWith("/labor/")) return true;
   if (p.startsWith("/financial/receipt-queue")) return true;
 

@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 export type CustomerOption = {
   id: string;
@@ -24,9 +25,15 @@ type Props = {
   label?: string;
   value: string | null;
   onChange: (customerId: string | null, customer?: CustomerOption | null) => void;
+  triggerClassName?: string;
 };
 
-export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: Props) {
+export function CustomerSelectWithAdd({
+  label = "Customer",
+  value,
+  onChange,
+  triggerClassName,
+}: Props) {
   const [open, setOpen] = React.useState(false);
   const [options, setOptions] = React.useState<CustomerOption[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -132,7 +139,10 @@ export function CustomerSelectWithAdd({ label = "Customer", value, onChange }: P
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-left text-sm"
+        className={cn(
+          "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-left text-sm",
+          triggerClassName
+        )}
       >
         <span className="truncate">
           {current ? (

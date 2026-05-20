@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export default function NewEstimatePage() {
   const costCodes = getCostCodes();
   return (
-    <div className="page-container page-stack py-6">
+    <div className="estimate-builder-page page-stack py-3 md:py-4">
       <NewEstimateEditor costCodes={costCodes} />
     </div>
   );

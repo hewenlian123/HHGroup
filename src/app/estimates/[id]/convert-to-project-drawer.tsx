@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/toast/toast-provider";
 import type { EstimateMetaRecord } from "@/lib/estimates-db";
 import { convertToProjectWithSetupAction } from "./actions";
+import { cn } from "@/lib/utils";
+import { EB, ebInput } from "../_components/estimate-builder-ui";
 
 export function ConvertToProjectDrawer({
   open,
@@ -57,6 +59,7 @@ export function ConvertToProjectDrawer({
       onOpenChange={onOpenChange}
       title="Set up project"
       description="Edit project details, then create the project from this estimate."
+      className="border-l border-white/10 bg-slate-950/95 text-zinc-100 shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
     >
       <form id="convert-to-project-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input type="hidden" name="estimateId" value={estimateId} />
@@ -68,7 +71,7 @@ export function ConvertToProjectDrawer({
             name="projectName"
             defaultValue={projectName}
             placeholder="Project name"
-            className="h-9"
+            className={ebInput("h-11")}
             required
           />
         </div>
@@ -80,7 +83,7 @@ export function ConvertToProjectDrawer({
             name="client"
             defaultValue={clientName}
             placeholder="Client"
-            className="h-9"
+            className={ebInput("h-11")}
           />
         </div>
 
@@ -91,7 +94,7 @@ export function ConvertToProjectDrawer({
             name="address"
             defaultValue={address}
             placeholder="Address"
-            className="h-9"
+            className={ebInput("h-11")}
           />
         </div>
 
@@ -100,7 +103,7 @@ export function ConvertToProjectDrawer({
           <Input
             value={estimateNumber}
             readOnly
-            className="h-9 bg-muted/30 cursor-not-allowed"
+            className={ebInput("h-11 cursor-not-allowed bg-white/[0.025] text-zinc-400")}
             aria-readonly
           />
           <input type="hidden" name="estimateRef" value={estimateNumber} />
@@ -112,24 +115,29 @@ export function ConvertToProjectDrawer({
             id="convert-projectManager"
             name="projectManager"
             placeholder="Project manager"
-            className="h-9"
+            className={ebInput("h-11")}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label htmlFor="convert-startDate">Start date</Label>
-            <Input id="convert-startDate" name="startDate" type="date" className="h-9" />
+            <Input
+              id="convert-startDate"
+              name="startDate"
+              type="date"
+              className={ebInput("h-11")}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="convert-endDate">End date</Label>
-            <Input id="convert-endDate" name="endDate" type="date" className="h-9" />
+            <Input id="convert-endDate" name="endDate" type="date" className={ebInput("h-11")} />
           </div>
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="convert-notes">Notes</Label>
-          <Input id="convert-notes" name="notes" placeholder="Notes" className="h-9" />
+          <Input id="convert-notes" name="notes" placeholder="Notes" className={ebInput("h-11")} />
         </div>
 
         {error && (
@@ -141,14 +149,24 @@ export function ConvertToProjectDrawer({
         <div className="flex gap-2 pt-2">
           <Button
             type="button"
-            variant="outline"
-            className="btn-outline-ghost flex-1"
+            variant="ghost"
+            className={cn(
+              "min-h-11 flex-1 border border-white/10 bg-white/[0.03] text-zinc-200 hover:bg-white/[0.08] hover:text-zinc-50",
+              EB.btnGhost
+            )}
             onClick={() => onOpenChange(false)}
             disabled={pending}
           >
             Cancel
           </Button>
-          <Button type="submit" className="flex-1" disabled={pending}>
+          <Button
+            type="submit"
+            className={cn(
+              "min-h-11 flex-1 border border-white/10 bg-slate-950 text-zinc-50 hover:bg-slate-900",
+              EB.btnPrimary
+            )}
+            disabled={pending}
+          >
             {pending ? "Creating…" : "Create project"}
           </Button>
         </div>
