@@ -469,13 +469,15 @@ async function createCustomer(
     .click();
   const dialog = page.getByRole("dialog", { name: "New customer" });
   await expect(dialog).toBeVisible({ timeout: 10_000 });
-  const inputs = dialog.locator("input");
-  await inputs.nth(0).fill(params.name);
-  await inputs.nth(1).fill(params.email);
-  await inputs.nth(2).fill("808-555-0100");
-  await inputs.nth(3).fill("Playwright Contact");
-  await inputs.nth(4).fill(params.address);
-  await inputs.nth(5).fill("Created by full system smoke e2e.");
+  await dialog.getByTestId("customers-modal-name").fill(params.name);
+  await dialog.getByTestId("customers-modal-phone").fill("808-555-0100");
+  await dialog.getByTestId("customers-modal-email").fill(params.email);
+  await dialog.getByTestId("customers-modal-address").fill(params.address);
+  await dialog.getByTestId("customers-modal-city").fill("Honolulu");
+  await dialog.getByTestId("customers-modal-state").fill("HI");
+  await dialog.getByTestId("customers-modal-zip").fill("96813");
+  await dialog.getByTestId("customers-modal-contact-person").fill("Playwright Contact");
+  await dialog.getByTestId("customers-modal-notes").fill("Created by full system smoke e2e.");
   await dialog.getByRole("button", { name: "Save" }).click();
   await expect(dialog).toBeHidden({ timeout: 30_000 });
 
