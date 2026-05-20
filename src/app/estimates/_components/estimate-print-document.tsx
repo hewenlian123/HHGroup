@@ -156,44 +156,36 @@ export function EstimatePrintDocument({
       </section>
 
       {/* Payment schedule */}
-      <section className="mb-8 print:break-inside-avoid">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">
-          Payment Schedule
-        </h2>
-        {paymentSchedule.length === 0 ? (
-          <p className="text-sm text-zinc-500 py-4">No payment milestones.</p>
-        ) : (
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="border-b border-zinc-200 text-zinc-600">
-                <th className="text-left py-2 pr-4 font-medium">Title</th>
-                <th className="text-left py-2 px-2 font-medium">Type</th>
-                <th className="text-right py-2 px-2 font-medium tabular-nums">Value</th>
-                <th className="text-right py-2 px-2 font-medium tabular-nums">Amount</th>
-                <th className="text-left py-2 pl-4 font-medium">Due Rule</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paymentSchedule.map((item) => {
-                const amount = paymentMilestoneAmount(item, estimateTotal);
-                return (
-                  <tr key={item.id} className="border-b border-zinc-100">
-                    <td className="py-2.5 pr-4 font-medium text-zinc-900">{item.title}</td>
-                    <td className="py-2.5 px-2 text-zinc-600 capitalize">{item.amountType}</td>
-                    <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">
-                      {item.amountType === "percent" ? `${item.value}%` : `$${fmt(item.value)}`}
-                    </td>
-                    <td className="py-2.5 px-2 text-right tabular-nums font-medium text-zinc-900">
+      {paymentSchedule.length > 0 ? (
+        <section className="mb-8 print:break-inside-avoid">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+            Payment Schedule
+          </h2>
+          <div className="space-y-4 text-sm">
+            {paymentSchedule.map((item) => {
+              const amount = paymentMilestoneAmount(item, estimateTotal);
+              return (
+                <div key={item.id} className="border-b border-zinc-100 pb-4 last:border-b-0">
+                  <div className="flex items-baseline justify-between gap-6">
+                    <p className="font-semibold text-zinc-900">{item.title}</p>
+                    <p className="shrink-0 tabular-nums font-semibold text-zinc-900">
                       ${fmt(amount)}
-                    </td>
-                    <td className="py-2.5 pl-4 text-zinc-700">{item.dueRule || "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </section>
+                    </p>
+                  </div>
+                  {item.description ? (
+                    <p className="mt-1 text-zinc-700 whitespace-pre-wrap">{item.description}</p>
+                  ) : null}
+                  {item.dueDate ? (
+                    <p className="mt-1 text-xs tabular-nums text-zinc-500">
+                      Due date: {item.dueDate}
+                    </p>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
 
       {/* Summary totals */}
       {summary && (

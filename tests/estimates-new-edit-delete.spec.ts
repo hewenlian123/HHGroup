@@ -45,6 +45,7 @@ async function cleanupEstimateTestData(
   const ids = Array.from(estimateIds);
   if (ids.length === 0) return;
 
+  await supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", ids);
   await supabase.from("estimate_payment_schedule").delete().in("estimate_id", ids);
   await supabase.from("estimate_snapshots").delete().in("estimate_id", ids);
   await supabase.from("estimate_items").delete().in("estimate_id", ids);

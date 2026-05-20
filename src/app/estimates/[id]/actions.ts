@@ -13,6 +13,11 @@ import {
   deleteLineItemWithClient,
   createCustomEstimateCategoryWithClient,
   createEstimateCategoryWithExplicitCodeWithClient,
+  addPaymentMilestoneWithClient,
+  updatePaymentMilestoneWithClient,
+  deletePaymentMilestoneWithClient,
+  markPaymentMilestonePaidWithClient,
+  reorderPaymentScheduleWithClient,
 } from "@/lib/estimates-db";
 import {
   createNewVersionFromSnapshot,
@@ -24,11 +29,6 @@ import {
   updateEstimateMeta,
   moveEstimateItemsToCostCode,
   reorderEstimateCategories,
-  addPaymentMilestone,
-  updatePaymentMilestone,
-  deletePaymentMilestone,
-  markPaymentMilestonePaid,
-  reorderPaymentSchedule,
   createPaymentTemplate,
   applyPaymentTemplateToEstimate,
 } from "@/lib/data";
@@ -302,14 +302,14 @@ export async function addPaymentMilestoneAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   const title = (formData.get("title") as string)?.trim() || "Payment";
-  const amountType = formData.get("amountType") === "fixed" ? "fixed" : "percent";
-  const value = Number(formData.get("value")) || 0;
-  const dueRule = (formData.get("dueRule") as string)?.trim() || "";
+  const description = (formData.get("description") as string)?.trim() || "";
+  const amount = Number(formData.get("amount")) || 0;
   const dueDateRaw = (formData.get("dueDate") as string)?.trim() || "";
   const dueDate = dueDateRaw || undefined;
-  const notes = (formData.get("notes") as string)?.trim() || undefined;
   try {
-    await addPaymentMilestone(estimateId, { title, amountType, value, dueRule, dueDate, notes });
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    await addPaymentMilestoneWithClient(db, estimateId, { title, description, amount, dueDate });
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
     redirect(`/estimates/${estimateId}`);
@@ -324,22 +324,18 @@ export async function updatePaymentMilestoneAction(formData: FormData) {
   const itemId = formData.get("itemId");
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   const title = (formData.get("title") as string)?.trim();
-  const amountType = formData.get("amountType") as string | null;
-  const value = formData.get("value");
-  const dueRule = (formData.get("dueRule") as string)?.trim();
+  const description = (formData.get("description") as string)?.trim();
+  const amount = formData.get("amount");
   const dueDateRaw = (formData.get("dueDate") as string)?.trim() || "";
   const dueDate = dueDateRaw || null;
-  const notes = (formData.get("notes") as string)?.trim();
   try {
-    await updatePaymentMilestone(estimateId, itemId, {
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    await updatePaymentMilestoneWithClient(db, estimateId, itemId, {
       ...(title != null ? { title } : {}),
-      ...(amountType === "percent" || amountType === "fixed"
-        ? { amountType: amountType as "percent" | "fixed" }
-        : {}),
-      ...(value != null && value !== "" ? { value: Number(value) } : {}),
-      ...(dueRule != null ? { dueRule } : {}),
+      ...(description != null ? { description } : {}),
+      ...(amount != null && amount !== "" ? { amount: Number(amount) } : {}),
       ...(dueDate !== undefined ? { dueDate } : {}),
-      ...(notes !== undefined ? { notes: notes || null } : {}),
     });
     revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
@@ -354,7 +350,9 @@ export async function deletePaymentMilestoneAction(formData: FormData) {
   const itemId = formData.get("itemId");
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
-    await deletePaymentMilestone(estimateId, itemId);
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    await deletePaymentMilestoneWithClient(db, estimateId, itemId);
     revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
@@ -368,7 +366,9 @@ export async function markPaymentMilestonePaidAction(formData: FormData) {
   const itemId = formData.get("itemId");
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
-    await markPaymentMilestonePaid(estimateId, itemId);
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    await markPaymentMilestonePaidWithClient(db, estimateId, itemId);
     revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
@@ -384,7 +384,9 @@ export async function reorderPaymentScheduleAction(formData: FormData) {
   try {
     const orderedItemIds = JSON.parse(orderedIdsJson) as string[];
     if (!Array.isArray(orderedItemIds) || orderedItemIds.length === 0) return;
-    const ok = await reorderPaymentSchedule(estimateId, orderedItemIds);
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    const ok = await reorderPaymentScheduleWithClient(db, estimateId, orderedItemIds);
     if (!ok) return;
     revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
@@ -418,10 +420,9 @@ export async function createPaymentTemplateAction(formData: FormData) {
     if (schedule.length === 0) return;
     const items = schedule.map((m) => ({
       title: m.title,
-      amountType: m.amountType,
-      value: m.value,
-      dueRule: m.dueRule,
-      notes: m.notes ?? undefined,
+      amountType: "fixed" as const,
+      value: m.amount,
+      dueRule: m.description ?? "",
     }));
     const template = await createPaymentTemplate(name, items);
     if (!template) return;

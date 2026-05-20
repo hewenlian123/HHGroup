@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { createEstimateWithItemsAction } from "./actions";
 import type { CostCode } from "@/lib/data";
-import { Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { createBrowserClient } from "@/lib/supabase";
@@ -37,11 +37,9 @@ type CostCodeType = "material" | "labor" | "subcontractor";
 type PaymentMilestoneLocal = {
   id: string;
   title: string;
-  amountType: "percent" | "fixed";
-  value: number;
-  dueRule: string;
+  description: string;
+  amount: number;
   dueDate?: string;
-  notes?: string;
 };
 
 type LineItem = {
@@ -87,12 +85,13 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   const [formError, setFormError] = React.useState<string | null>(null);
   const [paymentMilestones, setPaymentMilestones] = React.useState<PaymentMilestoneLocal[]>([]);
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
+  const [editingPaymentMilestoneId, setEditingPaymentMilestoneId] = React.useState<string | null>(
+    null
+  );
   const [pmTitle, setPmTitle] = React.useState("");
-  const [pmAmountType, setPmAmountType] = React.useState<"percent" | "fixed">("percent");
-  const [pmValue, setPmValue] = React.useState("");
-  const [pmDueRule, setPmDueRule] = React.useState("");
+  const [pmDescription, setPmDescription] = React.useState("");
+  const [pmAmount, setPmAmount] = React.useState("");
   const [pmDueDate, setPmDueDate] = React.useState("");
-  const [pmNotes, setPmNotes] = React.useState("");
 
   const codeToType = React.useMemo(() => {
     const m = new Map<string, CostCodeType>();
@@ -252,11 +251,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         paymentSchedule: paymentMilestones.length
           ? paymentMilestones.map((m) => ({
               title: m.title,
-              amountType: m.amountType,
-              value: m.value,
-              dueRule: m.dueRule,
+              description: m.description || null,
+              amount: m.amount,
               dueDate: m.dueDate || null,
-              notes: m.notes ?? null,
             }))
           : undefined,
       });
@@ -273,10 +270,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     }
   };
 
-  const totalScheduled = paymentMilestones.reduce(
-    (sum, m) => sum + (m.amountType === "percent" ? (summary.grandTotal * m.value) / 100 : m.value),
-    0
-  );
+  const totalScheduled = paymentMilestones.reduce((sum, m) => sum + m.amount, 0);
   const remaining = Math.max(0, summary.grandTotal - totalScheduled);
   const scheduleDrawerClass = cn(
     "w-[420px] border-white/10 bg-[rgba(14,18,28,0.96)] p-5 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-24px_0_64px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:w-[480px]",
@@ -284,29 +278,40 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   );
   const scheduleLabelClass = "text-[11px] font-medium text-zinc-500";
   const resetPaymentDraft = () => {
+    setEditingPaymentMilestoneId(null);
     setPmTitle("");
-    setPmAmountType("percent");
-    setPmValue("");
-    setPmDueRule("");
+    setPmDescription("");
+    setPmAmount("");
     setPmDueDate("");
-    setPmNotes("");
   };
-  const addPaymentMilestoneLocal = () => {
+  const openPaymentMilestoneDrawer = (milestone?: PaymentMilestoneLocal) => {
+    if (milestone) {
+      setEditingPaymentMilestoneId(milestone.id);
+      setPmTitle(milestone.title);
+      setPmDescription(milestone.description);
+      setPmAmount(String(milestone.amount));
+      setPmDueDate(milestone.dueDate ?? "");
+    } else {
+      resetPaymentDraft();
+    }
+    setScheduleOpen(true);
+  };
+  const savePaymentMilestoneLocal = () => {
     const title = pmTitle.trim();
     if (!title) return;
-    const value = Number(pmValue) || 0;
-    setPaymentMilestones((prev) => [
-      ...prev,
-      {
-        id: `pm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        title,
-        amountType: pmAmountType,
-        value,
-        dueRule: pmDueRule.trim(),
-        dueDate: pmDueDate || undefined,
-        notes: pmNotes.trim() || undefined,
-      },
-    ]);
+    const amount = Math.max(0, Number(pmAmount) || 0);
+    const next: PaymentMilestoneLocal = {
+      id: editingPaymentMilestoneId ?? `pm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      title,
+      description: pmDescription.trim(),
+      amount,
+      dueDate: pmDueDate || undefined,
+    };
+    setPaymentMilestones((prev) =>
+      editingPaymentMilestoneId
+        ? prev.map((item) => (item.id === editingPaymentMilestoneId ? next : item))
+        : [...prev, next]
+    );
     setScheduleOpen(false);
     resetPaymentDraft();
   };
@@ -377,7 +382,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             }
           />
 
-          <EstimateBuilderAdvanced title="Payment schedule">
+          <EstimateBuilderAdvanced title="Payment schedule" defaultOpen>
             <section>
               <div className="flex items-center justify-between gap-3 py-2">
                 <h3 className="text-sm font-medium text-foreground">Payment schedule</h3>
@@ -386,7 +391,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   variant="outline"
                   size="sm"
                   className={cn("min-h-11 px-3 md:min-h-8", EB.btnGhost)}
-                  onClick={() => setScheduleOpen(true)}
+                  onClick={() => openPaymentMilestoneDrawer()}
                   disabled={saving}
                 >
                   <Plus className="h-4 w-4 mr-2" />
@@ -424,7 +429,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                         Amount
                       </th>
                       <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                        Payment Terms
+                        Description
                       </th>
                       <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
                         Due Date
@@ -444,10 +449,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                       </tr>
                     ) : (
                       paymentMilestones.map((m) => {
-                        const amount =
-                          m.amountType === "percent"
-                            ? (summary.grandTotal * m.value) / 100
-                            : m.value;
                         return (
                           <tr
                             key={m.id}
@@ -455,28 +456,47 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                           >
                             <td className="py-2 px-4 font-medium text-foreground">{m.title}</td>
                             <td className="py-2 px-4 text-right tabular-nums font-medium text-foreground">
-                              {formatEstimateCurrency(amount)}
+                              {formatEstimateCurrency(m.amount)}
                             </td>
-                            <td className="py-2 px-4 text-muted-foreground">{m.dueRule || "—"}</td>
+                            <td className="py-2 px-4 text-muted-foreground">
+                              {m.description || "—"}
+                            </td>
                             <td className="py-2 px-4 text-muted-foreground tabular-nums">
                               {m.dueDate || "—"}
                             </td>
                             <td className="py-2 px-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className={cn(
-                                  "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                                  EB.btnGhost
-                                )}
-                                aria-label="Delete payment milestone"
-                                onClick={() =>
-                                  setPaymentMilestones((prev) => prev.filter((x) => x.id !== m.id))
-                                }
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className={cn(
+                                    "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                                    EB.btnGhost
+                                  )}
+                                  aria-label={`Edit ${m.title}`}
+                                  onClick={() => openPaymentMilestoneDrawer(m)}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  className={cn(
+                                    "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                                    EB.btnGhost
+                                  )}
+                                  aria-label={`Delete ${m.title}`}
+                                  onClick={() =>
+                                    setPaymentMilestones((prev) =>
+                                      prev.filter((x) => x.id !== m.id)
+                                    )
+                                  }
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -494,7 +514,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
               >
                 <SheetContent side="right" className={scheduleDrawerClass}>
                   <SheetHeader>
-                    <SheetTitle className="text-zinc-50">Schedule Payment</SheetTitle>
+                    <SheetTitle className="text-zinc-50">
+                      {editingPaymentMilestoneId ? "Edit Payment" : "Schedule Payment"}
+                    </SheetTitle>
                     <SheetDescription className="sr-only">
                       Add a payment milestone to this estimate.
                     </SheetDescription>
@@ -513,37 +535,30 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className={scheduleLabelClass}>Amount</Label>
-                      <div className="flex gap-2">
-                        <select
-                          value={pmAmountType}
-                          onChange={(e) => setPmAmountType(e.target.value as "percent" | "fixed")}
-                          className={ebInput("h-10 flex-1 appearance-none md:h-9")}
-                        >
-                          <option value="fixed">Fixed</option>
-                          <option value="percent">Percent</option>
-                        </select>
-                        <Input
-                          value={pmValue}
-                          onChange={(e) => setPmValue(e.target.value)}
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          placeholder={pmAmountType === "percent" ? "30" : "2500"}
-                          className={ebInput("h-10 w-28 text-right md:h-9")}
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="pm-terms" className={scheduleLabelClass}>
-                        Payment Terms
+                      <Label htmlFor="pm-amount" className={scheduleLabelClass}>
+                        Amount
                       </Label>
                       <Input
-                        id="pm-terms"
-                        value={pmDueRule}
-                        onChange={(e) => setPmDueRule(e.target.value)}
-                        placeholder="e.g. Due on signing"
-                        className={ebInput("h-10 md:h-9")}
+                        id="pm-amount"
+                        value={pmAmount}
+                        onChange={(e) => setPmAmount(e.target.value)}
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        placeholder="2500"
+                        className={ebInput("h-10 text-right md:h-9")}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="pm-description" className={scheduleLabelClass}>
+                        Description
+                      </Label>
+                      <textarea
+                        id="pm-description"
+                        value={pmDescription}
+                        onChange={(e) => setPmDescription(e.target.value)}
+                        placeholder="Deposit before work starts"
+                        className={ebInput("min-h-[96px] resize-none py-2 leading-relaxed")}
                       />
                     </div>
                     <div className="space-y-1">
@@ -558,18 +573,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                         className={ebInput(cn(EB.dateField, "h-10 md:h-9"))}
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="pm-notes" className={scheduleLabelClass}>
-                        Notes
-                      </Label>
-                      <textarea
-                        id="pm-notes"
-                        value={pmNotes}
-                        onChange={(e) => setPmNotes(e.target.value)}
-                        placeholder="Optional"
-                        className={ebInput("min-h-[96px] resize-none py-2 leading-relaxed")}
-                      />
-                    </div>
                     <div className="flex items-center gap-2 pt-2">
                       <Button
                         type="button"
@@ -577,7 +580,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                           "min-h-11 px-4 font-medium md:min-h-10",
                           EB.portalPrimaryButton
                         )}
-                        onClick={addPaymentMilestoneLocal}
+                        onClick={savePaymentMilestoneLocal}
                       >
                         Save
                       </Button>

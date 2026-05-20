@@ -270,6 +270,7 @@ async function cleanupFullSystemData(): Promise<void> {
   const estimateIdList = Array.from(estimateIds);
   if (estimateIdList.length > 0) {
     for (const table of [
+      "estimate_payment_schedule_items",
       "estimate_payment_schedule",
       "estimate_snapshots",
       "estimate_items",

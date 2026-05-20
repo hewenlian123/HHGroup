@@ -3179,11 +3179,11 @@ export function addPaymentMilestone(
   estimateId: string,
   item: {
     title: string;
-    amountType: "percent" | "fixed";
-    value: number;
-    dueRule: string;
+    description?: string | null;
+    amount: number;
     dueDate?: string | null;
-    notes?: string | null;
+    status?: "draft" | "invoiced" | "paid";
+    invoiceId?: string | null;
   }
 ) {
   return estDb.addPaymentMilestone(estimateId, item);
@@ -3194,11 +3194,11 @@ export function updatePaymentMilestone(
   itemId: string,
   payload: {
     title?: string;
-    amountType?: "percent" | "fixed";
-    value?: number;
-    dueRule?: string;
+    description?: string | null;
+    amount?: number;
     dueDate?: string | null;
-    notes?: string | null;
+    status?: "draft" | "invoiced" | "paid";
+    invoiceId?: string | null;
   }
 ): Promise<boolean> {
   return estDb.updatePaymentMilestone(estimateId, itemId, payload);
@@ -3385,10 +3385,9 @@ export function createEstimateWithItems(payload: {
   }>;
   paymentSchedule?: Array<{
     title: string;
-    amountType: "percent" | "fixed";
-    value: number;
-    dueRule: string;
-    notes?: string | null;
+    description?: string | null;
+    amount: number;
+    dueDate?: string | null;
   }>;
 }): Promise<string> {
   return estDb.createEstimateWithItems({

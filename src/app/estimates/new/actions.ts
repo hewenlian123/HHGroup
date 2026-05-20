@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
 import { createEstimateWithItemsWithClient } from "@/lib/estimates-db";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 export type CreateEstimatePayload = {
   clientName: string;
@@ -30,11 +30,9 @@ export type CreateEstimatePayload = {
   }>;
   paymentSchedule?: Array<{
     title: string;
-    amountType: "percent" | "fixed";
-    value: number;
-    dueRule: string;
+    description?: string | null;
+    amount: number;
     dueDate?: string | null;
-    notes?: string | null;
   }>;
 };
 
@@ -62,7 +60,7 @@ export async function createEstimateWithItemsAction(
   }
 
   try {
-    const server = getServerSupabaseInternalNoStore();
+    const server = getServerSupabaseAdmin();
     if (!server) return { ok: false, error: "Server Supabase is not configured." };
 
     const id = await createEstimateWithItemsWithClient(server, {
