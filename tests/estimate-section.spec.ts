@@ -10,11 +10,7 @@ test("new estimate flow with section rename", async ({ page }) => {
     .not.toBeVisible({ timeout: 60_000 })
     .catch(() => undefined);
 
-  const moreDetailsBtn = page.getByRole("button", { name: /^More details$/i }).first();
-  if (await moreDetailsBtn.isVisible().catch(() => false)) {
-    await moreDetailsBtn.click();
-  }
-
+  await page.getByRole("button", { name: /Edit details/i }).click();
   const client = page.getByPlaceholder("Client or company name");
   await expect(client).toBeVisible({ timeout: 15_000 });
   await client.fill("Test Estimate Auto");
@@ -22,6 +18,7 @@ test("new estimate flow with section rename", async ({ page }) => {
   const project = page.getByPlaceholder("Project name");
   await expect(project).toBeVisible();
   await project.fill("Playwright Project");
+  await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
 
   const addSectionBtn = page.getByRole("button", { name: /^Add Section$/i }).first();
   await expect(addSectionBtn).toBeVisible({ timeout: 15_000 });

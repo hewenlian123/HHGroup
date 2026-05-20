@@ -21,9 +21,7 @@ export function EstimateLineItemPersistedMobile({
   updateLineItemAction,
   duplicateLineItemAction,
   deleteLineItemAction,
-  onOpenDescriptionEditor,
   lineLiveValuesRef,
-  lineDescriptionApplyRef,
   isLastRow,
   onEnterAddNext,
 }: {
@@ -35,12 +33,8 @@ export function EstimateLineItemPersistedMobile({
   updateLineItemAction: (fd: FormData) => Promise<void>;
   duplicateLineItemAction: (fd: FormData) => Promise<void>;
   deleteLineItemAction: (fd: FormData) => Promise<void>;
-  onOpenDescriptionEditor: (itemId: string, name: string, description: string) => void;
   lineLiveValuesRef: React.MutableRefObject<
     Record<string, () => { qty: number; unit: string; unitCost: number; markupPct: number }>
-  >;
-  lineDescriptionApplyRef: React.MutableRefObject<
-    Record<string, (name: string, desc: string) => void>
   >;
   isLastRow?: boolean;
   onEnterAddNext?: () => void;
@@ -75,18 +69,6 @@ export function EstimateLineItemPersistedMobile({
       delete registry[row.id];
     };
   }, [isReadOnly, row.id, row.markupPct, qty, unit, unitPrice, lineLiveValuesRef]);
-
-  React.useLayoutEffect(() => {
-    if (isReadOnly) return;
-    const registry = lineDescriptionApplyRef.current;
-    registry[row.id] = (name: string, body: string) => {
-      setTitle(name);
-      setDescription(body);
-    };
-    return () => {
-      delete registry[row.id];
-    };
-  }, [isReadOnly, row.id, lineDescriptionApplyRef]);
 
   const item: EditorLineItem = React.useMemo(
     () => ({
@@ -144,7 +126,6 @@ export function EstimateLineItemPersistedMobile({
           if (patch.unitPrice !== undefined) setUnitPrice(patch.unitPrice);
         }}
         onBlurField={submitUpdate}
-        onOpenDetails={() => onOpenDescriptionEditor(row.id, title, description)}
         onEnterAddNext={onEnterAddNext}
         onDuplicate={() => {
           const fd = new FormData();

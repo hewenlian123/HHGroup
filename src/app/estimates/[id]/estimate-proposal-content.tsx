@@ -1,5 +1,7 @@
 import { estimateLineTotal, type EstimateItemRow, type CostCode } from "@/lib/data";
 import type { EstimateSummaryResult } from "@/lib/data";
+import { splitLineItemDesc } from "@/lib/sanitize-line-item-html";
+import { LineItemOrScopeBodyPreview } from "../_components/proposal-scope-preview";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
@@ -100,21 +102,31 @@ export function EstimateProposalContent({
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row) => (
-                      <tr key={row.id} className="border-b border-zinc-100">
-                        <td className="py-2 pr-4 text-zinc-900">{row.desc}</td>
-                        <td className="py-2 px-2 text-right tabular-nums text-zinc-900">
-                          {row.qty}
-                        </td>
-                        <td className="py-2 px-2 text-zinc-600">{row.unit}</td>
-                        <td className="py-2 px-2 text-right tabular-nums text-zinc-900">
-                          {formatEstimateCurrency(row.unitCost)}
-                        </td>
-                        <td className="py-2 pl-4 text-right tabular-nums font-medium text-zinc-900">
-                          {formatEstimateCurrency(estimateLineTotal(row))}
-                        </td>
-                      </tr>
-                    ))}
+                    {rows.map((row) => {
+                      const { title: lineTitle, body } = splitLineItemDesc(row.desc ?? "");
+                      return (
+                        <tr key={row.id} className="border-b border-zinc-100">
+                          <td className="py-2 pr-4 text-zinc-900">
+                            <p className="font-medium">{lineTitle || row.desc}</p>
+                            {body.trim() ? (
+                              <div className="mt-1 text-xs text-zinc-600">
+                                <LineItemOrScopeBodyPreview body={body} variant="print" />
+                              </div>
+                            ) : null}
+                          </td>
+                          <td className="py-2 px-2 text-right tabular-nums text-zinc-900">
+                            {row.qty}
+                          </td>
+                          <td className="py-2 px-2 text-zinc-600">{row.unit}</td>
+                          <td className="py-2 px-2 text-right tabular-nums text-zinc-900">
+                            {formatEstimateCurrency(row.unitCost)}
+                          </td>
+                          <td className="py-2 pl-4 text-right tabular-nums font-medium text-zinc-900">
+                            {formatEstimateCurrency(estimateLineTotal(row))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
                 <p className="text-right text-xs tabular-nums text-zinc-500 mt-2">
@@ -132,20 +144,6 @@ export function EstimateProposalContent({
             <span className="text-zinc-600">Subtotal</span>
             <span className="tabular-nums font-medium text-zinc-900">
               {formatEstimateCurrency(summary.subtotal)}
-            </span>
-          </div>
-          <div className="flex justify-between py-1">
-            <span className="text-zinc-600">
-              Overhead ({(summary.overheadPct * 100).toFixed(0)}%)
-            </span>
-            <span className="tabular-nums font-medium text-zinc-900">
-              {formatEstimateCurrency(summary.overhead)}
-            </span>
-          </div>
-          <div className="flex justify-between py-1">
-            <span className="text-zinc-600">Profit ({(summary.profitPct * 100).toFixed(0)}%)</span>
-            <span className="tabular-nums font-medium text-zinc-900">
-              {formatEstimateCurrency(summary.profit)}
             </span>
           </div>
           {summary.tax !== 0 && (

@@ -7,7 +7,10 @@ import {
   type PaymentScheduleItem,
 } from "@/lib/estimates-db";
 import { splitLineItemDesc } from "@/lib/sanitize-line-item-html";
-import { LineItemDescriptionBodyPreview } from "@/app/estimates/_components/line-item-description-body-preview";
+import {
+  LineItemOrScopeBodyPreview,
+  ProposalScopePreview,
+} from "@/app/estimates/_components/proposal-scope-preview";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 import { cn } from "@/lib/utils";
@@ -82,7 +85,7 @@ function LineItemsTable({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: numbe
                 <p className="font-medium text-zinc-900">{itemTitle || row.desc}</p>
                 {body.trim() ? (
                   <div className="mt-0.5 text-xs text-zinc-600">
-                    <LineItemDescriptionBodyPreview body={body} />
+                    <LineItemOrScopeBodyPreview body={body} variant="default" />
                   </div>
                 ) : null}
               </td>
@@ -211,7 +214,13 @@ export function EstimatePreviewContent({
                         </p>
                       </div>
                       {item.description ? (
-                        <p className="mt-1 text-zinc-700 whitespace-pre-wrap">{item.description}</p>
+                        <div className="mt-1">
+                          <ProposalScopePreview
+                            text={item.description}
+                            variant="default"
+                            maxBullets={3}
+                          />
+                        </div>
                       ) : null}
                       {item.dueDate ? (
                         <p className="mt-1 text-xs tabular-nums text-zinc-500">
@@ -247,20 +256,6 @@ export function EstimatePreviewContent({
               Total: ${fmt(summary.grandTotal)}
             </p>
           </section>
-        )}
-
-        {meta?.notes && meta.notes.trim() !== "" && (
-          <>
-            <div className="border-b border-zinc-300 my-4" />
-            <section>
-              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-2">
-                Notes
-              </h2>
-              <p className="text-sm text-zinc-800 whitespace-pre-wrap border-b border-zinc-200 pb-3">
-                {meta.notes}
-              </p>
-            </section>
-          </>
         )}
 
         {company.defaultTerms ? (

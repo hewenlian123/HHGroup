@@ -8,7 +8,7 @@ import {
 import { ChevronRight } from "lucide-react";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
 import { splitLineItemDesc } from "@/lib/sanitize-line-item-html";
-import { LineItemDescriptionBodyPreview } from "@/app/estimates/_components/line-item-description-body-preview";
+import { LineItemOrScopeBodyPreview } from "@/app/estimates/_components/proposal-scope-preview";
 
 export type EstimateReadOnlyPayload = {
   estimateId: string;
@@ -157,7 +157,7 @@ function EstimateSectionReadOnly({
                     <p className="font-medium text-foreground">{itemTitle || row.desc}</p>
                     {body.trim() ? (
                       <div className="mt-0.5 text-xs text-muted-foreground/60">
-                        <LineItemDescriptionBodyPreview body={body} />
+                        <LineItemOrScopeBodyPreview body={body} variant="compact" maxBullets={4} />
                       </div>
                     ) : null}
                   </td>

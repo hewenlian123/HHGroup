@@ -46,12 +46,25 @@ async function cleanupEstimateTestData(
   if (ids.length === 0) return;
 
   await supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", ids);
-  await supabase.from("estimate_payment_schedule").delete().in("estimate_id", ids);
   await supabase.from("estimate_snapshots").delete().in("estimate_id", ids);
   await supabase.from("estimate_items").delete().in("estimate_id", ids);
   await supabase.from("estimate_categories").delete().in("estimate_id", ids);
   await supabase.from("estimate_meta").delete().in("estimate_id", ids);
   await supabase.from("estimates").delete().in("id", ids);
+}
+
+async function fillNewEstimateCustomerFields(
+  page: Page,
+  params: { clientName: string; projectName: string }
+): Promise<void> {
+  const dialog = page.getByRole("dialog");
+  if (!(await dialog.isVisible().catch(() => false))) {
+    await page.getByRole("button", { name: /Edit details/i }).click();
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+  }
+  await dialog.getByPlaceholder("Client or company name").fill(params.clientName);
+  await dialog.getByPlaceholder("Project name").fill(params.projectName);
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
 }
 
 async function fillNewEstimate(
@@ -64,8 +77,10 @@ async function fillNewEstimate(
     unitPrice?: string;
   }
 ): Promise<void> {
-  await page.getByPlaceholder("Client or company name").fill(params.clientName);
-  await page.getByPlaceholder("Project name").fill(params.projectName);
+  await fillNewEstimateCustomerFields(page, {
+    clientName: params.clientName,
+    projectName: params.projectName,
+  });
 
   const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
   await expect(addSection).toBeVisible({ timeout: 30_000 });
@@ -216,27 +231,28 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   await page.goto(detailUrl);
   await page.waitForLoadState("domcontentloaded");
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await page.getByPlaceholder("Client or company name").fill(canceledClientName);
-  await page.getByRole("button", { name: "Cancel" }).click();
+  await page.getByRole("button", { name: /Edit details/i }).click();
+  await page
+    .getByRole("dialog")
+    .getByPlaceholder("Client or company name")
+    .fill(canceledClientName);
+  await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.locator("header").getByRole("button", { name: "Cancel" }).click();
   await expect(page.getByText(clientName, { exact: true }).first()).toBeVisible({
     timeout: 10_000,
   });
   await expect(page.getByText(canceledClientName, { exact: true })).toHaveCount(0);
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await page.getByPlaceholder("Client or company name").fill(savedClientName);
-  const saveButton = page.getByRole("button", { name: "Save", exact: true });
-  await expect(saveButton).toBeEnabled({ timeout: 10_000 });
-  await saveButton.click();
+  await page.getByRole("button", { name: /Edit details/i }).click();
+  await page.getByRole("dialog").getByPlaceholder("Client or company name").fill(savedClientName);
+  await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
     timeout: 30_000,
   });
-  await expect
-    .poll(async () => {
-      const subtitle = page.locator("header").locator("p").first();
-      return (await subtitle.textContent())?.includes(savedClientName) ?? false;
-    })
-    .toBe(true);
+  await expect(page.getByText(savedClientName, { exact: true }).first()).toBeVisible({
+    timeout: 30_000,
+  });
 
   await page.getByRole("button", { name: "Delete estimate" }).click();
   let deleteDialog = page.getByRole("dialog", { name: "Delete estimate?" });
@@ -394,8 +410,7 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   createdClientNames.add(clientName);
   createdProjectNames.add(projectName);
 
-  await page.getByPlaceholder("Client or company name").fill(clientName);
-  await page.getByPlaceholder("Project name").fill(projectName);
+  await fillNewEstimateCustomerFields(page, { clientName, projectName });
   await page
     .getByRole("button", { name: /^Add Section$/i })
     .first()
@@ -410,7 +425,7 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   await lineCard.getByLabel("Line item 1 unit price").fill("50");
   await expect(lineCard.getByText(/\$110\.00/)).toBeVisible({ timeout: 10_000 });
 
-  await expect(lineCard.getByRole("button", { name: "Add details" })).toBeVisible({
+  await expect(lineCard.getByRole("button", { name: "Hide details" })).toBeVisible({
     timeout: 10_000,
   });
   await expect(lineCard.getByText("More", { exact: true })).toHaveCount(0);

@@ -18,17 +18,16 @@ import {
   deletePaymentMilestoneWithClient,
   markPaymentMilestonePaidWithClient,
   reorderPaymentScheduleWithClient,
+  updateEstimateMetaWithClient,
+  updateEstimateStatusWithClient,
+  reorderEstimateCategoriesWithClient,
+  moveEstimateItemsToCostCodeWithClient,
+  updateEstimateCategoryDisplayNameWithClient,
 } from "@/lib/estimates-db";
 import {
   createNewVersionFromSnapshot,
   convertEstimateSnapshotToProject,
   convertEstimateToProjectWithSetup,
-  updateEstimateCategoryDisplayName,
-  setEstimateStatus,
-  updateEstimateStatus,
-  updateEstimateMeta,
-  moveEstimateItemsToCostCode,
-  reorderEstimateCategories,
   createPaymentTemplate,
   applyPaymentTemplateToEstimate,
 } from "@/lib/data";
@@ -43,7 +42,9 @@ export async function approveEstimateAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
-    const ok = await setEstimateStatus(estimateId, "Approved");
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    const ok = await setEstimateStatusWithClient(estimateId, "Approved", db);
     if (!ok) return;
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
@@ -86,7 +87,9 @@ export async function sendEstimateAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
-    const ok = await setEstimateStatus(estimateId, "Sent");
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    const ok = await setEstimateStatusWithClient(estimateId, "Sent", db);
     if (!ok) return;
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
@@ -100,7 +103,9 @@ export async function rejectEstimateAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
-    const ok = await setEstimateStatus(estimateId, "Rejected");
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    const ok = await setEstimateStatusWithClient(estimateId, "Rejected", db);
     if (!ok) return;
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
@@ -117,7 +122,10 @@ export async function changeEstimateStatusAction(formData: FormData) {
   if (typeof estimateId !== "string" || typeof newStatus !== "string" || !valid.includes(newStatus))
     return;
   try {
-    const ok = await updateEstimateStatus(
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    const ok = await updateEstimateStatusWithClient(
+      db,
       estimateId,
       newStatus as "Draft" | "Sent" | "Approved" | "Rejected" | "Converted"
     );
@@ -137,7 +145,9 @@ export async function changeEstimateStatusInlineAction(
   newStatus: EstimateStatus
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const ok = await updateEstimateStatus(estimateId, newStatus);
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await updateEstimateStatusWithClient(db, estimateId, newStatus);
     if (ok) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
@@ -152,10 +162,9 @@ export async function sendEstimateInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const admin = getServerSupabaseAdmin();
-    const ok = admin
-      ? await setEstimateStatusWithClient(estimateId, "Sent", admin)
-      : await setEstimateStatus(estimateId, "Sent");
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await setEstimateStatusWithClient(estimateId, "Sent", db);
     if (ok) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
@@ -170,10 +179,9 @@ export async function approveEstimateInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const admin = getServerSupabaseAdmin();
-    const ok = admin
-      ? await setEstimateStatusWithClient(estimateId, "Approved", admin)
-      : await setEstimateStatus(estimateId, "Approved");
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await setEstimateStatusWithClient(estimateId, "Approved", db);
     if (ok) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
@@ -188,7 +196,9 @@ export async function rejectEstimateInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const ok = await setEstimateStatus(estimateId, "Rejected");
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await setEstimateStatusWithClient(estimateId, "Rejected", db);
     if (ok) {
       revalidateEstimatePaths(estimateId);
       revalidatePath("/estimates");
@@ -268,7 +278,9 @@ export async function saveEstimateMetaInlineAction(
     if (formData.has("projectName") && !projectName) {
       return { ok: false, error: "Project name is required." };
     }
-    const ok = await updateEstimateMeta(estimateId, {
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await updateEstimateMetaWithClient(db, estimateId, {
       ...(clientName != null
         ? { client: { name: clientName, ...(address != null ? { address } : {}) } }
         : {}),
@@ -451,8 +463,8 @@ export async function addLineItemAction(formData: FormData) {
     });
     if (!item) return;
     if (categoryDisplayName) {
-      await updateEstimateMeta(estimateId, {
-        costCategoryNames: { [costCode]: categoryDisplayName },
+      await updateEstimateMetaWithClient(db, estimateId, {
+        categoryNames: { [costCode]: categoryDisplayName },
       });
     }
     revalidateEstimatePaths(estimateId);
@@ -481,8 +493,8 @@ export async function addLineItemCatalogInlineAction(
     });
     if (!item) return { ok: false, error: "Could not add line item." };
     if (categoryDisplayName.trim()) {
-      await updateEstimateMeta(estimateId, {
-        costCategoryNames: { [costCode]: categoryDisplayName.trim() },
+      await updateEstimateMetaWithClient(db, estimateId, {
+        categoryNames: { [costCode]: categoryDisplayName.trim() },
       });
     }
     revalidateEstimatePaths(estimateId);
@@ -641,7 +653,9 @@ export async function saveEstimateMetaAction(formData: FormData) {
     const notes = (formData.get("notes") as string)?.trim();
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
     const markupNum = markupPct != null && markupPct !== "" ? Number(markupPct) / 100 : undefined;
-    const ok = await updateEstimateMeta(estimateId, {
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    const ok = await updateEstimateMetaWithClient(db, estimateId, {
       ...(clientName != null
         ? { client: { name: clientName, ...(address != null ? { address } : {}) } }
         : {}),
@@ -676,7 +690,11 @@ export async function saveCostCategoryNameAction(formData: FormData) {
   const displayName = (formData.get("displayName") as string)?.trim();
   if (typeof estimateId !== "string" || typeof costCode !== "string" || displayName == null) return;
   try {
-    await updateEstimateMeta(estimateId, { costCategoryNames: { [costCode]: displayName } });
+    const db = getEstimateWriteClient();
+    if (!db) return;
+    await updateEstimateMetaWithClient(db, estimateId, {
+      categoryNames: { [costCode]: displayName },
+    });
     revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   } catch {
@@ -691,7 +709,14 @@ export async function reorderEstimateCategoriesAction(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     if (orderedCostCodes.length === 0) return { ok: true };
-    const ok = await reorderEstimateCategories(estimateId, orderedCostCodes, displayNamesByCode);
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await reorderEstimateCategoriesWithClient(
+      db,
+      estimateId,
+      orderedCostCodes,
+      displayNamesByCode
+    );
     if (!ok) return { ok: false, error: "Could not save section order." };
     revalidateEstimatePaths(estimateId);
     return { ok: true };
@@ -708,7 +733,15 @@ export async function moveEstimateItemsToCostCodeAction(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     if (itemIds.length === 0) return { ok: true };
-    const ok = await moveEstimateItemsToCostCode(estimateId, itemIds, newCostCode, displayNameHint);
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await moveEstimateItemsToCostCodeWithClient(
+      db,
+      estimateId,
+      itemIds,
+      newCostCode,
+      displayNameHint
+    );
     if (!ok) return { ok: false, error: "Could not move items to this section." };
     revalidateEstimatePaths(estimateId);
     return { ok: true };
@@ -726,18 +759,19 @@ export async function saveCostCategoryNameInlineAction(
   const trimmed = displayName.trim();
   if (!trimmed) return { ok: false, error: "Name cannot be empty." };
   try {
-    const ok = await updateEstimateCategoryDisplayName(estimateId, costCode, trimmed);
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await updateEstimateCategoryDisplayNameWithClient(db, estimateId, costCode, trimmed);
     if (!ok) {
       // Fallback: legacy path in case direct category upsert fails in some environments.
-      const legacyOk = await updateEstimateMeta(estimateId, {
-        costCategoryNames: { [costCode]: trimmed },
+      const legacyOk = await updateEstimateMetaWithClient(db, estimateId, {
+        categoryNames: { [costCode]: trimmed },
       });
       if (!legacyOk) return { ok: false, error: "Could not save section name." };
     }
     revalidateEstimatePaths(estimateId);
     return { ok: true };
   } catch (e) {
-    console.error(e);
     return { ok: false, error: e instanceof Error ? e.message : "Could not save section name." };
   }
 }

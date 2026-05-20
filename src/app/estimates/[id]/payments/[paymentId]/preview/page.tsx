@@ -9,6 +9,7 @@ import { DocumentCompanyHeader } from "@/components/documents/document-company-h
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { PaymentPreviewActions } from "./payment-preview-actions";
+import { ProposalScopePreview } from "@/app/estimates/_components/proposal-scope-preview";
 
 export const dynamic = "force-dynamic";
 
@@ -99,9 +100,9 @@ export default async function EstimatePaymentPreviewPage({
                 {payment.title}
               </h1>
               {payment.description ? (
-                <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm leading-6 text-zinc-700">
-                  {payment.description}
-                </p>
+                <div className="mt-3 max-w-2xl text-sm leading-6 text-zinc-700">
+                  <ProposalScopePreview text={payment.description} variant="print" />
+                </div>
               ) : null}
               {payment.dueDate ? (
                 <p className="mt-3 text-sm tabular-nums text-zinc-600">

@@ -56,7 +56,6 @@ async function cleanupEstimateTestData(
   if (ids.length === 0) return;
 
   await deleteRowsByEstimateIds(supabase, "estimate_payment_schedule_items", ids);
-  await deleteRowsByEstimateIds(supabase, "estimate_payment_schedule", ids);
   await deleteRowsByEstimateIds(supabase, "estimate_snapshots", ids);
   await deleteRowsByEstimateIds(supabase, "estimate_items", ids);
   await deleteRowsByEstimateIds(supabase, "estimate_categories", ids);
@@ -65,9 +64,13 @@ async function cleanupEstimateTestData(
 }
 
 async function fillBaseEstimate(page: Page, params: { client: string; project: string }) {
-  await page.getByPlaceholder("Client or company name").fill(params.client);
-  await page.getByPlaceholder("Project name").fill(params.project);
-  await page.getByPlaceholder("Site or client address").fill("123 Local Payment QA Lane");
+  await page.getByRole("button", { name: /Edit details/i }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await dialog.getByPlaceholder("Client or company name").fill(params.client);
+  await dialog.getByPlaceholder("Project name").fill(params.project);
+  await dialog.getByPlaceholder("Site or client address").fill("123 Local Payment QA Lane");
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
 
   await page
     .getByRole("button", { name: /^Add Section$/i })
@@ -160,6 +163,9 @@ test("estimate payment schedule persists and has customer-facing payment preview
   await expect(page.locator("main")).toContainText("Payment schedule");
   await expect(page.locator("main")).toContainText("1st Payment");
   await expect(page.locator("main")).toContainText("Deposit before work starts");
+  const previewMainText = await page.locator("main").evaluate((el) => el.textContent ?? "");
+  expect(previewMainText).not.toContain("\t");
+  expect(previewMainText).not.toContain("\u2028");
   await expect(page.locator("main")).toContainText("$7,500.00");
   await expect(page.locator("main")).not.toContainText(/internal markup|internal only/i);
 
@@ -170,6 +176,11 @@ test("estimate payment schedule persists and has customer-facing payment preview
   await expect(page.getByRole("document", { name: "Estimate print view" })).toContainText(
     "Due upon completion"
   );
+  const printText = await page
+    .getByRole("document", { name: "Estimate print view" })
+    .evaluate((el) => el.textContent ?? "");
+  expect(printText).not.toContain("\t");
+  expect(printText).not.toContain("\u2028");
 
   await page.goto(detailUrl, { waitUntil: "domcontentloaded" });
   await page.getByRole("link", { name: /Preview 1st Payment/i }).click();
@@ -185,6 +196,11 @@ test("estimate payment schedule persists and has customer-facing payment preview
   await expect(page.getByRole("document", { name: "Payment request preview" })).toContainText(
     "$5,000.00"
   );
+  const paymentPreviewText = await page
+    .getByRole("document", { name: "Payment request preview" })
+    .evaluate((el) => el.textContent ?? "");
+  expect(paymentPreviewText).not.toContain("\t");
+  expect(paymentPreviewText).not.toContain("\u2028");
 
   await page.goto(detailUrl, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Edit", exact: true }).click();

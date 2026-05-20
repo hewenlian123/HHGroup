@@ -28,6 +28,8 @@ import { EstimateBuilderAdvanced } from "../_components/estimate-builder-advance
 import { EstimateNewCustomerSection } from "../_components/estimate-new-customer-section";
 import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
 import { EstimateLineItemsLocal } from "../_components/estimate-line-items-local";
+import { ProposalScopeEditor } from "../_components/proposal-scope-editor";
+import { ProposalPaymentMilestoneList } from "../_components/proposal-payment-milestone-list";
 import { EB, ebInput } from "../_components/estimate-builder-ui";
 import type { EditorLineItem } from "../_components/estimate-line-item-model";
 import type { CustomerOption } from "@/components/customers/customer-select-with-add";
@@ -71,7 +73,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   const [estimateDate] = React.useState(today);
   const [validUntil, setValidUntil] = React.useState("");
   const [salesPerson, setSalesPerson] = React.useState("");
-  const [notes, setNotes] = React.useState("");
   const [tax, setTax] = React.useState(0);
   const [taxTouched, setTaxTouched] = React.useState(false);
   const [defaultTaxPct, setDefaultTaxPct] = React.useState(0);
@@ -227,7 +228,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         clientEmail: email,
         estimateDate: estimateDate || undefined,
         validUntil: validUntil || undefined,
-        notes: notes.trim() || undefined,
         salesPerson: salesPerson.trim() || undefined,
         tax,
         discount,
@@ -272,8 +272,17 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
 
   const totalScheduled = paymentMilestones.reduce((sum, m) => sum + m.amount, 0);
   const remaining = Math.max(0, summary.grandTotal - totalScheduled);
+
+  const paymentHeaderSummary = React.useMemo(() => {
+    if (!paymentMilestones.length) return null;
+    return {
+      milestoneCount: paymentMilestones.length,
+      scheduledTotal: totalScheduled,
+    };
+  }, [paymentMilestones, totalScheduled]);
+
   const scheduleDrawerClass = cn(
-    "w-[420px] border-white/10 bg-[rgba(14,18,28,0.96)] p-5 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-24px_0_64px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:w-[480px]",
+    "estimate-builder w-[420px] border-white/10 bg-[rgba(14,18,28,0.96)] p-5 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-24px_0_64px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:w-[480px]",
     "[&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.08] [&>button]:hover:text-zinc-100"
   );
   const scheduleLabelClass = "text-[11px] font-medium text-zinc-500";
@@ -318,14 +327,36 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
 
   return (
     <EstimateBuilderShell>
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-10 lg:items-start">
-        <div className="min-w-0 space-y-5 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-8 lg:items-start">
+        <div className="min-w-0 space-y-4 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
           <header className={EB.glassHeader}>
-            <Link href="/estimates" className={cn(EB.backLink, "text-xs")}>
-              ← Estimates
-            </Link>
-            <h1 className={cn("mt-3", EB.pageTitle)}>New Estimate</h1>
-            <p className={cn("mt-1.5", EB.pageMeta)}>Draft · {estimateDate}</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <Link href="/estimates" className={cn(EB.backLink, "text-xs")}>
+                  ← Estimates
+                </Link>
+                <h1 className="sr-only">New Estimate</h1>
+              </div>
+              <div className="hidden flex-wrap justify-end gap-2 lg:flex">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  asChild
+                  className={cn("min-h-11 md:min-h-8", EB.btnGhost)}
+                >
+                  <Link href="/estimates">Cancel</Link>
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  className={cn("min-h-11 px-5 font-medium md:min-h-8", EB.btnPrimary)}
+                >
+                  <SubmitSpinner loading={saving} className="mr-2" />
+                  {saving ? "Saving…" : "Save Estimate"}
+                </Button>
+              </div>
+            </div>
           </header>
 
           {formError ? (
@@ -346,7 +377,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             estimateDate={estimateDate}
             validUntil={validUntil}
             salesPerson={salesPerson}
-            notes={notes}
             tax={tax}
             discount={discount}
             overheadPct={overheadPct}
@@ -360,7 +390,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             onEmailChange={setEmail}
             onValidUntilChange={setValidUntil}
             onSalesPersonChange={setSalesPerson}
-            onNotesChange={setNotes}
             onTaxChange={setTax}
             onTaxTouched={() => setTaxTouched(true)}
             onDiscountChange={setDiscount}
@@ -418,93 +447,50 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   </span>
                 </span>
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border/25">
-                      <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                        Payment Name
-                      </th>
-                      <th className="text-right py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium tabular-nums">
-                        Amount
-                      </th>
-                      <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                        Description
-                      </th>
-                      <th className="text-left py-2 px-4 text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                        Due Date
-                      </th>
-                      <th className="w-16" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paymentMilestones.length === 0 ? (
-                      <tr className="border-b border-zinc-100/50 dark:border-border/30">
-                        <td
-                          colSpan={5}
-                          className="py-8 px-4 text-center text-sm text-muted-foreground"
-                        >
-                          No payment milestones yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      paymentMilestones.map((m) => {
-                        return (
-                          <tr
-                            key={m.id}
-                            className="border-b border-border/20 transition-colors hover:bg-muted/[0.03]"
-                          >
-                            <td className="py-2 px-4 font-medium text-foreground">{m.title}</td>
-                            <td className="py-2 px-4 text-right tabular-nums font-medium text-foreground">
-                              {formatEstimateCurrency(m.amount)}
-                            </td>
-                            <td className="py-2 px-4 text-muted-foreground">
-                              {m.description || "—"}
-                            </td>
-                            <td className="py-2 px-4 text-muted-foreground tabular-nums">
-                              {m.dueDate || "—"}
-                            </td>
-                            <td className="py-2 px-2">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon"
-                                  className={cn(
-                                    "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                                    EB.btnGhost
-                                  )}
-                                  aria-label={`Edit ${m.title}`}
-                                  onClick={() => openPaymentMilestoneDrawer(m)}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="icon"
-                                  className={cn(
-                                    "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                                    EB.btnGhost
-                                  )}
-                                  aria-label={`Delete ${m.title}`}
-                                  onClick={() =>
-                                    setPaymentMilestones((prev) =>
-                                      prev.filter((x) => x.id !== m.id)
-                                    )
-                                  }
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <ProposalPaymentMilestoneList
+                milestones={paymentMilestones.map((m) => ({
+                  id: m.id,
+                  title: m.title,
+                  amount: m.amount,
+                  description: m.description,
+                  dueDate: m.dueDate,
+                }))}
+                actions={(m) => (
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className={cn(
+                        "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                        EB.btnGhost
+                      )}
+                      aria-label={`Edit ${m.title}`}
+                      onClick={() => {
+                        const full = paymentMilestones.find((x) => x.id === m.id);
+                        if (full) openPaymentMilestoneDrawer(full);
+                      }}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className={cn(
+                        "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                        EB.btnGhost
+                      )}
+                      aria-label={`Delete ${m.title}`}
+                      onClick={() =>
+                        setPaymentMilestones((prev) => prev.filter((x) => x.id !== m.id))
+                      }
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              />
               <Sheet
                 open={scheduleOpen}
                 onOpenChange={(open) => {
@@ -553,12 +539,14 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                       <Label htmlFor="pm-description" className={scheduleLabelClass}>
                         Description
                       </Label>
-                      <textarea
+                      <ProposalScopeEditor
                         id="pm-description"
                         value={pmDescription}
-                        onChange={(e) => setPmDescription(e.target.value)}
-                        placeholder="Deposit before work starts"
-                        className={ebInput("min-h-[96px] resize-none py-2 leading-relaxed")}
+                        onChange={setPmDescription}
+                        density="comfortable"
+                        showHandle
+                        placeholder="What this payment covers…"
+                        ariaLabel="Payment milestone description"
                       />
                     </div>
                     <div className="space-y-1">
@@ -606,6 +594,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         <aside className="hidden lg:block lg:pl-1">
           <EstimateBuilderSummary
             floating
+            paymentSummary={paymentHeaderSummary}
             summary={{
               materialCost: summary.materialCost,
               laborCost: summary.laborCost,
@@ -623,63 +612,49 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             showInternal
           />
         </aside>
+      </div>
 
-        <div
-          className={cn(
-            "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 py-3 lg:hidden",
-            EB.glassMobileBar
-          )}
-          aria-label="Estimate total"
-        >
-          <div className="mb-4 flex items-baseline justify-between gap-4">
-            <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-              Total
-            </span>
-            <span
-              className={cn(
-                "text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight",
-                EB.goldTotal
-              )}
-            >
-              {formatEstimateCurrency(summary.grandTotal)}
-            </span>
-          </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              asChild
-              className={cn("min-h-11 flex-1", EB.btnGhost)}
-            >
-              <Link href="/estimates">Cancel</Link>
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              className={cn("min-h-11 flex-1 font-medium", EB.btnPrimary)}
-            >
-              <SubmitSpinner loading={saving} className="mr-2" />
-              {saving ? "Saving…" : "Save Estimate"}
-            </Button>
-          </div>
-          {submitAttempted && validationErrors.length > 0 ? (
-            <p className="mt-2 text-center text-xs text-muted-foreground">{validationErrors[0]}</p>
-          ) : null}
+      <div
+        className={cn(
+          "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 py-3 lg:hidden",
+          EB.glassMobileBar
+        )}
+        aria-label="Estimate total"
+      >
+        <div className="mb-4 flex items-baseline justify-between gap-4">
+          <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
+            Total
+          </span>
+          <span
+            className={cn(
+              "text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight",
+              EB.goldTotal
+            )}
+          >
+            {formatEstimateCurrency(summary.grandTotal)}
+          </span>
         </div>
-
-        <div className="hidden lg:col-span-2 lg:flex lg:justify-end lg:gap-2 lg:pt-4">
-          <Button type="button" variant="ghost" asChild className={cn("min-h-11", EB.btnGhost)}>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            asChild
+            className={cn("min-h-11 min-w-[44px] flex-1", EB.btnGhost)}
+          >
             <Link href="/estimates">Cancel</Link>
           </Button>
           <Button
             onClick={handleSave}
             disabled={saving}
-            className={cn("min-h-11 px-6 font-medium", EB.btnPrimary)}
+            className={cn("min-h-11 min-w-[44px] flex-1 font-medium", EB.btnPrimary)}
           >
             <SubmitSpinner loading={saving} className="mr-2" />
             {saving ? "Saving…" : "Save Estimate"}
           </Button>
         </div>
+        {submitAttempted && validationErrors.length > 0 ? (
+          <p className="mt-2 text-center text-xs text-muted-foreground">{validationErrors[0]}</p>
+        ) : null}
       </div>
     </EstimateBuilderShell>
   );

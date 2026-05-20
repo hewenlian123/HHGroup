@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Copy, Trash2, ChevronRight } from "lucide-react";
+import { Plus, Copy, Trash2 } from "lucide-react";
 import type { CostCode } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
@@ -14,37 +14,8 @@ import {
 } from "./estimate-line-item-model";
 import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { EstimateLineItemMobileCard } from "./estimate-line-item-mobile-card";
-import { EB, ebGlassPanel, ebGlassScope, ebInput } from "./estimate-builder-ui";
-
-function AutoExpandTextarea({
-  value,
-  onChange,
-  placeholder,
-  className,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  className?: string;
-}): React.ReactElement {
-  const ref = React.useRef<HTMLTextAreaElement>(null);
-  React.useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "0";
-    el.style.height = `${Math.max(52, el.scrollHeight)}px`;
-  }, [value]);
-  return (
-    <textarea
-      ref={ref}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className={className}
-      rows={2}
-    />
-  );
-}
+import { EB, ebGlassPanel, ebInput } from "./estimate-builder-ui";
+import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
 
 export type EstimateLineItemsLocalProps = {
   costCodes: CostCode[];
@@ -138,7 +109,7 @@ export function EstimateLineItemsLocal({
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 className={EB.scopeHeading}>Scope of work</h2>
-            <p className={EB.scopeSubtitle}>Line items grouped by section</p>
+            <p className={EB.scopeSubtitle}>Proposal sections and line totals</p>
           </div>
           <EstimateLineItemsToolbar
             onAddSection={addCategory}
@@ -192,173 +163,139 @@ export function EstimateLineItemsLocal({
             const rows = itemsByCode[code];
             const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
             return (
-              <div key={code} className={cn(EB.categoryGroup, "mb-4")}>
-                <details className={cn("group", ebGlassScope())} open>
-                  <summary
-                    className={cn(
-                      EB.scopeBlockHeader,
-                      "list-none px-1 [&::-webkit-details-marker]:hidden"
+              <div key={code} className={cn(EB.categoryGroup, "mb-6 last:mb-0")}>
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-white/[0.08] pb-2">
+                  <Input
+                    value={displayName}
+                    onChange={(e) => setCategoryName(code, e.target.value)}
+                    className={ebInput(
+                      "h-8 max-w-[min(100%,20rem)] border-0 bg-transparent px-0 text-[15px] font-semibold tracking-tight text-zinc-100 shadow-none focus-visible:ring-0"
                     )}
-                  >
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform group-open:rotate-90" />
-                      <Input
-                        value={displayName}
-                        onChange={(e) => setCategoryName(code, e.target.value)}
-                        className={ebInput(
-                          "h-8 max-w-[280px] border-0 px-0 text-[15px] font-semibold shadow-none focus-visible:ring-0"
-                        )}
-                        placeholder={cc.name}
-                        onClick={(e) => e.stopPropagation()}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        disabled={disabled}
-                      />
-                    </div>
-                    <span className={EB.scopeBlockTotal}>
-                      {formatEstimateCurrency(sectionSubtotal)}
-                    </span>
-                  </summary>
-                  <div className="mt-2">
-                    <table className="w-full table-fixed text-sm">
-                      <thead>
-                        <tr className={EB.lineTableHead}>
-                          <th className="pb-2.5 text-left font-medium">Description</th>
-                          <th className="w-20 pb-2.5 text-right font-medium">Qty</th>
-                          <th className="w-28 pb-2.5 text-right font-medium">Unit price</th>
-                          <th className="w-28 pb-2.5 text-right font-medium">Total</th>
-                          <th className="w-20 pb-2" />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map((row, rowIndexInCat) => {
-                          const globalIdx =
-                            flatWithIndex.find((f) => f.item.id === row.id)?.rowIndex ??
-                            rowIndexInCat + 1;
-                          const isLast = row.id === lastItemId;
-                          return (
-                            <React.Fragment key={row.id}>
-                              <tr className={cn("group/line", EB.lineTableRow)}>
-                                <td className="py-3 pr-3 align-top">
-                                  <Input
-                                    value={row.title}
-                                    onChange={(e) => updateItem(row.id, { title: e.target.value })}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter" && !e.shiftKey && isLast) {
-                                        e.preventDefault();
-                                        handleEnterAddNext(code);
-                                      }
-                                    }}
-                                    className={ebInput("font-medium")}
-                                    placeholder="Description"
-                                    aria-label={`Line item ${globalIdx} title`}
-                                    aria-invalid={
-                                      submitAttempted &&
-                                      !row.title.trim() &&
-                                      !row.description.trim()
+                    placeholder={cc.name}
+                    disabled={disabled}
+                  />
+                  <span className="text-sm font-semibold tabular-nums tracking-tight text-zinc-200">
+                    {formatEstimateCurrency(sectionSubtotal)}
+                  </span>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {rows.map((row, rowIndexInCat) => {
+                    const globalIdx =
+                      flatWithIndex.find((f) => f.item.id === row.id)?.rowIndex ??
+                      rowIndexInCat + 1;
+                    const isLast = row.id === lastItemId;
+                    return (
+                      <div key={row.id}>
+                        <ProposalScopeWorkCard
+                          title={row.title}
+                          description={row.description}
+                          disabled={disabled}
+                          onTitleChange={(v) => updateItem(row.id, { title: v })}
+                          onDescriptionChange={(v) => updateItem(row.id, { description: v })}
+                          titleInvalid={submitAttempted && !row.title.trim()}
+                          titleInputAriaLabel={`Line item ${globalIdx} title`}
+                          descriptionEditorAriaLabel={`Line item ${globalIdx} description`}
+                          duplicateNode={
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
+                              onClick={() => duplicateItem(row.id)}
+                              aria-label="Duplicate scope card"
+                              disabled={disabled}
+                            >
+                              <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
+                            </Button>
+                          }
+                          deleteNode={
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-red-400"
+                              onClick={() => deleteItem(row.id)}
+                              aria-label="Remove line item"
+                              disabled={disabled}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+                            </Button>
+                          }
+                          inlinePricing={
+                            <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
+                              <span className="hidden pb-1.5 text-[10px] tabular-nums text-zinc-600 sm:inline">
+                                #{globalIdx}
+                              </span>
+                              <div className="flex flex-col gap-0.5">
+                                <span className={EB.readLabel}>Qty</span>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step={1}
+                                  value={row.qty}
+                                  onChange={(e) =>
+                                    updateItem(row.id, { qty: Number(e.target.value) || 0 })
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey && isLast) {
+                                      e.preventDefault();
+                                      handleEnterAddNext(code);
                                     }
-                                    disabled={disabled}
-                                  />
-                                </td>
-                                <td className="py-3 pr-2 align-top">
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    step={1}
-                                    value={row.qty}
-                                    onChange={(e) =>
-                                      updateItem(row.id, { qty: Number(e.target.value) || 0 })
+                                  }}
+                                  className={ebInput(
+                                    `h-7 min-h-7 w-[3.25rem] px-1.5 ${EB.inputNumeric} ${EB.inputMuted} text-xs`
+                                  )}
+                                  aria-label={`Line item ${globalIdx} quantity`}
+                                  disabled={disabled}
+                                />
+                              </div>
+                              <div className="flex flex-col gap-0.5">
+                                <span className={EB.readLabel}>Unit</span>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step={0.01}
+                                  value={row.unitPrice}
+                                  onChange={(e) =>
+                                    updateItem(row.id, {
+                                      unitPrice: Number(e.target.value) || 0,
+                                    })
+                                  }
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey && isLast) {
+                                      e.preventDefault();
+                                      handleEnterAddNext(code);
                                     }
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter" && !e.shiftKey && isLast) {
-                                        e.preventDefault();
-                                        handleEnterAddNext(code);
-                                      }
-                                    }}
-                                    className={ebInput(
-                                      `w-full ${EB.inputNumeric} ${EB.inputMuted}`
-                                    )}
-                                    aria-label={`Line item ${globalIdx} quantity`}
-                                    disabled={disabled}
-                                  />
-                                </td>
-                                <td className="py-3 pr-2 align-top">
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    step={0.01}
-                                    value={row.unitPrice}
-                                    onChange={(e) =>
-                                      updateItem(row.id, { unitPrice: Number(e.target.value) || 0 })
-                                    }
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter" && !e.shiftKey && isLast) {
-                                        e.preventDefault();
-                                        handleEnterAddNext(code);
-                                      }
-                                    }}
-                                    className={ebInput(
-                                      `w-full ${EB.inputNumeric} ${EB.inputMuted}`
-                                    )}
-                                    aria-label={`Line item ${globalIdx} unit price`}
-                                    disabled={disabled}
-                                  />
-                                </td>
-                                <td className={cn("py-3 pr-2 text-right align-top", EB.lineTotal)}>
+                                  }}
+                                  className={ebInput(
+                                    `h-7 min-h-7 w-[4.5rem] px-1.5 ${EB.inputNumeric} ${EB.inputMuted} text-xs`
+                                  )}
+                                  aria-label={`Line item ${globalIdx} unit price`}
+                                  disabled={disabled}
+                                />
+                              </div>
+                              <div className="flex flex-col items-end gap-0.5">
+                                <span className={EB.readLabel}>Total</span>
+                                <span className="min-w-0 pb-0.5 text-right text-xs font-medium tabular-nums leading-tight text-zinc-200">
                                   {formatEstimateCurrency(editorLineTotal(row))}
-                                </td>
-                                <td className={cn("py-3 align-top", EB.lineRowActions)}>
-                                  <div className="flex justify-end gap-0.5">
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-muted-foreground/55 hover:text-foreground"
-                                      onClick={() => duplicateItem(row.id)}
-                                      aria-label="Duplicate line item"
-                                      disabled={disabled}
-                                    >
-                                      <Copy className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-muted-foreground/45 hover:text-destructive"
-                                      onClick={() => deleteItem(row.id)}
-                                      aria-label="Remove line item"
-                                      disabled={disabled}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                              <tr className="border-b border-white/[0.04]">
-                                <td colSpan={5} className="pb-2 pt-0">
-                                  <AutoExpandTextarea
-                                    value={row.description}
-                                    onChange={(v) => updateItem(row.id, { description: v })}
-                                    placeholder="Notes (optional)"
-                                    className="min-h-[40px] w-full resize-none bg-transparent text-sm text-muted-foreground focus:outline-none"
-                                  />
-                                </td>
-                              </tr>
-                            </React.Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                    <button
-                      type="button"
-                      className={cn(EB.addLineLink, "mt-2")}
-                      onClick={() => addLineItem(code)}
-                      disabled={disabled}
-                    >
-                      <Plus className="h-3 w-3" aria-hidden />
-                      Add line
-                    </button>
-                  </div>
-                </details>
+                                </span>
+                              </div>
+                            </div>
+                          }
+                        />
+                      </div>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    className={cn(EB.addLineLink, "mt-0.5 px-1.5")}
+                    onClick={() => addLineItem(code)}
+                    disabled={disabled}
+                  >
+                    <Plus className="h-3 w-3" aria-hidden />
+                    Add line
+                  </button>
+                </div>
               </div>
             );
           })}
