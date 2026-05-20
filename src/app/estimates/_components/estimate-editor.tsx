@@ -894,7 +894,7 @@ export function EstimateEditor({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className={cn("min-h-11 px-4", EB.btnGhost)}
+                    className={cn("min-h-11 px-4", EB.portalGhostButton)}
                     onClick={() => setEditingItem(null)}
                   >
                     Cancel
@@ -902,7 +902,7 @@ export function EstimateEditor({
                   <Button
                     type="button"
                     size="sm"
-                    className={cn("min-h-11 px-5 font-medium", EB.btnPrimary)}
+                    className={cn("min-h-11 px-5 font-medium", EB.portalPrimaryButton)}
                     disabled={descModalSaving}
                     onClick={() => void handleSaveItemDescription()}
                   >

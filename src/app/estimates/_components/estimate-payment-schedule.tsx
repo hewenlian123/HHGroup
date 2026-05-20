@@ -3,7 +3,13 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import type { PaymentScheduleItem, PaymentScheduleTemplate } from "@/lib/data";
 import { paymentMilestoneAmount } from "@/lib/data";
 import { Plus, Trash2 } from "lucide-react";
@@ -20,6 +26,11 @@ type ApplyTemplateAction = (formData: FormData) => Promise<void>;
 type CreateTemplateAction = (formData: FormData) => Promise<void>;
 
 const fmt = formatEstimateCurrency;
+const scheduleDrawerClass = cn(
+  "w-[420px] border-white/10 bg-[rgba(14,18,28,0.96)] p-5 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-24px_0_64px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:w-[480px]",
+  "[&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.08] [&>button]:hover:text-zinc-100"
+);
+const scheduleLabelClass = "text-[11px] font-medium text-zinc-500";
 
 export function EstimatePaymentSchedule(props: {
   estimateId: string;
@@ -161,7 +172,7 @@ export function EstimatePaymentSchedule(props: {
                                 "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
                                 EB.btnGhost
                               )}
-                              aria-label="Delete"
+                              aria-label="Delete payment milestone"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -180,24 +191,32 @@ export function EstimatePaymentSchedule(props: {
 
         {/* Drawer: Schedule Payment */}
         <Sheet open={scheduleOpen} onOpenChange={setScheduleOpen}>
-          <SheetContent side="right" className="w-[420px] sm:w-[480px]">
+          <SheetContent side="right" className={scheduleDrawerClass}>
             <SheetHeader>
-              <SheetTitle>Schedule Payment</SheetTitle>
+              <SheetTitle className="text-zinc-50">Schedule Payment</SheetTitle>
+              <SheetDescription className="sr-only">
+                Add a payment milestone to this estimate.
+              </SheetDescription>
             </SheetHeader>
             <div className="mt-4">
               <form action={addPaymentMilestoneAction} className="space-y-4">
                 <input type="hidden" name="estimateId" value={estimateId} />
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Payment Name</label>
-                  <Input name="title" placeholder="e.g. Deposit" className="h-9" required />
+                  <label className={scheduleLabelClass}>Payment Name</label>
+                  <Input
+                    name="title"
+                    placeholder="e.g. Deposit"
+                    className={ebInput("h-10 md:h-9")}
+                    required
+                  />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Amount</label>
+                  <label className={scheduleLabelClass}>Amount</label>
                   <div className="flex gap-2">
                     <select
                       name="amountType"
                       defaultValue="fixed"
-                      className="h-9 rounded-md border border-input bg-background px-2 text-sm flex-1"
+                      className={ebInput("h-10 flex-1 appearance-none md:h-9")}
                     >
                       <option value="fixed">Fixed</option>
                       <option value="percent">Percent</option>
@@ -208,35 +227,46 @@ export function EstimatePaymentSchedule(props: {
                       step="0.01"
                       min={0}
                       placeholder="30"
-                      className="h-9 w-28"
+                      className={ebInput("h-10 w-28 text-right md:h-9")}
                       required
                     />
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Payment Terms</label>
-                  <Input name="dueRule" placeholder="e.g. Due on signing" className="h-9" />
+                  <label className={scheduleLabelClass}>Payment Terms</label>
+                  <Input
+                    name="dueRule"
+                    placeholder="e.g. Due on signing"
+                    className={ebInput("h-10 md:h-9")}
+                  />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Due Date</label>
-                  <Input name="dueDate" type="date" className={ebInput(EB.dateField)} />
+                  <label className={scheduleLabelClass}>Due Date</label>
+                  <Input
+                    name="dueDate"
+                    type="date"
+                    className={ebInput(cn(EB.dateField, "h-10 md:h-9"))}
+                  />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Notes</label>
+                  <label className={scheduleLabelClass}>Notes</label>
                   <textarea
                     name="notes"
                     placeholder="Optional"
-                    className="min-h-[96px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    className={ebInput("min-h-[96px] resize-none py-2 leading-relaxed")}
                   />
                 </div>
                 <div className="flex items-center gap-2 pt-2">
-                  <Button type="submit" className="rounded-md">
+                  <Button
+                    type="submit"
+                    className={cn("min-h-11 px-4 md:min-h-10", EB.portalPrimaryButton)}
+                  >
                     Save
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
-                    className="rounded-md"
+                    className={cn("min-h-11 px-4 md:min-h-10", EB.portalGhostButton)}
                     onClick={() => setScheduleOpen(false)}
                   >
                     Cancel

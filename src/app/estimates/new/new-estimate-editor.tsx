@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { createEstimateWithItemsAction } from "./actions";
 import type { CostCode } from "@/lib/data";
 import { Plus, Trash2 } from "lucide-react";
@@ -22,7 +28,7 @@ import { EstimateBuilderAdvanced } from "../_components/estimate-builder-advance
 import { EstimateNewCustomerSection } from "../_components/estimate-new-customer-section";
 import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
 import { EstimateLineItemsLocal } from "../_components/estimate-line-items-local";
-import { EB } from "../_components/estimate-builder-ui";
+import { EB, ebInput } from "../_components/estimate-builder-ui";
 import type { EditorLineItem } from "../_components/estimate-line-item-model";
 import type { CustomerOption } from "@/components/customers/customer-select-with-add";
 
@@ -272,6 +278,11 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     0
   );
   const remaining = Math.max(0, summary.grandTotal - totalScheduled);
+  const scheduleDrawerClass = cn(
+    "w-[420px] border-white/10 bg-[rgba(14,18,28,0.96)] p-5 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-24px_0_64px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:w-[480px]",
+    "[&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.08] [&>button]:hover:text-zinc-100"
+  );
+  const scheduleLabelClass = "text-[11px] font-medium text-zinc-500";
   const resetPaymentDraft = () => {
     setPmTitle("");
     setPmAmountType("percent");
@@ -374,7 +385,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="rounded-md h-8"
+                  className={cn("min-h-11 px-3 md:min-h-8", EB.btnGhost)}
                   onClick={() => setScheduleOpen(true)}
                   disabled={saving}
                 >
@@ -455,7 +466,11 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="btn-outline-ghost h-8 w-8 text-destructive"
+                                className={cn(
+                                  "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                                  EB.btnGhost
+                                )}
+                                aria-label="Delete payment milestone"
                                 onClick={() =>
                                   setPaymentMilestones((prev) => prev.filter((x) => x.id !== m.id))
                                 }
@@ -477,13 +492,16 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   if (!open) resetPaymentDraft();
                 }}
               >
-                <SheetContent side="right" className="w-[420px] sm:w-[480px]">
+                <SheetContent side="right" className={scheduleDrawerClass}>
                   <SheetHeader>
-                    <SheetTitle>Schedule Payment</SheetTitle>
+                    <SheetTitle className="text-zinc-50">Schedule Payment</SheetTitle>
+                    <SheetDescription className="sr-only">
+                      Add a payment milestone to this estimate.
+                    </SheetDescription>
                   </SheetHeader>
                   <div className="mt-4 space-y-4">
                     <div className="space-y-1">
-                      <Label htmlFor="pm-title" className="text-xs">
+                      <Label htmlFor="pm-title" className={scheduleLabelClass}>
                         Payment Name
                       </Label>
                       <Input
@@ -491,16 +509,16 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                         value={pmTitle}
                         onChange={(e) => setPmTitle(e.target.value)}
                         placeholder="e.g. Deposit"
-                        className="h-9"
+                        className={ebInput("h-10 md:h-9")}
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Amount</Label>
+                      <Label className={scheduleLabelClass}>Amount</Label>
                       <div className="flex gap-2">
                         <select
                           value={pmAmountType}
                           onChange={(e) => setPmAmountType(e.target.value as "percent" | "fixed")}
-                          className="h-9 rounded-md border border-input bg-background px-2 text-sm flex-1"
+                          className={ebInput("h-10 flex-1 appearance-none md:h-9")}
                         >
                           <option value="fixed">Fixed</option>
                           <option value="percent">Percent</option>
@@ -512,12 +530,12 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                           step="0.01"
                           min={0}
                           placeholder={pmAmountType === "percent" ? "30" : "2500"}
-                          className="h-9 w-28 text-right"
+                          className={ebInput("h-10 w-28 text-right md:h-9")}
                         />
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="pm-terms" className="text-xs">
+                      <Label htmlFor="pm-terms" className={scheduleLabelClass}>
                         Payment Terms
                       </Label>
                       <Input
@@ -525,11 +543,11 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                         value={pmDueRule}
                         onChange={(e) => setPmDueRule(e.target.value)}
                         placeholder="e.g. Due on signing"
-                        className="h-9"
+                        className={ebInput("h-10 md:h-9")}
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="pm-dueDate" className="text-xs">
+                      <Label htmlFor="pm-dueDate" className={scheduleLabelClass}>
                         Due Date
                       </Label>
                       <Input
@@ -537,11 +555,11 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                         value={pmDueDate}
                         onChange={(e) => setPmDueDate(e.target.value)}
                         type="date"
-                        className="h-9"
+                        className={ebInput(cn(EB.dateField, "h-10 md:h-9"))}
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="pm-notes" className="text-xs">
+                      <Label htmlFor="pm-notes" className={scheduleLabelClass}>
                         Notes
                       </Label>
                       <textarea
@@ -549,13 +567,16 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                         value={pmNotes}
                         onChange={(e) => setPmNotes(e.target.value)}
                         placeholder="Optional"
-                        className="min-h-[96px] w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className={ebInput("min-h-[96px] resize-none py-2 leading-relaxed")}
                       />
                     </div>
                     <div className="flex items-center gap-2 pt-2">
                       <Button
                         type="button"
-                        className="rounded-md"
+                        className={cn(
+                          "min-h-11 px-4 font-medium md:min-h-10",
+                          EB.portalPrimaryButton
+                        )}
                         onClick={addPaymentMilestoneLocal}
                       >
                         Save
@@ -563,7 +584,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                       <Button
                         type="button"
                         variant="outline"
-                        className="rounded-md"
+                        className={cn("min-h-11 px-4 md:min-h-10", EB.portalGhostButton)}
                         onClick={() => {
                           setScheduleOpen(false);
                           resetPaymentDraft();
