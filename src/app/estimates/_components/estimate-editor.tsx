@@ -23,6 +23,7 @@ import { useToast } from "@/components/toast/toast-provider";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -88,7 +89,7 @@ import { formatEstimateCurrency, roundEstimateCurrencyValue } from "./estimate-c
 import { EstimateBuilderSummary } from "./estimate-builder-summary";
 import { EstimateBuilderAdvanced } from "./estimate-builder-advanced";
 import { EstimateEditCustomerSection } from "./estimate-edit-customer-section";
-import { EB, ebInput } from "./estimate-builder-ui";
+import { EB, ebGlassPanel, ebGlassScope, ebInput } from "./estimate-builder-ui";
 import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { EstimateLineItemPersistedMobile } from "./estimate-line-item-persisted-mobile";
 
@@ -511,7 +512,7 @@ export function EstimateEditor({
       fd.set("markupPct", String(markupPctVal * 100));
       const res = await updateLineItemInlineAction(fd);
       if (res.ok) {
-        lineDescriptionApplyRef.current[editingItem]?.(modalItemName, modalItemDescription);
+        lineDescriptionApplyRef.current[editingItem]?.(modalItemName, descBody);
         setEditingItem(null);
       } else {
         toast({
@@ -546,7 +547,7 @@ export function EstimateEditor({
   return (
     <React.Fragment>
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-10 lg:items-start">
-        <div className="min-w-0 space-y-8 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
+        <div className="min-w-0 space-y-5 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
           <EstimateEditCustomerSection
             meta={meta}
             estimateId={estimateId}
@@ -563,190 +564,149 @@ export function EstimateEditor({
           />
 
           <section className={EB.section}>
-            <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <h2 className={EB.scopeHeading}>Scope of work</h2>
-                <p className={EB.scopeSubtitle}>Line items grouped by section</p>
+            <div className={ebGlassPanel()}>
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <h2 className={EB.scopeHeading}>Scope of work</h2>
+                  <p className={EB.scopeSubtitle}>Line items grouped by section</p>
+                </div>
+                {!isReadOnly ? (
+                  <EstimateLineItemsToolbar
+                    onAddSection={() => {
+                      document.getElementById("estimate-add-section")?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
+                    }}
+                  />
+                ) : null}
               </div>
-              {!isReadOnly ? (
-                <EstimateLineItemsToolbar
-                  onAddSection={() => {
-                    document.getElementById("estimate-add-section")?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "center",
-                    });
-                  }}
-                />
-              ) : null}
-            </div>
 
-            <div className="mb-4 space-y-3 md:hidden">
-              {flatPersistedRows.map(({ row, categoryId, rowIndex }) => (
-                <EstimateLineItemPersistedMobile
-                  key={row.id}
-                  row={row}
-                  rowIndex={rowIndex}
-                  estimateId={estimateId}
-                  categoryId={categoryId}
-                  isReadOnly={isReadOnly}
-                  updateLineItemAction={updateLineItemAction}
-                  duplicateLineItemAction={duplicateLineItemAction}
-                  deleteLineItemAction={deleteLineItemAction}
-                  onOpenDescriptionEditor={openItemDescriptionModal}
-                  lineLiveValuesRef={lineLiveValuesRef}
-                  lineDescriptionApplyRef={lineDescriptionApplyRef}
-                  isLastRow={row.id === lastPersistedRowId}
-                  onEnterAddNext={
-                    !isReadOnly && row.id === lastPersistedRowId
-                      ? () => {
-                          void addLineItemCatalogInlineAction(
-                            estimateId,
-                            categoryId,
-                            getCategoryDisplayNameHint(categoryId)
-                          ).then((res) => {
-                            if (res.ok) syncRouterNonBlocking(router);
-                          });
-                        }
-                      : undefined
-                  }
-                />
-              ))}
-            </div>
+              <div className="mb-4 space-y-3 md:hidden">
+                {flatPersistedRows.map(({ row, categoryId, rowIndex }) => (
+                  <EstimateLineItemPersistedMobile
+                    key={row.id}
+                    row={row}
+                    rowIndex={rowIndex}
+                    estimateId={estimateId}
+                    categoryId={categoryId}
+                    isReadOnly={isReadOnly}
+                    updateLineItemAction={updateLineItemAction}
+                    duplicateLineItemAction={duplicateLineItemAction}
+                    deleteLineItemAction={deleteLineItemAction}
+                    onOpenDescriptionEditor={openItemDescriptionModal}
+                    lineLiveValuesRef={lineLiveValuesRef}
+                    lineDescriptionApplyRef={lineDescriptionApplyRef}
+                    isLastRow={row.id === lastPersistedRowId}
+                    onEnterAddNext={
+                      !isReadOnly && row.id === lastPersistedRowId
+                        ? () => {
+                            void addLineItemCatalogInlineAction(
+                              estimateId,
+                              categoryId,
+                              getCategoryDisplayNameHint(categoryId)
+                            ).then((res) => {
+                              if (res.ok) syncRouterNonBlocking(router);
+                            });
+                          }
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
 
-            <div className="hidden md:block">
-              {(() => {
-                const categoryNodes = costBreakdownSections.map(
-                  ({ categoryId, title, rows, sectionTotal }) => {
-                    const displayName =
-                      localCategoryNames[categoryId] ?? catalogNameByCode[categoryId] ?? title;
-                    const toggleCategory = (categoryIdToToggle: string) => {
-                      setExpandedCategoryIds((prev) =>
-                        prev.includes(categoryIdToToggle)
-                          ? prev.filter((x) => x !== categoryIdToToggle)
-                          : [...prev, categoryIdToToggle]
-                      );
-                    };
-                    const categorySectionBody = (dragHandle: React.ReactNode | null) => (
-                      <React.Fragment>
-                        <summary
-                          className={cn(EB.scopeBlockHeader, "list-none flex-wrap")}
-                          onMouseDown={(e) => {
-                            const el = e.target as HTMLElement;
-                            if (el.closest("button, a[href], [role='button'], [role='menuitem']"))
-                              return;
-                            e.preventDefault();
-                            toggleCategory(categoryId);
-                          }}
-                        >
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            {dragHandle}
-                            <ChevronRight className="h-4 w-4 text-muted-foreground group-open:rotate-90 transition-transform shrink-0" />
-                            {isReadOnly ? (
-                              <span className={EB.scopeBlockTitle}>
-                                {displayName.trim() || "Section"}
-                              </span>
-                            ) : (
-                              <EstimateSectionTitleMenu
-                                estimateId={estimateId}
-                                currentCostCode={categoryId}
-                                displayName={displayName}
-                                itemIds={rows.map((r) => r.id)}
-                                sectionOptions={sectionDropdownOptions}
-                                getDisplayNameHint={getCategoryDisplayNameHint}
-                                onMoved={(newCode) => {
-                                  const idSet = new Set(rows.map((r) => r.id));
-                                  setLocalItems((prev) =>
-                                    prev.map((it) =>
-                                      idSet.has(it.id) ? { ...it, costCode: newCode } : it
-                                    )
-                                  );
-                                  setLocalCategoryNames((prev) => ({
-                                    ...prev,
-                                    [newCode]:
-                                      prev[newCode] ??
-                                      catalogNameByCode[newCode] ??
-                                      getCategoryDisplayNameHint(newCode),
-                                  }));
-                                }}
-                                onNameSaved={(code, name) =>
-                                  setLocalCategoryNames((prev) => ({ ...prev, [code]: name }))
-                                }
-                                onSectionCreated={handleNewCategoryCreated}
-                              />
-                            )}
-                          </div>
-                          <span className={EB.scopeBlockTotal}>
-                            {formatEstimateCurrency(sectionTotal)}
-                          </span>
-                        </summary>
-                        <div className="border-t border-border/10">
-                          <div className="overflow-x-auto">
-                            {isReadOnly ? (
-                              <table className="w-full text-sm">
-                                <thead>
-                                  <tr className={EB.lineTableHead}>
-                                    <th className="text-left py-2 px-4 font-normal">Description</th>
-                                    <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-20">
-                                      Qty
-                                    </th>
-                                    <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-28">
-                                      Unit price
-                                    </th>
-                                    <th className="text-right py-2 px-4 font-normal tabular-nums w-28">
-                                      Total
-                                    </th>
-                                  </tr>
-                                </thead>
-                                {rows.map((row) => (
-                                  <tbody key={row.id} className="group/line">
-                                    <LineItemRow
-                                      row={row}
-                                      estimateId={estimateId}
-                                      isLocked
-                                      updateLineItemAction={updateLineItemAction}
-                                      duplicateLineItemAction={duplicateLineItemAction}
-                                      deleteLineItemAction={deleteLineItemAction}
-                                      onOpenDescriptionEditor={openItemDescriptionModal}
-                                      lineLiveValuesRef={lineLiveValuesRef}
-                                      lineDescriptionApplyRef={lineDescriptionApplyRef}
-                                    />
-                                  </tbody>
-                                ))}
-                              </table>
-                            ) : (
-                              <DndContext
-                                sensors={lineItemSensors}
-                                collisionDetection={closestCenter}
-                                onDragEnd={(e) => handleLineItemsDragEnd(categoryId, e)}
-                              >
-                                <SortableContext
-                                  items={rows.map((r) => r.id)}
-                                  strategy={verticalListSortingStrategy}
-                                >
-                                  <table className="w-full text-sm">
-                                    <thead>
-                                      <tr className={EB.lineTableHead}>
-                                        <th className="w-9 py-2 px-1" aria-label="Reorder" />
-                                        <th className="text-left py-2 px-4 font-normal">
-                                          Description
-                                        </th>
-                                        <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-20">
-                                          Qty
-                                        </th>
-                                        <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-28">
-                                          Unit price
-                                        </th>
-                                        <th className="text-right py-2 px-4 font-normal tabular-nums w-28">
-                                          Total
-                                        </th>
-                                        <th className="w-20" />
-                                      </tr>
-                                    </thead>
-                                    {rows.map((row) => (
-                                      <SortableLineItemGroup
-                                        key={row.id}
+              <div className="hidden md:block">
+                {(() => {
+                  const categoryNodes = costBreakdownSections.map(
+                    ({ categoryId, title, rows, sectionTotal }) => {
+                      const displayName =
+                        localCategoryNames[categoryId] ?? catalogNameByCode[categoryId] ?? title;
+                      const toggleCategory = (categoryIdToToggle: string) => {
+                        setExpandedCategoryIds((prev) =>
+                          prev.includes(categoryIdToToggle)
+                            ? prev.filter((x) => x !== categoryIdToToggle)
+                            : [...prev, categoryIdToToggle]
+                        );
+                      };
+                      const categorySectionBody = (dragHandle: React.ReactNode | null) => (
+                        <React.Fragment>
+                          <summary
+                            className={cn(EB.scopeBlockHeader, "list-none flex-wrap")}
+                            onMouseDown={(e) => {
+                              const el = e.target as HTMLElement;
+                              if (el.closest("button, a[href], [role='button'], [role='menuitem']"))
+                                return;
+                              e.preventDefault();
+                              toggleCategory(categoryId);
+                            }}
+                          >
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              {dragHandle}
+                              <ChevronRight className="h-4 w-4 text-muted-foreground group-open:rotate-90 transition-transform shrink-0" />
+                              {isReadOnly ? (
+                                <span className={EB.scopeBlockTitle}>
+                                  {displayName.trim() || "Section"}
+                                </span>
+                              ) : (
+                                <EstimateSectionTitleMenu
+                                  estimateId={estimateId}
+                                  currentCostCode={categoryId}
+                                  displayName={displayName}
+                                  itemIds={rows.map((r) => r.id)}
+                                  sectionOptions={sectionDropdownOptions}
+                                  getDisplayNameHint={getCategoryDisplayNameHint}
+                                  onMoved={(newCode) => {
+                                    const idSet = new Set(rows.map((r) => r.id));
+                                    setLocalItems((prev) =>
+                                      prev.map((it) =>
+                                        idSet.has(it.id) ? { ...it, costCode: newCode } : it
+                                      )
+                                    );
+                                    setLocalCategoryNames((prev) => ({
+                                      ...prev,
+                                      [newCode]:
+                                        prev[newCode] ??
+                                        catalogNameByCode[newCode] ??
+                                        getCategoryDisplayNameHint(newCode),
+                                    }));
+                                  }}
+                                  onNameSaved={(code, name) =>
+                                    setLocalCategoryNames((prev) => ({ ...prev, [code]: name }))
+                                  }
+                                  onSectionCreated={handleNewCategoryCreated}
+                                />
+                              )}
+                            </div>
+                            <span className={EB.scopeBlockTotal}>
+                              {formatEstimateCurrency(sectionTotal)}
+                            </span>
+                          </summary>
+                          <div className={EB.scopeTableWrap}>
+                            <div className="overflow-x-auto">
+                              {isReadOnly ? (
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className={EB.lineTableHead}>
+                                      <th className="text-left py-2 px-4 font-normal">
+                                        Description
+                                      </th>
+                                      <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-20">
+                                        Qty
+                                      </th>
+                                      <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-28">
+                                        Unit price
+                                      </th>
+                                      <th className="text-right py-2 px-4 font-normal tabular-nums w-28">
+                                        Total
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  {rows.map((row) => (
+                                    <tbody key={row.id} className="group/line">
+                                      <LineItemRow
                                         row={row}
                                         estimateId={estimateId}
+                                        isLocked
                                         updateLineItemAction={updateLineItemAction}
                                         duplicateLineItemAction={duplicateLineItemAction}
                                         deleteLineItemAction={deleteLineItemAction}
@@ -754,80 +714,128 @@ export function EstimateEditor({
                                         lineLiveValuesRef={lineLiveValuesRef}
                                         lineDescriptionApplyRef={lineDescriptionApplyRef}
                                       />
-                                    ))}
-                                  </table>
-                                </SortableContext>
-                              </DndContext>
+                                    </tbody>
+                                  ))}
+                                </table>
+                              ) : (
+                                <DndContext
+                                  sensors={lineItemSensors}
+                                  collisionDetection={closestCenter}
+                                  onDragEnd={(e) => handleLineItemsDragEnd(categoryId, e)}
+                                >
+                                  <SortableContext
+                                    items={rows.map((r) => r.id)}
+                                    strategy={verticalListSortingStrategy}
+                                  >
+                                    <table className="w-full text-sm">
+                                      <thead>
+                                        <tr className={EB.lineTableHead}>
+                                          <th className="w-9 py-2 px-1" aria-label="Reorder" />
+                                          <th className="text-left py-2 px-4 font-normal">
+                                            Description
+                                          </th>
+                                          <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-20">
+                                            Qty
+                                          </th>
+                                          <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-28">
+                                            Unit price
+                                          </th>
+                                          <th className="text-right py-2 px-4 font-normal tabular-nums w-28">
+                                            Total
+                                          </th>
+                                          <th className="w-20" />
+                                        </tr>
+                                      </thead>
+                                      {rows.map((row) => (
+                                        <SortableLineItemGroup
+                                          key={row.id}
+                                          row={row}
+                                          estimateId={estimateId}
+                                          updateLineItemAction={updateLineItemAction}
+                                          duplicateLineItemAction={duplicateLineItemAction}
+                                          deleteLineItemAction={deleteLineItemAction}
+                                          onOpenDescriptionEditor={openItemDescriptionModal}
+                                          lineLiveValuesRef={lineLiveValuesRef}
+                                          lineDescriptionApplyRef={lineDescriptionApplyRef}
+                                        />
+                                      ))}
+                                    </table>
+                                  </SortableContext>
+                                </DndContext>
+                              )}
+                            </div>
+                            {!isReadOnly && (
+                              <div className="px-3 py-2">
+                                <form action={addLineItemAction} className="inline-block">
+                                  <input type="hidden" name="estimateId" value={estimateId} />
+                                  <input type="hidden" name="costCode" value={categoryId} />
+                                  <button type="submit" className={EB.addLineLink}>
+                                    <Plus className="h-3 w-3" aria-hidden />
+                                    Add line
+                                  </button>
+                                </form>
+                              </div>
                             )}
                           </div>
-                          {!isReadOnly && (
-                            <div className="px-3 py-2">
-                              <form action={addLineItemAction} className="inline-block">
-                                <input type="hidden" name="estimateId" value={estimateId} />
-                                <input type="hidden" name="costCode" value={categoryId} />
-                                <button type="submit" className={EB.addLineLink}>
-                                  <Plus className="h-3 w-3" aria-hidden />
-                                  Add line
-                                </button>
-                              </form>
-                            </div>
-                          )}
-                        </div>
-                      </React.Fragment>
-                    );
+                        </React.Fragment>
+                      );
 
-                    return isReadOnly ? (
-                      <div key={categoryId} className={cn(EB.categoryGroup, "mb-4")}>
-                        <details className="group" open={expandedCategoryIds.includes(categoryId)}>
-                          {categorySectionBody(null)}
-                        </details>
-                      </div>
-                    ) : (
-                      <SortableCategorySection
-                        key={categoryId}
-                        id={categoryId}
-                        highlightFlash={flashHighlightCategoryId === categoryId}
-                        isSelectedCategory={selectedCategoryId === categoryId}
-                      >
-                        {(dh) => (
+                      return isReadOnly ? (
+                        <div key={categoryId} className={cn(EB.categoryGroup, "mb-4")}>
                           <details
-                            className="group"
+                            className={cn("group", ebGlassScope())}
                             open={expandedCategoryIds.includes(categoryId)}
                           >
-                            {categorySectionBody(dh)}
+                            {categorySectionBody(null)}
                           </details>
-                        )}
-                      </SortableCategorySection>
-                    );
-                  }
-                );
-                return isReadOnly ? (
-                  <>{categoryNodes}</>
-                ) : (
-                  <DndContext
-                    sensors={categorySensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={(e) => void handleCategoryDragEnd(e)}
-                  >
-                    <SortableContext
-                      items={costBreakdownSections.map((s) => s.categoryId)}
-                      strategy={verticalListSortingStrategy}
+                        </div>
+                      ) : (
+                        <SortableCategorySection
+                          key={categoryId}
+                          id={categoryId}
+                          highlightFlash={flashHighlightCategoryId === categoryId}
+                          isSelectedCategory={selectedCategoryId === categoryId}
+                        >
+                          {(dh) => (
+                            <details
+                              className={cn("group", ebGlassScope())}
+                              open={expandedCategoryIds.includes(categoryId)}
+                            >
+                              {categorySectionBody(dh)}
+                            </details>
+                          )}
+                        </SortableCategorySection>
+                      );
+                    }
+                  );
+                  return isReadOnly ? (
+                    <>{categoryNodes}</>
+                  ) : (
+                    <DndContext
+                      sensors={categorySensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={(e) => void handleCategoryDragEnd(e)}
                     >
-                      {categoryNodes}
-                    </SortableContext>
-                  </DndContext>
-                );
-              })()}
-              {!isReadOnly && (
-                <AddCategoryBlock
-                  estimateId={estimateId}
-                  allCategoryCodes={sectionDropdownOptions.map((o) => o.code)}
-                  getCategoryDisplayName={getCategoryDisplayNameHint}
-                  pendingSelectNewCategory={pendingSelectNewCategory}
-                  onPendingSelectNewCategoryConsumed={consumePendingSelectNewCategory}
-                  onPostCreateCategoryUx={handleNewCategoryCreated}
-                />
-              )}
+                      <SortableContext
+                        items={costBreakdownSections.map((s) => s.categoryId)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {categoryNodes}
+                      </SortableContext>
+                    </DndContext>
+                  );
+                })()}
+                {!isReadOnly && (
+                  <AddCategoryBlock
+                    estimateId={estimateId}
+                    allCategoryCodes={sectionDropdownOptions.map((o) => o.code)}
+                    getCategoryDisplayName={getCategoryDisplayNameHint}
+                    pendingSelectNewCategory={pendingSelectNewCategory}
+                    onPendingSelectNewCategoryConsumed={consumePendingSelectNewCategory}
+                    onPostCreateCategoryUx={handleNewCategoryCreated}
+                  />
+                )}
+              </div>
             </div>
           </section>
 
@@ -836,13 +844,27 @@ export function EstimateEditor({
               open={editingItem !== null}
               onOpenChange={handleItemDescriptionDialogOpenChange}
             >
-              <DialogContent className="gap-0 sm:max-w-md">
-                <DialogHeader className="space-y-1 pb-4">
-                  <DialogTitle>Item Description</DialogTitle>
+              <DialogContent
+                className={cn(
+                  "gap-0 overflow-hidden !border-white/10 !bg-slate-950/70 p-0 text-zinc-100 shadow-[0_24px_80px_rgba(0,0,0,0.55),0_0_40px_rgba(212,184,120,0.05),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl sm:max-w-[520px]",
+                  "rounded-2xl max-md:inset-x-3 max-md:top-[max(1rem,env(safe-area-inset-top))] max-md:max-h-[calc(100dvh_-_2rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] max-md:w-auto max-md:max-w-[calc(100vw-1.5rem)] max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-2xl",
+                  "[&>button]:right-4 [&>button]:top-4 [&>button]:rounded-full [&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.08] [&>button]:hover:text-zinc-50 [&>button]:focus-visible:ring-amber-200/25"
+                )}
+              >
+                <DialogHeader className="space-y-1 border-b border-white/[0.07] px-6 pb-4 pt-6 text-left">
+                  <DialogTitle className="text-base font-semibold tracking-tight text-zinc-50">
+                    Item Description
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-zinc-500">
+                    Refine the line item name and customer-facing scope notes.
+                  </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 pb-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="estimate-line-desc-modal-name" className="text-xs">
+                <div className="space-y-4 px-6 py-5">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="estimate-line-desc-modal-name"
+                      className="text-[11px] font-medium uppercase tracking-[0.1em] text-zinc-400"
+                    >
                       Name
                     </Label>
                     <Input
@@ -850,13 +872,15 @@ export function EstimateEditor({
                       value={modalItemName}
                       onChange={(e) => setModalItemName(e.target.value)}
                       placeholder="Line item name"
-                      className="h-8 rounded-md text-sm"
+                      className={ebInput("h-10 rounded-lg text-sm")}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">Description</Label>
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-medium uppercase tracking-[0.1em] text-zinc-400">
+                      Description
+                    </Label>
                     <LineItemDescriptionRichText
-                      ref={lineDescEditorRef}
+                      editorRef={lineDescEditorRef}
                       key={editingItem ?? "closed"}
                       value={modalItemDescription}
                       onChange={setModalItemDescription}
@@ -865,12 +889,12 @@ export function EstimateEditor({
                     />
                   </div>
                 </div>
-                <DialogFooter className="border-t-0 pt-0 sm:justify-end">
+                <DialogFooter className="mt-0 !border-t-white/[0.07] !bg-transparent px-6 pb-6 pt-4 sm:justify-end">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="rounded-sm h-8"
+                    className={cn("min-h-11 px-4", EB.btnGhost)}
                     onClick={() => setEditingItem(null)}
                   >
                     Cancel
@@ -878,7 +902,7 @@ export function EstimateEditor({
                   <Button
                     type="button"
                     size="sm"
-                    className="rounded-sm h-8"
+                    className={cn("min-h-11 px-5 font-medium", EB.btnPrimary)}
                     disabled={descModalSaving}
                     onClick={() => void handleSaveItemDescription()}
                   >
@@ -890,7 +914,7 @@ export function EstimateEditor({
             </Dialog>
           ) : null}
 
-          <EstimateBuilderAdvanced title="Payment schedule">
+          <EstimateBuilderAdvanced title="Payment schedule" className={cn(ebGlassPanel(), "mt-4")}>
             <EstimatePaymentSchedule
               estimateId={estimateId}
               paymentSchedule={paymentSchedule}
@@ -908,20 +932,32 @@ export function EstimateEditor({
           </EstimateBuilderAdvanced>
         </div>
 
-        <aside className="hidden lg:block lg:sticky lg:top-6 lg:pl-2">
-          <EstimateBuilderSummary summary={summary} showInternal={editing && !isReadOnly} />
+        <aside className="hidden lg:block lg:pl-1">
+          <EstimateBuilderSummary
+            summary={summary}
+            showInternal={editing && !isReadOnly}
+            floating
+          />
         </aside>
       </div>
 
       <div
-        className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 border-t border-border/40 bg-background/95 px-4 py-4 shadow-[0_-8px_32px_rgba(0,0,0,0.04)] backdrop-blur-sm lg:hidden"
+        className={cn(
+          "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 py-4 lg:hidden",
+          EB.glassMobileBar
+        )}
         aria-label="Estimate total"
       >
         <div className="flex items-baseline justify-between gap-4">
-          <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground/50">
+          <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
             Total
           </span>
-          <span className="text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight text-foreground">
+          <span
+            className={cn(
+              "text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight",
+              EB.goldTotal
+            )}
+          >
             {summary ? formatEstimateCurrency(summary.grandTotal) : "—"}
           </span>
         </div>
@@ -1523,15 +1559,12 @@ function AddCategoryBlock({
   }, [customCategoryLabel, getCategoryDisplayName, search, selectedCode]);
 
   return (
-    <div
-      id="estimate-add-section"
-      ref={containerRef}
-      className="border-t border-border/10 px-1 py-4"
-    >
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="relative flex-1 min-w-[220px] max-w-[300px]">
+    <div id="estimate-add-section" ref={containerRef} className={EB.addSectionComposer}>
+      <p className="eb-composer-hint mb-2">New section</p>
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="relative min-w-[200px] flex-1 max-w-md">
           <Label htmlFor="add-section-input" className={EB.label}>
-            Add section
+            Section name
           </Label>
           <div ref={anchorRef} className="relative">
             <Input
@@ -1557,11 +1590,11 @@ function AddCategoryBlock({
               }}
               onFocus={() => setOpen(true)}
               onKeyDown={handleKeyDown}
-              placeholder="Search or add section…"
-              className={ebInput("h-9 pr-9")}
+              placeholder="Add or search section…"
+              className={ebInput("h-8 pr-9")}
               autoComplete="off"
             />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground">
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500">
               <ChevronDown className="h-4 w-4" />
             </span>
             {open && menuPos && typeof document !== "undefined"
@@ -1579,7 +1612,7 @@ function AddCategoryBlock({
                     className={EB.commandMenu}
                   >
                     {visibleOptions.length === 0 && !canInstantCreate ? (
-                      <li className="px-3 py-2 text-sm text-muted-foreground">
+                      <li className="px-3 py-2 text-sm text-zinc-500">
                         {noMatch
                           ? "No matching section"
                           : allCodesWithLabels.length === 0
@@ -1611,26 +1644,25 @@ function AddCategoryBlock({
                                 ? highlightIndex === 0
                                 : highlightIndex === visibleOptions.length
                             }
-                            className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-sm ${
-                              visibleOptions.length === 0
+                            className={cn(
+                              EB.commandMenuItem,
+                              "flex items-center gap-2",
+                              (visibleOptions.length === 0
                                 ? highlightIndex === 0
-                                  ? "bg-zinc-100 dark:bg-zinc-800 text-foreground"
-                                  : "text-foreground hover:bg-muted/60"
-                                : highlightIndex === visibleOptions.length
-                                  ? "bg-zinc-100 dark:bg-zinc-800 text-foreground"
-                                  : "text-foreground hover:bg-muted/60"
-                            }`}
+                                : highlightIndex === visibleOptions.length) &&
+                                EB.commandMenuItemActive
+                            )}
                             onMouseEnter={() => setHighlightIndex(visibleOptions.length)}
                             onClick={() => handleInstantCreateCategory()}
                           >
-                            <Plus className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                            <Plus className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />
                             <span>Create &quot;{search.trim()}&quot;</span>
                           </li>
                         ) : null}
                       </>
                     )}
                     {hasMore && (
-                      <li className="px-3 py-1.5 text-xs text-muted-foreground border-t border-zinc-100 dark:border-border/50">
+                      <li className="border-t border-white/[0.06] px-3 py-1.5 text-xs text-zinc-500">
                         Scroll for more ({filtered.length} total)
                       </li>
                     )}
@@ -1640,11 +1672,9 @@ function AddCategoryBlock({
               : null}
           </div>
         </div>
-        <Button
+        <button
           type="button"
-          variant="outline"
-          size="sm"
-          className="rounded-lg shrink-0"
+          className={cn(EB.composerAddSection, "shrink-0 disabled:opacity-40")}
           disabled={busy || (!selectedCode && !search.trim())}
           onClick={() => void runAdd()}
         >
@@ -1654,7 +1684,7 @@ function AddCategoryBlock({
             <Plus className="h-4 w-4 mr-2" aria-hidden />
           )}
           {busy ? "Adding…" : "Add Section"}
-        </Button>
+        </button>
       </div>
     </div>
   );

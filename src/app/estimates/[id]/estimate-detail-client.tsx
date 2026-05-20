@@ -26,6 +26,7 @@ import { deleteEstimateAction } from "../actions";
 import { EstimateDetailHeader } from "./estimate-detail-header";
 import type { EstimateSaveStatus } from "../_components/estimate-builder-save-status";
 import { ConvertToProjectDrawer } from "./convert-to-project-drawer";
+import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
 import { EstimateEditor } from "../_components/estimate-editor";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
@@ -213,7 +214,7 @@ export function EstimateDetailClient({
   };
 
   return (
-    <>
+    <EstimateBuilderShell>
       <EstimateDetailHeader
         estimateId={estimateId}
         estimateNumber={estimateNumber}
@@ -279,6 +280,6 @@ export function EstimateDetailClient({
         dismissBeforeAsync={false}
         onConfirm={onDelete}
       />
-    </>
+    </EstimateBuilderShell>
   );
 }

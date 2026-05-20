@@ -14,7 +14,7 @@ import {
 } from "./estimate-line-item-model";
 import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { EstimateLineItemMobileCard } from "./estimate-line-item-mobile-card";
-import { EB, ebInput } from "./estimate-builder-ui";
+import { EB, ebGlassPanel, ebGlassScope, ebInput } from "./estimate-builder-ui";
 
 function AutoExpandTextarea({
   value,
@@ -134,242 +134,250 @@ export function EstimateLineItemsLocal({
 
   return (
     <section className={EB.section}>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className={EB.scopeHeading}>Scope of work</h2>
-          <p className={EB.scopeSubtitle}>Line items grouped by section</p>
+      <div className={ebGlassPanel()}>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className={EB.scopeHeading}>Scope of work</h2>
+            <p className={EB.scopeSubtitle}>Line items grouped by section</p>
+          </div>
+          <EstimateLineItemsToolbar
+            onAddSection={addCategory}
+            disabled={disabled || codesWithoutItems.length === 0}
+          />
         </div>
-        <EstimateLineItemsToolbar
-          onAddSection={addCategory}
-          disabled={disabled || codesWithoutItems.length === 0}
-        />
-      </div>
-      {lineItemsError ? (
-        <p className="mb-3 text-xs text-muted-foreground">{lineItemsError}</p>
-      ) : null}
-
-      {/* Mobile: card list */}
-      <div className="space-y-3 md:hidden">
-        {flatWithIndex.length === 0 ? (
-          <p className="py-6 text-center text-sm text-muted-foreground">No line items yet.</p>
-        ) : (
-          flatWithIndex.map(({ item, rowIndex, code }) => (
-            <EstimateLineItemMobileCard
-              key={item.id}
-              item={item}
-              rowIndex={rowIndex}
-              disabled={disabled}
-              submitAttempted={submitAttempted}
-              isLastRow={item.id === lastItemId}
-              onChange={(patch) => updateItem(item.id, patch)}
-              onDuplicate={() => duplicateItem(item.id)}
-              onDelete={() => deleteItem(item.id)}
-              onEnterAddNext={() => handleEnterAddNext(code)}
-            />
-          ))
-        )}
-        {codesWithItems.length === 0 && !disabled ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="min-h-11 w-full rounded-sm"
-            onClick={addCategory}
-            disabled={costCodes.length === 0}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Section
-          </Button>
+        {lineItemsError ? (
+          <p className="mb-3 text-xs text-muted-foreground">{lineItemsError}</p>
         ) : null}
-      </div>
 
-      {/* Desktop: scope sections */}
-      <div className="max-md:hidden space-y-6">
-        {codesWithItems.map((code) => {
-          const cc = costCodes.find((c) => c.code === code)!;
-          const displayName = categoryNames[code] ?? cc.name;
-          const rows = itemsByCode[code];
-          const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
-          return (
-            <div key={code} className={cn(EB.categoryGroup, "mb-4")}>
-              <details className="group" open>
-                <summary
-                  className={cn(
-                    EB.scopeBlockHeader,
-                    "list-none px-1 [&::-webkit-details-marker]:hidden"
-                  )}
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform group-open:rotate-90" />
-                    <Input
-                      value={displayName}
-                      onChange={(e) => setCategoryName(code, e.target.value)}
-                      className={ebInput(
-                        "h-8 max-w-[280px] border-0 px-0 text-[15px] font-semibold shadow-none focus-visible:ring-0"
-                      )}
-                      placeholder={cc.name}
-                      onClick={(e) => e.stopPropagation()}
-                      onPointerDown={(e) => e.stopPropagation()}
-                      disabled={disabled}
-                    />
-                  </div>
-                  <span className={EB.scopeBlockTotal}>
-                    {formatEstimateCurrency(sectionSubtotal)}
-                  </span>
-                </summary>
-                <div className="mt-2">
-                  <table className="w-full table-fixed text-sm">
-                    <thead>
-                      <tr className={EB.lineTableHead}>
-                        <th className="pb-2.5 text-left font-medium">Description</th>
-                        <th className="w-20 pb-2.5 text-right font-medium">Qty</th>
-                        <th className="w-28 pb-2.5 text-right font-medium">Unit price</th>
-                        <th className="w-28 pb-2.5 text-right font-medium">Total</th>
-                        <th className="w-20 pb-2" />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((row, rowIndexInCat) => {
-                        const globalIdx =
-                          flatWithIndex.find((f) => f.item.id === row.id)?.rowIndex ??
-                          rowIndexInCat + 1;
-                        const isLast = row.id === lastItemId;
-                        return (
-                          <React.Fragment key={row.id}>
-                            <tr className={cn("group/line", EB.lineTableRow)}>
-                              <td className="py-3 pr-3 align-top">
-                                <Input
-                                  value={row.title}
-                                  onChange={(e) => updateItem(row.id, { title: e.target.value })}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey && isLast) {
-                                      e.preventDefault();
-                                      handleEnterAddNext(code);
-                                    }
-                                  }}
-                                  className={ebInput("font-medium")}
-                                  placeholder="Description"
-                                  aria-label={`Line item ${globalIdx} title`}
-                                  aria-invalid={
-                                    submitAttempted && !row.title.trim() && !row.description.trim()
-                                  }
-                                  disabled={disabled}
-                                />
-                              </td>
-                              <td className="py-3 pr-2 align-top">
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  step={1}
-                                  value={row.qty}
-                                  onChange={(e) =>
-                                    updateItem(row.id, { qty: Number(e.target.value) || 0 })
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey && isLast) {
-                                      e.preventDefault();
-                                      handleEnterAddNext(code);
-                                    }
-                                  }}
-                                  className={ebInput(`w-full ${EB.inputNumeric} ${EB.inputMuted}`)}
-                                  aria-label={`Line item ${globalIdx} quantity`}
-                                  disabled={disabled}
-                                />
-                              </td>
-                              <td className="py-3 pr-2 align-top">
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  step={0.01}
-                                  value={row.unitPrice}
-                                  onChange={(e) =>
-                                    updateItem(row.id, { unitPrice: Number(e.target.value) || 0 })
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey && isLast) {
-                                      e.preventDefault();
-                                      handleEnterAddNext(code);
-                                    }
-                                  }}
-                                  className={ebInput(`w-full ${EB.inputNumeric} ${EB.inputMuted}`)}
-                                  aria-label={`Line item ${globalIdx} unit price`}
-                                  disabled={disabled}
-                                />
-                              </td>
-                              <td className={cn("py-3 pr-2 text-right align-top", EB.lineTotal)}>
-                                {formatEstimateCurrency(editorLineTotal(row))}
-                              </td>
-                              <td className={cn("py-3 align-top", EB.lineRowActions)}>
-                                <div className="flex justify-end gap-0.5">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-muted-foreground/55 hover:text-foreground"
-                                    onClick={() => duplicateItem(row.id)}
-                                    aria-label="Duplicate line item"
-                                    disabled={disabled}
-                                  >
-                                    <Copy className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 text-muted-foreground/45 hover:text-destructive"
-                                    onClick={() => deleteItem(row.id)}
-                                    aria-label="Remove line item"
-                                    disabled={disabled}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </td>
-                            </tr>
-                            <tr className="border-b border-border/20">
-                              <td colSpan={5} className="pb-2 pt-0">
-                                <AutoExpandTextarea
-                                  value={row.description}
-                                  onChange={(v) => updateItem(row.id, { description: v })}
-                                  placeholder="Notes (optional)"
-                                  className="min-h-[40px] w-full resize-none bg-transparent text-sm text-muted-foreground focus:outline-none"
-                                />
-                              </td>
-                            </tr>
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  <button
-                    type="button"
-                    className={cn(EB.addLineLink, "mt-2")}
-                    onClick={() => addLineItem(code)}
-                    disabled={disabled}
-                  >
-                    <Plus className="h-3 w-3" aria-hidden />
-                    Add line
-                  </button>
-                </div>
-              </details>
-            </div>
-          );
-        })}
-        {codesWithItems.length === 0 && !disabled ? (
-          <div className="py-8 text-center">
-            <p className="mb-3 text-sm text-muted-foreground">No line items yet.</p>
+        {/* Mobile: card list */}
+        <div className="space-y-3 md:hidden">
+          {flatWithIndex.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No line items yet.</p>
+          ) : (
+            flatWithIndex.map(({ item, rowIndex, code }) => (
+              <EstimateLineItemMobileCard
+                key={item.id}
+                item={item}
+                rowIndex={rowIndex}
+                disabled={disabled}
+                submitAttempted={submitAttempted}
+                isLastRow={item.id === lastItemId}
+                onChange={(patch) => updateItem(item.id, patch)}
+                onDuplicate={() => duplicateItem(item.id)}
+                onDelete={() => deleteItem(item.id)}
+                onEnterAddNext={() => handleEnterAddNext(code)}
+              />
+            ))
+          )}
+          {codesWithItems.length === 0 && !disabled ? (
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="rounded-sm"
+              className="!h-11 !min-h-11 w-full rounded-sm"
               onClick={addCategory}
+              disabled={costCodes.length === 0}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Section
             </Button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+
+        {/* Desktop: scope sections */}
+        <div className="max-md:hidden space-y-6">
+          {codesWithItems.map((code) => {
+            const cc = costCodes.find((c) => c.code === code)!;
+            const displayName = categoryNames[code] ?? cc.name;
+            const rows = itemsByCode[code];
+            const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
+            return (
+              <div key={code} className={cn(EB.categoryGroup, "mb-4")}>
+                <details className={cn("group", ebGlassScope())} open>
+                  <summary
+                    className={cn(
+                      EB.scopeBlockHeader,
+                      "list-none px-1 [&::-webkit-details-marker]:hidden"
+                    )}
+                  >
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform group-open:rotate-90" />
+                      <Input
+                        value={displayName}
+                        onChange={(e) => setCategoryName(code, e.target.value)}
+                        className={ebInput(
+                          "h-8 max-w-[280px] border-0 px-0 text-[15px] font-semibold shadow-none focus-visible:ring-0"
+                        )}
+                        placeholder={cc.name}
+                        onClick={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        disabled={disabled}
+                      />
+                    </div>
+                    <span className={EB.scopeBlockTotal}>
+                      {formatEstimateCurrency(sectionSubtotal)}
+                    </span>
+                  </summary>
+                  <div className="mt-2">
+                    <table className="w-full table-fixed text-sm">
+                      <thead>
+                        <tr className={EB.lineTableHead}>
+                          <th className="pb-2.5 text-left font-medium">Description</th>
+                          <th className="w-20 pb-2.5 text-right font-medium">Qty</th>
+                          <th className="w-28 pb-2.5 text-right font-medium">Unit price</th>
+                          <th className="w-28 pb-2.5 text-right font-medium">Total</th>
+                          <th className="w-20 pb-2" />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map((row, rowIndexInCat) => {
+                          const globalIdx =
+                            flatWithIndex.find((f) => f.item.id === row.id)?.rowIndex ??
+                            rowIndexInCat + 1;
+                          const isLast = row.id === lastItemId;
+                          return (
+                            <React.Fragment key={row.id}>
+                              <tr className={cn("group/line", EB.lineTableRow)}>
+                                <td className="py-3 pr-3 align-top">
+                                  <Input
+                                    value={row.title}
+                                    onChange={(e) => updateItem(row.id, { title: e.target.value })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && !e.shiftKey && isLast) {
+                                        e.preventDefault();
+                                        handleEnterAddNext(code);
+                                      }
+                                    }}
+                                    className={ebInput("font-medium")}
+                                    placeholder="Description"
+                                    aria-label={`Line item ${globalIdx} title`}
+                                    aria-invalid={
+                                      submitAttempted &&
+                                      !row.title.trim() &&
+                                      !row.description.trim()
+                                    }
+                                    disabled={disabled}
+                                  />
+                                </td>
+                                <td className="py-3 pr-2 align-top">
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    step={1}
+                                    value={row.qty}
+                                    onChange={(e) =>
+                                      updateItem(row.id, { qty: Number(e.target.value) || 0 })
+                                    }
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && !e.shiftKey && isLast) {
+                                        e.preventDefault();
+                                        handleEnterAddNext(code);
+                                      }
+                                    }}
+                                    className={ebInput(
+                                      `w-full ${EB.inputNumeric} ${EB.inputMuted}`
+                                    )}
+                                    aria-label={`Line item ${globalIdx} quantity`}
+                                    disabled={disabled}
+                                  />
+                                </td>
+                                <td className="py-3 pr-2 align-top">
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    step={0.01}
+                                    value={row.unitPrice}
+                                    onChange={(e) =>
+                                      updateItem(row.id, { unitPrice: Number(e.target.value) || 0 })
+                                    }
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter" && !e.shiftKey && isLast) {
+                                        e.preventDefault();
+                                        handleEnterAddNext(code);
+                                      }
+                                    }}
+                                    className={ebInput(
+                                      `w-full ${EB.inputNumeric} ${EB.inputMuted}`
+                                    )}
+                                    aria-label={`Line item ${globalIdx} unit price`}
+                                    disabled={disabled}
+                                  />
+                                </td>
+                                <td className={cn("py-3 pr-2 text-right align-top", EB.lineTotal)}>
+                                  {formatEstimateCurrency(editorLineTotal(row))}
+                                </td>
+                                <td className={cn("py-3 align-top", EB.lineRowActions)}>
+                                  <div className="flex justify-end gap-0.5">
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-muted-foreground/55 hover:text-foreground"
+                                      onClick={() => duplicateItem(row.id)}
+                                      aria-label="Duplicate line item"
+                                      disabled={disabled}
+                                    >
+                                      <Copy className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-muted-foreground/45 hover:text-destructive"
+                                      onClick={() => deleteItem(row.id)}
+                                      aria-label="Remove line item"
+                                      disabled={disabled}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                              <tr className="border-b border-white/[0.04]">
+                                <td colSpan={5} className="pb-2 pt-0">
+                                  <AutoExpandTextarea
+                                    value={row.description}
+                                    onChange={(v) => updateItem(row.id, { description: v })}
+                                    placeholder="Notes (optional)"
+                                    className="min-h-[40px] w-full resize-none bg-transparent text-sm text-muted-foreground focus:outline-none"
+                                  />
+                                </td>
+                              </tr>
+                            </React.Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    <button
+                      type="button"
+                      className={cn(EB.addLineLink, "mt-2")}
+                      onClick={() => addLineItem(code)}
+                      disabled={disabled}
+                    >
+                      <Plus className="h-3 w-3" aria-hidden />
+                      Add line
+                    </button>
+                  </div>
+                </details>
+              </div>
+            );
+          })}
+          {codesWithItems.length === 0 && !disabled ? (
+            <div className="py-8 text-center">
+              <p className="mb-3 text-sm text-muted-foreground">No line items yet.</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="!h-11 !min-h-11 rounded-sm"
+                onClick={addCategory}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Section
+              </Button>
+            </div>
+          ) : null}
+        </div>
       </div>
     </section>
   );

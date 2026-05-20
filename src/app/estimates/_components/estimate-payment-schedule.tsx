@@ -9,6 +9,7 @@ import { paymentMilestoneAmount } from "@/lib/data";
 import { Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
+import { EB, ebInput } from "./estimate-builder-ui";
 
 type AddAction = (formData: FormData) => Promise<void>;
 type UpdateAction = (formData: FormData) => Promise<void>;
@@ -52,18 +53,18 @@ export function EstimatePaymentSchedule(props: {
   const remaining = Math.max(0, estimateTotal - totalScheduled);
 
   return (
-    <section className="border border-zinc-200 dark:border-border rounded-lg overflow-hidden bg-background">
-      <div className="px-4 py-3 border-b border-zinc-200 dark:border-border bg-muted/20 flex items-center justify-between gap-3">
+    <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.025] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] bg-white/[0.03] px-4 py-3">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-foreground">Payment Schedule</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">Milestone billing plan.</p>
+          <h2 className="text-sm font-semibold text-zinc-100">Payment Schedule</h2>
+          <p className="mt-0.5 text-xs text-zinc-400">Milestone billing plan.</p>
         </div>
         {!isLocked && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="rounded-md h-8"
+            className={cn("min-h-11 px-3 md:min-h-8", EB.btnGhost)}
             onClick={() => setScheduleOpen(true)}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -73,32 +74,32 @@ export function EstimatePaymentSchedule(props: {
       </div>
       <div className="p-0">
         {/* Summary row */}
-        <div className="px-4 py-3 flex flex-wrap items-center gap-6 text-sm border-b border-zinc-200/60 dark:border-border">
-          <span className="text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-6 border-b border-white/[0.06] px-4 py-3 text-sm">
+          <span className="text-zinc-400">
             Estimate total{" "}
-            <span className="font-semibold text-foreground tabular-nums">{fmt(estimateTotal)}</span>
+            <span className="font-semibold text-zinc-100 tabular-nums">{fmt(estimateTotal)}</span>
           </span>
-          <span className="text-muted-foreground">
+          <span className="text-zinc-400">
             Scheduled{" "}
             <span
               className={cn(
                 "font-semibold tabular-nums",
                 totalsMatch
                   ? "text-hh-profit-positive dark:text-hh-profit-positive"
-                  : "text-foreground"
+                  : "text-zinc-100"
               )}
             >
               {fmt(totalScheduled)}
             </span>
           </span>
-          <span className="text-muted-foreground">
+          <span className="text-zinc-400">
             Remaining{" "}
             <span
               className={cn(
                 "font-semibold tabular-nums",
                 remaining === 0
                   ? "text-hh-profit-positive dark:text-hh-profit-positive"
-                  : "text-foreground"
+                  : "text-zinc-100"
               )}
             >
               {fmt(remaining)}
@@ -110,26 +111,20 @@ export function EstimatePaymentSchedule(props: {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-zinc-200/60 dark:border-border bg-muted/30">
-                <th className="text-left py-2.5 px-4 font-medium text-muted-foreground">
-                  Payment Name
-                </th>
-                <th className="text-right py-2.5 px-4 font-medium text-muted-foreground tabular-nums">
+              <tr className="border-b border-white/[0.06] bg-white/[0.025]">
+                <th className="text-left py-2.5 px-4 font-medium text-zinc-400">Payment Name</th>
+                <th className="text-right py-2.5 px-4 font-medium text-zinc-400 tabular-nums">
                   Amount
                 </th>
-                <th className="text-left py-2.5 px-4 font-medium text-muted-foreground">
-                  Payment Terms
-                </th>
-                <th className="text-left py-2.5 px-4 font-medium text-muted-foreground">
-                  Due Date
-                </th>
+                <th className="text-left py-2.5 px-4 font-medium text-zinc-400">Payment Terms</th>
+                <th className="text-left py-2.5 px-4 font-medium text-zinc-400">Due Date</th>
                 {!isLocked && <th className="w-16 py-2.5 px-2" />}
               </tr>
             </thead>
             <tbody>
               {paymentSchedule.length === 0 ? (
-                <tr className="border-b border-zinc-100/50 dark:border-border/30">
-                  <td colSpan={5} className="py-8 px-4 text-center text-sm text-muted-foreground">
+                <tr className="border-b border-white/[0.04]">
+                  <td colSpan={5} className="py-8 px-4 text-center text-sm text-zinc-500">
                     No payment milestones yet.
                   </td>
                 </tr>
@@ -142,23 +137,17 @@ export function EstimatePaymentSchedule(props: {
                   return (
                     <tr
                       key={item.id}
-                      className="border-b border-zinc-100/50 dark:border-border/30 hover:bg-muted/20 transition-colors"
+                      className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.035]"
                     >
-                      <td className="py-2.5 px-4 font-medium text-foreground">
-                        {item.title || "—"}
-                      </td>
-                      <td className="py-2.5 px-4 text-right tabular-nums font-medium text-foreground">
+                      <td className="py-2.5 px-4 font-medium text-zinc-100">{item.title || "—"}</td>
+                      <td className="py-2.5 px-4 text-right tabular-nums font-medium text-zinc-100">
                         {fmt(amount)}
                         {item.amountType === "percent" && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({item.value}%)
-                          </span>
+                          <span className="ml-2 text-xs text-zinc-500">({item.value}%)</span>
                         )}
                       </td>
-                      <td className="py-2.5 px-4 text-muted-foreground">{item.dueRule || "—"}</td>
-                      <td className="py-2.5 px-4 text-muted-foreground tabular-nums">
-                        {dueDateDisplay}
-                      </td>
+                      <td className="py-2.5 px-4 text-zinc-400">{item.dueRule || "—"}</td>
+                      <td className="py-2.5 px-4 text-zinc-400 tabular-nums">{dueDateDisplay}</td>
                       {!isLocked ? (
                         <td className="py-2 px-2 align-middle">
                           <form action={deletePaymentMilestoneAction} className="flex justify-end">
@@ -168,7 +157,10 @@ export function EstimatePaymentSchedule(props: {
                               type="submit"
                               variant="outline"
                               size="icon"
-                              className="btn-outline-ghost h-8 w-8 text-destructive hover:bg-destructive/10"
+                              className={cn(
+                                "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                                EB.btnGhost
+                              )}
                               aria-label="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -227,7 +219,7 @@ export function EstimatePaymentSchedule(props: {
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">Due Date</label>
-                  <Input name="dueDate" type="date" className="h-9" />
+                  <Input name="dueDate" type="date" className={ebInput(EB.dateField)} />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">Notes</label>

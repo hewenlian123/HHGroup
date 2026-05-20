@@ -36,6 +36,8 @@ export type FinanceDatePickerProps = {
   showFooter?: boolean;
   /** If false, Clear is disabled (use for required dates). */
   allowClear?: boolean;
+  /** Dark glass styling for estimate builder (popover + trigger). */
+  appearance?: "default" | "glass";
 };
 
 export function FinanceDatePicker({
@@ -46,7 +48,9 @@ export function FinanceDatePicker({
   size = "sm",
   showFooter = true,
   allowClear = false,
+  appearance = "default",
 }: FinanceDatePickerProps) {
+  const isGlass = appearance === "glass";
   const [open, setOpen] = React.useState(false);
   const selected = React.useMemo(() => ymdToLocalDate(value), [value]);
   const label = selected ? format(selected, "MMM dd \u00b7 yyyy") : "Select date";
@@ -73,9 +77,10 @@ export function FinanceDatePicker({
           type="button"
           disabled={disabled}
           className={cn(
-            "inline-flex w-full items-center justify-between gap-2 rounded-md border border-border/60 bg-transparent px-3 text-left",
-            "transition-colors hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/30",
-            "text-zinc-800 font-medium tracking-tight",
+            "inline-flex w-full items-center justify-between gap-2 rounded-md border px-3 text-left font-medium tracking-tight transition-colors focus-visible:outline-none",
+            isGlass
+              ? "eb-date-field border-white/[0.06] bg-white/[0.02] text-zinc-100 hover:border-white/[0.09] hover:bg-white/[0.035] focus-visible:border-white/[0.14] focus-visible:shadow-[0_0_0_2px_rgba(255,255,255,0.05)]"
+              : "border-border/60 bg-transparent text-zinc-800 hover:bg-muted/10 focus-visible:ring-2 focus-visible:ring-emerald-400/30",
             size === "md" ? "h-11 min-h-[44px] text-sm" : "h-9 text-sm",
             disabled && "pointer-events-none opacity-60",
             className
@@ -83,7 +88,10 @@ export function FinanceDatePicker({
           aria-label="Choose date"
         >
           <span className="truncate tabular-nums">{label}</span>
-          <CalendarDays className="h-4 w-4 shrink-0 text-zinc-400/70" aria-hidden />
+          <CalendarDays
+            className={cn("h-4 w-4 shrink-0", isGlass ? "text-zinc-400/80" : "text-zinc-400/70")}
+            aria-hidden
+          />
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -92,8 +100,9 @@ export function FinanceDatePicker({
         className={cn(
           "z-[130] p-3",
           "w-[280px] max-w-[calc(100vw-16px)]",
-          "rounded-2xl border border-border/35 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.10)]",
-          "dark:bg-popover dark:shadow-none"
+          isGlass
+            ? "rounded-xl border border-white/10 bg-[rgba(18,22,34,0.96)] text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_20px_48px_rgba(0,0,0,0.42)] backdrop-blur-[28px] backdrop-saturate-[175%]"
+            : "rounded-2xl border border-border/35 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.10)] dark:bg-popover dark:shadow-none"
         )}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
@@ -117,64 +126,83 @@ export function FinanceDatePicker({
             ),
             caption_label: cn(
               rdp.caption_label,
-              "text-sm font-semibold text-zinc-900 leading-none",
-              "flex items-center justify-center"
+              "flex items-center justify-center text-sm font-semibold leading-none",
+              isGlass ? "text-zinc-50" : "text-zinc-900"
             ),
             nav: cn(rdp.nav, "gap-1 items-center"),
             button_previous: cn(
               rdp.button_previous,
-              "h-8 w-8 rounded-md border-0 bg-transparent hover:bg-zinc-100 transition-colors",
-              "flex items-center justify-center",
-              "dark:hover:bg-muted/40"
+              "flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent transition-colors",
+              isGlass ? "hover:bg-white/[0.08]" : "hover:bg-zinc-100 dark:hover:bg-muted/40"
             ),
             button_next: cn(
               rdp.button_next,
-              "h-8 w-8 rounded-md border-0 bg-transparent hover:bg-zinc-100 transition-colors",
-              "flex items-center justify-center",
-              "dark:hover:bg-muted/40"
+              "flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent transition-colors",
+              isGlass ? "hover:bg-white/[0.08]" : "hover:bg-zinc-100 dark:hover:bg-muted/40"
             ),
-            weekdays: cn(rdp.weekdays, "text-[10px] font-medium text-zinc-400"),
+            weekdays: cn(
+              rdp.weekdays,
+              "text-[10px] font-medium",
+              isGlass ? "text-zinc-500" : "text-zinc-400"
+            ),
             weekday: cn(rdp.weekday, "w-8 text-center"),
             week: cn(rdp.week, "gap-1"),
             day: cn(
               rdp.day,
               "h-8 w-8 rounded-md text-sm transition-colors",
-              "hover:bg-zinc-100 dark:hover:bg-muted/30"
+              isGlass ? "hover:bg-white/[0.08]" : "hover:bg-zinc-100 dark:hover:bg-muted/30"
             ),
             day_button: cn(
               (rdp as unknown as Record<string, string>).day_button ?? "",
-              "h-8 w-8 rounded-md",
-              "text-sm font-medium text-zinc-800 leading-none",
-              "flex items-center justify-center"
+              "flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium leading-none",
+              isGlass ? "text-zinc-300" : "text-zinc-800"
             ),
             today: cn(
               rdp.today,
-              "ring-1 ring-inset ring-emerald-500/25",
-              "dark:ring-emerald-400/25"
+              isGlass
+                ? "ring-1 ring-inset ring-amber-300/30"
+                : "ring-1 ring-inset ring-emerald-500/25 dark:ring-emerald-400/25"
             ),
             selected: cn(
               rdp.selected,
-              "bg-emerald-600 text-white hover:bg-emerald-600 ring-0",
-              "dark:bg-emerald-500 dark:text-slate-950"
+              isGlass
+                ? "bg-amber-200/20 ring-0 hover:bg-amber-200/20 [&_button]:border [&_button]:border-amber-200/35 [&_button]:text-amber-50"
+                : "bg-emerald-600 text-white ring-0 hover:bg-emerald-600 dark:bg-emerald-500 dark:text-slate-950"
             ),
-            outside: cn(rdp.outside, "text-zinc-300 dark:text-zinc-600"),
+            outside: cn(
+              rdp.outside,
+              isGlass ? "text-zinc-600" : "text-zinc-300 dark:text-zinc-600"
+            ),
           }}
           components={{
             Chevron: (props) =>
               props.orientation === "left" ? (
-                <ChevronLeft className="h-4 w-4 text-zinc-600" aria-hidden />
+                <ChevronLeft
+                  className={cn("h-4 w-4", isGlass ? "text-zinc-400" : "text-zinc-600")}
+                  aria-hidden
+                />
               ) : (
-                <ChevronRight className="h-4 w-4 text-zinc-600" aria-hidden />
+                <ChevronRight
+                  className={cn("h-4 w-4", isGlass ? "text-zinc-400" : "text-zinc-600")}
+                  aria-hidden
+                />
               ),
           }}
           footer={
             showFooter ? (
-              <div className="mt-2 flex items-center justify-between border-t border-border/30 pt-2">
+              <div
+                className={cn(
+                  "mt-2 flex items-center justify-between border-t pt-2",
+                  isGlass ? "border-white/10" : "border-border/30"
+                )}
+              >
                 <button
                   type="button"
                   className={cn(
-                    "text-xs font-medium text-emerald-700 hover:text-emerald-800 transition-colors",
-                    "disabled:opacity-40 disabled:pointer-events-none"
+                    "text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-40",
+                    isGlass
+                      ? "text-amber-200/80 hover:text-amber-100"
+                      : "text-emerald-700 hover:text-emerald-800"
                   )}
                   disabled={!allowClear}
                   onClick={() => {
@@ -186,7 +214,12 @@ export function FinanceDatePicker({
                 </button>
                 <button
                   type="button"
-                  className="text-xs font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+                  className={cn(
+                    "text-xs font-medium transition-colors",
+                    isGlass
+                      ? "text-amber-200/80 hover:text-amber-100"
+                      : "text-emerald-700 hover:text-emerald-800"
+                  )}
                   onClick={() => {
                     const today = new Date();
                     onChange(toYmd(today));

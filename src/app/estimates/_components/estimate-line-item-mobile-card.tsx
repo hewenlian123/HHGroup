@@ -68,8 +68,8 @@ export function EstimateLineItemMobileCard({
   return (
     <article
       className={cn(
-        "group/line rounded-sm border border-border/20 bg-background transition-colors hover:border-border/30 hover:bg-muted/[0.02]",
-        expanded && "border-border/35 bg-muted/[0.015]"
+        "group/line eb-glass-scope rounded-lg transition-[border-color,box-shadow] duration-200",
+        expanded && "ring-1 ring-amber-500/15"
       )}
     >
       <button
@@ -102,7 +102,7 @@ export function EstimateLineItemMobileCard({
       </button>
 
       {expanded ? (
-        <div className="space-y-3 border-t border-border/30 px-3 pb-3 pt-2">
+        <div className="space-y-3 border-t border-white/[0.06] px-3 pb-3 pt-2">
           {readOnly ? (
             <p className="text-sm font-medium text-foreground">{item.title || "—"}</p>
           ) : (
@@ -210,7 +210,7 @@ export function EstimateLineItemMobileCard({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 shrink-0 rounded-sm text-muted-foreground/50"
+                    className="h-11 w-11 shrink-0 rounded-sm text-muted-foreground/50"
                     aria-label="Line item options"
                     disabled={disabled}
                   >
@@ -241,7 +241,7 @@ export function EstimateLineItemMobileCard({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="min-h-10 flex-1 rounded-sm text-muted-foreground"
+                  className="min-h-11 flex-1 rounded-sm text-muted-foreground"
                   onClick={onDuplicate}
                   disabled={disabled}
                   aria-label="Duplicate line item"
@@ -255,7 +255,7 @@ export function EstimateLineItemMobileCard({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="min-h-10 flex-1 rounded-sm text-muted-foreground/70 hover:text-destructive"
+                  className="min-h-11 flex-1 rounded-sm text-muted-foreground/70 hover:text-destructive"
                   onClick={onDelete}
                   disabled={disabled}
                   aria-label="Remove line item"

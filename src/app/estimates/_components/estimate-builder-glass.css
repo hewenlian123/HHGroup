@@ -1,0 +1,461 @@
+/**
+ * Estimate Builder — production dark workspace (restrained glass).
+ */
+@import "./estimate-builder-popover-dark.css";
+
+/* ── App chrome when builder route is active ── */
+main.estimate-builder-active {
+  background: #171a24 !important;
+}
+
+body.estimate-builder-active {
+  color-scheme: dark;
+}
+
+/* Top bar — light fuse, not frosted billboard */
+header[data-app-topbar].estimate-builder-active,
+header.estimate-topbar-glass {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: rgba(20, 24, 34, 0.72) !important;
+  background-color: rgba(20, 24, 34, 0.72) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+  box-shadow: none !important;
+}
+
+header[data-app-topbar].estimate-builder-active.bg-white\/80,
+header.estimate-topbar-glass.bg-white\/80,
+header[data-app-topbar].estimate-builder-active[class*="bg-white"],
+header.estimate-topbar-glass[class*="bg-white"],
+header[data-app-topbar].estimate-builder-active[class*="dark:bg-background"],
+header.estimate-topbar-glass[class*="dark:bg-background"] {
+  background: rgba(20, 24, 34, 0.72) !important;
+}
+
+header[data-app-topbar].estimate-builder-active [class*="bg-white"],
+header.estimate-topbar-glass [class*="bg-white"] {
+  background-color: rgba(255, 255, 255, 0.04) !important;
+}
+
+header[data-app-topbar].estimate-builder-active [class*="border-gray"],
+header.estimate-topbar-glass [class*="border-gray"] {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+header[data-app-topbar].estimate-builder-active nav span,
+header[data-app-topbar].estimate-builder-active .text-text-primary,
+header[data-app-topbar].estimate-builder-active .dark\:text-foreground,
+header.estimate-topbar-glass nav span,
+header.estimate-topbar-glass .text-text-primary,
+header.estimate-topbar-glass .dark\:text-foreground {
+  color: rgb(228 230 235) !important;
+}
+
+header[data-app-topbar].estimate-builder-active .btn-outline-ghost,
+header.estimate-topbar-glass .btn-outline-ghost {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: transparent !important;
+  color: rgb(161 165 173) !important;
+  box-shadow: none !important;
+}
+
+header[data-app-topbar].estimate-builder-active .btn-outline-ghost:hover,
+header.estimate-topbar-glass .btn-outline-ghost:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: rgb(228 230 235) !important;
+}
+
+header[data-app-topbar].estimate-builder-active input[type="search"] {
+  height: 30px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.375rem !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: rgb(228 230 235) !important;
+  box-shadow: none !important;
+}
+
+header[data-app-topbar].estimate-builder-active input[type="search"]::placeholder {
+  color: rgb(113 118 128) !important;
+}
+
+header[data-app-topbar].estimate-builder-active input[type="search"]:focus {
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06) !important;
+}
+
+header[data-app-topbar].estimate-builder-active svg[class*="text-"] {
+  color: rgb(113 118 128) !important;
+}
+
+header[data-app-topbar].estimate-builder-active button {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: rgb(161 165 173) !important;
+  box-shadow: none !important;
+}
+
+header[data-app-topbar].estimate-builder-active button:hover {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  color: rgb(228 230 235) !important;
+}
+
+body.estimate-builder-active nav[aria-label="Bottom navigation"] {
+  border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  background: rgba(16, 19, 28, 0.92) !important;
+  backdrop-filter: blur(16px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+}
+
+body.estimate-builder-active [role="menu"],
+body.estimate-builder-active [data-radix-menu-content] {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(22, 26, 36, 0.96) !important;
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35) !important;
+}
+
+body.estimate-builder-active [role="menuitem"]:focus,
+body.estimate-builder-active [role="menuitem"][data-highlighted],
+body.estimate-builder-active [data-radix-collection-item]:focus,
+body.estimate-builder-active [data-radix-collection-item][data-highlighted] {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+body.estimate-builder-active [role="dialog"] {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(22, 26, 36, 0.98);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.estimate-builder-page {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-inline: 0;
+}
+
+/* ── Builder canvas ── */
+.estimate-builder {
+  --eb-border: rgba(255, 255, 255, 0.08);
+  --eb-border-soft: rgba(255, 255, 255, 0.05);
+  --eb-text: rgb(244 244 245);
+  --eb-text-secondary: rgb(161 165 173);
+  --eb-text-muted: rgb(113 118 128);
+  --eb-text-faint: rgb(82 87 97);
+  --eb-gold-bright: rgb(214 198 160);
+  --eb-gold-dim: rgb(161 150 120);
+
+  position: relative;
+  isolation: isolate;
+  color: var(--eb-text);
+  min-height: min(100%, calc(100dvh - 7rem));
+  padding: 0.25rem 0 1.5rem;
+  background: transparent;
+  color-scheme: dark;
+}
+
+/* Ambient — barely there */
+.estimate-builder .eb-ambient-top {
+  pointer-events: none;
+  position: absolute;
+  inset: -2rem -10% auto;
+  z-index: 0;
+  height: 10rem;
+  background: radial-gradient(ellipse 70% 60% at 40% 0%, rgba(72, 88, 128, 0.06), transparent 70%);
+}
+
+.estimate-builder .eb-ambient-gold {
+  pointer-events: none;
+  position: absolute;
+  right: -5%;
+  bottom: 2rem;
+  z-index: 0;
+  height: 12rem;
+  width: 12rem;
+  background: radial-gradient(circle, rgba(180, 160, 120, 0.03), transparent 72%);
+}
+
+.estimate-builder .eb-builder-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Panels — workspace surfaces, not floating slabs */
+.estimate-builder .eb-glass-panel {
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: none;
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+}
+
+.estimate-builder .eb-glass-panel-customer {
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.018);
+}
+
+/* Scope — inline grouped rows, not floating cards */
+.estimate-builder .eb-glass-scope {
+  overflow: hidden;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.012);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition:
+    border-color 120ms ease,
+    background 120ms ease;
+}
+
+.estimate-builder .eb-glass-scope:hover {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.estimate-builder .eb-glass-scope[open] {
+  border-color: rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: none;
+}
+
+.estimate-builder .eb-scope-section-header {
+  background: transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.estimate-builder .eb-glass-scope[open] .eb-scope-section-header {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+
+/* Summary — finance sidebar, not hero card */
+.estimate-builder .eb-glass-sidebar {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 1rem 1.05rem 1.1rem;
+  box-shadow: none;
+  backdrop-filter: blur(12px) saturate(130%);
+  -webkit-backdrop-filter: blur(12px) saturate(130%);
+}
+
+.estimate-builder .eb-glass-sidebar::before,
+.estimate-builder .eb-glass-sidebar::after {
+  display: none;
+}
+
+.estimate-builder .eb-glass-sidebar-float {
+  position: sticky;
+  top: 0.75rem;
+}
+
+.estimate-builder .eb-glass-mobile-bar {
+  border-top: 1px solid var(--eb-border-soft);
+  background: rgba(20, 24, 34, 0.92);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+.estimate-builder .eb-glass-header {
+  border-bottom: 1px solid var(--eb-border-soft);
+  padding-bottom: 0.875rem;
+  margin-bottom: 0.25rem;
+}
+
+.estimate-builder .eb-gold-total {
+  color: var(--eb-gold-bright);
+  text-shadow: none;
+}
+
+.estimate-builder .eb-gold-link {
+  color: var(--eb-gold-dim);
+  transition: color 120ms ease;
+}
+
+.estimate-builder .eb-gold-link:hover {
+  color: var(--eb-gold-bright);
+}
+
+.estimate-builder .eb-glass-notes {
+  margin-top: 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.65rem 0.75rem;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.estimate-builder .eb-glass-notes:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow: none;
+}
+
+.estimate-builder .eb-glass-command {
+  z-index: 200;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(22, 26, 36, 0.98);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32);
+}
+
+.estimate-builder .text-muted-foreground {
+  color: var(--eb-text-muted) !important;
+}
+
+.estimate-builder .eb-scope-table-wrap {
+  border-top: 1px solid var(--eb-border-soft);
+}
+
+/* Native date */
+.estimate-builder .eb-date-field,
+.estimate-builder input[type="date"],
+body.estimate-builder-active input[type="date"] {
+  color-scheme: dark;
+}
+
+.estimate-builder input[type="date"]::-webkit-calendar-picker-indicator,
+body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.55;
+  filter: invert(0.85);
+}
+
+/* Inputs — Linear-like subtle fields */
+.estimate-builder
+  .eb-glass-panel
+  :where(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select),
+.estimate-builder
+  .eb-glass-scope
+  :where(input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea, select),
+.estimate-builder .eb-input,
+.estimate-builder .eb-date-field,
+.estimate-builder .eb-add-section-composer :where(input),
+.estimate-builder input.flex.h-9,
+.estimate-builder input.flex.h-8 {
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 0.375rem !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  background-color: rgba(255, 255, 255, 0.02) !important;
+  color: var(--eb-text) !important;
+  box-shadow: none !important;
+}
+
+.estimate-builder :where(input, textarea)::placeholder {
+  color: var(--eb-text-faint) !important;
+}
+
+.estimate-builder .eb-glass-panel :where(input, textarea, select):hover,
+.estimate-builder .eb-glass-scope :where(input, textarea, select):hover,
+.estimate-builder .eb-input:hover {
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  background: rgba(255, 255, 255, 0.035) !important;
+}
+
+.estimate-builder .eb-glass-panel :where(input, textarea, select):focus-visible,
+.estimate-builder .eb-glass-scope :where(input, textarea, select):focus-visible,
+.estimate-builder .eb-input:focus-visible {
+  outline: none !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05) !important;
+}
+
+.estimate-builder .eb-line-row:hover {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.estimate-builder .eb-add-section-composer {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: transparent;
+}
+
+.estimate-builder .eb-add-section-composer .eb-composer-hint {
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgb(113 118 128);
+}
+
+/* Buttons — product, not concept */
+.estimate-builder .eb-btn-primary {
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 0.375rem !important;
+  background: rgb(244 244 245) !important;
+  color: rgb(24 24 27) !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+
+.estimate-builder .eb-btn-primary:hover:not(:disabled) {
+  background: rgb(250 250 250) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.estimate-builder .eb-btn-primary:disabled {
+  opacity: 0.5;
+}
+
+.estimate-builder .eb-btn-ghost {
+  border: 1px solid transparent !important;
+  border-radius: 0.375rem !important;
+  background: transparent !important;
+  color: var(--eb-text-secondary) !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.estimate-builder .eb-btn-ghost:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--eb-text) !important;
+}
+
+.estimate-builder .eb-add-section {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.375rem;
+  background: rgba(255, 255, 255, 0.03);
+  color: rgb(212 212 216);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.estimate-builder .eb-add-section:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgb(244 244 245);
+}
+
+.estimate-builder .eb-add-section:disabled {
+  opacity: 0.45;
+}
+
+.estimate-builder
+  .eb-glass-panel
+  :where(button.rounded-sm, button.rounded-md):not(.eb-add-section):not(.eb-btn-primary):not(
+    .eb-btn-ghost
+  ) {
+  border-color: rgba(255, 255, 255, 0.07) !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: var(--eb-text-secondary) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .estimate-builder .eb-glass-scope {
+    transition: none;
+  }
+}
