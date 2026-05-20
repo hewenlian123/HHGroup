@@ -12,20 +12,23 @@ const TEST_ADMIN_HEADERS = {
 test.describe("auth and admin boundary", () => {
   test.describe.configure({ timeout: 60_000 });
 
-  test("production lock redirects core app pages to login when unauthenticated", async ({
+  test("production lock allows ordinary app pages without login while admin stays protected", async ({
     browser,
+    request,
   }) => {
     const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
     const page = await context.newPage();
 
-    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
+    const dashboard = await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
 
-    await expect(page).toHaveURL(/\/login(?:[?#]|$)/);
-    await expect(page).toHaveURL(/redirect=%2Fdashboard|redirect=\/dashboard/);
+    expect(dashboard?.status()).toBeLessThan(400);
+    await expect(page).toHaveURL(/\/dashboard(?:[?#]|$)/);
+    const admin = await request.get("/admin", { headers: LOCKED_HEADERS });
+    expect(admin.status()).toBe(403);
     await context.close();
   });
 
-  test("production lock does not create a login redirect loop", async ({ browser }) => {
+  test("login route redirects to dashboard without a redirect loop", async ({ browser }) => {
     const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
     const page = await context.newPage();
 
@@ -34,7 +37,7 @@ test.describe("auth and admin boundary", () => {
     });
 
     expect(response?.status()).toBeLessThan(400);
-    await expect(page).toHaveURL(/\/login\?redirect=\/dashboard$/);
+    await expect(page).toHaveURL(/\/dashboard(?:[?#]|$)/);
     await context.close();
   });
 
@@ -48,19 +51,19 @@ test.describe("auth and admin boundary", () => {
       (await request.post("/api/production/wipe-database", { headers: LOCKED_HEADERS })).status()
     ).toBe(403);
     await expect(
-      (await request.get("/api/system-logs", { headers: LOCKED_HEADERS })).status()
-    ).toBe(401);
-    await expect(
-      (await request.get("/api/system-metrics", { headers: LOCKED_HEADERS })).status()
-    ).toBe(401);
+      (await request.post("/api/system/backup", { headers: LOCKED_HEADERS, data: {} })).status()
+    ).toBe(403);
     await expect(
       (
-        await request.post("/api/settings/company-profile", {
-          headers: LOCKED_HEADERS,
-          data: { org_name: "Blocked E2E production mutation" },
-        })
+        await request.post("/api/system/integrity/cleanup", { headers: LOCKED_HEADERS, data: {} })
       ).status()
-    ).toBe(401);
+    ).toBe(403);
+    await expect(
+      (await request.get("/api/system-logs", { headers: LOCKED_HEADERS })).status()
+    ).toBeLessThan(500);
+    await expect(
+      (await request.get("/api/system-metrics", { headers: LOCKED_HEADERS })).status()
+    ).toBeLessThan(500);
   });
 
   test("non-production test admin bypass can reach guarded maintenance reads", async ({
@@ -75,11 +78,11 @@ test.describe("auth and admin boundary", () => {
     expect(response.status()).not.toBe(403);
   });
 
-  test("system health requires auth while static asset requests stay outside auth middleware", async ({
+  test("system health is available in owner no-login mode while static assets stay public", async ({
     request,
   }) => {
     const health = await request.get("/api/system-health", { headers: LOCKED_HEADERS });
-    expect(health.status()).toBe(401);
+    expect(health.status()).toBeLessThan(500);
     const healthBody = await health.text();
     expect(healthBody).not.toContain("SUPABASE_SERVICE_ROLE_KEY");
     expect(healthBody).not.toContain("x-internal-admin-secret");

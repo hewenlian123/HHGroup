@@ -6,8 +6,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const requestUrl = new URL(request.url);
-  const target = new URL("/login", requestUrl.origin);
-  target.searchParams.set("message", "Signed out");
+  const target = new URL("/dashboard", requestUrl.origin);
 
   const response = NextResponse.redirect(target);
   clearPinSession(response);

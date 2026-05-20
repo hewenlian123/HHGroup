@@ -59,7 +59,7 @@ test.describe("bank and labor server API boundary", () => {
     await seedTestLoginPin("1234");
   });
 
-  test("production lock rejects unauthenticated sensitive read APIs", async ({ request }) => {
+  test("owner no-login mode can reach bank and labor server APIs", async ({ request }) => {
     for (const path of [
       "/api/financial/bank-transactions?view=summary",
       "/api/financial/bank-transactions?view=reconcile",
@@ -69,14 +69,17 @@ test.describe("bank and labor server API boundary", () => {
       "/api/labor/payroll-summary?fromDate=2026-05-01&toDate=2026-05-31",
     ]) {
       const response = await request.get(path, { headers: LOCKED_HEADERS });
-      expect(response.status(), `GET ${path}`).toBe(401);
+      expect(response.status(), `GET ${path}`).toBeLessThan(500);
+      expect(response.status(), `GET ${path}`).not.toBe(401);
+      expect(response.status(), `GET ${path}`).not.toBe(403);
     }
 
     const patchResponse = await request.patch("/api/labor/entries", {
       headers: LOCKED_HEADERS,
       data: { action: "submit", ids: ["00000000-0000-0000-0000-000000000000"] },
     });
-    expect(patchResponse.status()).toBe(401);
+    expect(patchResponse.status()).not.toBe(401);
+    expect(patchResponse.status()).not.toBe(403);
   });
 
   test("PIN session can read bank and labor server APIs but cannot bypass destructive routes", async ({
