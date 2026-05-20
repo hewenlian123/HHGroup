@@ -80,14 +80,22 @@ export type PaymentScheduleItem = {
   estimateId: string;
   sortOrder: number;
   title: string;
-  amountType: "percent" | "fixed";
-  value: number;
-  dueRule: string;
+  description: string | null;
+  amount: number;
   dueDate: string | null;
-  notes: string | null;
-  status: "pending" | "paid" | "overdue";
-  paidAt: string | null;
-  createdAt: string | null;
+  status: "draft" | "invoiced" | "paid";
+  invoiceId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PaymentScheduleWriteInput = {
+  title: string;
+  description?: string | null;
+  amount: number;
+  dueDate?: string | null;
+  status?: "draft" | "invoiced" | "paid";
+  invoiceId?: string | null;
 };
 
 // —— Helpers ——
@@ -350,11 +358,9 @@ export async function createEstimateWithItemsWithClient(
     }>;
     paymentSchedule?: Array<{
       title: string;
-      amountType: "percent" | "fixed";
-      value: number;
-      dueRule: string;
+      description?: string | null;
+      amount: number;
       dueDate?: string | null;
-      notes?: string | null;
     }>;
   }
 ): Promise<string> {
@@ -401,15 +407,15 @@ export async function createEstimateWithItemsWithClient(
     if (payload.paymentSchedule && payload.paymentSchedule.length > 0) {
       for (let idx = 0; idx < payload.paymentSchedule.length; idx++) {
         const ps = payload.paymentSchedule[idx];
-        const { error } = await c.from("estimate_payment_schedule").insert({
+        const amount = normalizePaymentAmount(ps.amount);
+        const { error } = await c.from("estimate_payment_schedule_items").insert({
           estimate_id: id,
           sort_order: idx,
           title: ps.title,
-          amount_type: ps.amountType,
-          value: ps.value,
-          due_rule: ps.dueRule,
+          description: ps.description ?? null,
+          amount,
           due_date: ps.dueDate ?? null,
-          notes: ps.notes ?? null,
+          status: "draft",
         });
         if (error) throw new Error(error.message ?? "Failed to create payment schedule.");
       }
@@ -446,11 +452,9 @@ export async function createEstimateWithItems(payload: {
   }>;
   paymentSchedule?: Array<{
     title: string;
-    amountType: "percent" | "fixed";
-    value: number;
-    dueRule: string;
+    description?: string | null;
+    amount: number;
     dueDate?: string | null;
-    notes?: string | null;
   }>;
 }): Promise<string> {
   return createEstimateWithItemsWithClient(client(), payload);
@@ -1490,10 +1494,49 @@ export async function duplicateLineItem(
 
 // —— Payment schedule ——
 
+function normalizePaymentAmount(amount: number): number {
+  const value = Number(amount);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error("Payment amount must be a non-negative number.");
+  }
+  return value;
+}
+
+function normalizePaymentStatus(status: unknown): PaymentScheduleItem["status"] {
+  if (status === "invoiced" || status === "paid") return status;
+  return "draft";
+}
+
+function mapPaymentScheduleRow(row: Record<string, unknown>): PaymentScheduleItem {
+  return {
+    id: row.id as string,
+    estimateId: row.estimate_id as string,
+    sortOrder: Number(row.sort_order ?? 0),
+    title: (row.title as string) ?? "",
+    description: (row.description as string) ?? null,
+    amount: Number(row.amount ?? 0),
+    dueDate: (row.due_date as string) ?? null,
+    status: normalizePaymentStatus(row.status),
+    invoiceId: (row.invoice_id as string) ?? null,
+    createdAt: (row.created_at as string) ?? "",
+    updatedAt: (row.updated_at as string) ?? "",
+  };
+}
+
+async function canWritePaymentSchedule(c: SupabaseClient, estimateId: string): Promise<boolean> {
+  const { data: est, error } = await c
+    .from("estimates")
+    .select("id, status")
+    .eq("id", estimateId)
+    .single();
+  if (error || !est) return false;
+  return ["Draft", "Sent"].includes(est.status as string);
+}
+
 export async function getPaymentSchedule(estimateId: string): Promise<PaymentScheduleItem[]> {
   const c = client();
   const { data: rows, error } = await c
-    .from("estimate_payment_schedule")
+    .from("estimate_payment_schedule_items")
     .select("*")
     .eq("estimate_id", estimateId)
     .order("sort_order", { ascending: true });
@@ -1501,118 +1544,90 @@ export async function getPaymentSchedule(estimateId: string): Promise<PaymentSch
     if (isMissingTable(error)) return [];
     throw new Error(error.message);
   }
-  return (rows ?? []).map((r: Record<string, unknown>) => ({
-    id: r.id as string,
-    estimateId: r.estimate_id as string,
-    sortOrder: Number(r.sort_order),
-    title: (r.title as string) ?? "",
-    amountType: (r.amount_type as "percent" | "fixed") ?? "percent",
-    value: Number(r.value),
-    dueRule: (r.due_rule as string) ?? "",
-    dueDate: (r.due_date as string) ?? null,
-    notes: (r.notes as string) ?? null,
-    status: (r.status as "pending" | "paid" | "overdue") ?? "pending",
-    paidAt: (r.paid_at as string) ?? null,
-    createdAt: (r.created_at as string) ?? null,
-  }));
+  return (rows ?? []).map((r: Record<string, unknown>) => mapPaymentScheduleRow(r));
 }
 
-export async function addPaymentMilestone(
+export async function addPaymentMilestoneWithClient(
+  c: SupabaseClient,
   estimateId: string,
-  item: {
-    title: string;
-    amountType: "percent" | "fixed";
-    value: number;
-    dueRule: string;
-    dueDate?: string | null;
-    notes?: string | null;
-  }
+  item: PaymentScheduleWriteInput
 ): Promise<PaymentScheduleItem | null> {
-  const c = client();
-  const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
-  if (!est || !["Draft", "Sent"].includes(est.status as string)) return null;
-  const { data: max } = await c
-    .from("estimate_payment_schedule")
+  if (!(await canWritePaymentSchedule(c, estimateId))) return null;
+  const { data: maxRows } = await c
+    .from("estimate_payment_schedule_items")
     .select("sort_order")
     .eq("estimate_id", estimateId)
     .order("sort_order", { ascending: false })
-    .limit(1)
-    .single();
+    .limit(1);
+  const max = Array.isArray(maxRows) ? maxRows[0] : null;
   const sortOrder = max?.sort_order != null ? Number(max.sort_order) + 1 : 0;
+  const amount = normalizePaymentAmount(item.amount);
   const { data: inserted, error } = await c
-    .from("estimate_payment_schedule")
+    .from("estimate_payment_schedule_items")
     .insert({
       estimate_id: estimateId,
       sort_order: sortOrder,
-      title: item.title,
-      amount_type: item.amountType,
-      value: item.value,
-      due_rule: item.dueRule,
+      title: item.title.trim() || "Payment",
+      description: item.description?.trim() || null,
+      amount,
       due_date: item.dueDate ?? null,
-      notes: item.notes ?? null,
+      status: item.status ?? "draft",
+      invoice_id: item.invoiceId ?? null,
     })
     .select("*")
     .single();
   if (error || !inserted) return null;
-  const r = inserted as Record<string, unknown>;
-  return {
-    id: r.id as string,
-    estimateId: r.estimate_id as string,
-    sortOrder: Number(r.sort_order),
-    title: (r.title as string) ?? "",
-    amountType: (r.amount_type as "percent" | "fixed") ?? "percent",
-    value: Number(r.value),
-    dueRule: (r.due_rule as string) ?? "",
-    dueDate: (r.due_date as string) ?? null,
-    notes: (r.notes as string) ?? null,
-    status: (r.status as "pending" | "paid" | "overdue") ?? "pending",
-    paidAt: (r.paid_at as string) ?? null,
-    createdAt: (r.created_at as string) ?? null,
-  };
+  return mapPaymentScheduleRow(inserted as Record<string, unknown>);
 }
 
-export async function updatePaymentMilestone(
+export async function addPaymentMilestone(
+  estimateId: string,
+  item: PaymentScheduleWriteInput
+): Promise<PaymentScheduleItem | null> {
+  return addPaymentMilestoneWithClient(client(), estimateId, item);
+}
+
+export async function updatePaymentMilestoneWithClient(
+  c: SupabaseClient,
   estimateId: string,
   itemId: string,
-  payload: {
-    title?: string;
-    amountType?: "percent" | "fixed";
-    value?: number;
-    dueRule?: string;
-    dueDate?: string | null;
-    notes?: string | null;
-  }
+  payload: Partial<PaymentScheduleWriteInput>
 ): Promise<boolean> {
-  const c = client();
-  const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
-  if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
+  if (!(await canWritePaymentSchedule(c, estimateId))) return false;
   const up: Record<string, unknown> = {};
-  if (payload.title != null) up.title = payload.title;
-  if (payload.amountType != null) up.amount_type = payload.amountType;
-  if (payload.value != null) up.value = payload.value;
-  if (payload.dueRule != null) up.due_rule = payload.dueRule;
+  if (payload.title != null) up.title = payload.title.trim() || "Payment";
+  if (payload.description !== undefined) up.description = payload.description?.trim() || null;
+  if (payload.amount != null) up.amount = normalizePaymentAmount(payload.amount);
   if (payload.dueDate !== undefined) up.due_date = payload.dueDate ?? null;
-  if (payload.notes !== undefined) up.notes = payload.notes ?? null;
+  if (payload.status != null) up.status = payload.status;
+  if (payload.invoiceId !== undefined) up.invoice_id = payload.invoiceId ?? null;
   if (Object.keys(up).length === 0) return true;
   const { error } = await c
-    .from("estimate_payment_schedule")
+    .from("estimate_payment_schedule_items")
     .update(up)
     .eq("id", itemId)
     .eq("estimate_id", estimateId);
   return !error;
 }
 
+export async function updatePaymentMilestone(
+  estimateId: string,
+  itemId: string,
+  payload: Partial<PaymentScheduleWriteInput>
+): Promise<boolean> {
+  return updatePaymentMilestoneWithClient(client(), estimateId, itemId, payload);
+}
+
 /** Reorder payment schedule by updating sort_order for each item. orderedItemIds = ids in desired order. */
-export async function reorderPaymentSchedule(
+export async function reorderPaymentScheduleWithClient(
+  c: SupabaseClient,
   estimateId: string,
   orderedItemIds: string[]
 ): Promise<boolean> {
-  const c = client();
-  const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
-  if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
+  if (!(await canWritePaymentSchedule(c, estimateId))) return false;
   for (let i = 0; i < orderedItemIds.length; i++) {
     const { error } = await c
-      .from("estimate_payment_schedule")
+      .from("estimate_payment_schedule_items")
       .update({ sort_order: i })
       .eq("id", orderedItemIds[i])
       .eq("estimate_id", estimateId);
@@ -1621,13 +1636,39 @@ export async function reorderPaymentSchedule(
   return true;
 }
 
-export async function deletePaymentMilestone(estimateId: string, itemId: string): Promise<boolean> {
-  const c = client();
-  const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
-  if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
+export async function reorderPaymentSchedule(
+  estimateId: string,
+  orderedItemIds: string[]
+): Promise<boolean> {
+  return reorderPaymentScheduleWithClient(client(), estimateId, orderedItemIds);
+}
+
+export async function deletePaymentMilestoneWithClient(
+  c: SupabaseClient,
+  estimateId: string,
+  itemId: string
+): Promise<boolean> {
+  if (!(await canWritePaymentSchedule(c, estimateId))) return false;
   const { error } = await c
-    .from("estimate_payment_schedule")
+    .from("estimate_payment_schedule_items")
     .delete()
+    .eq("id", itemId)
+    .eq("estimate_id", estimateId);
+  return !error;
+}
+
+export async function deletePaymentMilestone(estimateId: string, itemId: string): Promise<boolean> {
+  return deletePaymentMilestoneWithClient(client(), estimateId, itemId);
+}
+
+export async function markPaymentMilestonePaidWithClient(
+  c: SupabaseClient,
+  estimateId: string,
+  itemId: string
+): Promise<boolean> {
+  const { error } = await c
+    .from("estimate_payment_schedule_items")
+    .update({ status: "paid" })
     .eq("id", itemId)
     .eq("estimate_id", estimateId);
   return !error;
@@ -1637,19 +1678,13 @@ export async function markPaymentMilestonePaid(
   estimateId: string,
   itemId: string
 ): Promise<boolean> {
-  const c = client();
-  const { error } = await c
-    .from("estimate_payment_schedule")
-    .update({ status: "paid", paid_at: new Date().toISOString() })
-    .eq("id", itemId)
-    .eq("estimate_id", estimateId);
-  return !error;
+  return markPaymentMilestonePaidWithClient(client(), estimateId, itemId);
 }
 
 /** Compute scheduled amount for one milestone based on estimate total. */
 export function paymentMilestoneAmount(item: PaymentScheduleItem, estimateTotal: number): number {
-  if (item.amountType === "percent") return (estimateTotal * item.value) / 100;
-  return item.value;
+  void estimateTotal;
+  return item.amount;
 }
 
 // —— Payment schedule templates ——
@@ -1777,10 +1812,8 @@ export async function applyPaymentTemplateToEstimate(
     const it = data.items[i];
     await addPaymentMilestone(estimateId, {
       title: it.title,
-      amountType: it.amountType,
-      value: it.value,
-      dueRule: it.dueRule,
-      notes: it.notes ?? undefined,
+      description: it.dueRule || it.notes || null,
+      amount: it.amountType === "fixed" ? it.value : 0,
     });
   }
   return true;

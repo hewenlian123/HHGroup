@@ -192,43 +192,39 @@ export function EstimatePreviewContent({
         </section>
 
         {/* Payment schedule */}
-        <div className="border-b border-zinc-300 my-4" />
-        <section className="mb-6">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-3">
-            Payment schedule
-          </h2>
-          {paymentSchedule.length === 0 ? (
-            <p className="text-sm text-zinc-500 py-1">No payment milestones.</p>
-          ) : (
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200/80 text-zinc-600">
-                  <th className="pb-2 pr-3 text-left font-medium">Payment</th>
-                  <th className="w-28 pb-2 px-2 text-right font-medium tabular-nums">Amount</th>
-                  <th className="pb-2 px-2 text-left font-medium">Terms</th>
-                  <th className="w-28 pb-2 pl-3 text-left font-medium tabular-nums">Due date</th>
-                </tr>
-              </thead>
-              <tbody>
+        {paymentSchedule.length > 0 ? (
+          <>
+            <div className="border-b border-zinc-300 my-4" />
+            <section className="mb-6">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-3">
+                Payment schedule
+              </h2>
+              <div className="space-y-3 text-sm">
                 {paymentSchedule.map((item) => {
                   const amount = paymentMilestoneAmount(item, estimateTotal);
                   return (
-                    <tr key={item.id} className="border-b border-zinc-200">
-                      <td className="py-2 pr-3 font-medium text-zinc-900">{item.title}</td>
-                      <td className="py-2 px-2 text-right tabular-nums text-zinc-900">
-                        ${fmt(amount)}
-                      </td>
-                      <td className="py-2 px-2 text-zinc-700">{item.dueRule || "—"}</td>
-                      <td className="py-2 pl-3 text-zinc-700 tabular-nums">
-                        {item.dueDate ?? "—"}
-                      </td>
-                    </tr>
+                    <div key={item.id} className="border-b border-zinc-100 pb-3 last:border-b-0">
+                      <div className="flex items-baseline justify-between gap-6">
+                        <p className="font-semibold text-zinc-900">{item.title}</p>
+                        <p className="shrink-0 tabular-nums font-semibold text-zinc-900">
+                          ${fmt(amount)}
+                        </p>
+                      </div>
+                      {item.description ? (
+                        <p className="mt-1 text-zinc-700 whitespace-pre-wrap">{item.description}</p>
+                      ) : null}
+                      {item.dueDate ? (
+                        <p className="mt-1 text-xs tabular-nums text-zinc-500">
+                          Due date: {item.dueDate}
+                        </p>
+                      ) : null}
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          )}
-        </section>
+              </div>
+            </section>
+          </>
+        ) : null}
 
         {/* Totals — invoice style, no card */}
         {summary && (

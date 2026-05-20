@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,7 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import type { PaymentScheduleItem, PaymentScheduleTemplate } from "@/lib/data";
 import { paymentMilestoneAmount } from "@/lib/data";
-import { Plus, Trash2 } from "lucide-react";
+import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
 import { EB, ebInput } from "./estimate-builder-ui";
@@ -52,9 +53,16 @@ export function EstimatePaymentSchedule(props: {
     estimateTotal,
     isLocked,
     addPaymentMilestoneAction,
+    updatePaymentMilestoneAction,
     deletePaymentMilestoneAction,
   } = props;
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
+  const [editingItem, setEditingItem] = React.useState<PaymentScheduleItem | null>(null);
+
+  const openScheduleDrawer = (item?: PaymentScheduleItem) => {
+    setEditingItem(item ?? null);
+    setScheduleOpen(true);
+  };
 
   const totalScheduled = paymentSchedule.reduce(
     (sum, item) => sum + paymentMilestoneAmount(item, estimateTotal),
@@ -76,7 +84,7 @@ export function EstimatePaymentSchedule(props: {
             variant="outline"
             size="sm"
             className={cn("min-h-11 px-3 md:min-h-8", EB.btnGhost)}
-            onClick={() => setScheduleOpen(true)}
+            onClick={() => openScheduleDrawer()}
           >
             <Plus className="h-4 w-4 mr-2" />
             Schedule Payment
@@ -127,9 +135,9 @@ export function EstimatePaymentSchedule(props: {
                 <th className="text-right py-2.5 px-4 font-medium text-zinc-400 tabular-nums">
                   Amount
                 </th>
-                <th className="text-left py-2.5 px-4 font-medium text-zinc-400">Payment Terms</th>
+                <th className="text-left py-2.5 px-4 font-medium text-zinc-400">Description</th>
                 <th className="text-left py-2.5 px-4 font-medium text-zinc-400">Due Date</th>
-                {!isLocked && <th className="w-16 py-2.5 px-2" />}
+                <th className="w-36 py-2.5 px-2" />
               </tr>
             </thead>
             <tbody>
@@ -153,34 +161,64 @@ export function EstimatePaymentSchedule(props: {
                       <td className="py-2.5 px-4 font-medium text-zinc-100">{item.title || "—"}</td>
                       <td className="py-2.5 px-4 text-right tabular-nums font-medium text-zinc-100">
                         {fmt(amount)}
-                        {item.amountType === "percent" && (
-                          <span className="ml-2 text-xs text-zinc-500">({item.value}%)</span>
-                        )}
                       </td>
-                      <td className="py-2.5 px-4 text-zinc-400">{item.dueRule || "—"}</td>
+                      <td className="py-2.5 px-4 text-zinc-400">{item.description || "—"}</td>
                       <td className="py-2.5 px-4 text-zinc-400 tabular-nums">{dueDateDisplay}</td>
-                      {!isLocked ? (
-                        <td className="py-2 px-2 align-middle">
-                          <form action={deletePaymentMilestoneAction} className="flex justify-end">
-                            <input type="hidden" name="estimateId" value={estimateId} />
-                            <input type="hidden" name="itemId" value={item.id} />
+                      <td className="py-2 px-2 align-middle">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            asChild
+                            className={cn(
+                              "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                              EB.btnGhost
+                            )}
+                            aria-label={`Preview ${item.title}`}
+                          >
+                            <Link href={`/estimates/${estimateId}/payments/${item.id}/preview`}>
+                              <FileText className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          {!isLocked ? (
                             <Button
-                              type="submit"
+                              type="button"
                               variant="outline"
                               size="icon"
                               className={cn(
-                                "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                                "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
                                 EB.btnGhost
                               )}
-                              aria-label="Delete payment milestone"
+                              aria-label={`Edit ${item.title}`}
+                              onClick={() => openScheduleDrawer(item)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Pencil className="h-4 w-4" />
                             </Button>
-                          </form>
-                        </td>
-                      ) : (
-                        <td className="py-2 px-2" />
-                      )}
+                          ) : null}
+                          {!isLocked ? (
+                            <form
+                              action={deletePaymentMilestoneAction}
+                              className="flex justify-end"
+                            >
+                              <input type="hidden" name="estimateId" value={estimateId} />
+                              <input type="hidden" name="itemId" value={item.id} />
+                              <Button
+                                type="submit"
+                                variant="outline"
+                                size="icon"
+                                className={cn(
+                                  "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                                  EB.btnGhost
+                                )}
+                                aria-label={`Delete ${item.title}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </form>
+                          ) : null}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })
@@ -190,54 +228,62 @@ export function EstimatePaymentSchedule(props: {
         </div>
 
         {/* Drawer: Schedule Payment */}
-        <Sheet open={scheduleOpen} onOpenChange={setScheduleOpen}>
+        <Sheet
+          open={scheduleOpen}
+          onOpenChange={(open) => {
+            setScheduleOpen(open);
+            if (!open) setEditingItem(null);
+          }}
+        >
           <SheetContent side="right" className={scheduleDrawerClass}>
             <SheetHeader>
-              <SheetTitle className="text-zinc-50">Schedule Payment</SheetTitle>
+              <SheetTitle className="text-zinc-50">
+                {editingItem ? "Edit Payment" : "Schedule Payment"}
+              </SheetTitle>
               <SheetDescription className="sr-only">
-                Add a payment milestone to this estimate.
+                {editingItem
+                  ? "Edit a payment milestone on this estimate."
+                  : "Add a payment milestone to this estimate."}
               </SheetDescription>
             </SheetHeader>
             <div className="mt-4">
-              <form action={addPaymentMilestoneAction} className="space-y-4">
+              <form
+                key={editingItem?.id ?? "new-payment"}
+                action={editingItem ? updatePaymentMilestoneAction : addPaymentMilestoneAction}
+                className="space-y-4"
+              >
                 <input type="hidden" name="estimateId" value={estimateId} />
+                {editingItem ? <input type="hidden" name="itemId" value={editingItem.id} /> : null}
                 <div className="space-y-1">
                   <label className={scheduleLabelClass}>Payment Name</label>
                   <Input
                     name="title"
                     placeholder="e.g. Deposit"
+                    defaultValue={editingItem?.title ?? ""}
                     className={ebInput("h-10 md:h-9")}
                     required
                   />
                 </div>
                 <div className="space-y-1">
                   <label className={scheduleLabelClass}>Amount</label>
-                  <div className="flex gap-2">
-                    <select
-                      name="amountType"
-                      defaultValue="fixed"
-                      className={ebInput("h-10 flex-1 appearance-none md:h-9")}
-                    >
-                      <option value="fixed">Fixed</option>
-                      <option value="percent">Percent</option>
-                    </select>
-                    <Input
-                      name="value"
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      placeholder="30"
-                      className={ebInput("h-10 w-28 text-right md:h-9")}
-                      required
-                    />
-                  </div>
+                  <Input
+                    name="amount"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    placeholder="2500"
+                    defaultValue={editingItem?.amount ?? ""}
+                    className={ebInput("h-10 text-right md:h-9")}
+                    required
+                  />
                 </div>
                 <div className="space-y-1">
-                  <label className={scheduleLabelClass}>Payment Terms</label>
-                  <Input
-                    name="dueRule"
-                    placeholder="e.g. Due on signing"
-                    className={ebInput("h-10 md:h-9")}
+                  <label className={scheduleLabelClass}>Description</label>
+                  <textarea
+                    name="description"
+                    placeholder="Deposit before work starts"
+                    defaultValue={editingItem?.description ?? ""}
+                    className={ebInput("min-h-[96px] resize-none py-2 leading-relaxed")}
                   />
                 </div>
                 <div className="space-y-1">
@@ -245,15 +291,8 @@ export function EstimatePaymentSchedule(props: {
                   <Input
                     name="dueDate"
                     type="date"
+                    defaultValue={editingItem?.dueDate ?? ""}
                     className={ebInput(cn(EB.dateField, "h-10 md:h-9"))}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className={scheduleLabelClass}>Notes</label>
-                  <textarea
-                    name="notes"
-                    placeholder="Optional"
-                    className={ebInput("min-h-[96px] resize-none py-2 leading-relaxed")}
                   />
                 </div>
                 <div className="flex items-center gap-2 pt-2">
