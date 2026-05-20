@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { PageLayout } from "@/components/base";
 import { getAllCustomers } from "@/lib/customers-db";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
@@ -7,6 +8,7 @@ import { CustomersClient } from "./customers-client";
 export const dynamic = "force-dynamic";
 
 export default async function CustomersPage() {
+  noStore();
   let customers: Awaited<ReturnType<typeof getAllCustomers>> = [];
   let dataLoadWarning: string | null = null;
   try {
