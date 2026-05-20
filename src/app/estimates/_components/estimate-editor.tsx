@@ -2,11 +2,9 @@
 
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
-import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
-import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { InlineLoading } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,20 +19,11 @@ import type {
 import { estimateLineTotal, groupEstimateItemsByCategoryId } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   saveEstimateMetaAction,
   addLineItemAction,
   addLineItemCatalogInlineAction,
   createCustomEstimateCategoryAction,
   updateLineItemAction,
-  updateLineItemInlineAction,
   deleteLineItemAction,
   duplicateLineItemAction,
   addPaymentMilestoneAction,
@@ -63,44 +52,24 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  ChevronRight,
-  ChevronDown,
-  Plus,
-  Copy,
-  Trash2,
-  GripVertical,
-  MoreHorizontal,
-} from "lucide-react";
+import { ChevronDown, Plus, Copy, Trash2, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EstimatePaymentSchedule } from "./estimate-payment-schedule";
-import { LineItemDescriptionBodyPreview } from "./line-item-description-body-preview";
 import {
   EstimateSectionTitleMenu,
   type EstimateSectionOption,
 } from "./estimate-section-title-menu";
-import type { LineItemDescriptionRichTextHandle } from "./line-item-description-rich-text";
 import { formatEstimateCurrency, roundEstimateCurrencyValue } from "./estimate-currency";
-import { EstimateBuilderSummary } from "./estimate-builder-summary";
+import {
+  EstimateBuilderSummary,
+  type EstimateBuilderPaymentSummary,
+} from "./estimate-builder-summary";
 import { EstimateBuilderAdvanced } from "./estimate-builder-advanced";
 import { EstimateEditCustomerSection } from "./estimate-edit-customer-section";
-import { EB, ebGlassPanel, ebGlassScope, ebInput } from "./estimate-builder-ui";
+import { EB, ebGlassPanel, ebInput } from "./estimate-builder-ui";
 import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { EstimateLineItemPersistedMobile } from "./estimate-line-item-persisted-mobile";
-
-/** TipTap must not load on the server — Next 14 can emit a broken `vendor-chunks/@tiptap.js` ref and 500 the page. */
-const LineItemDescriptionRichText = dynamic(
-  () => import("./line-item-description-rich-text").then((m) => m.LineItemDescriptionRichText),
-  {
-    ssr: false,
-    loading: () => <div className="min-h-[140px] rounded-sm border border-border/60" aria-hidden />,
-  }
-);
+import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
 
 function cssEscapeAttrSelector(value: string): string {
   const winCss =
@@ -174,12 +143,8 @@ export type EstimateEditorProps = {
   paymentTemplates?: PaymentScheduleTemplate[];
   /** When true, enable editing in the editor UI. */
   editing?: boolean;
-  /** On /estimates/[id], false so Cost Breakdown stays higher after save. */
-  defaultInfoExpanded?: boolean;
-  /** Incremented after header Save succeeds — collapses Client / Project details. */
-  infoCollapseNonce?: number;
-  /** Incremented after header Save succeeds — collapses all Cost Breakdown categories (edit mode). */
-  costBreakdownCollapseNonce?: number;
+  /** Persist the detail drawer through the parent edit flow when available. */
+  onSaveDetails?: () => void;
 };
 
 export function EstimateEditor({
@@ -195,21 +160,13 @@ export function EstimateEditor({
   paymentSchedule = [],
   paymentTemplates = [],
   editing = false,
-  defaultInfoExpanded = false,
-  infoCollapseNonce = 0,
-  costBreakdownCollapseNonce = 0,
+  onSaveDetails,
 }: EstimateEditorProps) {
-  const [infoOpen, setInfoOpen] = React.useState(defaultInfoExpanded);
   const isLocked = !["Draft", "Sent"].includes(status);
   const isReadOnly = isLocked || !editing;
   const today = new Date().toISOString().slice(0, 10);
   const { toast } = useToast();
   const router = useRouter();
-
-  /** Header Save looks up #estimate-meta-form; it only mounts when this section is expanded. */
-  React.useEffect(() => {
-    if (editing) setInfoOpen(true);
-  }, [editing]);
 
   React.useEffect(() => {
     if (!editing) return;
@@ -224,12 +181,7 @@ export function EstimateEditor({
       form.removeEventListener("input", markDirty);
       form.removeEventListener("change", markDirty);
     };
-  }, [editing, infoOpen]);
-
-  React.useEffect(() => {
-    if (!infoCollapseNonce) return;
-    setInfoOpen(false);
-  }, [infoCollapseNonce]);
+  }, [editing]);
 
   const [localCategoryNames, setLocalCategoryNames] = React.useState<Record<string, string>>(
     () => ({ ...categoryNames })
@@ -321,41 +273,6 @@ export function EstimateEditor({
     return out;
   }, [baseCostBreakdownSections, localCategorySectionOrder]);
 
-  const costBreakdownSectionIdsKey = React.useMemo(
-    () => costBreakdownSections.map((s) => s.categoryId).join("|"),
-    [costBreakdownSections]
-  );
-
-  /** Which cost breakdown `<details>` are open (edit mode only; cost code = id). */
-  const [expandedCategoryIds, setExpandedCategoryIds] = React.useState<string[]>([]);
-  const prevCostBreakdownSectionIdsKeyRef = React.useRef<string | null>(null);
-
-  React.useEffect(() => {
-    const ids = costBreakdownSectionIdsKey.length ? costBreakdownSectionIdsKey.split("|") : [];
-    if (prevCostBreakdownSectionIdsKeyRef.current === null) {
-      prevCostBreakdownSectionIdsKeyRef.current = costBreakdownSectionIdsKey;
-      if (ids.length) setExpandedCategoryIds([...ids]);
-      return;
-    }
-    if (costBreakdownSectionIdsKey === prevCostBreakdownSectionIdsKeyRef.current) return;
-    const oldIds = prevCostBreakdownSectionIdsKeyRef.current.split("|").filter(Boolean);
-    const oldSet = new Set(oldIds);
-    const newOnes = ids.filter((id) => !oldSet.has(id));
-    prevCostBreakdownSectionIdsKeyRef.current = costBreakdownSectionIdsKey;
-    setExpandedCategoryIds((prev) => {
-      const idSet = new Set(ids);
-      const base = prev.filter((id) => idSet.has(id));
-      if (newOnes.length === 0) return base;
-      if (prev.length === 0) return [...newOnes];
-      return [...base, ...newOnes];
-    });
-  }, [costBreakdownSectionIdsKey]);
-
-  React.useEffect(() => {
-    if (!costBreakdownCollapseNonce) return;
-    setExpandedCategoryIds([]);
-  }, [costBreakdownCollapseNonce]);
-
   const [pendingSelectNewCategory, setPendingSelectNewCategory] = React.useState<{
     code: string;
     displayName: string;
@@ -395,7 +312,6 @@ export function EstimateEditor({
     setSelectedCategoryId(code);
     setPendingSelectNewCategory({ code, displayName });
     setCategoryScrollTargetCode(code);
-    setExpandedCategoryIds((prev) => (prev.includes(code) ? prev : [...prev, code]));
   }, []);
 
   const lineItemSensors = useSensors(
@@ -463,68 +379,9 @@ export function EstimateEditor({
 
   const markupPct = ((meta.overheadPct + meta.profitPct) * 100).toFixed(1);
 
-  /** Which line item id has the description modal open (`null` = closed). */
-  const [editingItem, setEditingItem] = React.useState<string | null>(null);
-  const [modalItemName, setModalItemName] = React.useState("");
-  const [modalItemDescription, setModalItemDescription] = React.useState("");
-  const [descModalSaving, setDescModalSaving] = React.useState(false);
-  const lineDescEditorRef = React.useRef<LineItemDescriptionRichTextHandle | null>(null);
   const lineLiveValuesRef = React.useRef<
     Record<string, () => { qty: number; unit: string; unitCost: number; markupPct: number }>
   >({});
-  const lineDescriptionApplyRef = React.useRef<
-    Record<string, (name: string, desc: string) => void>
-  >({});
-
-  const openItemDescriptionModal = React.useCallback(
-    (itemId: string, name: string, description: string) => {
-      setEditingItem(itemId);
-      setModalItemName(name);
-      setModalItemDescription(description);
-    },
-    []
-  );
-
-  const handleItemDescriptionDialogOpenChange = React.useCallback((open: boolean) => {
-    if (!open) setEditingItem(null);
-  }, []);
-
-  const handleSaveItemDescription = React.useCallback(async () => {
-    if (!editingItem) return;
-    setDescModalSaving(true);
-    try {
-      const getLive = lineLiveValuesRef.current[editingItem];
-      const live = getLive ? getLive() : null;
-      const row = localItems.find((i) => i.id === editingItem);
-      const qty = live?.qty ?? row?.qty ?? 0;
-      const unit = live?.unit ?? row?.unit ?? "EA";
-      const unitCost = live?.unitCost ?? row?.unitCost ?? 0;
-      const markupPctVal = live?.markupPct ?? row?.markupPct ?? 0;
-      const descBody = lineDescEditorRef.current?.getValue() ?? modalItemDescription;
-      const combined = descBody.trim() ? `${modalItemName}\n${descBody}` : modalItemName;
-      const fd = new FormData();
-      fd.set("estimateId", estimateId);
-      fd.set("itemId", editingItem);
-      fd.set("desc", combined);
-      fd.set("qty", String(qty));
-      fd.set("unit", unit);
-      fd.set("unitCost", String(unitCost));
-      fd.set("markupPct", String(markupPctVal * 100));
-      const res = await updateLineItemInlineAction(fd);
-      if (res.ok) {
-        lineDescriptionApplyRef.current[editingItem]?.(modalItemName, descBody);
-        setEditingItem(null);
-      } else {
-        toast({
-          title: "Save failed",
-          description: res.error ?? "Please try again.",
-          variant: "error",
-        });
-      }
-    } finally {
-      setDescModalSaving(false);
-    }
-  }, [editingItem, modalItemName, modalItemDescription, estimateId, localItems, toast]);
 
   const flatPersistedRows = React.useMemo(() => {
     let idx = 0;
@@ -544,31 +401,36 @@ export function EstimateEditor({
 
   const lastPersistedRowId = flatPersistedRows[flatPersistedRows.length - 1]?.row.id;
 
+  const paymentSummary = React.useMemo((): EstimateBuilderPaymentSummary | null => {
+    if (!paymentSchedule.length) return null;
+    const scheduledTotal = paymentSchedule.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    return { milestoneCount: paymentSchedule.length, scheduledTotal };
+  }, [paymentSchedule]);
+
   return (
     <React.Fragment>
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-10 lg:items-start">
-        <div className="min-w-0 space-y-5 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-8 lg:items-start">
+        <div className="min-w-0 space-y-4 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
           <EstimateEditCustomerSection
             meta={meta}
             estimateId={estimateId}
             estimateNumber={estimateNumber}
             status={status}
             today={today}
-            infoOpen={infoOpen}
-            onToggleInfo={() => setInfoOpen(!infoOpen)}
             isReadOnly={isReadOnly}
             markupPct={markupPct}
             tax={summary?.tax ?? 0}
             discount={summary?.discount ?? 0}
             saveEstimateMetaAction={saveEstimateMetaAction}
+            onSaveDetails={onSaveDetails}
           />
 
           <section className={EB.section}>
             <div className={ebGlassPanel()}>
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+              <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
                 <div>
                   <h2 className={EB.scopeHeading}>Scope of work</h2>
-                  <p className={EB.scopeSubtitle}>Line items grouped by section</p>
+                  <p className={EB.scopeSubtitle}>Proposal sections and line totals</p>
                 </div>
                 {!isReadOnly ? (
                   <EstimateLineItemsToolbar
@@ -594,9 +456,7 @@ export function EstimateEditor({
                     updateLineItemAction={updateLineItemAction}
                     duplicateLineItemAction={duplicateLineItemAction}
                     deleteLineItemAction={deleteLineItemAction}
-                    onOpenDescriptionEditor={openItemDescriptionModal}
                     lineLiveValuesRef={lineLiveValuesRef}
-                    lineDescriptionApplyRef={lineDescriptionApplyRef}
                     isLastRow={row.id === lastPersistedRowId}
                     onEnterAddNext={
                       !isReadOnly && row.id === lastPersistedRowId
@@ -621,28 +481,11 @@ export function EstimateEditor({
                     ({ categoryId, title, rows, sectionTotal }) => {
                       const displayName =
                         localCategoryNames[categoryId] ?? catalogNameByCode[categoryId] ?? title;
-                      const toggleCategory = (categoryIdToToggle: string) => {
-                        setExpandedCategoryIds((prev) =>
-                          prev.includes(categoryIdToToggle)
-                            ? prev.filter((x) => x !== categoryIdToToggle)
-                            : [...prev, categoryIdToToggle]
-                        );
-                      };
                       const categorySectionBody = (dragHandle: React.ReactNode | null) => (
                         <React.Fragment>
-                          <summary
-                            className={cn(EB.scopeBlockHeader, "list-none flex-wrap")}
-                            onMouseDown={(e) => {
-                              const el = e.target as HTMLElement;
-                              if (el.closest("button, a[href], [role='button'], [role='menuitem']"))
-                                return;
-                              e.preventDefault();
-                              toggleCategory(categoryId);
-                            }}
-                          >
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <div className={cn(EB.scopeBlockHeader, "px-0")}>
+                            <div className="flex min-w-0 flex-1 items-center gap-2">
                               {dragHandle}
-                              <ChevronRight className="h-4 w-4 text-muted-foreground group-open:rotate-90 transition-transform shrink-0" />
                               {isReadOnly ? (
                                 <span className={EB.scopeBlockTitle}>
                                   {displayName.trim() || "Section"}
@@ -680,114 +523,77 @@ export function EstimateEditor({
                             <span className={EB.scopeBlockTotal}>
                               {formatEstimateCurrency(sectionTotal)}
                             </span>
-                          </summary>
-                          <div className={EB.scopeTableWrap}>
-                            <div className="overflow-x-auto">
-                              {isReadOnly ? (
-                                <table className="w-full text-sm">
-                                  <thead>
-                                    <tr className={EB.lineTableHead}>
-                                      <th className="text-left py-2 px-4 font-normal">
-                                        Description
-                                      </th>
-                                      <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-20">
-                                        Qty
-                                      </th>
-                                      <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-28">
-                                        Unit price
-                                      </th>
-                                      <th className="text-right py-2 px-4 font-normal tabular-nums w-28">
-                                        Total
-                                      </th>
-                                    </tr>
-                                  </thead>
-                                  {rows.map((row) => (
-                                    <tbody key={row.id} className="group/line">
-                                      <LineItemRow
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            {isReadOnly ? (
+                              rows.map((row) => {
+                                const lineOrdinal =
+                                  flatPersistedRows.find((f) => f.row.id === row.id)?.rowIndex ?? 1;
+                                return (
+                                  <LineItemRow
+                                    key={row.id}
+                                    row={row}
+                                    estimateId={estimateId}
+                                    lineOrdinal={lineOrdinal}
+                                    isLocked
+                                    updateLineItemAction={updateLineItemAction}
+                                    duplicateLineItemAction={duplicateLineItemAction}
+                                    deleteLineItemAction={deleteLineItemAction}
+                                    lineLiveValuesRef={lineLiveValuesRef}
+                                  />
+                                );
+                              })
+                            ) : (
+                              <DndContext
+                                sensors={lineItemSensors}
+                                collisionDetection={closestCenter}
+                                onDragEnd={(e) => handleLineItemsDragEnd(categoryId, e)}
+                              >
+                                <SortableContext
+                                  items={rows.map((r) => r.id)}
+                                  strategy={verticalListSortingStrategy}
+                                >
+                                  {rows.map((row) => {
+                                    const lineOrdinal =
+                                      flatPersistedRows.find((f) => f.row.id === row.id)
+                                        ?.rowIndex ?? 1;
+                                    return (
+                                      <SortableLineItemGroup
+                                        key={row.id}
                                         row={row}
                                         estimateId={estimateId}
-                                        isLocked
+                                        lineOrdinal={lineOrdinal}
                                         updateLineItemAction={updateLineItemAction}
                                         duplicateLineItemAction={duplicateLineItemAction}
                                         deleteLineItemAction={deleteLineItemAction}
-                                        onOpenDescriptionEditor={openItemDescriptionModal}
                                         lineLiveValuesRef={lineLiveValuesRef}
-                                        lineDescriptionApplyRef={lineDescriptionApplyRef}
                                       />
-                                    </tbody>
-                                  ))}
-                                </table>
-                              ) : (
-                                <DndContext
-                                  sensors={lineItemSensors}
-                                  collisionDetection={closestCenter}
-                                  onDragEnd={(e) => handleLineItemsDragEnd(categoryId, e)}
-                                >
-                                  <SortableContext
-                                    items={rows.map((r) => r.id)}
-                                    strategy={verticalListSortingStrategy}
-                                  >
-                                    <table className="w-full text-sm">
-                                      <thead>
-                                        <tr className={EB.lineTableHead}>
-                                          <th className="w-9 py-2 px-1" aria-label="Reorder" />
-                                          <th className="text-left py-2 px-4 font-normal">
-                                            Description
-                                          </th>
-                                          <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-20">
-                                            Qty
-                                          </th>
-                                          <th className="hidden md:table-cell text-right py-2 px-4 font-normal tabular-nums w-28">
-                                            Unit price
-                                          </th>
-                                          <th className="text-right py-2 px-4 font-normal tabular-nums w-28">
-                                            Total
-                                          </th>
-                                          <th className="w-20" />
-                                        </tr>
-                                      </thead>
-                                      {rows.map((row) => (
-                                        <SortableLineItemGroup
-                                          key={row.id}
-                                          row={row}
-                                          estimateId={estimateId}
-                                          updateLineItemAction={updateLineItemAction}
-                                          duplicateLineItemAction={duplicateLineItemAction}
-                                          deleteLineItemAction={deleteLineItemAction}
-                                          onOpenDescriptionEditor={openItemDescriptionModal}
-                                          lineLiveValuesRef={lineLiveValuesRef}
-                                          lineDescriptionApplyRef={lineDescriptionApplyRef}
-                                        />
-                                      ))}
-                                    </table>
-                                  </SortableContext>
-                                </DndContext>
-                              )}
-                            </div>
-                            {!isReadOnly && (
-                              <div className="px-3 py-2">
-                                <form action={addLineItemAction} className="inline-block">
-                                  <input type="hidden" name="estimateId" value={estimateId} />
-                                  <input type="hidden" name="costCode" value={categoryId} />
-                                  <button type="submit" className={EB.addLineLink}>
-                                    <Plus className="h-3 w-3" aria-hidden />
-                                    Add line
-                                  </button>
-                                </form>
-                              </div>
+                                    );
+                                  })}
+                                </SortableContext>
+                              </DndContext>
                             )}
+                            {!isReadOnly ? (
+                              <form action={addLineItemAction} className="inline-block px-1">
+                                <input type="hidden" name="estimateId" value={estimateId} />
+                                <input type="hidden" name="costCode" value={categoryId} />
+                                <button type="submit" className={EB.addLineLink}>
+                                  <Plus className="h-3 w-3" aria-hidden />
+                                  Add line
+                                </button>
+                              </form>
+                            ) : null}
                           </div>
                         </React.Fragment>
                       );
 
                       return isReadOnly ? (
-                        <div key={categoryId} className={cn(EB.categoryGroup, "mb-4")}>
-                          <details
-                            className={cn("group", ebGlassScope())}
-                            open={expandedCategoryIds.includes(categoryId)}
-                          >
-                            {categorySectionBody(null)}
-                          </details>
+                        <div
+                          key={categoryId}
+                          data-estimate-section-id={categoryId}
+                          className={cn(EB.categoryGroup, "mb-6 last:mb-0")}
+                        >
+                          {categorySectionBody(null)}
                         </div>
                       ) : (
                         <SortableCategorySection
@@ -797,12 +603,12 @@ export function EstimateEditor({
                           isSelectedCategory={selectedCategoryId === categoryId}
                         >
                           {(dh) => (
-                            <details
-                              className={cn("group", ebGlassScope())}
-                              open={expandedCategoryIds.includes(categoryId)}
+                            <div
+                              data-estimate-section-id={categoryId}
+                              className={cn(EB.categoryGroup, "mb-6 last:mb-0")}
                             >
                               {categorySectionBody(dh)}
-                            </details>
+                            </div>
                           )}
                         </SortableCategorySection>
                       );
@@ -839,81 +645,6 @@ export function EstimateEditor({
             </div>
           </section>
 
-          {!isReadOnly ? (
-            <Dialog
-              open={editingItem !== null}
-              onOpenChange={handleItemDescriptionDialogOpenChange}
-            >
-              <DialogContent
-                className={cn(
-                  "gap-0 overflow-hidden !border-white/10 !bg-slate-950/70 p-0 text-zinc-100 shadow-[0_24px_80px_rgba(0,0,0,0.55),0_0_40px_rgba(212,184,120,0.05),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl sm:max-w-[520px]",
-                  "rounded-2xl max-md:inset-x-3 max-md:top-[max(1rem,env(safe-area-inset-top))] max-md:max-h-[calc(100dvh_-_2rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] max-md:w-auto max-md:max-w-[calc(100vw-1.5rem)] max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-2xl",
-                  "[&>button]:right-4 [&>button]:top-4 [&>button]:rounded-full [&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.08] [&>button]:hover:text-zinc-50 [&>button]:focus-visible:ring-amber-200/25"
-                )}
-              >
-                <DialogHeader className="space-y-1 border-b border-white/[0.07] px-6 pb-4 pt-6 text-left">
-                  <DialogTitle className="text-base font-semibold tracking-tight text-zinc-50">
-                    Item Description
-                  </DialogTitle>
-                  <DialogDescription className="text-xs text-zinc-500">
-                    Refine the line item name and customer-facing scope notes.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 px-6 py-5">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="estimate-line-desc-modal-name"
-                      className="text-[11px] font-medium uppercase tracking-[0.1em] text-zinc-400"
-                    >
-                      Name
-                    </Label>
-                    <Input
-                      id="estimate-line-desc-modal-name"
-                      value={modalItemName}
-                      onChange={(e) => setModalItemName(e.target.value)}
-                      placeholder="Line item name"
-                      className={ebInput("h-10 rounded-lg text-sm")}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[11px] font-medium uppercase tracking-[0.1em] text-zinc-400">
-                      Description
-                    </Label>
-                    <LineItemDescriptionRichText
-                      editorRef={lineDescEditorRef}
-                      key={editingItem ?? "closed"}
-                      value={modalItemDescription}
-                      onChange={setModalItemDescription}
-                      disabled={descModalSaving}
-                      placeholder="Optional details"
-                    />
-                  </div>
-                </div>
-                <DialogFooter className="mt-0 !border-t-white/[0.07] !bg-transparent px-6 pb-6 pt-4 sm:justify-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className={cn("min-h-11 px-4", EB.portalGhostButton)}
-                    onClick={() => setEditingItem(null)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className={cn("min-h-11 px-5 font-medium", EB.portalPrimaryButton)}
-                    disabled={descModalSaving}
-                    onClick={() => void handleSaveItemDescription()}
-                  >
-                    <SubmitSpinner loading={descModalSaving} className="mr-2" />
-                    {descModalSaving ? "Saving…" : "Save"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          ) : null}
-
           <EstimateBuilderAdvanced
             title="Payment schedule"
             defaultOpen={paymentSchedule.length > 0}
@@ -940,6 +671,7 @@ export function EstimateEditor({
           <EstimateBuilderSummary
             summary={summary}
             showInternal={editing && !isReadOnly}
+            paymentSummary={paymentSummary}
             floating
           />
         </aside>
@@ -973,26 +705,22 @@ export function EstimateEditor({
 function SortableLineItemGroup({
   row,
   estimateId,
+  lineOrdinal,
   updateLineItemAction,
   duplicateLineItemAction,
   deleteLineItemAction,
-  onOpenDescriptionEditor,
   lineLiveValuesRef,
-  lineDescriptionApplyRef,
 }: {
   row: EstimateItemRow;
   estimateId: string;
+  lineOrdinal: number;
   updateLineItemAction: (fd: FormData) => Promise<void>;
   duplicateLineItemAction: (fd: FormData) => Promise<void>;
   deleteLineItemAction: (fd: FormData) => Promise<void>;
-  onOpenDescriptionEditor: (itemId: string, name: string, description: string) => void;
   lineLiveValuesRef: React.MutableRefObject<
     Record<string, () => { qty: number; unit: string; unitCost: number; markupPct: number }>
   >;
-  lineDescriptionApplyRef: React.MutableRefObject<
-    Record<string, (name: string, desc: string) => void>
-  >;
-}) {
+}): React.ReactElement {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row.id,
   });
@@ -1001,51 +729,46 @@ function SortableLineItemGroup({
     transition,
   };
   return (
-    <tbody ref={setNodeRef} style={style} className={cn("group/line", isDragging && "opacity-60")}>
+    <div ref={setNodeRef} style={style} className={cn("group/line", isDragging && "opacity-60")}>
       <LineItemRow
         row={row}
         estimateId={estimateId}
+        lineOrdinal={lineOrdinal}
         isLocked={false}
         dragHandleProps={{ ...attributes, ...listeners }}
         updateLineItemAction={updateLineItemAction}
         duplicateLineItemAction={duplicateLineItemAction}
         deleteLineItemAction={deleteLineItemAction}
-        onOpenDescriptionEditor={onOpenDescriptionEditor}
         lineLiveValuesRef={lineLiveValuesRef}
-        lineDescriptionApplyRef={lineDescriptionApplyRef}
       />
-    </tbody>
+    </div>
   );
 }
 
 function LineItemRow({
   row,
   estimateId,
+  lineOrdinal,
   isLocked,
   dragHandleProps,
   updateLineItemAction,
   duplicateLineItemAction,
   deleteLineItemAction,
-  onOpenDescriptionEditor,
   lineLiveValuesRef,
-  lineDescriptionApplyRef,
 }: {
   row: EstimateItemRow;
   estimateId: string;
+  lineOrdinal: number;
   isLocked: boolean;
-  /** When set, first column is a drag handle (dnd-kit listeners + attributes on the button). */
+  /** When set, scope card shows a drag handle (dnd-kit listeners + attributes on the button). */
   dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
   updateLineItemAction: (fd: FormData) => Promise<void>;
   duplicateLineItemAction: (fd: FormData) => Promise<void>;
   deleteLineItemAction: (fd: FormData) => Promise<void>;
-  onOpenDescriptionEditor: (itemId: string, name: string, description: string) => void;
   lineLiveValuesRef: React.MutableRefObject<
     Record<string, () => { qty: number; unit: string; unitCost: number; markupPct: number }>
   >;
-  lineDescriptionApplyRef: React.MutableRefObject<
-    Record<string, (name: string, desc: string) => void>
-  >;
-}) {
+}): React.ReactElement {
   const [title, setTitle] = React.useState(() => {
     const i = row.desc.indexOf("\n");
     return i < 0 ? row.desc : row.desc.slice(0, i);
@@ -1074,18 +797,6 @@ function LineItemRow({
     };
   }, [isLocked, row.id, row.markupPct, qty, unit, unitCost, lineLiveValuesRef]);
 
-  React.useLayoutEffect(() => {
-    if (isLocked) return;
-    const registry = lineDescriptionApplyRef.current;
-    registry[row.id] = (name: string, body: string) => {
-      setTitle(name);
-      setDesc(body);
-    };
-    return () => {
-      delete registry[row.id];
-    };
-  }, [isLocked, row.id, lineDescriptionApplyRef]);
-
   React.useEffect(() => {
     const i = row.desc.indexOf("\n");
     setTitle(i < 0 ? row.desc : row.desc.slice(0, i));
@@ -1100,197 +811,156 @@ function LineItemRow({
     return estimateLineTotal({ ...row, qty, unit, unitCost });
   }, [isLocked, row, qty, unit, unitCost]);
 
-  const colSpan = isLocked ? 4 : dragHandleProps ? 6 : 5;
-  const showUnitInline = Boolean(unit.trim()) && unit.trim() !== "EA";
+  const submitForm = (): void => {
+    if (isLocked) return;
+    (document.getElementById(formId) as HTMLFormElement | null)?.requestSubmit();
+  };
+
+  const inlinePricing = (
+    <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
+      <span className="hidden pb-1.5 text-[10px] tabular-nums text-zinc-600 sm:inline">
+        #{lineOrdinal}
+      </span>
+      <div className="flex flex-col gap-0.5">
+        <span className={EB.readLabel}>Qty</span>
+        {isLocked ? (
+          <span className="pb-0.5 text-xs tabular-nums text-zinc-400">{row.qty}</span>
+        ) : (
+          <Input
+            form={formId}
+            type="number"
+            name="qty"
+            step="1"
+            value={qty}
+            onChange={(e) => setQty(Number(e.target.value) || 0)}
+            onBlur={submitForm}
+            className={ebInput(
+              `h-7 min-h-7 w-[3.25rem] px-1.5 text-xs ${EB.inputNumeric} ${EB.inputMuted}`
+            )}
+            aria-label="Line item quantity"
+          />
+        )}
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className={EB.readLabel}>Unit price</span>
+        {isLocked ? (
+          <span className="pb-0.5 text-xs tabular-nums text-zinc-400">
+            {formatEstimateCurrency(row.unitCost)}
+          </span>
+        ) : (
+          <Input
+            form={formId}
+            type="number"
+            name="unitCost"
+            step="0.01"
+            value={unitCost}
+            onChange={(e) => setUnitCost(Number(e.target.value) || 0)}
+            onBlur={submitForm}
+            className={ebInput(
+              `h-7 min-h-7 w-[4.5rem] px-1.5 text-xs ${EB.inputNumeric} ${EB.inputMuted}`
+            )}
+            aria-label="Line item unit price"
+          />
+        )}
+      </div>
+      <div className="flex flex-col gap-0.5">
+        <span className={EB.readLabel}>UoM</span>
+        {isLocked ? (
+          <span className="pb-0.5 text-xs text-zinc-500">{row.unit || "—"}</span>
+        ) : (
+          <Input
+            form={formId}
+            name="unit"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            onBlur={submitForm}
+            className={ebInput("h-7 min-h-7 w-[2.75rem] px-1.5 text-xs")}
+            placeholder="EA"
+            aria-label="Line item unit"
+          />
+        )}
+      </div>
+      <div className="flex flex-col items-end gap-0.5">
+        <span className={EB.readLabel}>Total</span>
+        <span className={cn("pb-0.5 text-xs font-medium tabular-nums", EB.lineTotal)}>
+          {formatEstimateCurrency(lineTotalDisplay)}
+        </span>
+      </div>
+    </div>
+  );
 
   return (
-    <>
-      <tr className={cn("hidden md:table-row group/line", EB.lineTableRow)}>
-        {dragHandleProps ? (
-          <td className="py-2 px-1 align-top w-9">
+    <div className="px-1 py-1">
+      {!isLocked ? (
+        <form id={formId} action={updateLineItemAction} className="hidden" aria-hidden>
+          <input type="hidden" name="estimateId" value={estimateId} />
+          <input type="hidden" name="itemId" value={row.id} />
+          <input type="hidden" name="desc" value={combinedDesc} />
+          <input type="hidden" name="qty" value={qty} />
+          <input type="hidden" name="unit" value={unit} />
+          <input type="hidden" name="unitCost" value={unitCost} />
+          <input type="hidden" name="markupPct" value={String(row.markupPct * 100)} />
+        </form>
+      ) : null}
+      <ProposalScopeWorkCard
+        readOnly={isLocked}
+        title={title}
+        description={desc}
+        onTitleChange={isLocked ? undefined : (v) => setTitle(v)}
+        onDescriptionChange={isLocked ? undefined : (v) => setDesc(v)}
+        onTitleBlur={isLocked ? undefined : submitForm}
+        onDescriptionBlur={isLocked ? undefined : submitForm}
+        titleInputAriaLabel={isLocked ? undefined : "Line item title"}
+        descriptionEditorAriaLabel={isLocked ? undefined : "Line item description"}
+        inlinePricing={inlinePricing}
+        dragSlot={
+          !isLocked && dragHandleProps ? (
             <button
               type="button"
               {...dragHandleProps}
-              className="flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-sm text-muted-foreground hover:bg-muted/50 active:cursor-grabbing"
+              className="flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-sm text-zinc-500 hover:bg-white/[0.08] active:cursor-grabbing"
               aria-label="Drag to reorder line item"
             >
-              <span className="select-none text-sm leading-none tabular-nums" aria-hidden>
-                ≡
-              </span>
+              <GripVertical className="h-4 w-4" strokeWidth={1.5} aria-hidden />
             </button>
-          </td>
-        ) : null}
-        <td className="py-2 px-4 align-top">
-          {isLocked ? (
-            <span className="font-medium">{title || row.desc}</span>
-          ) : (
-            <>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-                className={ebInput("font-medium")}
-                placeholder="Description"
-                aria-label="Line item description"
-              />
-            </>
-          )}
-        </td>
-        <td className="hidden py-2 px-4 text-right align-top md:table-cell">
-          {isLocked ? (
-            row.qty
-          ) : (
-            <Input
-              form={formId}
-              type="number"
-              name="qty"
-              step="1"
-              value={qty}
-              onChange={(e) => setQty(Number(e.target.value) || 0)}
-              onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-              className={ebInput(`w-20 ${EB.inputNumeric} ${EB.inputMuted}`)}
-              aria-label="Line item quantity"
-            />
-          )}
-        </td>
-        <td className="hidden py-2 px-4 text-right align-top md:table-cell">
-          {isLocked ? (
-            formatEstimateCurrency(row.unitCost)
-          ) : (
-            <Input
-              form={formId}
-              type="number"
-              name="unitCost"
-              step="0.01"
-              value={unitCost}
-              onChange={(e) => setUnitCost(Number(e.target.value) || 0)}
-              onBlur={() => (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()}
-              className={ebInput(`w-28 ${EB.inputNumeric} ${EB.inputMuted}`)}
-              aria-label="Line item unit price"
-            />
-          )}
-        </td>
-        <td className={cn("py-3 px-4 align-top text-right", EB.lineTotal)}>
-          {formatEstimateCurrency(lineTotalDisplay)}
-        </td>
-        {!isLocked && (
-          <td className={cn("py-2 px-2 align-top", EB.lineRowActions)}>
-            <div className="flex items-center justify-end gap-0.5">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 border-0 bg-transparent text-muted-foreground/50 shadow-none hover:bg-muted/40 hover:text-foreground"
-                    aria-label="Line item options"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-36 p-2">
-                  <Label
-                    htmlFor={`${formId}-unit-menu`}
-                    className="text-[10px] text-muted-foreground/60"
-                  >
-                    Unit
-                  </Label>
-                  <Input
-                    id={`${formId}-unit-menu`}
-                    form={formId}
-                    name="unit"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    onBlur={() =>
-                      (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()
-                    }
-                    className={ebInput("mt-1 h-7 w-full text-xs")}
-                    placeholder="EA"
-                    aria-label="Line item unit"
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <form action={duplicateLineItemAction} className="inline">
-                <input type="hidden" name="estimateId" value={estimateId} />
-                <input type="hidden" name="itemId" value={row.id} />
-                <Button
-                  type="submit"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 border-0 bg-transparent text-muted-foreground/60 shadow-none hover:bg-muted/40 hover:text-foreground"
-                  aria-label="Duplicate line item"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </form>
-              <form action={deleteLineItemAction} className="inline">
-                <input type="hidden" name="estimateId" value={estimateId} />
-                <input type="hidden" name="itemId" value={row.id} />
-                <Button
-                  type="submit"
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 border-0 bg-transparent text-muted-foreground/50 shadow-none hover:bg-destructive/10 hover:text-destructive"
-                  aria-label="Remove line item"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </form>
-            </div>
-          </td>
-        )}
-      </tr>
-      <tr className="hidden border-b border-border/[0.07] md:table-row">
-        <td colSpan={colSpan} className="py-1.5 px-4 align-top">
-          {!isLocked ? (
-            <form id={formId} action={updateLineItemAction} className="hidden" aria-hidden>
+          ) : undefined
+        }
+        duplicateNode={
+          !isLocked ? (
+            <form action={duplicateLineItemAction} className="inline">
               <input type="hidden" name="estimateId" value={estimateId} />
               <input type="hidden" name="itemId" value={row.id} />
-              <input type="hidden" name="desc" value={combinedDesc} />
-              <input type="hidden" name="qty" value={qty} />
-              <input type="hidden" name="unit" value={unit} />
-              <input type="hidden" name="unitCost" value={unitCost} />
-              <input type="hidden" name="markupPct" value={String(row.markupPct * 100)} />
-            </form>
-          ) : null}
-          {isLocked ? (
-            desc.trim() ? (
-              <LineItemDescriptionBodyPreview
-                body={desc}
-                className="text-sm text-muted-foreground line-clamp-2 overflow-hidden"
-              />
-            ) : null
-          ) : (
-            <div className="flex min-h-[1.25rem] flex-wrap items-center gap-x-3 gap-y-0.5">
-              <button
-                type="button"
-                onClick={() => onOpenDescriptionEditor(row.id, title, desc)}
-                className={EB.lineDetailsLink}
+              <Button
+                type="submit"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
+                aria-label="Duplicate scope card"
               >
-                {desc.trim() ? "Edit details" : "Add details"}
-              </button>
-              {showUnitInline ? (
-                <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/45">
-                  <span className="sr-only">Unit</span>
-                  <Input
-                    form={formId}
-                    name="unit"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}
-                    onBlur={() =>
-                      (document.getElementById(formId) as HTMLFormElement)?.requestSubmit()
-                    }
-                    className={ebInput("h-6 w-12 px-1 text-[11px]")}
-                    placeholder="Unit"
-                    aria-label="Line item unit"
-                  />
-                </span>
-              ) : null}
-            </div>
-          )}
-        </td>
-      </tr>
-    </>
+                <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </Button>
+            </form>
+          ) : undefined
+        }
+        deleteNode={
+          !isLocked ? (
+            <form action={deleteLineItemAction} className="inline">
+              <input type="hidden" name="estimateId" value={estimateId} />
+              <input type="hidden" name="itemId" value={row.id} />
+              <Button
+                type="submit"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-red-400"
+                aria-label="Remove line item"
+              >
+                <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </Button>
+            </form>
+          ) : undefined
+        }
+      />
+    </div>
   );
 }
 

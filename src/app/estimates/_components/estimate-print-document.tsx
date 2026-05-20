@@ -8,7 +8,10 @@ import {
 } from "@/lib/data";
 import type { EstimateMetaRecord } from "@/lib/data";
 import { splitLineItemDesc } from "@/lib/sanitize-line-item-html";
-import { LineItemDescriptionBodyPreview } from "@/app/estimates/_components/line-item-description-body-preview";
+import {
+  LineItemOrScopeBodyPreview,
+  ProposalScopePreview,
+} from "@/app/estimates/_components/proposal-scope-preview";
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 
@@ -127,7 +130,7 @@ export function EstimatePrintDocument({
                             <p className="font-medium text-zinc-900">{itemTitle || row.desc}</p>
                             {body.trim() ? (
                               <div className="mt-1 text-xs text-zinc-600">
-                                <LineItemDescriptionBodyPreview body={body} />
+                                <LineItemOrScopeBodyPreview body={body} variant="print" />
                               </div>
                             ) : null}
                           </td>
@@ -173,7 +176,13 @@ export function EstimatePrintDocument({
                     </p>
                   </div>
                   {item.description ? (
-                    <p className="mt-1 text-zinc-700 whitespace-pre-wrap">{item.description}</p>
+                    <div className="mt-1">
+                      <ProposalScopePreview
+                        text={item.description}
+                        variant="print"
+                        maxBullets={4}
+                      />
+                    </div>
                   ) : null}
                   {item.dueDate ? (
                     <p className="mt-1 text-xs tabular-nums text-zinc-500">
@@ -210,18 +219,6 @@ export function EstimatePrintDocument({
               <span>Total</span>
               <span className="tabular-nums">${fmt(summary.grandTotal)}</span>
             </div>
-          </div>
-        </section>
-      )}
-
-      {/* Notes */}
-      {meta?.notes && meta.notes.trim() !== "" && (
-        <section className="mb-8 print:break-inside-avoid">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">
-            Notes
-          </h2>
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-4 text-sm text-zinc-700 whitespace-pre-wrap">
-            {meta.notes}
           </div>
         </section>
       )}

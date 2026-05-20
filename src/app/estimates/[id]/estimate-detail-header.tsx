@@ -4,7 +4,6 @@ import * as React from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { EstimateStatusBadge } from "../_components/estimate-status-badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,31 +75,41 @@ export function EstimateDetailHeader({
           ? [{ label: "Mark as Draft", action: onMarkDraft, destructive: false }]
           : [];
 
-  const subtitle = [clientName, projectName].filter(Boolean).join(" · ");
-
   return (
     <header className={EB.glassHeader}>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 space-y-2">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+        <div className="min-w-0 flex-1 space-y-2.5">
           <Link href="/estimates" className={EB.backLink}>
             <ArrowLeft className="h-4 w-4" />
             Estimates
           </Link>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className={cn(EB.pageTitle, "tabular-nums")}>{estimateNumber}</h1>
-            <EstimateStatusBadge
-              status={status === "Converted" ? "Converted" : status}
-              className="shrink-0 text-xs"
-            />
+          <div className="min-w-0 space-y-1">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <h1 className="truncate text-xl font-semibold tracking-tight text-zinc-50 sm:text-2xl">
+                {estimateNumber}
+              </h1>
+              <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[11px] font-medium text-amber-100">
+                {status}
+              </span>
+            </div>
+            <p className="truncate text-sm text-zinc-400">
+              {[clientName, projectName, siteAddress].filter(Boolean).join(" · ") || "Estimate"}
+            </p>
           </div>
-          {subtitle ? <p className="text-sm text-zinc-400 truncate">{subtitle}</p> : null}
-          {siteAddress?.trim() ? (
-            <p className="text-xs text-zinc-500 truncate">{siteAddress}</p>
-          ) : null}
           {editing ? <EstimateBuilderSaveStatus status={saveStatus} className="pt-0.5" /> : null}
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 max-md:w-full">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 lg:flex-col lg:items-end lg:gap-2 max-md:w-full">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn("min-h-11 px-4 max-md:flex-1 md:min-h-8", EB.btnGhost)}
+            disabled={pending}
+            asChild
+          >
+            <Link href={`/estimates/${estimateId}/preview`}>Preview</Link>
+          </Button>
           {!editing ? (
             <>
               {!isLocked ? (
@@ -108,7 +117,7 @@ export function EstimateDetailHeader({
                   type="button"
                   variant="default"
                   size="sm"
-                  className={cn("min-h-11 px-4 max-md:flex-1", EB.btnPrimary)}
+                  className={cn("min-h-11 px-4 max-md:flex-1 md:min-h-8", EB.btnPrimary)}
                   disabled={pending}
                   onClick={onEdit}
                 >
@@ -119,29 +128,20 @@ export function EstimateDetailHeader({
                 <Button
                   type="button"
                   size="sm"
-                  className={cn("min-h-11 px-4 max-md:flex-1", EB.btnPrimary)}
+                  className={cn("min-h-11 px-4 max-md:flex-1 md:min-h-8", EB.btnPrimary)}
                   disabled={pending}
                   onClick={onSend}
                 >
                   Send
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn("min-h-11 px-4 max-md:flex-1", EB.btnGhost)}
-                asChild
-              >
-                <Link href={`/estimates/${estimateId}/preview`}>Preview</Link>
-              </Button>
             </>
           ) : (
             <>
               <Button
                 type="button"
                 size="sm"
-                className={cn("min-h-11 px-5 font-medium max-md:flex-1", EB.btnPrimary)}
+                className={cn("min-h-11 px-5 font-medium max-md:flex-1 md:min-h-8", EB.btnPrimary)}
                 disabled={pending}
                 onClick={onSave}
               >
@@ -152,7 +152,7 @@ export function EstimateDetailHeader({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className={cn("min-h-11 px-4 max-md:flex-1", EB.btnGhost)}
+                className={cn("min-h-11 px-4 max-md:flex-1 md:min-h-8", EB.btnGhost)}
                 disabled={pending}
                 onClick={onCancel}
               >
@@ -168,7 +168,7 @@ export function EstimateDetailHeader({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className={cn("min-h-11 px-3", EB.btnGhost)}
+                  className={cn("min-h-11 px-3 md:min-h-8", EB.btnGhost)}
                   disabled={pending}
                 >
                   Status <ChevronDown className="ml-2 h-4 w-4" />
@@ -193,7 +193,7 @@ export function EstimateDetailHeader({
               type="button"
               variant="outline"
               size="sm"
-              className={cn("min-h-11 px-4", EB.btnGhost)}
+              className={cn("min-h-11 px-4 md:min-h-8", EB.btnGhost)}
               disabled={pending}
               onClick={onConvertClick}
             >
@@ -206,7 +206,7 @@ export function EstimateDetailHeader({
               type="button"
               variant="ghost"
               size="sm"
-              className={cn("min-h-11", EB.btnGhost, "hover:text-red-400")}
+              className={cn("min-h-11 md:min-h-8", EB.btnGhost, "hover:text-red-400")}
               disabled={pending}
               onClick={onDeleteClick}
               aria-label="Delete estimate"

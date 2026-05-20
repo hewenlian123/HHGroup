@@ -67,8 +67,6 @@ export function EstimateDetailClient({
   const [convertDrawerOpen, setConvertDrawerOpen] = React.useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
-  const [infoCollapseNonce, setInfoCollapseNonce] = React.useState(0);
-  const [costBreakdownCollapseNonce, setCostBreakdownCollapseNonce] = React.useState(0);
   const [pending, startTransition] = React.useTransition();
   const [dirty, setDirty] = React.useState(false);
   const [saveStatus, setSaveStatus] = React.useState<EstimateSaveStatus>("idle");
@@ -118,8 +116,6 @@ export function EstimateDetailClient({
         const res = await saveEstimateMetaInlineAction(fd);
         if (res.ok) {
           toast({ title: "Saved", description: "Estimate updated.", variant: "success" });
-          setInfoCollapseNonce((n) => n + 1);
-          setCostBreakdownCollapseNonce((n) => n + 1);
           setEditing(false);
           syncRouterNonBlocking(router);
           setDirty(false);
@@ -262,8 +258,7 @@ export function EstimateDetailClient({
         paymentSchedule={paymentSchedule}
         paymentTemplates={paymentTemplates}
         editing={editing && !isLocked}
-        infoCollapseNonce={infoCollapseNonce}
-        costBreakdownCollapseNonce={costBreakdownCollapseNonce}
+        onSaveDetails={onSave}
       />
 
       <ConfirmDialog

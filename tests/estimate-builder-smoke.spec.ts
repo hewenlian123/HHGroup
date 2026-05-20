@@ -41,7 +41,6 @@ async function cleanupEstimateTestData(
   if (ids.length === 0) return;
 
   await supabase.from("estimate_payment_schedule_items").delete().in("estimate_id", ids);
-  await supabase.from("estimate_payment_schedule").delete().in("estimate_id", ids);
   await supabase.from("estimate_snapshots").delete().in("estimate_id", ids);
   await supabase.from("estimate_items").delete().in("estimate_id", ids);
   await supabase.from("estimate_categories").delete().in("estimate_id", ids);
@@ -73,8 +72,10 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
     timeout: 30_000,
   });
 
+  await page.getByRole("button", { name: /Edit details/i }).click();
   await page.getByPlaceholder("Client or company name").fill(clientName);
   await page.getByPlaceholder("Project name").fill(projectName);
+  await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
 
   const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
   await expect(addSection).toBeVisible({ timeout: 30_000 });
@@ -105,6 +106,8 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   await page.getByRole("link", { name: "Preview" }).click();
   await expect(page).toHaveURL(/\/preview/, { timeout: 30_000 });
   await expect(page.locator("body")).not.toContainText("Something went wrong");
+  const previewMainText = await page.locator("main").evaluate((el) => el.textContent ?? "");
+  expect(previewMainText).not.toContain("\u2028");
 
   await page.goto(detailUrl);
   await page.waitForLoadState("domcontentloaded");

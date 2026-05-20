@@ -908,7 +908,8 @@ export async function createNewVersionFromSnapshot(estimateId: string): Promise<
 
 // —— Update ——
 
-export async function updateEstimateMeta(
+export async function updateEstimateMetaWithClient(
+  c: SupabaseClient,
   estimateId: string,
   payload: {
     client?: { name?: string; address?: string };
@@ -924,7 +925,6 @@ export async function updateEstimateMeta(
     categoryNames?: Record<string, string>;
   }
 ): Promise<boolean> {
-  const c = client();
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
 
@@ -986,13 +986,32 @@ export async function updateEstimateMeta(
   return true;
 }
 
+export async function updateEstimateMeta(
+  estimateId: string,
+  payload: {
+    client?: { name?: string; address?: string };
+    project?: { name?: string; siteAddress?: string };
+    tax?: number;
+    discount?: number;
+    overheadPct?: number;
+    profitPct?: number;
+    estimateDate?: string;
+    validUntil?: string;
+    notes?: string;
+    salesPerson?: string;
+    categoryNames?: Record<string, string>;
+  }
+): Promise<boolean> {
+  return updateEstimateMetaWithClient(client(), estimateId, payload);
+}
+
 /** Persist category section order (Cost Breakdown). Upserts rows so orphans gain a category row. */
-export async function reorderEstimateCategories(
+export async function reorderEstimateCategoriesWithClient(
+  c: SupabaseClient,
   estimateId: string,
   orderedCostCodes: string[],
   displayNamesByCode: Record<string, string>
 ): Promise<boolean> {
-  const c = client();
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
 
@@ -1024,6 +1043,19 @@ export async function reorderEstimateCategories(
     .update({ updated_at: new Date().toISOString().slice(0, 10) })
     .eq("id", estimateId);
   return true;
+}
+
+export async function reorderEstimateCategories(
+  estimateId: string,
+  orderedCostCodes: string[],
+  displayNamesByCode: Record<string, string>
+): Promise<boolean> {
+  return reorderEstimateCategoriesWithClient(
+    client(),
+    estimateId,
+    orderedCostCodes,
+    displayNamesByCode
+  );
 }
 
 type LineItemInsertPayload = {
@@ -1316,7 +1348,8 @@ export async function createEstimateCategoryWithExplicitCode(
 }
 
 /** Update only one category display_name, without touching estimate meta fields. */
-export async function updateEstimateCategoryDisplayName(
+export async function updateEstimateCategoryDisplayNameWithClient(
+  c: SupabaseClient,
   estimateId: string,
   costCode: string,
   displayName: string
@@ -1326,7 +1359,6 @@ export async function updateEstimateCategoryDisplayName(
   const nameSafe = displayName.trim();
   if (!estimateIdSafe || !costCodeSafe || !nameSafe) return false;
 
-  const c = client();
   const { data: est } = await c
     .from("estimates")
     .select("status")
@@ -1357,6 +1389,14 @@ export async function updateEstimateCategoryDisplayName(
     .update({ updated_at: new Date().toISOString().slice(0, 10) })
     .eq("id", estimateIdSafe);
   return true;
+}
+
+export async function updateEstimateCategoryDisplayName(
+  estimateId: string,
+  costCode: string,
+  displayName: string
+): Promise<boolean> {
+  return updateEstimateCategoryDisplayNameWithClient(client(), estimateId, costCode, displayName);
 }
 
 export async function updateLineItemWithClient(
@@ -1396,13 +1436,13 @@ export async function updateLineItem(
 }
 
 /** Move line items to another cost code (category). Creates `estimate_categories` row if missing. */
-export async function moveEstimateItemsToCostCode(
+export async function moveEstimateItemsToCostCodeWithClient(
+  c: SupabaseClient,
   estimateId: string,
   itemIds: string[],
   newCostCode: string,
   displayNameHint?: string
 ): Promise<boolean> {
-  const c = client();
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
   if (itemIds.length === 0) return true;
@@ -1436,6 +1476,21 @@ export async function moveEstimateItemsToCostCode(
     .update({ updated_at: new Date().toISOString().slice(0, 10) })
     .eq("id", estimateId);
   return true;
+}
+
+export async function moveEstimateItemsToCostCode(
+  estimateId: string,
+  itemIds: string[],
+  newCostCode: string,
+  displayNameHint?: string
+): Promise<boolean> {
+  return moveEstimateItemsToCostCodeWithClient(
+    client(),
+    estimateId,
+    itemIds,
+    newCostCode,
+    displayNameHint
+  );
 }
 
 export async function deleteLineItemWithClient(
@@ -1872,7 +1927,14 @@ export async function updateEstimateStatus(
   estimateId: string,
   newStatus: EstimateStatus
 ): Promise<boolean> {
-  const c = client();
+  return updateEstimateStatusWithClient(client(), estimateId, newStatus);
+}
+
+export async function updateEstimateStatusWithClient(
+  c: SupabaseClient,
+  estimateId: string,
+  newStatus: EstimateStatus
+): Promise<boolean> {
   const { data: est, error: fetchErr } = await c
     .from("estimates")
     .select("status")

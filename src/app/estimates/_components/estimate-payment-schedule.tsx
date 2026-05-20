@@ -17,6 +17,11 @@ import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
 import { EB, ebInput } from "./estimate-builder-ui";
+import { ProposalScopeEditor } from "./proposal-scope-editor";
+import {
+  ProposalPaymentMilestoneList,
+  type ProposalPaymentMilestoneRow,
+} from "./proposal-payment-milestone-list";
 
 type AddAction = (formData: FormData) => Promise<void>;
 type UpdateAction = (formData: FormData) => Promise<void>;
@@ -28,7 +33,7 @@ type CreateTemplateAction = (formData: FormData) => Promise<void>;
 
 const fmt = formatEstimateCurrency;
 const scheduleDrawerClass = cn(
-  "w-[420px] border-white/10 bg-[rgba(14,18,28,0.96)] p-5 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-24px_0_64px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:w-[480px]",
+  "estimate-builder w-[420px] border-white/10 bg-[rgba(14,18,28,0.96)] p-5 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-24px_0_64px_rgba(0,0,0,0.42)] backdrop-blur-xl sm:w-[480px]",
   "[&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.08] [&>button]:hover:text-zinc-100"
 );
 const scheduleLabelClass = "text-[11px] font-medium text-zinc-500";
@@ -58,6 +63,12 @@ export function EstimatePaymentSchedule(props: {
   } = props;
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<PaymentScheduleItem | null>(null);
+  const [paymentDescriptionDraft, setPaymentDescriptionDraft] = React.useState("");
+
+  React.useEffect(() => {
+    if (!scheduleOpen) return;
+    setPaymentDescriptionDraft(editingItem?.description ?? "");
+  }, [scheduleOpen, editingItem?.id, editingItem?.description]);
 
   const openScheduleDrawer = (item?: PaymentScheduleItem) => {
     setEditingItem(item ?? null);
@@ -71,12 +82,20 @@ export function EstimatePaymentSchedule(props: {
   const totalsMatch = Math.abs(totalScheduled - estimateTotal) < 0.01;
   const remaining = Math.max(0, estimateTotal - totalScheduled);
 
+  const milestoneRows: ProposalPaymentMilestoneRow[] = paymentSchedule.map((item) => ({
+    id: item.id,
+    title: item.title || "—",
+    amount: paymentMilestoneAmount(item, estimateTotal),
+    description: item.description,
+    dueDate: item.dueDate,
+  }));
+
   return (
-    <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.025] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-      <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] bg-white/[0.03] px-4 py-3">
+    <section>
+      <div className="flex items-center justify-between gap-3 py-2">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-zinc-100">Payment Schedule</h2>
-          <p className="mt-0.5 text-xs text-zinc-400">Milestone billing plan.</p>
+          <h3 className="text-sm font-medium text-zinc-100">Payment schedule</h3>
+          <p className="mt-0.5 text-[11px] text-zinc-500">Contractor milestones</p>
         </div>
         {!isLocked && (
           <Button
@@ -91,9 +110,8 @@ export function EstimatePaymentSchedule(props: {
           </Button>
         )}
       </div>
-      <div className="p-0">
-        {/* Summary row */}
-        <div className="flex flex-wrap items-center gap-6 border-b border-white/[0.06] px-4 py-3 text-sm">
+      <div>
+        <div className="flex flex-wrap items-center gap-6 py-2 text-sm">
           <span className="text-zinc-400">
             Estimate total{" "}
             <span className="font-semibold text-zinc-100 tabular-nums">{fmt(estimateTotal)}</span>
@@ -126,106 +144,65 @@ export function EstimatePaymentSchedule(props: {
           </span>
         </div>
 
-        {/* Schedule table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/[0.06] bg-white/[0.025]">
-                <th className="text-left py-2.5 px-4 font-medium text-zinc-400">Payment Name</th>
-                <th className="text-right py-2.5 px-4 font-medium text-zinc-400 tabular-nums">
-                  Amount
-                </th>
-                <th className="text-left py-2.5 px-4 font-medium text-zinc-400">Description</th>
-                <th className="text-left py-2.5 px-4 font-medium text-zinc-400">Due Date</th>
-                <th className="w-36 py-2.5 px-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {paymentSchedule.length === 0 ? (
-                <tr className="border-b border-white/[0.04]">
-                  <td colSpan={5} className="py-8 px-4 text-center text-sm text-zinc-500">
-                    No payment milestones yet.
-                  </td>
-                </tr>
-              ) : (
-                paymentSchedule.map((item) => {
-                  const amount = paymentMilestoneAmount(item, estimateTotal);
-                  const dueDateDisplay = item.dueDate
-                    ? new Date(item.dueDate).toLocaleDateString(undefined, { dateStyle: "short" })
-                    : "—";
-                  return (
-                    <tr
-                      key={item.id}
-                      className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.035]"
+        <ProposalPaymentMilestoneList
+          milestones={milestoneRows}
+          actions={(m) => {
+            const item = paymentSchedule.find((x) => x.id === m.id);
+            if (!item) return null;
+            return (
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  asChild
+                  className={cn(
+                    "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                    EB.btnGhost
+                  )}
+                  aria-label={`Preview ${item.title}`}
+                >
+                  <Link href={`/estimates/${estimateId}/payments/${item.id}/preview`}>
+                    <FileText className="h-4 w-4" />
+                  </Link>
+                </Button>
+                {!isLocked ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className={cn(
+                      "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                      EB.btnGhost
+                    )}
+                    aria-label={`Edit ${item.title}`}
+                    onClick={() => openScheduleDrawer(item)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                ) : null}
+                {!isLocked ? (
+                  <form action={deletePaymentMilestoneAction} className="inline">
+                    <input type="hidden" name="estimateId" value={estimateId} />
+                    <input type="hidden" name="itemId" value={item.id} />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      size="icon"
+                      className={cn(
+                        "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                        EB.btnGhost
+                      )}
+                      aria-label={`Delete ${item.title}`}
                     >
-                      <td className="py-2.5 px-4 font-medium text-zinc-100">{item.title || "—"}</td>
-                      <td className="py-2.5 px-4 text-right tabular-nums font-medium text-zinc-100">
-                        {fmt(amount)}
-                      </td>
-                      <td className="py-2.5 px-4 text-zinc-400">{item.description || "—"}</td>
-                      <td className="py-2.5 px-4 text-zinc-400 tabular-nums">{dueDateDisplay}</td>
-                      <td className="py-2 px-2 align-middle">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            asChild
-                            className={cn(
-                              "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                              EB.btnGhost
-                            )}
-                            aria-label={`Preview ${item.title}`}
-                          >
-                            <Link href={`/estimates/${estimateId}/payments/${item.id}/preview`}>
-                              <FileText className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          {!isLocked ? (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="icon"
-                              className={cn(
-                                "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                                EB.btnGhost
-                              )}
-                              aria-label={`Edit ${item.title}`}
-                              onClick={() => openScheduleDrawer(item)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                          ) : null}
-                          {!isLocked ? (
-                            <form
-                              action={deletePaymentMilestoneAction}
-                              className="flex justify-end"
-                            >
-                              <input type="hidden" name="estimateId" value={estimateId} />
-                              <input type="hidden" name="itemId" value={item.id} />
-                              <Button
-                                type="submit"
-                                variant="outline"
-                                size="icon"
-                                className={cn(
-                                  "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                                  EB.btnGhost
-                                )}
-                                aria-label={`Delete ${item.title}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </form>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </form>
+                ) : null}
+              </div>
+            );
+          }}
+        />
 
         {/* Drawer: Schedule Payment */}
         <Sheet
@@ -277,13 +254,19 @@ export function EstimatePaymentSchedule(props: {
                     required
                   />
                 </div>
+                <input type="hidden" name="description" value={paymentDescriptionDraft} />
                 <div className="space-y-1">
-                  <label className={scheduleLabelClass}>Description</label>
-                  <textarea
-                    name="description"
-                    placeholder="Deposit before work starts"
-                    defaultValue={editingItem?.description ?? ""}
-                    className={ebInput("min-h-[96px] resize-none py-2 leading-relaxed")}
+                  <label htmlFor="payment-milestone-description" className={scheduleLabelClass}>
+                    Description
+                  </label>
+                  <ProposalScopeEditor
+                    id="payment-milestone-description"
+                    value={paymentDescriptionDraft}
+                    onChange={setPaymentDescriptionDraft}
+                    density="comfortable"
+                    showHandle
+                    placeholder="What this payment covers…"
+                    ariaLabel="Payment milestone description"
                   />
                 </div>
                 <div className="space-y-1">

@@ -15,6 +15,7 @@ import { EB, ebInput } from "./estimate-builder-ui";
 import { formatEstimateCurrency } from "./estimate-currency";
 import type { EditorLineItem } from "./estimate-line-item-model";
 import { editorLineTotal } from "./estimate-line-item-model";
+import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
 
 export type EstimateLineItemMobileCardProps = {
   item: EditorLineItem;
@@ -28,7 +29,6 @@ export type EstimateLineItemMobileCardProps = {
   onDuplicate?: () => void;
   onDelete?: () => void;
   onEnterAddNext?: () => void;
-  onOpenDetails?: () => void;
   onBlurField?: () => void;
 };
 
@@ -43,19 +43,12 @@ export function EstimateLineItemMobileCard({
   onDuplicate,
   onDelete,
   onEnterAddNext,
-  onOpenDetails,
   onBlurField,
 }: EstimateLineItemMobileCardProps): React.ReactElement {
-  const [expanded, setExpanded] = React.useState(false);
-  const [detailsOpen, setDetailsOpen] = React.useState(() => Boolean(item.description.trim()));
+  const [open, setOpen] = React.useState(false);
   const total = editorLineTotal(item);
   const showUnitInline = Boolean(item.unit.trim()) && item.unit.trim() !== "EA";
-
-  React.useEffect(() => {
-    if (item.description.trim()) setDetailsOpen(true);
-  }, [item.id, item.description]);
-
-  const titleInvalid = submitAttempted && !item.title.trim() && !item.description.trim();
+  const titleInvalid = submitAttempted && !item.title.trim();
 
   const handleEnter = (e: React.KeyboardEvent<HTMLInputElement>): void => {
     if (e.key !== "Enter" || e.shiftKey) return;
@@ -65,207 +58,172 @@ export function EstimateLineItemMobileCard({
     }
   };
 
+  if (readOnly) {
+    return (
+      <article className="mb-3">
+        <ProposalScopeWorkCard
+          readOnly
+          title={item.title}
+          description={item.description}
+          className="border border-white/[0.08]"
+        />
+      </article>
+    );
+  }
+
   return (
-    <article
-      className={cn(
-        "group/line eb-glass-scope rounded-lg transition-[border-color,box-shadow] duration-200",
-        expanded && "ring-1 ring-amber-500/15"
-      )}
-    >
+    <article className="mb-3">
       <button
         type="button"
-        className="flex w-full min-h-11 items-start justify-between gap-3 p-3 text-left touch-manipulation"
-        onClick={() => setExpanded((v) => !v)}
-        aria-expanded={expanded}
+        className={cn(
+          "flex w-full min-h-11 items-start justify-between gap-3 rounded-md border border-white/[0.08] bg-white/[0.025] px-3 py-3 text-left transition-colors",
+          "hover:border-white/[0.11] hover:bg-white/[0.04] touch-manipulation"
+        )}
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={open ? "Hide details" : "Add details"}
       >
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="font-medium text-foreground line-clamp-2">
-            {item.title.trim() || "Untitled line"}
+          <p className="text-[15px] font-semibold leading-snug tracking-tight text-zinc-50 line-clamp-2">
+            {item.title.trim() || "Untitled"}
           </p>
-          <p className="text-xs text-muted-foreground tabular-nums">
+          <p className="text-[11px] text-zinc-500 tabular-nums">
             {item.qty} × {formatEstimateCurrency(item.unitPrice)}
             {showUnitInline ? ` · ${item.unit}` : null}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className="text-base font-semibold tabular-nums tracking-tight text-foreground">
-            {formatEstimateCurrency(total)}
-          </span>
+          {!open ? (
+            <span className="text-sm font-semibold tabular-nums tracking-tight text-zinc-100">
+              {formatEstimateCurrency(total)}
+            </span>
+          ) : null}
           <ChevronDown
-            className={cn(
-              "h-4 w-4 text-muted-foreground transition-transform",
-              expanded && "rotate-180"
-            )}
+            className={cn("h-4 w-4 text-zinc-500 transition-transform", open && "rotate-180")}
             aria-hidden
           />
         </div>
       </button>
 
-      {expanded ? (
-        <div className="space-y-3 border-t border-white/[0.06] px-3 pb-3 pt-2">
-          {readOnly ? (
-            <p className="text-sm font-medium text-foreground">{item.title || "—"}</p>
-          ) : (
-            <Input
-              value={item.title}
-              onChange={(e) => onChange({ title: e.target.value })}
-              onBlur={onBlurField}
-              onKeyDown={handleEnter}
-              className={ebInput("min-h-11 font-medium")}
-              placeholder="Description"
-              aria-label={`Line item ${rowIndex} title`}
-              aria-invalid={titleInvalid}
-              disabled={disabled}
-            />
-          )}
-          <div className="grid grid-cols-2 gap-2">
-            {readOnly ? (
-              <>
-                <p className="text-sm tabular-nums text-muted-foreground">{item.qty}</p>
-                <p className="text-sm tabular-nums text-right text-muted-foreground">
-                  {formatEstimateCurrency(item.unitPrice)}
-                </p>
-              </>
-            ) : (
-              <>
-                <Input
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={item.qty}
-                  onChange={(e) => onChange({ qty: Number(e.target.value) || 0 })}
-                  onBlur={onBlurField}
-                  onKeyDown={handleEnter}
-                  className={ebInput(`min-h-11 ${EB.inputMuted}`)}
-                  placeholder="Qty"
-                  aria-label={`Line item ${rowIndex} quantity`}
-                  disabled={disabled}
-                />
-                <Input
-                  type="number"
-                  min={0}
-                  step={0.01}
-                  value={item.unitPrice}
-                  onChange={(e) => onChange({ unitPrice: Number(e.target.value) || 0 })}
-                  onBlur={onBlurField}
-                  onKeyDown={handleEnter}
-                  className={ebInput(`min-h-11 ${EB.inputMuted} text-right`)}
-                  placeholder="Unit price"
-                  aria-label={`Line item ${rowIndex} unit price`}
-                  disabled={disabled}
-                />
-              </>
-            )}
-          </div>
-          {!readOnly ? (
-            <div className="space-y-2">
-              <div className="flex min-h-[1.25rem] flex-wrap items-center gap-x-3">
-                <button
-                  type="button"
-                  className={cn(
-                    EB.lineDetailsLink,
-                    "opacity-100 md:opacity-0 md:group-hover/line:opacity-100"
-                  )}
-                  onClick={() => {
-                    if (onOpenDetails) onOpenDetails();
-                    else setDetailsOpen(true);
-                  }}
-                >
-                  {item.description.trim() ? "Edit details" : "Add details"}
-                </button>
-                {showUnitInline ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground/45">
-                    <span className="sr-only">Unit</span>
-                    <Input
-                      value={item.unit}
-                      onChange={(e) => onChange({ unit: e.target.value })}
-                      onBlur={onBlurField}
-                      className={ebInput("h-8 w-14 px-1.5 text-xs")}
-                      placeholder="Unit"
-                      disabled={disabled}
-                      aria-label={`Line item ${rowIndex} unit`}
-                    />
-                  </span>
-                ) : null}
-              </div>
-              {!onOpenDetails && detailsOpen ? (
-                <textarea
-                  value={item.description}
-                  onChange={(e) => onChange({ description: e.target.value })}
-                  onBlur={onBlurField}
-                  placeholder="Notes (optional)"
-                  rows={2}
-                  disabled={disabled}
-                  className="min-h-[52px] w-full resize-none bg-transparent text-sm text-muted-foreground/80 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/30"
-                  aria-label={`Line item ${rowIndex} notes`}
-                />
-              ) : null}
-            </div>
-          ) : null}
-          {!readOnly && (onDuplicate || onDelete) ? (
-            <div className="flex items-center gap-1 pt-1">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-11 w-11 shrink-0 rounded-sm text-muted-foreground/50"
-                    aria-label="Line item options"
-                    disabled={disabled}
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-36 p-2">
-                  <Label
-                    htmlFor={`line-${item.id}-unit`}
-                    className="text-[10px] text-muted-foreground/60"
-                  >
-                    Unit
-                  </Label>
-                  <Input
-                    id={`line-${item.id}-unit`}
-                    value={item.unit}
-                    onChange={(e) => onChange({ unit: e.target.value })}
-                    onBlur={onBlurField}
-                    className={ebInput("mt-1 h-8 w-full text-xs")}
-                    placeholder="EA"
-                    disabled={disabled}
-                    aria-label={`Line item ${rowIndex} unit`}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {onDuplicate ? (
+      {open ? (
+        <div className="-mt-px overflow-hidden rounded-b-md border border-t-0 border-white/[0.08] bg-white/[0.02]">
+          <ProposalScopeWorkCard
+            className="rounded-none border-0 bg-transparent shadow-none hover:bg-transparent"
+            title={item.title}
+            description={item.description}
+            disabled={disabled}
+            onTitleChange={(v) => onChange({ title: v })}
+            onDescriptionChange={(v) => onChange({ description: v })}
+            onTitleBlur={onBlurField}
+            onDescriptionBlur={onBlurField}
+            titleInvalid={titleInvalid}
+            titleInputAriaLabel={`Line item ${rowIndex} title`}
+            descriptionEditorAriaLabel={`Line item ${rowIndex} description`}
+            duplicateNode={
+              onDuplicate ? (
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
-                  className="min-h-11 flex-1 rounded-sm text-muted-foreground"
+                  size="icon"
+                  className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
                   onClick={onDuplicate}
+                  aria-label="Duplicate scope card"
                   disabled={disabled}
-                  aria-label="Duplicate line item"
                 >
-                  <Copy className="h-3.5 w-3.5 mr-1" />
-                  Duplicate
+                  <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
                 </Button>
-              ) : null}
-              {onDelete ? (
+              ) : undefined
+            }
+            deleteNode={
+              onDelete ? (
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
-                  className="min-h-11 flex-1 rounded-sm text-muted-foreground/70 hover:text-destructive"
+                  size="icon"
+                  className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-red-400"
                   onClick={onDelete}
-                  disabled={disabled}
                   aria-label="Remove line item"
+                  disabled={disabled}
                 >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Remove
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                 </Button>
-              ) : null}
-            </div>
-          ) : null}
+              ) : undefined
+            }
+            footer={
+              <div className="space-y-3 px-3 pb-3 pt-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={item.qty}
+                    onChange={(e) => onChange({ qty: Number(e.target.value) || 0 })}
+                    onBlur={onBlurField}
+                    onKeyDown={handleEnter}
+                    className={ebInput(`min-h-11 ${EB.inputMuted}`)}
+                    placeholder="Qty"
+                    aria-label={`Line item ${rowIndex} quantity`}
+                    disabled={disabled}
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={item.unitPrice}
+                    onChange={(e) => onChange({ unitPrice: Number(e.target.value) || 0 })}
+                    onBlur={onBlurField}
+                    onKeyDown={handleEnter}
+                    className={ebInput(`min-h-11 ${EB.inputMuted} text-right`)}
+                    placeholder="Unit price"
+                    aria-label={`Line item ${rowIndex} unit price`}
+                    disabled={disabled}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.05] pt-3">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-11 w-11 shrink-0 rounded-sm text-zinc-500"
+                        aria-label="Line item options"
+                        disabled={disabled}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-36 p-2">
+                      <Label
+                        htmlFor={`line-${item.id}-unit`}
+                        className="text-[10px] text-muted-foreground/60"
+                      >
+                        Unit
+                      </Label>
+                      <Input
+                        id={`line-${item.id}-unit`}
+                        value={item.unit}
+                        onChange={(e) => onChange({ unit: e.target.value })}
+                        onBlur={onBlurField}
+                        className={ebInput("mt-1 h-8 w-full text-xs")}
+                        placeholder="EA"
+                        disabled={disabled}
+                        aria-label={`Line item ${rowIndex} unit`}
+                      />
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  {showUnitInline ? (
+                    <span className="text-[11px] text-zinc-500">
+                      Unit: <span className="tabular-nums text-zinc-400">{item.unit}</span>
+                    </span>
+                  ) : null}
+                  <span className="ml-auto text-sm font-semibold tabular-nums text-zinc-200">
+                    {formatEstimateCurrency(total)}
+                  </span>
+                </div>
+              </div>
+            }
+          />
         </div>
       ) : null}
     </article>

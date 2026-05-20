@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { FileText } from "lucide-react";
 import type { EstimateSummaryResult } from "@/lib/data";
 import { formatEstimateCurrency } from "./estimate-currency";
 import { EB } from "./estimate-builder-ui";
@@ -9,9 +8,16 @@ import { cn } from "@/lib/utils";
 
 const fmt = formatEstimateCurrency;
 
+export type EstimateBuilderPaymentSummary = {
+  milestoneCount: number;
+  scheduledTotal: number;
+};
+
 export type EstimateBuilderSummaryProps = {
   summary: EstimateSummaryResult | null;
   showInternal?: boolean;
+  /** Shown when milestones exist — compact executive line only. */
+  paymentSummary?: EstimateBuilderPaymentSummary | null;
   className?: string;
   floating?: boolean;
 };
@@ -19,6 +25,7 @@ export type EstimateBuilderSummaryProps = {
 export function EstimateBuilderSummary({
   summary,
   showInternal = false,
+  paymentSummary = null,
   className,
   floating = true,
 }: EstimateBuilderSummaryProps): React.ReactElement {
@@ -26,9 +33,9 @@ export function EstimateBuilderSummary({
 
   if (!summary) {
     return (
-      <div className={shellClass} aria-label="Estimate summary">
+      <div className={shellClass} aria-label="Estimate overview">
         <SummaryHeader />
-        <p className="text-xs text-zinc-400/95">Add scope lines to see totals.</p>
+        <p className="text-[11px] leading-snug text-zinc-500">Add scope lines to see totals.</p>
       </div>
     );
   }
@@ -45,11 +52,27 @@ export function EstimateBuilderSummary({
   } = summary;
 
   return (
-    <div className={shellClass} aria-label="Estimate summary">
+    <div className={shellClass} aria-label="Estimate overview">
       <SummaryHeader />
 
+      {paymentSummary && paymentSummary.milestoneCount > 0 ? (
+        <div className="mb-3 border-b border-white/[0.05] pb-2.5">
+          <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
+            Payments
+          </p>
+          <p className="mt-1 text-[11px] leading-snug text-zinc-400">
+            {paymentSummary.milestoneCount} milestone
+            {paymentSummary.milestoneCount === 1 ? "" : "s"} ·{" "}
+            <span className="font-medium tabular-nums text-zinc-300">
+              {fmt(paymentSummary.scheduledTotal)}
+            </span>{" "}
+            scheduled
+          </p>
+        </div>
+      ) : null}
+
       {showInternal ? (
-        <div className="mb-4 space-y-1 border-b border-white/[0.06] pb-3">
+        <div className="mb-3 space-y-1 border-b border-white/[0.05] pb-2.5">
           <p className={EB.summaryInternalLabel}>Internal</p>
           <InternalLine label="Material" value={materialCost} />
           <InternalLine label="Labor" value={laborCost} />
@@ -64,39 +87,27 @@ export function EstimateBuilderSummary({
         {showInternal && markup > 0 ? <SummaryLine label="Markup" value={markup} muted /> : null}
       </div>
 
-      <div className="mt-5 border-t border-white/[0.06] pt-4">
-        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500">Total</p>
+      <div className="mt-4 border-t border-white/[0.05] pt-3">
+        <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-500">Total</p>
         <p
           className={cn(
-            "mt-1.5 text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight text-zinc-50",
+            "mt-1 break-words text-[clamp(1.25rem,4vw,1.65rem)] font-semibold leading-none tabular-nums tracking-tight text-zinc-50",
             EB.goldTotal
           )}
         >
           {fmt(grandTotal)}
         </p>
       </div>
-
-      <button
-        type="button"
-        className={cn(EB.glassNotes, "mt-3 flex w-full items-start gap-2 text-left")}
-        aria-label="Add notes (internal)"
-      >
-        <FileText className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" aria-hidden />
-        <span>
-          <span className="block text-xs font-medium text-zinc-100">Add notes</span>
-          <span className="mt-0.5 block text-[11px] leading-relaxed text-zinc-400">
-            Internal only — not shown on customer preview.
-          </span>
-        </span>
-      </button>
     </div>
   );
 }
 
 function SummaryHeader(): React.ReactElement {
   return (
-    <div className="mb-4">
-      <p className="text-xs font-medium uppercase tracking-[0.1em] text-zinc-500">Summary</p>
+    <div className="mb-3">
+      <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-500">
+        Estimate overview
+      </p>
     </div>
   );
 }
@@ -113,7 +124,13 @@ function SummaryLine({
   return (
     <div className="flex items-baseline justify-between gap-3 py-0.5">
       <span className={EB.summaryLineLabel}>{label}</span>
-      <span className={cn(EB.summaryLineValue, muted && EB.summaryLineValueMuted)}>
+      <span
+        className={cn(
+          EB.summaryLineValue,
+          "min-w-0 max-w-[58%] break-words text-right",
+          muted && EB.summaryLineValueMuted
+        )}
+      >
         {fmt(value)}
       </span>
     </div>
@@ -124,7 +141,9 @@ function InternalLine({ label, value }: { label: string; value: number }): React
   return (
     <div className="flex items-baseline justify-between gap-3 py-0.5">
       <span className={EB.summaryLineLabel}>{label}</span>
-      <span className={EB.summaryLineValue}>{fmt(value)}</span>
+      <span className={cn(EB.summaryLineValue, "min-w-0 max-w-[58%] break-words text-right")}>
+        {fmt(value)}
+      </span>
     </div>
   );
 }

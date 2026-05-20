@@ -46,6 +46,12 @@ export const EB = {
   inputNumeric: "text-right tabular-nums",
   lineTableHead:
     "border-b border-white/[0.06] pb-2 text-[10px] font-medium uppercase tracking-[0.07em] text-zinc-400",
+  /** Lighter pricing strip below proposal scope cards */
+  pricingSection: "mt-5 border-t border-white/[0.06] pt-3",
+  pricingTableHead:
+    "border-b border-white/[0.05] pb-2 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500",
+  pricingTableRow:
+    "border-b border-white/[0.035] transition-colors duration-150 last:border-0 hover:bg-white/[0.02]",
   lineTableRow:
     "eb-line-row border-b border-white/[0.04] transition-colors duration-150 group/line last:border-0",
   lineRowActions:
@@ -55,10 +61,10 @@ export const EB = {
   lineTotal: "text-sm font-medium tabular-nums text-zinc-200",
   scopeBlock: "mb-2 last:mb-0",
   scopeBlockHeader:
-    "eb-scope-section-header flex list-none cursor-pointer items-center justify-between gap-2 px-3 py-2.5 transition-colors hover:bg-white/[0.015]",
+    "eb-scope-section-header flex items-baseline justify-between gap-x-4 gap-y-1 border-b border-white/[0.08] pb-2 pt-0",
   addSectionComposer: "eb-add-section-composer",
-  scopeBlockTitle: "text-sm font-medium text-zinc-200",
-  scopeBlockTotal: "text-xs font-normal tabular-nums text-zinc-500",
+  scopeBlockTitle: "text-[15px] font-semibold tracking-tight text-zinc-100",
+  scopeBlockTotal: "text-sm font-semibold tabular-nums tracking-tight text-zinc-200",
   composerAddSection:
     "eb-add-section inline-flex min-h-11 items-center gap-1.5 px-3 text-xs font-medium md:h-8 md:min-h-8",
   commandMenu: "z-[100] max-h-64 overflow-y-auto rounded-xl border py-1 eb-glass-command",
