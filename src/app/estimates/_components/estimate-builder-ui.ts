@@ -20,6 +20,10 @@ export const EB = {
 
   btnPrimary: "eb-btn-primary",
   btnGhost: "eb-btn-ghost",
+  portalPrimaryButton:
+    "!border-white/10 !bg-slate-950 !text-amber-100 shadow-[0_10px_24px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.06)] hover:!bg-slate-900 hover:!text-amber-50 focus-visible:!ring-amber-200/25",
+  portalGhostButton:
+    "!border-white/10 !bg-white/[0.035] !text-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] hover:!bg-white/[0.08] hover:!text-zinc-50 focus-visible:!ring-amber-200/25",
 
   pageTitle: "text-xl font-semibold tracking-tight text-zinc-50",
   pageMeta: "text-xs text-zinc-500",
@@ -37,7 +41,7 @@ export const EB = {
   readValue: "text-sm font-medium text-zinc-100 truncate",
   readValueMuted: "text-sm text-zinc-300 truncate tabular-nums",
   input:
-    "eb-input h-8 w-full rounded-md border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-sm font-normal text-zinc-100 transition-[border-color,background] duration-100 placeholder:text-zinc-600 placeholder:font-normal hover:border-white/[0.09] hover:bg-white/[0.035] focus-visible:border-white/[0.14] focus-visible:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-[0_0_0_2px_rgba(255,255,255,0.05)] disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-[44px] max-md:px-3 max-md:text-base md:min-h-8",
+    "eb-input min-h-11 w-full rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-1 text-base font-normal text-zinc-100 transition-[border-color,background] duration-100 placeholder:text-zinc-600 placeholder:font-normal hover:border-white/[0.09] hover:bg-white/[0.035] focus-visible:border-white/[0.14] focus-visible:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-0 focus-visible:shadow-[0_0_0_2px_rgba(255,255,255,0.05)] disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:min-h-8 md:px-2.5 md:text-sm",
   inputMuted: "font-normal text-zinc-400 hover:text-zinc-200 focus-visible:text-zinc-50",
   inputNumeric: "text-right tabular-nums",
   lineTableHead:
@@ -47,7 +51,7 @@ export const EB = {
   lineRowActions:
     "opacity-0 group-hover/line:opacity-100 transition-opacity duration-150 max-md:opacity-100",
   lineDetailsLink:
-    "text-[11px] opacity-0 transition-[opacity,color] duration-150 group-hover/line:opacity-100 focus-visible:opacity-100 focus-visible:outline-none max-md:opacity-100 eb-gold-link",
+    "inline-flex min-h-11 items-center px-2 text-[11px] opacity-0 transition-[opacity,color] duration-150 group-hover/line:opacity-100 focus-visible:opacity-100 focus-visible:outline-none md:min-h-0 md:px-0 max-md:opacity-100 eb-gold-link",
   lineTotal: "text-sm font-medium tabular-nums text-zinc-200",
   scopeBlock: "mb-2 last:mb-0",
   scopeBlockHeader:
