@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { CUSTOMERS_DB_COLUMNS } from "@/lib/customers-columns";
+import { normalizePhoneForSave } from "@/lib/us-phone-format";
 
 export const dynamic = "force-dynamic";
 
@@ -40,24 +41,48 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!admin) {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
-  const body = (await request.json()) as {
+  const raw = await request.text();
+  if (!raw.trim()) {
+    return NextResponse.json({ message: "Request body is required." }, { status: 400 });
+  }
+  let body: {
     name?: string;
     email?: string | null;
     phone?: string | null;
     address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip?: string | null;
     contact_person?: string | null;
+    company_name?: string | null;
     notes?: string | null;
     status?: "active" | "inactive" | null;
   };
+  try {
+    body = JSON.parse(raw) as typeof body;
+  } catch {
+    return NextResponse.json({ message: "Invalid JSON body." }, { status: 400 });
+  }
   const payload: Record<string, string | null> = {};
   if (body.name !== undefined) payload.name = body.name.trim();
   if (body.email !== undefined) payload.email = body.email?.trim() || null;
-  if (body.phone !== undefined) payload.phone = body.phone?.trim() || null;
+  if (body.phone !== undefined) {
+    payload.phone =
+      body.phone != null && String(body.phone).trim()
+        ? normalizePhoneForSave(String(body.phone))
+        : null;
+  }
   if (body.address !== undefined) {
     payload.address = body.address?.trim() || null;
   }
+  if (body.city !== undefined) payload.city = body.city?.trim() || null;
+  if (body.state !== undefined) payload.state = body.state?.trim() || null;
+  if (body.zip !== undefined) payload.zip = body.zip?.trim() || null;
   if (body.contact_person !== undefined) {
     payload.contact_person = body.contact_person?.trim() || null;
+  }
+  if (body.company_name !== undefined) {
+    payload.company_name = body.company_name?.trim() || null;
   }
   if (body.notes !== undefined) payload.notes = body.notes?.trim() || null;
   if (body.status === "active" || body.status === "inactive") {

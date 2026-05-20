@@ -9,8 +9,12 @@ export type Customer = {
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
   notes?: string | null;
   contact_person?: string | null;
+  company_name?: string | null;
   status?: "active" | "inactive" | string | null;
   created_at?: string | null;
   updated_at?: string | null;
@@ -54,7 +58,11 @@ export type CustomerDraft = {
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
   contact_person?: string | null;
+  company_name?: string | null;
   notes?: string | null;
   status?: "active" | "inactive" | null;
 };
@@ -66,7 +74,11 @@ export async function createCustomer(draft: CustomerDraft): Promise<Customer> {
     email: draft.email?.trim() || null,
     phone: draft.phone?.trim() || null,
     address: draft.address?.trim() || null,
+    city: draft.city?.trim() || null,
+    state: draft.state?.trim() || null,
+    zip: draft.zip?.trim() || null,
     contact_person: draft.contact_person?.trim() || null,
+    company_name: draft.company_name?.trim() || null,
     notes: draft.notes?.trim() || null,
     ...(draft.status ? { status: draft.status } : {}),
   };
@@ -88,8 +100,14 @@ export async function updateCustomer(id: string, patch: Partial<CustomerDraft>):
   if (patch.address !== undefined) {
     payload.address = patch.address?.trim() || null;
   }
+  if (patch.city !== undefined) payload.city = patch.city?.trim() || null;
+  if (patch.state !== undefined) payload.state = patch.state?.trim() || null;
+  if (patch.zip !== undefined) payload.zip = patch.zip?.trim() || null;
   if (patch.contact_person !== undefined) {
     payload.contact_person = patch.contact_person?.trim() || null;
+  }
+  if (patch.company_name !== undefined) {
+    payload.company_name = patch.company_name?.trim() || null;
   }
   if (patch.notes !== undefined) payload.notes = patch.notes?.trim() || null;
   if (patch.status !== undefined && patch.status != null) {

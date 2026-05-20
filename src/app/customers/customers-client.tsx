@@ -12,6 +12,15 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import {
+  buildCustomerApiPayload,
+  CustomerFormFields,
+  customerFormValuesFromCustomer,
+  customerListSubtitle,
+  emptyCustomerFormValues,
+  formatCustomerAddressLine,
+  type CustomerFormValues,
+} from "@/components/customers/customer-form-fields";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -40,15 +49,7 @@ type Props = {
   dataLoadWarning?: string | null;
 };
 
-type Draft = {
-  id?: string;
-  name: string;
-  email: string;
-  phone: string;
-  contact_person: string;
-  address: string;
-  notes: string;
-};
+type Draft = CustomerFormValues & { id?: string };
 
 function truncateText(s: string | null | undefined, max: number): string {
   const t = (s ?? "").trim();
@@ -88,34 +89,19 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
     if (!q) return items;
     return items.filter((c) => {
       const hay =
-        `${c.name} ${c.email ?? ""} ${c.phone ?? ""} ${c.address ?? ""} ${c.contact_person ?? ""}`.toLowerCase();
+        `${c.name} ${c.email ?? ""} ${c.phone ?? ""} ${c.address ?? ""} ${c.city ?? ""} ${c.state ?? ""} ${c.zip ?? ""} ${c.contact_person ?? ""} ${c.company_name ?? ""}`.toLowerCase();
       return hay.includes(q);
     });
   }, [items, search]);
 
   const openNew = () => {
-    setDraft({
-      name: "",
-      email: "",
-      phone: "",
-      contact_person: "",
-      address: "",
-      notes: "",
-    });
+    setDraft(emptyCustomerFormValues());
     setError(null);
     setModalOpen(true);
   };
 
   const openEdit = (c: Customer) => {
-    setDraft({
-      id: c.id,
-      name: c.name,
-      email: c.email ?? "",
-      phone: c.phone ?? "",
-      contact_person: c.contact_person ?? "",
-      address: c.address ?? "",
-      notes: c.notes ?? "",
-    });
+    setDraft({ id: c.id, ...customerFormValuesFromCustomer(c) });
     setError(null);
     setModalOpen(true);
   };
@@ -128,14 +114,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
       return;
     }
     setError(null);
-    const payload = {
-      name: draft.name.trim(),
-      email: draft.email.trim() || null,
-      phone: draft.phone.trim() || null,
-      contact_person: draft.contact_person.trim() || null,
-      address: draft.address.trim() || null,
-      notes: draft.notes.trim() || null,
-    };
+    const payload = buildCustomerApiPayload(draft);
 
     if (!draft.id) {
       setBusy(true);
@@ -362,7 +341,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">{c.name}</p>
                       <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
-                        {c.email ?? "—"}
+                        {customerListSubtitle(c)}
                       </p>
                     </div>
                     <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
@@ -413,6 +392,9 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                         Name
                       </th>
                       <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Company
+                      </th>
+                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
                         Email
                       </th>
                       <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
@@ -441,13 +423,16 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                           </Link>
                         </td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {c.company_name?.trim() ? c.company_name : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
                           {c.email ?? "—"}
                         </td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">
                           {c.phone ?? "—"}
                         </td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {truncateText(c.address, 36)}
+                          {truncateText(formatCustomerAddressLine(c), 40)}
                         </td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">
                           {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
@@ -499,82 +484,38 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
         open={modalOpen}
         onOpenChange={(open) => !open && setDraft(null) && setModalOpen(false)}
       >
-        <DialogContent className="max-w-md border-border/60 rounded-md p-5">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">
+        <DialogContent className="max-w-md border-border/60 rounded-md p-4 flex flex-col gap-2.5 max-h-[min(90vh,720px)] overflow-y-auto">
+          <DialogHeader className="space-y-0 pb-0">
+            <DialogTitle className="text-sm font-semibold">
               {draft?.id ? "Edit customer" : "New customer"}
             </DialogTitle>
           </DialogHeader>
           {draft && (
-            <form onSubmit={handleSubmit} className="grid gap-3">
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Name<span className="text-red-500">*</span>
-                </p>
-                <Input
-                  value={draft.name}
-                  onChange={(e) => setDraft((d) => (d ? { ...d, name: e.target.value } : d))}
-                  className="h-9 text-sm"
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">Email</p>
-                  <Input
-                    value={draft.email}
-                    onChange={(e) => setDraft((d) => (d ? { ...d, email: e.target.value } : d))}
-                    className="h-9 text-sm"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground">Phone</p>
-                  <Input
-                    value={draft.phone}
-                    onChange={(e) => setDraft((d) => (d ? { ...d, phone: e.target.value } : d))}
-                    className="h-9 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Contact person</p>
-                <Input
-                  value={draft.contact_person}
-                  onChange={(e) =>
-                    setDraft((d) => (d ? { ...d, contact_person: e.target.value } : d))
-                  }
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Address</p>
-                <Input
-                  value={draft.address}
-                  onChange={(e) => setDraft((d) => (d ? { ...d, address: e.target.value } : d))}
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Notes</p>
-                <Input
-                  value={draft.notes}
-                  onChange={(e) => setDraft((d) => (d ? { ...d, notes: e.target.value } : d))}
-                  className="h-9 text-sm"
-                />
-              </div>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
+              <CustomerFormFields
+                idPrefix="customers-modal"
+                values={draft}
+                onChange={(patch) => setDraft((d) => (d ? { ...d, ...patch } : d))}
+              />
               {error ? <p className="text-xs text-red-600">{error}</p> : null}
-              <DialogFooter className="mt-2 gap-2 border-t border-border/60 pt-3">
+              <DialogFooter className="gap-2 pt-1 sm:justify-end border-t border-border/60 mt-0.5">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-9 rounded-sm"
+                  className="h-8 rounded-sm"
                   onClick={() => setModalOpen(false)}
                   disabled={busy}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" size="sm" className="h-9 rounded-sm" disabled={busy}>
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-8 rounded-sm"
+                  data-testid="customers-modal-save"
+                  disabled={busy}
+                >
                   <SubmitSpinner loading={busy} className="mr-2" />
                   {busy ? "Saving…" : "Save"}
                 </Button>

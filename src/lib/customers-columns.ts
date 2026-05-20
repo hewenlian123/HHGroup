@@ -4,4 +4,4 @@
  * Kept out of `customers-db.ts` because that file is `"use server"` and may only export async functions.
  */
 export const CUSTOMERS_DB_COLUMNS =
-  "id,name,email,phone,address,notes,created_at,contact_person,status" as const;
+  "id,name,email,phone,address,city,state,zip,notes,created_at,contact_person,company_name,status" as const;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { CUSTOMERS_DB_COLUMNS } from "@/lib/customers-columns";
+import { normalizePhoneForSave } from "@/lib/us-phone-format";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,11 @@ export async function POST(request: Request) {
     email?: string | null;
     phone?: string | null;
     address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zip?: string | null;
     contact_person?: string | null;
+    company_name?: string | null;
     notes?: string | null;
     status?: "active" | "inactive" | null;
   };
@@ -43,9 +48,16 @@ export async function POST(request: Request) {
   const payload = {
     name,
     email: body.email?.trim() || null,
-    phone: body.phone?.trim() || null,
+    phone:
+      body.phone != null && String(body.phone).trim()
+        ? normalizePhoneForSave(String(body.phone))
+        : null,
     address: body.address?.trim() || null,
+    city: body.city?.trim() || null,
+    state: body.state?.trim() || null,
+    zip: body.zip?.trim() || null,
     contact_person: body.contact_person?.trim() || null,
+    company_name: body.company_name?.trim() || null,
     notes: body.notes?.trim() || null,
     ...(body.status === "active" || body.status === "inactive" ? { status: body.status } : {}),
   };
