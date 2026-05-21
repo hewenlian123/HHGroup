@@ -23,6 +23,7 @@ import {
   type EstimateStatus,
 } from "./actions";
 import { deleteEstimateAction } from "../actions";
+import { runDeleteEstimateActionWithTimeout } from "../delete-estimate-client";
 import { EstimateDetailHeader } from "./estimate-detail-header";
 import type { EstimateSaveStatus } from "../_components/estimate-builder-save-status";
 import { ConvertToProjectDrawer } from "./convert-to-project-drawer";
@@ -178,7 +179,7 @@ export function EstimateDetailClient({
     const formData = new FormData();
     formData.set("estimateId", estimateId);
     try {
-      const res = await deleteEstimateAction(formData);
+      const res = await runDeleteEstimateActionWithTimeout(deleteEstimateAction, formData);
       if (!res.ok) {
         toast({
           title: "Could not delete estimate",
@@ -187,9 +188,10 @@ export function EstimateDetailClient({
         });
         return;
       }
+      setDeleteConfirmOpen(false);
       toast({ title: "Estimate deleted", variant: "success" });
-      syncRouterNonBlocking(router);
       router.replace("/estimates");
+      window.setTimeout(() => syncRouterNonBlocking(router, "estimate-delete"), 0);
     } catch (error) {
       toast({
         title: "Could not delete estimate",

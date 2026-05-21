@@ -259,6 +259,7 @@ test("estimate payment schedule persists and has customer-facing payment preview
   const deleteDialog = page.getByRole("dialog", { name: "Delete estimate?" });
   await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
   await deleteDialog.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(deleteDialog).toBeHidden({ timeout: 10_000 });
   await expect(page).toHaveURL(/\/estimates\/?$/, { timeout: 30_000 });
 
   await page.goto(`${detailUrl}?deleted_check=${Date.now()}`, { waitUntil: "domcontentloaded" });

@@ -21,26 +21,46 @@ describe("deleteEstimateAction", () => {
     deleteError = null,
     postDeleteData,
     postDeleteError = null,
+    childDeleteErrors = {},
   }: {
     deleteData: Array<{ id: string }> | null;
     deleteError?: { message: string; code?: string } | null;
     postDeleteData: { id: string } | null;
     postDeleteError?: { message: string; code?: string } | null;
+    childDeleteErrors?: Record<string, { message: string; code?: string }>;
   }) {
-    const deleteSelect = vi.fn().mockResolvedValue({ data: deleteData, error: deleteError });
-    const deleteEq = vi.fn(() => ({ select: deleteSelect }));
-    const deleteRow = vi.fn(() => ({ eq: deleteEq }));
-    const verifyMaybeSingle = vi
-      .fn()
-      .mockResolvedValue({ data: postDeleteData, error: postDeleteError });
-    const verifyEq = vi.fn(() => ({ maybeSingle: verifyMaybeSingle }));
-    const verifySelect = vi.fn(() => ({ eq: verifyEq }));
-    const from = vi
-      .fn()
-      .mockReturnValueOnce({ delete: deleteRow })
-      .mockReturnValueOnce({ select: verifySelect });
+    const buildDeleteResult = (table: string) => ({
+      delete: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          select: vi.fn(() => ({
+            abortSignal: vi
+              .fn()
+              .mockResolvedValue(
+                table === "estimates"
+                  ? { data: deleteData, error: deleteError }
+                  : { data: [], error: childDeleteErrors[table] ?? null }
+              ),
+          })),
+        })),
+      })),
+    });
+    const buildEstimateResult = () => ({
+      ...buildDeleteResult("estimates"),
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          abortSignal: vi.fn(() => ({
+            maybeSingle: vi
+              .fn()
+              .mockResolvedValue({ data: postDeleteData, error: postDeleteError }),
+          })),
+        })),
+      })),
+    });
+    const from = vi.fn((table: string) =>
+      table === "estimates" ? buildEstimateResult() : buildDeleteResult(table)
+    );
     getServerSupabaseAdminMock.mockReturnValue({ from });
-    return { from, deleteRow, deleteEq, deleteSelect, verifySelect, verifyEq, verifyMaybeSingle };
+    return { from };
   }
 
   it("does not report success when no estimate row was deleted", async () => {
@@ -105,6 +125,28 @@ describe("deleteEstimateAction", () => {
       postDeleteExists: true,
       postDeleteId: estimateId,
     });
+    expect(revalidatePathMock).not.toHaveBeenCalled();
+  });
+
+  it("does not delete the estimate when related row cleanup fails", async () => {
+    const estimateId = "33333333-3333-3333-3333-333333333333";
+    const { from } = mockDeleteFlow({
+      deleteData: [{ id: estimateId }],
+      postDeleteData: null,
+      childDeleteErrors: {
+        estimate_payment_schedule_items: { message: "permission denied", code: "42501" },
+      },
+    });
+
+    const { deleteEstimateAction } = await import("@/app/estimates/actions");
+    const formData = new FormData();
+    formData.set("estimateId", estimateId);
+
+    const result = await deleteEstimateAction(formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/permission denied/i);
+    expect(from).not.toHaveBeenCalledWith("estimates");
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 });
