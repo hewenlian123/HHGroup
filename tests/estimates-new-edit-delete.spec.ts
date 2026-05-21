@@ -192,6 +192,58 @@ async function createEstimate(
   return page.url();
 }
 
+async function expectDetailHeaderActionsHorizontal(page: Page): Promise<void> {
+  const header = page.getByTestId("estimate-detail-header");
+  const actions = page.getByTestId("estimate-detail-header-actions");
+  await expect(header).toBeVisible({ timeout: 15_000 });
+  await expect(actions).toBeVisible({ timeout: 15_000 });
+
+  const metrics = await actions.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const headerRect =
+      element.closest('[data-testid="estimate-detail-header"]')?.getBoundingClientRect() ?? rect;
+    const visibleChildren = Array.from(element.children)
+      .map((child) => child.getBoundingClientRect())
+      .filter((childRect) => childRect.width > 0 && childRect.height > 0);
+    const tops = visibleChildren.map((childRect) => childRect.top);
+    const topDelta = tops.length > 0 ? Math.max(...tops) - Math.min(...tops) : 0;
+    return {
+      actionHeight: rect.height,
+      headerHeight: headerRect.height,
+      topDelta,
+      visibleChildCount: visibleChildren.length,
+    };
+  });
+
+  expect(metrics.visibleChildCount).toBeGreaterThanOrEqual(4);
+  expect(metrics.topDelta).toBeLessThanOrEqual(8);
+  expect(metrics.actionHeight).toBeLessThanOrEqual(52);
+  expect(metrics.headerHeight).toBeLessThanOrEqual(140);
+}
+
+async function expectNoHorizontalOverflow(page: Page): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate(() => {
+          const scrollWidth = Math.max(
+            document.documentElement.scrollWidth,
+            document.body.scrollWidth
+          );
+          return scrollWidth - window.innerWidth;
+        }),
+      { timeout: 10_000 }
+    )
+    .toBeLessThanOrEqual(1);
+
+  const actionsMetrics = await page.getByTestId("estimate-detail-header-actions").evaluate((el) => {
+    const rect = el.getBoundingClientRect();
+    return { left: rect.left, right: rect.right, viewportWidth: window.innerWidth };
+  });
+  expect(actionsMetrics.left).toBeGreaterThanOrEqual(-1);
+  expect(actionsMetrics.right).toBeLessThanOrEqual(actionsMetrics.viewportWidth + 1);
+}
+
 test.afterEach(async () => {
   await cleanupEstimateTestData(createdClientNames, createdProjectNames);
   createdClientNames.clear();
@@ -311,6 +363,27 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("body")).not.toContainText("Something went wrong");
   await expectNoEstimateListRowForClient(page, savedClientName);
+});
+
+test("keeps saved estimate detail header actions compact on desktop and mobile", async ({
+  page,
+}) => {
+  test.setTimeout(150_000);
+
+  const suffix = Date.now();
+  const detailUrl = await createEstimate(page, {
+    clientName: `PW Estimate Header ${suffix}`,
+    projectName: `PW Estimate Header Project ${suffix}`,
+    lineTitle: `PW estimate header line ${suffix}`,
+  });
+
+  await expectDetailHeaderActionsHorizontal(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(detailUrl);
+  await page.waitForLoadState("domcontentloaded");
+  await expect(page.getByTestId("estimate-detail-header")).toBeVisible({ timeout: 30_000 });
+  await expectNoHorizontalOverflow(page);
 });
 
 test("opens approved estimate conversion without creating a project", async ({ page }) => {

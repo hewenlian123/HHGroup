@@ -76,8 +76,8 @@ export function EstimateDetailHeader({
           : [];
 
   return (
-    <header className={EB.glassHeader}>
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+    <header className={EB.glassHeader} data-testid="estimate-detail-header">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
         <div className="min-w-0 flex-1 space-y-2.5">
           <Link href="/estimates" className={EB.backLink}>
             <ArrowLeft className="h-4 w-4" />
@@ -99,12 +99,15 @@ export function EstimateDetailHeader({
           {editing ? <EstimateBuilderSaveStatus status={saveStatus} className="pt-0.5" /> : null}
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 lg:flex-col lg:items-end lg:gap-2 max-md:w-full">
+        <div
+          className="flex w-full shrink-0 flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end lg:max-w-[58%] lg:flex-nowrap"
+          data-testid="estimate-detail-header-actions"
+        >
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className={cn("min-h-11 px-4 max-md:flex-1 md:min-h-8", EB.btnGhost)}
+            className={cn("min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8", EB.btnGhost)}
             disabled={pending}
             asChild
           >
@@ -117,7 +120,10 @@ export function EstimateDetailHeader({
                   type="button"
                   variant="default"
                   size="sm"
-                  className={cn("min-h-11 px-4 max-md:flex-1 md:min-h-8", EB.btnPrimary)}
+                  className={cn(
+                    "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
+                    EB.btnPrimary
+                  )}
                   disabled={pending}
                   onClick={onEdit}
                 >
@@ -128,7 +134,10 @@ export function EstimateDetailHeader({
                 <Button
                   type="button"
                   size="sm"
-                  className={cn("min-h-11 px-4 max-md:flex-1 md:min-h-8", EB.btnPrimary)}
+                  className={cn(
+                    "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
+                    EB.btnPrimary
+                  )}
                   disabled={pending}
                   onClick={onSend}
                 >
@@ -141,7 +150,10 @@ export function EstimateDetailHeader({
               <Button
                 type="button"
                 size="sm"
-                className={cn("min-h-11 px-5 font-medium max-md:flex-1 md:min-h-8", EB.btnPrimary)}
+                className={cn(
+                  "min-h-11 whitespace-nowrap px-5 font-medium max-md:flex-1 md:min-h-8",
+                  EB.btnPrimary
+                )}
                 disabled={pending}
                 onClick={onSave}
               >
@@ -152,7 +164,10 @@ export function EstimateDetailHeader({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className={cn("min-h-11 px-4 max-md:flex-1 md:min-h-8", EB.btnGhost)}
+                className={cn(
+                  "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
+                  EB.btnGhost
+                )}
                 disabled={pending}
                 onClick={onCancel}
               >
@@ -168,7 +183,10 @@ export function EstimateDetailHeader({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className={cn("min-h-11 px-3 md:min-h-8", EB.btnGhost)}
+                  className={cn(
+                    "min-h-11 whitespace-nowrap px-3 max-md:flex-1 md:min-h-8",
+                    EB.btnGhost
+                  )}
                   disabled={pending}
                 >
                   Status <ChevronDown className="ml-2 h-4 w-4" />
@@ -193,7 +211,10 @@ export function EstimateDetailHeader({
               type="button"
               variant="outline"
               size="sm"
-              className={cn("min-h-11 px-4 md:min-h-8", EB.btnGhost)}
+              className={cn(
+                "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
+                EB.btnGhost
+              )}
               disabled={pending}
               onClick={onConvertClick}
             >
@@ -206,7 +227,11 @@ export function EstimateDetailHeader({
               type="button"
               variant="ghost"
               size="sm"
-              className={cn("min-h-11 md:min-h-8", EB.btnGhost, "hover:text-red-400")}
+              className={cn(
+                "min-h-11 w-11 shrink-0 md:min-h-8 md:w-auto",
+                EB.btnGhost,
+                "hover:text-red-400"
+              )}
               disabled={pending}
               onClick={onDeleteClick}
               aria-label="Delete estimate"
