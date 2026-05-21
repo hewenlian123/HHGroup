@@ -383,13 +383,13 @@ export async function createEstimateWithItemsWithClient(
     if (payload.categoryNames && Object.keys(payload.categoryNames).length > 0) {
       let orderIdx = 0;
       for (const [cost_code, display_name] of Object.entries(payload.categoryNames)) {
-        const { error } = await c
-          .from("estimate_categories")
-          .upsert(
-            { estimate_id: id, cost_code, display_name, order_index: orderIdx++ },
-            { onConflict: "estimate_id,cost_code" }
-          );
-        if (error) throw new Error(error.message ?? "Failed to create estimate category.");
+        const result = await upsertEstimateCategoryWithOrderFallback(c, {
+          estimate_id: id,
+          cost_code,
+          display_name,
+          order_index: orderIdx++,
+        });
+        if (!result.ok) throw new Error(result.error);
       }
     }
     for (const it of payload.items) {
@@ -554,14 +554,12 @@ export async function getEstimateMeta(estimateId: string): Promise<EstimateMetaR
   };
 }
 
-async function nextCategoryOrderIndex(
-  c: ReturnType<typeof client>,
-  estimateId: string
-): Promise<number> {
-  const { data } = await c
+async function nextCategoryOrderIndex(c: SupabaseClient, estimateId: string): Promise<number> {
+  const { data, error } = await c
     .from("estimate_categories")
     .select("order_index")
     .eq("estimate_id", estimateId);
+  if (error) return 0;
   let max = -1;
   for (const r of data ?? []) {
     const oi = Number((r as { order_index?: number }).order_index);
@@ -579,7 +577,7 @@ function isMissingOrderIndexColumnError(err: unknown): boolean {
 }
 
 async function upsertEstimateCategoryWithOrderFallback(
-  c: ReturnType<typeof client>,
+  c: SupabaseClient,
   row: { estimate_id: string; cost_code: string; display_name: string; order_index: number }
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { error } = await c
@@ -609,6 +607,19 @@ export async function getEstimateCategories(estimateId: string): Promise<Estimat
     .order("cost_code", { ascending: true });
   if (error) {
     if (isMissingTable(error)) return [];
+    if (isMissingOrderIndexColumnError(error)) {
+      const { data: fallbackRows, error: fallbackError } = await c
+        .from("estimate_categories")
+        .select("cost_code, display_name")
+        .eq("estimate_id", estimateId)
+        .order("cost_code", { ascending: true });
+      if (fallbackError) return [];
+      return (fallbackRows ?? []).map((r: { cost_code: string; display_name: string }, index) => ({
+        costCode: r.cost_code,
+        displayName: r.display_name,
+        orderIndex: index,
+      }));
+    }
     return [];
   }
   return (rows ?? []).map(
@@ -879,12 +890,13 @@ export async function createNewVersionFromSnapshot(estimateId: string): Promise<
   const catEntries = Object.entries(categoryNames);
   for (let i = 0; i < catEntries.length; i++) {
     const [cost_code, display_name] = catEntries[i];
-    await c
-      .from("estimate_categories")
-      .upsert(
-        { estimate_id: estimateId, cost_code, display_name, order_index: i },
-        { onConflict: "estimate_id,cost_code" }
-      );
+    const result = await upsertEstimateCategoryWithOrderFallback(c, {
+      estimate_id: estimateId,
+      cost_code,
+      display_name,
+      order_index: i,
+    });
+    if (!result.ok) throw new Error(result.error);
   }
 
   // Restore items: replace all
@@ -1030,13 +1042,13 @@ export async function reorderEstimateCategoriesWithClient(
     const cost_code = orderedCostCodes[i];
     const fromMap = displayNamesByCode[cost_code]?.trim();
     const display_name = (fromMap || existingNames[cost_code] || cost_code).trim() || cost_code;
-    const { error } = await c
-      .from("estimate_categories")
-      .upsert(
-        { estimate_id: estimateId, cost_code, display_name, order_index: i },
-        { onConflict: "estimate_id,cost_code" }
-      );
-    if (error) return false;
+    const up = await upsertEstimateCategoryWithOrderFallback(c, {
+      estimate_id: estimateId,
+      cost_code,
+      display_name,
+      order_index: i,
+    });
+    if (!up.ok) return false;
   }
   await c
     .from("estimates")
@@ -1456,13 +1468,13 @@ export async function moveEstimateItemsToCostCodeWithClient(
     .maybeSingle();
   if (!catRow) {
     const oi = await nextCategoryOrderIndex(c, estimateId);
-    const { error: e2 } = await c
-      .from("estimate_categories")
-      .upsert(
-        { estimate_id: estimateId, cost_code: newCostCode, display_name: hint, order_index: oi },
-        { onConflict: "estimate_id,cost_code" }
-      );
-    if (e2) return false;
+    const up = await upsertEstimateCategoryWithOrderFallback(c, {
+      estimate_id: estimateId,
+      cost_code: newCostCode,
+      display_name: hint,
+      order_index: oi,
+    });
+    if (!up.ok) return false;
   }
 
   const { error } = await c

@@ -410,6 +410,21 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   createdClientNames.add(clientName);
   createdProjectNames.add(projectName);
 
+  const detailsDialog = page.getByRole("dialog", {
+    name: /Customer \/ project \/ pricing details/i,
+  });
+  await expect(detailsDialog).toBeVisible({ timeout: 10_000 });
+  const mobileViewport = page.viewportSize();
+  await expect
+    .poll(
+      async () => {
+        const box = await detailsDialog.boundingBox();
+        return box ? Math.ceil(box.x + box.width) : 9999;
+      },
+      { timeout: 10_000 }
+    )
+    .toBeLessThanOrEqual((mobileViewport?.width ?? 390) + 1);
+
   await fillNewEstimateCustomerFields(page, { clientName, projectName });
   await page
     .getByRole("button", { name: /^Add Section$/i })
@@ -434,6 +449,29 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
     timeout: 10_000,
   });
   await page.keyboard.press("Escape");
+
+  const scheduleSection = page
+    .locator("details")
+    .filter({ has: page.locator("summary").filter({ hasText: "Payment schedule" }) })
+    .first();
+  await scheduleSection.evaluate((node) => {
+    if (node instanceof HTMLDetailsElement) node.open = true;
+  });
+  await scheduleSection.getByRole("button", { name: "Schedule Payment" }).click();
+  const scheduleDialog = page.getByRole("dialog", { name: "Schedule Payment" });
+  await expect(scheduleDialog).toBeVisible({ timeout: 10_000 });
+  await expect
+    .poll(
+      async () => {
+        const box = await scheduleDialog.boundingBox();
+        return box ? Math.ceil(box.x + box.width) : 9999;
+      },
+      { timeout: 10_000 }
+    )
+    .toBeLessThanOrEqual((mobileViewport?.width ?? 390) + 1);
+  await scheduleDialog.getByLabel("Due Date").fill("2026-06-01");
+  await scheduleDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(scheduleDialog).toBeHidden({ timeout: 10_000 });
 
   const overflow = await page.evaluate(() => ({
     sw: document.documentElement.scrollWidth,

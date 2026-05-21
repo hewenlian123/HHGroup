@@ -268,7 +268,7 @@ export function EstimateLineItemsLocal({
                                     }
                                   }}
                                   className={ebInput(
-                                    `h-7 min-h-7 w-[4.5rem] px-1.5 ${EB.inputNumeric} ${EB.inputMuted} text-xs`
+                                    `h-7 min-h-7 w-[9.5rem] max-w-full px-1.5 ${EB.inputNumeric} ${EB.inputMuted} text-xs`
                                   )}
                                   aria-label={`Line item ${globalIdx} unit price`}
                                   disabled={disabled}
@@ -276,7 +276,7 @@ export function EstimateLineItemsLocal({
                               </div>
                               <div className="flex flex-col items-end gap-0.5">
                                 <span className={EB.readLabel}>Total</span>
-                                <span className="min-w-0 pb-0.5 text-right text-xs font-medium tabular-nums leading-tight text-zinc-200">
+                                <span className="min-w-[8.5rem] max-w-full pb-0.5 text-right text-xs font-medium tabular-nums leading-tight text-zinc-200">
                                   {formatEstimateCurrency(editorLineTotal(row))}
                                 </span>
                               </div>
