@@ -123,9 +123,9 @@ function isMissingTable(err: { message?: string } | null): boolean {
   return /schema cache|relation.*does not exist|could not find the table/i.test(m);
 }
 
-/** Line total = qty * unitCost * (1 + markupPct) */
+/** Visible line total = qty * unitCost. Markup is applied only at the estimate summary level. */
 export function lineTotal(item: EstimateItemRow): number {
-  return item.qty * item.unitCost * (1 + item.markupPct);
+  return item.qty * item.unitCost;
 }
 
 /** One section of the cost breakdown: items share the same category id (DB: estimate_items.cost_code). */
@@ -133,7 +133,7 @@ export type EstimateCategorySectionRow = {
   categoryId: string;
   title: string;
   rows: EstimateItemRow[];
-  /** Sum of line totals (qty × unitCost × (1+markup)) for rows in this category */
+  /** Sum of visible line totals (qty × unitCost) for rows in this category */
   sectionTotal: number;
 };
 
@@ -1350,7 +1350,7 @@ export async function createCustomEstimateCategoryWithClient(
         qty: 1,
         unit: "EA",
         unitCost: 0,
-        markupPct: 0.1,
+        markupPct: 0,
       });
       if (!item) {
         await c
@@ -1376,7 +1376,7 @@ export async function createCustomEstimateCategoryWithClient(
     qty: 1,
     unit: "EA",
     unitCost: 0,
-    markupPct: 0.1,
+    markupPct: 0,
   });
   if (!item) {
     await c
@@ -1457,7 +1457,7 @@ export async function createEstimateCategoryWithExplicitCodeWithClient(
         qty: 1,
         unit: "EA",
         unitCost: 0,
-        markupPct: 0.1,
+        markupPct: 0,
       });
       if (!item) {
         await c
@@ -1483,7 +1483,7 @@ export async function createEstimateCategoryWithExplicitCodeWithClient(
     qty: 1,
     unit: "EA",
     unitCost: 0,
-    markupPct: 0.1,
+    markupPct: 0,
   });
   if (!item) {
     await c

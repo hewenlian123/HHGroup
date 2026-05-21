@@ -6,7 +6,7 @@ const PDF_AMOUNT_HIDDEN = "—";
 type PdfLineRow = Pick<EstimateItemRow, "qty" | "unitCost" | "markupPct" | "hideAmountOnPdf">;
 
 function pdfLineTotal(row: PdfLineRow): number {
-  return row.qty * row.unitCost * (1 + row.markupPct);
+  return row.qty * row.unitCost;
 }
 
 export function isEstimateLineAmountHiddenOnPdf(row: { hideAmountOnPdf?: boolean }): boolean {

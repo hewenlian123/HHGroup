@@ -461,7 +461,7 @@ export async function addLineItemAction(formData: FormData) {
       qty: Number(formData.get("qty")) || 1,
       unit: (formData.get("unit") as string)?.trim() || "EA",
       unitCost: Number(formData.get("unitCost")) || 0,
-      markupPct: Number(formData.get("markupPct")) || 0.1,
+      markupPct: Number(formData.get("markupPct")) || 0,
     });
     if (!item) return;
     if (categoryDisplayName) {
@@ -491,7 +491,7 @@ export async function addLineItemCatalogInlineAction(
       qty: 1,
       unit: "EA",
       unitCost: 0,
-      markupPct: 0.1,
+      markupPct: 0,
     });
     if (!item) return { ok: false, error: "Could not add line item." };
     if (categoryDisplayName.trim()) {

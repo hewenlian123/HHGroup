@@ -31,7 +31,7 @@ export function combineLineItemDesc(title: string, description: string): string 
 }
 
 export function editorLineTotal(item: EditorLineItem): number {
-  return item.qty * item.unitPrice * (1 + item.markupPct);
+  return item.qty * item.unitPrice;
 }
 
 export function estimateRowLineTotal(row: EstimateItemRow): number {
@@ -43,7 +43,8 @@ export function editorLineTotalFromParts(
   unitPrice: number,
   markupPct: number
 ): number {
-  return qty * unitPrice * (1 + markupPct);
+  void markupPct;
+  return qty * unitPrice;
 }
 
 export function rowToEditorLineItem(row: EstimateItemRow): EditorLineItem {
@@ -62,7 +63,7 @@ export function rowToEditorLineItem(row: EstimateItemRow): EditorLineItem {
   };
 }
 
-export function createEmptyLineItem(costCode: string, markupPct = 0.1): EditorLineItem {
+export function createEmptyLineItem(costCode: string, markupPct = 0): EditorLineItem {
   return {
     id: `li-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     costCode,
@@ -98,7 +99,7 @@ export function lineItemFromPreset(costCode: string, preset: LineItemPresetInput
     qty: preset.qty,
     unit: preset.unit || "EA",
     unitPrice: preset.unitPrice,
-    markupPct: preset.markupPct ?? 0.1,
+    markupPct: preset.markupPct ?? 0,
     hideAmountOnPdf: false,
     status: preset.status ?? DEFAULT_LINE_ITEM_STATUS,
   };
