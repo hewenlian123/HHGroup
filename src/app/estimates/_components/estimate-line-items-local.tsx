@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Copy, Trash2 } from "lucide-react";
+import { Plus, Copy, Trash2, Layers } from "lucide-react";
 import type { CostCode } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
@@ -106,8 +106,8 @@ export function EstimateLineItemsLocal({
   return (
     <section className={EB.section}>
       <div className={ebGlassPanel()}>
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-          <div>
+        <div className="mb-3.5 flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
             <h2 className={EB.scopeHeading}>Scope of work</h2>
             <p className={EB.scopeSubtitle}>Proposal sections and line totals</p>
           </div>
@@ -123,7 +123,9 @@ export function EstimateLineItemsLocal({
         {/* Mobile: card list */}
         <div className="space-y-3 md:hidden">
           {flatWithIndex.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No line items yet.</p>
+            <div className={cn(EB.scopeEmpty, "py-6")}>
+              <p className={EB.scopeEmptyMessage}>No line items yet.</p>
+            </div>
           ) : (
             flatWithIndex.map(({ item, rowIndex, code }) => (
               <EstimateLineItemMobileCard
@@ -145,7 +147,7 @@ export function EstimateLineItemsLocal({
               type="button"
               variant="outline"
               size="sm"
-              className="!h-11 !min-h-11 w-full rounded-sm"
+              className={cn("!h-11 !min-h-11 w-full", EB.actionSecondary)}
               onClick={addCategory}
               disabled={costCodes.length === 0}
             >
@@ -164,28 +166,32 @@ export function EstimateLineItemsLocal({
             const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
             return (
               <div key={code} className={cn(EB.categoryGroup, "mb-6 last:mb-0")}>
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-white/[0.08] pb-2">
-                  <Input
-                    value={displayName}
-                    onChange={(e) => setCategoryName(code, e.target.value)}
-                    className={ebInput(
-                      "h-8 max-w-[min(100%,20rem)] border-0 bg-transparent px-0 text-[15px] font-semibold tracking-tight text-zinc-100 shadow-none focus-visible:ring-0"
-                    )}
-                    placeholder={cc.name}
-                    disabled={disabled}
-                  />
-                  <span className="text-sm font-semibold tabular-nums tracking-tight text-zinc-200">
+                <div className={EB.scopeBlockHeader}>
+                  <div className={EB.sectionHeaderChip}>
+                    <Layers className={cn("h-3.5 w-3.5", EB.sectionHeaderIcon)} aria-hidden />
+                    <Input
+                      value={displayName}
+                      onChange={(e) => setCategoryName(code, e.target.value)}
+                      className={ebInput(
+                        "h-8 w-full min-w-[10rem] max-w-full border-0 bg-transparent px-0 text-[15px] font-semibold tracking-tight text-zinc-50 shadow-none focus-visible:ring-0"
+                      )}
+                      placeholder={cc.name}
+                      disabled={disabled}
+                      aria-label={`Section name for ${cc.name}`}
+                    />
+                  </div>
+                  <span className={EB.scopeBlockTotal}>
                     {formatEstimateCurrency(sectionSubtotal)}
                   </span>
                 </div>
-                <div className="mt-3 space-y-2">
+                <div className="mt-2.5 space-y-2">
                   {rows.map((row, rowIndexInCat) => {
                     const globalIdx =
                       flatWithIndex.find((f) => f.item.id === row.id)?.rowIndex ??
                       rowIndexInCat + 1;
                     const isLast = row.id === lastItemId;
                     return (
-                      <div key={row.id}>
+                      <div key={row.id} className={EB.lineItemCard}>
                         <ProposalScopeWorkCard
                           title={row.title}
                           description={row.description}
@@ -200,7 +206,7 @@ export function EstimateLineItemsLocal({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
+                              className={cn("h-8 w-8", EB.iconAction)}
                               onClick={() => duplicateItem(row.id)}
                               aria-label="Duplicate scope card"
                               disabled={disabled}
@@ -213,7 +219,7 @@ export function EstimateLineItemsLocal({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-red-400"
+                              className={cn("h-8 w-8 hover:text-red-400/90", EB.iconAction)}
                               onClick={() => deleteItem(row.id)}
                               aria-label="Remove line item"
                               disabled={disabled}
@@ -221,11 +227,9 @@ export function EstimateLineItemsLocal({
                               <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                             </Button>
                           }
+                          lineIndex={globalIdx}
                           inlinePricing={
-                            <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
-                              <span className="hidden pb-1.5 text-[10px] tabular-nums text-zinc-600 sm:inline">
-                                #{globalIdx}
-                              </span>
+                            <div className="grid w-full max-w-[22rem] shrink-0 grid-cols-[3.25rem_5.5rem_1fr] items-end gap-x-2 sm:max-w-none sm:grid-cols-[3.5rem_6.5rem_minmax(5.5rem,1fr)]">
                               <div className="flex flex-col gap-0.5">
                                 <span className={EB.readLabel}>Qty</span>
                                 <Input
@@ -243,14 +247,14 @@ export function EstimateLineItemsLocal({
                                     }
                                   }}
                                   className={ebInput(
-                                    `h-7 min-h-7 w-[3.25rem] px-1.5 ${EB.inputNumeric} ${EB.inputMuted} text-xs`
+                                    `h-7 min-h-7 w-full px-1.5 ${EB.inputNumeric} text-xs text-zinc-200`
                                   )}
                                   aria-label={`Line item ${globalIdx} quantity`}
                                   disabled={disabled}
                                 />
                               </div>
                               <div className="flex flex-col gap-0.5">
-                                <span className={EB.readLabel}>Unit</span>
+                                <span className={EB.readLabel}>Unit price</span>
                                 <Input
                                   type="number"
                                   min={0}
@@ -268,15 +272,20 @@ export function EstimateLineItemsLocal({
                                     }
                                   }}
                                   className={ebInput(
-                                    `h-7 min-h-7 w-[9.5rem] max-w-full px-1.5 ${EB.inputNumeric} ${EB.inputMuted} text-xs`
+                                    `h-7 min-h-7 w-full px-1.5 ${EB.inputNumeric} text-xs text-zinc-200`
                                   )}
                                   aria-label={`Line item ${globalIdx} unit price`}
                                   disabled={disabled}
                                 />
                               </div>
-                              <div className="flex flex-col items-end gap-0.5">
+                              <div className="flex min-w-0 flex-col items-end gap-0.5">
                                 <span className={EB.readLabel}>Total</span>
-                                <span className="min-w-[8.5rem] max-w-full pb-0.5 text-right text-xs font-medium tabular-nums leading-tight text-zinc-200">
+                                <span
+                                  className={cn(
+                                    EB.lineTotal,
+                                    "w-full pb-0.5 text-right text-xs leading-tight"
+                                  )}
+                                >
                                   {formatEstimateCurrency(editorLineTotal(row))}
                                 </span>
                               </div>
@@ -300,13 +309,13 @@ export function EstimateLineItemsLocal({
             );
           })}
           {codesWithItems.length === 0 && !disabled ? (
-            <div className="py-8 text-center">
-              <p className="mb-3 text-sm text-muted-foreground">No line items yet.</p>
+            <div className={EB.scopeEmpty}>
+              <p className={cn(EB.scopeEmptyMessage, "mb-3")}>No line items yet.</p>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="!h-11 !min-h-11 rounded-sm"
+                className={cn("!h-11 !min-h-11", EB.actionSecondary)}
                 onClick={addCategory}
               >
                 <Plus className="h-4 w-4 mr-2" />

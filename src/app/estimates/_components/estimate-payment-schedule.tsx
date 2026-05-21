@@ -79,7 +79,6 @@ export function EstimatePaymentSchedule(props: {
     (sum, item) => sum + paymentMilestoneAmount(item, estimateTotal),
     0
   );
-  const totalsMatch = Math.abs(totalScheduled - estimateTotal) < 0.01;
   const remaining = Math.max(0, estimateTotal - totalScheduled);
 
   const milestoneRows: ProposalPaymentMilestoneRow[] = paymentSchedule.map((item) => ({
@@ -91,56 +90,35 @@ export function EstimatePaymentSchedule(props: {
   }));
 
   return (
-    <section>
-      <div className="flex items-center justify-between gap-3 py-2">
+    <section className={EB.paymentSchedule}>
+      <div className="flex flex-wrap items-start justify-between gap-3 py-2">
         <div className="min-w-0">
-          <h3 className="text-sm font-medium text-zinc-100">Payment schedule</h3>
-          <p className="mt-0.5 text-[11px] text-zinc-500">Contractor milestones</p>
+          <h3 className={EB.paymentTitle}>Payment schedule</h3>
+          <p className={EB.paymentSubtitle}>Contractor milestones</p>
         </div>
         {!isLocked && (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className={cn("min-h-11 px-3 md:min-h-8", EB.btnGhost)}
+            className={cn("min-h-11 shrink-0 px-2.5 md:min-h-8", EB.actionSecondary)}
             onClick={() => openScheduleDrawer()}
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden />
             Schedule Payment
           </Button>
         )}
       </div>
       <div>
-        <div className="flex flex-wrap items-center gap-6 py-2 text-sm">
-          <span className="text-zinc-400">
-            Estimate total{" "}
-            <span className="font-semibold text-zinc-100 tabular-nums">{fmt(estimateTotal)}</span>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-2">
+          <span className={EB.paymentStatLabel}>
+            Estimate total <span className={EB.paymentStatValue}>{fmt(estimateTotal)}</span>
           </span>
-          <span className="text-zinc-400">
-            Scheduled{" "}
-            <span
-              className={cn(
-                "font-semibold tabular-nums",
-                totalsMatch
-                  ? "text-hh-profit-positive dark:text-hh-profit-positive"
-                  : "text-zinc-100"
-              )}
-            >
-              {fmt(totalScheduled)}
-            </span>
+          <span className={EB.paymentStatLabel}>
+            Scheduled <span className={EB.paymentStatValue}>{fmt(totalScheduled)}</span>
           </span>
-          <span className="text-zinc-400">
-            Remaining{" "}
-            <span
-              className={cn(
-                "font-semibold tabular-nums",
-                remaining === 0
-                  ? "text-hh-profit-positive dark:text-hh-profit-positive"
-                  : "text-zinc-100"
-              )}
-            >
-              {fmt(remaining)}
-            </span>
+          <span className={EB.paymentStatLabel}>
+            Remaining <span className={EB.paymentStatValue}>{fmt(remaining)}</span>
           </span>
         </div>
 

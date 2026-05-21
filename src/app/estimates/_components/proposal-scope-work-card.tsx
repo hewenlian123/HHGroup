@@ -74,6 +74,8 @@ export type ProposalScopeWorkCardProps = {
   footer?: React.ReactNode;
   /** Qty / unit price / total beside title (proposal-style inline row) */
   inlinePricing?: React.ReactNode;
+  /** Optional 1-based line index badge */
+  lineIndex?: number;
   className?: string;
 };
 
@@ -99,6 +101,7 @@ export function ProposalScopeWorkCard({
   deleteNode,
   footer,
   inlinePricing,
+  lineIndex,
   className,
 }: ProposalScopeWorkCardProps): React.ReactElement {
   const editorRef = React.useRef<HTMLDivElement>(null);
@@ -165,9 +168,7 @@ export function ProposalScopeWorkCard({
   return (
     <div
       className={cn(
-        "eb-proposal-scope-work-card rounded-sm border border-white/[0.04] bg-transparent px-0 pb-0 pt-0",
-        "shadow-none backdrop-blur-none transition-[border-color,background-color] duration-150",
-        "hover:border-white/[0.07] hover:bg-white/[0.012]",
+        "eb-proposal-scope-work-card rounded-sm border-0 bg-transparent px-0 pb-0 pt-0 shadow-none backdrop-blur-none",
         className
       )}
     >
@@ -187,36 +188,45 @@ export function ProposalScopeWorkCard({
 
       <div
         className={cn(
-          "flex flex-wrap items-end gap-x-3 gap-y-2 px-1.5 pb-0.5",
-          showToolbar ? "pt-0" : "pt-1"
+          "grid gap-x-3 gap-y-2 px-1.5 pb-0.5 max-md:grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto]",
+          showToolbar ? "pt-0" : "pt-1",
+          inlinePricing ? "items-end" : "items-start"
         )}
       >
-        <div className="min-w-0 flex-1 space-y-0.5">
-          <span className={EB.readLabel}>Title</span>
-          {readOnly ? (
-            <p className="text-xs font-semibold leading-snug tracking-tight text-zinc-50">
-              {title.trim() || "—"}
-            </p>
-          ) : (
-            <Input
-              value={title}
-              onChange={(e) => onTitleChange?.(e.target.value)}
-              onBlur={() => onTitleBlur?.()}
-              disabled={disabled}
-              placeholder={titlePlaceholder}
-              aria-label={titleInputAriaLabel}
-              aria-invalid={titleInvalid}
-              className={ebInput("h-7 text-xs font-semibold tracking-tight")}
-            />
-          )}
-          {titleInvalid ? (
-            <p className="text-xs text-amber-400/90">Add a name for this line.</p>
+        <div className="flex min-w-0 items-start gap-2">
+          {lineIndex != null ? (
+            <span
+              className={cn(EB.lineIndexBadge, "mt-5 shrink-0")}
+              aria-label={`Line ${lineIndex}`}
+            >
+              #{lineIndex}
+            </span>
           ) : null}
+          <div className="min-w-0 flex-1 space-y-0.5">
+            <span className={EB.readLabel}>Title</span>
+            {readOnly ? (
+              <p className="text-xs font-semibold leading-snug tracking-tight text-slate-50">
+                {title.trim() || "—"}
+              </p>
+            ) : (
+              <Input
+                value={title}
+                onChange={(e) => onTitleChange?.(e.target.value)}
+                onBlur={() => onTitleBlur?.()}
+                disabled={disabled}
+                placeholder={titlePlaceholder}
+                aria-label={titleInputAriaLabel}
+                aria-invalid={titleInvalid}
+                className={ebInput("h-8 text-sm font-medium tracking-tight text-slate-50")}
+              />
+            )}
+            {titleInvalid ? (
+              <p className="text-xs text-amber-400/90">Add a name for this line.</p>
+            ) : null}
+          </div>
         </div>
         {inlinePricing ? (
-          <div className="flex shrink-0 flex-wrap items-end justify-end gap-x-2 gap-y-1">
-            {inlinePricing}
-          </div>
+          <div className="flex w-full shrink-0 justify-end md:w-auto">{inlinePricing}</div>
         ) : null}
       </div>
 
@@ -240,16 +250,16 @@ export function ProposalScopeWorkCard({
             )}
           </div>
         ) : (
-          <div className="rounded-sm border border-white/[0.03] bg-transparent">
+          <div className="eb-scope-editor-surface">
             <div
-              className="flex flex-wrap gap-0 border-b border-white/[0.03] px-0.5 py-px"
+              className="eb-scope-editor-toolbar flex flex-wrap gap-0 px-0.5 py-px"
               onMouseDown={handleToolbarMouseDown}
             >
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 min-h-5 min-w-5 shrink-0 px-0 text-zinc-600 hover:bg-white/[0.04] hover:text-zinc-300"
+                className="h-6 w-6 min-h-6 min-w-6 shrink-0 px-0 text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
                 aria-label="Bold"
                 disabled={disabled}
                 onMouseDown={handleToolbarMouseDown}
@@ -263,7 +273,7 @@ export function ProposalScopeWorkCard({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 min-h-5 min-w-5 shrink-0 px-0 text-zinc-600 hover:bg-white/[0.04] hover:text-zinc-300"
+                className="h-6 w-6 min-h-6 min-w-6 shrink-0 px-0 text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
                 aria-label="Italic"
                 disabled={disabled}
                 onMouseDown={handleToolbarMouseDown}
@@ -277,7 +287,7 @@ export function ProposalScopeWorkCard({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 min-h-5 min-w-5 shrink-0 px-0 text-zinc-600 hover:bg-white/[0.04] hover:text-zinc-300"
+                className="h-6 w-6 min-h-6 min-w-6 shrink-0 px-0 text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
                 aria-label="Bullet list"
                 disabled={disabled}
                 onMouseDown={handleToolbarMouseDown}
@@ -304,7 +314,7 @@ export function ProposalScopeWorkCard({
               onBlur={handleDescriptionBlur}
               onInput={handleDescriptionInput}
               className={cn(
-                "proposal-scope-inline-editor max-h-[140px] min-h-0 w-full px-1 py-0.5 text-xs leading-snug text-zinc-200 outline-none break-words",
+                "proposal-scope-inline-editor max-h-[140px] min-h-[2.75rem] w-full px-2 py-1.5 text-xs leading-relaxed text-slate-200 outline-none break-words",
                 "[&_ul]:my-0 [&_ul]:list-disc [&_ul]:pl-3 [&_ol]:my-0 [&_ol]:list-decimal [&_ol]:pl-3",
                 "[&_p]:my-0 [&_p]:min-h-[1.05em]",
                 "[&_strong]:font-semibold [&_b]:font-semibold",
