@@ -73,6 +73,7 @@ function PaymentsReceivedPageInner() {
   const [payments, setPayments] = React.useState<PaymentReceivedWithMeta[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [modalOpen, setModalOpen] = React.useState(false);
+  const [prefillInvoiceId, setPrefillInvoiceId] = React.useState<string | null>(null);
   const [editPaymentId, setEditPaymentId] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [methodFilter, setMethodFilter] = React.useState("");
@@ -97,6 +98,22 @@ function PaymentsReceivedPageInner() {
   const clearPaymentQuery = React.useCallback(() => {
     router.replace("/financial/payments", { scroll: false });
   }, [router]);
+
+  const openReceivePayment = React.useCallback(() => {
+    setPrefillInvoiceId(null);
+    setModalOpen(true);
+  }, []);
+
+  const handleReceivePaymentOpenChange = React.useCallback(
+    (open: boolean) => {
+      setModalOpen(open);
+      if (!open) {
+        if (prefillInvoiceId) clearPaymentQuery();
+        setPrefillInvoiceId(null);
+      }
+    },
+    [clearPaymentQuery, prefillInvoiceId]
+  );
 
   const load = React.useCallback(async () => {
     const list = await getPaymentsReceived();
@@ -206,10 +223,16 @@ function PaymentsReceivedPageInner() {
     handledQueryRef.current = query;
 
     const editPayment = searchParams.get("editPayment");
+    const invoiceId = searchParams.get("invoiceId");
     const receipt = searchParams.get("receipt");
     const receiptAction = searchParams.get("receiptAction");
     const sendReceipt = searchParams.get("sendReceipt");
 
+    if (invoiceId) {
+      setPrefillInvoiceId(invoiceId);
+      setModalOpen(true);
+      return;
+    }
     if (editPayment) {
       setEditPaymentId(editPayment);
       return;
@@ -329,7 +352,7 @@ function PaymentsReceivedPageInner() {
               <Button
                 size="sm"
                 className="h-9 shrink-0 gap-1.5 shadow-none bg-[#0B1220] text-white hover:bg-[#0B1220]/92 dark:bg-emerald-500/90 dark:text-black dark:hover:bg-emerald-500"
-                onClick={() => setModalOpen(true)}
+                onClick={openReceivePayment}
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden />
                 Receive Payment
@@ -340,7 +363,7 @@ function PaymentsReceivedPageInner() {
 
         <MobileListHeader
           title="Payments Received"
-          fab={<MobileFabButton ariaLabel="Receive payment" onClick={() => setModalOpen(true)} />}
+          fab={<MobileFabButton ariaLabel="Receive payment" onClick={openReceivePayment} />}
         />
 
         {/* KPI summary */}
@@ -527,7 +550,7 @@ function PaymentsReceivedPageInner() {
             <Button
               size="sm"
               className="mt-4 h-9 rounded-sm shadow-none bg-[#0B1220] text-white hover:bg-[#0B1220]/92 dark:bg-emerald-500/90 dark:text-black dark:hover:bg-emerald-500"
-              onClick={() => setModalOpen(true)}
+              onClick={openReceivePayment}
             >
               <Plus className="mr-2 h-3.5 w-3.5" aria-hidden />
               Receive Payment
@@ -771,7 +794,12 @@ function PaymentsReceivedPageInner() {
           }}
         />
 
-        <ReceivePaymentModal open={modalOpen} onOpenChange={setModalOpen} onSuccess={load} />
+        <ReceivePaymentModal
+          open={modalOpen}
+          onOpenChange={handleReceivePaymentOpenChange}
+          onSuccess={load}
+          preselectedInvoiceId={prefillInvoiceId}
+        />
         <EditPaymentReceivedModal
           open={!!editPaymentId}
           paymentId={editPaymentId}

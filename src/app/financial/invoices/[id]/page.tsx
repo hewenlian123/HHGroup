@@ -29,7 +29,6 @@ import {
   getPaymentsReceivedByInvoiceId,
   getDepositsByInvoiceId,
   getPaymentAttachmentPreviewUrl,
-  markInvoiceSent,
   revertInvoiceToDraft,
   deleteInvoicePayment,
   duplicateInvoice,
@@ -55,8 +54,7 @@ import {
   Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { deleteInvoiceAction, updateInvoiceAction } from "../actions";
-import { ReceivePaymentModal } from "@/app/financial/payments/receive-payment-modal";
+import { deleteInvoiceAction, markInvoiceSentAction, updateInvoiceAction } from "../actions";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -73,6 +71,16 @@ type EditLineDraft = {
 function safeNumber(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : 0;
+}
+
+function recordPaymentPathForInvoice(invoice: InvoiceWithDerived): string {
+  const params = new URLSearchParams();
+  params.set("invoiceId", invoice.id);
+  if (invoice.customerId) params.set("customerId", invoice.customerId);
+  if (invoice.projectId) params.set("projectId", invoice.projectId);
+  const amountDue = Math.max(0, Number(invoice.balanceDue) || 0);
+  params.set("amountDue", Number.isInteger(amountDue) ? String(amountDue) : amountDue.toFixed(2));
+  return `/financial/payments?${params.toString()}`;
 }
 
 function isTestInvoice(inv: InvoiceWithDerived): boolean {
@@ -136,7 +144,6 @@ export default function InvoiceDetailPage() {
   const [deposits, setDeposits] = React.useState<
     Awaited<ReturnType<typeof getDepositsByInvoiceId>>
   >([]);
-  const [showReceivePaymentModal, setShowReceivePaymentModal] = React.useState(false);
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [voidConfirmOpen, setVoidConfirmOpen] = React.useState(false);
@@ -185,11 +192,12 @@ export default function InvoiceDetailPage() {
       invoice &&
       invoice.computedStatus !== "Void" &&
       invoice.computedStatus !== "Paid" &&
-      invoice.computedStatus !== "Draft"
+      invoice.computedStatus !== "Draft" &&
+      invoice.balanceDue > 0
     ) {
-      setShowReceivePaymentModal(true);
+      router.replace(recordPaymentPathForInvoice(invoice));
     }
-  }, [searchParams, invoice]);
+  }, [router, searchParams, invoice]);
 
   const [project, setProject] = React.useState<Awaited<ReturnType<typeof getProjectById>> | null>(
     null
@@ -338,11 +346,11 @@ export default function InvoiceDetailPage() {
     if (!id || actionBusy || editSaving) return;
     setActionBusy(true);
     try {
-      const ok = await markInvoiceSent(id);
-      if (!ok) {
+      const result = await markInvoiceSentAction(id);
+      if (!result.ok) {
         toast({
           title: "Could not mark as sent",
-          description: "Only draft invoices can be marked as sent.",
+          description: result.error ?? "Only draft invoices can be marked as sent.",
           variant: "error",
         });
         return;
@@ -506,6 +514,7 @@ export default function InvoiceDetailPage() {
   const displayedBalance = editing
     ? Math.max(0, editTotal - invoice.paidTotal)
     : invoice.balanceDue;
+  const recordPaymentHref = recordPaymentPathForInvoice(invoice);
 
   return (
     <div
@@ -601,13 +610,15 @@ export default function InvoiceDetailPage() {
                 ) : null}
                 {canPay ? (
                   <Button
+                    asChild
                     size="sm"
                     className={primaryToolbarButtonClass}
-                    onClick={() => setShowReceivePaymentModal(true)}
                     disabled={primaryActionBusy}
                   >
-                    <CircleDollarSign className="h-4 w-4" />
-                    Receive Payment
+                    <Link href={recordPaymentHref}>
+                      <CircleDollarSign className="h-4 w-4" />
+                      Receive Payment
+                    </Link>
                   </Button>
                 ) : null}
 
@@ -1177,14 +1188,6 @@ export default function InvoiceDetailPage() {
           </section>
         </aside>
       </div>
-
-      <ReceivePaymentModal
-        open={showReceivePaymentModal}
-        onOpenChange={setShowReceivePaymentModal}
-        onSuccess={refresh}
-        preselectedInvoiceId={id}
-        remainingBalance={invoice?.balanceDue}
-      />
 
       <ConfirmDialog
         open={deleteConfirmOpen}

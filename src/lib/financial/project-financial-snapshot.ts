@@ -196,6 +196,10 @@ function isVoidStatus(status: string | null | undefined): boolean {
   return s === "void" || s === "voided" || s === "cancelled" || s === "canceled";
 }
 
+function isDraftInvoiceStatus(status: string | null | undefined): boolean {
+  return normalizeStatus(status) === "draft";
+}
+
 function sumNonVoidRows(rows: ProjectFinancialAmountRow[] | undefined): number {
   return toMoney(
     (rows ?? []).reduce((sum, row) => (isVoidStatus(row.status) ? sum : sum + rowAmount(row)), 0)
@@ -438,7 +442,7 @@ function calculateInvoiceAmounts(invoices: ProjectFinancialInvoiceInput[] | unde
   let paidAmount = 0;
 
   for (const invoice of invoices ?? []) {
-    if (isVoidStatus(invoice.status)) continue;
+    if (isVoidStatus(invoice.status) || isDraftInvoiceStatus(invoice.status)) continue;
     billedAmount += rowAmount(invoice);
     if (invoice.payments) {
       paidAmount += sumNonVoidRows(invoice.payments);

@@ -69,6 +69,30 @@ describe("project financial snapshot", () => {
     );
   });
 
+  it("keeps draft invoices out of project open AR while paid invoices do not add outstanding", () => {
+    const snapshot = calculateProjectFinancialSnapshot({
+      projectId: "project-1",
+      contractValue: 5000,
+      invoices: [
+        { id: "draft", total: 100, status: "Draft" },
+        { id: "sent", total: 200, status: "Sent", payments: [{ amount: 50, status: "Posted" }] },
+        {
+          id: "partial",
+          total: 300,
+          status: "Partially Paid",
+          payments: [{ amount: 100, status: "Posted" }],
+        },
+        { id: "paid", total: 400, status: "Paid", payments: [{ amount: 400, status: "Posted" }] },
+        { id: "void", total: 500, status: "Void" },
+        { id: "cancelled", total: 600, status: "Cancelled" },
+      ],
+    });
+
+    expect(snapshot.billedAmount).toBe(900);
+    expect(snapshot.paidAmount).toBe(550);
+    expect(snapshot.openAR).toBe(350);
+  });
+
   it("keeps generic AP cost diagnostic-only so it cannot double count actual cost", () => {
     const snapshot = calculateProjectFinancialSnapshot({
       projectId: "project-1",

@@ -5,6 +5,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type DepositRow = {
   id: string;
@@ -52,8 +53,8 @@ function mapDepositDbRow(r: DepositsDbRow): DepositRow {
   };
 }
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -171,17 +172,20 @@ export async function getTotalDepositsAmount(): Promise<number> {
 }
 
 /** Insert row matching public.deposits (invoice_id required by FK). */
-export async function createDepositFromPayment(payment: {
-  id: string;
-  invoice_id: string;
-  project_id?: string | null;
-  amount: number;
-  payment_date?: string;
-  deposit_account?: string | null;
-  customer_name: string;
-  payment_method?: string | null;
-}): Promise<DepositRow | null> {
-  const c = client();
+export async function createDepositFromPayment(
+  payment: {
+    id: string;
+    invoice_id: string;
+    project_id?: string | null;
+    amount: number;
+    payment_date?: string;
+    deposit_account?: string | null;
+    customer_name: string;
+    payment_method?: string | null;
+  },
+  explicitClient?: SupabaseClient
+): Promise<DepositRow | null> {
+  const c = client(explicitClient);
   // Guard: one non-void deposit per payment_id.
   const existing = await c
     .from("deposits")

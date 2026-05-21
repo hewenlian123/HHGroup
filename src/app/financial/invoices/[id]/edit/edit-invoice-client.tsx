@@ -126,7 +126,7 @@ export default function EditInvoiceClient({
   const [customers, setCustomers] = React.useState<CustomerOption[]>([]);
 
   const [projectId, setProjectId] = React.useState<string>(invoice.projectId ?? "");
-  const [customerId, setCustomerId] = React.useState<string>("");
+  const [customerId, setCustomerId] = React.useState<string>(invoice.customerId ?? "");
   const [invoiceNo, setInvoiceNo] = React.useState<string>(invoice.invoiceNo ?? "");
   const [clientName, setClientName] = React.useState<string>(invoice.clientName ?? "");
   const [issueDate, setIssueDate] = React.useState<string>((invoice.issueDate ?? "").slice(0, 10));
@@ -248,6 +248,7 @@ export default function EditInvoiceClient({
       const result = await updateInvoiceAction(invoice.id, {
         invoiceNo,
         projectId,
+        customerId: customerId || null,
         clientName,
         issueDate,
         dueDate,

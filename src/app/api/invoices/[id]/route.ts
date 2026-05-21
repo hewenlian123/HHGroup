@@ -17,6 +17,7 @@ type InvoiceWithDerived = {
   id: string;
   invoiceNo: string;
   projectId: string;
+  customerId?: string | null;
   clientName: string;
   issueDate: string;
   dueDate: string;
@@ -65,7 +66,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     const invRes = await supabase
       .from("invoices")
       .select(
-        "id,project_id,invoice_no,client_name,issue_date,due_date,status,total,notes,tax_pct,subtotal,tax_amount,created_at"
+        "id,project_id,customer_id,invoice_no,client_name,issue_date,due_date,status,total,notes,tax_pct,subtotal,tax_amount,created_at"
       )
       .eq("id", id)
       .maybeSingle();
@@ -169,6 +170,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       id: String(row.id ?? ""),
       invoiceNo: String(row.invoice_no ?? String(row.id ?? "").slice(0, 8)),
       projectId: String(row.project_id ?? ""),
+      customerId: row.customer_id ? String(row.customer_id) : null,
       clientName: String(row.client_name ?? ""),
       issueDate,
       dueDate,

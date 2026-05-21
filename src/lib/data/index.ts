@@ -2214,6 +2214,7 @@ export async function deleteInvoice(invoiceId: string): Promise<boolean> {
 export async function createInvoice(payload: {
   invoiceNo?: string;
   projectId: string;
+  customerId?: string | null;
   clientName: string;
   issueDate: string;
   dueDate: string;
@@ -2228,6 +2229,7 @@ export async function updateInvoice(
   invoiceId: string,
   payload: Partial<{
     projectId: string;
+    customerId: string | null;
     invoiceNo: string;
     clientName: string;
     issueDate: string;
@@ -2301,6 +2303,7 @@ export async function duplicateInvoice(invoiceId: string): Promise<Invoice | nul
   const now = new Date().toISOString().slice(0, 10);
   return invoicesDb.createInvoice({
     projectId: inv.projectId,
+    customerId: inv.customerId ?? null,
     clientName: inv.clientName,
     issueDate: now,
     dueDate: now,
@@ -2392,7 +2395,7 @@ export async function getProjectBillingSummary(projectId: string): Promise<{
   lastPaymentDate: string | null;
 }> {
   const projectInvoices = (await getInvoicesWithDerived({ projectId })).filter(
-    (i) => i.computedStatus !== "Void"
+    (i) => i.computedStatus !== "Void" && i.computedStatus !== "Draft"
   );
   let invoicedTotal = 0;
   let paidTotal = 0;

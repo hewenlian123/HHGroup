@@ -11,7 +11,6 @@ import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import {
   getInvoicesWithDerived,
   getProjects,
-  createPaymentReceived,
   PAYMENT_METHODS,
   type InvoiceWithDerived,
   type CreatePaymentReceivedAttachmentPayload,
@@ -26,6 +25,7 @@ import {
 import { useToast } from "@/components/toast/toast-provider";
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { createPaymentReceivedAction } from "./actions";
 
 type ReceivePaymentModalProps = {
   open: boolean;
@@ -64,6 +64,21 @@ function fileDedupeKey(file: File): string {
 function makeLocalPreview(file: File): string | null {
   if (!file.type.startsWith("image/")) return null;
   return URL.createObjectURL(file);
+}
+
+function nextPaymentMemo(previous: string, invoiceNo: string): string {
+  const trimmed = previous.trim();
+  return !trimmed || trimmed.startsWith("Payment for ") ? `Payment for ${invoiceNo}` : previous;
+}
+
+function canReceivePayment(inv: InvoiceWithDerived): boolean {
+  return (
+    inv.status !== "Draft" &&
+    inv.balanceDue > 0 &&
+    (inv.computedStatus === "Unpaid" ||
+      inv.computedStatus === "Partial" ||
+      inv.computedStatus === "Overdue")
+  );
 }
 
 function PaymentAttachmentRow({
@@ -225,22 +240,24 @@ export function ReceivePaymentModal({
     let cancelled = false;
     Promise.all([getInvoicesWithDerived(), getProjects()]).then(([invList, projList]) => {
       if (cancelled) return;
-      const nonVoid = invList.filter((i) => i.computedStatus !== "Void");
-      setInvoices(nonVoid);
+      const receivable = invList.filter(canReceivePayment);
+      setInvoices(receivable);
       setProjects(projList);
       if (preselectedInvoiceId) {
-        const inv = nonVoid.find((i) => i.id === preselectedInvoiceId);
+        const inv = receivable.find((i) => i.id === preselectedInvoiceId);
         if (inv) {
           setInvoiceId(inv.id);
           setProjectId(inv.projectId);
           setCustomerName(inv.clientName);
           setAmount(remainingBalance != null ? String(remainingBalance) : String(inv.balanceDue));
+          setNotes((prev) => nextPaymentMemo(prev, inv.invoiceNo));
         }
       } else {
         setInvoiceId("");
         setProjectId("");
         setCustomerName("");
         setAmount(remainingBalance != null ? String(remainingBalance) : "");
+        setNotes("");
       }
     });
     return () => {
@@ -255,6 +272,7 @@ export function ReceivePaymentModal({
       setProjectId(inv.projectId);
       setCustomerName(inv.clientName);
       if (amount === "" || amount === String(remainingBalance)) setAmount(String(inv.balanceDue));
+      setNotes((prev) => nextPaymentMemo(prev, inv.invoiceNo));
     }
   }, [invoiceId, invoices, preselectedInvoiceId, remainingBalance, amount]);
 
@@ -389,8 +407,10 @@ export function ReceivePaymentModal({
   const hasFailedAttachments = attachmentDrafts.some((draft) => draft.status === "failed");
   const disableSubmit = saving || hasUploadingAttachments || hasFailedAttachments;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (
+    e?: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>
+  ) => {
+    e?.preventDefault();
     if (saving) return;
     const invId = preselectedInvoiceId ?? invoiceId;
     if (!invId) {
@@ -433,7 +453,8 @@ export function ReceivePaymentModal({
         notes: notes.trim() || null,
         attachments,
       };
-      await createPaymentReceived(payload);
+      const result = await createPaymentReceivedAction(payload);
+      if (!result.ok) throw new Error(result.error);
       preserveUploadedAttachmentsRef.current = true;
       onSuccess();
       onOpenChange(false);
@@ -716,7 +737,13 @@ export function ReceivePaymentModal({
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" className="h-8" disabled={disableSubmit}>
+            <Button
+              type="button"
+              size="sm"
+              className="h-8"
+              disabled={disableSubmit}
+              onClick={(e) => void handleSubmit(e)}
+            >
               <SubmitSpinner loading={saving} className="mr-2" />
               {saving ? "Saving..." : "Receive Payment"}
             </Button>
