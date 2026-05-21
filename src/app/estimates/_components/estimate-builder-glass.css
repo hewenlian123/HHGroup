@@ -1,11 +1,11 @@
 /**
- * Estimate Builder — deep navy glass workspace (readable forms first).
+ * Estimate Builder — Warm Graphite Premium (scoped; /estimates/new + builder shell).
  */
 @import "./estimate-builder-popover-dark.css";
 
 /* ── App chrome when builder route is active ── */
 main.estimate-builder-active {
-  background: #070a12 !important;
+  background: #090a0f !important;
 }
 
 body.estimate-builder-active {
@@ -14,9 +14,9 @@ body.estimate-builder-active {
 
 header[data-app-topbar].estimate-builder-active,
 header.estimate-topbar-glass {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
-  background: rgba(7, 10, 18, 0.78) !important;
-  background-color: rgba(7, 10, 18, 0.78) !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
+  background: rgba(11, 13, 18, 0.82) !important;
+  background-color: rgba(11, 13, 18, 0.82) !important;
   backdrop-filter: blur(18px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(18px) saturate(150%) !important;
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04) !important;
@@ -28,7 +28,7 @@ header[data-app-topbar].estimate-builder-active[class*="bg-white"],
 header.estimate-topbar-glass[class*="bg-white"],
 header[data-app-topbar].estimate-builder-active[class*="dark:bg-background"],
 header.estimate-topbar-glass[class*="dark:bg-background"] {
-  background: rgba(7, 10, 18, 0.78) !important;
+  background: rgba(11, 13, 18, 0.82) !important;
 }
 
 header[data-app-topbar].estimate-builder-active [class*="bg-white"],
@@ -78,9 +78,9 @@ header[data-app-topbar].estimate-builder-active input[type="search"]::placeholde
 }
 
 header[data-app-topbar].estimate-builder-active input[type="search"]:focus {
-  border-color: rgba(129, 140, 248, 0.45) !important;
+  border-color: rgba(79, 140, 255, 0.45) !important;
   outline: none !important;
-  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.22) !important;
+  box-shadow: 0 0 0 2px rgba(79, 140, 255, 0.2) !important;
 }
 
 header[data-app-topbar].estimate-builder-active svg[class*="text-"] {
@@ -101,8 +101,8 @@ header[data-app-topbar].estimate-builder-active button:hover {
 }
 
 body.estimate-builder-active nav[aria-label="Bottom navigation"] {
-  border-top: 1px solid rgba(148, 163, 184, 0.14) !important;
-  background: rgba(7, 10, 18, 0.94) !important;
+  border-top: 1px solid rgba(148, 163, 184, 0.16) !important;
+  background: rgba(9, 10, 15, 0.96) !important;
   backdrop-filter: blur(18px) saturate(150%) !important;
   -webkit-backdrop-filter: blur(18px) saturate(150%) !important;
 }
@@ -137,27 +137,38 @@ body.estimate-builder-active [role="dialog"] {
   padding-inline: 0;
 }
 
-/* ── Builder canvas ── */
+/* ── Builder canvas — Warm Graphite Premium tokens ── */
 .estimate-builder {
-  --eb-bg: #070a12;
-  --eb-bg-soft: #0b1020;
-  --eb-panel: rgba(15, 23, 42, 0.72);
-  --eb-panel-strong: rgba(17, 24, 39, 0.84);
-  --eb-panel-deep: rgba(11, 18, 36, 0.88);
-  --eb-input: rgba(15, 23, 42, 0.88);
-  --eb-border: rgba(148, 163, 184, 0.22);
-  --eb-border-strong: rgba(148, 163, 184, 0.32);
+  --eb-bg: #090a0f;
+  --eb-bg-soft: #0b0d12;
+  --eb-shell: #0f141f;
+  --eb-panel: #111622;
+  --eb-panel-strong: #141a28;
+  --eb-panel-elevated: #171d2b;
+  --eb-panel-deep: #0f1522;
+  --eb-input: #0f1522;
+  --eb-border: rgba(148, 163, 184, 0.18);
+  --eb-border-strong: rgba(148, 163, 184, 0.22);
   --eb-border-soft: rgba(148, 163, 184, 0.12);
-  --eb-text: #f8fafc;
-  --eb-text-secondary: #cbd5e1;
-  --eb-text-muted: #94a3b8;
-  --eb-text-faint: #64748b;
-  --eb-accent: #818cf8;
-  --eb-accent-2: #38bdf8;
-  --eb-focus: rgba(129, 140, 248, 0.45);
+  --eb-highlight: rgba(255, 255, 255, 0.06);
+  --eb-highlight-soft: rgba(255, 255, 255, 0.04);
+  --eb-text: #f4f7fb;
+  --eb-text-secondary: #a7b0c0;
+  --eb-text-muted: #778195;
+  --eb-text-faint: #5c6678;
+  --eb-accent: #4f8cff;
+  --eb-accent-2: #7dd3fc;
+  --eb-amber: #c4a574;
+  --eb-amber-soft: rgba(196, 165, 116, 0.14);
+  --eb-focus: rgba(79, 140, 255, 0.38);
   --eb-total-accent: #7dd3fc;
-  --eb-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
-  --eb-glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  --eb-glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.32);
+  --eb-glass-shadow-hover: 0 14px 40px rgba(0, 0, 0, 0.36);
+  --eb-glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --eb-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --eb-dur-fast: 150ms;
+  --eb-dur: 200ms;
+  --eb-dur-enter: 220ms;
 
   position: relative;
   isolation: isolate;
@@ -170,25 +181,25 @@ body.estimate-builder-active [role="dialog"] {
   overflow-x: hidden;
 }
 
-/* Ambient glow — spatial depth only */
+/* Static ambient — warm graphite depth, no animation */
 .estimate-builder .eb-ambient-top {
   pointer-events: none;
   position: absolute;
-  inset: -3rem -15% auto;
+  inset: -3rem -12% auto;
   z-index: 0;
-  height: 14rem;
-  background: radial-gradient(ellipse 55% 70% at 18% 0%, rgba(99, 102, 241, 0.09), transparent 68%);
+  height: 15rem;
+  background: radial-gradient(ellipse 60% 75% at 12% 0%, rgba(79, 140, 255, 0.05), transparent 68%);
 }
 
 .estimate-builder .eb-ambient-gold {
   pointer-events: none;
   position: absolute;
-  right: -8%;
-  top: 6rem;
+  right: -6%;
+  top: 5rem;
   z-index: 0;
-  height: 16rem;
-  width: 16rem;
-  background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.06), transparent 70%);
+  height: 18rem;
+  width: 18rem;
+  background: radial-gradient(circle at 50% 40%, rgba(196, 165, 116, 0.04), transparent 72%);
 }
 
 .estimate-builder .eb-builder-content {
@@ -196,30 +207,50 @@ body.estimate-builder-active [role="dialog"] {
   z-index: 1;
 }
 
+/* Page entrance — /estimates/new only */
+.estimate-builder-new .eb-builder-content {
+  animation: eb-page-enter var(--eb-dur-enter) var(--eb-ease) both;
+}
+
+@keyframes eb-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Shared glass surface */
 .estimate-builder .eb-glass-panel,
 .estimate-builder .eb-draft-panel {
   border-radius: 0.5rem;
   border: 1px solid var(--eb-border);
-  background: var(--eb-panel);
+  background: color-mix(in srgb, var(--eb-panel) 92%, transparent);
   box-shadow: var(--eb-glass-shadow), var(--eb-glass-inset);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
   transition:
-    border-color 180ms ease,
-    background 180ms ease,
-    box-shadow 180ms ease;
+    border-color var(--eb-dur) var(--eb-ease),
+    background var(--eb-dur) var(--eb-ease),
+    box-shadow var(--eb-dur) var(--eb-ease),
+    transform var(--eb-dur-fast) var(--eb-ease);
 }
 
 .estimate-builder .eb-glass-panel:hover,
 .estimate-builder .eb-draft-panel:hover {
   border-color: var(--eb-border-strong);
-  background: rgba(15, 23, 42, 0.72);
+  background: color-mix(in srgb, var(--eb-panel-elevated) 94%, transparent);
+  box-shadow: var(--eb-glass-shadow-hover), var(--eb-glass-inset);
+  transform: translateY(-1px);
 }
 
 .estimate-builder .eb-glass-panel-customer,
 .estimate-builder .eb-draft-panel {
-  background: var(--eb-panel-strong);
+  background: color-mix(in srgb, var(--eb-panel-strong) 94%, transparent);
 }
 
 .estimate-builder .eb-glass-scope {
@@ -248,17 +279,25 @@ body.estimate-builder-active [role="dialog"] {
   border: 1px solid var(--eb-border-strong);
   background: linear-gradient(
     165deg,
-    rgba(30, 41, 59, 0.55) 0%,
-    rgba(15, 23, 42, 0.72) 48%,
-    rgba(11, 18, 36, 0.78) 100%
+    color-mix(in srgb, var(--eb-panel-elevated) 88%, transparent) 0%,
+    color-mix(in srgb, var(--eb-panel-strong) 92%, transparent) 52%,
+    color-mix(in srgb, var(--eb-panel) 94%, transparent) 100%
   );
   padding: 1rem 1.1rem 1.15rem;
-  box-shadow:
-    var(--eb-glass-shadow),
-    var(--eb-glass-inset),
-    0 0 40px rgba(99, 102, 241, 0.06);
-  backdrop-filter: blur(18px) saturate(160%);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  box-shadow: var(--eb-glass-shadow), var(--eb-glass-inset);
+  backdrop-filter: blur(16px) saturate(145%);
+  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  transition:
+    border-color var(--eb-dur) var(--eb-ease),
+    box-shadow var(--eb-dur) var(--eb-ease),
+    transform var(--eb-dur-fast) var(--eb-ease);
+}
+
+.estimate-builder .eb-glass-sidebar:hover,
+.estimate-builder .eb-glass-sidebar:focus-within {
+  border-color: rgba(148, 163, 184, 0.26);
+  box-shadow: var(--eb-glass-shadow-hover), var(--eb-glass-inset);
+  transform: translateY(-1px);
 }
 
 .estimate-builder .eb-glass-sidebar::before {
@@ -268,9 +307,9 @@ body.estimate-builder-active [role="dialog"] {
   inset: 0;
   border-radius: inherit;
   background: radial-gradient(
-    ellipse 80% 50% at 100% 0%,
-    rgba(129, 140, 248, 0.08),
-    transparent 55%
+    ellipse 75% 55% at 100% 0%,
+    rgba(79, 140, 255, 0.06),
+    transparent 58%
   );
 }
 
@@ -285,10 +324,10 @@ body.estimate-builder-active [role="dialog"] {
 
 .estimate-builder .eb-glass-mobile-bar {
   border-top: 1px solid var(--eb-border);
-  background: rgba(7, 10, 18, 0.94);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: rgba(9, 10, 15, 0.96);
+  backdrop-filter: blur(16px) saturate(145%);
+  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  box-shadow: inset 0 1px 0 var(--eb-highlight-soft);
 }
 
 .estimate-builder .eb-glass-header {
@@ -300,7 +339,7 @@ body.estimate-builder-active [role="dialog"] {
 .estimate-builder .eb-gold-total {
   color: var(--eb-total-accent);
   font-feature-settings: "tnum";
-  text-shadow: 0 0 24px rgba(125, 211, 252, 0.1);
+  letter-spacing: -0.02em;
 }
 
 .estimate-builder .tabular-nums {
@@ -310,11 +349,30 @@ body.estimate-builder-active [role="dialog"] {
 
 .estimate-builder .eb-gold-link {
   color: var(--eb-accent);
-  transition: color 150ms ease;
+  transition: color var(--eb-dur-fast) var(--eb-ease);
 }
 
 .estimate-builder .eb-gold-link:hover {
-  color: #c7d2fe;
+  color: #7eb0ff;
+}
+
+/* Draft badge — warm amber, subtle */
+.estimate-builder .eb-draft-badge {
+  color: var(--eb-text);
+}
+
+.estimate-builder .eb-draft-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 0.25rem;
+  border: 1px solid rgba(196, 165, 116, 0.28);
+  background: var(--eb-amber-soft);
+  padding: 0.05rem 0.4rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d4bc8e;
 }
 
 .estimate-builder .eb-glass-notes {
@@ -415,22 +473,26 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 .estimate-builder .eb-glass-scope :where(input, textarea, select):hover,
 .estimate-builder .eb-input:hover {
   border-color: var(--eb-border-strong) !important;
-  background: rgba(15, 23, 42, 0.82) !important;
+  background: color-mix(in srgb, var(--eb-input) 88%, #141a28) !important;
 }
 
 .estimate-builder .eb-glass-panel :where(input, textarea, select):focus-visible,
 .estimate-builder .eb-glass-scope :where(input, textarea, select):focus-visible,
 .estimate-builder .eb-input:focus-visible {
   outline: none !important;
-  border-color: rgba(129, 140, 248, 0.55) !important;
-  background: rgba(15, 23, 42, 0.88) !important;
+  border-color: rgba(79, 140, 255, 0.5) !important;
+  background: color-mix(in srgb, var(--eb-input) 82%, #141a28) !important;
   box-shadow:
     var(--eb-glass-inset),
     0 0 0 2px var(--eb-focus) !important;
 }
 
+.estimate-builder .eb-line-row {
+  transition: background-color var(--eb-dur-fast) var(--eb-ease);
+}
+
 .estimate-builder .eb-line-row:hover {
-  background: rgba(30, 41, 59, 0.25) !important;
+  background: rgba(23, 29, 43, 0.55) !important;
 }
 
 .estimate-builder .eb-add-section-composer {
@@ -447,37 +509,54 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
   color: var(--eb-text-muted);
 }
 
-/* Primary — muted slate/indigo (Linear / Stripe) */
+/* Primary — warm graphite + accent blue */
 .estimate-builder .eb-btn-primary {
-  border: 1px solid rgba(148, 163, 184, 0.28) !important;
+  border: 1px solid rgba(148, 163, 184, 0.22) !important;
   border-radius: 0.375rem !important;
   background: linear-gradient(
     180deg,
-    rgba(71, 85, 105, 0.95) 0%,
-    rgba(30, 41, 59, 0.98) 55%,
-    rgba(37, 99, 235, 0.55) 100%
+    color-mix(in srgb, #1a2233 92%, #4f8cff 8%) 0%,
+    color-mix(in srgb, #121820 96%, #4f8cff 4%) 48%,
+    color-mix(in srgb, #0f141f 98%, #3b6fd4 6%) 100%
   ) !important;
-  color: #f8fafc !important;
+  color: var(--eb-text) !important;
   font-weight: 500 !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 2px 10px rgba(0, 0, 0, 0.22) !important;
+    0 2px 10px rgba(0, 0, 0, 0.24) !important;
   transition:
-    filter 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
+    border-color var(--eb-dur-fast) var(--eb-ease),
+    background var(--eb-dur-fast) var(--eb-ease),
+    box-shadow var(--eb-dur-fast) var(--eb-ease),
+    transform var(--eb-dur-fast) var(--eb-ease);
 }
 
 .estimate-builder .eb-btn-primary:hover:not(:disabled) {
-  filter: brightness(1.04);
-  border-color: rgba(148, 163, 184, 0.36) !important;
+  border-color: rgba(148, 163, 184, 0.28) !important;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, #1e2838 90%, #4f8cff 10%) 0%,
+    color-mix(in srgb, #141a28 94%, #4f8cff 6%) 52%,
+    color-mix(in srgb, #111622 96%, #4f8cff 8%) 100%
+  ) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
     0 4px 14px rgba(0, 0, 0, 0.28) !important;
 }
 
 .estimate-builder .eb-btn-primary:active:not(:disabled) {
-  transform: translateY(0.5px);
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 6px rgba(0, 0, 0, 0.22) !important;
+}
+
+.estimate-builder .eb-btn-primary:focus-visible {
+  outline: none !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 2px var(--eb-focus),
+    0 2px 10px rgba(0, 0, 0, 0.22) !important;
 }
 
 .estimate-builder .eb-btn-primary:disabled {
@@ -487,43 +566,58 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 .estimate-builder .eb-btn-ghost {
   border: 1px solid var(--eb-border) !important;
   border-radius: 0.375rem !important;
-  background: rgba(15, 23, 42, 0.45) !important;
+  background: color-mix(in srgb, var(--eb-input) 72%, transparent) !important;
   color: var(--eb-text-secondary) !important;
   box-shadow: var(--eb-glass-inset) !important;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  transition:
+    border-color var(--eb-dur-fast) var(--eb-ease),
+    background var(--eb-dur-fast) var(--eb-ease),
+    color var(--eb-dur-fast) var(--eb-ease),
+    transform var(--eb-dur-fast) var(--eb-ease);
 }
 
 .estimate-builder .eb-btn-ghost:hover:not(:disabled) {
   border-color: var(--eb-border-strong) !important;
-  background: rgba(30, 41, 59, 0.55) !important;
+  background: color-mix(in srgb, var(--eb-panel-elevated) 80%, transparent) !important;
   color: var(--eb-text) !important;
+}
+
+.estimate-builder .eb-btn-ghost:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .estimate-builder .eb-add-section,
 .estimate-builder .eb-action-secondary {
   border: 1px solid var(--eb-border);
   border-radius: 0.375rem;
-  background: rgba(15, 23, 42, 0.5);
+  background: color-mix(in srgb, var(--eb-input) 78%, transparent);
   color: var(--eb-text-secondary);
   box-shadow: var(--eb-glass-inset);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   transition:
-    border-color 180ms ease,
-    background 180ms ease,
-    color 180ms ease,
-    box-shadow 180ms ease;
+    border-color var(--eb-dur-fast) var(--eb-ease),
+    background var(--eb-dur-fast) var(--eb-ease),
+    color var(--eb-dur-fast) var(--eb-ease),
+    box-shadow var(--eb-dur-fast) var(--eb-ease),
+    transform var(--eb-dur-fast) var(--eb-ease);
 }
 
 .estimate-builder .eb-add-section:hover:not(:disabled),
 .estimate-builder .eb-action-secondary:hover:not(:disabled) {
-  border-color: rgba(129, 140, 248, 0.35);
-  background: rgba(30, 41, 59, 0.55);
+  border-color: rgba(79, 140, 255, 0.32);
+  background: color-mix(in srgb, var(--eb-panel-elevated) 82%, transparent);
   color: var(--eb-text);
   box-shadow:
     var(--eb-glass-inset),
-    0 0 20px rgba(99, 102, 241, 0.1);
+    0 0 0 1px rgba(79, 140, 255, 0.08);
+}
+
+.estimate-builder .eb-add-section:active:not(:disabled),
+.estimate-builder .eb-action-secondary:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .estimate-builder .eb-add-section:disabled,
@@ -534,21 +628,27 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 .estimate-builder .eb-btn-text {
   border: 1px solid var(--eb-border) !important;
   border-radius: 0.375rem !important;
-  background: rgba(15, 23, 42, 0.42) !important;
+  background: color-mix(in srgb, var(--eb-input) 70%, transparent) !important;
   color: var(--eb-text-secondary) !important;
   font-weight: 500 !important;
   box-shadow: var(--eb-glass-inset) !important;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  transition:
+    border-color var(--eb-dur-fast) var(--eb-ease),
+    background var(--eb-dur-fast) var(--eb-ease),
+    color var(--eb-dur-fast) var(--eb-ease),
+    transform var(--eb-dur-fast) var(--eb-ease);
 }
 
 .estimate-builder .eb-btn-text:hover:not(:disabled) {
   border-color: var(--eb-border-strong) !important;
-  background: rgba(30, 41, 59, 0.5) !important;
+  background: color-mix(in srgb, var(--eb-panel-elevated) 75%, transparent) !important;
   color: var(--eb-text) !important;
-  box-shadow:
-    var(--eb-glass-inset),
-    0 0 16px rgba(99, 102, 241, 0.08) !important;
+}
+
+.estimate-builder .eb-btn-text:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .estimate-builder .eb-icon-action {
@@ -616,27 +716,39 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
   border: 1px solid var(--eb-border);
   background: var(--eb-panel-deep);
   padding: 0.35rem 0.45rem 0.45rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 1px 0 var(--eb-highlight-soft);
   transition:
-    border-color 180ms ease,
-    background 180ms ease;
+    border-color var(--eb-dur-fast) var(--eb-ease),
+    background var(--eb-dur-fast) var(--eb-ease),
+    box-shadow var(--eb-dur-fast) var(--eb-ease);
 }
 
 .estimate-builder .eb-line-item-card:hover {
   border-color: var(--eb-border-strong);
-  background: rgba(11, 18, 36, 0.88);
+  background: color-mix(in srgb, var(--eb-panel-elevated) 70%, var(--eb-panel-deep));
+  box-shadow:
+    inset 0 1px 0 var(--eb-highlight),
+    0 4px 14px rgba(0, 0, 0, 0.12);
 }
 
 /* Scope empty state */
 .estimate-builder .eb-scope-empty {
   border-radius: 0.5rem;
   border: 1px dashed var(--eb-border);
-  background: rgba(15, 23, 42, 0.42);
+  background: color-mix(in srgb, var(--eb-input) 65%, transparent);
   padding: 2rem 1.25rem;
   text-align: center;
   box-shadow: var(--eb-glass-inset);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  transition:
+    border-color var(--eb-dur) var(--eb-ease),
+    background var(--eb-dur) var(--eb-ease);
+}
+
+.estimate-builder .eb-scope-empty:hover {
+  border-color: rgba(148, 163, 184, 0.24);
+  background: color-mix(in srgb, var(--eb-panel) 72%, transparent);
 }
 
 .estimate-builder .eb-scope-empty-message {
@@ -657,7 +769,7 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 }
 
 .estimate-builder .eb-scope-editor-surface:focus-within {
-  border-color: rgba(129, 140, 248, 0.45);
+  border-color: rgba(79, 140, 255, 0.42);
   box-shadow:
     var(--eb-glass-inset),
     0 0 0 2px var(--eb-focus);
@@ -692,11 +804,21 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
   margin-top: 0.25rem;
   border: 1px solid var(--eb-border);
   border-radius: 0.375rem;
-  background: rgba(15, 23, 42, 0.58);
+  background: color-mix(in srgb, var(--eb-panel) 88%, transparent);
   padding: 0.5rem 0.75rem 0.65rem;
   box-shadow: var(--eb-glass-inset);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  transition:
+    border-color var(--eb-dur) var(--eb-ease),
+    box-shadow var(--eb-dur) var(--eb-ease),
+    transform var(--eb-dur-fast) var(--eb-ease);
+}
+
+.estimate-builder .eb-payment-schedule:hover {
+  border-color: var(--eb-border-strong);
+  box-shadow: var(--eb-glass-shadow-hover), var(--eb-glass-inset);
+  transform: translateY(-1px);
 }
 
 .estimate-builder .eb-payment-schedule-nested {
@@ -719,12 +841,22 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 .estimate-builder .eb-payment-empty-box {
   border-radius: 0.5rem;
   border: 1px dashed var(--eb-border);
-  background: rgba(15, 23, 42, 0.48);
+  background: color-mix(in srgb, var(--eb-input) 62%, transparent);
   padding: 1.75rem 1rem;
   text-align: center;
   box-shadow: var(--eb-glass-inset);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
+  transition:
+    border-color var(--eb-dur) var(--eb-ease),
+    box-shadow var(--eb-dur) var(--eb-ease);
+}
+
+.estimate-builder .eb-payment-empty-box:hover {
+  border-color: rgba(79, 140, 255, 0.22);
+  box-shadow:
+    var(--eb-glass-inset),
+    0 0 0 1px rgba(79, 140, 255, 0.06);
 }
 
 .estimate-builder .eb-payment-empty {
@@ -754,25 +886,46 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .estimate-builder .eb-glass-scope,
+  .estimate-builder-new .eb-builder-content {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .estimate-builder .eb-glass-panel,
+  .estimate-builder .eb-draft-panel,
+  .estimate-builder .eb-glass-sidebar,
+  .estimate-builder .eb-payment-schedule,
   .estimate-builder .eb-btn-primary,
-  .estimate-builder .eb-glass-panel {
-    transition: none;
+  .estimate-builder .eb-btn-ghost,
+  .estimate-builder .eb-btn-text,
+  .estimate-builder .eb-add-section,
+  .estimate-builder .eb-action-secondary,
+  .estimate-builder .eb-line-item-card,
+  .estimate-builder .eb-scope-empty,
+  .estimate-builder .eb-payment-empty-box,
+  .estimate-builder .eb-glass-scope {
+    transition:
+      border-color var(--eb-dur-fast) ease,
+      background var(--eb-dur-fast) ease,
+      color var(--eb-dur-fast) ease,
+      box-shadow var(--eb-dur-fast) ease;
+    transform: none !important;
   }
 }
 
 /* ── Estimate Builder sheets (scoped; not global Sheet) ── */
 body.estimate-builder-active [data-radix-dialog-overlay] {
-  background: rgba(2, 6, 23, 0.58) !important;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(6, 8, 14, 0.62) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .estimate-builder.eb-sheet-glass {
-  --eb-sheet-bg: rgba(8, 13, 26, 0.92);
-  --eb-sheet-input-bg: rgba(15, 23, 42, 0.82);
+  --eb-sheet-bg: rgba(11, 13, 18, 0.94);
+  --eb-sheet-input-bg: #0f1522;
   --eb-sheet-border: rgba(148, 163, 184, 0.18);
-  --eb-sheet-border-strong: rgba(148, 163, 184, 0.28);
+  --eb-sheet-border-strong: rgba(148, 163, 184, 0.24);
 
   position: fixed !important;
   display: flex !important;
@@ -963,10 +1116,10 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
 
 .estimate-builder.eb-sheet-glass .eb-sheet-input:focus-visible {
   outline: none !important;
-  border-color: rgba(129, 140, 248, 0.5) !important;
+  border-color: rgba(79, 140, 255, 0.48) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0 0 2px rgba(129, 140, 248, 0.28) !important;
+    0 0 0 2px rgba(79, 140, 255, 0.26) !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-textarea.eb-proposal-scope-editor,
@@ -979,10 +1132,10 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-textarea.eb-proposal-scope-editor:focus-within {
-  border-color: rgba(129, 140, 248, 0.5) !important;
+  border-color: rgba(79, 140, 255, 0.48) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0 0 2px rgba(129, 140, 248, 0.28) !important;
+    0 0 0 2px rgba(79, 140, 255, 0.26) !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-footer {
@@ -1033,7 +1186,7 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-primary {
-  border: 1px solid rgba(129, 140, 248, 0.32) !important;
+  border: 1px solid rgba(79, 140, 255, 0.3) !important;
   border-radius: 0.375rem !important;
   background: linear-gradient(
     180deg,
