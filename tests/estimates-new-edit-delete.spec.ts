@@ -304,6 +304,7 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   deleteDialog = page.getByRole("dialog", { name: "Delete estimate?" });
   await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
   await deleteDialog.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(deleteDialog).toBeHidden({ timeout: 10_000 });
   await expect(page).toHaveURL(isEstimatesListUrl, { timeout: 30_000 });
   await expect(
     page.getByRole("heading", { name: "Estimates", level: 1 }).locator("visible=true")

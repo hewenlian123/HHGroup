@@ -17,6 +17,10 @@ import { useToast } from "@/components/toast/toast-provider";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { formatEstimateCurrency } from "./_components/estimate-currency";
 import {
+  runDeleteEstimateActionWithTimeout,
+  type DeleteEstimateAction,
+} from "./delete-estimate-client";
+import {
   MobileEmptyState,
   MobileFabPlus,
   MobileFilterSheet,
@@ -25,8 +29,6 @@ import {
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
 import { cn } from "@/lib/utils";
-
-type DeleteAction = (formData: FormData) => Promise<{ ok: boolean; error?: string }>;
 
 export function EstimatesListClient({
   list,
@@ -39,7 +41,7 @@ export function EstimatesListClient({
   loadWarning: string | null;
   saved?: string;
   errorMessage: string | null;
-  deleteEstimateAction: DeleteAction;
+  deleteEstimateAction: DeleteEstimateAction;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -82,7 +84,7 @@ export function EstimatesListClient({
     try {
       const formData = new FormData();
       formData.set("estimateId", deleteTarget.id);
-      const result = await deleteEstimateAction(formData);
+      const result = await runDeleteEstimateActionWithTimeout(deleteEstimateAction, formData);
       if (!result.ok) {
         toast({
           title: "Could not delete estimate",
