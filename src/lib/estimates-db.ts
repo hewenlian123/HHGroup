@@ -6,10 +6,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 import { generateCode } from "@/lib/estimate-cost-code-suggest";
+import { normalizeEstimateNoteBlocks, type EstimateNoteBlock } from "@/lib/estimate-notes";
 
 // —— Types ——
 
 export type EstimateStatus = "Draft" | "Sent" | "Approved" | "Rejected" | "Converted";
+export type EstimateLineItemStatus =
+  | "included"
+  | "optional"
+  | "allowance"
+  | "excluded"
+  | "owner_supplied";
 
 export type EstimateListItem = {
   id: string;
@@ -32,6 +39,7 @@ export type EstimateMetaRecord = {
   estimateDate: string | null;
   validUntil: string | null;
   notes: string | null;
+  documentNotes: EstimateNoteBlock[];
   salesPerson: string | null;
 };
 
@@ -47,6 +55,8 @@ export type EstimateItemRow = {
   unitCost: number;
   markupPct: number;
   hideAmountOnPdf: boolean;
+  status: EstimateLineItemStatus;
+  sortOrder: number;
 };
 
 export type EstimateSummary = {
@@ -247,6 +257,7 @@ export async function createEstimateWithClient(
     estimateDate?: string;
     validUntil?: string;
     notes?: string;
+    documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     tax?: number;
     discount?: number;
@@ -300,9 +311,17 @@ export async function createEstimateWithClient(
   if (payload.validUntil != null && payload.validUntil !== "")
     metaIns.valid_until = payload.validUntil;
   if (payload.notes != null) metaIns.notes = payload.notes;
+  if (payload.documentNotes != null)
+    metaIns.document_notes = normalizeEstimateNoteBlocks(payload.documentNotes);
   if (payload.salesPerson != null) metaIns.sales_person = payload.salesPerson;
 
-  const { error: e2 } = await c.from("estimate_meta").insert(metaIns);
+  const { error: e2Initial } = await c.from("estimate_meta").insert(metaIns);
+  let e2 = e2Initial;
+  if (e2 && metaIns.document_notes != null && isMissingColumnError(e2, "document_notes")) {
+    delete metaIns.document_notes;
+    const retry = await c.from("estimate_meta").insert(metaIns);
+    e2 = retry.error;
+  }
   if (e2) {
     const hint =
       "Run supabase/migrations/RUN_ESTIMATES_MIGRATIONS.sql in Supabase Dashboard → SQL Editor.";
@@ -324,6 +343,7 @@ export async function createEstimate(payload: {
   estimateDate?: string;
   validUntil?: string;
   notes?: string;
+  documentNotes?: EstimateNoteBlock[];
   salesPerson?: string;
   tax?: number;
   discount?: number;
@@ -344,6 +364,7 @@ export async function createEstimateWithItemsWithClient(
     estimateDate?: string;
     validUntil?: string;
     notes?: string;
+    documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     tax?: number;
     discount?: number;
@@ -358,6 +379,8 @@ export async function createEstimateWithItemsWithClient(
       unitCost: number;
       markupPct: number;
       hideAmountOnPdf?: boolean;
+      status?: EstimateLineItemStatus;
+      sortOrder?: number;
     }>;
     paymentSchedule?: Array<{
       title: string;
@@ -376,6 +399,7 @@ export async function createEstimateWithItemsWithClient(
     estimateDate: payload.estimateDate,
     validUntil: payload.validUntil,
     notes: payload.notes,
+    documentNotes: payload.documentNotes,
     salesPerson: payload.salesPerson,
     tax: payload.tax,
     discount: payload.discount,
@@ -395,8 +419,9 @@ export async function createEstimateWithItemsWithClient(
         if (!result.ok) throw new Error(result.error);
       }
     }
-    for (const it of payload.items) {
-      const { error } = await c.from("estimate_items").insert({
+    for (let idx = 0; idx < payload.items.length; idx++) {
+      const it = payload.items[idx];
+      const { error } = await insertEstimateItemRowWithAdvancedFallback(c, {
         estimate_id: id,
         cost_code: it.costCode,
         desc: it.desc,
@@ -405,6 +430,8 @@ export async function createEstimateWithItemsWithClient(
         unit_cost: it.unitCost,
         markup_pct: it.markupPct,
         hide_amount_on_pdf: Boolean(it.hideAmountOnPdf),
+        status: normalizeLineItemStatus(it.status),
+        sort_order: Number.isFinite(it.sortOrder) ? Number(it.sortOrder) : idx,
       });
       if (error) throw new Error(error.message ?? "Failed to create estimate item.");
     }
@@ -440,6 +467,7 @@ export async function createEstimateWithItems(payload: {
   estimateDate?: string;
   validUntil?: string;
   notes?: string;
+  documentNotes?: EstimateNoteBlock[];
   salesPerson?: string;
   tax?: number;
   discount?: number;
@@ -454,6 +482,8 @@ export async function createEstimateWithItems(payload: {
     unitCost: number;
     markupPct: number;
     hideAmountOnPdf?: boolean;
+    status?: EstimateLineItemStatus;
+    sortOrder?: number;
   }>;
   paymentSchedule?: Array<{
     title: string;
@@ -561,6 +591,7 @@ export async function getEstimateMeta(
     estimateDate: (row.estimate_date as string) ?? null,
     validUntil: (row.valid_until as string) ?? null,
     notes: (row.notes as string) ?? null,
+    documentNotes: normalizeEstimateNoteBlocks(row.document_notes),
     salesPerson: (row.sales_person as string) ?? null,
   };
 }
@@ -596,6 +627,18 @@ function isMissingColumnError(err: unknown, columnName: string): boolean {
     new RegExp(columnName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(msg) &&
     /could not find|schema cache|column/i.test(msg)
   );
+}
+
+function normalizeLineItemStatus(status: unknown): EstimateLineItemStatus {
+  if (
+    status === "optional" ||
+    status === "allowance" ||
+    status === "excluded" ||
+    status === "owner_supplied"
+  ) {
+    return status;
+  }
+  return "included";
 }
 
 async function upsertEstimateCategoryWithOrderFallback(
@@ -677,9 +720,22 @@ export async function getEstimateItems(
     .from("estimate_items")
     .select("*")
     .eq("estimate_id", estimateId)
-    .order("cost_code");
+    .order("sort_order", { ascending: true })
+    .order("id", { ascending: true });
   if (error) {
     if (isMissingTable(error)) return [];
+    if (isMissingColumnError(error, "sort_order")) {
+      const { data: fallbackRows, error: fallbackError } = await c
+        .from("estimate_items")
+        .select("*")
+        .eq("estimate_id", estimateId)
+        .order("cost_code");
+      if (fallbackError) throw new Error(fallbackError.message);
+      return (fallbackRows ?? []).map((r, index) => ({
+        ...mapEstimateItemRow(r as Record<string, unknown>),
+        sortOrder: index,
+      }));
+    }
     throw new Error(error.message);
   }
   return (rows ?? []).map((r) => mapEstimateItemRow(r as Record<string, unknown>));
@@ -711,6 +767,7 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
           estimateDate: (metaJson.estimateDate as string | null) ?? null,
           validUntil: (metaJson.validUntil as string | null) ?? null,
           notes: (metaJson.notes as string | null) ?? null,
+          documentNotes: normalizeEstimateNoteBlocks(metaJson.documentNotes),
           salesPerson: (metaJson.salesPerson as string | null) ?? null,
           ...(metaJson.categoryNames && typeof metaJson.categoryNames === "object"
             ? { categoryNames: metaJson.categoryNames as Record<string, string> }
@@ -729,6 +786,8 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
         unitCost: Number(it.unitCost) || 0,
         markupPct: Number(it.markupPct) || 0,
         hideAmountOnPdf: Boolean(it.hideAmountOnPdf),
+        status: normalizeLineItemStatus(it.status),
+        sortOrder: Number(it.sortOrder ?? 0) || 0,
       }))
     : [];
 
@@ -913,6 +972,7 @@ export async function createNewVersionFromSnapshot(estimateId: string): Promise<
       estimate_date: m.estimateDate,
       valid_until: m.validUntil,
       notes: m.notes,
+      document_notes: normalizeEstimateNoteBlocks(m.documentNotes),
       sales_person: m.salesPerson,
     })
     .eq("estimate_id", estimateId);
@@ -934,8 +994,9 @@ export async function createNewVersionFromSnapshot(estimateId: string): Promise<
   // Restore items: replace all
   await c.from("estimate_items").delete().eq("estimate_id", estimateId);
   if (latest.items.length > 0) {
-    await c.from("estimate_items").insert(
-      latest.items.map((it) => ({
+    for (let idx = 0; idx < latest.items.length; idx++) {
+      const it = latest.items[idx];
+      const { error } = await insertEstimateItemRowWithAdvancedFallback(c, {
         estimate_id: estimateId,
         cost_code: it.costCode,
         desc: it.desc,
@@ -944,8 +1005,11 @@ export async function createNewVersionFromSnapshot(estimateId: string): Promise<
         unit_cost: it.unitCost,
         markup_pct: it.markupPct,
         hide_amount_on_pdf: Boolean(it.hideAmountOnPdf),
-      }))
-    );
+        status: normalizeLineItemStatus(it.status),
+        sort_order: Number.isFinite(it.sortOrder) ? it.sortOrder : idx,
+      });
+      if (error) throw new Error(error.message ?? "Failed to restore estimate item.");
+    }
   }
 
   return true;
@@ -966,6 +1030,7 @@ export async function updateEstimateMetaWithClient(
     estimateDate?: string;
     validUntil?: string;
     notes?: string;
+    documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     categoryNames?: Record<string, string>;
   }
@@ -989,6 +1054,8 @@ export async function updateEstimateMetaWithClient(
   if (payload.estimateDate != null) updates.estimate_date = payload.estimateDate || null;
   if (payload.validUntil != null) updates.valid_until = payload.validUntil || null;
   if (payload.notes != null) updates.notes = payload.notes;
+  if (payload.documentNotes != null)
+    updates.document_notes = normalizeEstimateNoteBlocks(payload.documentNotes);
   if (payload.salesPerson != null) updates.sales_person = payload.salesPerson;
 
   if (Object.keys(updates).length > 0) {
@@ -996,7 +1063,16 @@ export async function updateEstimateMetaWithClient(
       .from("estimate_meta")
       .update(updates)
       .eq("estimate_id", estimateId);
-    if (e1) return false;
+    if (e1) {
+      if (updates.document_notes != null && isMissingColumnError(e1, "document_notes")) {
+        delete updates.document_notes;
+        if (Object.keys(updates).length === 0) return false;
+        const retry = await c.from("estimate_meta").update(updates).eq("estimate_id", estimateId);
+        if (retry.error) return false;
+      } else {
+        return false;
+      }
+    }
     const estRow: Record<string, string> = { updated_at: new Date().toISOString().slice(0, 10) };
     if (payload.client?.name) estRow.client = payload.client.name;
     if (payload.project?.name) estRow.project = payload.project.name;
@@ -1043,6 +1119,7 @@ export async function updateEstimateMeta(
     estimateDate?: string;
     validUntil?: string;
     notes?: string;
+    documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
     categoryNames?: Record<string, string>;
   }
@@ -1111,7 +1188,21 @@ type LineItemInsertPayload = {
   unitCost: number;
   markupPct: number;
   hideAmountOnPdf?: boolean;
+  status?: EstimateLineItemStatus;
+  sortOrder?: number;
 };
+
+async function nextLineItemSortOrder(c: SupabaseClient, estimateId: string): Promise<number> {
+  const { data, error } = await c
+    .from("estimate_items")
+    .select("sort_order")
+    .eq("estimate_id", estimateId)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  if (error) return 0;
+  const row = Array.isArray(data) ? data[0] : null;
+  return row?.sort_order != null ? Number(row.sort_order) + 1 : 0;
+}
 
 function mapEstimateItemRow(r: Record<string, unknown>): EstimateItemRow {
   return {
@@ -1124,7 +1215,28 @@ function mapEstimateItemRow(r: Record<string, unknown>): EstimateItemRow {
     unitCost: Number(r.unit_cost),
     markupPct: Number(r.markup_pct),
     hideAmountOnPdf: Boolean(r.hide_amount_on_pdf),
+    status: normalizeLineItemStatus(r.status),
+    sortOrder: Number(r.sort_order ?? 0) || 0,
   };
+}
+
+async function insertEstimateItemRowWithAdvancedFallback(
+  c: SupabaseClient,
+  row: Record<string, unknown>
+): Promise<{ data: Record<string, unknown> | null; error: { message?: string } | null }> {
+  const { data, error } = await c.from("estimate_items").insert(row).select("*").single();
+  if (!error) return { data: (data as Record<string, unknown>) ?? null, error: null };
+  if (isMissingColumnError(error, "sort_order") || isMissingColumnError(error, "status")) {
+    const { sort_order: _sortOrder, status: _status, ...fallback } = row;
+    void _sortOrder;
+    void _status;
+    const retry = await c.from("estimate_items").insert(fallback).select("*").single();
+    return {
+      data: (retry.data as Record<string, unknown>) ?? null,
+      error: retry.error ? { message: retry.error.message } : null,
+    };
+  }
+  return { data: null, error: { message: error.message } };
 }
 
 export async function addLineItemWithClient(
@@ -1134,24 +1246,26 @@ export async function addLineItemWithClient(
 ): Promise<EstimateItemRow | null> {
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return null;
-  const { data: inserted, error } = await c
-    .from("estimate_items")
-    .insert({
-      estimate_id: estimateId,
-      cost_code: item.costCode,
-      desc: item.desc,
-      qty: item.qty,
-      unit: item.unit,
-      unit_cost: item.unitCost,
-      markup_pct: item.markupPct,
-      hide_amount_on_pdf: Boolean(item.hideAmountOnPdf),
-    })
-    .select("*")
-    .single();
+  const sortOrder =
+    item.sortOrder != null && Number.isFinite(item.sortOrder)
+      ? Number(item.sortOrder)
+      : await nextLineItemSortOrder(c, estimateId);
+  const { data: inserted, error } = await insertEstimateItemRowWithAdvancedFallback(c, {
+    estimate_id: estimateId,
+    cost_code: item.costCode,
+    desc: item.desc,
+    qty: item.qty,
+    unit: item.unit,
+    unit_cost: item.unitCost,
+    markup_pct: item.markupPct,
+    hide_amount_on_pdf: Boolean(item.hideAmountOnPdf),
+    status: normalizeLineItemStatus(item.status),
+    sort_order: sortOrder,
+  });
   if (error || !inserted) return null;
   const now = new Date().toISOString().slice(0, 10);
   await c.from("estimates").update({ updated_at: now }).eq("id", estimateId);
-  return mapEstimateItemRow(inserted as Record<string, unknown>);
+  return mapEstimateItemRow(inserted);
 }
 
 export async function addLineItem(
@@ -1458,6 +1572,8 @@ export async function updateLineItemWithClient(
     unitCost?: number;
     markupPct?: number;
     hideAmountOnPdf?: boolean;
+    status?: EstimateLineItemStatus;
+    sortOrder?: number;
   }
 ): Promise<boolean> {
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
@@ -1469,13 +1585,33 @@ export async function updateLineItemWithClient(
   if (payload.unitCost != null) up.unit_cost = payload.unitCost;
   if (payload.markupPct != null) up.markup_pct = payload.markupPct;
   if (payload.hideAmountOnPdf != null) up.hide_amount_on_pdf = payload.hideAmountOnPdf;
+  if (payload.status != null) up.status = normalizeLineItemStatus(payload.status);
+  if (payload.sortOrder != null && Number.isFinite(payload.sortOrder))
+    up.sort_order = Number(payload.sortOrder);
   if (Object.keys(up).length === 0) return true;
   const { error } = await c
     .from("estimate_items")
     .update(up)
     .eq("id", itemId)
     .eq("estimate_id", estimateId);
-  if (error) return false;
+  if (error) {
+    if (
+      (up.status != null && isMissingColumnError(error, "status")) ||
+      (up.sort_order != null && isMissingColumnError(error, "sort_order"))
+    ) {
+      delete up.status;
+      delete up.sort_order;
+      if (Object.keys(up).length === 0) return false;
+      const retry = await c
+        .from("estimate_items")
+        .update(up)
+        .eq("id", itemId)
+        .eq("estimate_id", estimateId);
+      if (retry.error) return false;
+    } else {
+      return false;
+    }
+  }
   await c
     .from("estimates")
     .update({ updated_at: new Date().toISOString().slice(0, 10) })
@@ -1486,7 +1622,16 @@ export async function updateLineItemWithClient(
 export async function updateLineItem(
   estimateId: string,
   itemId: string,
-  payload: { desc?: string; qty?: number; unit?: string; unitCost?: number; markupPct?: number }
+  payload: {
+    desc?: string;
+    qty?: number;
+    unit?: string;
+    unitCost?: number;
+    markupPct?: number;
+    hideAmountOnPdf?: boolean;
+    status?: EstimateLineItemStatus;
+    sortOrder?: number;
+  }
 ): Promise<boolean> {
   return updateLineItemWithClient(client(), estimateId, itemId, payload);
 }
@@ -1594,6 +1739,7 @@ export async function duplicateLineItemWithClient(
     unitCost: Number(row.unit_cost),
     markupPct: Number(row.markup_pct),
     hideAmountOnPdf: Boolean(row.hide_amount_on_pdf),
+    status: normalizeLineItemStatus(row.status),
   });
 }
 

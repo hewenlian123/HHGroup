@@ -103,9 +103,7 @@ async function fillNewEstimate(
     projectName: params.projectName,
   });
 
-  const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
-  await expect(addSection).toBeVisible({ timeout: 30_000 });
-  await addSection.click();
+  await addBlankEstimateSection(page);
 
   const lineTitleInput = page.getByLabel("Line item 1 title").locator("visible=true");
   await expect(lineTitleInput).toBeVisible({ timeout: 15_000 });
@@ -118,6 +116,28 @@ async function fillNewEstimate(
     .getByLabel("Line item 1 unit price")
     .locator("visible=true")
     .fill(params.unitPrice ?? "125.5");
+}
+
+async function addBlankEstimateSection(page: Page): Promise<void> {
+  const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
+  await expect(addSection).toBeVisible({ timeout: 30_000 });
+  await addSection.click();
+
+  const blankSection = page.getByRole("menuitem", { name: /^Blank section$/i }).first();
+  if (await blankSection.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await blankSection.click();
+  }
+}
+
+async function addBlankEstimateLine(page: Page): Promise<void> {
+  const addLine = page.getByRole("button", { name: /^Add line$/i }).first();
+  await expect(addLine).toBeVisible({ timeout: 10_000 });
+  await addLine.click();
+
+  const blankLine = page.getByRole("menuitem", { name: /^Blank line$/i }).first();
+  if (await blankLine.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await blankLine.click();
+  }
 }
 
 /** Wait until no estimate list row links mention this client (post-delete). */
@@ -215,10 +235,7 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   await expect(page.getByText("At least one line item is required.").first()).toBeVisible();
 
   await fillNewEstimate(page, { clientName, projectName, lineTitle });
-  await page
-    .getByRole("button", { name: /^Add line$/i })
-    .first()
-    .click();
+  await addBlankEstimateLine(page);
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toBeVisible({
     timeout: 10_000,
   });
@@ -445,10 +462,7 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
     .toBeLessThanOrEqual((mobileViewport?.width ?? 390) + 1);
 
   await fillNewEstimateCustomerFields(page, { clientName, projectName });
-  await page
-    .getByRole("button", { name: /^Add Section$/i })
-    .first()
-    .click();
+  await addBlankEstimateSection(page);
 
   const lineCard = page.getByRole("article").first();
   await expect(lineCard).toBeVisible({ timeout: 15_000 });

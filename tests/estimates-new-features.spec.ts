@@ -66,9 +66,7 @@ async function fillNewEstimateLine(
   page: Page,
   params: { lineTitle: string; quantity?: string; unitPrice?: string }
 ): Promise<void> {
-  const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
-  await expect(addSection).toBeVisible({ timeout: 30_000 });
-  await addSection.click();
+  await addBlankEstimateSection(page);
 
   const lineTitleInput = page.getByLabel("Line item 1 title").locator("visible=true");
   await expect(lineTitleInput).toBeVisible({ timeout: 15_000 });
@@ -81,6 +79,17 @@ async function fillNewEstimateLine(
     .getByLabel("Line item 1 unit price")
     .locator("visible=true")
     .fill(params.unitPrice ?? "10000");
+}
+
+async function addBlankEstimateSection(page: Page): Promise<void> {
+  const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
+  await expect(addSection).toBeVisible({ timeout: 30_000 });
+  await addSection.click();
+
+  const blankSection = page.getByRole("menuitem", { name: /^Blank section$/i }).first();
+  if (await blankSection.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await blankSection.click();
+  }
 }
 
 test.afterEach(async () => {
@@ -191,4 +200,69 @@ test("hide amount on PDF persists through preview and print", async ({ page }) =
   await expect(page.getByRole("menuitem", { name: "Show amount on PDF" })).toBeVisible({
     timeout: 10_000,
   });
+});
+
+test("line item status and notes persist to customer preview and print", async ({ page }) => {
+  test.setTimeout(150_000);
+  const suffix = Date.now();
+  const clientName = `PW Estimate Notes ${suffix}`;
+  const projectName = `PW Estimate Notes Project ${suffix}`;
+  const lineTitle = `PW notes status line ${suffix}`;
+  const noteText = `Owner to provide appliance selections ${suffix}`;
+  createdClientNames.add(clientName);
+  createdProjectNames.add(projectName);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/estimates/new");
+  await page.waitForLoadState("domcontentloaded");
+  await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await fillNewEstimateCustomerFields(page, { clientName, projectName });
+  await fillNewEstimateLine(page, { lineTitle, quantity: "1", unitPrice: "2500" });
+
+  await page.getByRole("button", { name: "More actions" }).locator("visible=true").first().click();
+  await page.getByText("Set status", { exact: true }).hover();
+  await page.getByRole("menuitem", { name: "Optional" }).click();
+  await expect(
+    page.locator(".eb-line-item-status-pill:visible", { hasText: "Optional" }).first()
+  ).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("menuitem", { name: "Optional" })).toBeHidden({ timeout: 5_000 });
+
+  await page.getByRole("button", { name: "Add note" }).click();
+  await page.getByRole("menuitem", { name: "Exclusions" }).click();
+  await page.getByLabel("Exclusions body").fill(noteText);
+
+  const saveEstimate = page.getByRole("button", { name: "Save Estimate" });
+  await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
+  await saveEstimate.click();
+  await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
+
+  const estimateId = page.url().match(/\/estimates\/([^/?#]+)/)?.[1];
+  expect(estimateId).toBeTruthy();
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByText("Optional", { exact: true }).locator("visible=true")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByLabel("Note title").locator("visible=true")).toHaveValue("Exclusions", {
+    timeout: 30_000,
+  });
+  await expect(page.getByLabel("Exclusions body").locator("visible=true")).toHaveValue(noteText, {
+    timeout: 30_000,
+  });
+
+  await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("main")).toContainText("Notes & Clarifications");
+  await expect(page.locator("main")).toContainText("Exclusions");
+  await expect(page.locator("main")).toContainText(noteText);
+  await expect(page.locator("main")).toContainText("Optional");
+
+  await page.goto(`/estimates/${estimateId}/print`, { waitUntil: "domcontentloaded" });
+  const printDocument = page.getByRole("document", { name: "Estimate print view" });
+  await expect(printDocument).toContainText("Notes & Clarifications");
+  await expect(printDocument).toContainText(noteText);
+  await expect(printDocument).toContainText("Optional");
 });

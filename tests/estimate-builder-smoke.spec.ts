@@ -54,6 +54,17 @@ test.afterEach(async () => {
   createdProjectNames.clear();
 });
 
+async function addBlankEstimateSection(page: import("@playwright/test").Page): Promise<void> {
+  const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
+  await expect(addSection).toBeVisible({ timeout: 30_000 });
+  await addSection.click();
+
+  const blankSection = page.getByRole("menuitem", { name: /^Blank section$/i }).first();
+  if (await blankSection.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await blankSection.click();
+  }
+}
+
 test("estimate builder smoke: create, edit totals, preview, open existing edit", async ({
   page,
 }) => {
@@ -77,9 +88,7 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   await page.getByPlaceholder("Project name").fill(projectName);
   await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
 
-  const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
-  await expect(addSection).toBeVisible({ timeout: 30_000 });
-  await addSection.click();
+  await addBlankEstimateSection(page);
 
   const lineTitleInput = page.getByLabel("Line item 1 title").locator("visible=true");
   await expect(lineTitleInput).toBeVisible({ timeout: 15_000 });

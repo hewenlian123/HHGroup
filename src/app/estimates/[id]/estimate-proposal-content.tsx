@@ -6,6 +6,10 @@ import {
   formatPdfLineTotal,
   formatPdfLineUnitPrice,
 } from "../_components/estimate-pdf-line-amounts";
+import {
+  DEFAULT_LINE_ITEM_STATUS,
+  LINE_ITEM_STATUS_LABELS,
+} from "../_components/estimate-line-item-status";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
@@ -112,6 +116,11 @@ export function EstimateProposalContent({
                         <tr key={row.id} className="border-b border-zinc-100">
                           <td className="py-2 pr-4 text-zinc-900">
                             <p className="font-medium">{lineTitle || row.desc}</p>
+                            {row.status && row.status !== DEFAULT_LINE_ITEM_STATUS ? (
+                              <span className="mt-1 inline-flex rounded-sm border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600">
+                                {LINE_ITEM_STATUS_LABELS[row.status] ?? row.status}
+                              </span>
+                            ) : null}
                             {body.trim() ? (
                               <div className="mt-1 text-xs text-zinc-600">
                                 <LineItemOrScopeBodyPreview body={body} variant="print" />

@@ -23,7 +23,9 @@ import {
   reorderEstimateCategoriesWithClient,
   moveEstimateItemsToCostCodeWithClient,
   updateEstimateCategoryDisplayNameWithClient,
+  type EstimateLineItemStatus,
 } from "@/lib/estimates-db";
+import { normalizeEstimateNoteBlocks } from "@/lib/estimate-notes";
 import {
   createNewVersionFromSnapshot,
   convertEstimateSnapshotToProject,
@@ -566,6 +568,52 @@ export async function toggleLineItemHideAmountOnPdfAction(
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Could not update line item." };
+  }
+}
+
+export async function setLineItemStatusAction(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
+  const estimateId = formData.get("estimateId");
+  const itemId = formData.get("itemId");
+  const status = formData.get("status");
+  if (typeof estimateId !== "string" || typeof itemId !== "string" || typeof status !== "string") {
+    return { ok: false, error: "Missing estimate, item, or status" };
+  }
+  try {
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await updateLineItemWithClient(db, estimateId, itemId, {
+      status: status as EstimateLineItemStatus,
+    });
+    if (!ok) return { ok: false, error: "Could not update line item status." };
+    revalidateEstimatePaths(estimateId);
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Could not update line item status.",
+    };
+  }
+}
+
+export async function saveEstimateDocumentNotesInlineAction(
+  estimateId: string,
+  notes: unknown
+): Promise<{ ok: boolean; error?: string }> {
+  if (!estimateId.trim()) return { ok: false, error: "Missing estimate id" };
+  try {
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await updateEstimateMetaWithClient(db, estimateId, {
+      documentNotes: normalizeEstimateNoteBlocks(notes),
+    });
+    if (!ok) return { ok: false, error: "Could not save notes." };
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not save notes." };
   }
 }
 

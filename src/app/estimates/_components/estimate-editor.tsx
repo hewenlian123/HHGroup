@@ -4,7 +4,6 @@ import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blockin
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Button } from "@/components/ui/button";
 import { InlineLoading } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +34,8 @@ import {
   applyPaymentTemplateAction,
   createPaymentTemplateAction,
   reorderEstimateCategoriesAction,
+  saveEstimateDocumentNotesInlineAction,
+  setLineItemStatusAction,
 } from "../[id]/actions";
 import {
   DndContext,
@@ -53,7 +54,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, Plus, Copy, Trash2, GripVertical } from "lucide-react";
+import { ChevronDown, Plus, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EstimatePaymentSchedule } from "./estimate-payment-schedule";
 import {
@@ -72,6 +73,8 @@ import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { EstimateLineItemPersistedMobile } from "./estimate-line-item-persisted-mobile";
 import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
 import { EstimateLineItemMoreMenu } from "./estimate-line-item-more-menu";
+import { EstimateLineItemStatusPill } from "./estimate-line-item-status-pill";
+import { EstimateNotesClarifications } from "./estimate-notes-clarifications";
 
 function cssEscapeAttrSelector(value: string): string {
   const winCss =
@@ -409,6 +412,27 @@ export function EstimateEditor({
     return { milestoneCount: paymentSchedule.length, scheduledTotal };
   }, [paymentSchedule]);
 
+  const [localDocumentNotes, setLocalDocumentNotes] = React.useState(meta.documentNotes ?? []);
+  React.useEffect(() => {
+    setLocalDocumentNotes(meta.documentNotes ?? []);
+  }, [meta.documentNotes]);
+  const updateDocumentNotes = React.useCallback(
+    (nextNotes: typeof localDocumentNotes) => {
+      setLocalDocumentNotes(nextNotes);
+      if (isReadOnly) return;
+      void saveEstimateDocumentNotesInlineAction(estimateId, nextNotes).then((res) => {
+        if (!res.ok) {
+          toast({
+            title: "Could not save notes",
+            description: res.error ?? "Try again.",
+            variant: "error",
+          });
+        }
+      });
+    },
+    [estimateId, isReadOnly, toast]
+  );
+
   return (
     <React.Fragment>
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-8 lg:items-start">
@@ -646,6 +670,13 @@ export function EstimateEditor({
               </div>
             </div>
           </section>
+
+          <EstimateNotesClarifications
+            notes={localDocumentNotes}
+            onNotesChange={updateDocumentNotes}
+            disabled={isReadOnly}
+            defaultCollapsed={localDocumentNotes.length === 0}
+          />
 
           <EstimateBuilderAdvanced
             title="Payment schedule"
@@ -922,6 +953,7 @@ function LineItemRow({
         onDescriptionBlur={isLocked ? undefined : submitForm}
         titleInputAriaLabel={isLocked ? undefined : "Line item title"}
         descriptionEditorAriaLabel={isLocked ? undefined : "Line item description"}
+        titleTrailingSlot={<EstimateLineItemStatusPill status={row.status} />}
         inlinePricing={inlinePricing}
         dragSlot={
           !isLocked && dragHandleProps ? (
@@ -965,6 +997,17 @@ function LineItemRow({
                   fd.set("itemId", row.id);
                   fd.set("hideAmountOnPdf", row.hideAmountOnPdf ? "0" : "1");
                   void toggleLineItemHideAmountOnPdfAction(fd).then((res) => {
+                    if (res.ok) router.refresh();
+                  });
+                }}
+                showSetStatus
+                currentStatus={row.status}
+                onSetStatus={(nextStatus) => {
+                  const fd = new FormData();
+                  fd.set("estimateId", estimateId);
+                  fd.set("itemId", row.id);
+                  fd.set("status", nextStatus);
+                  void setLineItemStatusAction(fd).then((res) => {
                     if (res.ok) router.refresh();
                   });
                 }}

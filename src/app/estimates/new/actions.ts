@@ -2,8 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
-import { createEstimateWithItemsWithClient } from "@/lib/estimates-db";
+import { createEstimateWithItemsWithClient, type EstimateLineItemStatus } from "@/lib/estimates-db";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import type { EstimateNoteBlock } from "@/lib/estimate-notes";
 
 export type CreateEstimatePayload = {
   clientName: string;
@@ -14,6 +15,7 @@ export type CreateEstimatePayload = {
   estimateDate?: string;
   validUntil?: string;
   notes?: string;
+  documentNotes?: EstimateNoteBlock[];
   salesPerson?: string;
   tax?: number;
   discount?: number;
@@ -28,6 +30,8 @@ export type CreateEstimatePayload = {
     unitCost: number;
     markupPct: number;
     hideAmountOnPdf?: boolean;
+    status?: EstimateLineItemStatus;
+    sortOrder?: number;
   }>;
   paymentSchedule?: Array<{
     title: string;
@@ -54,6 +58,8 @@ export async function createEstimateWithItemsAction(
       unitCost: Number(i.unitCost) || 0,
       markupPct: Number(i.markupPct) || 0,
       hideAmountOnPdf: Boolean(i.hideAmountOnPdf),
+      status: i.status,
+      sortOrder: Number.isFinite(i.sortOrder) ? Number(i.sortOrder) : undefined,
     }))
     .filter((i) => i.costCode && i.desc.length > 0);
 
@@ -74,6 +80,7 @@ export async function createEstimateWithItemsAction(
       estimateDate: payload.estimateDate || undefined,
       validUntil: payload.validUntil || undefined,
       notes: payload.notes?.trim() || undefined,
+      documentNotes: payload.documentNotes,
       salesPerson: payload.salesPerson?.trim() || undefined,
       tax: payload.tax ?? 0,
       discount: payload.discount ?? 0,
@@ -88,6 +95,8 @@ export async function createEstimateWithItemsAction(
         unitCost: i.unitCost,
         markupPct: i.markupPct,
         hideAmountOnPdf: Boolean(i.hideAmountOnPdf),
+        status: i.status,
+        sortOrder: i.sortOrder,
       })),
       paymentSchedule: payload.paymentSchedule?.length ? payload.paymentSchedule : undefined,
     });

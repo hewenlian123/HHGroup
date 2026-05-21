@@ -78,6 +78,8 @@ export type ProposalScopeWorkCardProps = {
   lineIndex?: number;
   /** Unified index + title + pricing + description grid (/estimates/new) */
   lineItemGridLayout?: boolean;
+  /** Status pill or other chips beside title */
+  titleTrailingSlot?: React.ReactNode;
   className?: string;
 };
 
@@ -105,6 +107,7 @@ export function ProposalScopeWorkCard({
   inlinePricing,
   lineIndex,
   lineItemGridLayout = false,
+  titleTrailingSlot,
   className,
 }: ProposalScopeWorkCardProps): React.ReactElement {
   const editorRef = React.useRef<HTMLDivElement>(null);
@@ -323,7 +326,10 @@ export function ProposalScopeWorkCard({
           ) : null}
           <span className={cn(EB.readLabel, EB.lineTitleLabel)}>Title</span>
           <div className={cn(EB.lineTitleInputWrap, EB.lineItemTitleField)}>
-            {titleField}
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <div className="min-w-0 flex-1">{titleField}</div>
+              {titleTrailingSlot}
+            </div>
             {titleInvalid ? (
               <p className="text-xs text-amber-400/90">Add a name for this line.</p>
             ) : null}
@@ -346,7 +352,10 @@ export function ProposalScopeWorkCard({
             ) : null}
             <div className={cn(EB.lineFieldStack, EB.lineItemTitleField)}>
               <span className={EB.readLabel}>Title</span>
-              {titleField}
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <div className="min-w-0 flex-1">{titleField}</div>
+                {titleTrailingSlot}
+              </div>
               {titleInvalid ? (
                 <p className="text-xs text-amber-400/90">Add a name for this line.</p>
               ) : null}

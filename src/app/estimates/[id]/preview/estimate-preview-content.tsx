@@ -1,5 +1,4 @@
 import {
-  lineTotal,
   groupEstimateItemsByCategoryId,
   paymentMilestoneAmount,
   type EstimateItemRow,
@@ -18,13 +17,18 @@ import {
   formatPdfLineTotal,
   formatPdfLineUnitPrice,
 } from "@/app/estimates/_components/estimate-pdf-line-amounts";
+import { EstimateNotesPreview } from "@/app/estimates/_components/estimate-notes-preview";
+import {
+  DEFAULT_LINE_ITEM_STATUS,
+  LINE_ITEM_STATUS_LABELS,
+} from "@/app/estimates/_components/estimate-line-item-status";
 import type { ReactNode } from "react";
 
 type EstimatePreviewProps = {
   company: DocumentCompanyProfileDTO;
   estimate: { number: string; status: string; updatedAt: string };
   meta: EstimateMetaRecord | null;
-  categories: { costCode: string; displayName: string }[];
+  categories: { costCode: string; displayName: string; orderIndex?: number }[];
   items: EstimateItemRow[];
   /** Master catalog names for codes not in estimate_categories (optional). */
   catalogNameByCode?: Record<string, string>;
@@ -87,6 +91,11 @@ function LineItemsTable({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: numbe
             <tr key={row.id} className="border-b border-zinc-100">
               <td className="py-2 pr-3 align-top">
                 <p className="font-medium text-zinc-900">{itemTitle || row.desc}</p>
+                {row.status && row.status !== DEFAULT_LINE_ITEM_STATUS ? (
+                  <span className="mt-1 inline-flex rounded-sm border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600">
+                    {LINE_ITEM_STATUS_LABELS[row.status] ?? row.status}
+                  </span>
+                ) : null}
                 {body.trim() ? (
                   <div className="mt-0.5 text-xs text-zinc-600">
                     <LineItemOrScopeBodyPreview body={body} variant="default" />
@@ -197,6 +206,13 @@ export function EstimatePreviewContent({
             </>
           )}
         </section>
+
+        {meta?.documentNotes.length ? (
+          <>
+            <div className="border-b border-zinc-300 my-4" />
+            <EstimateNotesPreview notes={meta.documentNotes} className="mb-6" />
+          </>
+        ) : null}
 
         {/* Payment schedule */}
         {paymentSchedule.length > 0 ? (

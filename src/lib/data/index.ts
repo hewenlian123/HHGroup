@@ -3178,7 +3178,7 @@ export function getEstimateMeta(
 export function getEstimateCategories(
   estimateId: string,
   explicitClient?: SupabaseClient | null
-): Promise<{ costCode: string; displayName: string }[]> {
+): Promise<{ costCode: string; displayName: string; orderIndex?: number }[]> {
   return estDb.getEstimateCategories(estimateId, explicitClient);
 }
 
@@ -3277,6 +3277,7 @@ export function updateEstimateMeta(
     estimateDate?: string;
     validUntil?: string;
     notes?: string;
+    documentNotes?: import("../estimate-notes").EstimateNoteBlock[];
     salesPerson?: string;
   }
 ): Promise<boolean> {
@@ -3295,6 +3296,9 @@ export function addLineItem(
     unit: string;
     unitCost: number;
     markupPct: number;
+    hideAmountOnPdf?: boolean;
+    status?: estDb.EstimateLineItemStatus;
+    sortOrder?: number;
   }
 ) {
   return estDb.addLineItem(estimateId, item);
@@ -3323,7 +3327,16 @@ export function updateEstimateCategoryDisplayName(
 export function updateLineItem(
   estimateId: string,
   itemId: string,
-  payload: { desc?: string; qty?: number; unit?: string; unitCost?: number; markupPct?: number }
+  payload: {
+    desc?: string;
+    qty?: number;
+    unit?: string;
+    unitCost?: number;
+    markupPct?: number;
+    hideAmountOnPdf?: boolean;
+    status?: estDb.EstimateLineItemStatus;
+    sortOrder?: number;
+  }
 ): Promise<boolean> {
   return estDb.updateLineItem(estimateId, itemId, payload);
 }
@@ -3369,6 +3382,7 @@ export function createEstimate(payload: {
   estimateDate?: string;
   validUntil?: string;
   notes?: string;
+  documentNotes?: import("../estimate-notes").EstimateNoteBlock[];
   salesPerson?: string;
 }): Promise<string> {
   return estDb.createEstimate(payload);
@@ -3383,6 +3397,7 @@ export function createEstimateWithItems(payload: {
   estimateDate?: string;
   validUntil?: string;
   notes?: string;
+  documentNotes?: import("../estimate-notes").EstimateNoteBlock[];
   salesPerson?: string;
   tax?: number;
   discount?: number;
@@ -3396,6 +3411,9 @@ export function createEstimateWithItems(payload: {
     unit: string;
     unitCost: number;
     markupPct: number;
+    hideAmountOnPdf?: boolean;
+    status?: estDb.EstimateLineItemStatus;
+    sortOrder?: number;
   }>;
   paymentSchedule?: Array<{
     title: string;

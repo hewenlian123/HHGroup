@@ -1,5 +1,4 @@
 import {
-  estimateLineTotal,
   groupEstimateItemsByCategoryId,
   paymentMilestoneAmount,
   type EstimateItemRow,
@@ -18,12 +17,17 @@ import {
   formatPdfLineTotal,
   formatPdfLineUnitPrice,
 } from "@/app/estimates/_components/estimate-pdf-line-amounts";
+import { EstimateNotesPreview } from "@/app/estimates/_components/estimate-notes-preview";
+import {
+  DEFAULT_LINE_ITEM_STATUS,
+  LINE_ITEM_STATUS_LABELS,
+} from "@/app/estimates/_components/estimate-line-item-status";
 
 export type EstimatePrintDocumentProps = {
   company: DocumentCompanyProfileDTO;
   estimate: { number: string; status: string; updatedAt: string };
   meta: EstimateMetaRecord | null;
-  categories: { costCode: string; displayName: string }[];
+  categories: { costCode: string; displayName: string; orderIndex?: number }[];
   items: EstimateItemRow[];
   catalogNameByCode?: Record<string, string>;
   paymentSchedule: PaymentScheduleItem[];
@@ -132,6 +136,11 @@ export function EstimatePrintDocument({
                         <tr key={row.id} className="border-b border-zinc-100">
                           <td className="py-2.5 pr-4">
                             <p className="font-medium text-zinc-900">{itemTitle || row.desc}</p>
+                            {row.status && row.status !== DEFAULT_LINE_ITEM_STATUS ? (
+                              <span className="mt-1 inline-flex rounded-sm border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600">
+                                {LINE_ITEM_STATUS_LABELS[row.status] ?? row.status}
+                              </span>
+                            ) : null}
                             {body.trim() ? (
                               <div className="mt-1 text-xs text-zinc-600">
                                 <LineItemOrScopeBodyPreview body={body} variant="print" />
@@ -161,6 +170,10 @@ export function EstimatePrintDocument({
           </>
         )}
       </section>
+
+      {meta?.documentNotes.length ? (
+        <EstimateNotesPreview notes={meta.documentNotes} variant="print" className="mb-8" />
+      ) : null}
 
       {/* Payment schedule */}
       {paymentSchedule.length > 0 ? (
