@@ -113,6 +113,55 @@ type PartialSystemQaResult = Partial<Omit<SystemQaResult, "summary" | "sections"
   sections?: PartialSystemQaSection[];
 };
 
+type DataQualitySeverity = "info" | "warning" | "critical";
+type DataQualityStatus = "ok" | "warning" | "critical";
+
+type DataQualityIssue = {
+  severity: DataQualitySeverity;
+  module: string;
+  entityType: string;
+  entityId?: string;
+  entityName?: string;
+  issueCode: string;
+  message: string;
+  currentValue?: string | number | null;
+  expectedValue?: string | number | null;
+  recommendedAction: string;
+  link?: string;
+};
+
+type DataQualityModuleSummary = {
+  module: string;
+  label: string;
+  checked: number;
+  critical: number;
+  warning: number;
+  info: number;
+  status: DataQualityStatus;
+};
+
+type DataQualityResult = {
+  ok: boolean;
+  checkedAt: string;
+  summary: {
+    status: DataQualityStatus;
+    critical: number;
+    warning: number;
+    info: number;
+    totalIssues: number;
+    returnedIssues: number;
+    projectsChecked: number;
+    expensesChecked: number;
+    invoicesChecked: number;
+    estimatesChecked: number;
+    laborChecked: number;
+    reimbursementsChecked: number;
+    companyProfileChecked: number;
+  };
+  modules: DataQualityModuleSummary[];
+  issues: DataQualityIssue[];
+};
+
 const DEFAULT_QA_SUMMARY: SystemQaResult["summary"] = {
   status: "pass",
   critical: 0,
@@ -268,6 +317,210 @@ function QaSummaryCard({ label, value }: { label: string; value: number }) {
         {label}
       </p>
       <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function DataQualityStatusLabel({ status }: { status: DataQualityStatus }) {
+  return (
+    <HealthStatusLabel
+      status={status === "ok" ? "ok" : status === "warning" ? "warning" : "fail"}
+    />
+  );
+}
+
+function DataQualityPanel({
+  dataQuality,
+  loading,
+  error,
+  onRun,
+}: {
+  dataQuality: DataQualityResult | null;
+  loading: boolean;
+  error: string | null;
+  onRun: () => void;
+}) {
+  const summary = dataQuality?.summary;
+  const modules = dataQuality?.modules ?? [];
+  const issues = dataQuality?.issues ?? [];
+
+  return (
+    <div className="rounded-sm border border-border/70 bg-card p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">Supabase Data / Number Check</h2>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-muted-foreground">
+            Read-only checks for obvious amount, contract, invoice, expense, labor, reimbursement,
+            and company profile data problems. It never updates records or runs migrations.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="min-h-[44px] w-full sm:min-h-0 sm:w-auto"
+          onClick={onRun}
+          disabled={loading}
+        >
+          {loading ? "Checking…" : "Run Number Check"}
+        </Button>
+      </div>
+
+      {error ? (
+        <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
+      ) : loading && !dataQuality ? (
+        <p className="mt-4 text-sm text-muted-foreground">Checking Supabase data safely…</p>
+      ) : dataQuality && summary ? (
+        <div className="mt-4 space-y-5">
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <span className="flex items-center gap-2 font-medium">
+              Overall: <DataQualityStatusLabel status={summary.status} />
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Checked{" "}
+              {new Date(dataQuality.checkedAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}
+            </span>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <QaSummaryCard label="Critical" value={summary.critical} />
+            <QaSummaryCard label="Warnings" value={summary.warning} />
+            <QaSummaryCard label="Info" value={summary.info} />
+            <QaSummaryCard label="Issues found" value={summary.totalIssues} />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <QaSummaryCard label="Projects checked" value={summary.projectsChecked} />
+            <QaSummaryCard label="Expenses checked" value={summary.expensesChecked} />
+            <QaSummaryCard label="Invoices checked" value={summary.invoicesChecked} />
+            <QaSummaryCard label="Estimates checked" value={summary.estimatesChecked} />
+            <QaSummaryCard label="Labor checked" value={summary.laborChecked} />
+            <QaSummaryCard label="Reimbursements checked" value={summary.reimbursementsChecked} />
+          </div>
+
+          <div className="airtable-table-wrap airtable-table-wrap--ruled">
+            <div className="airtable-table-scroll">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead>
+                  <tr className="text-left">
+                    <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Module
+                    </th>
+                    <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Status
+                    </th>
+                    <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Checked
+                    </th>
+                    <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      Issues
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {modules.map((module) => (
+                    <tr key={module.module} className={listTableRowStaticClassName}>
+                      <td className="py-2.5 pr-6 font-medium">{module.label}</td>
+                      <td className="py-2.5 pr-6">
+                        <DataQualityStatusLabel status={module.status} />
+                      </td>
+                      <td className="py-2.5 pr-6 text-xs text-muted-foreground">
+                        {module.checked}
+                      </td>
+                      <td className="py-2.5 text-xs text-muted-foreground">
+                        {module.critical} critical · {module.warning} warning · {module.info} info
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="border-t border-border/60 pt-5">
+            <h3 className="mb-3 text-sm font-medium text-foreground">Top issues</h3>
+            <div className="airtable-table-wrap airtable-table-wrap--ruled">
+              <div className="airtable-table-scroll">
+                <table className="w-full min-w-[720px] text-sm">
+                  <thead>
+                    <tr className="text-left">
+                      <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Issue
+                      </th>
+                      <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Severity
+                      </th>
+                      <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Current / Expected
+                      </th>
+                      <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                        Recommended action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {issues.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-6 text-center text-muted-foreground">
+                          No data quality issues found.
+                        </td>
+                      </tr>
+                    ) : (
+                      issues.map((issue) => (
+                        <tr
+                          key={`${issue.issueCode}:${issue.entityId ?? issue.entityName ?? issue.module}`}
+                          className={listTableRowStaticClassName}
+                        >
+                          <td className="py-2.5 pr-6">
+                            <span className="block font-medium">
+                              {issue.link ? (
+                                <Link href={issue.link} className="underline underline-offset-2">
+                                  {issue.entityName ?? issue.issueCode}
+                                </Link>
+                              ) : (
+                                (issue.entityName ?? issue.issueCode)
+                              )}
+                            </span>
+                            <span className="block text-xs text-muted-foreground">
+                              {issue.message}
+                            </span>
+                            <code className="mt-1 inline-block rounded bg-muted px-1 py-0.5 text-[11px]">
+                              {issue.issueCode}
+                            </code>
+                          </td>
+                          <td className="py-2.5 pr-6 text-xs capitalize text-muted-foreground">
+                            {issue.severity}
+                          </td>
+                          <td className="py-2.5 pr-6 text-xs text-muted-foreground">
+                            <span className="block">
+                              Current:{" "}
+                              {issue.currentValue == null ? "n/a" : String(issue.currentValue)}
+                            </span>
+                            <span className="block">
+                              Expected:{" "}
+                              {issue.expectedValue == null ? "n/a" : String(issue.expectedValue)}
+                            </span>
+                          </td>
+                          <td className="py-2.5 text-xs text-muted-foreground">
+                            {issue.recommendedAction}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-4 text-sm text-muted-foreground">
+          Run the number check to inspect Supabase data safely.
+        </p>
+      )}
     </div>
   );
 }
@@ -564,6 +817,9 @@ export default function SystemHealthPage() {
   const [qa, setQa] = React.useState<SystemQaResult | null>(null);
   const [qaLoading, setQaLoading] = React.useState(false);
   const [qaError, setQaError] = React.useState<string | null>(null);
+  const [dataQuality, setDataQuality] = React.useState<DataQualityResult | null>(null);
+  const [dataQualityLoading, setDataQualityLoading] = React.useState(false);
+  const [dataQualityError, setDataQualityError] = React.useState<string | null>(null);
 
   const fetchSystemHealth = React.useCallback(async () => {
     setHealthLoading(true);
@@ -628,6 +884,26 @@ export default function SystemHealthPage() {
     }
   }, []);
 
+  const fetchDataQuality = React.useCallback(async () => {
+    setDataQualityLoading(true);
+    setDataQualityError(null);
+    try {
+      const res = await fetch("/api/system/data-quality-check", { cache: "no-store" });
+      const data = (await res.json()) as DataQualityResult | { message?: string };
+      if (!res.ok) {
+        throw new Error(
+          "message" in data && data.message ? data.message : "Data quality check failed."
+        );
+      }
+      setDataQuality(data as DataQualityResult);
+    } catch (e) {
+      setDataQualityError(e instanceof Error ? e.message : "Failed to run number check");
+      setDataQuality(null);
+    } finally {
+      setDataQualityLoading(false);
+    }
+  }, []);
+
   const runCleanup = React.useCallback(
     async (category: CleanupCategory) => {
       const confirmation = window.prompt("Type CLEAN UP to confirm this integrity cleanup.");
@@ -670,6 +946,10 @@ export default function SystemHealthPage() {
   React.useEffect(() => {
     void fetchSystemQa();
   }, [fetchSystemQa]);
+
+  React.useEffect(() => {
+    void fetchDataQuality();
+  }, [fetchDataQuality]);
 
   useOnAppSync(
     React.useCallback(() => {
@@ -849,6 +1129,13 @@ export default function SystemHealthPage() {
         loading={qaLoading}
         error={qaError}
         onRun={() => void fetchSystemQa()}
+      />
+
+      <DataQualityPanel
+        dataQuality={dataQuality}
+        loading={dataQualityLoading}
+        error={dataQualityError}
+        onRun={() => void fetchDataQuality()}
       />
 
       {/* Checks table */}
