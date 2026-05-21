@@ -63,6 +63,39 @@ type HealthCheck = {
   href?: string;
 };
 
+type DataQualityIssue = {
+  severity?: QaStatus | "info";
+  module?: string;
+  entityType?: string;
+  entityId?: string;
+  entityName?: string;
+  issueCode?: string;
+  message?: string;
+  currentValue?: string | number | null;
+  expectedValue?: string | number | null;
+  recommendedAction?: string;
+  link?: string;
+};
+
+type DataQualityResponse = {
+  ok?: boolean;
+  summary?: {
+    status?: QaStatus;
+    critical?: number;
+    warning?: number;
+    info?: number;
+    totalIssues?: number;
+    projectsChecked?: number;
+    expensesChecked?: number;
+    invoicesChecked?: number;
+    estimatesChecked?: number;
+    laborChecked?: number;
+    reimbursementsChecked?: number;
+    companyProfileChecked?: number;
+  };
+  issues?: DataQualityIssue[];
+};
+
 type SystemHealthResponse = {
   status?: "ok" | "warning";
   summary?: {
@@ -780,6 +813,99 @@ async function buildFinancialSection(): Promise<QaSection> {
   }
 }
 
+async function buildDataQualitySection(request: Request): Promise<QaSection> {
+  const origin = new URL(request.url).origin;
+  try {
+    const response = await fetch(`${origin}/api/system/data-quality-check`, {
+      cache: "no-store",
+      headers: forwardedHeaders(request),
+    });
+    if (!response.ok) {
+      return makeSection("data-quality", "Supabase Data / Number Check", [
+        {
+          id: "data-quality-unavailable",
+          name: "Data quality API",
+          status: "critical",
+          type: "data-quality",
+          page: "/system-health",
+          message: `Data quality check returned ${response.status}.`,
+          recommendedAction:
+            "Open /api/system/data-quality-check while signed in and inspect server logs.",
+          diagnosticCode: "data_quality_unavailable",
+        },
+      ]);
+    }
+
+    const data = (await response.json().catch(() => ({}))) as DataQualityResponse;
+    const summary = data.summary ?? {};
+    const issues = Array.isArray(data.issues)
+      ? data.issues.filter((issue) => issue.issueCode !== "company_profile_e2e_marker")
+      : [];
+    const checks: QaCheck[] = [
+      {
+        id: "data-quality-summary",
+        name: "Data quality summary",
+        status:
+          (summary.critical ?? 0) > 0
+            ? "critical"
+            : (summary.warning ?? 0) > 0
+              ? "warning"
+              : "pass",
+        type: "data-quality",
+        category:
+          (summary.critical ?? 0) > 0 || (summary.warning ?? 0) > 0
+            ? "actionRequired"
+            : "informational",
+        page: "/system-health",
+        message: `${summary.totalIssues ?? 0} data issue(s) found across ${summary.projectsChecked ?? 0} project(s), ${summary.expensesChecked ?? 0} expense(s), ${summary.invoicesChecked ?? 0} invoice(s), ${summary.estimatesChecked ?? 0} estimate(s), and ${summary.laborChecked ?? 0} labor entry row(s).`,
+        recommendedAction:
+          (summary.critical ?? 0) > 0 || (summary.warning ?? 0) > 0
+            ? "Review the Supabase Data / Number Check panel on /system-health."
+            : undefined,
+        diagnosticCode:
+          (summary.critical ?? 0) > 0 || (summary.warning ?? 0) > 0
+            ? "data_quality_issues_found"
+            : undefined,
+      },
+    ];
+
+    for (const [index, issue] of issues.slice(0, 12).entries()) {
+      const status: QaStatus =
+        issue.severity === "critical"
+          ? "critical"
+          : issue.severity === "warning"
+            ? "warning"
+            : "pass";
+      checks.push({
+        id: `data-quality-${issue.issueCode ?? "issue"}-${issue.entityId ?? index}`,
+        name: issue.entityName ?? issue.entityType ?? issue.module ?? "Data issue",
+        status,
+        type: "data-quality",
+        category: status === "pass" ? "informational" : "actionRequired",
+        page: issue.link,
+        message: redactSensitiveText(issue.message ?? "Data quality issue found."),
+        recommendedAction: issue.recommendedAction,
+        diagnosticCode: issue.issueCode,
+      });
+    }
+
+    return makeSection("data-quality", "Supabase Data / Number Check", checks);
+  } catch (error) {
+    return makeSection("data-quality", "Supabase Data / Number Check", [
+      {
+        id: "data-quality-exception",
+        name: "Data quality check",
+        status: "critical",
+        type: "data-quality",
+        page: "/system-health",
+        message: safeErrorMessage(error, "Data quality check failed."),
+        recommendedAction: "Open /system-health locally and inspect server logs.",
+        diagnosticCode: "data_quality_exception",
+      },
+    ]);
+  }
+}
+
 async function countTableRows(
   supabase: ReturnType<typeof getServerSupabaseInternalNoStore>,
   table: string
@@ -903,6 +1029,7 @@ export async function GET(request: Request) {
     schemaSection,
     companyProfileSection,
     financialSection,
+    dataQualitySection,
     preview,
   ] = await Promise.all([
     buildPageSection(request, samples),
@@ -910,6 +1037,7 @@ export async function GET(request: Request) {
     buildSchemaSection(request),
     buildCompanyProfileSection(supabase),
     buildFinancialSection(),
+    buildDataQualitySection(request),
     buildPreviewSection(supabase),
   ]);
 
@@ -920,6 +1048,7 @@ export async function GET(request: Request) {
     schemaSection,
     companyProfileSection,
     financialSection,
+    dataQualitySection,
     preview,
     mobile,
   ];

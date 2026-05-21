@@ -332,7 +332,7 @@ test.describe("System QA check", () => {
     });
     await expect(page.getByRole("heading", { name: "System QA" })).toBeVisible();
     await expect(page.getByText("Partial QA section")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText("Warnings", { exact: true })).toBeVisible();
+    await expect(page.getByText("Warnings", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Total checks", { exact: true })).toBeVisible();
     expect(pageErrors).toEqual([]);
 
