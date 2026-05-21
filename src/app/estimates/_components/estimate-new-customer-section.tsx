@@ -16,15 +16,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { EB, ebInput } from "./estimate-builder-ui";
+import { EB, ebInput, ebSheetGlassWide, ebSheetInput } from "./estimate-builder-ui";
 import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 
 const metaLabel = "mb-0.5 block text-[10px] font-medium uppercase tracking-[0.08em] text-slate-400";
 const metaPanel = cn(EB.draftPanel, "rounded-md px-3 py-2.5 sm:px-4 sm:py-3");
-const metaInput = ebInput("h-9 min-h-9 text-sm md:h-8 md:min-h-8");
-const detailsSheetClass =
-  "estimate-builder !fixed flex w-full max-w-[calc(100vw-1rem)] flex-col border-l border-white/[0.08] bg-[rgba(14,18,28,0.96)] p-0 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-12px_0_48px_rgba(0,0,0,0.35)] backdrop-blur-xl max-md:inset-y-2 max-md:right-2 max-md:h-[calc(100dvh-1rem)] max-md:!translate-x-0 max-md:rounded-xl max-md:data-[state=open]:!animate-none max-md:data-[state=open]:!transform-none sm:max-w-[440px] [&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.06] [&>button]:hover:text-zinc-100";
 
 type DetailsSnapshot = {
   clientName: string;
@@ -246,202 +243,203 @@ export function EstimateNewCustomerSection({
       </div>
 
       <Sheet open={detailsOpen} onOpenChange={handleDetailsOpenChange}>
-        <SheetContent
-          side="right"
-          className={cn(detailsSheetClass, "flex max-h-[100dvh] flex-col overflow-hidden")}
-        >
-          <SheetHeader className="border-b border-white/[0.06] px-4 pb-3 pt-4 text-left sm:px-5">
-            <SheetTitle className="text-sm font-semibold tracking-tight text-zinc-50">
-              Customer / project / pricing details
-            </SheetTitle>
+        <SheetContent side="right" className={ebSheetGlassWide()}>
+          <SheetHeader className={EB.sheetHeader}>
+            <SheetTitle className={EB.sheetTitle}>Customer / project / pricing details</SheetTitle>
             <SheetDescription className="sr-only">
               Enter customer, project, address, and pricing fields for this estimate.
             </SheetDescription>
           </SheetHeader>
 
-          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 pb-4 pt-4 sm:px-5">
-            <CustomerSelectWithAdd
-              label="Link customer"
-              value={selectedCustomer?.id ?? null}
-              onChange={onCustomerPickerChange}
-              triggerClassName={cn(ebInput("h-9 min-h-9 md:h-8 md:min-h-8"), "justify-between")}
-            />
+          <div className={EB.sheetContent}>
+            <div className={EB.sheetContentInner}>
+              <div className={EB.sheetField}>
+                <CustomerSelectWithAdd
+                  label="Link customer"
+                  value={selectedCustomer?.id ?? null}
+                  onChange={onCustomerPickerChange}
+                  triggerClassName={cn(ebSheetInput("h-10 justify-between text-sm"), "w-full")}
+                />
+              </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="min-w-0">
-                <Label htmlFor="new-clientName" className={metaLabel}>
-                  Customer
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className={cn(EB.sheetField, "min-w-0")}>
+                  <Label htmlFor="new-clientName" className={EB.sheetLabel}>
+                    Customer
+                  </Label>
+                  <Input
+                    id="new-clientName"
+                    value={clientName}
+                    onChange={(e) => onClientNameChange(e.target.value)}
+                    placeholder="Client or company name"
+                    className={ebSheetInput("text-sm")}
+                    aria-invalid={submitAttempted && !clientName.trim()}
+                    required
+                  />
+                  {submitAttempted && !clientName.trim() ? (
+                    <p className="text-xs text-rose-400">Client name is required.</p>
+                  ) : null}
+                </div>
+                <div className={cn(EB.sheetField, "min-w-0")}>
+                  <Label htmlFor="new-projectName" className={EB.sheetLabel}>
+                    Project
+                  </Label>
+                  <Input
+                    id="new-projectName"
+                    value={projectName}
+                    onChange={(e) => onProjectNameChange(e.target.value)}
+                    placeholder="Project name"
+                    className={ebSheetInput("text-sm")}
+                    aria-invalid={submitAttempted && !projectName.trim()}
+                    required
+                  />
+                  {submitAttempted && !projectName.trim() ? (
+                    <p className="text-xs text-rose-400">Project name is required.</p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className={cn(EB.sheetField, "min-w-0")}>
+                <Label htmlFor="new-address" className={EB.sheetLabel}>
+                  Address
                 </Label>
                 <Input
-                  id="new-clientName"
-                  value={clientName}
-                  onChange={(e) => onClientNameChange(e.target.value)}
-                  placeholder="Client or company name"
-                  className={metaInput}
-                  aria-invalid={submitAttempted && !clientName.trim()}
-                  required
+                  id="new-address"
+                  value={address}
+                  onChange={(e) => onAddressChange(e.target.value)}
+                  placeholder="Site or client address"
+                  className={ebSheetInput("text-sm")}
                 />
-                {submitAttempted && !clientName.trim() ? (
-                  <p className="mt-0.5 text-xs text-rose-500">Client name is required.</p>
-                ) : null}
               </div>
-              <div className="min-w-0">
-                <Label htmlFor="new-projectName" className={metaLabel}>
-                  Project
-                </Label>
-                <Input
-                  id="new-projectName"
-                  value={projectName}
-                  onChange={(e) => onProjectNameChange(e.target.value)}
-                  placeholder="Project name"
-                  className={metaInput}
-                  aria-invalid={submitAttempted && !projectName.trim()}
-                  required
-                />
-                {submitAttempted && !projectName.trim() ? (
-                  <p className="mt-0.5 text-xs text-rose-500">Project name is required.</p>
-                ) : null}
-              </div>
-            </div>
 
-            <div className="min-w-0">
-              <Label htmlFor="new-address" className={metaLabel}>
-                Address
-              </Label>
-              <Input
-                id="new-address"
-                value={address}
-                onChange={(e) => onAddressChange(e.target.value)}
-                placeholder="Site or client address"
-                className={metaInput}
-              />
-            </div>
-
-            <div className="border-t border-white/[0.06] pt-3">
-              <p className={cn(metaLabel, "mb-2 !text-zinc-500")}>Terms & pricing</p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="min-w-0">
-                  <Label htmlFor="new-clientPhone" className={metaLabel}>
-                    Phone
-                  </Label>
-                  <Input
-                    id="new-clientPhone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => onPhoneChange(e.target.value)}
-                    placeholder="—"
-                    className={metaInput}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Label htmlFor="new-clientEmail" className={metaLabel}>
-                    Email
-                  </Label>
-                  <Input
-                    id="new-clientEmail"
-                    type="email"
-                    value={email}
-                    onChange={(e) => onEmailChange(e.target.value)}
-                    placeholder="—"
-                    className={metaInput}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Label htmlFor="new-validUntil" className={metaLabel}>
-                    Valid until
-                  </Label>
-                  <Input
-                    id="new-validUntil"
-                    type="date"
-                    value={validUntil}
-                    onChange={(e) => onValidUntilChange(e.target.value)}
-                    className={ebInput(cn(EB.dateField, "h-9 min-h-9 md:h-8 md:min-h-8"))}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Label htmlFor="new-salesPerson" className={metaLabel}>
-                    Sales
-                  </Label>
-                  <Input
-                    id="new-salesPerson"
-                    value={salesPerson}
-                    onChange={(e) => onSalesPersonChange(e.target.value)}
-                    placeholder="—"
-                    className={metaInput}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Label htmlFor="new-builder-tax" className={metaLabel}>
-                    Tax
-                  </Label>
-                  <Input
-                    id="new-builder-tax"
-                    type="number"
-                    step="0.01"
-                    value={tax}
-                    onChange={(e) => {
-                      onTaxTouched();
-                      onTaxChange(Number(e.target.value) || 0);
-                    }}
-                    className={ebInput(cn(metaInput, EB.inputNumeric))}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Label htmlFor="new-builder-discount" className={metaLabel}>
-                    Discount
-                  </Label>
-                  <Input
-                    id="new-builder-discount"
-                    type="number"
-                    step="0.01"
-                    value={discount}
-                    onChange={(e) => onDiscountChange(Number(e.target.value) || 0)}
-                    className={ebInput(cn(metaInput, EB.inputNumeric))}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Label htmlFor="new-builder-overhead" className={metaLabel}>
-                    Overhead %
-                  </Label>
-                  <Input
-                    id="new-builder-overhead"
-                    type="number"
-                    step="0.1"
-                    value={overheadPct}
-                    onChange={(e) => onOverheadPctChange(Number(e.target.value) || 0)}
-                    className={ebInput(cn(metaInput, EB.inputNumeric))}
-                  />
-                </div>
-                <div className="min-w-0">
-                  <Label htmlFor="new-builder-profit" className={metaLabel}>
-                    Profit %
-                  </Label>
-                  <Input
-                    id="new-builder-profit"
-                    type="number"
-                    step="0.1"
-                    value={profitPct}
-                    onChange={(e) => onProfitPctChange(Number(e.target.value) || 0)}
-                    className={ebInput(cn(metaInput, EB.inputNumeric))}
-                  />
+              <div className="border-t border-white/[0.08] pt-4">
+                <p className={EB.sheetSectionLabel}>Terms & pricing</p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className={cn(EB.sheetField, "min-w-0")}>
+                    <Label htmlFor="new-clientPhone" className={EB.sheetLabel}>
+                      Phone
+                    </Label>
+                    <Input
+                      id="new-clientPhone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => onPhoneChange(e.target.value)}
+                      placeholder="Optional"
+                      className={ebSheetInput("text-sm")}
+                    />
+                  </div>
+                  <div className={cn(EB.sheetField, "min-w-0")}>
+                    <Label htmlFor="new-clientEmail" className={EB.sheetLabel}>
+                      Email
+                    </Label>
+                    <Input
+                      id="new-clientEmail"
+                      type="email"
+                      value={email}
+                      onChange={(e) => onEmailChange(e.target.value)}
+                      placeholder="Optional"
+                      className={ebSheetInput("text-sm")}
+                    />
+                  </div>
+                  <div className={cn(EB.sheetField, "min-w-0")}>
+                    <Label htmlFor="new-validUntil" className={EB.sheetLabel}>
+                      Valid until
+                    </Label>
+                    <Input
+                      id="new-validUntil"
+                      type="date"
+                      value={validUntil}
+                      onChange={(e) => onValidUntilChange(e.target.value)}
+                      className={ebSheetInput(cn(EB.dateField, "text-sm"))}
+                    />
+                  </div>
+                  <div className={cn(EB.sheetField, "min-w-0")}>
+                    <Label htmlFor="new-salesPerson" className={EB.sheetLabel}>
+                      Sales
+                    </Label>
+                    <Input
+                      id="new-salesPerson"
+                      value={salesPerson}
+                      onChange={(e) => onSalesPersonChange(e.target.value)}
+                      placeholder="Optional"
+                      className={ebSheetInput("text-sm")}
+                    />
+                  </div>
+                  <div className={cn(EB.sheetField, "min-w-0")}>
+                    <Label htmlFor="new-builder-tax" className={EB.sheetLabel}>
+                      Tax
+                    </Label>
+                    <Input
+                      id="new-builder-tax"
+                      type="number"
+                      step="0.01"
+                      value={tax}
+                      onChange={(e) => {
+                        onTaxTouched();
+                        onTaxChange(Number(e.target.value) || 0);
+                      }}
+                      className={ebSheetInput(cn("text-sm text-slate-50", EB.inputNumeric))}
+                    />
+                  </div>
+                  <div className={cn(EB.sheetField, "min-w-0")}>
+                    <Label htmlFor="new-builder-discount" className={EB.sheetLabel}>
+                      Discount
+                    </Label>
+                    <Input
+                      id="new-builder-discount"
+                      type="number"
+                      step="0.01"
+                      value={discount}
+                      onChange={(e) => onDiscountChange(Number(e.target.value) || 0)}
+                      className={ebSheetInput(cn("text-sm text-slate-50", EB.inputNumeric))}
+                    />
+                  </div>
+                  <div className={cn(EB.sheetField, "min-w-0")}>
+                    <Label htmlFor="new-builder-overhead" className={EB.sheetLabel}>
+                      Overhead %
+                    </Label>
+                    <Input
+                      id="new-builder-overhead"
+                      type="number"
+                      step="0.1"
+                      value={overheadPct}
+                      onChange={(e) => onOverheadPctChange(Number(e.target.value) || 0)}
+                      className={ebSheetInput(cn("text-sm text-slate-50", EB.inputNumeric))}
+                    />
+                  </div>
+                  <div className={cn(EB.sheetField, "min-w-0")}>
+                    <Label htmlFor="new-builder-profit" className={EB.sheetLabel}>
+                      Profit %
+                    </Label>
+                    <Input
+                      id="new-builder-profit"
+                      type="number"
+                      step="0.1"
+                      value={profitPct}
+                      onChange={(e) => onProfitPctChange(Number(e.target.value) || 0)}
+                      className={ebSheetInput(cn("text-sm text-slate-50", EB.inputNumeric))}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <SheetFooter className="mt-auto border-t border-white/[0.06] bg-[rgba(10,12,18,0.55)] px-4 py-3 sm:px-5">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn(EB.btnGhost)}
-              onClick={() => setDetailsOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="button" size="sm" className={cn(EB.btnPrimary)} onClick={saveDetails}>
-              Save
-            </Button>
+          <SheetFooter className={EB.sheetFooter}>
+            <div className={EB.sheetFooterActions}>
+              <Button type="button" size="sm" className={EB.sheetPrimary} onClick={saveDetails}>
+                Save
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className={EB.sheetSecondary}
+                onClick={() => setDetailsOpen(false)}
+              >
+                Cancel
+              </Button>
+            </div>
           </SheetFooter>
         </SheetContent>
       </Sheet>

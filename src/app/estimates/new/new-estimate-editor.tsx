@@ -11,6 +11,7 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -30,7 +31,7 @@ import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
 import { EstimateLineItemsLocal } from "../_components/estimate-line-items-local";
 import { ProposalScopeEditor } from "../_components/proposal-scope-editor";
 import { ProposalPaymentMilestoneList } from "../_components/proposal-payment-milestone-list";
-import { EB, ebInput } from "../_components/estimate-builder-ui";
+import { EB, ebSheetGlassNarrow, ebSheetInput } from "../_components/estimate-builder-ui";
 import type { EditorLineItem } from "../_components/estimate-line-item-model";
 import type { CustomerOption } from "@/components/customers/customer-select-with-add";
 
@@ -281,11 +282,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     };
   }, [paymentMilestones, totalScheduled]);
 
-  const scheduleDrawerClass = cn(
-    "estimate-builder !fixed w-full max-w-[calc(100vw-1rem)] border-white/10 bg-[rgba(14,18,28,0.96)] p-5 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-24px_0_64px_rgba(0,0,0,0.42)] backdrop-blur-xl max-md:inset-y-2 max-md:right-2 max-md:h-[calc(100dvh-1rem)] max-md:!translate-x-0 max-md:rounded-xl max-md:data-[state=open]:!animate-none max-md:data-[state=open]:!transform-none sm:max-w-[480px] md:w-[480px]",
-    "[&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.08] [&>button]:hover:text-zinc-100"
-  );
-  const scheduleLabelClass = "text-[11px] font-medium text-zinc-500";
   const resetPaymentDraft = () => {
     setEditingPaymentMilestoneId(null);
     setPmTitle("");
@@ -501,84 +497,90 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   if (!open) resetPaymentDraft();
                 }}
               >
-                <SheetContent side="right" className={scheduleDrawerClass}>
-                  <SheetHeader>
-                    <SheetTitle className="text-zinc-50">
+                <SheetContent side="right" className={ebSheetGlassNarrow()}>
+                  <SheetHeader className={EB.sheetHeader}>
+                    <SheetTitle className={EB.sheetTitle}>
                       {editingPaymentMilestoneId ? "Edit Payment" : "Schedule Payment"}
                     </SheetTitle>
                     <SheetDescription className="sr-only">
                       Add a payment milestone to this estimate.
                     </SheetDescription>
                   </SheetHeader>
-                  <div className="mt-4 space-y-4">
-                    <div className="space-y-1">
-                      <Label htmlFor="pm-title" className={scheduleLabelClass}>
-                        Payment Name
-                      </Label>
-                      <Input
-                        id="pm-title"
-                        value={pmTitle}
-                        onChange={(e) => setPmTitle(e.target.value)}
-                        placeholder="e.g. Deposit"
-                        className={ebInput("h-10 md:h-9")}
-                      />
+                  <div className={EB.sheetContent}>
+                    <div className={cn(EB.sheetContentInner, "max-w-none space-y-[1.125rem]")}>
+                      <div className={EB.sheetField}>
+                        <Label htmlFor="pm-title" className={EB.sheetLabel}>
+                          Payment Name
+                        </Label>
+                        <Input
+                          id="pm-title"
+                          value={pmTitle}
+                          onChange={(e) => setPmTitle(e.target.value)}
+                          placeholder="e.g. Deposit"
+                          className={ebSheetInput("text-sm")}
+                        />
+                      </div>
+                      <div className={EB.sheetField}>
+                        <Label htmlFor="pm-amount" className={EB.sheetLabel}>
+                          Amount
+                        </Label>
+                        <Input
+                          id="pm-amount"
+                          value={pmAmount}
+                          onChange={(e) => setPmAmount(e.target.value)}
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          placeholder="2500"
+                          className={ebSheetInput(
+                            cn("text-sm text-right text-slate-50", EB.inputNumeric)
+                          )}
+                        />
+                      </div>
+                      <div className={EB.sheetField}>
+                        <Label htmlFor="pm-description" className={EB.sheetLabel}>
+                          Description
+                        </Label>
+                        <ProposalScopeEditor
+                          id="pm-description"
+                          value={pmDescription}
+                          onChange={setPmDescription}
+                          density="comfortable"
+                          showHandle={false}
+                          placeholder="What this payment covers…"
+                          ariaLabel="Payment milestone description"
+                          className={cn(EB.sheetTextarea, "rounded-md px-2 py-2")}
+                        />
+                      </div>
+                      <div className={EB.sheetField}>
+                        <Label htmlFor="pm-dueDate" className={EB.sheetLabel}>
+                          Due Date
+                        </Label>
+                        <Input
+                          id="pm-dueDate"
+                          value={pmDueDate}
+                          onChange={(e) => setPmDueDate(e.target.value)}
+                          type="date"
+                          className={ebSheetInput(cn(EB.dateField, "text-sm"))}
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="pm-amount" className={scheduleLabelClass}>
-                        Amount
-                      </Label>
-                      <Input
-                        id="pm-amount"
-                        value={pmAmount}
-                        onChange={(e) => setPmAmount(e.target.value)}
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        placeholder="2500"
-                        className={ebInput("h-10 text-right md:h-9")}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="pm-description" className={scheduleLabelClass}>
-                        Description
-                      </Label>
-                      <ProposalScopeEditor
-                        id="pm-description"
-                        value={pmDescription}
-                        onChange={setPmDescription}
-                        density="comfortable"
-                        showHandle
-                        placeholder="What this payment covers…"
-                        ariaLabel="Payment milestone description"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="pm-dueDate" className={scheduleLabelClass}>
-                        Due Date
-                      </Label>
-                      <Input
-                        id="pm-dueDate"
-                        value={pmDueDate}
-                        onChange={(e) => setPmDueDate(e.target.value)}
-                        type="date"
-                        className={ebInput(cn(EB.dateField, "h-10 md:h-9"))}
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 pt-2">
+                  </div>
+                  <SheetFooter className={EB.sheetFooter}>
+                    <div className={EB.sheetFooterActions}>
                       <Button
                         type="button"
-                        className={cn(
-                          "min-h-11 px-4 font-medium md:min-h-10",
-                          EB.portalPrimaryButton
-                        )}
+                        size="sm"
+                        className={EB.sheetPrimary}
                         onClick={savePaymentMilestoneLocal}
                       >
                         Save
                       </Button>
                       <Button
                         type="button"
-                        variant="outline"
-                        className={cn("min-h-11 px-4 md:min-h-10", EB.portalGhostButton)}
+                        variant="ghost"
+                        size="sm"
+                        className={EB.sheetSecondary}
                         onClick={() => {
                           setScheduleOpen(false);
                           resetPaymentDraft();
@@ -587,7 +589,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                         Cancel
                       </Button>
                     </div>
-                  </div>
+                  </SheetFooter>
                 </SheetContent>
               </Sheet>
             </section>

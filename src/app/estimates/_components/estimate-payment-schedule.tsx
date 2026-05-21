@@ -8,6 +8,7 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
+  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -16,7 +17,7 @@ import { paymentMilestoneAmount } from "@/lib/data";
 import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
-import { EB, ebInput } from "./estimate-builder-ui";
+import { EB, ebSheetGlassNarrow, ebSheetInput } from "./estimate-builder-ui";
 import { ProposalScopeEditor } from "./proposal-scope-editor";
 import {
   ProposalPaymentMilestoneList,
@@ -32,11 +33,7 @@ type ApplyTemplateAction = (formData: FormData) => Promise<void>;
 type CreateTemplateAction = (formData: FormData) => Promise<void>;
 
 const fmt = formatEstimateCurrency;
-const scheduleDrawerClass = cn(
-  "estimate-builder !fixed w-full max-w-[calc(100vw-1rem)] border-white/10 bg-[rgba(14,18,28,0.96)] p-5 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-24px_0_64px_rgba(0,0,0,0.42)] backdrop-blur-xl max-md:inset-y-2 max-md:right-2 max-md:h-[calc(100dvh-1rem)] max-md:!translate-x-0 max-md:rounded-xl max-md:data-[state=open]:!animate-none max-md:data-[state=open]:!transform-none sm:max-w-[480px] md:w-[480px]",
-  "[&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.08] [&>button]:hover:text-zinc-100"
-);
-const scheduleLabelClass = "text-[11px] font-medium text-zinc-500";
+const PAYMENT_MILESTONE_FORM_ID = "estimate-payment-milestone-form";
 
 export function EstimatePaymentSchedule(props: {
   estimateId: string;
@@ -190,9 +187,9 @@ export function EstimatePaymentSchedule(props: {
             if (!open) setEditingItem(null);
           }}
         >
-          <SheetContent side="right" className={scheduleDrawerClass}>
-            <SheetHeader>
-              <SheetTitle className="text-zinc-50">
+          <SheetContent side="right" className={ebSheetGlassNarrow()}>
+            <SheetHeader className={EB.sheetHeader}>
+              <SheetTitle className={EB.sheetTitle}>
                 {editingItem ? "Edit Payment" : "Schedule Payment"}
               </SheetTitle>
               <SheetDescription className="sr-only">
@@ -201,26 +198,27 @@ export function EstimatePaymentSchedule(props: {
                   : "Add a payment milestone to this estimate."}
               </SheetDescription>
             </SheetHeader>
-            <div className="mt-4">
+            <div className={EB.sheetContent}>
               <form
+                id={PAYMENT_MILESTONE_FORM_ID}
                 key={editingItem?.id ?? "new-payment"}
                 action={editingItem ? updatePaymentMilestoneAction : addPaymentMilestoneAction}
-                className="space-y-4"
+                className={cn(EB.sheetContentInner, "max-w-none space-y-[1.125rem]")}
               >
                 <input type="hidden" name="estimateId" value={estimateId} />
                 {editingItem ? <input type="hidden" name="itemId" value={editingItem.id} /> : null}
-                <div className="space-y-1">
-                  <label className={scheduleLabelClass}>Payment Name</label>
+                <div className={EB.sheetField}>
+                  <label className={EB.sheetLabel}>Payment Name</label>
                   <Input
                     name="title"
                     placeholder="e.g. Deposit"
                     defaultValue={editingItem?.title ?? ""}
-                    className={ebInput("h-10 md:h-9")}
+                    className={ebSheetInput("text-sm")}
                     required
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className={scheduleLabelClass}>Amount</label>
+                <div className={EB.sheetField}>
+                  <label className={EB.sheetLabel}>Amount</label>
                   <Input
                     name="amount"
                     type="number"
@@ -228,13 +226,15 @@ export function EstimatePaymentSchedule(props: {
                     min={0}
                     placeholder="2500"
                     defaultValue={editingItem?.amount ?? ""}
-                    className={ebInput("h-10 text-right md:h-9")}
+                    className={ebSheetInput(
+                      cn("text-sm text-right text-slate-50", EB.inputNumeric)
+                    )}
                     required
                   />
                 </div>
                 <input type="hidden" name="description" value={paymentDescriptionDraft} />
-                <div className="space-y-1">
-                  <label htmlFor="payment-milestone-description" className={scheduleLabelClass}>
+                <div className={EB.sheetField}>
+                  <label htmlFor="payment-milestone-description" className={EB.sheetLabel}>
                     Description
                   </label>
                   <ProposalScopeEditor
@@ -242,38 +242,44 @@ export function EstimatePaymentSchedule(props: {
                     value={paymentDescriptionDraft}
                     onChange={setPaymentDescriptionDraft}
                     density="comfortable"
-                    showHandle
+                    showHandle={false}
                     placeholder="What this payment covers…"
                     ariaLabel="Payment milestone description"
+                    className={cn(EB.sheetTextarea, "rounded-md px-2 py-2")}
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className={scheduleLabelClass}>Due Date</label>
+                <div className={EB.sheetField}>
+                  <label className={EB.sheetLabel}>Due Date</label>
                   <Input
                     name="dueDate"
                     type="date"
                     defaultValue={editingItem?.dueDate ?? ""}
-                    className={ebInput(cn(EB.dateField, "h-10 md:h-9"))}
+                    className={ebSheetInput(cn(EB.dateField, "text-sm"))}
                   />
-                </div>
-                <div className="flex items-center gap-2 pt-2">
-                  <Button
-                    type="submit"
-                    className={cn("min-h-11 px-4 md:min-h-10", EB.portalPrimaryButton)}
-                  >
-                    Save
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn("min-h-11 px-4 md:min-h-10", EB.portalGhostButton)}
-                    onClick={() => setScheduleOpen(false)}
-                  >
-                    Cancel
-                  </Button>
                 </div>
               </form>
             </div>
+            <SheetFooter className={EB.sheetFooter}>
+              <div className={EB.sheetFooterActions}>
+                <Button
+                  type="submit"
+                  form={PAYMENT_MILESTONE_FORM_ID}
+                  size="sm"
+                  className={EB.sheetPrimary}
+                >
+                  Save
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={EB.sheetSecondary}
+                  onClick={() => setScheduleOpen(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </SheetFooter>
           </SheetContent>
         </Sheet>
       </div>

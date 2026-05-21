@@ -760,3 +760,309 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
     transition: none;
   }
 }
+
+/* ── Estimate Builder sheets (scoped; not global Sheet) ── */
+body.estimate-builder-active [data-radix-dialog-overlay] {
+  background: rgba(2, 6, 23, 0.58) !important;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.estimate-builder.eb-sheet-glass {
+  --eb-sheet-bg: rgba(8, 13, 26, 0.92);
+  --eb-sheet-input-bg: rgba(15, 23, 42, 0.82);
+  --eb-sheet-border: rgba(148, 163, 184, 0.18);
+  --eb-sheet-border-strong: rgba(148, 163, 184, 0.28);
+
+  position: fixed !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  border-color: var(--eb-sheet-border) !important;
+  background: var(--eb-sheet-bg) !important;
+  color: #f8fafc !important;
+  box-shadow:
+    -20px 0 56px rgba(0, 0, 0, 0.38),
+    inset 1px 0 0 rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(18px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(150%) !important;
+}
+
+.estimate-builder.eb-sheet-glass > button[type="button"].absolute {
+  top: 1rem !important;
+  right: 1rem !important;
+  min-height: 2.25rem !important;
+  min-width: 2.25rem !important;
+  border-radius: 0.375rem !important;
+  border: 1px solid var(--eb-sheet-border) !important;
+  background: rgba(15, 23, 42, 0.55) !important;
+  color: #94a3b8 !important;
+  opacity: 1 !important;
+}
+
+.estimate-builder.eb-sheet-glass > button[type="button"].absolute:hover {
+  background: rgba(30, 41, 59, 0.65) !important;
+  color: #e2e8f0 !important;
+}
+
+.estimate-builder.eb-sheet-glass[data-state="open"] {
+  transform: translate3d(0, 0, 0) !important;
+}
+
+@media (min-width: 768px) {
+  .estimate-builder.eb-sheet-glass-wide,
+  .estimate-builder.eb-sheet-glass-narrow {
+    top: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    bottom: 0 !important;
+    height: auto !important;
+    max-height: 100vh !important;
+  }
+
+  .estimate-builder.eb-sheet-glass-wide {
+    width: min(800px, calc(100vw - 4rem)) !important;
+    max-width: 800px !important;
+  }
+
+  .estimate-builder.eb-sheet-glass-narrow {
+    width: 460px !important;
+    max-width: min(480px, calc(100vw - 2rem)) !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .estimate-builder.eb-sheet-glass-wide,
+  .estimate-builder.eb-sheet-glass-narrow {
+    top: 0.5rem !important;
+    right: 0.5rem !important;
+    bottom: 0.5rem !important;
+    left: 0.5rem !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    max-height: none !important;
+    border-radius: 0.75rem !important;
+    border: 1px solid var(--eb-sheet-border) !important;
+  }
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 1rem 3rem 0.875rem 1rem;
+  border-bottom: 1px solid var(--eb-sheet-border);
+  background: rgba(8, 13, 26, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  text-align: left;
+}
+
+@media (min-width: 768px) {
+  .estimate-builder.eb-sheet-glass .eb-sheet-header {
+    padding: 1.25rem 3.25rem 1rem 1.75rem;
+  }
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  color: #f8fafc;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1rem 1rem 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .estimate-builder.eb-sheet-glass .eb-sheet-content {
+    padding: 1.25rem 1.75rem 1.5rem;
+  }
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-content-inner {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 720px;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-content-inner > .eb-sheet-field + .eb-sheet-field,
+.estimate-builder.eb-sheet-glass .eb-sheet-content-inner > * + .border-t {
+  margin-top: 0;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-content-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .estimate-builder.eb-sheet-glass .eb-sheet-content-inner {
+    gap: 1.125rem;
+  }
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-label {
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-section-label {
+  margin-bottom: 0.75rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-input,
+.estimate-builder.eb-sheet-glass .eb-sheet-input.eb-input,
+.estimate-builder.eb-sheet-glass input.eb-sheet-input,
+.estimate-builder.eb-sheet-glass textarea.eb-sheet-input,
+.estimate-builder.eb-sheet-glass select.eb-sheet-input {
+  min-height: 2.75rem;
+  border: 1px solid var(--eb-sheet-border) !important;
+  border-radius: 0.375rem !important;
+  background: var(--eb-sheet-input-bg) !important;
+  color: #f8fafc !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-input::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-input:hover {
+  border-color: var(--eb-sheet-border-strong) !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-input:focus-visible {
+  outline: none !important;
+  border-color: rgba(129, 140, 248, 0.5) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 2px rgba(129, 140, 248, 0.28) !important;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-textarea.eb-proposal-scope-editor,
+.estimate-builder.eb-sheet-glass .eb-proposal-scope-editor.eb-sheet-textarea {
+  min-height: 7.5rem;
+  border: 1px solid var(--eb-sheet-border) !important;
+  border-radius: 0.375rem !important;
+  background: var(--eb-sheet-input-bg) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-textarea.eb-proposal-scope-editor:focus-within {
+  border-color: rgba(129, 140, 248, 0.5) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 2px rgba(129, 140, 248, 0.28) !important;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  flex-shrink: 0;
+  margin: 0;
+  margin-top: auto;
+  padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--eb-sheet-border);
+  background: rgba(8, 13, 26, 0.9);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+}
+
+@media (min-width: 768px) {
+  .estimate-builder.eb-sheet-glass .eb-sheet-footer {
+    padding: 0.875rem 1.75rem;
+  }
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-footer-actions {
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-footer-actions > button {
+  min-height: 2.75rem;
+  min-width: 5.5rem;
+}
+
+@media (max-width: 767px) {
+  .estimate-builder.eb-sheet-glass .eb-sheet-footer-actions {
+    flex-direction: row-reverse;
+  }
+
+  .estimate-builder.eb-sheet-glass .eb-sheet-footer-actions > button {
+    min-height: 2.75rem;
+    flex: 1 1 0;
+    max-width: none;
+    width: auto;
+  }
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-primary {
+  border: 1px solid rgba(129, 140, 248, 0.32) !important;
+  border-radius: 0.375rem !important;
+  background: linear-gradient(
+    180deg,
+    rgba(71, 85, 105, 0.95) 0%,
+    rgba(30, 41, 59, 0.98) 55%,
+    rgba(37, 99, 235, 0.55) 100%
+  ) !important;
+  color: #f8fafc !important;
+  font-weight: 500 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 2px 10px rgba(0, 0, 0, 0.2) !important;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-primary:hover:not(:disabled) {
+  filter: brightness(1.04);
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-secondary {
+  border: 1px solid var(--eb-sheet-border) !important;
+  border-radius: 0.375rem !important;
+  background: rgba(15, 23, 42, 0.5) !important;
+  color: #cbd5e1 !important;
+  font-weight: 500 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+.estimate-builder.eb-sheet-glass .eb-sheet-secondary:hover:not(:disabled) {
+  border-color: var(--eb-sheet-border-strong) !important;
+  background: rgba(30, 41, 59, 0.55) !important;
+  color: #f1f5f9 !important;
+}
