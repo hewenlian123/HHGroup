@@ -1,0 +1,146 @@
+name: Manual Production Single Estimate Hide Amount Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type APPLY_PRODUCTION_SUPABASE_MIGRATIONS to apply the single approved estimate hide amount migration.
+        required: true
+        type: string
+
+concurrency:
+  group: manual-production-single-estimate-hide-amount-migration
+  cancel-in-progress: false
+
+jobs:
+  production-single-estimate-hide-amount-migration:
+    name: Apply one approved estimate hide amount migration
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CONFIRMATION: ${{ inputs.confirmation }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      MIGRATION_FILE: supabase/migrations/20260521143000_estimate_items_hide_amount_on_pdf.sql
+      MIGRATION_SHA256: f8e30ea889e3b4e416ce3515713bf9dc0c4e8e5914f801dabdcbc8258a89f7c9
+    steps:
+      - name: Requires manual confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$CONFIRMATION" != "APPLY_PRODUCTION_SUPABASE_MIGRATIONS" ]; then
+            echo "::error::Refusing to run. Re-dispatch with the exact confirmation phrase."
+            exit 1
+          fi
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is required for manual production migrations."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate SUPABASE_DB_URL format
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+
+          raw = os.environ.get("SUPABASE_DB_URL", "")
+          if not raw:
+              raise SystemExit("SUPABASE_DB_URL is empty.")
+
+          u = urlsplit(raw)
+          if u.scheme not in ("postgres", "postgresql"):
+              raise SystemExit("SUPABASE_DB_URL must start with postgres:// or postgresql://")
+          if not u.hostname:
+              raise SystemExit("SUPABASE_DB_URL is missing host.")
+          if not u.username:
+              raise SystemExit("SUPABASE_DB_URL is missing username.")
+          if u.password is None or u.password == "":
+              raise SystemExit("SUPABASE_DB_URL is missing password.")
+          if (u.path or "").strip("/") != "postgres":
+              raise SystemExit("SUPABASE_DB_URL path must be /postgres.")
+          if u.query and "sslmode=" not in u.query:
+              raise SystemExit("SUPABASE_DB_URL query should include sslmode=require.")
+          print("SUPABASE_DB_URL format looks valid.")
+          PY
+
+      - name: Install psql client
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v psql >/dev/null 2>&1; then
+            psql --version
+            exit 0
+          fi
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Verify this workflow only runs the approved SQL file
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$MIGRATION_FILE"
+          actual_sha="$(sha256sum "$MIGRATION_FILE" | awk '{print $1}')"
+          if [ "$actual_sha" != "$MIGRATION_SHA256" ]; then
+            echo "::error::Migration file checksum mismatch. Refusing to run."
+            echo "Expected: $MIGRATION_SHA256"
+            echo "Actual:   $actual_sha"
+            exit 1
+          fi
+
+          if grep -Eiq '\b(drop|truncate|delete|rename|disable row level security|create policy|alter policy|drop policy|grant|revoke)\b' "$MIGRATION_FILE"; then
+            echo "::error::Migration contains a forbidden destructive/security keyword."
+            exit 1
+          fi
+
+          echo "Single approved migration file:"
+          echo "$MIGRATION_FILE"
+          echo
+          echo "Migration summary:"
+          echo "- Adds public.estimate_items.hide_amount_on_pdf"
+          echo "- Type: boolean"
+          echo "- Default: false"
+          echo "- Constraint: not null"
+          echo "- No RLS, policy, or grant changes"
+
+      - name: Apply the single approved estimate hide amount migration SQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$MIGRATION_FILE"
+
+      - name: Reload PostgREST schema cache
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -c "notify pgrst, 'reload schema';"
+
+      - name: Verify production schema after migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          begin
+            if not exists (
+              select 1
+              from information_schema.columns
+              where table_schema = 'public'
+                and table_name = 'estimate_items'
+                and column_name = 'hide_amount_on_pdf'
+                and data_type = 'boolean'
+                and is_nullable = 'NO'
+            ) then
+              raise exception 'Missing public.estimate_items.hide_amount_on_pdf boolean not null';
+            end if;
+          end $$;
+
+          select table_name, column_name, data_type, is_nullable, column_default
+          from information_schema.columns
+          where table_schema = 'public'
+            and table_name = 'estimate_items'
+            and column_name = 'hide_amount_on_pdf';
+          SQL
