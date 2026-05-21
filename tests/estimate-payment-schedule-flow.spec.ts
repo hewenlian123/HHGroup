@@ -106,6 +106,10 @@ async function addPaymentMilestone(
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(dialog).toBeHidden({ timeout: 10_000 });
   await expect(page.getByText(milestone.title, { exact: true })).toBeVisible({ timeout: 10_000 });
+  if (milestone.dueDate === "2026-06-01") {
+    await expect(page.getByText("Due 6/1/26")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("body")).not.toContainText("Due 5/31/26");
+  }
 }
 
 test.afterEach(async () => {
@@ -157,6 +161,8 @@ test("estimate payment schedule persists and has customer-facing payment preview
   await expect(page.getByText("1st Payment", { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("$5,000.00").first()).toBeVisible();
   await expect(page.getByText("Deposit before work starts")).toBeVisible();
+  await expect(page.getByText("Due 6/1/26")).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("Due 5/31/26");
 
   await page.getByRole("link", { name: "Preview", exact: true }).click();
   await expect(page).toHaveURL(/\/preview/, { timeout: 30_000 });

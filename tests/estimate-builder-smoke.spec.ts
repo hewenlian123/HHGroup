@@ -96,6 +96,18 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
     timeout: 10_000,
   });
 
+  const unitPriceInput = page.getByLabel("Line item 1 unit price").locator("visible=true");
+  await unitPriceInput.fill("1367896.16");
+  await expect(page.getByText("$4,514,057.33").locator("visible=true").first()).toBeVisible({
+    timeout: 10_000,
+  });
+  const unitPriceBox = await unitPriceInput.boundingBox();
+  expect(unitPriceBox?.width ?? 0).toBeGreaterThanOrEqual(130);
+  await unitPriceInput.fill("100");
+  await expect(page.getByText("$330.00").locator("visible=true").first()).toBeVisible({
+    timeout: 10_000,
+  });
+
   const saveEstimate = page.getByRole("button", { name: "Save Estimate" });
   await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
   await saveEstimate.click();

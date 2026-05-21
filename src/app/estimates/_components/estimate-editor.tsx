@@ -857,7 +857,7 @@ function LineItemRow({
             onChange={(e) => setUnitCost(Number(e.target.value) || 0)}
             onBlur={submitForm}
             className={ebInput(
-              `h-7 min-h-7 w-[4.5rem] px-1.5 text-xs ${EB.inputNumeric} ${EB.inputMuted}`
+              `h-7 min-h-7 w-[9.5rem] max-w-full px-1.5 text-xs ${EB.inputNumeric} ${EB.inputMuted}`
             )}
             aria-label="Line item unit price"
           />
@@ -882,7 +882,12 @@ function LineItemRow({
       </div>
       <div className="flex flex-col items-end gap-0.5">
         <span className={EB.readLabel}>Total</span>
-        <span className={cn("pb-0.5 text-xs font-medium tabular-nums", EB.lineTotal)}>
+        <span
+          className={cn(
+            "min-w-[8.5rem] max-w-full pb-0.5 text-right text-xs font-medium tabular-nums",
+            EB.lineTotal
+          )}
+        >
           {formatEstimateCurrency(lineTotalDisplay)}
         </span>
       </div>
