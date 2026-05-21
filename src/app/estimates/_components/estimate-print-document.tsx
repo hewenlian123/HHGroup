@@ -22,6 +22,7 @@ import {
   DEFAULT_LINE_ITEM_STATUS,
   LINE_ITEM_STATUS_LABELS,
 } from "@/app/estimates/_components/estimate-line-item-status";
+import type { ReactNode } from "react";
 
 export type EstimatePrintDocumentProps = {
   company: DocumentCompanyProfileDTO;
@@ -36,6 +37,31 @@ export type EstimatePrintDocumentProps = {
 
 const fmt = (n: number) =>
   n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function cleanText(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function DocumentInfoBlock({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0 border-t border-zinc-200 pt-3">
+      <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+        {title}
+      </h3>
+      <div className="mt-2 space-y-1 text-sm leading-relaxed text-zinc-800">{children}</div>
+    </div>
+  );
+}
+
+function ClientEstimateField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid min-w-0 grid-cols-[5.5rem_1fr] gap-2">
+      <span className="shrink-0 text-[11px] uppercase tracking-wide text-zinc-500">{label}</span>
+      <div className="min-w-0 break-words text-sm font-medium text-zinc-900">{children}</div>
+    </div>
+  );
+}
 
 /** Read-only, print-optimized estimate document. No navigation or buttons. */
 export function EstimatePrintDocument({
@@ -53,18 +79,29 @@ export function EstimatePrintDocument({
   const estimateDateStr =
     meta?.estimateDate ?? (estimate.updatedAt ? estimate.updatedAt.slice(0, 10) : "—");
   const statusLabel = estimate.status === "Converted" ? "Converted to Project" : estimate.status;
+  const clientName = cleanText(meta?.client.name);
+  const clientPhone = cleanText(meta?.client.phone);
+  const clientEmail = cleanText(meta?.client.email);
+  const clientAddress = cleanText(meta?.client.address);
+  const projectName = cleanText(meta?.project.name);
+  const projectAddress = cleanText(meta?.project.siteAddress);
+  const jobAddress = clientAddress ?? projectAddress;
 
   return (
-    <article className="bg-white text-zinc-900 mx-auto max-w-[8.5in] px-6 py-6 print:px-0 print:py-0 print:max-w-none">
+    <article
+      data-testid="estimate-document"
+      className="mx-auto max-w-[8.5in] bg-white px-7 py-7 text-zinc-900 print:max-w-none print:px-0 print:py-0"
+    >
       <DocumentCompanyHeader
         company={company}
         documentTitle="Estimate"
         documentNo={estimate.number}
         documentDate={estimateDateStr}
         documentNoLabel="Estimate No"
+        className="border-zinc-900/80 pb-5"
         extraRight={
           <>
-            <span className="inline-block rounded-sm border border-zinc-300 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-800 print:border-zinc-400">
+            <span className="inline-block rounded-full border border-zinc-300 bg-white px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-600 print:border-zinc-400">
               {statusLabel}
             </span>
             {meta?.validUntil ? (
@@ -77,39 +114,29 @@ export function EstimatePrintDocument({
       {/* Client / Project / Dates / Status */}
       {meta && (
         <section className="mb-8 print:break-inside-avoid">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">
-            Client & Project
-          </h2>
-          <div className="grid grid-cols-2 gap-6 text-sm">
-            <div>
-              <p className="text-xs font-medium text-zinc-500 mb-1">Client / Customer</p>
-              <p className="font-medium text-zinc-900">{meta.client.name || "—"}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-zinc-500 mb-1">Project</p>
-              <p className="font-medium text-zinc-900">{meta.project.name || "—"}</p>
-            </div>
-            <div className="col-span-2">
-              <p className="text-xs font-medium text-zinc-500 mb-1">Address</p>
-              <p className="text-zinc-700">
-                {meta.client.address || meta.project.siteAddress || "—"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-zinc-500 mb-1">Estimate Date</p>
-              <p className="text-zinc-900">{meta.estimateDate ?? "—"}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-zinc-500 mb-1">Valid Until</p>
-              <p className="text-zinc-900">{meta.validUntil ?? "—"}</p>
-            </div>
+          <div className="grid gap-6 sm:grid-cols-3">
+            <DocumentInfoBlock title="Bill To">
+              <p className="font-semibold text-zinc-950">{clientName ?? "—"}</p>
+              {clientPhone ? <p className="tabular-nums text-zinc-700">{clientPhone}</p> : null}
+              {clientEmail ? <p className="break-all text-zinc-700">{clientEmail}</p> : null}
+              {clientAddress ? <p className="break-words text-zinc-700">{clientAddress}</p> : null}
+            </DocumentInfoBlock>
+            <DocumentInfoBlock title="Project / Job">
+              <p className="font-semibold text-zinc-950">{projectName ?? "—"}</p>
+              <ClientEstimateField label="Date">{estimateDateStr}</ClientEstimateField>
+              <ClientEstimateField label="Valid">{meta.validUntil ?? "—"}</ClientEstimateField>
+            </DocumentInfoBlock>
+            <DocumentInfoBlock title="Job Address">
+              <p className="break-words font-medium text-zinc-900">{jobAddress ?? "—"}</p>
+              <ClientEstimateField label="Status">{statusLabel}</ClientEstimateField>
+            </DocumentInfoBlock>
           </div>
         </section>
       )}
 
       {/* Scope sections */}
-      <section className="mb-8 print:break-inside-avoid">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+      <section className="mb-8 print:break-inside-auto">
+        <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
           Scope of work
         </h2>
         {costSections.length === 0 ? (
@@ -117,44 +144,54 @@ export function EstimatePrintDocument({
         ) : (
           <>
             {costSections.map(({ categoryId, title, rows, sectionTotal }) => (
-              <div key={categoryId} className="mb-8 print:break-inside-avoid">
-                <p className="text-sm font-semibold text-zinc-900 mb-3">{title}</p>
+              <div key={categoryId} className="mb-8 break-inside-avoid">
+                <div className="mb-2 flex items-end justify-between gap-4">
+                  <p className="text-[15px] font-semibold text-zinc-950">{title}</p>
+                  <p className="text-xs tabular-nums text-zinc-500">
+                    Section total:{" "}
+                    <span className="font-semibold text-zinc-900">${fmt(sectionTotal)}</span>
+                  </p>
+                </div>
                 <table className="w-full text-sm border-collapse">
                   <thead>
-                    <tr className="border-b border-zinc-200 text-zinc-600">
-                      <th className="text-left py-2 pr-4 font-medium">Description</th>
-                      <th className="text-right py-2 px-2 font-medium tabular-nums w-16">Qty</th>
-                      <th className="text-left py-2 px-2 font-medium w-14">Unit</th>
-                      <th className="text-right py-2 px-2 font-medium tabular-nums">Unit Price</th>
-                      <th className="text-right py-2 pl-4 font-medium tabular-nums">Total</th>
+                    <tr className="border-y border-zinc-300 bg-zinc-50/70 text-[11px] uppercase tracking-wide text-zinc-500">
+                      <th className="py-2.5 pr-4 text-left font-semibold">Description</th>
+                      <th className="w-16 px-2 py-2.5 text-right font-semibold tabular-nums">
+                        Qty
+                      </th>
+                      <th className="w-14 px-2 py-2.5 text-left font-semibold">Unit</th>
+                      <th className="px-2 py-2.5 text-right font-semibold tabular-nums">
+                        Unit Price
+                      </th>
+                      <th className="py-2.5 pl-4 text-right font-semibold tabular-nums">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((row) => {
                       const { title: itemTitle, body } = splitLineItemDesc(row.desc ?? "");
                       return (
-                        <tr key={row.id} className="border-b border-zinc-100">
-                          <td className="py-2.5 pr-4">
+                        <tr key={row.id} className="break-inside-avoid border-b border-zinc-100">
+                          <td className="py-3 pr-4 align-top">
                             <p className="font-medium text-zinc-900">{itemTitle || row.desc}</p>
                             {row.status && row.status !== DEFAULT_LINE_ITEM_STATUS ? (
-                              <span className="mt-1 inline-flex rounded-sm border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600">
+                              <span className="mt-1.5 inline-flex rounded-full border border-zinc-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
                                 {LINE_ITEM_STATUS_LABELS[row.status] ?? row.status}
                               </span>
                             ) : null}
                             {body.trim() ? (
-                              <div className="mt-1 text-xs text-zinc-600">
+                              <div className="mt-1.5 text-sm text-zinc-600">
                                 <LineItemOrScopeBodyPreview body={body} variant="print" />
                               </div>
                             ) : null}
                           </td>
-                          <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">
+                          <td className="px-2 py-3 text-right tabular-nums text-zinc-900">
                             {row.qty}
                           </td>
-                          <td className="py-2.5 px-2 text-zinc-700">{row.unit}</td>
-                          <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">
+                          <td className="px-2 py-3 text-zinc-700">{row.unit}</td>
+                          <td className="px-2 py-3 text-right tabular-nums text-zinc-900">
                             {formatPdfLineUnitPrice(row, (n) => `$${fmt(n)}`)}
                           </td>
-                          <td className="py-2.5 pl-4 text-right tabular-nums font-medium text-zinc-900">
+                          <td className="py-3 pl-4 text-right tabular-nums font-medium text-zinc-900">
                             {formatPdfLineTotal(row, (n) => `$${fmt(n)}`)}
                           </td>
                         </tr>
@@ -162,9 +199,6 @@ export function EstimatePrintDocument({
                     })}
                   </tbody>
                 </table>
-                <p className="text-right text-sm font-medium tabular-nums text-zinc-900 mt-2">
-                  Section total: ${fmt(sectionTotal)}
-                </p>
               </div>
             ))}
           </>
@@ -178,14 +212,14 @@ export function EstimatePrintDocument({
       {/* Payment schedule */}
       {paymentSchedule.length > 0 ? (
         <section className="mb-8 print:break-inside-avoid">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
             Payment Schedule
           </h2>
-          <div className="space-y-4 text-sm">
+          <div className="divide-y divide-zinc-200 border-y border-zinc-200 text-sm">
             {paymentSchedule.map((item) => {
               const amount = paymentMilestoneAmount(item, estimateTotal);
               return (
-                <div key={item.id} className="border-b border-zinc-100 pb-4 last:border-b-0">
+                <div key={item.id} className="break-inside-avoid py-3">
                   <div className="flex items-baseline justify-between gap-6">
                     <p className="font-semibold text-zinc-900">{item.title}</p>
                     <p className="shrink-0 tabular-nums font-semibold text-zinc-900">
@@ -216,10 +250,10 @@ export function EstimatePrintDocument({
       {/* Summary totals */}
       {summary && (
         <section className="mb-8 print:break-inside-avoid">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-4">
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
             Summary
           </h2>
-          <div className="max-w-xs ml-auto border border-zinc-200 rounded-lg p-5 text-sm space-y-2">
+          <div className="ml-auto max-w-sm border-t border-zinc-900 pt-4 text-sm space-y-2">
             <div className="flex justify-between font-medium text-zinc-700">
               <span>Subtotal</span>
               <span className="tabular-nums text-zinc-900">${fmt(summary.subtotal)}</span>
@@ -232,8 +266,8 @@ export function EstimatePrintDocument({
               <span>Discount</span>
               <span className="tabular-nums text-zinc-900">−${fmt(summary.discount)}</span>
             </div>
-            <div className="flex justify-between pt-3 mt-2 border-t-2 border-zinc-300 font-semibold text-zinc-900">
-              <span>Total</span>
+            <div className="mt-3 flex justify-between border-t border-zinc-300 pt-3 text-base font-semibold text-zinc-950">
+              <span>Grand Total</span>
               <span className="tabular-nums">${fmt(summary.grandTotal)}</span>
             </div>
           </div>
@@ -242,14 +276,37 @@ export function EstimatePrintDocument({
 
       {company.defaultTerms ? (
         <section className="mb-8 print:break-inside-avoid">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-3">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
             Terms
           </h2>
-          <div className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-4 text-sm text-zinc-700 whitespace-pre-wrap">
+          <div className="whitespace-pre-wrap break-words border-y border-zinc-200 py-3 text-sm leading-relaxed text-zinc-700">
             {company.defaultTerms}
           </div>
         </section>
       ) : null}
+
+      <section
+        className="mb-8 mt-14 w-full text-left print:break-inside-avoid"
+        aria-label="Signatures"
+      >
+        <h2 className="mb-6 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+          Signature
+        </h2>
+        <div className="grid grid-cols-2 gap-12">
+          <div className="min-w-0">
+            <div className="min-h-[2.75rem] border-b-2 border-zinc-900" aria-hidden />
+            <p className="mt-2 text-sm font-medium text-zinc-900">Client Signature</p>
+            <div className="mt-5 min-h-[1.35rem] border-b border-zinc-900" aria-hidden />
+            <p className="mt-2 text-xs text-zinc-500">Date</p>
+          </div>
+          <div className="min-w-0">
+            <div className="min-h-[2.75rem] border-b-2 border-zinc-900" aria-hidden />
+            <p className="mt-2 text-sm font-medium text-zinc-900">Company Signature</p>
+            <div className="mt-5 min-h-[1.35rem] border-b border-zinc-900" aria-hidden />
+            <p className="mt-2 text-xs text-zinc-500">Date</p>
+          </div>
+        </div>
+      </section>
 
       <footer className="text-xs text-zinc-400 border-t border-zinc-200 pt-6 mt-8 print:break-before-avoid whitespace-pre-wrap">
         {company.invoiceFooter || `Estimate — ${company.companyName}`}

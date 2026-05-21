@@ -185,7 +185,7 @@ test("hide amount on PDF persists through preview and print", async ({ page }) =
   await expect(previewRow).toBeVisible({ timeout: 30_000 });
   await expect(previewRow.locator("td").nth(3)).toHaveText("—");
   await expect(previewRow.locator("td").nth(4)).toHaveText("—");
-  await expect(page.getByText(/^Total:/)).toBeVisible();
+  await expect(page.getByText("Grand Total")).toBeVisible();
 
   await page.goto(`/estimates/${estimateId}/print`);
   await page.waitForLoadState("domcontentloaded");
