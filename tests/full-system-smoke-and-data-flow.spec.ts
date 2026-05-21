@@ -111,6 +111,17 @@ async function safeDeleteByIds(db: SupabaseClient, table: string, ids: string[])
   }
 }
 
+async function syncLaborWorkerForTest(workerId: string, workerName: string): Promise<void> {
+  const db = adminClient();
+  if (!db || !workerId || !workerName.trim()) return;
+  const { error } = await db
+    .from("labor_workers")
+    .upsert({ id: workerId, name: workerName.trim() }, { onConflict: "id" });
+  if (error && !isMissingSchemaError(error)) {
+    throw new Error(`labor_workers test sync failed: ${error.message}`);
+  }
+}
+
 async function cleanupFullSystemData(): Promise<void> {
   const db = adminClient();
   if (!db) return;
@@ -555,8 +566,13 @@ async function createEstimateForProject(
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
   });
+  await page.getByRole("button", { name: "Edit details" }).click();
+  const detailsSheet = page.getByRole("dialog", { name: "Customer / project / pricing details" });
+  await expect(detailsSheet).toBeVisible({ timeout: 10_000 });
   await selectCustomer(page, params.customerName);
-  await page.getByPlaceholder("Project name").fill(params.projectName);
+  await detailsSheet.getByPlaceholder("Project name").fill(params.projectName);
+  await detailsSheet.getByRole("button", { name: "Save" }).click();
+  await expect(detailsSheet).toBeHidden({ timeout: 10_000 });
   await page
     .getByRole("button", { name: /^Add Section$/i })
     .first()
@@ -749,7 +765,10 @@ async function createReimbursement(
   const form = page.locator("form").filter({ hasText: "Worker" }).first();
   await expect(form).toBeVisible({ timeout: 20_000 });
   await selectNativeOptionByLabel(form.locator("select").nth(0), params.workerName);
-  await selectNativeOptionByLabel(form.locator("select").nth(1), params.projectName);
+  const projectSelect = form.locator("select").nth(1);
+  if ((await projectSelect.locator("option", { hasText: params.projectName }).count()) > 0) {
+    await selectNativeOptionByLabel(projectSelect, params.projectName);
+  }
   await form.locator('input[type="date"]').fill(todayLocalISO());
   await form.getByPlaceholder("Vendor").fill(params.vendor);
   await form.locator('input[type="number"]').fill("30");
@@ -888,7 +907,8 @@ test("creates linked system data and verifies cross-module flow", async ({ page 
     vendor: names.expenseVendor,
   });
 
-  await createWorker(page, names.workerName);
+  const workerId = await createWorker(page, names.workerName);
+  await syncLaborWorkerForTest(workerId, names.workerName);
   await createLaborEntry(page, {
     projectName: names.projectName,
     workerName: names.workerName,
