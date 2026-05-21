@@ -117,6 +117,16 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   });
   await expect(page.getByLabel("Estimate overview")).not.toContainText(/markup|overhead|profit/i);
 
+  await page.getByRole("button", { name: /Schedule Payment/i }).click();
+  const scheduleDialog = page.getByRole("dialog", { name: /Schedule Payment/i });
+  await expect(scheduleDialog).toBeVisible({ timeout: 10_000 });
+  await scheduleDialog.getByLabel("Amount").fill("600");
+  await expect(scheduleDialog.getByText("Exceeds estimate total.")).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(scheduleDialog.locator("#pm-percent-helper")).not.toContainText(/^100%/);
+  await scheduleDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+
   const unitPriceInput = page.getByLabel("Line item 1 unit price").locator("visible=true");
   await unitPriceInput.fill("1367896.16");
   await expect(page.getByText("$4,103,688.48").locator("visible=true").first()).toBeVisible({
