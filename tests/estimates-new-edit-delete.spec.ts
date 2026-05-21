@@ -67,6 +67,27 @@ async function fillNewEstimateCustomerFields(
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
 }
 
+async function expectDialogInViewport(page: Page, dialogName: RegExp | string): Promise<void> {
+  const dialog = page.getByRole("dialog", { name: dialogName });
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await expect
+    .poll(
+      async () =>
+        dialog.evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          const style = window.getComputedStyle(element);
+          const horizontallyVisible = rect.left >= -1 && rect.right <= window.innerWidth + 1;
+          const verticallyVisible = rect.top >= -1 && rect.bottom <= window.innerHeight + 1;
+          return {
+            inViewport: horizontallyVisible && verticallyVisible,
+            position: style.position,
+          };
+        }),
+      { timeout: 10_000 }
+    )
+    .toMatchObject({ inViewport: true, position: "fixed" });
+}
+
 async function fillNewEstimate(
   page: Page,
   params: {
@@ -484,4 +505,69 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   await stickyTotal.scrollIntoViewIfNeeded();
   const saveBtn = page.getByRole("button", { name: "Save Estimate" });
   await expect(saveBtn).toBeVisible();
+});
+
+test("keeps new estimate detail and payment drawers visible on desktop and mobile", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/estimates/new");
+    await page.waitForLoadState("domcontentloaded");
+    await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
+      timeout: 30_000,
+    });
+
+    await page.getByRole("button", { name: /Edit details/i }).click();
+    await expectDialogInViewport(page, /Customer \/ project \/ pricing details/i);
+    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("dialog", { name: /Customer \/ project \/ pricing details/i })
+    ).toBeHidden({ timeout: 10_000 });
+
+    await page.getByRole("button", { name: /Edit details/i }).click();
+    const detailsDialog = page.getByRole("dialog", {
+      name: /Customer \/ project \/ pricing details/i,
+    });
+    await expectDialogInViewport(page, /Customer \/ project \/ pricing details/i);
+    await detailsDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(detailsDialog).toBeHidden({ timeout: 10_000 });
+
+    await page.getByRole("button", { name: /Edit details/i }).click();
+    await expectDialogInViewport(page, /Customer \/ project \/ pricing details/i);
+    await detailsDialog.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(detailsDialog).toBeHidden({ timeout: 10_000 });
+
+    const scheduleSection = page
+      .locator("details")
+      .filter({ has: page.locator("summary").filter({ hasText: "Payment schedule" }) })
+      .first();
+    await scheduleSection.evaluate((node) => {
+      if (node instanceof HTMLDetailsElement) node.open = true;
+    });
+    await scheduleSection.getByRole("button", { name: "Schedule Payment" }).click();
+    await expectDialogInViewport(page, "Schedule Payment");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog", { name: "Schedule Payment" })).toBeHidden({
+      timeout: 10_000,
+    });
+
+    await scheduleSection.getByRole("button", { name: "Schedule Payment" }).click();
+    const scheduleDialog = page.getByRole("dialog", { name: "Schedule Payment" });
+    await expectDialogInViewport(page, "Schedule Payment");
+    await scheduleDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(scheduleDialog).toBeHidden({ timeout: 10_000 });
+
+    await scheduleSection.getByRole("button", { name: "Schedule Payment" }).click();
+    await expectDialogInViewport(page, "Schedule Payment");
+    await scheduleDialog.getByLabel("Payment Name").fill(`Deposit ${viewport.width}`);
+    await scheduleDialog.getByLabel("Amount").fill("500");
+    await scheduleDialog.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(scheduleDialog).toBeHidden({ timeout: 10_000 });
+  }
 });
