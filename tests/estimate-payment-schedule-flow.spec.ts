@@ -256,5 +256,15 @@ test("estimate payment schedule persists and has customer-facing payment preview
   await page.goto(`${detailUrl}?deleted_check=${Date.now()}`, { waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/estimates\/?$/, { timeout: 30_000 });
   await expect(page.locator("body")).not.toContainText(client);
+  await page.goto(`${detailUrl}/preview?deleted_check=${Date.now()}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page).toHaveURL(/\/estimates\/?$/, { timeout: 30_000 });
+  await expect(page.locator("body")).not.toContainText(client);
+  await page.goto(`${detailUrl}/print?deleted_check=${Date.now()}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page).toHaveURL(/\/estimates\/?$/, { timeout: 30_000 });
+  await expect(page.locator("body")).not.toContainText(client);
   await expectEstimateRowsDeleted(estimateId!);
 });
