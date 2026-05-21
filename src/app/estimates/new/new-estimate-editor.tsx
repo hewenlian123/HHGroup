@@ -282,7 +282,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   }, [paymentMilestones, totalScheduled]);
 
   const scheduleDrawerClass = cn(
-    "estimate-builder w-full max-w-[calc(100vw-1rem)] border-white/10 bg-[rgba(14,18,28,0.96)] p-5 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-24px_0_64px_rgba(0,0,0,0.42)] backdrop-blur-xl max-md:inset-y-2 max-md:right-2 max-md:h-[calc(100dvh-1rem)] max-md:!translate-x-0 max-md:rounded-xl max-md:data-[state=open]:!animate-none sm:max-w-[480px] md:w-[480px]",
+    "estimate-builder !fixed w-full max-w-[calc(100vw-1rem)] border-white/10 bg-[rgba(14,18,28,0.96)] p-5 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-24px_0_64px_rgba(0,0,0,0.42)] backdrop-blur-xl max-md:inset-y-2 max-md:right-2 max-md:h-[calc(100dvh-1rem)] max-md:!translate-x-0 max-md:rounded-xl max-md:data-[state=open]:!animate-none max-md:data-[state=open]:!transform-none sm:max-w-[480px] md:w-[480px]",
     "[&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.08] [&>button]:hover:text-zinc-100"
   );
   const scheduleLabelClass = "text-[11px] font-medium text-zinc-500";

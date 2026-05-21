@@ -24,7 +24,7 @@ const metaPanel =
   "rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 sm:px-4 sm:py-3";
 const metaInput = ebInput("h-9 min-h-9 text-sm md:h-8 md:min-h-8");
 const detailsSheetClass =
-  "estimate-builder flex w-full max-w-[calc(100vw-1rem)] flex-col border-l border-white/[0.08] bg-[rgba(14,18,28,0.96)] p-0 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-12px_0_48px_rgba(0,0,0,0.35)] backdrop-blur-xl max-md:inset-y-2 max-md:right-2 max-md:h-[calc(100dvh-1rem)] max-md:!translate-x-0 max-md:rounded-xl max-md:data-[state=open]:!animate-none sm:max-w-[440px] [&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.06] [&>button]:hover:text-zinc-100";
+  "estimate-builder !fixed flex w-full max-w-[calc(100vw-1rem)] flex-col border-l border-white/[0.08] bg-[rgba(14,18,28,0.96)] p-0 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-12px_0_48px_rgba(0,0,0,0.35)] backdrop-blur-xl max-md:inset-y-2 max-md:right-2 max-md:h-[calc(100dvh-1rem)] max-md:!translate-x-0 max-md:rounded-xl max-md:data-[state=open]:!animate-none max-md:data-[state=open]:!transform-none sm:max-w-[440px] [&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.06] [&>button]:hover:text-zinc-100";
 
 type DetailsSnapshot = {
   clientName: string;
