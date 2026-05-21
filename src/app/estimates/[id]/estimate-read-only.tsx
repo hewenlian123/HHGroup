@@ -40,11 +40,6 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
   );
 
   const subtotal = payload.items.reduce((s, r) => s + estimateLineTotal(r), 0);
-  const overheadPct = 0.05;
-  const profitPct = 0.1;
-  const overhead = subtotal * overheadPct;
-  const profit = subtotal * profitPct;
-  const grandTotal = subtotal + overhead + profit;
 
   return (
     <>
@@ -92,15 +87,13 @@ export function EstimateReadOnlyContent({ payload }: { payload: EstimateReadOnly
       <div className="ml-auto max-w-sm pt-8">
         <div className="space-y-1">
           <SummaryRow label="Subtotal" value={subtotal} />
-          <SummaryRow label="Overhead (5%)" value={overhead} />
-          <SummaryRow label="Profit (10%)" value={profit} />
         </div>
         <div className="mt-6 border-t border-border/15 pt-4">
           <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/45">
             Total
           </p>
           <p className="mt-2 text-2xl font-semibold tabular-nums tracking-tight text-foreground">
-            {formatEstimateCurrency(grandTotal)}
+            {formatEstimateCurrency(subtotal)}
           </p>
         </div>
       </div>

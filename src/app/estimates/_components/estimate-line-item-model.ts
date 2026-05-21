@@ -13,7 +13,6 @@ export type EditorLineItem = {
   qty: number;
   unit: string;
   unitPrice: number;
-  markupPct: number;
   hideAmountOnPdf: boolean;
   status: EstimateLineItemStatus;
 };
@@ -38,12 +37,7 @@ export function estimateRowLineTotal(row: EstimateItemRow): number {
   return estimateLineTotal(row);
 }
 
-export function editorLineTotalFromParts(
-  qty: number,
-  unitPrice: number,
-  markupPct: number
-): number {
-  void markupPct;
+export function editorLineTotalFromParts(qty: number, unitPrice: number): number {
   return qty * unitPrice;
 }
 
@@ -57,13 +51,12 @@ export function rowToEditorLineItem(row: EstimateItemRow): EditorLineItem {
     qty: row.qty,
     unit: row.unit,
     unitPrice: roundEstimateCurrencyValue(row.unitCost),
-    markupPct: row.markupPct,
     hideAmountOnPdf: Boolean(row.hideAmountOnPdf),
     status: row.status ?? DEFAULT_LINE_ITEM_STATUS,
   };
 }
 
-export function createEmptyLineItem(costCode: string, markupPct = 0): EditorLineItem {
+export function createEmptyLineItem(costCode: string): EditorLineItem {
   return {
     id: `li-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
     costCode,
@@ -72,7 +65,6 @@ export function createEmptyLineItem(costCode: string, markupPct = 0): EditorLine
     qty: 1,
     unit: "EA",
     unitPrice: 0,
-    markupPct,
     hideAmountOnPdf: false,
     status: DEFAULT_LINE_ITEM_STATUS,
   };
@@ -85,7 +77,6 @@ export function editorLineItemToPresetInput(item: EditorLineItem): LineItemPrese
     qty: item.qty,
     unit: item.unit,
     unitPrice: item.unitPrice,
-    markupPct: item.markupPct,
     status: item.status,
   };
 }
@@ -99,7 +90,6 @@ export function lineItemFromPreset(costCode: string, preset: LineItemPresetInput
     qty: preset.qty,
     unit: preset.unit || "EA",
     unitPrice: preset.unitPrice,
-    markupPct: preset.markupPct ?? 0,
     hideAmountOnPdf: false,
     status: preset.status ?? DEFAULT_LINE_ITEM_STATUS,
   };

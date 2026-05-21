@@ -268,12 +268,10 @@ export async function saveEstimateMetaInlineAction(
     const address = (formData.get("address") as string)?.trim();
     const tax = formData.get("tax");
     const discount = formData.get("discount");
-    const markupPct = formData.get("markupPct");
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
     const notes = (formData.get("notes") as string)?.trim();
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
-    const markupNum = markupPct != null && markupPct !== "" ? Number(markupPct) / 100 : undefined;
     if (formData.has("clientName") && !clientName) {
       return { ok: false, error: "Client name is required." };
     }
@@ -294,9 +292,6 @@ export async function saveEstimateMetaInlineAction(
         : {}),
       ...(tax != null && tax !== "" ? { tax: Number(tax) || 0 } : {}),
       ...(discount != null && discount !== "" ? { discount: Number(discount) || 0 } : {}),
-      ...(markupNum != null && !Number.isNaN(markupNum)
-        ? { overheadPct: markupNum / 2, profitPct: markupNum / 2 }
-        : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil: validUntil || undefined } : {}),
       ...(notes != null ? { notes: notes || undefined } : {}),
@@ -461,7 +456,7 @@ export async function addLineItemAction(formData: FormData) {
       qty: Number(formData.get("qty")) || 1,
       unit: (formData.get("unit") as string)?.trim() || "EA",
       unitCost: Number(formData.get("unitCost")) || 0,
-      markupPct: Number(formData.get("markupPct")) || 0,
+      markupPct: 0,
     });
     if (!item) return;
     if (categoryDisplayName) {
@@ -626,7 +621,6 @@ export async function updateLineItemAction(formData: FormData) {
     const qty = formData.get("qty");
     const unit = formData.get("unit") as string | null;
     const unitCost = formData.get("unitCost");
-    const markupPct = formData.get("markupPct");
     const db = getEstimateWriteClient();
     if (!db) return;
     const ok = await updateLineItemWithClient(db, estimateId, itemId, {
@@ -634,7 +628,6 @@ export async function updateLineItemAction(formData: FormData) {
       ...(qty != null && qty !== "" ? { qty: Number(qty) } : {}),
       ...(unit != null ? { unit } : {}),
       ...(unitCost != null && unitCost !== "" ? { unitCost: Number(unitCost) } : {}),
-      ...(markupPct != null && markupPct !== "" ? { markupPct: Number(markupPct) / 100 } : {}),
     });
     if (!ok) return;
     revalidateEstimatePaths(estimateId);
@@ -659,13 +652,11 @@ export async function updateLineItemInlineAction(
     const qty = formData.get("qty");
     const unit = formData.get("unit") as string | null;
     const unitCost = formData.get("unitCost");
-    const markupPct = formData.get("markupPct");
     const ok = await updateLineItemWithClient(db, estimateId, itemId, {
       ...(desc != null ? { desc } : {}),
       ...(qty != null && qty !== "" ? { qty: Number(qty) } : {}),
       ...(unit != null ? { unit } : {}),
       ...(unitCost != null && unitCost !== "" ? { unitCost: Number(unitCost) } : {}),
-      ...(markupPct != null && markupPct !== "" ? { markupPct: Number(markupPct) / 100 } : {}),
     });
     if (ok) {
       revalidateEstimatePaths(estimateId);
@@ -717,12 +708,10 @@ export async function saveEstimateMetaAction(formData: FormData) {
     const address = (formData.get("address") as string)?.trim();
     const tax = formData.get("tax");
     const discount = formData.get("discount");
-    const markupPct = formData.get("markupPct");
     const estimateDate = (formData.get("estimateDate") as string)?.trim();
     const validUntil = (formData.get("validUntil") as string)?.trim();
     const notes = (formData.get("notes") as string)?.trim();
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
-    const markupNum = markupPct != null && markupPct !== "" ? Number(markupPct) / 100 : undefined;
     const db = getEstimateWriteClient();
     if (!db) return;
     const ok = await updateEstimateMetaWithClient(db, estimateId, {
@@ -737,9 +726,6 @@ export async function saveEstimateMetaAction(formData: FormData) {
         : {}),
       ...(tax != null && tax !== "" ? { tax: Number(tax) || 0 } : {}),
       ...(discount != null && discount !== "" ? { discount: Number(discount) || 0 } : {}),
-      ...(markupNum != null && !Number.isNaN(markupNum)
-        ? { overheadPct: markupNum / 2, profitPct: markupNum / 2 }
-        : {}),
       ...(estimateDate != null ? { estimateDate: estimateDate || undefined } : {}),
       ...(validUntil != null ? { validUntil: validUntil || undefined } : {}),
       ...(notes != null ? { notes: notes || undefined } : {}),

@@ -84,6 +84,11 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   });
 
   await page.getByRole("button", { name: /Edit details/i }).click();
+  const detailsDialog = page.getByRole("dialog", {
+    name: /Customer \/ project \/ pricing details/i,
+  });
+  await expect(detailsDialog).toBeVisible({ timeout: 10_000 });
+  await expect(detailsDialog).not.toContainText(/markup|overhead|profit/i);
   await page.getByPlaceholder("Client or company name").fill(clientName);
   await page.getByPlaceholder("Project name").fill(projectName);
   await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
@@ -110,6 +115,7 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   await expect(page.getByText("$300.00").locator("visible=true").first()).toBeVisible({
     timeout: 10_000,
   });
+  await expect(page.getByLabel("Estimate overview")).not.toContainText(/markup|overhead|profit/i);
 
   const unitPriceInput = page.getByLabel("Line item 1 unit price").locator("visible=true");
   await unitPriceInput.fill("1367896.16");

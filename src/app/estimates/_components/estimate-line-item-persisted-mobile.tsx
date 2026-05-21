@@ -23,7 +23,6 @@ export function EstimateLineItemPersistedMobile({
   updateLineItemAction,
   duplicateLineItemAction,
   deleteLineItemAction,
-  lineLiveValuesRef,
   isLastRow,
   onEnterAddNext,
 }: {
@@ -35,9 +34,6 @@ export function EstimateLineItemPersistedMobile({
   updateLineItemAction: (fd: FormData) => Promise<void>;
   duplicateLineItemAction: (fd: FormData) => Promise<void>;
   deleteLineItemAction: (fd: FormData) => Promise<void>;
-  lineLiveValuesRef: React.MutableRefObject<
-    Record<string, () => { qty: number; unit: string; unitCost: number; markupPct: number }>
-  >;
   isLastRow?: boolean;
   onEnterAddNext?: () => void;
 }): React.ReactElement {
@@ -59,20 +55,6 @@ export function EstimateLineItemPersistedMobile({
     setUnitPrice(roundEstimateCurrencyValue(row.unitCost));
   }, [row.id, row.desc, row.qty, row.unit, row.unitCost]);
 
-  React.useLayoutEffect(() => {
-    if (isReadOnly) return;
-    const registry = lineLiveValuesRef.current;
-    registry[row.id] = () => ({
-      qty,
-      unit,
-      unitCost: unitPrice,
-      markupPct: row.markupPct,
-    });
-    return () => {
-      delete registry[row.id];
-    };
-  }, [isReadOnly, row.id, row.markupPct, qty, unit, unitPrice, lineLiveValuesRef]);
-
   const item: EditorLineItem = React.useMemo(
     () => ({
       id: row.id,
@@ -82,22 +64,10 @@ export function EstimateLineItemPersistedMobile({
       qty,
       unit,
       unitPrice,
-      markupPct: row.markupPct,
       hideAmountOnPdf: row.hideAmountOnPdf,
       status: row.status,
     }),
-    [
-      categoryId,
-      description,
-      qty,
-      row.hideAmountOnPdf,
-      row.id,
-      row.markupPct,
-      row.status,
-      title,
-      unit,
-      unitPrice,
-    ]
+    [categoryId, description, qty, row.hideAmountOnPdf, row.id, row.status, title, unit, unitPrice]
   );
 
   const submitUpdate = (): void => {
@@ -106,7 +76,7 @@ export function EstimateLineItemPersistedMobile({
   };
 
   const combinedDesc = combineLineItemDesc(title, description);
-  const liveTotal = formatEstimateCurrency(editorLineTotalFromParts(qty, unitPrice, row.markupPct));
+  const liveTotal = formatEstimateCurrency(editorLineTotalFromParts(qty, unitPrice));
 
   if (isReadOnly) {
     return (
@@ -128,7 +98,6 @@ export function EstimateLineItemPersistedMobile({
         <input type="hidden" name="qty" value={qty} />
         <input type="hidden" name="unit" value={unit} />
         <input type="hidden" name="unitCost" value={unitPrice} />
-        <input type="hidden" name="markupPct" value={String(row.markupPct * 100)} />
       </form>
       <EstimateLineItemMobileCard
         item={{ ...item, unitPrice, qty, title }}

@@ -74,7 +74,6 @@ export function EstimateEditCustomerSection({
   status,
   today,
   isReadOnly,
-  markupPct,
   tax,
   discount,
   saveEstimateMetaAction,
@@ -86,7 +85,6 @@ export function EstimateEditCustomerSection({
   status: EstimateStatus | string;
   today: string;
   isReadOnly: boolean;
-  markupPct: string;
   tax: number;
   discount: number;
   saveEstimateMetaAction: (formData: FormData) => Promise<void>;
@@ -289,19 +287,6 @@ export function EstimateEditCustomerSection({
                           type="number"
                           step="0.01"
                           defaultValue={discount}
-                          className={ebInput(cn(metaInput, EB.inputNumeric))}
-                        />
-                      </div>
-                      <div className="min-w-0 sm:col-span-2">
-                        <Label htmlFor="markupPct" className={metaLabel}>
-                          Markup %
-                        </Label>
-                        <Input
-                          id="markupPct"
-                          name="markupPct"
-                          type="number"
-                          step="0.1"
-                          defaultValue={markupPct}
                           className={ebInput(cn(metaInput, EB.inputNumeric))}
                         />
                       </div>
