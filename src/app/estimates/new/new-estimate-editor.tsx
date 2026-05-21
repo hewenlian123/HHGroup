@@ -393,12 +393,14 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     }
   };
 
-  const pmPercentParsed = parsePaymentPercentInput(pmPercent);
+  const pmPercentDisplay = pmPercent.trim() === "" ? null : Number(pmPercent);
   const pmPercentHelperText =
     estimateTotalDollars <= 0
       ? "Add estimate items to calculate by percentage."
-      : pmPercentParsed !== null
-        ? `${pmPercentParsed}% of ${formatEstimateCurrency(estimateTotalDollars)}`
+      : pmPercentDisplay !== null && Number.isFinite(pmPercentDisplay)
+        ? pmPercentDisplay > 100
+          ? "Exceeds estimate total."
+          : `${pmPercentDisplay}% of ${formatEstimateCurrency(estimateTotalDollars)}`
         : null;
   const savePaymentMilestoneLocal = () => {
     const title = pmTitle.trim();
