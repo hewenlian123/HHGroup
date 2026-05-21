@@ -583,6 +583,17 @@ function isMissingOrderIndexColumnError(err: unknown): boolean {
   return /order_index/i.test(msg) && /could not find|schema cache|column/i.test(msg);
 }
 
+function isMissingColumnError(err: unknown, columnName: string): boolean {
+  const msg =
+    typeof err === "object" && err !== null && "message" in err
+      ? String((err as { message?: unknown }).message ?? "")
+      : "";
+  return (
+    new RegExp(columnName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i").test(msg) &&
+    /could not find|schema cache|column/i.test(msg)
+  );
+}
+
 async function upsertEstimateCategoryWithOrderFallback(
   c: SupabaseClient,
   row: { estimate_id: string; cost_code: string; display_name: string; order_index: number }
@@ -1637,6 +1648,14 @@ export async function getPaymentSchedule(
     .order("sort_order", { ascending: true });
   if (error) {
     if (isMissingTable(error)) return [];
+    if (isMissingColumnError(error, "sort_order")) {
+      const { data: fallbackRows, error: fallbackError } = await c
+        .from("estimate_payment_schedule_items")
+        .select("*")
+        .eq("estimate_id", estimateId);
+      if (fallbackError) return [];
+      return (fallbackRows ?? []).map((r: Record<string, unknown>) => mapPaymentScheduleRow(r));
+    }
     throw new Error(error.message);
   }
   return (rows ?? []).map((r: Record<string, unknown>) => mapPaymentScheduleRow(r));
