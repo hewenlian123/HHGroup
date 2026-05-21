@@ -102,15 +102,23 @@ async function fillBaseEstimate(page: Page, params: { client: string; project: s
   await dialog.getByPlaceholder("Site or client address").fill("123 Local Payment QA Lane");
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
 
-  await page
-    .getByRole("button", { name: /^Add Section$/i })
-    .first()
-    .click();
+  await addBlankEstimateSection(page);
   const lineTitleInput = page.getByLabel("Line item 1 title").locator("visible=true");
   await expect(lineTitleInput).toBeVisible({ timeout: 15_000 });
   await lineTitleInput.fill("Payment schedule QA scope");
   await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("1");
   await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("15500");
+}
+
+async function addBlankEstimateSection(page: Page): Promise<void> {
+  const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
+  await expect(addSection).toBeVisible({ timeout: 30_000 });
+  await addSection.click();
+
+  const blankSection = page.getByRole("menuitem", { name: /^Blank section$/i }).first();
+  if (await blankSection.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await blankSection.click();
+  }
 }
 
 async function addPaymentMilestone(

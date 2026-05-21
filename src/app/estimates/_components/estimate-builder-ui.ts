@@ -139,6 +139,27 @@ export const EB = {
   paymentStatValue:
     "text-[14px] font-semibold tabular-nums text-[#D8DEE8] [font-feature-settings:'tnum']",
   categoryGroup: "mb-3 last:mb-0",
+  scopeSectionSortable: "eb-scope-section-sortable relative",
+  scopeSectionDragging: "eb-scope-section-dragging",
+  scopeSectionDragHandle: "eb-scope-section-drag-handle",
+  scopeSectionHeaderRow: "flex min-w-0 flex-1 items-center gap-1.5",
+  scopeSectionCollapseBtn: "eb-scope-section-collapse-btn",
+  scopeSectionHeaderCollapsed: "eb-scope-section-header--collapsed",
+  scopeSectionHeaderMeta: "eb-scope-section-header-meta flex shrink-0 items-center gap-3",
+  scopeSectionItemCount:
+    "eb-scope-section-item-count text-[12.5px] font-medium tabular-nums leading-none text-[#929CAF]",
+  scopeSectionBody:
+    "eb-scope-section-body grid transition-[grid-template-rows,opacity] duration-150 ease-out",
+  scopeSectionBodyCollapsed: "eb-scope-section-body--collapsed",
+  scopeSectionBodyInner: "eb-scope-section-body-inner min-h-0 overflow-hidden",
+  scopeSectionMobile: "eb-scope-section-mobile mb-3 last:mb-0",
+  builderPickerMenu: "eb-builder-picker-menu z-[100] max-h-72 min-w-[12rem] overflow-y-auto",
+  builderPickerGroupLabel:
+    "px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#7f899b]",
+  lineItemStatusPill:
+    "eb-line-item-status-pill inline-flex shrink-0 items-center rounded-sm border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[10.5px] font-medium leading-none tracking-[0.01em] text-[#929caf]",
+  noteBlock: "eb-note-block border-b border-white/[0.06] pb-3 last:border-0 last:pb-0",
+  noteBlockTextarea: "eb-note-block-textarea",
   categorySectionTotal: "text-[13px] font-normal tabular-nums text-[#929CAF]",
   backLink:
     "inline-flex min-h-11 items-center gap-1 text-[14px] leading-snug text-[#929CAF] transition-colors duration-200 hover:text-[#B5BECC]",
@@ -161,6 +182,13 @@ export const EB = {
   sheetFooterActions: "eb-sheet-footer-actions",
   sheetField: "eb-sheet-field",
   sheetLabel: "eb-sheet-label",
+  sheetLabelRow: "flex flex-wrap items-center justify-between gap-2",
+  sheetHelperTrigger:
+    "h-7 min-h-7 shrink-0 px-2 text-[11px] font-medium tracking-wide text-[#929CAF] hover:bg-white/[0.06] hover:text-[#D8DEE8]",
+  sheetHelperChips: "mt-1.5 flex flex-wrap gap-1.5",
+  sheetHelperChip:
+    "h-7 min-h-7 rounded-sm border border-white/[0.08] bg-white/[0.03] px-2.5 text-[11px] font-medium tracking-wide text-[#B5BECC] hover:border-white/[0.12] hover:bg-white/[0.06] hover:text-[#D8DEE8]",
+  sheetHelperHint: "mt-1 text-[11px] leading-snug text-[#929CAF]",
   paymentAmountRow: "flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-2",
   paymentAmountCol: "min-w-0 flex-1",
   paymentPercentCol: "w-full shrink-0 sm:w-[5.75rem]",

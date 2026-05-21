@@ -17,6 +17,8 @@ import type { EditorLineItem } from "./estimate-line-item-model";
 import { editorLineTotal } from "./estimate-line-item-model";
 import { EstimateLineItemMoreMenu } from "./estimate-line-item-more-menu";
 import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
+import { DEFAULT_LINE_ITEM_STATUS, type EstimateLineItemStatus } from "./estimate-line-item-status";
+import { EstimateLineItemStatusPill } from "./estimate-line-item-status-pill";
 
 export type EstimateLineItemMobileCardProps = {
   item: EditorLineItem;
@@ -30,6 +32,8 @@ export type EstimateLineItemMobileCardProps = {
   onDuplicate?: () => void;
   onDelete?: () => void;
   onToggleHideAmountOnPdf?: () => void;
+  onSetStatus?: (status: EstimateLineItemStatus) => void;
+  onSaveAsReusable?: () => void;
   onEnterAddNext?: () => void;
   onBlurField?: () => void;
 };
@@ -45,6 +49,8 @@ export function EstimateLineItemMobileCard({
   onDuplicate,
   onDelete,
   onToggleHideAmountOnPdf,
+  onSetStatus,
+  onSaveAsReusable,
   onEnterAddNext,
   onBlurField,
 }: EstimateLineItemMobileCardProps): React.ReactElement {
@@ -87,9 +93,12 @@ export function EstimateLineItemMobileCard({
         aria-label={open ? "Hide details" : "Add details"}
       >
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-[15px] font-semibold leading-snug tracking-tight text-zinc-50 line-clamp-2">
-            {item.title.trim() || "Untitled"}
-          </p>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <p className="min-w-0 text-[15px] font-semibold leading-snug tracking-tight text-zinc-50 line-clamp-2">
+              {item.title.trim() || "Untitled"}
+            </p>
+            <EstimateLineItemStatusPill status={item.status ?? DEFAULT_LINE_ITEM_STATUS} />
+          </div>
           <p className="text-[11px] text-zinc-500 tabular-nums">
             {item.qty} × {formatEstimateCurrency(item.unitPrice)}
             {showUnitInline ? ` · ${item.unit}` : null}
@@ -122,6 +131,9 @@ export function EstimateLineItemMobileCard({
             titleInvalid={titleInvalid}
             titleInputAriaLabel={`Line item ${rowIndex} title`}
             descriptionEditorAriaLabel={`Line item ${rowIndex} description`}
+            titleTrailingSlot={
+              <EstimateLineItemStatusPill status={item.status ?? DEFAULT_LINE_ITEM_STATUS} />
+            }
             footer={
               <div className="space-y-3 px-3 pb-3 pt-3">
                 <div className="grid grid-cols-2 gap-2">
@@ -159,6 +171,11 @@ export function EstimateLineItemMobileCard({
                     hideAmountOnPdf={item.hideAmountOnPdf}
                     onToggleHideAmountOnPdf={onToggleHideAmountOnPdf}
                     showHideAmountOnPdf={Boolean(onToggleHideAmountOnPdf)}
+                    showSetStatus={Boolean(onSetStatus)}
+                    currentStatus={item.status ?? DEFAULT_LINE_ITEM_STATUS}
+                    onSetStatus={onSetStatus}
+                    showSaveAsReusable={Boolean(onSaveAsReusable)}
+                    onSaveAsReusable={onSaveAsReusable}
                     disabled={disabled}
                   />
                   <DropdownMenu>

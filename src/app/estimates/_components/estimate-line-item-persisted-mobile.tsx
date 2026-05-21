@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import type { EstimateItemRow } from "@/lib/data";
 import {
   combineLineItemDesc,
@@ -11,6 +12,7 @@ import {
 } from "./estimate-line-item-model";
 import { EstimateLineItemMobileCard } from "./estimate-line-item-mobile-card";
 import { formatEstimateCurrency, roundEstimateCurrencyValue } from "./estimate-currency";
+import { setLineItemStatusAction, toggleLineItemHideAmountOnPdfAction } from "../[id]/actions";
 
 export function EstimateLineItemPersistedMobile({
   row,
@@ -39,6 +41,7 @@ export function EstimateLineItemPersistedMobile({
   isLastRow?: boolean;
   onEnterAddNext?: () => void;
 }): React.ReactElement {
+  const router = useRouter();
   const split = splitLineItemDesc(row.desc ?? "");
   const [title, setTitle] = React.useState(split.title);
   const [description, setDescription] = React.useState(split.description);
@@ -81,8 +84,20 @@ export function EstimateLineItemPersistedMobile({
       unitPrice,
       markupPct: row.markupPct,
       hideAmountOnPdf: row.hideAmountOnPdf,
+      status: row.status,
     }),
-    [categoryId, description, qty, row.id, row.markupPct, title, unit, unitPrice]
+    [
+      categoryId,
+      description,
+      qty,
+      row.hideAmountOnPdf,
+      row.id,
+      row.markupPct,
+      row.status,
+      title,
+      unit,
+      unitPrice,
+    ]
   );
 
   const submitUpdate = (): void => {
@@ -139,6 +154,24 @@ export function EstimateLineItemPersistedMobile({
           fd.set("estimateId", estimateId);
           fd.set("itemId", row.id);
           void deleteLineItemAction(fd);
+        }}
+        onToggleHideAmountOnPdf={() => {
+          const fd = new FormData();
+          fd.set("estimateId", estimateId);
+          fd.set("itemId", row.id);
+          fd.set("hideAmountOnPdf", row.hideAmountOnPdf ? "0" : "1");
+          void toggleLineItemHideAmountOnPdfAction(fd).then((res) => {
+            if (res.ok) router.refresh();
+          });
+        }}
+        onSetStatus={(status) => {
+          const fd = new FormData();
+          fd.set("estimateId", estimateId);
+          fd.set("itemId", row.id);
+          fd.set("status", status);
+          void setLineItemStatusAction(fd).then((res) => {
+            if (res.ok) router.refresh();
+          });
         }}
       />
       <span className="sr-only" aria-live="polite">

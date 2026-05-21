@@ -34,7 +34,7 @@ export default async function EstimatePreviewPage({ params }: { params: Promise<
 
   if (!estimate || !meta) redirect("/estimates");
 
-  const categoryList = [...categories].sort((a, b) => a.costCode.localeCompare(b.costCode));
+  const categoryList = categories;
   const catalogNameByCode = Object.fromEntries(costCodes.map((c) => [c.code, c.name]));
 
   return (

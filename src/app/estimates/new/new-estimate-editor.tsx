@@ -39,6 +39,14 @@ import { ProposalPaymentMilestoneList } from "../_components/proposal-payment-mi
 import { EB, ebSheetGlassNarrow, ebSheetInput } from "../_components/estimate-builder-ui";
 import { useEstimateOverviewScrollMotion } from "../_components/use-estimate-overview-scroll-motion";
 import type { EditorLineItem } from "../_components/estimate-line-item-model";
+import {
+  EstimateNotesClarifications,
+  type EstimateNoteBlock,
+} from "../_components/estimate-notes-clarifications";
+import {
+  DEFAULT_LINE_ITEM_STATUS,
+  type EstimateLineItemStatus,
+} from "../_components/estimate-line-item-status";
 import type { CustomerOption } from "@/components/customers/customer-select-with-add";
 
 type CostCodeType = "material" | "labor" | "subcontractor";
@@ -61,6 +69,7 @@ type LineItem = {
   unitPrice: number;
   markupPct: number;
   hideAmountOnPdf: boolean;
+  status?: EstimateLineItemStatus;
 };
 
 function lineTotal(li: LineItem): number {
@@ -88,7 +97,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   const [overheadPct, setOverheadPct] = React.useState(5);
   const [profitPct, setProfitPct] = React.useState(10);
   const [categoryNames, setCategoryNames] = React.useState<Record<string, string>>({});
+  const [sectionOrder, setSectionOrder] = React.useState<string[]>([]);
   const [lineItems, setLineItems] = React.useState<LineItem[]>([]);
+  const [estimateNotes, setEstimateNotes] = React.useState<EstimateNoteBlock[]>([]);
   const [saving, setSaving] = React.useState(false);
   const [submitAttempted, setSubmitAttempted] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -146,6 +157,43 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     [lineItems]
   );
 
+  React.useEffect(() => {
+    const codesInItems = [...new Set(lineItems.map((li) => li.costCode))];
+    setSectionOrder((prev) => {
+      const kept = prev.filter((c) => codesInItems.includes(c));
+      const added = codesInItems.filter((c) => !kept.includes(c));
+      return [...kept, ...added];
+    });
+  }, [lineItems]);
+
+  const costCategoryNamesForSave = React.useCallback((): Record<string, string> | undefined => {
+    const codesInItems = [...new Set(lineItems.map((li) => li.costCode))];
+    if (codesInItems.length === 0) return undefined;
+    const ordered =
+      sectionOrder.length > 0 ? sectionOrder.filter((c) => codesInItems.includes(c)) : codesInItems;
+    const missing = codesInItems.filter((c) => !ordered.includes(c));
+    const allCodes = [...ordered, ...missing];
+    const out: Record<string, string> = {};
+    for (const code of allCodes) {
+      const cc = costCodes.find((c) => c.code === code);
+      out[code] = categoryNames[code] ?? cc?.name ?? code;
+    }
+    return out;
+  }, [lineItems, sectionOrder, categoryNames, costCodes]);
+
+  const lineItemsForSave = React.useCallback((): LineItem[] => {
+    const codesInItems = [...new Set(lineItems.map((li) => li.costCode))];
+    const orderedCodes =
+      sectionOrder.length > 0 ? sectionOrder.filter((c) => codesInItems.includes(c)) : codesInItems;
+    const missingCodes = codesInItems.filter((c) => !orderedCodes.includes(c));
+    const allCodes = [...orderedCodes, ...missingCodes];
+    const out: LineItem[] = [];
+    for (const code of allCodes) {
+      out.push(...lineItems.filter((li) => li.costCode === code));
+    }
+    return out;
+  }, [lineItems, sectionOrder]);
+
   const validationErrors = React.useMemo(() => {
     const errors: string[] = [];
     if (!clientName.trim()) errors.push("Client name is required.");
@@ -196,12 +244,16 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultTaxPct, summary.subtotal, taxTouched]);
 
+  /** Link customer: name always; phone / email / address only when the field is still empty. */
   const applyCustomerSelection = React.useCallback((customer: CustomerOption) => {
     setSelectedCustomer(customer);
-    setClientName(customer.name ?? "");
-    setAddress((prev) => (!prev.trim() ? (customer.address ?? "") : prev));
-    setPhone((prev) => (!prev.trim() ? (customer.phone ?? "") : prev));
-    setEmail((prev) => (!prev.trim() ? (customer.email ?? "") : prev));
+    setClientName((customer.name ?? "").trim());
+    const nextAddress = (customer.address ?? "").trim();
+    const nextPhone = (customer.phone ?? "").trim();
+    const nextEmail = (customer.email ?? "").trim();
+    setAddress((prev) => (!prev.trim() && nextAddress ? nextAddress : prev));
+    setPhone((prev) => (!prev.trim() && nextPhone ? nextPhone : prev));
+    setEmail((prev) => (!prev.trim() && nextEmail ? nextEmail : prev));
   }, []);
 
   const handleCustomerPickerChange = React.useCallback(
@@ -243,9 +295,10 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         discount,
         overheadPct: overheadPct / 100,
         profitPct: profitPct / 100,
-        costCategoryNames: Object.keys(categoryNames).length ? categoryNames : undefined,
-        items: lineItems
-          .map((li) => {
+        costCategoryNames: costCategoryNamesForSave(),
+        documentNotes: estimateNotes,
+        items: lineItemsForSave()
+          .map((li, index) => {
             const title = li.title.trim();
             const description = li.description.trim();
             return {
@@ -256,6 +309,8 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
               unitCost: li.unitPrice,
               markupPct: li.markupPct,
               hideAmountOnPdf: li.hideAmountOnPdf,
+              status: li.status ?? DEFAULT_LINE_ITEM_STATUS,
+              sortOrder: index,
             };
           })
           .filter((li) => li.desc.trim().length > 0),
@@ -427,6 +482,8 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             overheadPct={overheadPct}
             profitPct={profitPct}
             selectedCustomer={selectedCustomer}
+            estimateSubtotal={summary.subtotal}
+            preDiscountTotal={summary.subtotal + summary.overhead + summary.profit + summary.tax}
             submitAttempted={submitAttempted}
             onClientNameChange={setClientName}
             onProjectNameChange={setProjectName}
@@ -445,15 +502,36 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
 
           <EstimateLineItemsLocal
             costCodes={costCodes}
-            lineItems={lineItems as EditorLineItem[]}
-            onLineItemsChange={(items) => setLineItems(items as LineItem[])}
+            lineItems={
+              lineItems.map((li) => ({
+                ...li,
+                status: li.status ?? DEFAULT_LINE_ITEM_STATUS,
+              })) as EditorLineItem[]
+            }
+            onLineItemsChange={(items) =>
+              setLineItems(
+                items.map((li) => ({
+                  ...li,
+                  status: li.status ?? DEFAULT_LINE_ITEM_STATUS,
+                })) as LineItem[]
+              )
+            }
             categoryNames={categoryNames}
             onCategoryNamesChange={setCategoryNames}
+            sectionOrder={sectionOrder}
+            onSectionOrderChange={setSectionOrder}
             disabled={saving}
             submitAttempted={submitAttempted}
             lineItemsError={
               submitAttempted && !hasValidLineItem ? "At least one line item is required." : null
             }
+          />
+
+          <EstimateNotesClarifications
+            notes={estimateNotes}
+            onNotesChange={setEstimateNotes}
+            disabled={saving}
+            defaultCollapsed
           />
 
           <EstimateBuilderAdvanced title="Payment schedule" defaultOpen>

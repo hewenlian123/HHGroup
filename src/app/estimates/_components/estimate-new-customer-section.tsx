@@ -17,6 +17,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { EB, ebSheetGlassWide, ebSheetInput } from "./estimate-builder-ui";
+import {
+  EstimateDiscountOptionsPopover,
+  EstimateTaxPresetMenu,
+  EstimateValidUntilQuickChips,
+} from "./estimate-details-drawer-controls";
 import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 
@@ -53,6 +58,10 @@ export type EstimateNewCustomerSectionProps = {
   overheadPct: number;
   profitPct: number;
   selectedCustomer: CustomerOption | null;
+  /** Subtotal for tax preset rate → dollar amount. */
+  estimateSubtotal: number;
+  /** Subtotal + overhead + profit + tax (before discount). */
+  preDiscountTotal: number;
   submitAttempted: boolean;
   onClientNameChange: (v: string) => void;
   onProjectNameChange: (v: string) => void;
@@ -83,6 +92,8 @@ export function EstimateNewCustomerSection({
   overheadPct,
   profitPct,
   selectedCustomer,
+  estimateSubtotal,
+  preDiscountTotal,
   submitAttempted,
   onClientNameChange,
   onProjectNameChange,
@@ -355,6 +366,10 @@ export function EstimateNewCustomerSection({
                       onChange={(e) => onValidUntilChange(e.target.value)}
                       className={ebSheetInput(cn(EB.dateField, "text-sm"))}
                     />
+                    <EstimateValidUntilQuickChips
+                      estimateDate={estimateDate}
+                      onValidUntilChange={onValidUntilChange}
+                    />
                   </div>
                   <div className={cn(EB.sheetField, "min-w-0")}>
                     <Label htmlFor="new-salesPerson" className={EB.sheetLabel}>
@@ -369,31 +384,52 @@ export function EstimateNewCustomerSection({
                     />
                   </div>
                   <div className={cn(EB.sheetField, "min-w-0")}>
-                    <Label htmlFor="new-builder-tax" className={EB.sheetLabel}>
-                      Tax
-                    </Label>
+                    <div className={EB.sheetLabelRow}>
+                      <Label htmlFor="new-builder-tax" className={EB.sheetLabel}>
+                        Tax
+                      </Label>
+                      <EstimateTaxPresetMenu
+                        estimateSubtotal={estimateSubtotal}
+                        tax={tax}
+                        onApplyTax={onTaxChange}
+                        onTaxTouched={onTaxTouched}
+                      />
+                    </div>
                     <Input
                       id="new-builder-tax"
                       type="number"
                       step="0.01"
+                      min={0}
                       value={tax}
                       onChange={(e) => {
                         onTaxTouched();
-                        onTaxChange(Number(e.target.value) || 0);
+                        const n = Number(e.target.value);
+                        onTaxChange(Number.isFinite(n) ? Math.max(0, n) : 0);
                       }}
                       className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
                     />
                   </div>
                   <div className={cn(EB.sheetField, "min-w-0")}>
-                    <Label htmlFor="new-builder-discount" className={EB.sheetLabel}>
-                      Discount
-                    </Label>
+                    <div className={EB.sheetLabelRow}>
+                      <Label htmlFor="new-builder-discount" className={EB.sheetLabel}>
+                        Discount
+                      </Label>
+                      <EstimateDiscountOptionsPopover
+                        discount={discount}
+                        preDiscountTotal={preDiscountTotal}
+                        onDiscountChange={onDiscountChange}
+                      />
+                    </div>
                     <Input
                       id="new-builder-discount"
                       type="number"
                       step="0.01"
+                      min={0}
                       value={discount}
-                      onChange={(e) => onDiscountChange(Number(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const n = Number(e.target.value);
+                        onDiscountChange(Number.isFinite(n) ? Math.max(0, n) : 0);
+                      }}
                       className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
                     />
                   </div>
