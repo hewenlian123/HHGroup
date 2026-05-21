@@ -105,10 +105,50 @@ export const EB = {
   summaryLineValue: "text-xs tabular-nums text-zinc-200 [font-feature-settings:'tnum']",
   summaryLineValueMuted: "text-xs tabular-nums text-zinc-500 [font-feature-settings:'tnum']",
   draftPanel: "eb-draft-panel",
+
+  /** Premium glass sheets (Estimate Builder drawers only) */
+  sheetGlass: "estimate-builder eb-sheet-glass",
+  sheetGlassWide: "eb-sheet-glass-wide",
+  sheetGlassNarrow: "eb-sheet-glass-narrow",
+  sheetHeader: "eb-sheet-header",
+  sheetTitle: "eb-sheet-title",
+  sheetContent: "eb-sheet-content",
+  sheetContentInner: "eb-sheet-content-inner",
+  sheetFooter: "eb-sheet-footer",
+  sheetFooterActions: "eb-sheet-footer-actions",
+  sheetField: "eb-sheet-field",
+  sheetLabel: "eb-sheet-label",
+  sheetSectionLabel: "eb-sheet-section-label",
+  sheetInput: "eb-sheet-input",
+  sheetTextarea: "eb-sheet-textarea",
+  sheetPrimary: "eb-sheet-primary",
+  sheetSecondary: "eb-sheet-secondary",
 } as const;
 
 export function ebInput(className?: string): string {
   return cn(EB.input, className);
+}
+
+export function ebSheetInput(className?: string): string {
+  return cn(EB.sheetInput, className);
+}
+
+export function ebSheetGlassWide(className?: string): string {
+  return cn(
+    EB.sheetGlass,
+    EB.sheetGlassWide,
+    "flex max-h-[100vh] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden p-0",
+    className
+  );
+}
+
+export function ebSheetGlassNarrow(className?: string): string {
+  return cn(
+    EB.sheetGlass,
+    EB.sheetGlassNarrow,
+    "flex max-h-[100vh] max-w-[calc(100vw-1rem)] flex-col gap-0 overflow-hidden p-0",
+    className
+  );
 }
 
 export function ebGlassPanel(className?: string): string {
