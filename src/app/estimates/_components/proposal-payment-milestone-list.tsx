@@ -3,7 +3,9 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
+import { Wallet } from "lucide-react";
 import { ProposalScopePreview } from "./proposal-scope-preview";
+import { EB } from "./estimate-builder-ui";
 
 export type ProposalPaymentMilestoneRow = {
   id: string;
@@ -37,7 +39,10 @@ export function ProposalPaymentMilestoneList({
 }): React.ReactElement {
   if (milestones.length === 0) {
     return (
-      <p className={cn("py-6 text-center text-sm text-zinc-500", className)}>{emptyMessage}</p>
+      <div className={cn(EB.paymentEmptyBox, className)}>
+        <Wallet className={cn("h-5 w-5", EB.paymentEmptyIcon)} aria-hidden />
+        <p className={cn("text-sm", EB.paymentEmpty)}>{emptyMessage}</p>
+      </div>
     );
   }
 
@@ -52,7 +57,7 @@ export function ProposalPaymentMilestoneList({
             className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 py-3 first:pt-1"
           >
             <div className="min-w-0 flex-1 space-y-0.5">
-              <p className="text-sm font-semibold tracking-tight text-zinc-100">
+              <p className="text-sm font-semibold tracking-tight text-slate-100">
                 {m.title.trim() || "—"}
               </p>
               {m.description?.trim() ? (
@@ -60,13 +65,13 @@ export function ProposalPaymentMilestoneList({
                   text={m.description}
                   variant="compact"
                   maxBullets={2}
-                  className="text-xs text-zinc-500"
+                  className="text-xs text-slate-400"
                 />
               ) : null}
-              {dueLabel ? <p className="text-xs text-zinc-500">{dueLabel}</p> : null}
+              {dueLabel ? <p className="text-xs text-slate-400">{dueLabel}</p> : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="text-sm font-semibold tabular-nums tracking-tight text-zinc-100">
+              <span className="text-sm font-semibold tabular-nums tracking-tight text-slate-100 [font-feature-settings:'tnum']">
                 {formatEstimateCurrency(m.amount)}
               </span>
               {actions ? actions(m) : null}

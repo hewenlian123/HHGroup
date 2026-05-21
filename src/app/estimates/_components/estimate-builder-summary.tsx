@@ -35,7 +35,7 @@ export function EstimateBuilderSummary({
     return (
       <div className={shellClass} aria-label="Estimate overview">
         <SummaryHeader />
-        <p className="text-[11px] leading-snug text-zinc-500">Add scope lines to see totals.</p>
+        <p className="text-[11px] leading-snug text-slate-400">Add scope lines to see totals.</p>
       </div>
     );
   }
@@ -57,13 +57,13 @@ export function EstimateBuilderSummary({
 
       {paymentSummary && paymentSummary.milestoneCount > 0 ? (
         <div className="mb-3 border-b border-white/[0.05] pb-2.5">
-          <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
+          <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-400">
             Payments
           </p>
-          <p className="mt-1 text-[11px] leading-snug text-zinc-400">
+          <p className="mt-1 text-[11px] leading-snug text-slate-400">
             {paymentSummary.milestoneCount} milestone
             {paymentSummary.milestoneCount === 1 ? "" : "s"} ·{" "}
-            <span className="font-medium tabular-nums text-zinc-300">
+            <span className="font-medium tabular-nums text-slate-200 [font-feature-settings:'tnum']">
               {fmt(paymentSummary.scheduledTotal)}
             </span>{" "}
             scheduled
@@ -80,18 +80,18 @@ export function EstimateBuilderSummary({
         </div>
       ) : null}
 
-      <div className="space-y-0.5">
+      <div className="space-y-1">
         <SummaryLine label="Subtotal" value={subtotal} />
         {discount > 0 ? <SummaryLine label="Discount" value={-discount} /> : null}
         {tax > 0 ? <SummaryLine label="Tax" value={tax} /> : null}
         {showInternal && markup > 0 ? <SummaryLine label="Markup" value={markup} muted /> : null}
       </div>
 
-      <div className="mt-4 border-t border-white/[0.05] pt-3">
-        <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-500">Total</p>
+      <div className="mt-4 border-t border-white/[0.08] pt-3.5">
+        <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">Total</p>
         <p
           className={cn(
-            "mt-1 break-words text-[clamp(1.25rem,4vw,1.65rem)] font-semibold leading-none tabular-nums tracking-tight text-zinc-50",
+            "mt-1.5 break-words text-[clamp(1.2rem,4vw,1.6rem)] font-semibold leading-none tabular-nums tracking-tight [font-feature-settings:'tnum']",
             EB.goldTotal
           )}
         >
@@ -104,8 +104,8 @@ export function EstimateBuilderSummary({
 
 function SummaryHeader(): React.ReactElement {
   return (
-    <div className="mb-3">
-      <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-500">
+    <div className="mb-3.5 border-b border-white/[0.06] pb-2.5">
+      <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">
         Estimate overview
       </p>
     </div>

@@ -327,7 +327,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
 
   return (
     <EstimateBuilderShell>
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-8 lg:items-start">
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_18.5rem] lg:gap-7 lg:items-start">
         <div className="min-w-0 space-y-4 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
           <header className={EB.glassHeader}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -342,7 +342,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   type="button"
                   variant="ghost"
                   asChild
-                  className={cn("min-h-11 md:min-h-8", EB.btnGhost)}
+                  className={cn("min-h-11 text-slate-300 md:min-h-8", EB.btnGhost)}
                 >
                   <Link href="/estimates">Cancel</Link>
                 </Button>
@@ -412,39 +412,42 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
           />
 
           <EstimateBuilderAdvanced title="Payment schedule" defaultOpen>
-            <section>
-              <div className="flex items-center justify-between gap-3 py-2">
-                <h3 className="text-sm font-medium text-foreground">Payment schedule</h3>
+            <section className={cn(EB.paymentSchedule, EB.paymentScheduleNested)}>
+              <div className="flex flex-wrap items-start justify-between gap-3 py-2">
+                <div className="min-w-0">
+                  <h3 className={cn(EB.paymentTitle, EB.paymentHeaderDuplicate)}>
+                    Payment schedule
+                  </h3>
+                  <p className={EB.paymentSubtitle}>Contractor milestones</p>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className={cn("min-h-11 px-3 md:min-h-8", EB.btnGhost)}
+                  className={cn("min-h-11 shrink-0 px-2.5 md:min-h-8", EB.actionSecondary)}
                   onClick={() => openPaymentMilestoneDrawer()}
                   disabled={saving}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
+                  <Plus className="h-3.5 w-3.5 mr-1.5" aria-hidden />
                   Schedule Payment
                 </Button>
               </div>
-              <div className="flex flex-wrap items-center gap-6 py-2 text-sm text-muted-foreground/80">
-                <span className="text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-2">
+                <span className={EB.paymentStatLabel}>
                   Estimate total{" "}
-                  <span className="font-semibold text-foreground tabular-nums">
+                  <span className={EB.paymentStatValue}>
                     {formatEstimateCurrency(summary.grandTotal)}
                   </span>
                 </span>
-                <span className="text-muted-foreground">
+                <span className={EB.paymentStatLabel}>
                   Scheduled{" "}
-                  <span className="font-semibold text-foreground tabular-nums">
+                  <span className={EB.paymentStatValue}>
                     {formatEstimateCurrency(totalScheduled)}
                   </span>
                 </span>
-                <span className="text-muted-foreground">
+                <span className={EB.paymentStatLabel}>
                   Remaining{" "}
-                  <span className="font-semibold text-foreground tabular-nums">
-                    {formatEstimateCurrency(remaining)}
-                  </span>
+                  <span className={EB.paymentStatValue}>{formatEstimateCurrency(remaining)}</span>
                 </span>
               </div>
               <ProposalPaymentMilestoneList

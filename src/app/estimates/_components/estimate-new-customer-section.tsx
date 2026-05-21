@@ -18,10 +18,10 @@ import {
 } from "@/components/ui/sheet";
 import { EB, ebInput } from "./estimate-builder-ui";
 import { cn } from "@/lib/utils";
+import { Pencil } from "lucide-react";
 
-const metaLabel = "mb-0.5 block text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500";
-const metaPanel =
-  "rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 sm:px-4 sm:py-3";
+const metaLabel = "mb-0.5 block text-[10px] font-medium uppercase tracking-[0.08em] text-slate-400";
+const metaPanel = cn(EB.draftPanel, "rounded-md px-3 py-2.5 sm:px-4 sm:py-3");
 const metaInput = ebInput("h-9 min-h-9 text-sm md:h-8 md:min-h-8");
 const detailsSheetClass =
   "estimate-builder !fixed flex w-full max-w-[calc(100vw-1rem)] flex-col border-l border-white/[0.08] bg-[rgba(14,18,28,0.96)] p-0 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-12px_0_48px_rgba(0,0,0,0.35)] backdrop-blur-xl max-md:inset-y-2 max-md:right-2 max-md:h-[calc(100dvh-1rem)] max-md:!translate-x-0 max-md:rounded-xl max-md:data-[state=open]:!animate-none max-md:data-[state=open]:!transform-none sm:max-w-[440px] [&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.06] [&>button]:hover:text-zinc-100";
@@ -179,44 +179,68 @@ export function EstimateNewCustomerSection({
   return (
     <section className={cn(EB.section, "pb-3")}>
       <div className={metaPanel}>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <span className="text-base font-semibold tracking-tight text-zinc-100 sm:text-lg">
-              Draft
-            </span>
-            <span className="text-xs tabular-nums text-zinc-500">{estimateDate}</span>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-0.5">
+            <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+              <span className="text-base font-semibold tracking-tight text-slate-50 sm:text-lg">
+                Draft
+              </span>
+              <span className="text-xs tabular-nums text-slate-400 [font-feature-settings:'tnum']">
+                {estimateDate}
+              </span>
+            </div>
           </div>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className={cn("shrink-0 md:min-h-8", EB.btnGhost)}
+            className={cn("shrink-0 min-h-11 gap-1.5 md:min-h-8", EB.btnText)}
             onClick={openDetails}
           >
+            <Pencil className="h-3.5 w-3.5 opacity-80" aria-hidden />
             Edit details
           </Button>
         </div>
 
-        <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-3.5 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="min-w-0">
             <dt className={metaLabel}>Customer</dt>
-            <dd className="truncate text-sm font-medium text-zinc-200">
+            <dd
+              className={cn(
+                "truncate text-sm font-medium",
+                clientName.trim() ? "text-slate-100" : EB.readDash
+              )}
+            >
               {clientName.trim() || "—"}
             </dd>
           </div>
           <div className="min-w-0">
             <dt className={metaLabel}>Project</dt>
-            <dd className="truncate text-sm font-medium text-zinc-200">
+            <dd
+              className={cn(
+                "truncate text-sm font-medium",
+                projectName.trim() ? "text-slate-100" : EB.readDash
+              )}
+            >
               {projectName.trim() || "—"}
             </dd>
           </div>
           <div className="min-w-0 sm:col-span-2 lg:col-span-1">
             <dt className={metaLabel}>Address</dt>
-            <dd className="text-sm leading-snug text-zinc-400">{address.trim() || "—"}</dd>
+            <dd
+              className={cn(
+                "text-sm leading-snug",
+                address.trim() ? "text-slate-200" : EB.readDash
+              )}
+            >
+              {address.trim() || "—"}
+            </dd>
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 lg:hidden">
             <dt className={metaLabel}>Estimate date</dt>
-            <dd className="text-sm tabular-nums text-zinc-400">{estimateDate}</dd>
+            <dd className="text-sm tabular-nums text-slate-200 [font-feature-settings:'tnum']">
+              {estimateDate}
+            </dd>
           </div>
         </dl>
       </div>
