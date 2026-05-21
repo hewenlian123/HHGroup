@@ -20,7 +20,7 @@ import { EB, ebInput, ebSheetGlassWide, ebSheetInput } from "./estimate-builder-
 import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 
-const metaLabel = "mb-0.5 block text-[10px] font-medium uppercase tracking-[0.08em] text-slate-400";
+const metaLabel = "mb-0.5 block text-[10px] font-medium uppercase tracking-[0.08em] text-[#778195]";
 const metaPanel = cn(EB.draftPanel, "rounded-md px-3 py-2.5 sm:px-4 sm:py-3");
 
 type DetailsSnapshot = {
@@ -179,10 +179,12 @@ export function EstimateNewCustomerSection({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-0.5">
             <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-              <span className="text-base font-semibold tracking-tight text-slate-50 sm:text-lg">
-                Draft
+              <span
+                className={cn(EB.draftBadge, "text-base font-semibold tracking-tight sm:text-lg")}
+              >
+                <span className={EB.draftBadgePill}>Draft</span>
               </span>
-              <span className="text-xs tabular-nums text-slate-400 [font-feature-settings:'tnum']">
+              <span className="text-xs tabular-nums text-[#778195] [font-feature-settings:'tnum']">
                 {estimateDate}
               </span>
             </div>

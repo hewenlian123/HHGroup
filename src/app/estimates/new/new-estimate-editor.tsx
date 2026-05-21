@@ -322,7 +322,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   };
 
   return (
-    <EstimateBuilderShell>
+    <EstimateBuilderShell className="estimate-builder-new">
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_18.5rem] lg:gap-7 lg:items-start">
         <div className="min-w-0 space-y-4 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
           <header className={EB.glassHeader}>
@@ -338,7 +338,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   type="button"
                   variant="ghost"
                   asChild
-                  className={cn("min-h-11 text-slate-300 md:min-h-8", EB.btnGhost)}
+                  className={cn("min-h-11 text-[#A7B0C0] md:min-h-8", EB.btnGhost)}
                 >
                   <Link href="/estimates">Cancel</Link>
                 </Button>

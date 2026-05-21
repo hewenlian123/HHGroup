@@ -1,8 +1,9 @@
 import { cn } from "@/lib/utils";
 
-/** Estimate Builder — dark glass tokens (see estimate-builder-glass.css). */
+/** Estimate Builder — Warm Graphite Premium tokens (see estimate-builder-glass.css). */
 export const EB = {
   shell: "estimate-builder",
+  shellNew: "estimate-builder estimate-builder-new",
   glassPanel: "eb-glass-panel",
   glassPanelCustomer: "eb-glass-panel eb-glass-panel-customer",
   dateField: "eb-date-field",
@@ -38,13 +39,15 @@ export const EB = {
   portalGhostButton:
     "!border-white/10 !bg-white/[0.035] !text-zinc-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] hover:!bg-white/[0.08] hover:!text-zinc-50 focus-visible:!ring-amber-200/25",
 
-  pageTitle: "text-xl font-semibold tracking-tight text-slate-50",
-  pageMeta: "text-xs text-slate-400",
+  draftBadge: "eb-draft-badge",
+  draftBadgePill: "eb-draft-badge-pill",
+  pageTitle: "text-xl font-semibold tracking-tight text-[#F4F7FB]",
+  pageMeta: "text-xs text-[#778195]",
   section: "pb-5 last:pb-0",
-  sectionTitle: "text-sm font-semibold tracking-tight text-slate-100",
-  sectionSubtitle: "mt-0.5 text-[11px] text-slate-400",
-  scopeHeading: "text-sm font-semibold tracking-tight text-slate-50",
-  scopeSubtitle: "mt-0.5 text-[11px] text-slate-400",
+  sectionTitle: "text-sm font-semibold tracking-tight text-[#F4F7FB]",
+  sectionSubtitle: "mt-0.5 text-[11px] text-[#778195]",
+  scopeHeading: "text-sm font-semibold tracking-tight text-[#F4F7FB]",
+  scopeSubtitle: "mt-0.5 text-[11px] text-[#778195]",
   scopeEmpty: "eb-scope-empty",
   scopeEmptyMessage: "eb-scope-empty-message",
   fieldStack: "space-y-1",
@@ -52,13 +55,13 @@ export const EB = {
   coreGrid: "grid grid-cols-1 gap-3 sm:grid-cols-2",
   readGrid: "grid grid-cols-2 gap-x-5 gap-y-3.5 sm:grid-cols-4",
   readRow: "space-y-0.5 min-w-0",
-  readLabel: "text-[10px] font-medium uppercase tracking-[0.08em] text-slate-400",
-  readValue: "text-sm font-medium text-slate-100 truncate",
-  readValueMuted: "text-sm text-slate-300 truncate tabular-nums [font-feature-settings:'tnum']",
-  readDash: "text-sm text-slate-500",
+  readLabel: "text-[10px] font-medium uppercase tracking-[0.08em] text-[#778195]",
+  readValue: "text-sm font-medium text-[#F4F7FB] truncate",
+  readValueMuted: "text-sm text-[#A7B0C0] truncate tabular-nums [font-feature-settings:'tnum']",
+  readDash: "text-sm text-[#778195]",
   input:
-    "eb-input min-h-11 w-full rounded-md px-3 py-1 text-base font-normal text-slate-50 transition-[border-color,background,box-shadow] duration-150 placeholder:text-slate-500 placeholder:font-normal focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:min-h-8 md:px-2.5 md:text-sm",
-  inputMuted: "font-normal text-slate-200",
+    "eb-input min-h-11 w-full rounded-md px-3 py-1 text-base font-normal text-[#F4F7FB] transition-[border-color,background,box-shadow] duration-200 placeholder:text-[#5c6678] placeholder:font-normal focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:min-h-8 md:px-2.5 md:text-sm",
+  inputMuted: "font-normal text-[#A7B0C0]",
   inputNumeric: "text-right tabular-nums",
   lineTableHead:
     "border-b border-white/[0.06] pb-2 text-[10px] font-medium uppercase tracking-[0.07em] text-zinc-400",
@@ -92,14 +95,14 @@ export const EB = {
     "eb-add-line inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-zinc-400 transition-[color,background] duration-150 hover:bg-white/[0.04] hover:text-zinc-200 max-md:min-h-11 md:min-h-8",
   lineIndexBadge:
     "inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded px-1 text-[10px] font-medium tabular-nums text-zinc-500 [font-feature-settings:'tnum']",
-  paymentTitle: "text-sm font-medium text-slate-100",
-  paymentSubtitle: "mt-0.5 text-[11px] text-slate-300",
-  paymentStatLabel: "text-xs text-slate-300",
-  paymentStatValue: "font-semibold tabular-nums text-slate-100 [font-feature-settings:'tnum']",
+  paymentTitle: "text-sm font-medium text-[#F4F7FB]",
+  paymentSubtitle: "mt-0.5 text-[11px] text-[#A7B0C0]",
+  paymentStatLabel: "text-xs text-[#A7B0C0]",
+  paymentStatValue: "font-semibold tabular-nums text-[#F4F7FB] [font-feature-settings:'tnum']",
   categoryGroup: "mb-3 last:mb-0",
   categorySectionTotal: "text-xs font-normal tabular-nums text-zinc-400",
   backLink:
-    "inline-flex min-h-11 items-center gap-1 text-sm text-slate-400 transition-colors duration-150 hover:text-slate-200",
+    "inline-flex min-h-11 items-center gap-1 text-sm text-[#778195] transition-colors duration-200 hover:text-[#A7B0C0]",
   summaryInternalLabel: "text-[10px] font-medium uppercase tracking-[0.1em] text-zinc-400",
   summaryLineLabel: "text-xs text-zinc-500",
   summaryLineValue: "text-xs tabular-nums text-zinc-200 [font-feature-settings:'tnum']",
