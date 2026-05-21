@@ -471,7 +471,7 @@ test("keeps estimate actions usable on mobile", async ({ page }) => {
   await lineCard.getByLabel("Line item 1 title").fill(lineTitle);
   await lineCard.getByLabel("Line item 1 quantity").fill("2");
   await lineCard.getByLabel("Line item 1 unit price").fill("50");
-  await expect(lineCard.getByText(/\$110\.00/)).toBeVisible({ timeout: 10_000 });
+  await expect(lineCard.getByText(/\$100\.00/)).toBeVisible({ timeout: 10_000 });
 
   await expect(lineCard.getByRole("button", { name: "Hide details" })).toBeVisible({
     timeout: 10_000,

@@ -194,7 +194,7 @@ export function EstimateHeader({
               ) : (
                 snapshots.map((s) => {
                   const grandTotal = s.frozenPayload.items.reduce(
-                    (sum, i) => sum + i.qty * i.unitCost * (1 + i.markupPct),
+                    (sum, i) => sum + i.qty * i.unitCost,
                     0
                   );
                   const withOverhead =

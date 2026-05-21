@@ -93,27 +93,33 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   const lineTitleInput = page.getByLabel("Line item 1 title").locator("visible=true");
   await expect(lineTitleInput).toBeVisible({ timeout: 15_000 });
   await lineTitleInput.fill(lineTitle);
-  await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("2");
-  await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("100");
+  await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("1");
+  await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("110");
 
+  await expect(page.getByText("$110.00").locator("visible=true").first()).toBeVisible({
+    timeout: 10_000,
+  });
+
+  await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("2");
   await expect(page.getByText("$220.00").locator("visible=true").first()).toBeVisible({
     timeout: 10_000,
   });
 
   await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("3");
-  await expect(page.getByText("$330.00").locator("visible=true").first()).toBeVisible({
+  await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("100");
+  await expect(page.getByText("$300.00").locator("visible=true").first()).toBeVisible({
     timeout: 10_000,
   });
 
   const unitPriceInput = page.getByLabel("Line item 1 unit price").locator("visible=true");
   await unitPriceInput.fill("1367896.16");
-  await expect(page.getByText("$4,514,057.33").locator("visible=true").first()).toBeVisible({
+  await expect(page.getByText("$4,103,688.48").locator("visible=true").first()).toBeVisible({
     timeout: 10_000,
   });
   const unitPriceBox = await unitPriceInput.boundingBox();
   expect(unitPriceBox?.width ?? 0).toBeGreaterThanOrEqual(130);
   await unitPriceInput.fill("100");
-  await expect(page.getByText("$330.00").locator("visible=true").first()).toBeVisible({
+  await expect(page.getByText("$300.00").locator("visible=true").first()).toBeVisible({
     timeout: 10_000,
   });
 

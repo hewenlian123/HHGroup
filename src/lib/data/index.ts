@@ -3487,10 +3487,7 @@ export function getEstimateSummaryFromPayload(payload: {
   profit: number;
   grandTotal: number;
 } {
-  const subtotal = payload.items.reduce(
-    (s, row) => s + row.qty * row.unitCost * (1 + row.markupPct),
-    0
-  );
+  const subtotal = payload.items.reduce((s, row) => s + row.qty * row.unitCost, 0);
   const overhead = subtotal * payload.overheadPct;
   const profit = subtotal * payload.profitPct;
   return {

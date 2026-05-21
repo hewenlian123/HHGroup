@@ -73,7 +73,7 @@ type LineItem = {
 };
 
 function lineTotal(li: LineItem): number {
-  return li.qty * li.unitPrice * (1 + li.markupPct);
+  return li.qty * li.unitPrice;
 }
 
 export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
