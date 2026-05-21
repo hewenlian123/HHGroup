@@ -24,12 +24,20 @@ export function EstimateNotesPreview({
       >
         Notes &amp; Clarifications
       </h2>
-      <div className={variant === "print" ? "space-y-4 text-sm" : "space-y-3 text-sm"}>
+      <div className={variant === "print" ? "space-y-3 text-sm" : "space-y-3 text-sm"}>
         {visibleNotes.map((note) => (
-          <div key={note.id} className="border-b border-zinc-100 pb-3 last:border-b-0">
-            <p className="font-semibold text-zinc-900">{note.title || "Note"}</p>
+          <div
+            key={note.id}
+            className={cn(
+              "break-inside-avoid border-l-2 border-zinc-300 pl-3",
+              variant === "print" ? "py-0.5" : "py-1"
+            )}
+          >
+            <p className="text-[13px] font-semibold uppercase tracking-wide text-zinc-800">
+              {note.title || "Note"}
+            </p>
             {note.body.trim() ? (
-              <p className="mt-1 whitespace-pre-wrap leading-relaxed text-zinc-700">
+              <p className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-zinc-700">
                 {note.body.trim()}
               </p>
             ) : null}

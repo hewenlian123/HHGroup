@@ -36,7 +36,7 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
             logging: false,
             letterRendering: true,
           },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+          jsPDF: { unit: "mm", format: "letter", orientation: "portrait" },
         })
         .from(el)
         .save();
@@ -73,11 +73,11 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
           {pdfBusy ? "Generating…" : "Download PDF"}
         </Button>
         <span className="text-xs text-muted-foreground">
-          PDF matches the preview below (A4). Or use Print → Save as PDF.
+          PDF matches the preview below (Letter). Or use Print → Save as PDF.
         </span>
       </div>
 
-      <div ref={exportRef} className="bg-white">
+      <div ref={exportRef} data-testid="estimate-pdf-export" className="bg-white">
         {children}
       </div>
     </div>
