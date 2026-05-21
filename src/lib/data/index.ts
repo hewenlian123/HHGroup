@@ -34,6 +34,7 @@ import * as materialCatalogDb from "../material-catalog-db";
 import * as materialSelectionsDb from "../material-selections-db";
 import * as projectCloseoutDb from "../project-closeout-db";
 import * as apBillsDb from "../ap-bills-db";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   getCanonicalProjectProfit,
   getCanonicalProjectProfitBatch,
@@ -3149,30 +3150,43 @@ export function getCostCodes(): CostCode[] {
   return [...costCodeMaster];
 }
 
-export function getEstimateById(id: string): Promise<EstimateListItem | null> {
-  return estDb.getEstimateById(id);
+export function getEstimateById(
+  id: string,
+  explicitClient?: SupabaseClient | null
+): Promise<EstimateListItem | null> {
+  return estDb.getEstimateById(id, explicitClient);
 }
 
 export function getEstimateList(): Promise<EstimateListItem[]> {
   return estDb.getEstimateList(estimateCodeToType);
 }
 
-export function getEstimateItems(estimateId: string): Promise<EstimateItemRow[]> {
-  return estDb.getEstimateItems(estimateId);
+export function getEstimateItems(
+  estimateId: string,
+  explicitClient?: SupabaseClient | null
+): Promise<EstimateItemRow[]> {
+  return estDb.getEstimateItems(estimateId, explicitClient);
 }
 
-export function getEstimateMeta(estimateId: string): Promise<estDb.EstimateMetaRecord | null> {
-  return estDb.getEstimateMeta(estimateId);
+export function getEstimateMeta(
+  estimateId: string,
+  explicitClient?: SupabaseClient | null
+): Promise<estDb.EstimateMetaRecord | null> {
+  return estDb.getEstimateMeta(estimateId, explicitClient);
 }
 
 export function getEstimateCategories(
-  estimateId: string
+  estimateId: string,
+  explicitClient?: SupabaseClient | null
 ): Promise<{ costCode: string; displayName: string }[]> {
-  return estDb.getEstimateCategories(estimateId);
+  return estDb.getEstimateCategories(estimateId, explicitClient);
 }
 
-export function getPaymentSchedule(estimateId: string): Promise<estDb.PaymentScheduleItem[]> {
-  return estDb.getPaymentSchedule(estimateId);
+export function getPaymentSchedule(
+  estimateId: string,
+  explicitClient?: SupabaseClient | null
+): Promise<estDb.PaymentScheduleItem[]> {
+  return estDb.getPaymentSchedule(estimateId, explicitClient);
 }
 
 export function addPaymentMilestone(
@@ -3417,11 +3431,12 @@ export interface EstimateSummaryResult {
 }
 
 export async function getEstimateSummary(
-  estimateId: string
+  estimateId: string,
+  explicitClient?: SupabaseClient | null
 ): Promise<EstimateSummaryResult | null> {
-  const meta = await estDb.getEstimateMeta(estimateId);
+  const meta = await estDb.getEstimateMeta(estimateId, explicitClient);
   if (!meta) return null;
-  const items = await estDb.getEstimateItems(estimateId);
+  const items = await estDb.getEstimateItems(estimateId, explicitClient);
   const s = estDb.computeSummary(items, meta, estimateCodeToType);
   const overheadPct = meta.overheadPct ?? 0.05;
   const profitPct = meta.profitPct ?? 0.1;
