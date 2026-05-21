@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { revalidateEstimatePaths } from "./revalidate-estimate-paths";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 export async function deleteEstimateAction(
@@ -14,8 +15,21 @@ export async function deleteEstimateAction(
   if (!admin) {
     return { ok: false, error: "Database is not configured." };
   }
-  const { error } = await admin.from("estimates").delete().eq("id", estimateId);
+  const { data, error } = await admin
+    .from("estimates")
+    .delete()
+    .eq("id", estimateId)
+    .select("id")
+    .maybeSingle();
   if (error) return { ok: false, error: error.message || "Could not delete estimate." };
+  if (!data?.id) {
+    return {
+      ok: false,
+      error:
+        "Estimate was not deleted. Please refresh and try again, or check server delete permissions.",
+    };
+  }
   revalidatePath("/estimates");
+  revalidateEstimatePaths(estimateId);
   return { ok: true };
 }
