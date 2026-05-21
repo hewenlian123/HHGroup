@@ -41,7 +41,7 @@ export function ProposalPaymentMilestoneList({
     return (
       <div className={cn(EB.paymentEmptyBox, className)}>
         <Wallet className={cn("h-5 w-5", EB.paymentEmptyIcon)} aria-hidden />
-        <p className={cn("text-sm", EB.paymentEmpty)}>{emptyMessage}</p>
+        <p className={cn("text-[14px] leading-snug", EB.paymentEmpty)}>{emptyMessage}</p>
       </div>
     );
   }
@@ -57,7 +57,7 @@ export function ProposalPaymentMilestoneList({
             className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 py-3 first:pt-1"
           >
             <div className="min-w-0 flex-1 space-y-0.5">
-              <p className="text-sm font-semibold tracking-tight text-slate-100">
+              <p className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-[#F6F7FA]">
                 {m.title.trim() || "—"}
               </p>
               {m.description?.trim() ? (
@@ -65,13 +65,15 @@ export function ProposalPaymentMilestoneList({
                   text={m.description}
                   variant="compact"
                   maxBullets={2}
-                  className="text-xs text-slate-400"
+                  className="text-[13px] leading-snug text-[#929CAF]"
                 />
               ) : null}
-              {dueLabel ? <p className="text-xs text-slate-400">{dueLabel}</p> : null}
+              {dueLabel ? (
+                <p className="text-[13px] leading-snug text-[#929CAF]">{dueLabel}</p>
+              ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="text-sm font-semibold tabular-nums tracking-tight text-slate-100 [font-feature-settings:'tnum']">
+              <span className="text-[14px] font-semibold tabular-nums tracking-[-0.01em] text-[#D8DEE8] [font-feature-settings:'tnum']">
                 {formatEstimateCurrency(m.amount)}
               </span>
               {actions ? actions(m) : null}

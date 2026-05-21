@@ -122,20 +122,21 @@ async function fillNewEstimate(
 
 /** Wait until no estimate list row links mention this client (post-delete). */
 async function expectNoEstimateListRowForClient(page: Page, clientName: string): Promise<void> {
-  const listSearch = page.locator('input[placeholder="Search estimates…"]:visible').first();
-  await expect(listSearch).toBeVisible({ timeout: 30_000 });
-  await listSearch.fill(clientName);
-  await expect
-    .poll(
-      async () =>
-        page
-          .locator("main")
-          .locator('a[href^="/estimates/"]')
-          .filter({ hasText: clientName })
-          .count(),
-      { timeout: 30_000 }
-    )
-    .toBe(0);
+  await expect(page).toHaveURL(isEstimatesListUrl, { timeout: 30_000 });
+  await expect(
+    page.getByRole("heading", { name: "Estimates", level: 1 }).locator("visible=true")
+  ).toBeVisible({ timeout: 30_000 });
+
+  const rowLinks = () =>
+    page.locator("main").locator('a[href^="/estimates/"]').filter({ hasText: clientName });
+
+  await expect.poll(async () => rowLinks().count(), { timeout: 30_000 }).toBe(0);
+
+  const listSearch = page.getByPlaceholder("Search estimates…").locator("visible=true").first();
+  if ((await listSearch.count()) > 0) {
+    await listSearch.fill(clientName);
+    await expect.poll(async () => rowLinks().count(), { timeout: 15_000 }).toBe(0);
+  }
 }
 
 async function createEstimate(
@@ -221,11 +222,8 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toBeVisible({
     timeout: 10_000,
   });
-  await page
-    .getByRole("button", { name: "Remove line item" })
-    .locator("visible=true")
-    .last()
-    .click();
+  await page.getByRole("button", { name: "More actions" }).locator("visible=true").last().click();
+  await page.getByRole("menuitem", { name: "Remove line item" }).click();
   await expect(page.getByLabel("Line item 2 title").locator("visible=true")).toHaveCount(0);
 
   const saveEstimate = page.getByRole("button", { name: "Save Estimate" });

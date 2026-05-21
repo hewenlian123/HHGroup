@@ -5,7 +5,7 @@
 
 /* ── App chrome when builder route is active ── */
 main.estimate-builder-active {
-  background: #090a0f !important;
+  background: #08090c !important;
 }
 
 body.estimate-builder-active {
@@ -14,11 +14,11 @@ body.estimate-builder-active {
 
 header[data-app-topbar].estimate-builder-active,
 header.estimate-topbar-glass {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.16) !important;
-  background: rgba(11, 13, 18, 0.82) !important;
-  background-color: rgba(11, 13, 18, 0.82) !important;
-  backdrop-filter: blur(18px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(150%) !important;
+  border-bottom: 1px solid rgba(190, 198, 210, 0.14) !important;
+  background: rgba(13, 14, 18, 0.88) !important;
+  background-color: rgba(13, 14, 18, 0.88) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.04) !important;
 }
 
@@ -28,17 +28,17 @@ header[data-app-topbar].estimate-builder-active[class*="bg-white"],
 header.estimate-topbar-glass[class*="bg-white"],
 header[data-app-topbar].estimate-builder-active[class*="dark:bg-background"],
 header.estimate-topbar-glass[class*="dark:bg-background"] {
-  background: rgba(11, 13, 18, 0.82) !important;
+  background: rgba(13, 14, 18, 0.88) !important;
 }
 
 header[data-app-topbar].estimate-builder-active [class*="bg-white"],
 header.estimate-topbar-glass [class*="bg-white"] {
-  background-color: rgba(15, 23, 42, 0.45) !important;
+  background-color: rgba(16, 19, 26, 0.55) !important;
 }
 
 header[data-app-topbar].estimate-builder-active [class*="border-gray"],
 header.estimate-topbar-glass [class*="border-gray"] {
-  border-color: rgba(148, 163, 184, 0.16) !important;
+  border-color: rgba(190, 198, 210, 0.14) !important;
 }
 
 header[data-app-topbar].estimate-builder-active nav span,
@@ -47,34 +47,34 @@ header[data-app-topbar].estimate-builder-active .dark\:text-foreground,
 header.estimate-topbar-glass nav span,
 header.estimate-topbar-glass .text-text-primary,
 header.estimate-topbar-glass .dark\:text-foreground {
-  color: #e2e8f0 !important;
+  color: #f4f7fb !important;
 }
 
 header[data-app-topbar].estimate-builder-active .btn-outline-ghost,
 header.estimate-topbar-glass .btn-outline-ghost {
-  border-color: rgba(148, 163, 184, 0.18) !important;
-  background: rgba(15, 23, 42, 0.4) !important;
-  color: #94a3b8 !important;
+  border-color: rgba(190, 198, 210, 0.16) !important;
+  background: rgba(16, 19, 26, 0.5) !important;
+  color: #7b8494 !important;
   box-shadow: none !important;
 }
 
 header[data-app-topbar].estimate-builder-active .btn-outline-ghost:hover,
 header.estimate-topbar-glass .btn-outline-ghost:hover {
-  background: rgba(30, 41, 59, 0.55) !important;
-  color: #f1f5f9 !important;
+  background: rgba(24, 27, 35, 0.72) !important;
+  color: #f4f7fb !important;
 }
 
 header[data-app-topbar].estimate-builder-active input[type="search"] {
   height: 30px !important;
-  border: 1px solid rgba(148, 163, 184, 0.2) !important;
+  border: 1px solid rgba(190, 198, 210, 0.16) !important;
   border-radius: 0.375rem !important;
-  background: rgba(15, 23, 42, 0.55) !important;
-  color: #f1f5f9 !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  background: rgba(16, 19, 26, 0.72) !important;
+  color: #f4f7fb !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.055) !important;
 }
 
 header[data-app-topbar].estimate-builder-active input[type="search"]::placeholder {
-  color: #64748b !important;
+  color: #5c6678 !important;
 }
 
 header[data-app-topbar].estimate-builder-active input[type="search"]:focus {
@@ -84,35 +84,35 @@ header[data-app-topbar].estimate-builder-active input[type="search"]:focus {
 }
 
 header[data-app-topbar].estimate-builder-active svg[class*="text-"] {
-  color: #94a3b8 !important;
+  color: #7b8494 !important;
 }
 
 header[data-app-topbar].estimate-builder-active button {
-  border: 1px solid rgba(148, 163, 184, 0.16) !important;
-  background: rgba(15, 23, 42, 0.45) !important;
-  color: #94a3b8 !important;
+  border: 1px solid rgba(190, 198, 210, 0.14) !important;
+  background: rgba(16, 19, 26, 0.55) !important;
+  color: #7b8494 !important;
   box-shadow: none !important;
 }
 
 header[data-app-topbar].estimate-builder-active button:hover {
-  border-color: rgba(148, 163, 184, 0.24) !important;
-  background: rgba(30, 41, 59, 0.55) !important;
-  color: #e2e8f0 !important;
+  border-color: rgba(205, 213, 225, 0.2) !important;
+  background: rgba(24, 27, 35, 0.72) !important;
+  color: #f4f7fb !important;
 }
 
 body.estimate-builder-active nav[aria-label="Bottom navigation"] {
-  border-top: 1px solid rgba(148, 163, 184, 0.16) !important;
-  background: rgba(9, 10, 15, 0.96) !important;
-  backdrop-filter: blur(18px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(150%) !important;
+  border-top: 1px solid rgba(190, 198, 210, 0.14) !important;
+  background: rgba(8, 9, 12, 0.97) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
 }
 
 body.estimate-builder-active [role="menu"],
 body.estimate-builder-active [data-radix-menu-content] {
-  border: 1px solid rgba(148, 163, 184, 0.2) !important;
-  background: rgba(11, 16, 32, 0.96) !important;
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border: 1px solid rgba(190, 198, 210, 0.16) !important;
+  background: rgba(13, 14, 18, 0.98) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
 }
 
@@ -120,12 +120,12 @@ body.estimate-builder-active [role="menuitem"]:focus,
 body.estimate-builder-active [role="menuitem"][data-highlighted],
 body.estimate-builder-active [data-radix-collection-item]:focus,
 body.estimate-builder-active [data-radix-collection-item][data-highlighted] {
-  background: rgba(51, 65, 85, 0.45) !important;
+  background: rgba(24, 27, 35, 0.65) !important;
 }
 
 body.estimate-builder-active [role="dialog"] {
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(11, 16, 32, 0.98);
+  border: 1px solid rgba(190, 198, 210, 0.16);
+  background: rgba(13, 14, 18, 0.98);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
@@ -139,32 +139,41 @@ body.estimate-builder-active [role="dialog"] {
 
 /* ── Builder canvas — Warm Graphite Premium tokens ── */
 .estimate-builder {
-  --eb-bg: #090a0f;
+  --eb-bg: #08090c;
   --eb-bg-soft: #0b0d12;
-  --eb-shell: #0f141f;
-  --eb-panel: #111622;
-  --eb-panel-strong: #141a28;
-  --eb-panel-elevated: #171d2b;
-  --eb-panel-deep: #0f1522;
-  --eb-input: #0f1522;
-  --eb-border: rgba(148, 163, 184, 0.18);
-  --eb-border-strong: rgba(148, 163, 184, 0.22);
-  --eb-border-soft: rgba(148, 163, 184, 0.12);
-  --eb-highlight: rgba(255, 255, 255, 0.06);
-  --eb-highlight-soft: rgba(255, 255, 255, 0.04);
-  --eb-text: #f4f7fb;
-  --eb-text-secondary: #a7b0c0;
-  --eb-text-muted: #778195;
-  --eb-text-faint: #5c6678;
+  --eb-bg-warm: #0d0e12;
+  --eb-shell: #10131a;
+  --eb-panel: #111318;
+  --eb-panel-strong: #151820;
+  --eb-panel-elevated: #181b23;
+  --eb-panel-deep: #0d1016;
+  --eb-input: #10131a;
+  --eb-input-hover: #141820;
+  --eb-surface-hover: #1c2029;
+  --eb-border: rgba(190, 198, 210, 0.14);
+  --eb-border-strong: rgba(205, 213, 225, 0.22);
+  --eb-border-soft: rgba(190, 198, 210, 0.1);
+  --eb-highlight: rgba(255, 255, 255, 0.055);
+  --eb-highlight-soft: rgba(255, 255, 255, 0.035);
+  --eb-text: #f6f7fa;
+  --eb-text-soft: #d8dee8;
+  --eb-secondary: #b5becc;
+  --eb-text-secondary: #b5becc;
+  --eb-muted: #929caf;
+  --eb-text-muted: #929caf;
+  --eb-label: #9ea8b8;
+  --eb-placeholder: #7f899b;
+  --eb-empty: #a7b0c0;
+  --eb-text-faint: #697386;
   --eb-accent: #4f8cff;
   --eb-accent-2: #7dd3fc;
-  --eb-amber: #c4a574;
-  --eb-amber-soft: rgba(196, 165, 116, 0.14);
-  --eb-focus: rgba(79, 140, 255, 0.38);
+  --eb-amber: #d8b46a;
+  --eb-amber-soft: rgba(216, 180, 106, 0.12);
+  --eb-focus: rgba(79, 140, 255, 0.32);
   --eb-total-accent: #7dd3fc;
-  --eb-glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.32);
-  --eb-glass-shadow-hover: 0 14px 40px rgba(0, 0, 0, 0.36);
-  --eb-glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --eb-glass-shadow: 0 10px 32px rgba(0, 0, 0, 0.34);
+  --eb-glass-shadow-hover: 0 12px 36px rgba(0, 0, 0, 0.38);
+  --eb-glass-inset: inset 0 1px 0 rgba(255, 255, 255, 0.055);
   --eb-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --eb-dur-fast: 150ms;
   --eb-dur: 200ms;
@@ -181,14 +190,43 @@ body.estimate-builder-active [role="dialog"] {
   overflow-x: hidden;
 }
 
-/* Static ambient — warm graphite depth, no animation */
+/* ── iOS system typography (/estimates/new only) ── */
+.estimate-builder-new {
+  --eb-font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", "Segoe UI",
+    sans-serif;
+  font-family: var(--eb-font-sans);
+  font-size: 0.875rem;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "tnum", "kern";
+  font-variant-numeric: tabular-nums;
+}
+
+.estimate-builder-new :where(button, input, textarea, select, label, summary, p, span, li, dd, dt) {
+  font-family: inherit;
+}
+
+.estimate-builder-new .tabular-nums,
+.estimate-builder-new [class*="tabular-nums"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum", "kern";
+}
+
+/* Static ambient — warm charcoal only, no blue cast */
 .estimate-builder .eb-ambient-top {
   pointer-events: none;
   position: absolute;
   inset: -3rem -12% auto;
   z-index: 0;
-  height: 15rem;
-  background: radial-gradient(ellipse 60% 75% at 12% 0%, rgba(79, 140, 255, 0.05), transparent 68%);
+  height: 14rem;
+  background: radial-gradient(
+    ellipse 55% 70% at 14% 0%,
+    rgba(255, 255, 255, 0.025),
+    transparent 70%
+  );
 }
 
 .estimate-builder .eb-ambient-gold {
@@ -197,9 +235,9 @@ body.estimate-builder-active [role="dialog"] {
   right: -6%;
   top: 5rem;
   z-index: 0;
-  height: 18rem;
-  width: 18rem;
-  background: radial-gradient(circle at 50% 40%, rgba(196, 165, 116, 0.04), transparent 72%);
+  height: 16rem;
+  width: 16rem;
+  background: radial-gradient(circle at 50% 40%, rgba(216, 180, 106, 0.03), transparent 74%);
 }
 
 .estimate-builder .eb-builder-content {
@@ -224,15 +262,15 @@ body.estimate-builder-active [role="dialog"] {
   }
 }
 
-/* Shared glass surface */
+/* Shared graphite surfaces — matte, not navy glass */
 .estimate-builder .eb-glass-panel,
 .estimate-builder .eb-draft-panel {
   border-radius: 0.5rem;
   border: 1px solid var(--eb-border);
-  background: color-mix(in srgb, var(--eb-panel) 92%, transparent);
+  background: var(--eb-panel);
   box-shadow: var(--eb-glass-shadow), var(--eb-glass-inset);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transition:
     border-color var(--eb-dur) var(--eb-ease),
     background var(--eb-dur) var(--eb-ease),
@@ -243,14 +281,14 @@ body.estimate-builder-active [role="dialog"] {
 .estimate-builder .eb-glass-panel:hover,
 .estimate-builder .eb-draft-panel:hover {
   border-color: var(--eb-border-strong);
-  background: color-mix(in srgb, var(--eb-panel-elevated) 94%, transparent);
+  background: var(--eb-panel-elevated);
   box-shadow: var(--eb-glass-shadow-hover), var(--eb-glass-inset);
   transform: translateY(-1px);
 }
 
 .estimate-builder .eb-glass-panel-customer,
 .estimate-builder .eb-draft-panel {
-  background: color-mix(in srgb, var(--eb-panel-strong) 94%, transparent);
+  background: var(--eb-panel-strong);
 }
 
 .estimate-builder .eb-glass-scope {
@@ -271,22 +309,30 @@ body.estimate-builder-active [role="dialog"] {
   background: transparent;
 }
 
-/* Summary — premium sticky glass */
+.estimate-builder .eb-scope-section-header :where(input, textarea) {
+  color: var(--eb-text-soft) !important;
+}
+
+.estimate-builder .eb-scope-section-header :where(input, textarea)::placeholder {
+  color: var(--eb-placeholder) !important;
+}
+
+/* Summary — graphite pricing card */
 .estimate-builder .eb-glass-sidebar {
   position: relative;
   overflow: hidden;
   border-radius: 0.5rem;
   border: 1px solid var(--eb-border-strong);
   background: linear-gradient(
-    165deg,
-    color-mix(in srgb, var(--eb-panel-elevated) 88%, transparent) 0%,
-    color-mix(in srgb, var(--eb-panel-strong) 92%, transparent) 52%,
-    color-mix(in srgb, var(--eb-panel) 94%, transparent) 100%
+    168deg,
+    var(--eb-panel-elevated) 0%,
+    var(--eb-panel-strong) 48%,
+    var(--eb-panel) 100%
   );
   padding: 1rem 1.1rem 1.15rem;
   box-shadow: var(--eb-glass-shadow), var(--eb-glass-inset);
-  backdrop-filter: blur(16px) saturate(145%);
-  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   transition:
     border-color var(--eb-dur) var(--eb-ease),
     box-shadow var(--eb-dur) var(--eb-ease),
@@ -295,7 +341,7 @@ body.estimate-builder-active [role="dialog"] {
 
 .estimate-builder .eb-glass-sidebar:hover,
 .estimate-builder .eb-glass-sidebar:focus-within {
-  border-color: rgba(148, 163, 184, 0.26);
+  border-color: var(--eb-border-strong);
   box-shadow: var(--eb-glass-shadow-hover), var(--eb-glass-inset);
   transform: translateY(-1px);
 }
@@ -307,9 +353,9 @@ body.estimate-builder-active [role="dialog"] {
   inset: 0;
   border-radius: inherit;
   background: radial-gradient(
-    ellipse 75% 55% at 100% 0%,
-    rgba(79, 140, 255, 0.06),
-    transparent 58%
+    ellipse 70% 50% at 100% 0%,
+    rgba(255, 255, 255, 0.04),
+    transparent 60%
   );
 }
 
@@ -324,9 +370,9 @@ body.estimate-builder-active [role="dialog"] {
 
 .estimate-builder .eb-glass-mobile-bar {
   border-top: 1px solid var(--eb-border);
-  background: rgba(9, 10, 15, 0.96);
-  backdrop-filter: blur(16px) saturate(145%);
-  -webkit-backdrop-filter: blur(16px) saturate(145%);
+  background: rgba(8, 9, 12, 0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   box-shadow: inset 0 1px 0 var(--eb-highlight-soft);
 }
 
@@ -365,14 +411,14 @@ body.estimate-builder-active [role="dialog"] {
   display: inline-flex;
   align-items: center;
   border-radius: 0.25rem;
-  border: 1px solid rgba(196, 165, 116, 0.28);
+  border: 1px solid rgba(216, 180, 106, 0.22);
   background: var(--eb-amber-soft);
   padding: 0.05rem 0.4rem;
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #d4bc8e;
+  color: var(--eb-amber);
 }
 
 .estimate-builder .eb-glass-notes {
@@ -388,7 +434,7 @@ body.estimate-builder-active [role="dialog"] {
 
 .estimate-builder .eb-glass-notes:hover {
   border-color: var(--eb-border-strong);
-  background: rgba(15, 23, 42, 0.78);
+  background: var(--eb-input-hover);
 }
 
 .estimate-builder .eb-proposal-scope-editor {
@@ -417,9 +463,9 @@ body.estimate-builder-active [role="dialog"] {
 .estimate-builder .eb-glass-command {
   z-index: 200;
   border: 1px solid var(--eb-border-strong);
-  background: rgba(11, 16, 32, 0.98);
-  backdrop-filter: blur(18px) saturate(150%);
-  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  background: rgba(13, 14, 18, 0.98);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.42);
 }
 
@@ -465,7 +511,16 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 }
 
 .estimate-builder :where(input, textarea)::placeholder {
-  color: var(--eb-text-faint) !important;
+  color: var(--eb-placeholder) !important;
+  opacity: 1 !important;
+}
+
+.estimate-builder .eb-proposal-scope-field {
+  color: var(--eb-text-soft) !important;
+}
+
+.estimate-builder .eb-proposal-scope-field::placeholder {
+  color: var(--eb-placeholder) !important;
   opacity: 1 !important;
 }
 
@@ -473,15 +528,15 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 .estimate-builder .eb-glass-scope :where(input, textarea, select):hover,
 .estimate-builder .eb-input:hover {
   border-color: var(--eb-border-strong) !important;
-  background: color-mix(in srgb, var(--eb-input) 88%, #141a28) !important;
+  background: var(--eb-input-hover) !important;
 }
 
 .estimate-builder .eb-glass-panel :where(input, textarea, select):focus-visible,
 .estimate-builder .eb-glass-scope :where(input, textarea, select):focus-visible,
 .estimate-builder .eb-input:focus-visible {
   outline: none !important;
-  border-color: rgba(79, 140, 255, 0.5) !important;
-  background: color-mix(in srgb, var(--eb-input) 82%, #141a28) !important;
+  border-color: rgba(79, 140, 255, 0.45) !important;
+  background: var(--eb-input-hover) !important;
   box-shadow:
     var(--eb-glass-inset),
     0 0 0 2px var(--eb-focus) !important;
@@ -492,7 +547,7 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 }
 
 .estimate-builder .eb-line-row:hover {
-  background: rgba(23, 29, 43, 0.55) !important;
+  background: rgba(24, 27, 35, 0.55) !important;
 }
 
 .estimate-builder .eb-add-section-composer {
@@ -509,21 +564,21 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
   color: var(--eb-text-muted);
 }
 
-/* Primary — warm graphite + accent blue */
+/* Primary — restrained graphite-blue accent only */
 .estimate-builder .eb-btn-primary {
-  border: 1px solid rgba(148, 163, 184, 0.22) !important;
+  border: 1px solid rgba(190, 198, 210, 0.2) !important;
   border-radius: 0.375rem !important;
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, #1a2233 92%, #4f8cff 8%) 0%,
-    color-mix(in srgb, #121820 96%, #4f8cff 4%) 48%,
-    color-mix(in srgb, #0f141f 98%, #3b6fd4 6%) 100%
+    #1a1d24 0%,
+    #151820 52%,
+    color-mix(in srgb, #12151c 94%, #4f8cff 6%) 100%
   ) !important;
   color: var(--eb-text) !important;
   font-weight: 500 !important;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 2px 10px rgba(0, 0, 0, 0.24) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 2px 10px rgba(0, 0, 0, 0.26) !important;
   transition:
     border-color var(--eb-dur-fast) var(--eb-ease),
     background var(--eb-dur-fast) var(--eb-ease),
@@ -532,12 +587,12 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 }
 
 .estimate-builder .eb-btn-primary:hover:not(:disabled) {
-  border-color: rgba(148, 163, 184, 0.28) !important;
+  border-color: rgba(205, 213, 225, 0.24) !important;
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, #1e2838 90%, #4f8cff 10%) 0%,
-    color-mix(in srgb, #141a28 94%, #4f8cff 6%) 52%,
-    color-mix(in srgb, #111622 96%, #4f8cff 8%) 100%
+    #1e2129 0%,
+    #181b23 52%,
+    color-mix(in srgb, #151820 92%, #4f8cff 8%) 100%
   ) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
@@ -567,7 +622,7 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
   border: 1px solid var(--eb-border) !important;
   border-radius: 0.375rem !important;
   background: color-mix(in srgb, var(--eb-input) 72%, transparent) !important;
-  color: var(--eb-text-secondary) !important;
+  color: var(--eb-secondary) !important;
   box-shadow: var(--eb-glass-inset) !important;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -593,7 +648,8 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
   border: 1px solid var(--eb-border);
   border-radius: 0.375rem;
   background: color-mix(in srgb, var(--eb-input) 78%, transparent);
-  color: var(--eb-text-secondary);
+  color: var(--eb-secondary);
+  font-weight: 500;
   box-shadow: var(--eb-glass-inset);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -607,12 +663,10 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 
 .estimate-builder .eb-add-section:hover:not(:disabled),
 .estimate-builder .eb-action-secondary:hover:not(:disabled) {
-  border-color: rgba(79, 140, 255, 0.32);
-  background: color-mix(in srgb, var(--eb-panel-elevated) 82%, transparent);
+  border-color: var(--eb-border-strong);
+  background: var(--eb-panel-elevated);
   color: var(--eb-text);
-  box-shadow:
-    var(--eb-glass-inset),
-    0 0 0 1px rgba(79, 140, 255, 0.08);
+  box-shadow: var(--eb-glass-inset);
 }
 
 .estimate-builder .eb-add-section:active:not(:disabled),
@@ -629,7 +683,7 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
   border: 1px solid var(--eb-border) !important;
   border-radius: 0.375rem !important;
   background: color-mix(in srgb, var(--eb-input) 70%, transparent) !important;
-  color: var(--eb-text-secondary) !important;
+  color: var(--eb-secondary) !important;
   font-weight: 500 !important;
   box-shadow: var(--eb-glass-inset) !important;
   backdrop-filter: blur(12px);
@@ -653,14 +707,14 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 
 .estimate-builder .eb-icon-action {
   border-radius: 0.375rem;
-  color: var(--eb-text-muted);
+  color: var(--eb-muted);
   transition:
     background 150ms ease,
     color 150ms ease;
 }
 
 .estimate-builder .eb-icon-action:hover:not(:disabled) {
-  background: rgba(51, 65, 85, 0.45);
+  background: rgba(24, 27, 35, 0.65);
   color: var(--eb-text-secondary);
 }
 
@@ -673,11 +727,11 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
   max-width: min(100%, 24rem);
   border-radius: 0.375rem;
   border: 1px solid var(--eb-border);
-  background: rgba(15, 23, 42, 0.55);
+  background: var(--eb-input);
   padding: 0.2rem 0.5rem 0.2rem 0.35rem;
   box-shadow: var(--eb-glass-inset);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   transition:
     border-color 180ms ease,
     background 180ms ease;
@@ -685,7 +739,7 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 
 .estimate-builder .eb-section-header-chip:hover {
   border-color: var(--eb-border-strong);
-  background: rgba(30, 41, 59, 0.5);
+  background: var(--eb-input-hover);
 }
 
 .estimate-builder .eb-section-header-chip-icon {
@@ -725,7 +779,7 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 
 .estimate-builder .eb-line-item-card:hover {
   border-color: var(--eb-border-strong);
-  background: color-mix(in srgb, var(--eb-panel-elevated) 70%, var(--eb-panel-deep));
+  background: var(--eb-panel-elevated);
   box-shadow:
     inset 0 1px 0 var(--eb-highlight),
     0 4px 14px rgba(0, 0, 0, 0.12);
@@ -734,25 +788,23 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 /* Scope empty state */
 .estimate-builder .eb-scope-empty {
   border-radius: 0.5rem;
-  border: 1px dashed var(--eb-border);
-  background: color-mix(in srgb, var(--eb-input) 65%, transparent);
+  border: 1px dashed rgba(190, 198, 210, 0.18);
+  background: var(--eb-panel-deep);
   padding: 2rem 1.25rem;
   text-align: center;
-  box-shadow: var(--eb-glass-inset);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 var(--eb-highlight-soft);
   transition:
     border-color var(--eb-dur) var(--eb-ease),
     background var(--eb-dur) var(--eb-ease);
 }
 
 .estimate-builder .eb-scope-empty:hover {
-  border-color: rgba(148, 163, 184, 0.24);
-  background: color-mix(in srgb, var(--eb-panel) 72%, transparent);
+  border-color: rgba(205, 213, 225, 0.22);
+  background: var(--eb-input);
 }
 
 .estimate-builder .eb-scope-empty-message {
-  color: var(--eb-text-muted);
+  color: var(--eb-empty);
   font-size: 0.875rem;
 }
 
@@ -777,7 +829,7 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 
 .estimate-builder .eb-scope-editor-toolbar {
   border-bottom: 1px solid var(--eb-border-soft);
-  background: rgba(15, 23, 42, 0.55);
+  background: var(--eb-panel-deep);
 }
 
 .estimate-builder .eb-scope-editor-toolbar button {
@@ -786,29 +838,76 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 
 .estimate-builder .eb-scope-editor-toolbar button:hover {
   color: var(--eb-text-secondary) !important;
-  background: rgba(51, 65, 85, 0.4) !important;
+  background: rgba(24, 27, 35, 0.65) !important;
 }
 
 .estimate-builder .proposal-scope-inline-editor {
-  color: var(--eb-text-secondary);
+  color: var(--eb-text-soft);
+}
+
+.estimate-builder .proposal-scope-inline-editor :where(p, span, li, strong, em, b, i) {
+  color: inherit;
 }
 
 .estimate-builder .proposal-scope-inline-editor:empty::before {
   content: "Describe scope, materials, and notes…";
-  color: var(--eb-text-faint);
+  color: var(--eb-placeholder);
   pointer-events: none;
 }
 
-/* Payment schedule */
+/* Payment schedule — collapsible section */
+.estimate-builder details.group {
+  border-top: 1px solid var(--eb-border) !important;
+  padding-top: 0.35rem;
+}
+
+.estimate-builder details.group > summary {
+  display: flex;
+  min-height: 2.75rem;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--eb-label);
+  transition: color var(--eb-dur-fast) var(--eb-ease);
+}
+
+.estimate-builder details.group > summary:hover {
+  color: var(--eb-secondary);
+}
+
+.estimate-builder details.group > summary svg {
+  color: var(--eb-muted);
+  opacity: 0.9;
+}
+
+.estimate-builder details.group > summary:hover svg {
+  color: var(--eb-secondary);
+  opacity: 1;
+}
+
+.estimate-builder details.group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.estimate-builder details.group > div {
+  border-left: 1px solid var(--eb-border);
+}
+
 .estimate-builder .eb-payment-schedule {
   margin-top: 0.25rem;
   border: 1px solid var(--eb-border);
   border-radius: 0.375rem;
-  background: color-mix(in srgb, var(--eb-panel) 88%, transparent);
+  background: var(--eb-panel-strong);
   padding: 0.5rem 0.75rem 0.65rem;
   box-shadow: var(--eb-glass-inset);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   transition:
     border-color var(--eb-dur) var(--eb-ease),
     box-shadow var(--eb-dur) var(--eb-ease),
@@ -840,38 +939,38 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
 
 .estimate-builder .eb-payment-empty-box {
   border-radius: 0.5rem;
-  border: 1px dashed var(--eb-border);
-  background: color-mix(in srgb, var(--eb-input) 62%, transparent);
+  border: 1px dashed rgba(190, 198, 210, 0.16);
+  background: var(--eb-panel-deep);
   padding: 1.75rem 1rem;
   text-align: center;
-  box-shadow: var(--eb-glass-inset);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 var(--eb-highlight-soft);
   transition:
     border-color var(--eb-dur) var(--eb-ease),
     box-shadow var(--eb-dur) var(--eb-ease);
 }
 
 .estimate-builder .eb-payment-empty-box:hover {
-  border-color: rgba(79, 140, 255, 0.22);
-  box-shadow:
-    var(--eb-glass-inset),
-    0 0 0 1px rgba(79, 140, 255, 0.06);
+  border-color: var(--eb-border-strong);
+  box-shadow: var(--eb-glass-inset);
 }
 
 .estimate-builder .eb-payment-empty {
-  color: var(--eb-text-muted);
+  color: var(--eb-empty);
 }
 
 .estimate-builder .eb-payment-empty-icon {
   margin-inline: auto;
   margin-bottom: 0.5rem;
-  color: var(--eb-text-muted);
-  opacity: 0.85;
+  color: var(--eb-muted);
+  opacity: 0.92;
+}
+
+.estimate-builder .eb-add-line {
+  color: var(--eb-secondary);
 }
 
 .estimate-builder .eb-add-line:hover {
-  color: var(--eb-text-secondary);
+  color: var(--eb-text);
   border-color: var(--eb-border-strong);
 }
 
@@ -881,7 +980,7 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
     .eb-btn-ghost
   ):not(.eb-btn-text):not(.eb-action-secondary) {
   border-color: var(--eb-border) !important;
-  background: rgba(15, 23, 42, 0.45) !important;
+  background: rgba(16, 19, 26, 0.55) !important;
   color: var(--eb-text-muted) !important;
 }
 
@@ -922,10 +1021,10 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
 }
 
 .estimate-builder.eb-sheet-glass {
-  --eb-sheet-bg: rgba(11, 13, 18, 0.94);
-  --eb-sheet-input-bg: #0f1522;
-  --eb-sheet-border: rgba(148, 163, 184, 0.18);
-  --eb-sheet-border-strong: rgba(148, 163, 184, 0.24);
+  --eb-sheet-bg: rgba(11, 13, 18, 0.96);
+  --eb-sheet-input-bg: #10131a;
+  --eb-sheet-border: rgba(190, 198, 210, 0.14);
+  --eb-sheet-border-strong: rgba(205, 213, 225, 0.22);
 
   position: fixed !important;
   display: flex !important;
@@ -939,8 +1038,8 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
   box-shadow:
     -20px 0 56px rgba(0, 0, 0, 0.38),
     inset 1px 0 0 rgba(255, 255, 255, 0.07) !important;
-  backdrop-filter: blur(18px) saturate(150%) !important;
-  -webkit-backdrop-filter: blur(18px) saturate(150%) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
 }
 
 .estimate-builder.eb-sheet-glass > button[type="button"].absolute {
@@ -950,14 +1049,14 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
   min-width: 2.25rem !important;
   border-radius: 0.375rem !important;
   border: 1px solid var(--eb-sheet-border) !important;
-  background: rgba(15, 23, 42, 0.55) !important;
-  color: #94a3b8 !important;
+  background: rgba(16, 19, 26, 0.72) !important;
+  color: var(--eb-muted) !important;
   opacity: 1 !important;
 }
 
 .estimate-builder.eb-sheet-glass > button[type="button"].absolute:hover {
-  background: rgba(30, 41, 59, 0.65) !important;
-  color: #e2e8f0 !important;
+  background: rgba(24, 27, 35, 0.82) !important;
+  color: var(--eb-text) !important;
 }
 
 .estimate-builder.eb-sheet-glass[data-state="open"] {
@@ -1010,7 +1109,7 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
   margin: 0;
   padding: 1rem 3rem 0.875rem 1rem;
   border-bottom: 1px solid var(--eb-sheet-border);
-  background: rgba(8, 13, 26, 0.88);
+  background: rgba(11, 13, 18, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   text-align: left;
@@ -1027,7 +1126,7 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.35;
-  color: #f8fafc;
+  color: var(--eb-text);
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-content {
@@ -1079,7 +1178,7 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #94a3b8;
+  color: var(--eb-label);
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-section-label {
@@ -1088,7 +1187,7 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: #cbd5e1;
+  color: var(--eb-secondary);
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-input,
@@ -1100,18 +1199,18 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
   border: 1px solid var(--eb-sheet-border) !important;
   border-radius: 0.375rem !important;
   background: var(--eb-sheet-input-bg) !important;
-  color: #f8fafc !important;
+  color: var(--eb-text-soft) !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-input::placeholder {
-  color: #64748b !important;
+  color: var(--eb-placeholder) !important;
   opacity: 1 !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-input:hover {
   border-color: var(--eb-sheet-border-strong) !important;
-  background: rgba(15, 23, 42, 0.9) !important;
+  background: #141820 !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-input:focus-visible {
@@ -1147,9 +1246,9 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
   margin-top: auto;
   padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--eb-sheet-border);
-  background: rgba(8, 13, 26, 0.9);
-  backdrop-filter: blur(14px) saturate(150%);
-  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  background: rgba(11, 13, 18, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 @media (min-width: 768px) {
@@ -1186,15 +1285,15 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-primary {
-  border: 1px solid rgba(79, 140, 255, 0.3) !important;
+  border: 1px solid rgba(190, 198, 210, 0.2) !important;
   border-radius: 0.375rem !important;
   background: linear-gradient(
     180deg,
-    rgba(71, 85, 105, 0.95) 0%,
-    rgba(30, 41, 59, 0.98) 55%,
-    rgba(37, 99, 235, 0.55) 100%
+    #1a1d24 0%,
+    #151820 52%,
+    color-mix(in srgb, #12151c 94%, #4f8cff 6%) 100%
   ) !important;
-  color: #f8fafc !important;
+  color: #f4f7fb !important;
   font-weight: 500 !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
@@ -1208,14 +1307,696 @@ body.estimate-builder-active [data-radix-dialog-overlay] {
 .estimate-builder.eb-sheet-glass .eb-sheet-secondary {
   border: 1px solid var(--eb-sheet-border) !important;
   border-radius: 0.375rem !important;
-  background: rgba(15, 23, 42, 0.5) !important;
-  color: #cbd5e1 !important;
+  background: rgba(16, 19, 26, 0.65) !important;
+  color: var(--eb-secondary) !important;
   font-weight: 500 !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
 }
 
 .estimate-builder.eb-sheet-glass .eb-sheet-secondary:hover:not(:disabled) {
   border-color: var(--eb-sheet-border-strong) !important;
-  background: rgba(30, 41, 59, 0.55) !important;
-  color: #f1f5f9 !important;
+  background: rgba(24, 27, 35, 0.78) !important;
+  color: var(--eb-text) !important;
+}
+
+/* Estimate Overview — desktop sticky (/estimates/new only) */
+.estimate-builder-new.estimate-builder {
+  overflow: visible;
+}
+
+.estimate-builder-new .eb-builder-content {
+  overflow: visible;
+}
+
+@media (min-width: 1024px) {
+  .estimate-builder-new .eb-estimate-overview-sticky {
+    position: sticky;
+    top: 5rem;
+    align-self: start;
+    max-height: calc(100vh - 6rem);
+    z-index: 1;
+  }
+
+  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar {
+    max-height: calc(100vh - 6rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar-float {
+    position: static;
+    top: auto;
+  }
+
+  .estimate-builder-new .eb-estimate-overview-sticky {
+    --overview-scroll-y: 0px;
+  }
+
+  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar {
+    transition:
+      border-color 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      background 200ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    transform: translate3d(0, var(--overview-scroll-y, 0px), 0);
+  }
+
+  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar::before {
+    transition: background 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar {
+    border-color: rgba(205, 213, 225, 0.2);
+    background: linear-gradient(
+      168deg,
+      rgba(22, 25, 32, 0.98) 0%,
+      var(--eb-panel-strong) 52%,
+      var(--eb-panel) 100%
+    );
+    box-shadow:
+      0 18px 45px rgba(0, 0, 0, 0.28),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    transform: translate3d(0, calc(var(--overview-scroll-y, 0px) - 1px), 0);
+  }
+
+  .estimate-builder-new .eb-estimate-overview-sticky.is-floating.is-scroll-nudge .eb-glass-sidebar {
+    transition:
+      border-color 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 180ms cubic-bezier(0.22, 1, 0.36, 1),
+      background 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar::before {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.055), transparent 35%);
+  }
+
+  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar:hover,
+  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar:focus-within {
+    border-color: rgba(205, 213, 225, 0.22);
+    box-shadow:
+      0 20px 48px rgba(0, 0, 0, 0.3),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.045);
+    transform: translate3d(0, calc(var(--overview-scroll-y, 0px) - 1px), 0);
+  }
+
+  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar:hover,
+  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar:focus-within {
+    border-color: rgba(205, 213, 225, 0.24);
+    box-shadow:
+      0 22px 52px rgba(0, 0, 0, 0.32),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.055);
+    transform: translate3d(0, calc(var(--overview-scroll-y, 0px) - 2px), 0);
+  }
+
+  .estimate-builder-new
+    .eb-estimate-overview-sticky.is-floating.is-scroll-nudge
+    .eb-glass-sidebar:hover,
+  .estimate-builder-new
+    .eb-estimate-overview-sticky.is-floating.is-scroll-nudge
+    .eb-glass-sidebar:focus-within {
+    transform: translate3d(0, calc(var(--overview-scroll-y, 0px) - 1px), 0);
+  }
+}
+
+@media (min-width: 1024px) and (prefers-reduced-motion: reduce) {
+  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar,
+  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar::before {
+    transition:
+      border-color 120ms ease,
+      box-shadow 120ms ease,
+      background 120ms ease;
+  }
+
+  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar,
+  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar,
+  .estimate-builder-new .eb-estimate-overview-sticky.is-floating.is-scroll-nudge .eb-glass-sidebar,
+  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar:hover,
+  .estimate-builder-new .eb-estimate-overview-sticky .eb-glass-sidebar:focus-within,
+  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar:hover,
+  .estimate-builder-new .eb-estimate-overview-sticky.is-floating .eb-glass-sidebar:focus-within {
+    transform: none !important;
+  }
+}
+
+/* iOS typography overrides — /estimates/new canvas + portaled drawers */
+.estimate-builder-new .eb-draft-badge-pill {
+  font-size: 0.71875rem;
+  letter-spacing: 0.035em;
+}
+
+.estimate-builder-new .eb-composer-hint {
+  font-size: 0.6875rem;
+  letter-spacing: 0.055em;
+}
+
+.estimate-builder-new .eb-payment-percent-helper {
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  line-height: 1.35;
+  color: var(--eb-text-muted);
+}
+
+.estimate-builder-new .proposal-scope-inline-editor {
+  font-size: 0.875rem;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+.estimate-builder-new details.group > summary {
+  font-size: 0.71875rem;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+}
+
+.estimate-builder-new .eb-btn-primary,
+.estimate-builder-new .eb-btn-ghost,
+.estimate-builder-new .eb-btn-text,
+.estimate-builder-new .eb-add-section,
+.estimate-builder-new .eb-action-secondary,
+.estimate-builder-new .eb-add-line {
+  font-size: 0.875rem;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.estimate-builder-new .eb-btn-primary {
+  font-weight: 600;
+}
+
+.estimate-builder-new .eb-input,
+.estimate-builder-new .eb-sheet-input,
+.estimate-builder-new .eb-glass-panel :where(input, textarea, select),
+.estimate-builder-new .eb-glass-scope :where(input, textarea, select) {
+  font-size: 0.875rem !important;
+  line-height: 1.4 !important;
+  font-weight: 400 !important;
+}
+
+.estimate-builder-new .eb-scope-section-header :where(input, textarea),
+.estimate-builder-new .eb-section-header-chip :where(input) {
+  font-size: 0.9375rem !important;
+  line-height: 1.35 !important;
+  font-weight: 600 !important;
+}
+
+.estimate-builder-new .eb-gold-total {
+  letter-spacing: -0.02em;
+}
+
+.estimate-builder.eb-sheet-glass.estimate-builder-new .eb-sheet-title {
+  font-size: 1rem;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.estimate-builder.eb-sheet-glass.estimate-builder-new .eb-sheet-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.25;
+}
+
+.estimate-builder.eb-sheet-glass.estimate-builder-new .eb-sheet-section-label {
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+}
+
+.estimate-builder.eb-sheet-glass.estimate-builder-new .eb-sheet-input,
+.estimate-builder.eb-sheet-glass.estimate-builder-new textarea.eb-sheet-input,
+.estimate-builder.eb-sheet-glass.estimate-builder-new select.eb-sheet-input {
+  font-size: 0.875rem !important;
+  line-height: 1.4 !important;
+}
+
+.estimate-builder.eb-sheet-glass.estimate-builder-new .eb-sheet-primary,
+.estimate-builder.eb-sheet-glass.estimate-builder-new .eb-sheet-secondary {
+  font-size: 0.875rem;
+  line-height: 1.35;
+  font-weight: 500;
+}
+
+.estimate-builder.eb-sheet-glass.estimate-builder-new .eb-sheet-primary {
+  font-weight: 600;
+}
+
+.estimate-builder.eb-sheet-glass.estimate-builder-new .eb-proposal-scope-editor,
+.estimate-builder.eb-sheet-glass.estimate-builder-new .eb-proposal-scope-field {
+  font-size: 0.875rem !important;
+  line-height: 1.4 !important;
+}
+
+/* Scope of work — editor rhythm (/estimates/new) */
+.estimate-builder-new .eb-scope-work-panel > .flex:first-child {
+  margin-bottom: 1rem;
+}
+
+.estimate-builder-new .eb-scope-sections-list {
+  gap: 1.25rem;
+}
+
+.estimate-builder-new .eb-scope-section-header {
+  align-items: center;
+  border-bottom-color: rgba(255, 255, 255, 0.04);
+  padding-bottom: 0.625rem;
+}
+
+.estimate-builder-new .eb-scope-section-header > span:last-child {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding-right: 0.125rem;
+}
+
+.estimate-builder-new .eb-scope-section-lines {
+  margin-top: 0.625rem;
+  gap: 0.5rem;
+}
+
+.estimate-builder-new .eb-section-header-chip {
+  border-color: rgba(190, 198, 210, 0.09);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.estimate-builder-new .eb-section-header-chip:hover {
+  border-color: rgba(205, 213, 225, 0.14);
+}
+
+/* Scope line items — compact layout (/estimates/new) */
+.estimate-builder-new .eb-line-item-card {
+  padding: 0.375rem 0.4375rem 0.5625rem;
+  border-color: rgba(190, 198, 210, 0.09);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.estimate-builder-new .eb-line-item-card:hover {
+  border-color: rgba(205, 213, 225, 0.17);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 3px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Legacy first row (estimate editor / non-grid cards) */
+.estimate-builder-new .eb-line-item-first-row {
+  padding-inline: 0.25rem;
+}
+
+.estimate-builder-new .eb-line-item-first-row--pricing {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 56px 112px 72px;
+  column-gap: 0.625rem;
+  row-gap: 0.375rem;
+  align-items: end;
+  padding-top: 0.125rem;
+}
+
+.estimate-builder-new .eb-line-item-title-field {
+  min-width: 0;
+}
+
+.estimate-builder-new .eb-line-item-first-row--pricing .eb-line-item-pricing-wrap {
+  display: contents;
+}
+
+.estimate-builder-new .eb-line-pricing-qty,
+.estimate-builder-new .eb-line-pricing-unit,
+.estimate-builder-new .eb-line-pricing-total-col {
+  min-width: 0;
+}
+
+.estimate-builder-new .eb-line-pricing-total-col {
+  padding-right: 0.125rem;
+}
+
+@media (max-width: 767px) {
+  .estimate-builder-new .eb-line-item-first-row--pricing {
+    grid-template-columns: 32px minmax(0, 1fr);
+    align-items: start;
+    row-gap: 0.5rem;
+  }
+
+  .estimate-builder-new .eb-line-item-first-row--pricing .eb-line-item-pricing-wrap {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 0.625rem;
+    padding-left: 0;
+    width: 100%;
+  }
+
+  .estimate-builder-new .eb-line-item-first-row--pricing .eb-line-index {
+    align-self: start;
+    padding-top: 1.375rem;
+  }
+}
+
+/* Unified line item grid (/estimates/new) */
+.estimate-builder-new .eb-line-item-grid--pricing {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 56px 112px 72px;
+  column-gap: 0.625rem;
+  row-gap: 0.25rem;
+  padding-inline: 0.25rem;
+  padding-top: 0.125rem;
+}
+
+.estimate-builder-new .eb-line-item-grid--pricing > .eb-line-index {
+  grid-column: 1;
+  grid-row: 2;
+  align-self: center;
+  justify-self: start;
+}
+
+.estimate-builder-new .eb-line-item-grid--pricing > .eb-line-title-label {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  min-width: 0;
+}
+
+.estimate-builder-new .eb-line-item-grid--pricing > .eb-line-title-input-wrap {
+  grid-column: 2;
+  grid-row: 2;
+  min-width: 0;
+}
+
+.estimate-builder-new .eb-line-item-grid--pricing .eb-line-item-pricing-wrap {
+  display: contents;
+}
+
+.estimate-builder-new .eb-line-item-grid--pricing .eb-line-field-stack-contents {
+  display: contents;
+}
+
+.estimate-builder-new .eb-line-item-grid--pricing .eb-line-qty-label {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: end;
+}
+
+.estimate-builder-new .eb-line-item-grid--pricing .eb-line-qty-input {
+  grid-column: 3;
+  grid-row: 2;
+  align-self: center;
+}
+
+.estimate-builder-new .eb-line-item-grid--pricing .eb-line-unit-label {
+  grid-column: 4;
+  grid-row: 1;
+  align-self: end;
+}
+
+.estimate-builder-new .eb-line-item-grid--pricing .eb-line-unit-input {
+  grid-column: 4;
+  grid-row: 2;
+  align-self: center;
+}
+
+.estimate-builder-new
+  .eb-line-item-grid--pricing
+  .eb-line-pricing-total-col.eb-line-total-action-area {
+  grid-column: 5;
+  grid-row: 1 / 3;
+  align-self: end;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.375rem;
+  min-width: 0;
+  padding-right: 0;
+}
+
+.estimate-builder-new .eb-line-total-block {
+  display: flex;
+  min-width: 3.5rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  text-align: right;
+}
+
+.estimate-builder-new .eb-line-total-label {
+  width: 100%;
+  text-align: right;
+}
+
+.estimate-builder-new .eb-line-total-amount {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 2rem;
+}
+
+.estimate-builder-new .eb-line-item-more-trigger {
+  margin-top: -0.125rem;
+  flex-shrink: 0;
+}
+
+.estimate-builder-new .eb-line-item-card:hover .eb-line-item-more-trigger,
+.estimate-builder-new .eb-line-item-card:focus-within .eb-line-item-more-trigger {
+  opacity: 1;
+}
+
+.estimate-builder-new .eb-line-item-more-menu {
+  border-color: rgba(190, 198, 210, 0.12) !important;
+  background: rgba(14, 16, 22, 0.96) !important;
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+.estimate-builder-new .eb-line-item-more-menu-item:hover,
+.estimate-builder-new .eb-line-item-more-menu-item:focus {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #f6f7fa !important;
+}
+
+.estimate-builder-new .eb-line-item-more-menu-item--danger {
+  color: #c4a8a8 !important;
+}
+
+.estimate-builder-new .eb-line-item-more-menu-item--danger:hover,
+.estimate-builder-new .eb-line-item-more-menu-item--danger:focus {
+  color: #d8bcbc !important;
+}
+
+.estimate-builder-new .eb-line-item-grid--pricing > .eb-line-item-description-block {
+  grid-column: 2 / -1;
+  grid-row: 3;
+  margin-top: 0.375rem;
+  padding-inline: 0;
+}
+
+@media (max-width: 767px) {
+  .estimate-builder-new .eb-line-item-grid--pricing {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-item-pricing-wrap {
+    display: grid;
+    grid-column: 2 / -1;
+    grid-row: 3;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 0.625rem;
+    row-gap: 0.25rem;
+    margin-top: 0.25rem;
+  }
+
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-field-stack-contents {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  }
+
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-qty-label,
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-qty-input,
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-unit-label,
+  .estimate-builder-new .eb-line-item-grid--pricing .eb-line-unit-input,
+  .estimate-builder-new
+    .eb-line-item-grid--pricing
+    .eb-line-pricing-total-col.eb-line-total-action-area {
+    grid-column: auto;
+    grid-row: auto;
+    align-self: auto;
+    justify-content: flex-end;
+  }
+
+  .estimate-builder-new .eb-line-item-more-trigger {
+    margin-top: 0;
+  }
+
+  .estimate-builder-new .eb-line-item-grid--pricing > .eb-line-item-description-block {
+    grid-row: 4;
+    margin-top: 0.25rem;
+  }
+}
+
+.estimate-builder-new .eb-line-item-description-block {
+  padding-inline: 0.25rem;
+  margin-top: 0.125rem;
+}
+
+.estimate-builder-new .eb-line-item-grid--pricing > .eb-line-item-description-block {
+  margin-top: 0.375rem;
+}
+
+.estimate-builder-new .eb-line-item-description-block .eb-scope-editor-surface {
+  margin-top: 0.125rem;
+  border-color: rgba(190, 198, 210, 0.07);
+  background: rgba(11, 13, 18, 0.58);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.estimate-builder-new .eb-line-item-description-block .eb-scope-editor-surface:focus-within {
+  border-color: rgba(79, 140, 255, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 0 0 2px rgba(79, 140, 255, 0.12);
+}
+
+.estimate-builder-new .eb-line-item-description-block .eb-scope-editor-toolbar {
+  border-bottom-color: rgba(190, 198, 210, 0.05);
+  background: rgba(10, 12, 17, 0.42);
+}
+
+.estimate-builder-new .eb-line-item-actions-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+  padding-right: 0.75rem;
+  padding-bottom: 0.25rem;
+  min-height: 1.75rem;
+  opacity: 0.9;
+  transition: opacity var(--eb-dur-fast) var(--eb-ease);
+}
+
+@media (min-width: 768px) {
+  .estimate-builder-new .eb-line-item-actions-bar {
+    padding-right: 0.8125rem;
+  }
+
+  .estimate-builder-new .eb-line-item-card .eb-line-item-actions-bar {
+    opacity: 0.7;
+  }
+
+  .estimate-builder-new .eb-line-item-card:hover .eb-line-item-actions-bar,
+  .estimate-builder-new .eb-line-item-card:focus-within .eb-line-item-actions-bar {
+    opacity: 1;
+  }
+}
+
+.estimate-builder-new .eb-line-item-actions-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 2px;
+  border-radius: 10px;
+  border: 1px solid rgba(190, 198, 210, 0.06);
+  background: rgba(255, 255, 255, 0.012);
+  transition:
+    border-color var(--eb-dur-fast) var(--eb-ease),
+    background var(--eb-dur-fast) var(--eb-ease);
+}
+
+.estimate-builder-new .eb-line-item-card:hover .eb-line-item-actions-inner,
+.estimate-builder-new .eb-line-item-card:focus-within .eb-line-item-actions-inner {
+  border-color: rgba(190, 198, 210, 0.11);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.estimate-builder-new .eb-line-item-icon {
+  height: 1.75rem !important;
+  width: 1.75rem !important;
+  min-height: 1.75rem !important;
+  min-width: 1.75rem !important;
+}
+
+.estimate-builder-new .eb-line-item-icon:hover:not(:disabled) {
+  background: rgba(24, 27, 35, 0.5) !important;
+}
+
+.estimate-builder-new .eb-line-index {
+  color: var(--eb-empty);
+}
+
+.estimate-builder-new .eb-line-item-first-row:not(.eb-line-item-first-row--pricing) {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  column-gap: 0.625rem;
+  align-items: center;
+}
+
+.estimate-builder-new
+  .eb-line-item-first-row:not(.eb-line-item-first-row--pricing)
+  > .eb-line-index {
+  align-self: center;
+}
+
+.estimate-builder-new .eb-scope-editor-toolbar {
+  border-bottom: 1px solid rgba(190, 198, 210, 0.06);
+  background: rgba(12, 14, 19, 0.4);
+}
+
+.estimate-builder-new .eb-scope-editor-toolbar button {
+  height: 1.5rem !important;
+  width: 1.5rem !important;
+  min-height: 1.5rem !important;
+  min-width: 1.5rem !important;
+}
+
+.estimate-builder-new .proposal-scope-inline-editor {
+  min-height: 5.5rem;
+  max-height: 7rem;
+  padding-top: 0.3125rem;
+  padding-bottom: 0.3125rem;
+}
+
+@media (min-width: 768px) {
+  .estimate-builder-new .proposal-scope-inline-editor {
+    min-height: 5.625rem;
+  }
+}
+
+.estimate-builder-new .proposal-scope-inline-editor:empty::before {
+  line-height: 1.4;
+}
+
+.estimate-builder-new .eb-add-line {
+  color: var(--eb-secondary);
+  font-weight: 500;
+  border: 1px solid rgba(190, 198, 210, 0.06);
+  background: transparent;
+  box-shadow: none;
+  opacity: 0.82;
+}
+
+.estimate-builder-new .eb-add-line:hover {
+  color: var(--eb-text-soft);
+  background: rgba(255, 255, 255, 0.025);
+  border-color: rgba(190, 198, 210, 0.11);
+  opacity: 1;
+}
+
+.estimate-builder-new .eb-section-header-chip {
+  padding: 0.125rem 0.375rem 0.125rem 0.3rem;
+  gap: 0.3125rem;
+  min-height: 2rem;
+}
+
+.estimate-builder-new .eb-section-header-chip-icon {
+  margin-top: 0;
+}
+
+.estimate-builder-new .eb-line-pricing-grid :where(input) {
+  height: 2rem !important;
+  min-height: 2rem !important;
+}
+
+.estimate-builder-new .eb-line-pricing-total {
+  display: flex;
+  height: 2rem;
+  align-items: center;
 }

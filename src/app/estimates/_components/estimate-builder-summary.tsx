@@ -35,7 +35,7 @@ export function EstimateBuilderSummary({
     return (
       <div className={shellClass} aria-label="Estimate overview">
         <SummaryHeader />
-        <p className="text-[11px] leading-snug text-slate-400">Add scope lines to see totals.</p>
+        <p className="text-[13px] leading-snug text-[#A7B0C0]">Add scope lines to see totals.</p>
       </div>
     );
   }
@@ -57,13 +57,13 @@ export function EstimateBuilderSummary({
 
       {paymentSummary && paymentSummary.milestoneCount > 0 ? (
         <div className="mb-3 border-b border-white/[0.05] pb-2.5">
-          <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-400">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-[#9EA8B8]">
             Payments
           </p>
-          <p className="mt-1 text-[11px] leading-snug text-slate-400">
+          <p className="mt-1 text-[12.5px] leading-snug text-[#929CAF]">
             {paymentSummary.milestoneCount} milestone
             {paymentSummary.milestoneCount === 1 ? "" : "s"} ·{" "}
-            <span className="font-medium tabular-nums text-slate-200 [font-feature-settings:'tnum']">
+            <span className="font-medium tabular-nums text-[#D8DEE8] [font-feature-settings:'tnum']">
               {fmt(paymentSummary.scheduledTotal)}
             </span>{" "}
             scheduled
@@ -88,10 +88,12 @@ export function EstimateBuilderSummary({
       </div>
 
       <div className="mt-4 border-t border-white/[0.08] pt-3.5">
-        <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">Total</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-[#9EA8B8]">
+          Total
+        </p>
         <p
           className={cn(
-            "mt-1.5 break-words text-[clamp(1.2rem,4vw,1.6rem)] font-semibold leading-none tabular-nums tracking-tight [font-feature-settings:'tnum']",
+            "mt-1.5 break-words text-[clamp(1.25rem,4vw,1.625rem)] font-semibold leading-none tabular-nums tracking-[-0.02em] [font-feature-settings:'tnum']",
             EB.goldTotal
           )}
         >
@@ -105,7 +107,7 @@ export function EstimateBuilderSummary({
 function SummaryHeader(): React.ReactElement {
   return (
     <div className="mb-3.5 border-b border-white/[0.06] pb-2.5">
-      <p className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-[#9EA8B8]">
         Estimate overview
       </p>
     </div>

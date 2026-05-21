@@ -12,6 +12,7 @@ export type EditorLineItem = {
   unit: string;
   unitPrice: number;
   markupPct: number;
+  hideAmountOnPdf: boolean;
 };
 
 export function splitLineItemDesc(desc: string): { title: string; description: string } {
@@ -53,6 +54,7 @@ export function rowToEditorLineItem(row: EstimateItemRow): EditorLineItem {
     unit: row.unit,
     unitPrice: roundEstimateCurrencyValue(row.unitCost),
     markupPct: row.markupPct,
+    hideAmountOnPdf: Boolean(row.hideAmountOnPdf),
   };
 }
 
@@ -66,5 +68,6 @@ export function createEmptyLineItem(costCode: string, markupPct = 0.1): EditorLi
     unit: "EA",
     unitPrice: 0,
     markupPct,
+    hideAmountOnPdf: false,
   };
 }

@@ -46,6 +46,7 @@ export type EstimateItemRow = {
   unit: string;
   unitCost: number;
   markupPct: number;
+  hideAmountOnPdf: boolean;
 };
 
 export type EstimateSummary = {
@@ -356,6 +357,7 @@ export async function createEstimateWithItemsWithClient(
       unit: string;
       unitCost: number;
       markupPct: number;
+      hideAmountOnPdf?: boolean;
     }>;
     paymentSchedule?: Array<{
       title: string;
@@ -402,6 +404,7 @@ export async function createEstimateWithItemsWithClient(
         unit: it.unit,
         unit_cost: it.unitCost,
         markup_pct: it.markupPct,
+        hide_amount_on_pdf: Boolean(it.hideAmountOnPdf),
       });
       if (error) throw new Error(error.message ?? "Failed to create estimate item.");
     }
@@ -450,6 +453,7 @@ export async function createEstimateWithItems(payload: {
     unit: string;
     unitCost: number;
     markupPct: number;
+    hideAmountOnPdf?: boolean;
   }>;
   paymentSchedule?: Array<{
     title: string;
@@ -678,16 +682,7 @@ export async function getEstimateItems(
     if (isMissingTable(error)) return [];
     throw new Error(error.message);
   }
-  return (rows ?? []).map((r: Record<string, unknown>) => ({
-    id: r.id as string,
-    estimateId: r.estimate_id as string,
-    costCode: (r.cost_code as string) ?? "",
-    desc: (r.desc as string) ?? "",
-    qty: Number(r.qty),
-    unit: (r.unit as string) ?? "EA",
-    unitCost: Number(r.unit_cost),
-    markupPct: Number(r.markup_pct),
-  }));
+  return (rows ?? []).map((r) => mapEstimateItemRow(r as Record<string, unknown>));
 }
 
 function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
@@ -733,6 +728,7 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
         unit: (it.unit as string) ?? "EA",
         unitCost: Number(it.unitCost) || 0,
         markupPct: Number(it.markupPct) || 0,
+        hideAmountOnPdf: Boolean(it.hideAmountOnPdf),
       }))
     : [];
 
@@ -947,6 +943,7 @@ export async function createNewVersionFromSnapshot(estimateId: string): Promise<
         unit: it.unit,
         unit_cost: it.unitCost,
         markup_pct: it.markupPct,
+        hide_amount_on_pdf: Boolean(it.hideAmountOnPdf),
       }))
     );
   }
@@ -1113,6 +1110,7 @@ type LineItemInsertPayload = {
   unit: string;
   unitCost: number;
   markupPct: number;
+  hideAmountOnPdf?: boolean;
 };
 
 function mapEstimateItemRow(r: Record<string, unknown>): EstimateItemRow {
@@ -1125,6 +1123,7 @@ function mapEstimateItemRow(r: Record<string, unknown>): EstimateItemRow {
     unit: (r.unit as string) ?? "EA",
     unitCost: Number(r.unit_cost),
     markupPct: Number(r.markup_pct),
+    hideAmountOnPdf: Boolean(r.hide_amount_on_pdf),
   };
 }
 
@@ -1145,6 +1144,7 @@ export async function addLineItemWithClient(
       unit: item.unit,
       unit_cost: item.unitCost,
       markup_pct: item.markupPct,
+      hide_amount_on_pdf: Boolean(item.hideAmountOnPdf),
     })
     .select("*")
     .single();
@@ -1451,7 +1451,14 @@ export async function updateLineItemWithClient(
   c: SupabaseClient,
   estimateId: string,
   itemId: string,
-  payload: { desc?: string; qty?: number; unit?: string; unitCost?: number; markupPct?: number }
+  payload: {
+    desc?: string;
+    qty?: number;
+    unit?: string;
+    unitCost?: number;
+    markupPct?: number;
+    hideAmountOnPdf?: boolean;
+  }
 ): Promise<boolean> {
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
@@ -1461,6 +1468,7 @@ export async function updateLineItemWithClient(
   if (payload.unit != null) up.unit = payload.unit;
   if (payload.unitCost != null) up.unit_cost = payload.unitCost;
   if (payload.markupPct != null) up.markup_pct = payload.markupPct;
+  if (payload.hideAmountOnPdf != null) up.hide_amount_on_pdf = payload.hideAmountOnPdf;
   if (Object.keys(up).length === 0) return true;
   const { error } = await c
     .from("estimate_items")
@@ -1585,6 +1593,7 @@ export async function duplicateLineItemWithClient(
     unit: (row.unit as string) ?? "EA",
     unitCost: Number(row.unit_cost),
     markupPct: Number(row.markup_pct),
+    hideAmountOnPdf: Boolean(row.hide_amount_on_pdf),
   });
 }
 

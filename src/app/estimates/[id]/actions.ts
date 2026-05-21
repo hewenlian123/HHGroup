@@ -547,6 +547,28 @@ export async function createEstimateCategoryWithCodeAction(
   }
 }
 
+export async function toggleLineItemHideAmountOnPdfAction(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
+  const estimateId = formData.get("estimateId");
+  const itemId = formData.get("itemId");
+  const hideRaw = formData.get("hideAmountOnPdf");
+  if (typeof estimateId !== "string" || typeof itemId !== "string") {
+    return { ok: false, error: "Missing estimate or item id" };
+  }
+  try {
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const hideAmountOnPdf = hideRaw === "1" || hideRaw === "true";
+    const ok = await updateLineItemWithClient(db, estimateId, itemId, { hideAmountOnPdf });
+    if (!ok) return { ok: false, error: "Could not update line item." };
+    revalidateEstimatePaths(estimateId);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Could not update line item." };
+  }
+}
+
 export async function updateLineItemAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   const itemId = formData.get("itemId");
