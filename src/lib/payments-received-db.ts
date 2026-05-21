@@ -6,6 +6,7 @@
 
 import { getSupabaseClient } from "@/lib/supabase";
 import { createDepositFromPayment } from "@/lib/deposits-db";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const PAYMENT_METHODS = ["Check", "ACH", "Wire", "Cash", "Credit Card"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
@@ -90,8 +91,8 @@ export type CreatePaymentReceivedAttachmentPayload = {
   file_type: PaymentAttachmentFileType;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -489,12 +490,20 @@ async function syncInvoicePaymentRow(
     payment_received_id: paymentId,
   };
   let res = await c.from("invoice_payments").update(full).eq("id", invoicePaymentId);
+  if (res.error && isInvoicePaymentDateWriteUnsupported(res.error)) {
+    const withoutPaymentDate: Partial<typeof full> = { ...full };
+    delete withoutPaymentDate.payment_date;
+    res = await c.from("invoice_payments").update(withoutPaymentDate).eq("id", invoicePaymentId);
+  }
   if (res.error && isMissingColumn(res.error)) {
     const withoutLink: Partial<typeof full> = { ...full };
     delete withoutLink.payment_received_id;
     res = await c.from("invoice_payments").update(withoutLink).eq("id", invoicePaymentId);
   }
-  if (res.error && isMissingColumn(res.error)) {
+  if (
+    res.error &&
+    (isMissingColumn(res.error) || isInvoicePaymentDateWriteUnsupported(res.error))
+  ) {
     const withoutPaymentDate: Partial<typeof full> = { ...full };
     delete withoutPaymentDate.payment_date;
     delete withoutPaymentDate.payment_received_id;
@@ -725,10 +734,16 @@ function isMissingColumn(err: { message?: string } | null): boolean {
   return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
 }
 
+function isInvoicePaymentDateWriteUnsupported(err: { message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return /payment_date/i.test(m) && /non-DEFAULT|generated|cannot insert|cannot update/i.test(m);
+}
+
 export async function createPaymentReceived(
-  payload: CreatePaymentReceivedPayload
+  payload: CreatePaymentReceivedPayload,
+  explicitClient?: SupabaseClient
 ): Promise<PaymentReceivedRow> {
-  const c = client();
+  const c = client(explicitClient);
   const paymentDate = payload.payment_date.slice(0, 10);
 
   // Financial safety checks:
@@ -842,16 +857,19 @@ export async function createPaymentReceived(
   const payment = row;
 
   // Auto-create deposit record (payment_id, invoice_id, project_id, customer_name, deposit_account, amount, payment_method, deposit_date)
-  await createDepositFromPayment({
-    id: payment.id,
-    invoice_id: payment.invoice_id,
-    project_id: payment.project_id,
-    amount: payment.amount,
-    payment_date: payment.payment_date,
-    deposit_account: payment.deposit_account,
-    customer_name: payment.customer_name,
-    payment_method: payment.payment_method ?? null,
-  });
+  await createDepositFromPayment(
+    {
+      id: payment.id,
+      invoice_id: payment.invoice_id,
+      project_id: payment.project_id,
+      amount: payment.amount,
+      payment_date: payment.payment_date,
+      deposit_account: payment.deposit_account,
+      customer_name: payment.customer_name,
+      payment_method: payment.payment_method ?? null,
+    },
+    c
+  );
 
   // Sync to invoice_payments so balance / AR derivation sees the payment.
   const syncFull = {
@@ -865,12 +883,20 @@ export async function createPaymentReceived(
     payment_received_id: payment.id,
   };
   let syncRes = await c.from("invoice_payments").insert(syncFull);
+  if (syncRes.error && isInvoicePaymentDateWriteUnsupported(syncRes.error)) {
+    const withoutPaymentDate: Partial<typeof syncFull> = { ...syncFull };
+    delete withoutPaymentDate.payment_date;
+    syncRes = await c.from("invoice_payments").insert(withoutPaymentDate);
+  }
   if (syncRes.error && isMissingColumn(syncRes.error)) {
     const withoutLink: Partial<typeof syncFull> = { ...syncFull };
     delete withoutLink.payment_received_id;
     syncRes = await c.from("invoice_payments").insert(withoutLink);
   }
-  if (syncRes.error && isMissingColumn(syncRes.error)) {
+  if (
+    syncRes.error &&
+    (isMissingColumn(syncRes.error) || isInvoicePaymentDateWriteUnsupported(syncRes.error))
+  ) {
     syncRes = await c.from("invoice_payments").insert({
       invoice_id: payload.invoice_id,
       paid_at: paymentDate,

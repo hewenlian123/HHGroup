@@ -221,6 +221,7 @@ export default function NewInvoiceClient() {
       const res = await createInvoiceDraftAction({
         invoiceNo,
         projectId,
+        customerId: customerId || null,
         clientName,
         issueDate,
         dueDate,
@@ -261,6 +262,7 @@ export default function NewInvoiceClient() {
       const res = await createInvoiceDraftAction({
         invoiceNo,
         projectId,
+        customerId: customerId || null,
         clientName,
         issueDate,
         dueDate,

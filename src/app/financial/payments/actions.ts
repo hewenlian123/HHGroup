@@ -1,11 +1,51 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import {
+  createPaymentReceived as createPaymentReceivedData,
+  type CreatePaymentReceivedPayload,
+} from "@/lib/payments-received-db";
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
+}
+
+function revalidatePaymentPaths(invoiceId?: string | null, projectId?: string | null) {
+  revalidatePath("/financial/payments");
+  revalidatePath("/financial/payments-received");
+  revalidatePath("/financial/invoices");
+  if (invoiceId) {
+    revalidatePath(`/financial/invoices/${invoiceId}`);
+    revalidatePath(`/financial/invoices/${invoiceId}/preview`);
+    revalidatePath(`/financial/invoices/${invoiceId}/print`);
+  }
+  if (projectId) revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/financial/owner");
+}
+
+export async function createPaymentReceivedAction(
+  payload: CreatePaymentReceivedPayload
+): Promise<{ ok: true; paymentId: string } | { ok: false; error: string }> {
+  try {
+    const admin = getServerSupabaseAdmin();
+    const c = admin ?? (await createServerSupabaseClient());
+    if (!c) return { ok: false, error: "Supabase is not configured." };
+    if (!admin) {
+      const {
+        data: { user },
+        error: authError,
+      } = await c.auth.getUser();
+      if (authError || !user) return { ok: false, error: "You must be signed in." };
+    }
+
+    const payment = await createPaymentReceivedData(payload, c);
+    revalidatePaymentPaths(payment.invoice_id, payment.project_id ?? payload.project_id ?? null);
+    return { ok: true, paymentId: payment.id };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to record payment." };
+  }
 }
 
 export async function deletePaymentReceivedAction(
@@ -13,15 +53,21 @@ export async function deletePaymentReceivedAction(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
     const admin = getServerSupabaseAdmin();
-    const server = getServerSupabase();
-    const c = admin ?? server;
+    const c = admin ?? (await createServerSupabaseClient());
     if (!c) return { ok: false, error: "Supabase is not configured." };
+    if (!admin) {
+      const {
+        data: { user },
+        error: authError,
+      } = await c.auth.getUser();
+      if (authError || !user) return { ok: false, error: "You must be signed in." };
+    }
 
     // Financial safety system:
     // payments_received with deposits cannot be deleted; void instead.
     const { data: pay, error: fetchErr } = await c
       .from("payments_received")
-      .select("id, invoice_id, payment_date, amount, notes, deposit_account, status")
+      .select("id, invoice_id, project_id, payment_date, amount, notes, deposit_account, status")
       .eq("id", paymentId)
       .maybeSingle();
     if (fetchErr) throw new Error(fetchErr.message ?? "Failed to load payment.");
@@ -80,8 +126,10 @@ export async function deletePaymentReceivedAction(
       .eq("id", paymentId);
     if (updErr) throw new Error(updErr.message ?? "Failed to void payment.");
 
-    revalidatePath("/financial/payments");
-    revalidatePath("/financial/payments-received");
+    revalidatePaymentPaths(
+      (pay as { invoice_id?: string | null }).invoice_id ?? null,
+      (pay as { project_id?: string | null }).project_id ?? null
+    );
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to delete payment." };

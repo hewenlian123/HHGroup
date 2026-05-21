@@ -22,6 +22,7 @@ export type Invoice = {
   id: string;
   invoiceNo: string;
   projectId: string;
+  customerId?: string | null;
   clientName: string;
   issueDate: string;
   dueDate: string;
@@ -48,6 +49,7 @@ type InvoiceRow = {
   id: string;
   invoice_no?: string;
   project_id: string | null;
+  customer_id?: string | null;
   client_name: string;
   issue_date?: string;
   created_at?: string;
@@ -132,6 +134,25 @@ function isTestInvoice(inv: Invoice): boolean {
     haystack.includes("playwright") ||
     haystack.includes("body balance") ||
     /\bpw[-\s_]/i.test(haystack)
+  );
+}
+
+function normalizeReceivableStatus(status: string | null | undefined): string {
+  return String(status ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/-/g, "_");
+}
+
+function invoiceCountsTowardReceivable(status: string | null | undefined): boolean {
+  const normalized = normalizeReceivableStatus(status);
+  return (
+    normalized !== "draft" &&
+    normalized !== "void" &&
+    normalized !== "voided" &&
+    normalized !== "cancelled" &&
+    normalized !== "canceled"
   );
 }
 
@@ -258,6 +279,7 @@ function toInvoice(row: InvoiceRow, items: InvoiceItemRow[]): Invoice {
     id: row.id,
     invoiceNo: row.invoice_no ?? row.id.slice(0, 8),
     projectId: row.project_id ?? "",
+    customerId: row.customer_id ?? null,
     clientName: row.client_name ?? "",
     issueDate,
     dueDate,
@@ -300,7 +322,7 @@ async function getInvoiceItemsOrEmpty(invoiceId: string): Promise<InvoiceItemRow
 
 /** Select columns; paid/balance are computed from invoice_payments, not stored. */
 const INVOICE_COLS =
-  "id,project_id,invoice_no,client_name,issue_date,due_date,status,total,notes,tax_pct,subtotal,tax_amount,created_at,updated_at";
+  "id,project_id,customer_id,invoice_no,client_name,issue_date,due_date,status,total,notes,tax_pct,subtotal,tax_amount,created_at,updated_at";
 
 export async function getInvoices(): Promise<Invoice[]> {
   const c = client();
@@ -697,6 +719,7 @@ export async function deleteInvoice(invoiceId: string): Promise<boolean> {
 export async function createInvoice(payload: {
   invoiceNo?: string;
   projectId: string;
+  customerId?: string | null;
   clientName: string;
   issueDate: string;
   dueDate: string;
@@ -731,6 +754,7 @@ export async function createInvoice(payload: {
       .insert({
         invoice_no: invoiceNo,
         project_id: payload.projectId || null,
+        customer_id: payload.customerId || null,
         client_name: payload.clientName ?? "",
         issue_date: payload.issueDate.slice(0, 10),
         due_date: payload.dueDate.slice(0, 10),
@@ -742,7 +766,7 @@ export async function createInvoice(payload: {
         total,
       })
       .select(
-        "id, invoice_no, project_id, client_name, issue_date, due_date, status, notes, tax_pct, subtotal, tax_amount, total"
+        "id, invoice_no, project_id, customer_id, client_name, issue_date, due_date, status, notes, tax_pct, subtotal, tax_amount, total"
       )
       .single();
 
@@ -780,6 +804,7 @@ export async function updateInvoice(
   invoiceId: string,
   payload: Partial<{
     projectId: string;
+    customerId: string | null;
     invoiceNo: string;
     clientName: string;
     issueDate: string;
@@ -794,6 +819,7 @@ export async function updateInvoice(
   if (!inv || inv.status !== "Draft") return false;
   const updates: Record<string, unknown> = {};
   if (payload.projectId !== undefined) updates.project_id = payload.projectId || null;
+  if (payload.customerId !== undefined) updates.customer_id = payload.customerId || null;
   if (payload.invoiceNo !== undefined)
     updates.invoice_no = payload.invoiceNo.trim() || inv.invoiceNo;
   if (payload.clientName !== undefined) updates.client_name = payload.clientName.trim();
@@ -867,22 +893,25 @@ export async function getInvoicesByProjectAggregate(
 ): Promise<ProjectInvoiceARAggregate> {
   const today = new Date().toISOString().slice(0, 10);
   const list = await getInvoicesByProject(projectId);
-  const voidExcluded = list.filter((i) => i.status !== "Void");
+  const receivableInvoices = list.filter((i) => invoiceCountsTowardReceivable(i.status));
   let invoicedTotal = 0;
   let paidTotal = 0;
+  let balanceTotal = 0;
   let overdueBalance = 0;
-  for (const inv of voidExcluded) {
+  for (const inv of receivableInvoices) {
     const withDerived = await getInvoiceByIdWithDerived(inv.id);
     if (!withDerived) continue;
-    invoicedTotal += inv.total;
+    if (!invoiceCountsTowardReceivable(withDerived.status)) continue;
+    invoicedTotal += withDerived.total;
     paidTotal += withDerived.paidTotal;
-    if (withDerived.computedStatus !== "Paid" && inv.dueDate < today)
+    balanceTotal += withDerived.balanceDue;
+    if (withDerived.computedStatus !== "Paid" && withDerived.balanceDue > 0 && inv.dueDate < today)
       overdueBalance += withDerived.balanceDue;
   }
   return {
     invoicedTotal,
     paidTotal,
-    balanceTotal: Math.max(0, invoicedTotal - paidTotal),
+    balanceTotal: Math.max(0, balanceTotal),
     overdueBalance,
   };
 }
@@ -894,14 +923,18 @@ export async function getProjectRevenueAndCollected(
   const c = client();
   const { data: invRows, error: invErr } = await c
     .from("invoices")
-    .select("id, total")
+    .select("id, total, status")
     .eq("project_id", projectId)
     .neq("status", "Void");
   if (invErr || !invRows?.length) {
     return { revenue: 0, collected: 0 };
   }
-  const revenue = (invRows as { total?: number }[]).reduce((s, r) => s + Number(r.total ?? 0), 0);
-  const ids = invRows.map((r) => (r as { id: string }).id);
+  const receivableRows = (
+    invRows as { id: string; total?: number; status?: string | null }[]
+  ).filter((row) => invoiceCountsTowardReceivable(row.status));
+  if (receivableRows.length === 0) return { revenue: 0, collected: 0 };
+  const revenue = receivableRows.reduce((s, r) => s + Number(r.total ?? 0), 0);
+  const ids = receivableRows.map((r) => r.id);
   const { data: payRows, error: payErr } = await c
     .from("invoice_payments")
     .select("amount, status")
@@ -923,13 +956,13 @@ export async function getCompanyRevenueAndCollected(): Promise<{
   const c = client();
   const { data: invRows, error: invErr } = await c
     .from("invoices")
-    .select("id, total")
+    .select("id, total, status")
     .neq("status", "Void");
   if (invErr) return { revenue: 0, collected: 0 };
-  const revenue = (invRows ?? []).reduce(
-    (s, r) => s + Number((r as { total?: number }).total ?? 0),
-    0
-  );
+  const receivableRows = (invRows ?? [])
+    .map((r) => r as { id: string; total?: number; status?: string | null })
+    .filter((row) => invoiceCountsTowardReceivable(row.status));
+  const revenue = receivableRows.reduce((s, r) => s + Number(r.total ?? 0), 0);
   const { data: payRows, error: payErr } = await c
     .from("invoice_payments")
     .select("amount, status");

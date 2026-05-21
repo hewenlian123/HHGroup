@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 function toNum(v: unknown): number {
@@ -15,6 +16,7 @@ function isQuantityColumnUnsupported(error: { message?: string } | null): boolea
 export async function createInvoiceDraftAction(payload: {
   invoiceNo?: string;
   projectId: string;
+  customerId?: string | null;
   clientName: string;
   issueDate: string;
   dueDate: string;
@@ -57,6 +59,7 @@ export async function createInvoiceDraftAction(payload: {
 
     const safeIssueDate = String(payload.issueDate ?? "").slice(0, 10);
     const safeDueDate = String(payload.dueDate ?? "").slice(0, 10);
+    const customerId = payload.customerId?.trim() || null;
     const subtotal = items.reduce((s, l) => s + Math.max(0, l.qty) * Math.max(0, l.unitPrice), 0);
     const taxPct = toNum(payload.taxPct ?? 0);
     const taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
@@ -77,6 +80,7 @@ export async function createInvoiceDraftAction(payload: {
       .insert({
         invoice_no: invoiceNo,
         project_id: projectId || null,
+        customer_id: customerId,
         client_name: clientName,
         issue_date: safeIssueDate,
         due_date: safeDueDate,
@@ -131,6 +135,11 @@ export async function createInvoiceDraftAction(payload: {
         total,
       })
       .eq("id", invoiceId);
+
+    revalidatePath("/financial/invoices");
+    revalidatePath(`/financial/invoices/${invoiceId}`);
+    if (projectId) revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/financial/owner");
 
     return { ok: true, invoiceId };
   } catch (error) {
