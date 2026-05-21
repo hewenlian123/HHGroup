@@ -13,6 +13,7 @@ import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { AutoprintTrigger } from "./autoprint-trigger";
 import { PrintActionBar } from "./print-action-bar";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -25,15 +26,16 @@ export default async function EstimatePrintPage({
 }) {
   const { id } = await params;
   const { autoprint } = await searchParams;
+  const readClient = getServerSupabaseInternalNoStore();
 
   const [estimate, meta, items, categories, summary, paymentSchedule, costCodes, company] =
     await Promise.all([
-      getEstimateById(id),
-      getEstimateMeta(id),
-      getEstimateItems(id),
-      getEstimateCategories(id),
-      getEstimateSummary(id),
-      getPaymentSchedule(id),
+      getEstimateById(id, readClient),
+      getEstimateMeta(id, readClient),
+      getEstimateItems(id, readClient),
+      getEstimateCategories(id, readClient),
+      getEstimateSummary(id, readClient),
+      getPaymentSchedule(id, readClient),
       getCostCodes(),
       fetchDocumentCompanyProfile(),
     ]);

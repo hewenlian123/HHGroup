@@ -100,7 +100,8 @@ export type PaymentScheduleWriteInput = {
 
 // —— Helpers ——
 
-function client() {
+function client(explicitClient?: SupabaseClient | null) {
+  if (explicitClient) return explicitClient;
   const c = getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
@@ -493,8 +494,11 @@ export async function getEstimateList(
   return out;
 }
 
-export async function getEstimateById(id: string): Promise<EstimateListItem | null> {
-  const c = client();
+export async function getEstimateById(
+  id: string,
+  explicitClient?: SupabaseClient | null
+): Promise<EstimateListItem | null> {
+  const c = client(explicitClient);
   const { data: r, error } = await c
     .from("estimates")
     .select("id, number, client, project, status, updated_at, approved_at")
@@ -504,8 +508,8 @@ export async function getEstimateById(id: string): Promise<EstimateListItem | nu
     if (error?.code === "PGRST116" || isMissingTable(error)) return null;
     return null;
   }
-  const meta = await getEstimateMeta(id);
-  const items = await getEstimateItems(id);
+  const meta = await getEstimateMeta(id, explicitClient);
+  const items = await getEstimateItems(id, explicitClient);
   const codeToType = () => undefined as "material" | "labor" | "subcontractor" | undefined;
   const total = await grandTotalForList(id, meta, items, codeToType);
   return {
@@ -520,8 +524,11 @@ export async function getEstimateById(id: string): Promise<EstimateListItem | nu
   };
 }
 
-export async function getEstimateMeta(estimateId: string): Promise<EstimateMetaRecord | null> {
-  const c = client();
+export async function getEstimateMeta(
+  estimateId: string,
+  explicitClient?: SupabaseClient | null
+): Promise<EstimateMetaRecord | null> {
+  const c = client(explicitClient);
   const { data: r, error } = await c
     .from("estimate_meta")
     .select("*")
@@ -597,8 +604,27 @@ async function upsertEstimateCategoryWithOrderFallback(
   return { ok: false, error: error.message || "Could not save category." };
 }
 
-export async function getEstimateCategories(estimateId: string): Promise<EstimateCategoryRecord[]> {
-  const c = client();
+function mapEstimateCategoryRecord(
+  row: { cost_code?: string | null; display_name?: string | null; order_index?: number | null },
+  fallbackIndex: number
+): EstimateCategoryRecord {
+  const costCode = typeof row.cost_code === "string" ? row.cost_code.trim() : "";
+  const displayName =
+    typeof row.display_name === "string" && row.display_name.trim()
+      ? row.display_name.trim()
+      : costCode || "Category";
+  return {
+    costCode,
+    displayName,
+    orderIndex: row.order_index != null ? Number(row.order_index) : fallbackIndex,
+  };
+}
+
+export async function getEstimateCategories(
+  estimateId: string,
+  explicitClient?: SupabaseClient | null
+): Promise<EstimateCategoryRecord[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("estimate_categories")
     .select("cost_code, display_name, order_index")
@@ -614,25 +640,24 @@ export async function getEstimateCategories(estimateId: string): Promise<Estimat
         .eq("estimate_id", estimateId)
         .order("cost_code", { ascending: true });
       if (fallbackError) return [];
-      return (fallbackRows ?? []).map((r: { cost_code: string; display_name: string }, index) => ({
-        costCode: r.cost_code,
-        displayName: r.display_name,
-        orderIndex: index,
-      }));
+      return (fallbackRows ?? []).map(
+        (r: { cost_code?: string | null; display_name?: string | null }, index) =>
+          mapEstimateCategoryRecord(r, index)
+      );
     }
     return [];
   }
   return (rows ?? []).map(
-    (r: { cost_code: string; display_name: string; order_index?: number | null }) => ({
-      costCode: r.cost_code,
-      displayName: r.display_name,
-      orderIndex: r.order_index != null ? Number(r.order_index) : 0,
-    })
+    (r: { cost_code?: string | null; display_name?: string | null; order_index?: number | null }) =>
+      mapEstimateCategoryRecord(r, 0)
   );
 }
 
-export async function getEstimateItems(estimateId: string): Promise<EstimateItemRow[]> {
-  const c = client();
+export async function getEstimateItems(
+  estimateId: string,
+  explicitClient?: SupabaseClient | null
+): Promise<EstimateItemRow[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("estimate_items")
     .select("*")
@@ -1600,8 +1625,11 @@ async function canWritePaymentSchedule(c: SupabaseClient, estimateId: string): P
   return ["Draft", "Sent"].includes(est.status as string);
 }
 
-export async function getPaymentSchedule(estimateId: string): Promise<PaymentScheduleItem[]> {
-  const c = client();
+export async function getPaymentSchedule(
+  estimateId: string,
+  explicitClient?: SupabaseClient | null
+): Promise<PaymentScheduleItem[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("estimate_payment_schedule_items")
     .select("*")
