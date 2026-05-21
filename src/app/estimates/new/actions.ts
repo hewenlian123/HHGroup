@@ -27,6 +27,7 @@ export type CreateEstimatePayload = {
     unit: string;
     unitCost: number;
     markupPct: number;
+    hideAmountOnPdf?: boolean;
   }>;
   paymentSchedule?: Array<{
     title: string;
@@ -52,6 +53,7 @@ export async function createEstimateWithItemsAction(
       qty: Number(i.qty) || 0,
       unitCost: Number(i.unitCost) || 0,
       markupPct: Number(i.markupPct) || 0,
+      hideAmountOnPdf: Boolean(i.hideAmountOnPdf),
     }))
     .filter((i) => i.costCode && i.desc.length > 0);
 
@@ -85,6 +87,7 @@ export async function createEstimateWithItemsAction(
         unit: i.unit,
         unitCost: i.unitCost,
         markupPct: i.markupPct,
+        hideAmountOnPdf: Boolean(i.hideAmountOnPdf),
       })),
       paymentSchedule: payload.paymentSchedule?.length ? payload.paymentSchedule : undefined,
     });

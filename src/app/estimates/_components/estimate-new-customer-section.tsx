@@ -16,11 +16,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { EB, ebInput, ebSheetGlassWide, ebSheetInput } from "./estimate-builder-ui";
+import { EB, ebSheetGlassWide, ebSheetInput } from "./estimate-builder-ui";
 import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 
-const metaLabel = "mb-0.5 block text-[10px] font-medium uppercase tracking-[0.08em] text-[#778195]";
+const metaLabel =
+  "mb-0.5 block text-[11px] font-semibold uppercase tracking-[0.06em] leading-tight text-[#9EA8B8]";
 const metaPanel = cn(EB.draftPanel, "rounded-md px-3 py-2.5 sm:px-4 sm:py-3");
 
 type DetailsSnapshot = {
@@ -184,7 +185,7 @@ export function EstimateNewCustomerSection({
               >
                 <span className={EB.draftBadgePill}>Draft</span>
               </span>
-              <span className="text-xs tabular-nums text-[#778195] [font-feature-settings:'tnum']">
+              <span className="text-[13px] tabular-nums leading-snug text-[#929CAF] [font-feature-settings:'tnum']">
                 {estimateDate}
               </span>
             </div>
@@ -206,8 +207,8 @@ export function EstimateNewCustomerSection({
             <dt className={metaLabel}>Customer</dt>
             <dd
               className={cn(
-                "truncate text-sm font-medium",
-                clientName.trim() ? "text-slate-100" : EB.readDash
+                "truncate text-[14px] font-medium leading-snug",
+                clientName.trim() ? "text-[#F6F7FA]" : EB.readDash
               )}
             >
               {clientName.trim() || "—"}
@@ -217,8 +218,8 @@ export function EstimateNewCustomerSection({
             <dt className={metaLabel}>Project</dt>
             <dd
               className={cn(
-                "truncate text-sm font-medium",
-                projectName.trim() ? "text-slate-100" : EB.readDash
+                "truncate text-[14px] font-medium leading-snug",
+                projectName.trim() ? "text-[#F6F7FA]" : EB.readDash
               )}
             >
               {projectName.trim() || "—"}
@@ -228,8 +229,8 @@ export function EstimateNewCustomerSection({
             <dt className={metaLabel}>Address</dt>
             <dd
               className={cn(
-                "text-sm leading-snug",
-                address.trim() ? "text-slate-200" : EB.readDash
+                "text-[14px] leading-[1.4]",
+                address.trim() ? "text-[#D8DEE8]" : EB.readDash
               )}
             >
               {address.trim() || "—"}
@@ -237,7 +238,7 @@ export function EstimateNewCustomerSection({
           </div>
           <div className="min-w-0 lg:hidden">
             <dt className={metaLabel}>Estimate date</dt>
-            <dd className="text-sm tabular-nums text-slate-200 [font-feature-settings:'tnum']">
+            <dd className="text-[14px] tabular-nums leading-snug text-[#D8DEE8] [font-feature-settings:'tnum']">
               {estimateDate}
             </dd>
           </div>
@@ -380,7 +381,7 @@ export function EstimateNewCustomerSection({
                         onTaxTouched();
                         onTaxChange(Number(e.target.value) || 0);
                       }}
-                      className={ebSheetInput(cn("text-sm text-slate-50", EB.inputNumeric))}
+                      className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
                     />
                   </div>
                   <div className={cn(EB.sheetField, "min-w-0")}>
@@ -393,7 +394,7 @@ export function EstimateNewCustomerSection({
                       step="0.01"
                       value={discount}
                       onChange={(e) => onDiscountChange(Number(e.target.value) || 0)}
-                      className={ebSheetInput(cn("text-sm text-slate-50", EB.inputNumeric))}
+                      className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
                     />
                   </div>
                   <div className={cn(EB.sheetField, "min-w-0")}>
@@ -406,7 +407,7 @@ export function EstimateNewCustomerSection({
                       step="0.1"
                       value={overheadPct}
                       onChange={(e) => onOverheadPctChange(Number(e.target.value) || 0)}
-                      className={ebSheetInput(cn("text-sm text-slate-50", EB.inputNumeric))}
+                      className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
                     />
                   </div>
                   <div className={cn(EB.sheetField, "min-w-0")}>
@@ -419,7 +420,7 @@ export function EstimateNewCustomerSection({
                       step="0.1"
                       value={profitPct}
                       onChange={(e) => onProfitPctChange(Number(e.target.value) || 0)}
-                      className={ebSheetInput(cn("text-sm text-slate-50", EB.inputNumeric))}
+                      className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
                     />
                   </div>
                 </div>

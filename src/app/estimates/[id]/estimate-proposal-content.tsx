@@ -2,6 +2,10 @@ import { estimateLineTotal, type EstimateItemRow, type CostCode } from "@/lib/da
 import type { EstimateSummaryResult } from "@/lib/data";
 import { splitLineItemDesc } from "@/lib/sanitize-line-item-html";
 import { LineItemOrScopeBodyPreview } from "../_components/proposal-scope-preview";
+import {
+  formatPdfLineTotal,
+  formatPdfLineUnitPrice,
+} from "../_components/estimate-pdf-line-amounts";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
@@ -119,10 +123,10 @@ export function EstimateProposalContent({
                           </td>
                           <td className="py-2 px-2 text-zinc-600">{row.unit}</td>
                           <td className="py-2 px-2 text-right tabular-nums text-zinc-900">
-                            {formatEstimateCurrency(row.unitCost)}
+                            {formatPdfLineUnitPrice(row, formatEstimateCurrency)}
                           </td>
                           <td className="py-2 pl-4 text-right tabular-nums font-medium text-zinc-900">
-                            {formatEstimateCurrency(estimateLineTotal(row))}
+                            {formatPdfLineTotal(row, formatEstimateCurrency)}
                           </td>
                         </tr>
                       );

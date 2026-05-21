@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Copy, Trash2, Layers } from "lucide-react";
+import { Plus, Layers } from "lucide-react";
 import type { CostCode } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
@@ -15,6 +15,7 @@ import {
 import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { EstimateLineItemMobileCard } from "./estimate-line-item-mobile-card";
 import { EB, ebGlassPanel, ebInput } from "./estimate-builder-ui";
+import { EstimateLineItemMoreMenu } from "./estimate-line-item-more-menu";
 import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
 
 export type EstimateLineItemsLocalProps = {
@@ -105,7 +106,7 @@ export function EstimateLineItemsLocal({
 
   return (
     <section className={EB.section}>
-      <div className={ebGlassPanel()}>
+      <div className={ebGlassPanel("eb-scope-work-panel")}>
         <div className="mb-3.5 flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h2 className={EB.scopeHeading}>Scope of work</h2>
@@ -138,6 +139,9 @@ export function EstimateLineItemsLocal({
                 onChange={(patch) => updateItem(item.id, patch)}
                 onDuplicate={() => duplicateItem(item.id)}
                 onDelete={() => deleteItem(item.id)}
+                onToggleHideAmountOnPdf={() =>
+                  updateItem(item.id, { hideAmountOnPdf: !item.hideAmountOnPdf })
+                }
                 onEnterAddNext={() => handleEnterAddNext(code)}
               />
             ))
@@ -158,14 +162,14 @@ export function EstimateLineItemsLocal({
         </div>
 
         {/* Desktop: scope sections */}
-        <div className="max-md:hidden space-y-6">
+        <div className="eb-scope-sections-list max-md:hidden flex flex-col">
           {codesWithItems.map((code) => {
             const cc = costCodes.find((c) => c.code === code)!;
             const displayName = categoryNames[code] ?? cc.name;
             const rows = itemsByCode[code];
             const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
             return (
-              <div key={code} className={cn(EB.categoryGroup, "mb-6 last:mb-0")}>
+              <div key={code} className={cn(EB.categoryGroup, "mb-5 last:mb-0")}>
                 <div className={EB.scopeBlockHeader}>
                   <div className={EB.sectionHeaderChip}>
                     <Layers className={cn("h-3.5 w-3.5", EB.sectionHeaderIcon)} aria-hidden />
@@ -173,7 +177,7 @@ export function EstimateLineItemsLocal({
                       value={displayName}
                       onChange={(e) => setCategoryName(code, e.target.value)}
                       className={ebInput(
-                        "h-8 w-full min-w-[10rem] max-w-full border-0 bg-transparent px-0 text-[15px] font-semibold tracking-tight text-zinc-50 shadow-none focus-visible:ring-0"
+                        "h-7 min-h-7 w-full min-w-[10rem] max-w-full border-0 bg-transparent px-0 text-[15px] font-semibold tracking-tight text-zinc-50 shadow-none focus-visible:ring-0"
                       )}
                       placeholder={cc.name}
                       disabled={disabled}
@@ -184,7 +188,7 @@ export function EstimateLineItemsLocal({
                     {formatEstimateCurrency(sectionSubtotal)}
                   </span>
                 </div>
-                <div className="mt-2.5 space-y-2">
+                <div className="eb-scope-section-lines flex flex-col">
                   {rows.map((row, rowIndexInCat) => {
                     const globalIdx =
                       flatWithIndex.find((f) => f.item.id === row.id)?.rowIndex ??
@@ -193,6 +197,7 @@ export function EstimateLineItemsLocal({
                     return (
                       <div key={row.id} className={EB.lineItemCard}>
                         <ProposalScopeWorkCard
+                          lineItemGridLayout
                           title={row.title}
                           description={row.description}
                           disabled={disabled}
@@ -201,37 +206,11 @@ export function EstimateLineItemsLocal({
                           titleInvalid={submitAttempted && !row.title.trim()}
                           titleInputAriaLabel={`Line item ${globalIdx} title`}
                           descriptionEditorAriaLabel={`Line item ${globalIdx} description`}
-                          duplicateNode={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className={cn("h-8 w-8", EB.iconAction)}
-                              onClick={() => duplicateItem(row.id)}
-                              aria-label="Duplicate scope card"
-                              disabled={disabled}
-                            >
-                              <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
-                            </Button>
-                          }
-                          deleteNode={
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className={cn("h-8 w-8 hover:text-red-400/90", EB.iconAction)}
-                              onClick={() => deleteItem(row.id)}
-                              aria-label="Remove line item"
-                              disabled={disabled}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
-                            </Button>
-                          }
                           lineIndex={globalIdx}
                           inlinePricing={
-                            <div className="grid w-full max-w-[22rem] shrink-0 grid-cols-[3.25rem_5.5rem_1fr] items-end gap-x-2 sm:max-w-none sm:grid-cols-[3.5rem_6.5rem_minmax(5.5rem,1fr)]">
-                              <div className="flex flex-col gap-0.5">
-                                <span className={EB.readLabel}>Qty</span>
+                            <>
+                              <div className={cn(EB.lineFieldStackContents, EB.linePricingQty)}>
+                                <span className={cn(EB.readLabel, EB.lineQtyLabel)}>Qty</span>
                                 <Input
                                   type="number"
                                   min={0}
@@ -247,14 +226,16 @@ export function EstimateLineItemsLocal({
                                     }
                                   }}
                                   className={ebInput(
-                                    `h-7 min-h-7 w-full px-1.5 ${EB.inputNumeric} text-xs text-zinc-200`
+                                    `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`
                                   )}
                                   aria-label={`Line item ${globalIdx} quantity`}
                                   disabled={disabled}
                                 />
                               </div>
-                              <div className="flex flex-col gap-0.5">
-                                <span className={EB.readLabel}>Unit price</span>
+                              <div className={cn(EB.lineFieldStackContents, EB.linePricingUnit)}>
+                                <span className={cn(EB.readLabel, EB.lineUnitLabel)}>
+                                  Unit price
+                                </span>
                                 <Input
                                   type="number"
                                   min={0}
@@ -272,24 +253,35 @@ export function EstimateLineItemsLocal({
                                     }
                                   }}
                                   className={ebInput(
-                                    `h-7 min-h-7 w-full px-1.5 ${EB.inputNumeric} text-xs text-zinc-200`
+                                    `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`
                                   )}
                                   aria-label={`Line item ${globalIdx} unit price`}
                                   disabled={disabled}
                                 />
                               </div>
-                              <div className="flex min-w-0 flex-col items-end gap-0.5">
-                                <span className={EB.readLabel}>Total</span>
-                                <span
-                                  className={cn(
-                                    EB.lineTotal,
-                                    "w-full pb-0.5 text-right text-xs leading-tight"
-                                  )}
-                                >
-                                  {formatEstimateCurrency(editorLineTotal(row))}
-                                </span>
+                              <div className={cn(EB.linePricingTotalCol, EB.lineTotalActionArea)}>
+                                <div className={EB.lineTotalBlock}>
+                                  <span className={cn(EB.readLabel, EB.lineTotalLabel)}>Total</span>
+                                  <div className={cn(EB.linePricingTotal, EB.lineTotalAmount)}>
+                                    <span className={cn(EB.lineTotal, "leading-none")}>
+                                      {formatEstimateCurrency(editorLineTotal(row))}
+                                    </span>
+                                  </div>
+                                </div>
+                                <EstimateLineItemMoreMenu
+                                  onDuplicate={() => duplicateItem(row.id)}
+                                  onDelete={() => deleteItem(row.id)}
+                                  hideAmountOnPdf={row.hideAmountOnPdf}
+                                  onToggleHideAmountOnPdf={() =>
+                                    updateItem(row.id, {
+                                      hideAmountOnPdf: !row.hideAmountOnPdf,
+                                    })
+                                  }
+                                  showHideAmountOnPdf
+                                  disabled={disabled}
+                                />
                               </div>
-                            </div>
+                            </>
                           }
                         />
                       </div>
@@ -297,7 +289,7 @@ export function EstimateLineItemsLocal({
                   })}
                   <button
                     type="button"
-                    className={cn(EB.addLineLink, "mt-0.5 px-1.5")}
+                    className={cn(EB.addLineLink, "mt-2")}
                     onClick={() => addLineItem(code)}
                     disabled={disabled}
                   >

@@ -14,6 +14,10 @@ import {
 } from "@/app/estimates/_components/proposal-scope-preview";
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
+import {
+  formatPdfLineTotal,
+  formatPdfLineUnitPrice,
+} from "@/app/estimates/_components/estimate-pdf-line-amounts";
 
 export type EstimatePrintDocumentProps = {
   company: DocumentCompanyProfileDTO;
@@ -139,10 +143,10 @@ export function EstimatePrintDocument({
                           </td>
                           <td className="py-2.5 px-2 text-zinc-700">{row.unit}</td>
                           <td className="py-2.5 px-2 text-right tabular-nums text-zinc-900">
-                            ${fmt(row.unitCost)}
+                            {formatPdfLineUnitPrice(row, (n) => `$${fmt(n)}`)}
                           </td>
                           <td className="py-2.5 pl-4 text-right tabular-nums font-medium text-zinc-900">
-                            ${fmt(estimateLineTotal(row))}
+                            {formatPdfLineTotal(row, (n) => `$${fmt(n)}`)}
                           </td>
                         </tr>
                       );

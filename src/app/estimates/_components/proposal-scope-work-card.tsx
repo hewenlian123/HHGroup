@@ -76,6 +76,8 @@ export type ProposalScopeWorkCardProps = {
   inlinePricing?: React.ReactNode;
   /** Optional 1-based line index badge */
   lineIndex?: number;
+  /** Unified index + title + pricing + description grid (/estimates/new) */
+  lineItemGridLayout?: boolean;
   className?: string;
 };
 
@@ -102,20 +104,23 @@ export function ProposalScopeWorkCard({
   footer,
   inlinePricing,
   lineIndex,
+  lineItemGridLayout = false,
   className,
 }: ProposalScopeWorkCardProps): React.ReactElement {
   const editorRef = React.useRef<HTMLDivElement>(null);
   const editorFocusedRef = React.useRef(false);
 
-  const showToolbar =
-    Boolean(dragSlot) || (!readOnly && (Boolean(duplicateNode) || Boolean(deleteNode)));
+  const showDragRow = Boolean(dragSlot);
+  const showLineItemActions = !readOnly && (Boolean(duplicateNode) || Boolean(deleteNode));
 
   const resizeEditorToContent = React.useCallback((): void => {
     const el = editorRef.current;
     if (!el) return;
     el.style.height = "auto";
-    const minPx = 100;
-    const maxPx = 140;
+    const isDesktop =
+      typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches;
+    const minPx = isDesktop ? 90 : 88;
+    const maxPx = 112;
     const sh = el.scrollHeight;
     const next = Math.min(Math.max(sh, minPx), maxPx);
     el.style.height = `${next}px`;
@@ -165,6 +170,137 @@ export function ProposalScopeWorkCard({
     });
   };
 
+  const useLineItemGrid = lineItemGridLayout && Boolean(inlinePricing);
+
+  const titleField = readOnly ? (
+    <p className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-[#F6F7FA]">
+      {title.trim() || "—"}
+    </p>
+  ) : (
+    <Input
+      value={title}
+      onChange={(e) => onTitleChange?.(e.target.value)}
+      onBlur={() => onTitleBlur?.()}
+      disabled={disabled}
+      placeholder={titlePlaceholder}
+      aria-label={titleInputAriaLabel}
+      aria-invalid={titleInvalid}
+      className={ebInput(
+        "h-8 text-[14px] font-medium leading-[1.4] tracking-[-0.01em] text-[#D8DEE8] placeholder:text-[#7F899B]"
+      )}
+    />
+  );
+
+  const descriptionBlock = (
+    <div className={cn(EB.lineItemDescriptionBlock, !useLineItemGrid && "pt-1.5")}>
+      <span className={cn(EB.readLabel, "block pb-1")}>Description</span>
+      {readOnly ? (
+        <div
+          className={cn(
+            "max-h-[140px] overflow-y-auto rounded-sm border border-white/[0.03] bg-transparent px-1 py-0.5",
+            description.trim() ? "min-h-0" : "min-h-[2rem]"
+          )}
+        >
+          {description.trim() ? (
+            <LineItemOrScopeBodyPreview
+              body={description}
+              variant="default"
+              className="text-[14px] leading-[1.4] text-[#D8DEE8]"
+            />
+          ) : (
+            <p className="text-[14px] leading-snug text-[#A7B0C0]">—</p>
+          )}
+        </div>
+      ) : (
+        <div className="eb-scope-editor-surface">
+          <div
+            className="eb-scope-editor-toolbar flex flex-wrap gap-0 px-0.5 py-0"
+            onMouseDown={handleToolbarMouseDown}
+          >
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 min-h-6 min-w-6 shrink-0 px-0 text-[#929CAF] hover:bg-white/[0.04] hover:text-[#B5BECC]"
+              aria-label="Bold"
+              disabled={disabled}
+              onMouseDown={handleToolbarMouseDown}
+              onClick={() => {
+                runFormatCommand("bold");
+              }}
+            >
+              <Bold className="h-2.5 w-2.5" strokeWidth={2} />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 min-h-6 min-w-6 shrink-0 px-0 text-[#929CAF] hover:bg-white/[0.04] hover:text-[#B5BECC]"
+              aria-label="Italic"
+              disabled={disabled}
+              onMouseDown={handleToolbarMouseDown}
+              onClick={() => {
+                runFormatCommand("italic");
+              }}
+            >
+              <Italic className="h-2.5 w-2.5" strokeWidth={2} />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 min-h-6 min-w-6 shrink-0 px-0 text-[#929CAF] hover:bg-white/[0.04] hover:text-[#B5BECC]"
+              aria-label="Bullet list"
+              disabled={disabled}
+              onMouseDown={handleToolbarMouseDown}
+              onClick={() => {
+                runFormatCommand("insertUnorderedList");
+              }}
+            >
+              <List className="h-2.5 w-2.5" strokeWidth={2} />
+            </Button>
+          </div>
+          <div
+            ref={editorRef}
+            role="textbox"
+            aria-multiline
+            aria-label={descriptionEditorAriaLabel}
+            contentEditable={!disabled}
+            suppressContentEditableWarning
+            onFocus={() => {
+              editorFocusedRef.current = true;
+              requestAnimationFrame(() => {
+                resizeEditorToContent();
+              });
+            }}
+            onBlur={handleDescriptionBlur}
+            onInput={handleDescriptionInput}
+            className={cn(
+              "proposal-scope-inline-editor max-h-[7rem] w-full px-2 py-1.5 text-[14px] leading-[1.4] text-[#D8DEE8] outline-none break-words",
+              "[&_ul]:my-0 [&_ul]:list-disc [&_ul]:pl-3 [&_ol]:my-0 [&_ol]:list-decimal [&_ol]:pl-3",
+              "[&_p]:my-0 [&_p]:min-h-[1.05em]",
+              "[&_strong]:font-semibold [&_b]:font-semibold",
+              "[&_em]:italic [&_i]:italic",
+              disabled && "pointer-events-none opacity-50"
+            )}
+            onPaste={(e) => {
+              e.preventDefault();
+              const text = e.clipboardData.getData("text/plain");
+              try {
+                document.execCommand("insertText", false, text);
+              } catch {
+                /* ignore */
+              }
+              requestAnimationFrame(() => {
+                resizeEditorToContent();
+              });
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div
       className={cn(
@@ -172,171 +308,63 @@ export function ProposalScopeWorkCard({
         className
       )}
     >
-      {showToolbar ? (
-        <div className="flex items-start justify-between gap-1 px-1.5 pt-1">
-          <div className="flex min-w-0 flex-1 items-start gap-1.5">
-            {dragSlot ? <div className="mt-0.5 shrink-0">{dragSlot}</div> : null}
-          </div>
-          {!readOnly && (duplicateNode || deleteNode) ? (
-            <div className="flex shrink-0 items-center gap-1">
-              {duplicateNode ? <span className="inline-flex">{duplicateNode}</span> : null}
-              {deleteNode ? <span className="inline-flex">{deleteNode}</span> : null}
-            </div>
-          ) : null}
+      {showDragRow ? (
+        <div className={cn(EB.lineItemDragRow, "flex items-center px-1 pt-0.5")}>
+          <div className="shrink-0">{dragSlot}</div>
         </div>
       ) : null}
 
-      <div
-        className={cn(
-          "grid gap-x-3 gap-y-2 px-1.5 pb-0.5 max-md:grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto]",
-          showToolbar ? "pt-0" : "pt-1",
-          inlinePricing ? "items-end" : "items-start"
-        )}
-      >
-        <div className="flex min-w-0 items-start gap-2">
+      {useLineItemGrid ? (
+        <div className={cn(EB.lineItemGridPricing, showDragRow ? "pt-0" : "pt-1")}>
           {lineIndex != null ? (
-            <span
-              className={cn(EB.lineIndexBadge, "mt-5 shrink-0")}
-              aria-label={`Line ${lineIndex}`}
-            >
+            <span className={EB.lineIndexBadge} aria-label={`Line ${lineIndex}`}>
               #{lineIndex}
             </span>
           ) : null}
-          <div className="min-w-0 flex-1 space-y-0.5">
-            <span className={EB.readLabel}>Title</span>
-            {readOnly ? (
-              <p className="text-xs font-semibold leading-snug tracking-tight text-slate-50">
-                {title.trim() || "—"}
-              </p>
-            ) : (
-              <Input
-                value={title}
-                onChange={(e) => onTitleChange?.(e.target.value)}
-                onBlur={() => onTitleBlur?.()}
-                disabled={disabled}
-                placeholder={titlePlaceholder}
-                aria-label={titleInputAriaLabel}
-                aria-invalid={titleInvalid}
-                className={ebInput("h-8 text-sm font-medium tracking-tight text-slate-50")}
-              />
-            )}
+          <span className={cn(EB.readLabel, EB.lineTitleLabel)}>Title</span>
+          <div className={cn(EB.lineTitleInputWrap, EB.lineItemTitleField)}>
+            {titleField}
             {titleInvalid ? (
               <p className="text-xs text-amber-400/90">Add a name for this line.</p>
             ) : null}
           </div>
+          <div className={EB.lineItemPricingWrap}>{inlinePricing}</div>
+          {descriptionBlock}
         </div>
-        {inlinePricing ? (
-          <div className="flex w-full shrink-0 justify-end md:w-auto">{inlinePricing}</div>
-        ) : null}
-      </div>
-
-      <div className="space-y-0.5 px-1.5 pb-1.5">
-        <span className={EB.readLabel}>Description</span>
-        {readOnly ? (
+      ) : (
+        <>
           <div
             className={cn(
-              "max-h-[140px] overflow-y-auto rounded-sm border border-white/[0.03] bg-transparent px-1 py-0.5",
-              description.trim() ? "min-h-0" : "min-h-[2rem]"
+              inlinePricing ? EB.lineItemFirstRowPricing : EB.lineItemFirstRow,
+              showDragRow ? "pt-0" : "pt-1"
             )}
           >
-            {description.trim() ? (
-              <LineItemOrScopeBodyPreview
-                body={description}
-                variant="default"
-                className="text-xs leading-snug text-zinc-300"
-              />
-            ) : (
-              <p className="text-xs leading-snug text-zinc-600">—</p>
-            )}
-          </div>
-        ) : (
-          <div className="eb-scope-editor-surface">
-            <div
-              className="eb-scope-editor-toolbar flex flex-wrap gap-0 px-0.5 py-px"
-              onMouseDown={handleToolbarMouseDown}
-            >
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 min-h-6 min-w-6 shrink-0 px-0 text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
-                aria-label="Bold"
-                disabled={disabled}
-                onMouseDown={handleToolbarMouseDown}
-                onClick={() => {
-                  runFormatCommand("bold");
-                }}
-              >
-                <Bold className="h-2.5 w-2.5" strokeWidth={2} />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 min-h-6 min-w-6 shrink-0 px-0 text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
-                aria-label="Italic"
-                disabled={disabled}
-                onMouseDown={handleToolbarMouseDown}
-                onClick={() => {
-                  runFormatCommand("italic");
-                }}
-              >
-                <Italic className="h-2.5 w-2.5" strokeWidth={2} />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 min-h-6 min-w-6 shrink-0 px-0 text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
-                aria-label="Bullet list"
-                disabled={disabled}
-                onMouseDown={handleToolbarMouseDown}
-                onClick={() => {
-                  runFormatCommand("insertUnorderedList");
-                }}
-              >
-                <List className="h-2.5 w-2.5" strokeWidth={2} />
-              </Button>
+            {lineIndex != null ? (
+              <span className={EB.lineIndexBadge} aria-label={`Line ${lineIndex}`}>
+                #{lineIndex}
+              </span>
+            ) : null}
+            <div className={cn(EB.lineFieldStack, EB.lineItemTitleField)}>
+              <span className={EB.readLabel}>Title</span>
+              {titleField}
+              {titleInvalid ? (
+                <p className="text-xs text-amber-400/90">Add a name for this line.</p>
+              ) : null}
             </div>
-            <div
-              ref={editorRef}
-              role="textbox"
-              aria-multiline
-              aria-label={descriptionEditorAriaLabel}
-              contentEditable={!disabled}
-              suppressContentEditableWarning
-              onFocus={() => {
-                editorFocusedRef.current = true;
-                requestAnimationFrame(() => {
-                  resizeEditorToContent();
-                });
-              }}
-              onBlur={handleDescriptionBlur}
-              onInput={handleDescriptionInput}
-              className={cn(
-                "proposal-scope-inline-editor max-h-[140px] min-h-[2.75rem] w-full px-2 py-1.5 text-xs leading-relaxed text-slate-200 outline-none break-words",
-                "[&_ul]:my-0 [&_ul]:list-disc [&_ul]:pl-3 [&_ol]:my-0 [&_ol]:list-decimal [&_ol]:pl-3",
-                "[&_p]:my-0 [&_p]:min-h-[1.05em]",
-                "[&_strong]:font-semibold [&_b]:font-semibold",
-                "[&_em]:italic [&_i]:italic",
-                disabled && "pointer-events-none opacity-50"
-              )}
-              onPaste={(e) => {
-                e.preventDefault();
-                const text = e.clipboardData.getData("text/plain");
-                try {
-                  document.execCommand("insertText", false, text);
-                } catch {
-                  /* ignore */
-                }
-                requestAnimationFrame(() => {
-                  resizeEditorToContent();
-                });
-              }}
-            />
+            {inlinePricing ? <div className={EB.lineItemPricingWrap}>{inlinePricing}</div> : null}
           </div>
-        )}
-      </div>
+          {descriptionBlock}
+        </>
+      )}
+
+      {!useLineItemGrid && showLineItemActions ? (
+        <div className={EB.lineItemActionsBar}>
+          <div className={EB.lineItemActionsInner}>
+            {duplicateNode ? <span className="inline-flex">{duplicateNode}</span> : null}
+            {deleteNode ? <span className="inline-flex">{deleteNode}</span> : null}
+          </div>
+        </div>
+      ) : null}
 
       {footer ? <div className="border-t border-white/[0.03] bg-transparent">{footer}</div> : null}
     </div>

@@ -9,12 +9,13 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Copy, MoreHorizontal, Trash2 } from "lucide-react";
+import { ChevronDown, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EB, ebInput } from "./estimate-builder-ui";
 import { formatEstimateCurrency } from "./estimate-currency";
 import type { EditorLineItem } from "./estimate-line-item-model";
 import { editorLineTotal } from "./estimate-line-item-model";
+import { EstimateLineItemMoreMenu } from "./estimate-line-item-more-menu";
 import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
 
 export type EstimateLineItemMobileCardProps = {
@@ -28,6 +29,7 @@ export type EstimateLineItemMobileCardProps = {
   onChange: (patch: Partial<EditorLineItem>) => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
+  onToggleHideAmountOnPdf?: () => void;
   onEnterAddNext?: () => void;
   onBlurField?: () => void;
 };
@@ -42,6 +44,7 @@ export function EstimateLineItemMobileCard({
   onChange,
   onDuplicate,
   onDelete,
+  onToggleHideAmountOnPdf,
   onEnterAddNext,
   onBlurField,
 }: EstimateLineItemMobileCardProps): React.ReactElement {
@@ -119,36 +122,6 @@ export function EstimateLineItemMobileCard({
             titleInvalid={titleInvalid}
             titleInputAriaLabel={`Line item ${rowIndex} title`}
             descriptionEditorAriaLabel={`Line item ${rowIndex} description`}
-            duplicateNode={
-              onDuplicate ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
-                  onClick={onDuplicate}
-                  aria-label="Duplicate scope card"
-                  disabled={disabled}
-                >
-                  <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
-                </Button>
-              ) : undefined
-            }
-            deleteNode={
-              onDelete ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-red-400"
-                  onClick={onDelete}
-                  aria-label="Remove line item"
-                  disabled={disabled}
-                >
-                  <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
-                </Button>
-              ) : undefined
-            }
             footer={
               <div className="space-y-3 px-3 pb-3 pt-3">
                 <div className="grid grid-cols-2 gap-2">
@@ -180,6 +153,14 @@ export function EstimateLineItemMobileCard({
                   />
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.05] pt-3">
+                  <EstimateLineItemMoreMenu
+                    onDuplicate={onDuplicate}
+                    onDelete={onDelete}
+                    hideAmountOnPdf={item.hideAmountOnPdf}
+                    onToggleHideAmountOnPdf={onToggleHideAmountOnPdf}
+                    showHideAmountOnPdf={Boolean(onToggleHideAmountOnPdf)}
+                    disabled={disabled}
+                  />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button

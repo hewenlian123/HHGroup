@@ -80,6 +80,7 @@ export function EstimateLineItemPersistedMobile({
       unit,
       unitPrice,
       markupPct: row.markupPct,
+      hideAmountOnPdf: row.hideAmountOnPdf,
     }),
     [categoryId, description, qty, row.id, row.markupPct, title, unit, unitPrice]
   );

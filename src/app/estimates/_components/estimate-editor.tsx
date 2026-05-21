@@ -24,6 +24,7 @@ import {
   addLineItemCatalogInlineAction,
   createCustomEstimateCategoryAction,
   updateLineItemAction,
+  toggleLineItemHideAmountOnPdfAction,
   deleteLineItemAction,
   duplicateLineItemAction,
   addPaymentMilestoneAction,
@@ -70,6 +71,7 @@ import { EB, ebGlassPanel, ebInput } from "./estimate-builder-ui";
 import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { EstimateLineItemPersistedMobile } from "./estimate-line-item-persisted-mobile";
 import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
+import { EstimateLineItemMoreMenu } from "./estimate-line-item-more-menu";
 
 function cssEscapeAttrSelector(value: string): string {
   const winCss =
@@ -769,6 +771,9 @@ function LineItemRow({
     Record<string, () => { qty: number; unit: string; unitCost: number; markupPct: number }>
   >;
 }): React.ReactElement {
+  const router = useRouter();
+  const duplicateFormRef = React.useRef<HTMLFormElement>(null);
+  const deleteFormRef = React.useRef<HTMLFormElement>(null);
   const [title, setTitle] = React.useState(() => {
     const i = row.desc.indexOf("\n");
     return i < 0 ? row.desc : row.desc.slice(0, i);
@@ -932,38 +937,44 @@ function LineItemRow({
         }
         duplicateNode={
           !isLocked ? (
-            <form action={duplicateLineItemAction} className="inline">
-              <input type="hidden" name="estimateId" value={estimateId} />
-              <input type="hidden" name="itemId" value={row.id} />
-              <Button
-                type="submit"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-200"
-                aria-label="Duplicate scope card"
+            <>
+              <form
+                ref={duplicateFormRef}
+                action={duplicateLineItemAction}
+                className="hidden"
+                aria-hidden
               >
-                <Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
-              </Button>
-            </form>
+                <input type="hidden" name="estimateId" value={estimateId} />
+                <input type="hidden" name="itemId" value={row.id} />
+              </form>
+              <form
+                ref={deleteFormRef}
+                action={deleteLineItemAction}
+                className="hidden"
+                aria-hidden
+              >
+                <input type="hidden" name="estimateId" value={estimateId} />
+                <input type="hidden" name="itemId" value={row.id} />
+              </form>
+              <EstimateLineItemMoreMenu
+                hideAmountOnPdf={row.hideAmountOnPdf}
+                showHideAmountOnPdf
+                onToggleHideAmountOnPdf={() => {
+                  const fd = new FormData();
+                  fd.set("estimateId", estimateId);
+                  fd.set("itemId", row.id);
+                  fd.set("hideAmountOnPdf", row.hideAmountOnPdf ? "0" : "1");
+                  void toggleLineItemHideAmountOnPdfAction(fd).then((res) => {
+                    if (res.ok) router.refresh();
+                  });
+                }}
+                onDuplicate={() => duplicateFormRef.current?.requestSubmit()}
+                onDelete={() => deleteFormRef.current?.requestSubmit()}
+              />
+            </>
           ) : undefined
         }
-        deleteNode={
-          !isLocked ? (
-            <form action={deleteLineItemAction} className="inline">
-              <input type="hidden" name="estimateId" value={estimateId} />
-              <input type="hidden" name="itemId" value={row.id} />
-              <Button
-                type="submit"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-zinc-500 hover:bg-white/[0.06] hover:text-red-400"
-                aria-label="Remove line item"
-              >
-                <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
-              </Button>
-            </form>
-          ) : undefined
-        }
+        deleteNode={undefined}
       />
     </div>
   );

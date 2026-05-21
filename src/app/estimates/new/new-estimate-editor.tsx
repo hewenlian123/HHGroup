@@ -24,6 +24,11 @@ import { createBrowserClient } from "@/lib/supabase";
 import { getCompanyProfile } from "@/lib/company-profile";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
+import {
+  parsePaymentPercentInput,
+  paymentAmountFromPercent,
+  paymentPercentFromAmount,
+} from "../_components/estimate-payment-percent";
 import { EstimateBuilderSummary } from "../_components/estimate-builder-summary";
 import { EstimateBuilderAdvanced } from "../_components/estimate-builder-advanced";
 import { EstimateNewCustomerSection } from "../_components/estimate-new-customer-section";
@@ -32,6 +37,7 @@ import { EstimateLineItemsLocal } from "../_components/estimate-line-items-local
 import { ProposalScopeEditor } from "../_components/proposal-scope-editor";
 import { ProposalPaymentMilestoneList } from "../_components/proposal-payment-milestone-list";
 import { EB, ebSheetGlassNarrow, ebSheetInput } from "../_components/estimate-builder-ui";
+import { useEstimateOverviewScrollMotion } from "../_components/use-estimate-overview-scroll-motion";
 import type { EditorLineItem } from "../_components/estimate-line-item-model";
 import type { CustomerOption } from "@/components/customers/customer-select-with-add";
 
@@ -54,6 +60,7 @@ type LineItem = {
   unit: string;
   unitPrice: number;
   markupPct: number;
+  hideAmountOnPdf: boolean;
 };
 
 function lineTotal(li: LineItem): number {
@@ -93,7 +100,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   const [pmTitle, setPmTitle] = React.useState("");
   const [pmDescription, setPmDescription] = React.useState("");
   const [pmAmount, setPmAmount] = React.useState("");
+  const [pmPercent, setPmPercent] = React.useState("");
   const [pmDueDate, setPmDueDate] = React.useState("");
+  const { asideRef, overviewFloating } = useEstimateOverviewScrollMotion();
 
   const codeToType = React.useMemo(() => {
     const m = new Map<string, CostCodeType>();
@@ -246,6 +255,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
               unit: li.unit,
               unitCost: li.unitPrice,
               markupPct: li.markupPct,
+              hideAmountOnPdf: li.hideAmountOnPdf,
             };
           })
           .filter((li) => li.desc.trim().length > 0),
@@ -282,11 +292,14 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     };
   }, [paymentMilestones, totalScheduled]);
 
+  const estimateTotalDollars = summary.grandTotal;
+
   const resetPaymentDraft = () => {
     setEditingPaymentMilestoneId(null);
     setPmTitle("");
     setPmDescription("");
     setPmAmount("");
+    setPmPercent("");
     setPmDueDate("");
   };
   const openPaymentMilestoneDrawer = (milestone?: PaymentMilestoneLocal) => {
@@ -295,12 +308,48 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
       setPmTitle(milestone.title);
       setPmDescription(milestone.description);
       setPmAmount(String(milestone.amount));
+      setPmPercent(
+        estimateTotalDollars > 0
+          ? paymentPercentFromAmount(milestone.amount, estimateTotalDollars)
+          : ""
+      );
       setPmDueDate(milestone.dueDate ?? "");
     } else {
       resetPaymentDraft();
     }
     setScheduleOpen(true);
   };
+
+  const handlePmAmountChange = (raw: string): void => {
+    setPmAmount(raw);
+    if (estimateTotalDollars <= 0) return;
+    if (raw.trim() === "") {
+      setPmPercent("");
+      return;
+    }
+    const amount = Number(raw);
+    if (!Number.isFinite(amount)) return;
+    setPmPercent(paymentPercentFromAmount(Math.max(0, amount), estimateTotalDollars));
+  };
+
+  const handlePmPercentChange = (raw: string): void => {
+    setPmPercent(raw);
+    if (raw.trim() === "") return;
+    const parsed = parsePaymentPercentInput(raw);
+    if (parsed === null) return;
+    setPmPercent(String(parsed));
+    if (estimateTotalDollars > 0) {
+      setPmAmount(String(paymentAmountFromPercent(parsed, estimateTotalDollars)));
+    }
+  };
+
+  const pmPercentParsed = parsePaymentPercentInput(pmPercent);
+  const pmPercentHelperText =
+    estimateTotalDollars <= 0
+      ? "Add estimate items to calculate by percentage."
+      : pmPercentParsed !== null
+        ? `${pmPercentParsed}% of ${formatEstimateCurrency(estimateTotalDollars)}`
+        : null;
   const savePaymentMilestoneLocal = () => {
     const title = pmTitle.trim();
     if (!title) return;
@@ -328,7 +377,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
           <header className={EB.glassHeader}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <Link href="/estimates" className={cn(EB.backLink, "text-xs")}>
+                <Link href="/estimates" className={EB.backLink}>
                   ← Estimates
                 </Link>
                 <h1 className="sr-only">New Estimate</h1>
@@ -338,7 +387,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   type="button"
                   variant="ghost"
                   asChild
-                  className={cn("min-h-11 text-[#A7B0C0] md:min-h-8", EB.btnGhost)}
+                  className={cn("min-h-11 md:min-h-8", EB.btnGhost)}
                 >
                   <Link href="/estimates">Cancel</Link>
                 </Button>
@@ -497,7 +546,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   if (!open) resetPaymentDraft();
                 }}
               >
-                <SheetContent side="right" className={ebSheetGlassNarrow()}>
+                <SheetContent side="right" className={ebSheetGlassNarrow(EB.shellNew)}>
                   <SheetHeader className={EB.sheetHeader}>
                     <SheetTitle className={EB.sheetTitle}>
                       {editingPaymentMilestoneId ? "Edit Payment" : "Schedule Payment"}
@@ -521,21 +570,51 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                         />
                       </div>
                       <div className={EB.sheetField}>
-                        <Label htmlFor="pm-amount" className={EB.sheetLabel}>
-                          Amount
-                        </Label>
-                        <Input
-                          id="pm-amount"
-                          value={pmAmount}
-                          onChange={(e) => setPmAmount(e.target.value)}
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          placeholder="2500"
-                          className={ebSheetInput(
-                            cn("text-sm text-right text-slate-50", EB.inputNumeric)
-                          )}
-                        />
+                        <div className={EB.paymentAmountRow}>
+                          <div className={EB.paymentAmountCol}>
+                            <Label htmlFor="pm-amount" className={EB.sheetLabel}>
+                              Amount
+                            </Label>
+                            <Input
+                              id="pm-amount"
+                              value={pmAmount}
+                              onChange={(e) => handlePmAmountChange(e.target.value)}
+                              type="number"
+                              step="0.01"
+                              min={0}
+                              placeholder="2500"
+                              className={ebSheetInput(
+                                cn("text-sm text-right text-[#F4F7FB]", EB.inputNumeric)
+                              )}
+                            />
+                          </div>
+                          <div className={EB.paymentPercentCol}>
+                            <Label htmlFor="pm-percent" className={EB.sheetLabel}>
+                              % of estimate
+                            </Label>
+                            <Input
+                              id="pm-percent"
+                              value={pmPercent}
+                              onChange={(e) => handlePmPercentChange(e.target.value)}
+                              type="number"
+                              step="0.01"
+                              min={0}
+                              max={100}
+                              placeholder="20"
+                              className={ebSheetInput(
+                                cn("text-sm text-right text-[#F4F7FB]", EB.inputNumeric)
+                              )}
+                              aria-describedby={
+                                pmPercentHelperText ? "pm-percent-helper" : undefined
+                              }
+                            />
+                          </div>
+                        </div>
+                        {pmPercentHelperText ? (
+                          <p id="pm-percent-helper" className={EB.paymentPercentHelper}>
+                            {pmPercentHelperText}
+                          </p>
+                        ) : null}
                       </div>
                       <div className={EB.sheetField}>
                         <Label htmlFor="pm-description" className={EB.sheetLabel}>
@@ -596,7 +675,14 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
           </EstimateBuilderAdvanced>
         </div>
 
-        <aside className="hidden lg:block lg:pl-1">
+        <aside
+          ref={asideRef}
+          className={cn(
+            "hidden lg:block lg:pl-1",
+            EB.overviewStickyAside,
+            overviewFloating && EB.overviewStickyFloating
+          )}
+        >
           <EstimateBuilderSummary
             floating
             paymentSummary={paymentHeaderSummary}
@@ -627,12 +713,12 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         aria-label="Estimate total"
       >
         <div className="mb-4 flex items-baseline justify-between gap-4">
-          <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-[#9EA8B8]">
             Total
           </span>
           <span
             className={cn(
-              "text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight",
+              "text-[1.8125rem] font-semibold leading-none tabular-nums tracking-[-0.02em] [font-feature-settings:'tnum']",
               EB.goldTotal
             )}
           >

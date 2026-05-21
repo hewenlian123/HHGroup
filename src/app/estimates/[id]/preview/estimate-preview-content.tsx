@@ -14,6 +14,10 @@ import {
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
 import { cn } from "@/lib/utils";
+import {
+  formatPdfLineTotal,
+  formatPdfLineUnitPrice,
+} from "@/app/estimates/_components/estimate-pdf-line-amounts";
 import type { ReactNode } from "react";
 
 type EstimatePreviewProps = {
@@ -92,10 +96,10 @@ function LineItemsTable({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: numbe
               <td className="py-2 px-2 text-right tabular-nums text-zinc-900">{row.qty}</td>
               <td className="py-2 px-2 text-zinc-800">{row.unit}</td>
               <td className="py-2 px-2 text-right tabular-nums text-zinc-900">
-                ${fmt(row.unitCost)}
+                {formatPdfLineUnitPrice(row, (n) => `$${fmt(n)}`)}
               </td>
               <td className="py-2 pl-3 text-right tabular-nums font-medium text-zinc-900">
-                ${fmt(lineTotal(row))}
+                {formatPdfLineTotal(row, (n) => `$${fmt(n)}`)}
               </td>
             </tr>
           );
