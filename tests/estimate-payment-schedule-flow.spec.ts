@@ -213,7 +213,7 @@ test("estimate payment schedule persists and has customer-facing payment preview
   expect(previewMainText).not.toContain("\t");
   expect(previewMainText).not.toContain("\u2028");
   await expect(page.locator("main")).toContainText("$7,500.00");
-  await expect(page.locator("main")).not.toContainText(/internal markup|internal only/i);
+  await expect(page.locator("main")).not.toContainText(/internal only/i);
 
   await page.goto(`${detailUrl}/print`, { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("document", { name: "Estimate print view" })).toContainText(

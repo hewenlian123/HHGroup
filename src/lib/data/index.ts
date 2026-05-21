@@ -3456,8 +3456,6 @@ export async function getEstimateSummary(
   if (!meta) return null;
   const items = await estDb.getEstimateItems(estimateId, explicitClient);
   const s = estDb.computeSummary(items, meta, estimateCodeToType);
-  const overheadPct = meta.overheadPct ?? 0.05;
-  const profitPct = meta.profitPct ?? 0.1;
   return {
     materialCost: s.materialCost,
     laborCost: s.laborCost,
@@ -3467,10 +3465,10 @@ export async function getEstimateSummary(
     discount: s.discount,
     markup: s.markup,
     grandTotal: s.total,
-    overheadPct,
-    profitPct,
-    overhead: s.subtotal * overheadPct,
-    profit: s.subtotal * profitPct,
+    overheadPct: 0,
+    profitPct: 0,
+    overhead: 0,
+    profit: 0,
   };
 }
 
@@ -3488,15 +3486,13 @@ export function getEstimateSummaryFromPayload(payload: {
   grandTotal: number;
 } {
   const subtotal = payload.items.reduce((s, row) => s + row.qty * row.unitCost, 0);
-  const overhead = subtotal * payload.overheadPct;
-  const profit = subtotal * payload.profitPct;
   return {
     subtotal,
-    overheadPct: payload.overheadPct,
-    profitPct: payload.profitPct,
-    overhead,
-    profit,
-    grandTotal: subtotal + overhead + profit,
+    overheadPct: 0,
+    profitPct: 0,
+    overhead: 0,
+    profit: 0,
+    grandTotal: subtotal,
   };
 }
 

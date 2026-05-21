@@ -34,12 +34,12 @@ export default async function EstimateSnapshotPage({
         subtotal: snapshot.summary.subtotal,
         tax: snapshot.summary.tax,
         discount: snapshot.summary.discount,
-        markup: snapshot.summary.markup,
+        markup: 0,
         grandTotal: snapshot.summary.total,
-        overheadPct: snapshot.meta.overheadPct,
-        profitPct: snapshot.meta.profitPct,
-        overhead: snapshot.summary.subtotal * snapshot.meta.overheadPct,
-        profit: snapshot.summary.subtotal * snapshot.meta.profitPct,
+        overheadPct: 0,
+        profitPct: 0,
+        overhead: 0,
+        profit: 0,
       }
     : null;
 

@@ -25,15 +25,15 @@ describe("estimate line item calculations", () => {
     expect(lineTotal(estimateItem({ qty: 2, unitCost: 110, markupPct: 0.1 }))).toBe(220);
   });
 
-  it("does not double count row markup before summary markup", () => {
+  it("ignores legacy pricing percentage fields in estimate totals", () => {
     const summary = computeSummary(
       [estimateItem({ qty: 1, unitCost: 110, markupPct: 0.1 })],
-      { overheadPct: 0.05, profitPct: 0.1, tax: 0, discount: 0 },
+      { overheadPct: 0.05, profitPct: 0.1, tax: 7.5, discount: 2.5 },
       () => "material"
     );
 
     expect(summary.subtotal).toBe(110);
-    expect(summary.markup).toBeCloseTo(16.5, 2);
-    expect(summary.total).toBeCloseTo(126.5, 2);
+    expect(summary.markup).toBe(0);
+    expect(summary.total).toBe(115);
   });
 });

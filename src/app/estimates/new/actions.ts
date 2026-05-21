@@ -28,7 +28,6 @@ export type CreateEstimatePayload = {
     qty: number;
     unit: string;
     unitCost: number;
-    markupPct: number;
     hideAmountOnPdf?: boolean;
     status?: EstimateLineItemStatus;
     sortOrder?: number;
@@ -56,7 +55,6 @@ export async function createEstimateWithItemsAction(
       unit: i.unit?.trim() || "EA",
       qty: Number(i.qty) || 0,
       unitCost: Number(i.unitCost) || 0,
-      markupPct: Number(i.markupPct) || 0,
       hideAmountOnPdf: Boolean(i.hideAmountOnPdf),
       status: i.status,
       sortOrder: Number.isFinite(i.sortOrder) ? Number(i.sortOrder) : undefined,
@@ -84,8 +82,8 @@ export async function createEstimateWithItemsAction(
       salesPerson: payload.salesPerson?.trim() || undefined,
       tax: payload.tax ?? 0,
       discount: payload.discount ?? 0,
-      overheadPct: payload.overheadPct ?? 0.05,
-      profitPct: payload.profitPct ?? 0.1,
+      overheadPct: payload.overheadPct ?? 0,
+      profitPct: payload.profitPct ?? 0,
       categoryNames: payload.costCategoryNames,
       items: items.map((i) => ({
         costCode: i.costCode,
@@ -93,7 +91,7 @@ export async function createEstimateWithItemsAction(
         qty: i.qty,
         unit: i.unit,
         unitCost: i.unitCost,
-        markupPct: i.markupPct,
+        markupPct: 0,
         hideAmountOnPdf: Boolean(i.hideAmountOnPdf),
         status: i.status,
         sortOrder: i.sortOrder,

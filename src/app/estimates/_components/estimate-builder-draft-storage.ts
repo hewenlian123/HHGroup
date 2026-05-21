@@ -19,7 +19,6 @@ export type StoredLineItemPreset = {
   qty: number;
   unit: string;
   unitPrice: number;
-  markupPct: number;
   status?: EstimateLineItemStatus;
   savedAt: number;
 };

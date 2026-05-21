@@ -40,16 +40,8 @@ export function EstimateBuilderSummary({
     );
   }
 
-  const {
-    subtotal,
-    grandTotal,
-    tax,
-    discount,
-    markup,
-    materialCost,
-    laborCost,
-    subcontractorCost,
-  } = summary;
+  const { subtotal, grandTotal, tax, discount, materialCost, laborCost, subcontractorCost } =
+    summary;
 
   return (
     <div className={shellClass} aria-label="Estimate overview">
@@ -84,7 +76,6 @@ export function EstimateBuilderSummary({
         <SummaryLine label="Subtotal" value={subtotal} />
         {discount > 0 ? <SummaryLine label="Discount" value={-discount} /> : null}
         {tax > 0 ? <SummaryLine label="Tax" value={tax} /> : null}
-        {showInternal && markup > 0 ? <SummaryLine label="Markup" value={markup} muted /> : null}
       </div>
 
       <div className="mt-4 border-t border-white/[0.08] pt-3.5">

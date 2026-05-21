@@ -382,12 +382,6 @@ export function EstimateEditor({
     });
   }, []);
 
-  const markupPct = ((meta.overheadPct + meta.profitPct) * 100).toFixed(1);
-
-  const lineLiveValuesRef = React.useRef<
-    Record<string, () => { qty: number; unit: string; unitCost: number; markupPct: number }>
-  >({});
-
   const flatPersistedRows = React.useMemo(() => {
     let idx = 0;
     const out: {
@@ -444,7 +438,6 @@ export function EstimateEditor({
             status={status}
             today={today}
             isReadOnly={isReadOnly}
-            markupPct={markupPct}
             tax={summary?.tax ?? 0}
             discount={summary?.discount ?? 0}
             saveEstimateMetaAction={saveEstimateMetaAction}
@@ -482,7 +475,6 @@ export function EstimateEditor({
                     updateLineItemAction={updateLineItemAction}
                     duplicateLineItemAction={duplicateLineItemAction}
                     deleteLineItemAction={deleteLineItemAction}
-                    lineLiveValuesRef={lineLiveValuesRef}
                     isLastRow={row.id === lastPersistedRowId}
                     onEnterAddNext={
                       !isReadOnly && row.id === lastPersistedRowId
@@ -565,7 +557,6 @@ export function EstimateEditor({
                                     updateLineItemAction={updateLineItemAction}
                                     duplicateLineItemAction={duplicateLineItemAction}
                                     deleteLineItemAction={deleteLineItemAction}
-                                    lineLiveValuesRef={lineLiveValuesRef}
                                   />
                                 );
                               })
@@ -592,7 +583,6 @@ export function EstimateEditor({
                                         updateLineItemAction={updateLineItemAction}
                                         duplicateLineItemAction={duplicateLineItemAction}
                                         deleteLineItemAction={deleteLineItemAction}
-                                        lineLiveValuesRef={lineLiveValuesRef}
                                       />
                                     );
                                   })}
@@ -742,7 +732,6 @@ function SortableLineItemGroup({
   updateLineItemAction,
   duplicateLineItemAction,
   deleteLineItemAction,
-  lineLiveValuesRef,
 }: {
   row: EstimateItemRow;
   estimateId: string;
@@ -750,9 +739,6 @@ function SortableLineItemGroup({
   updateLineItemAction: (fd: FormData) => Promise<void>;
   duplicateLineItemAction: (fd: FormData) => Promise<void>;
   deleteLineItemAction: (fd: FormData) => Promise<void>;
-  lineLiveValuesRef: React.MutableRefObject<
-    Record<string, () => { qty: number; unit: string; unitCost: number; markupPct: number }>
-  >;
 }): React.ReactElement {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row.id,
@@ -772,7 +758,6 @@ function SortableLineItemGroup({
         updateLineItemAction={updateLineItemAction}
         duplicateLineItemAction={duplicateLineItemAction}
         deleteLineItemAction={deleteLineItemAction}
-        lineLiveValuesRef={lineLiveValuesRef}
       />
     </div>
   );
@@ -787,7 +772,6 @@ function LineItemRow({
   updateLineItemAction,
   duplicateLineItemAction,
   deleteLineItemAction,
-  lineLiveValuesRef,
 }: {
   row: EstimateItemRow;
   estimateId: string;
@@ -798,9 +782,6 @@ function LineItemRow({
   updateLineItemAction: (fd: FormData) => Promise<void>;
   duplicateLineItemAction: (fd: FormData) => Promise<void>;
   deleteLineItemAction: (fd: FormData) => Promise<void>;
-  lineLiveValuesRef: React.MutableRefObject<
-    Record<string, () => { qty: number; unit: string; unitCost: number; markupPct: number }>
-  >;
 }): React.ReactElement {
   const router = useRouter();
   const duplicateFormRef = React.useRef<HTMLFormElement>(null);
@@ -818,20 +799,6 @@ function LineItemRow({
   const [unitCost, setUnitCost] = React.useState(roundEstimateCurrencyValue(row.unitCost));
   const combinedDesc = desc.trim() ? `${title}\n${desc}` : title;
   const formId = `line-${row.id}`;
-
-  React.useLayoutEffect(() => {
-    if (isLocked) return;
-    const registry = lineLiveValuesRef.current;
-    registry[row.id] = () => ({
-      qty,
-      unit,
-      unitCost,
-      markupPct: row.markupPct,
-    });
-    return () => {
-      delete registry[row.id];
-    };
-  }, [isLocked, row.id, row.markupPct, qty, unit, unitCost, lineLiveValuesRef]);
 
   React.useEffect(() => {
     const i = row.desc.indexOf("\n");
@@ -940,7 +907,6 @@ function LineItemRow({
           <input type="hidden" name="qty" value={qty} />
           <input type="hidden" name="unit" value={unit} />
           <input type="hidden" name="unitCost" value={unitCost} />
-          <input type="hidden" name="markupPct" value={String(row.markupPct * 100)} />
         </form>
       ) : null}
       <ProposalScopeWorkCard

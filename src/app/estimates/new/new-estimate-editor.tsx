@@ -67,7 +67,6 @@ type LineItem = {
   qty: number;
   unit: string;
   unitPrice: number;
-  markupPct: number;
   hideAmountOnPdf: boolean;
   status?: EstimateLineItemStatus;
 };
@@ -94,8 +93,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   const [taxTouched, setTaxTouched] = React.useState(false);
   const [defaultTaxPct, setDefaultTaxPct] = React.useState(0);
   const [discount, setDiscount] = React.useState(0);
-  const [overheadPct, setOverheadPct] = React.useState(5);
-  const [profitPct, setProfitPct] = React.useState(10);
   const [categoryNames, setCategoryNames] = React.useState<Record<string, string>>({});
   const [sectionOrder, setSectionOrder] = React.useState<string[]>([]);
   const [lineItems, setLineItems] = React.useState<LineItem[]>([]);
@@ -136,21 +133,19 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
       else if (t === "subcontractor") subcontractorCost += tot;
     });
     const subtotal = lineItems.reduce((s, li) => s + lineTotal(li), 0);
-    const overhead = subtotal * (overheadPct / 100);
-    const profit = subtotal * (profitPct / 100);
-    const grandTotal = subtotal + overhead + profit + tax - discount;
+    const grandTotal = subtotal + tax - discount;
     return {
       materialCost,
       laborCost,
       subcontractorCost,
       subtotal,
-      overhead,
-      profit,
+      overhead: 0,
+      profit: 0,
       tax,
       discount,
       grandTotal,
     };
-  }, [lineItems, codeToType, overheadPct, profitPct, tax, discount]);
+  }, [lineItems, codeToType, tax, discount]);
 
   const hasValidLineItem = React.useMemo(
     () => lineItems.some((li) => li.title.trim().length > 0 || li.description.trim().length > 0),
@@ -293,8 +288,8 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
         salesPerson: salesPerson.trim() || undefined,
         tax,
         discount,
-        overheadPct: overheadPct / 100,
-        profitPct: profitPct / 100,
+        overheadPct: 0,
+        profitPct: 0,
         costCategoryNames: costCategoryNamesForSave(),
         documentNotes: estimateNotes,
         items: lineItemsForSave()
@@ -307,7 +302,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
               qty: li.qty,
               unit: li.unit,
               unitCost: li.unitPrice,
-              markupPct: li.markupPct,
+              markupPct: 0,
               hideAmountOnPdf: li.hideAmountOnPdf,
               status: li.status ?? DEFAULT_LINE_ITEM_STATUS,
               sortOrder: index,
@@ -479,11 +474,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             salesPerson={salesPerson}
             tax={tax}
             discount={discount}
-            overheadPct={overheadPct}
-            profitPct={profitPct}
             selectedCustomer={selectedCustomer}
             estimateSubtotal={summary.subtotal}
-            preDiscountTotal={summary.subtotal + summary.overhead + summary.profit + summary.tax}
+            preDiscountTotal={summary.subtotal + summary.tax}
             submitAttempted={submitAttempted}
             onClientNameChange={setClientName}
             onProjectNameChange={setProjectName}
@@ -495,8 +488,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
             onTaxChange={setTax}
             onTaxTouched={() => setTaxTouched(true)}
             onDiscountChange={setDiscount}
-            onOverheadPctChange={setOverheadPct}
-            onProfitPctChange={setProfitPct}
             onCustomerPickerChange={handleCustomerPickerChange}
           />
 
@@ -771,12 +762,12 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
               subtotal: summary.subtotal,
               tax: summary.tax,
               discount: summary.discount,
-              markup: summary.overhead + summary.profit,
+              markup: 0,
               grandTotal: summary.grandTotal,
-              overheadPct: overheadPct / 100,
-              profitPct: profitPct / 100,
-              overhead: summary.overhead,
-              profit: summary.profit,
+              overheadPct: 0,
+              profitPct: 0,
+              overhead: 0,
+              profit: 0,
             }}
             showInternal
           />

@@ -12,10 +12,7 @@ export function EstimateSummarySidebar({ summary }: { summary: EstimateSummaryRe
       </div>
     );
   }
-  const { subtotal, grandTotal, tax, discount, markup } = summary;
-  const adjustments = grandTotal - subtotal;
-  const adjustmentsLabel = fmt(adjustments);
-  const discountLabel = discount === 0 ? fmt(0) : fmt(-discount);
+  const { subtotal, grandTotal, tax, discount } = summary;
 
   return (
     <div className="border border-zinc-200 dark:border-border rounded-lg overflow-hidden">
@@ -27,15 +24,18 @@ export function EstimateSummarySidebar({ summary }: { summary: EstimateSummaryRe
           <span className="text-foreground font-medium">Subtotal</span>
           <span className="tabular-nums font-medium text-foreground">{fmt(subtotal)}</span>
         </div>
-        <div className="flex justify-between items-center py-2.5 px-4 text-sm text-muted-foreground">
-          <div className="min-w-0">
-            <div className="text-muted-foreground">Adjustments</div>
-            <div className="mt-0.5 text-xs text-muted-foreground/80 truncate">
-              Tax {fmt(tax)} • Discount {discountLabel} • Markup {fmt(markup)}
-            </div>
+        {tax > 0 ? (
+          <div className="flex justify-between items-center py-2.5 px-4 text-sm">
+            <span className="text-muted-foreground">Tax</span>
+            <span className="tabular-nums font-medium text-foreground">{fmt(tax)}</span>
           </div>
-          <span className="tabular-nums font-medium text-foreground">{adjustmentsLabel}</span>
-        </div>
+        ) : null}
+        {discount > 0 ? (
+          <div className="flex justify-between items-center py-2.5 px-4 text-sm">
+            <span className="text-muted-foreground">Discount</span>
+            <span className="tabular-nums font-medium text-foreground">{fmt(-discount)}</span>
+          </div>
+        ) : null}
         <div className="flex justify-between items-center py-3 px-4 bg-muted/30 dark:bg-muted/20">
           <span className="font-semibold text-foreground">Total</span>
           <span className="tabular-nums font-semibold text-foreground">{fmt(grandTotal)}</span>

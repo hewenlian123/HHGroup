@@ -197,8 +197,6 @@ export function EstimateHeader({
                     (sum, i) => sum + i.qty * i.unitCost,
                     0
                   );
-                  const withOverhead =
-                    grandTotal * (1 + s.frozenPayload.overheadPct + s.frozenPayload.profitPct);
                   return (
                     <Link
                       key={s.snapshotId}
@@ -210,7 +208,7 @@ export function EstimateHeader({
                         <span className="text-xs text-muted-foreground">{s.createdAt}</span>
                       </div>
                       <div className="text-sm text-muted-foreground mt-1">
-                        {formatEstimateCurrency(withOverhead)}
+                        {formatEstimateCurrency(grandTotal)}
                       </div>
                     </Link>
                   );

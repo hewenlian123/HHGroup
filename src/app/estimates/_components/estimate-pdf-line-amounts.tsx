@@ -3,7 +3,7 @@ import type { EditorLineItem } from "./estimate-line-item-model";
 
 const PDF_AMOUNT_HIDDEN = "—";
 
-type PdfLineRow = Pick<EstimateItemRow, "qty" | "unitCost" | "markupPct" | "hideAmountOnPdf">;
+type PdfLineRow = Pick<EstimateItemRow, "qty" | "unitCost" | "hideAmountOnPdf">;
 
 function pdfLineTotal(row: PdfLineRow): number {
   return row.qty * row.unitCost;
@@ -24,7 +24,7 @@ export function formatPdfLineTotal(row: PdfLineRow, fmt: (n: number) => string):
 }
 
 export function formatPdfEditorLineTotal(
-  item: Pick<EditorLineItem, "hideAmountOnPdf" | "qty" | "unitPrice" | "markupPct">,
+  item: Pick<EditorLineItem, "hideAmountOnPdf" | "qty" | "unitPrice">,
   total: number,
   fmt: (n: number) => string
 ): string {

@@ -211,7 +211,6 @@ export function EstimateLineItemRow({
                 <input type="hidden" name="qty" value={qty} />
                 <input type="hidden" name="unit" value={unit} />
                 <input type="hidden" name="unitCost" value={unitCost} />
-                <input type="hidden" name="markupPct" value={String(row.markupPct * 100)} />
               </form>
               <AutoExpandTextarea
                 value={description}

@@ -39,8 +39,6 @@ type DetailsSnapshot = {
   salesPerson: string;
   tax: number;
   discount: number;
-  overheadPct: number;
-  profitPct: number;
   selectedCustomer: CustomerOption | null;
 };
 
@@ -55,12 +53,10 @@ export type EstimateNewCustomerSectionProps = {
   salesPerson: string;
   tax: number;
   discount: number;
-  overheadPct: number;
-  profitPct: number;
   selectedCustomer: CustomerOption | null;
   /** Subtotal for tax preset rate → dollar amount. */
   estimateSubtotal: number;
-  /** Subtotal + overhead + profit + tax (before discount). */
+  /** Subtotal + tax (before discount). */
   preDiscountTotal: number;
   submitAttempted: boolean;
   onClientNameChange: (v: string) => void;
@@ -73,8 +69,6 @@ export type EstimateNewCustomerSectionProps = {
   onTaxChange: (v: number) => void;
   onTaxTouched: () => void;
   onDiscountChange: (v: number) => void;
-  onOverheadPctChange: (v: number) => void;
-  onProfitPctChange: (v: number) => void;
   onCustomerPickerChange: (customerId: string | null, customer?: CustomerOption | null) => void;
 };
 
@@ -89,8 +83,6 @@ export function EstimateNewCustomerSection({
   salesPerson,
   tax,
   discount,
-  overheadPct,
-  profitPct,
   selectedCustomer,
   estimateSubtotal,
   preDiscountTotal,
@@ -105,8 +97,6 @@ export function EstimateNewCustomerSection({
   onTaxChange,
   onTaxTouched,
   onDiscountChange,
-  onOverheadPctChange,
-  onProfitPctChange,
   onCustomerPickerChange,
 }: EstimateNewCustomerSectionProps): React.ReactElement {
   const [detailsOpen, setDetailsOpen] = React.useState(false);
@@ -123,8 +113,6 @@ export function EstimateNewCustomerSection({
       salesPerson,
       tax,
       discount,
-      overheadPct,
-      profitPct,
       selectedCustomer,
     }),
     [
@@ -137,8 +125,6 @@ export function EstimateNewCustomerSection({
       salesPerson,
       tax,
       discount,
-      overheadPct,
-      profitPct,
       selectedCustomer,
     ]
   );
@@ -160,8 +146,6 @@ export function EstimateNewCustomerSection({
     onSalesPersonChange(s.salesPerson);
     onTaxChange(s.tax);
     onDiscountChange(s.discount);
-    onOverheadPctChange(s.overheadPct);
-    onProfitPctChange(s.profitPct);
     onCustomerPickerChange(s.selectedCustomer?.id ?? null, s.selectedCustomer ?? undefined);
     snapshotRef.current = null;
   };
@@ -430,32 +414,6 @@ export function EstimateNewCustomerSection({
                         const n = Number(e.target.value);
                         onDiscountChange(Number.isFinite(n) ? Math.max(0, n) : 0);
                       }}
-                      className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
-                    />
-                  </div>
-                  <div className={cn(EB.sheetField, "min-w-0")}>
-                    <Label htmlFor="new-builder-overhead" className={EB.sheetLabel}>
-                      Overhead %
-                    </Label>
-                    <Input
-                      id="new-builder-overhead"
-                      type="number"
-                      step="0.1"
-                      value={overheadPct}
-                      onChange={(e) => onOverheadPctChange(Number(e.target.value) || 0)}
-                      className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
-                    />
-                  </div>
-                  <div className={cn(EB.sheetField, "min-w-0")}>
-                    <Label htmlFor="new-builder-profit" className={EB.sheetLabel}>
-                      Profit %
-                    </Label>
-                    <Input
-                      id="new-builder-profit"
-                      type="number"
-                      step="0.1"
-                      value={profitPct}
-                      onChange={(e) => onProfitPctChange(Number(e.target.value) || 0)}
                       className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
                     />
                   </div>

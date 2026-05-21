@@ -165,6 +165,7 @@ test("customer estimate preview and print use polished proposal output", async (
   await expect(previewMain).toContainText("Deposit");
   await expect(previewMain).toContainText("Grand Total");
   await expect(previewMain).not.toContainText(/undefined|null/i);
+  await expect(previewMain).not.toContainText(/markup|overhead|profit/i);
 
   const previewRow = page.locator("tbody tr").filter({ hasText: lineTitle });
   await expect(previewRow).toBeVisible({ timeout: 30_000 });
@@ -189,6 +190,7 @@ test("customer estimate preview and print use polished proposal output", async (
   await expect(printDocument).toContainText("Payment Schedule");
   await expect(printDocument).toContainText("Grand Total");
   await expect(printDocument).not.toContainText(/undefined|null/i);
+  await expect(printDocument).not.toContainText(/markup|overhead|profit/i);
   const printRow = page.locator("tbody tr").filter({ hasText: lineTitle });
   await expect(printRow).toBeVisible({ timeout: 30_000 });
   await expect(printRow.locator("td").nth(3)).toHaveText("—");

@@ -123,7 +123,7 @@ function isMissingTable(err: { message?: string } | null): boolean {
   return /schema cache|relation.*does not exist|could not find the table/i.test(m);
 }
 
-/** Visible line total = qty * unitCost. Markup is applied only at the estimate summary level. */
+/** Visible line total = qty * unitCost. */
 export function lineTotal(item: EstimateItemRow): number {
   return item.qty * item.unitCost;
 }
@@ -215,12 +215,9 @@ export function computeSummary(
     else subcontractorCost += tot;
   }
   const subtotal = items.reduce((s, row) => s + lineTotal(row), 0);
-  const overheadPct = meta.overheadPct ?? 0.05;
-  const profitPct = meta.profitPct ?? 0.1;
-  const markup = subtotal * (overheadPct + profitPct);
   const tax = meta.tax ?? 0;
   const discount = meta.discount ?? 0;
-  const total = subtotal + markup + tax - discount;
+  const total = subtotal + tax - discount;
   return {
     materialCost,
     laborCost,
@@ -228,7 +225,7 @@ export function computeSummary(
     subtotal,
     tax,
     discount,
-    markup,
+    markup: 0,
     total,
   };
 }
@@ -305,8 +302,8 @@ export async function createEstimateWithClient(
     estimate_date: now,
     tax: payload.tax ?? 0,
     discount: payload.discount ?? 0,
-    overhead_pct: payload.overheadPct ?? 0.05,
-    profit_pct: payload.profitPct ?? 0.1,
+    overhead_pct: payload.overheadPct ?? 0,
+    profit_pct: payload.profitPct ?? 0,
   };
   if (payload.validUntil != null && payload.validUntil !== "")
     metaIns.valid_until = payload.validUntil;
@@ -428,7 +425,7 @@ export async function createEstimateWithItemsWithClient(
         qty: it.qty,
         unit: it.unit,
         unit_cost: it.unitCost,
-        markup_pct: it.markupPct,
+        markup_pct: 0,
         hide_amount_on_pdf: Boolean(it.hideAmountOnPdf),
         status: normalizeLineItemStatus(it.status),
         sort_order: Number.isFinite(it.sortOrder) ? Number(it.sortOrder) : idx,
@@ -586,8 +583,8 @@ export async function getEstimateMeta(
     },
     tax: Number(row.tax ?? 0),
     discount: Number(row.discount ?? 0),
-    overheadPct: Number(row.overhead_pct ?? 0.05),
-    profitPct: Number(row.profit_pct ?? 0.1),
+    overheadPct: Number(row.overhead_pct ?? 0),
+    profitPct: Number(row.profit_pct ?? 0),
     estimateDate: (row.estimate_date as string) ?? null,
     validUntil: (row.valid_until as string) ?? null,
     notes: (row.notes as string) ?? null,
@@ -762,8 +759,8 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
           },
           tax: Number((metaJson.tax as number) ?? 0) || 0,
           discount: Number((metaJson.discount as number) ?? 0) || 0,
-          overheadPct: Number((metaJson.overheadPct as number) ?? 0.05) || 0.05,
-          profitPct: Number((metaJson.profitPct as number) ?? 0.1) || 0.1,
+          overheadPct: Number((metaJson.overheadPct as number) ?? 0) || 0,
+          profitPct: Number((metaJson.profitPct as number) ?? 0) || 0,
           estimateDate: (metaJson.estimateDate as string | null) ?? null,
           validUntil: (metaJson.validUntil as string | null) ?? null,
           notes: (metaJson.notes as string | null) ?? null,
@@ -793,16 +790,21 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
 
   const summary: EstimateSummary | null =
     summaryJson && typeof summaryJson === "object"
-      ? ({
-          materialCost: Number((summaryJson.materialCost as number) ?? 0) || 0,
-          laborCost: Number((summaryJson.laborCost as number) ?? 0) || 0,
-          subcontractorCost: Number((summaryJson.subcontractorCost as number) ?? 0) || 0,
-          subtotal: Number((summaryJson.subtotal as number) ?? 0) || 0,
-          tax: Number((summaryJson.tax as number) ?? 0) || 0,
-          discount: Number((summaryJson.discount as number) ?? 0) || 0,
-          markup: Number((summaryJson.markup as number) ?? 0) || 0,
-          total: Number((summaryJson.total as number) ?? 0) || 0,
-        } as EstimateSummary)
+      ? (() => {
+          const subtotal = Number((summaryJson.subtotal as number) ?? 0) || 0;
+          const tax = Number((summaryJson.tax as number) ?? 0) || 0;
+          const discount = Number((summaryJson.discount as number) ?? 0) || 0;
+          return {
+            materialCost: Number((summaryJson.materialCost as number) ?? 0) || 0,
+            laborCost: Number((summaryJson.laborCost as number) ?? 0) || 0,
+            subcontractorCost: Number((summaryJson.subcontractorCost as number) ?? 0) || 0,
+            subtotal,
+            tax,
+            discount,
+            markup: 0,
+            total: subtotal + tax - discount,
+          } as EstimateSummary;
+        })()
       : null;
 
   const frozenPayload = {
@@ -816,8 +818,8 @@ function toSnapshotRecord(r: Record<string, unknown>): EstimateSnapshotRecord {
             })
           )
         : items.map((i) => ({ qty: i.qty, unitCost: i.unitCost, markupPct: i.markupPct })),
-    overheadPct: Number(frozen?.overheadPct ?? meta?.overheadPct ?? 0.05) || 0.05,
-    profitPct: Number(frozen?.profitPct ?? meta?.profitPct ?? 0.1) || 0.1,
+    overheadPct: 0,
+    profitPct: 0,
   };
 
   return {
@@ -908,8 +910,8 @@ export async function createEstimateSnapshot(estimateId: string): Promise<string
   };
   const frozenPayload = {
     items: items.map((i) => ({ qty: i.qty, unitCost: i.unitCost, markupPct: i.markupPct })),
-    overheadPct: meta.overheadPct ?? 0.05,
-    profitPct: meta.profitPct ?? 0.1,
+    overheadPct: 0,
+    profitPct: 0,
   };
 
   const { data: inserted, error } = await c
@@ -1257,7 +1259,7 @@ export async function addLineItemWithClient(
     qty: item.qty,
     unit: item.unit,
     unit_cost: item.unitCost,
-    markup_pct: item.markupPct,
+    markup_pct: 0,
     hide_amount_on_pdf: Boolean(item.hideAmountOnPdf),
     status: normalizeLineItemStatus(item.status),
     sort_order: sortOrder,
@@ -1583,7 +1585,7 @@ export async function updateLineItemWithClient(
   if (payload.qty != null) up.qty = payload.qty;
   if (payload.unit != null) up.unit = payload.unit;
   if (payload.unitCost != null) up.unit_cost = payload.unitCost;
-  if (payload.markupPct != null) up.markup_pct = payload.markupPct;
+  if (payload.markupPct != null) up.markup_pct = 0;
   if (payload.hideAmountOnPdf != null) up.hide_amount_on_pdf = payload.hideAmountOnPdf;
   if (payload.status != null) up.status = normalizeLineItemStatus(payload.status);
   if (payload.sortOrder != null && Number.isFinite(payload.sortOrder))
@@ -1737,7 +1739,7 @@ export async function duplicateLineItemWithClient(
     qty: Number(row.qty),
     unit: (row.unit as string) ?? "EA",
     unitCost: Number(row.unit_cost),
-    markupPct: Number(row.markup_pct),
+    markupPct: 0,
     hideAmountOnPdf: Boolean(row.hide_amount_on_pdf),
     status: normalizeLineItemStatus(row.status),
   });
