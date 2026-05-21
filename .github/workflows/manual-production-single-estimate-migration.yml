@@ -1,0 +1,192 @@
+name: Manual Production Single Estimate Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type APPLY_PRODUCTION_SUPABASE_MIGRATIONS to apply the single approved estimate migration.
+        required: true
+        type: string
+
+concurrency:
+  group: manual-production-single-estimate-migration
+  cancel-in-progress: false
+
+jobs:
+  production-single-estimate-migration:
+    name: Apply one approved estimate migration
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CONFIRMATION: ${{ inputs.confirmation }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      MIGRATION_FILE: supabase/migrations/20260521111334_estimate_builder_advanced_persistence.sql
+      MIGRATION_SHA256: 50e6981139e6cbccee1257f17b371156b3312b54d1f650128eef5f4c85ab3d0a
+    steps:
+      - name: Requires manual confirmation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$CONFIRMATION" != "APPLY_PRODUCTION_SUPABASE_MIGRATIONS" ]; then
+            echo "::error::Refusing to run. Re-dispatch with the exact confirmation phrase."
+            exit 1
+          fi
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "::error::SUPABASE_DB_URL secret is required for manual production migrations."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate SUPABASE_DB_URL format
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+
+          raw = os.environ.get("SUPABASE_DB_URL", "")
+          if not raw:
+              raise SystemExit("SUPABASE_DB_URL is empty.")
+
+          u = urlsplit(raw)
+          if u.scheme not in ("postgres", "postgresql"):
+              raise SystemExit("SUPABASE_DB_URL must start with postgres:// or postgresql://")
+          if not u.hostname:
+              raise SystemExit("SUPABASE_DB_URL is missing host.")
+          if not u.username:
+              raise SystemExit("SUPABASE_DB_URL is missing username.")
+          if u.password is None or u.password == "":
+              raise SystemExit("SUPABASE_DB_URL is missing password.")
+          if (u.path or "").strip("/") != "postgres":
+              raise SystemExit("SUPABASE_DB_URL path must be /postgres.")
+          if u.query and "sslmode=" not in u.query:
+              raise SystemExit("SUPABASE_DB_URL query should include sslmode=require.")
+          print("SUPABASE_DB_URL format looks valid.")
+          PY
+
+      - name: Install psql client
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v psql >/dev/null 2>&1; then
+            psql --version
+            exit 0
+          fi
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Verify this workflow only runs the approved SQL file
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$MIGRATION_FILE"
+          actual_sha="$(sha256sum "$MIGRATION_FILE" | awk '{print $1}')"
+          if [ "$actual_sha" != "$MIGRATION_SHA256" ]; then
+            echo "::error::Migration file checksum mismatch. Refusing to run."
+            echo "Expected: $MIGRATION_SHA256"
+            echo "Actual:   $actual_sha"
+            exit 1
+          fi
+
+          if grep -Eiq '\b(drop|truncate|delete|rename|disable row level security|create policy|alter policy|drop policy|grant|revoke)\b' "$MIGRATION_FILE"; then
+            echo "::error::Migration contains a forbidden destructive/security keyword."
+            exit 1
+          fi
+
+          echo "Single approved migration file:"
+          echo "$MIGRATION_FILE"
+          echo
+          echo "Migration summary:"
+          echo "- Adds/backfills/defaults public.estimate_items.sort_order"
+          echo "- Adds public.estimate_items(estimate_id, sort_order) index"
+          echo "- Adds/backfills/defaults public.estimate_items.status"
+          echo "- Adds status check constraint for included/optional/allowance/excluded/owner_supplied"
+          echo "- Adds/backfills/defaults public.estimate_meta.document_notes"
+          echo "- Reloads PostgREST schema cache"
+
+      - name: Apply the single approved estimate migration SQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f "$MIGRATION_FILE"
+
+      - name: Verify production schema after migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          begin
+            if not exists (
+              select 1
+              from information_schema.columns
+              where table_schema = 'public'
+                and table_name = 'estimate_items'
+                and column_name = 'sort_order'
+            ) then
+              raise exception 'Missing public.estimate_items.sort_order';
+            end if;
+
+            if not exists (
+              select 1
+              from information_schema.columns
+              where table_schema = 'public'
+                and table_name = 'estimate_items'
+                and column_name = 'status'
+            ) then
+              raise exception 'Missing public.estimate_items.status';
+            end if;
+
+            if not exists (
+              select 1
+              from information_schema.columns
+              where table_schema = 'public'
+                and table_name = 'estimate_meta'
+                and column_name = 'document_notes'
+            ) then
+              raise exception 'Missing public.estimate_meta.document_notes';
+            end if;
+
+            if not exists (
+              select 1
+              from pg_indexes
+              where schemaname = 'public'
+                and tablename = 'estimate_items'
+                and indexname = 'estimate_items_estimate_sort_idx'
+            ) then
+              raise exception 'Missing estimate_items_estimate_sort_idx';
+            end if;
+
+            if not exists (
+              select 1
+              from pg_constraint
+              where conname = 'estimate_items_status_check'
+                and conrelid = 'public.estimate_items'::regclass
+            ) then
+              raise exception 'Missing estimate_items_status_check';
+            end if;
+          end $$;
+
+          select table_name, column_name, data_type, is_nullable, column_default
+          from information_schema.columns
+          where table_schema = 'public'
+            and (
+              (table_name = 'estimate_items' and column_name in ('sort_order', 'status'))
+              or (table_name = 'estimate_meta' and column_name = 'document_notes')
+            )
+          order by table_name, column_name;
+
+          select indexname, indexdef
+          from pg_indexes
+          where schemaname = 'public'
+            and tablename = 'estimate_items'
+            and indexname = 'estimate_items_estimate_sort_idx';
+
+          select conname, pg_get_constraintdef(oid) as constraint_def
+          from pg_constraint
+          where conname = 'estimate_items_status_check'
+            and conrelid = 'public.estimate_items'::regclass;
+          SQL
