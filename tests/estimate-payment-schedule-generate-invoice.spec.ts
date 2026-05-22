@@ -177,9 +177,24 @@ async function fillEstimateDetails(
   await expect(dialog).toBeHidden({ timeout: 10_000 });
 }
 
-async function createEstimateWithThirtyPercentSchedule(
+function moneyText(amount: number): string {
+  return `$${amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+async function createEstimateWithPaymentSchedule(
   page: Page,
-  params: { customerName: string; projectName: string }
+  params: {
+    customerName: string;
+    projectName: string;
+    scheduleTitle: string;
+    description: string;
+    expectedAmount: number;
+    percent?: string;
+    fixedAmount?: string;
+  }
 ): Promise<string> {
   await page.goto("/estimates/new");
   await page.waitForLoadState("domcontentloaded");
@@ -213,18 +228,22 @@ async function createEstimateWithThirtyPercentSchedule(
   await page.getByRole("button", { name: "Schedule Payment" }).click();
   const scheduleDialog = page.getByRole("dialog", { name: "Schedule Payment" });
   await expect(scheduleDialog).toBeVisible({ timeout: 10_000 });
-  await scheduleDialog.getByLabel("Payment Name").fill("Deposit / Start Work");
-  await scheduleDialog.getByLabel("% of estimate").fill("30");
-  await expect(scheduleDialog.getByLabel("Amount")).toHaveValue("1200");
-  await scheduleDialog
-    .getByLabel("Description")
-    .fill("30% deposit generated from payment schedule");
+  await scheduleDialog.getByLabel("Payment Name").fill(params.scheduleTitle);
+  if (params.percent) {
+    await scheduleDialog.getByLabel("% of estimate").fill(params.percent);
+  } else {
+    await scheduleDialog
+      .getByLabel("Amount")
+      .fill(params.fixedAmount ?? String(params.expectedAmount));
+  }
+  await expect(scheduleDialog.getByLabel("Amount")).toHaveValue(String(params.expectedAmount));
+  await scheduleDialog.getByLabel("Description").fill(params.description);
   await scheduleDialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(scheduleDialog).toBeHidden({ timeout: 10_000 });
-  await expect(page.getByText("Deposit / Start Work", { exact: true })).toBeVisible({
+  await expect(page.getByText(params.scheduleTitle, { exact: true })).toBeVisible({
     timeout: 10_000,
   });
-  await expect(page.getByText("$1,200.00").first()).toBeVisible();
+  await expect(page.getByText(moneyText(params.expectedAmount)).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Save Estimate" }).click();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
@@ -297,9 +316,13 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
     projectName,
   });
 
-  const estimateUrl = await createEstimateWithThirtyPercentSchedule(page, {
+  const estimateUrl = await createEstimateWithPaymentSchedule(page, {
     customerName,
     projectName,
+    scheduleTitle: "Deposit / Start Work",
+    description: "30% deposit generated from payment schedule",
+    percent: "30",
+    expectedAmount: 1200,
   });
 
   await page.getByRole("button", { name: /Create invoice for Deposit \/ Start Work/i }).click();
@@ -392,4 +415,81 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
   });
   await expect(page.getByTestId("invoice-detail-balance")).toContainText("$0.00");
   expect(await projectOutstandingForInvoice(supabase, invoiceId)).toBe(0);
+});
+
+test("creates one draft invoice for a fixed amount payment schedule item", async ({ page }) => {
+  test.setTimeout(180_000);
+  const supabase = db();
+  if (!supabase) {
+    test.skip(true, "Supabase env is required for payment schedule invoice E2E.");
+    return;
+  }
+
+  const suffix = Date.now();
+  const customerName = `PW Fixed Schedule Customer ${suffix}`;
+  const projectName = `PW Fixed Schedule Project ${suffix}`;
+  createdCustomerNames.add(customerName);
+  createdProjectNames.add(projectName);
+  const { customerId, projectId } = await createCustomerAndProject(supabase, {
+    customerName,
+    projectName,
+  });
+
+  const estimateUrl = await createEstimateWithPaymentSchedule(page, {
+    customerName,
+    projectName,
+    scheduleTitle: "Progress Payment",
+    description: "Fixed progress payment generated from payment schedule",
+    fixedAmount: "1000",
+    expectedAmount: 1000,
+  });
+
+  await page.getByRole("button", { name: /Create invoice for Progress Payment/i }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+/, { timeout: 30_000 });
+  const invoiceId = invoiceIdFromUrl(page.url());
+
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select("id, project_id, customer_id, client_name, status, notes, total")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  expect(invoice).toMatchObject({
+    id: invoiceId,
+    project_id: projectId,
+    customer_id: customerId,
+    client_name: customerName,
+    status: "Draft",
+  });
+  const invoiceTotal = Number((invoice as { total: string | number }).total);
+  expect(invoiceTotal).toBe(1000);
+  expect(invoiceTotal).not.toBe(1200);
+  expect(invoiceTotal).not.toBe(4000);
+  expect(String((invoice as { notes?: string | null }).notes ?? "")).toContain("Progress Payment");
+
+  const { data: invoiceItems } = await supabase
+    .from("invoice_items")
+    .select("description, qty, unit_price, amount")
+    .eq("invoice_id", invoiceId);
+  expect(invoiceItems ?? []).toHaveLength(1);
+  expect(String(invoiceItems![0].description)).toContain("Payment Schedule - Progress Payment");
+  expect(Number(invoiceItems![0].amount)).toBe(1000);
+
+  await page.goto(estimateUrl, { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("link", { name: /View invoice for Progress Payment/i })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(
+    page.getByRole("button", { name: /Create invoice for Progress Payment/i })
+  ).toHaveCount(0);
+  await page.getByRole("link", { name: /View invoice for Progress Payment/i }).click();
+  await expect(page).toHaveURL(new RegExp(`/financial/invoices/${invoiceId}`), {
+    timeout: 30_000,
+  });
+
+  const { data: duplicateCheck } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("client_name", customerName)
+    .ilike("notes", "%Progress Payment%");
+  expect((duplicateCheck ?? []).map((row: { id: string }) => row.id)).toEqual([invoiceId]);
 });

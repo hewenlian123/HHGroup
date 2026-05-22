@@ -103,8 +103,20 @@ async function cleanupProjectsModuleData(): Promise<void> {
 async function expectHealthy(page: Page): Promise<void> {
   const body = page.locator("body");
   await expect(body).not.toContainText("Something went wrong");
-  await expect(body).not.toContainText("404");
+  await expect(body).not.toContainText("This page could not be found");
+  await expect(page.getByRole("heading", { name: /^404$/ })).toHaveCount(0);
   await expect(body).not.toContainText("Hydration failed");
+}
+
+async function addBlankEstimateSection(page: Page): Promise<void> {
+  const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
+  await expect(addSection).toBeVisible({ timeout: 30_000 });
+  await addSection.click();
+
+  const blankSection = page.getByRole("menuitem", { name: /^Blank section$/i }).first();
+  if (await blankSection.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await blankSection.click();
+  }
 }
 
 async function createCustomer(
@@ -205,15 +217,17 @@ async function createEstimateForProject(
   await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
     timeout: 30_000,
   });
+  await page.getByRole("button", { name: "Edit details" }).click();
+  const detailsSheet = page.getByRole("dialog", { name: "Customer / project / pricing details" });
+  await expect(detailsSheet).toBeVisible({ timeout: 10_000 });
   await selectCustomer(page, params.customerName);
-  await page.getByPlaceholder("Project name").fill(params.projectName);
-  await page
-    .getByRole("button", { name: /^Add Section$/i })
-    .first()
-    .click();
-  await page.getByLabel("Line item 1 title").fill(params.lineTitle);
-  await page.getByLabel("Line item 1 quantity").fill("1");
-  await page.getByLabel("Line item 1 unit price").fill("500");
+  await detailsSheet.getByPlaceholder("Project name").fill(params.projectName);
+  await detailsSheet.getByRole("button", { name: "Save" }).click();
+  await expect(detailsSheet).toBeHidden({ timeout: 10_000 });
+  await addBlankEstimateSection(page);
+  await page.getByLabel("Line item 1 title").locator("visible=true").fill(params.lineTitle);
+  await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("1");
+  await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("500");
   await page.getByRole("button", { name: "Save Estimate" }).click();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
   await expect(page.getByText(params.customerName, { exact: true }).first()).toBeVisible({

@@ -573,19 +573,27 @@ async function createEstimateForProject(
   await detailsSheet.getByPlaceholder("Project name").fill(params.projectName);
   await detailsSheet.getByRole("button", { name: "Save" }).click();
   await expect(detailsSheet).toBeHidden({ timeout: 10_000 });
-  await page
-    .getByRole("button", { name: /^Add Section$/i })
-    .first()
-    .click();
-  await page.getByLabel("Line item 1 title").fill(params.lineTitle);
-  await page.getByLabel("Line item 1 quantity").fill("1");
-  await page.getByLabel("Line item 1 unit price").fill("500");
+  await addBlankEstimateSection(page);
+  await page.getByLabel("Line item 1 title").locator("visible=true").fill(params.lineTitle);
+  await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("1");
+  await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("500");
   await page.getByRole("button", { name: "Save Estimate" }).click();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
   await expect(page.getByText(params.customerName, { exact: true }).first()).toBeVisible({
     timeout: 30_000,
   });
   return page.url();
+}
+
+async function addBlankEstimateSection(page: Page): Promise<void> {
+  const addSection = page.getByRole("button", { name: /^Add Section$/i }).first();
+  await expect(addSection).toBeVisible({ timeout: 30_000 });
+  await addSection.click();
+
+  const blankSection = page.getByRole("menuitem", { name: /^Blank section$/i }).first();
+  if (await blankSection.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await blankSection.click();
+  }
 }
 
 async function createChangeOrderFromList(
