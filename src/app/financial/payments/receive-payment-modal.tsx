@@ -10,6 +10,7 @@ import { FinanceDatePicker } from "@/components/ui/date-picker";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import {
   getInvoicesWithDerived,
+  getProjectById,
   getProjects,
   PAYMENT_METHODS,
   type InvoiceWithDerived,
@@ -276,11 +277,25 @@ export function ReceivePaymentModal({
     }
   }, [invoiceId, invoices, preselectedInvoiceId, remainingBalance, amount]);
 
-  const projectNameById = React.useState(() => new Map(projects.map((p) => [p.id, p.name])))[0];
+  const projectNameById = React.useMemo(
+    () => new Map(projects.map((p) => [p.id, p.name])),
+    [projects]
+  );
   React.useEffect(() => {
-    projectNameById.clear();
-    projects.forEach((p) => projectNameById.set(p.id, p.name));
-  }, [projects, projectNameById]);
+    if (!projectId || projectNameById.has(projectId)) return;
+    let cancelled = false;
+    getProjectById(projectId)
+      .then((project) => {
+        if (cancelled || !project) return;
+        setProjects((prev) => (prev.some((p) => p.id === project.id) ? prev : [project, ...prev]));
+      })
+      .catch(() => {
+        /* Keep the field blank rather than showing a raw project UUID. */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, projectNameById]);
 
   const updateDraft = React.useCallback((id: string, patch: Partial<PaymentAttachmentDraft>) => {
     setAttachmentDrafts((prev) =>
@@ -536,7 +551,7 @@ export function ReceivePaymentModal({
               Project
             </label>
             <Input
-              value={projectId ? (projectNameById.get(projectId) ?? projectId) : ""}
+              value={projectId ? (projectNameById.get(projectId) ?? "") : ""}
               readOnly
               className="h-9 bg-muted/50"
             />
