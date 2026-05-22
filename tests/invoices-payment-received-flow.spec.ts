@@ -226,6 +226,8 @@ test("invoice project linkage, mark sent, and payment received flow stay in sync
   const dialog = page.getByRole("dialog", { name: "Receive Payment" });
   await expect(dialog).toBeVisible({ timeout: 30_000 });
   await expect(dialog.locator("select").first()).toHaveValue(invoiceId);
+  await expect(dialog.locator("input[readonly]").first()).toHaveValue(E2E_PRESERVED_PROJECT_LABEL);
+  await expect(dialog.locator("input[readonly]").first()).not.toHaveValue(E2E_PRESERVED_PROJECT_ID);
   await expect(dialog.getByPlaceholder("Customer name")).toHaveValue(E2E_CUSTOMER_LABEL);
   await expect(dialog.getByPlaceholder("0")).toHaveValue("225");
   await dialog.getByPlaceholder("0").fill("100");
@@ -248,6 +250,12 @@ test("invoice project linkage, mark sent, and payment received flow stay in sync
   await expect(page).toHaveURL(/\/financial\/payments\?/, { timeout: 30_000 });
   const secondDialog = page.getByRole("dialog", { name: "Receive Payment" });
   await expect(secondDialog).toBeVisible({ timeout: 30_000 });
+  await expect(secondDialog.locator("input[readonly]").first()).toHaveValue(
+    E2E_PRESERVED_PROJECT_LABEL
+  );
+  await expect(secondDialog.locator("input[readonly]").first()).not.toHaveValue(
+    E2E_PRESERVED_PROJECT_ID
+  );
   await expect(secondDialog.getByPlaceholder("0")).toHaveValue("125");
   await secondDialog.getByRole("button", { name: "Receive Payment" }).click();
   await expect(secondDialog).toBeHidden({ timeout: 30_000 });
