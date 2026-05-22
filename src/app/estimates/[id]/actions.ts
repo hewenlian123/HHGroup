@@ -40,6 +40,232 @@ function getEstimateWriteClient(): SupabaseClient | null {
   return getServerSupabaseAdmin();
 }
 
+type ScheduleInvoiceActionResult = { ok: boolean; invoiceId?: string; error?: string };
+
+type EstimateInvoiceSourceRow = {
+  id: string;
+  number: string | null;
+  client: string | null;
+  project: string | null;
+  customer_id: string | null;
+};
+
+type EstimateInvoiceMetaRow = {
+  client_name: string | null;
+  client_email: string | null;
+  project_name: string | null;
+};
+
+type EstimatePaymentScheduleSourceRow = {
+  id: string;
+  estimate_id: string;
+  title: string | null;
+  description: string | null;
+  amount: number | string | null;
+  due_date: string | null;
+  status: string | null;
+  invoice_id: string | null;
+};
+
+type ProjectInvoiceSourceRow = {
+  id: string;
+  name: string | null;
+  customer_id: string | null;
+  client: string | null;
+  client_name: string | null;
+};
+
+const PROJECT_LINK_ERROR =
+  "Cannot create invoice because project link could not be resolved. Please link a project first.";
+const CUSTOMER_LINK_ERROR =
+  "Cannot create invoice because customer link could not be resolved. Please link a customer first.";
+
+function cleanText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function uniqueTexts(values: unknown[]): string[] {
+  return Array.from(new Set(values.map(cleanText).filter(Boolean)));
+}
+
+function uniqueRowsById<T extends { id: string | null }>(rows: T[] | null): T[] {
+  const seen = new Set<string>();
+  const out: T[] = [];
+  for (const row of rows ?? []) {
+    const id = cleanText(row.id);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(row);
+  }
+  return out;
+}
+
+function roundMoney(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(Math.max(0, n) * 100) / 100;
+}
+
+function isUniqueInvoiceNoError(error: { code?: string; message?: string } | null): boolean {
+  const message = error?.message ?? "";
+  return error?.code === "23505" || /invoice_no|invoices_invoice_no_key/i.test(message);
+}
+
+function isQuantityColumnUnsupported(error: { message?: string } | null): boolean {
+  const message = error?.message ?? "";
+  return /quantity/i.test(message) && /column|generated|schema cache|could not find/i.test(message);
+}
+
+async function deleteDraftInvoiceGraph(c: SupabaseClient, invoiceId: string): Promise<void> {
+  await c.from("invoice_items").delete().eq("invoice_id", invoiceId);
+  await c.from("invoices").delete().eq("id", invoiceId);
+}
+
+async function resolveProjectForScheduleInvoice(
+  c: SupabaseClient,
+  estimateId: string,
+  estimate: EstimateInvoiceSourceRow,
+  meta: EstimateInvoiceMetaRow | null
+): Promise<ProjectInvoiceSourceRow> {
+  const bySource = await c
+    .from("projects")
+    .select("id, name, customer_id, client, client_name")
+    .eq("source_estimate_id", estimateId);
+  if (bySource.error) throw new Error(bySource.error.message);
+  const sourceMatches = uniqueRowsById((bySource.data ?? []) as ProjectInvoiceSourceRow[]);
+  if (sourceMatches.length === 1) return sourceMatches[0];
+  if (sourceMatches.length > 1) throw new Error(PROJECT_LINK_ERROR);
+
+  const projectNames = uniqueTexts([meta?.project_name, estimate.project]);
+  if (projectNames.length === 0) throw new Error(PROJECT_LINK_ERROR);
+
+  const byName = await c
+    .from("projects")
+    .select("id, name, customer_id, client, client_name")
+    .in("name", projectNames);
+  if (byName.error) throw new Error(byName.error.message);
+  const nameMatches = uniqueRowsById((byName.data ?? []) as ProjectInvoiceSourceRow[]);
+  if (nameMatches.length !== 1) throw new Error(PROJECT_LINK_ERROR);
+  return nameMatches[0];
+}
+
+async function resolveCustomerIdForScheduleInvoice(
+  c: SupabaseClient,
+  estimate: EstimateInvoiceSourceRow,
+  meta: EstimateInvoiceMetaRow | null,
+  project: ProjectInvoiceSourceRow
+): Promise<string> {
+  const projectCustomerId = cleanText(project.customer_id);
+  if (projectCustomerId) return projectCustomerId;
+
+  const estimateCustomerId = cleanText(estimate.customer_id);
+  if (estimateCustomerId) return estimateCustomerId;
+
+  const email = cleanText(meta?.client_email);
+  if (email) {
+    const byEmail = await c.from("customers").select("id").eq("email", email);
+    if (byEmail.error) throw new Error(byEmail.error.message);
+    const emailMatches = uniqueRowsById((byEmail.data ?? []) as Array<{ id: string | null }>);
+    if (emailMatches.length === 1) return cleanText(emailMatches[0].id);
+    if (emailMatches.length > 1) throw new Error(CUSTOMER_LINK_ERROR);
+  }
+
+  const customerNames = uniqueTexts([
+    meta?.client_name,
+    estimate.client,
+    project.client_name,
+    project.client,
+  ]);
+  if (customerNames.length === 0) throw new Error(CUSTOMER_LINK_ERROR);
+
+  const [byName, byCompany] = await Promise.all([
+    c.from("customers").select("id").in("name", customerNames),
+    c.from("customers").select("id").in("company_name", customerNames),
+  ]);
+  if (byName.error) throw new Error(byName.error.message);
+  if (byCompany.error) throw new Error(byCompany.error.message);
+  const matches = uniqueRowsById([
+    ...((byName.data ?? []) as Array<{ id: string | null }>),
+    ...((byCompany.data ?? []) as Array<{ id: string | null }>),
+  ]);
+  if (matches.length !== 1) throw new Error(CUSTOMER_LINK_ERROR);
+  return cleanText(matches[0].id);
+}
+
+async function nextInvoiceNo(c: SupabaseClient, attempt: number): Promise<string> {
+  const { count } = await c.from("invoices").select("id", { count: "exact", head: true });
+  return `INV-${String((count ?? 0) + 1 + attempt).padStart(4, "0")}`;
+}
+
+async function insertScheduleInvoice(
+  c: SupabaseClient,
+  payload: {
+    projectId: string;
+    customerId: string;
+    clientName: string;
+    title: string;
+    notes: string;
+    issueDate: string;
+    dueDate: string;
+    amount: number;
+  }
+): Promise<string> {
+  let lastError: { message?: string } | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const invoiceNo = await nextInvoiceNo(c, attempt);
+    const { data, error } = await c
+      .from("invoices")
+      .insert({
+        invoice_no: invoiceNo,
+        project_id: payload.projectId,
+        customer_id: payload.customerId,
+        client_name: payload.clientName,
+        issue_date: payload.issueDate,
+        due_date: payload.dueDate,
+        status: "Draft",
+        notes: payload.notes,
+        tax_pct: 0,
+        subtotal: payload.amount,
+        tax_amount: 0,
+        total: payload.amount,
+      })
+      .select("id")
+      .single();
+    if (!error && data?.id) return String(data.id);
+    lastError = error;
+    if (!isUniqueInvoiceNoError(error)) break;
+  }
+  throw new Error(lastError?.message ?? "Failed to create invoice.");
+}
+
+async function insertScheduleInvoiceLine(
+  c: SupabaseClient,
+  invoiceId: string,
+  description: string,
+  amount: number
+): Promise<void> {
+  const row = {
+    invoice_id: invoiceId,
+    description,
+    qty: 1,
+    quantity: 1,
+    unit_price: amount,
+    amount,
+  };
+  let { error } = await c.from("invoice_items").insert(row);
+  if (error && isQuantityColumnUnsupported(error)) {
+    const fallback = await c.from("invoice_items").insert({
+      invoice_id: row.invoice_id,
+      description: row.description,
+      qty: row.qty,
+      unit_price: row.unit_price,
+      amount: row.amount,
+    });
+    error = fallback.error;
+  }
+  if (error) throw new Error(error.message ?? "Failed to create invoice line item.");
+}
+
 export async function approveEstimateAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
@@ -384,6 +610,148 @@ export async function markPaymentMilestonePaidAction(formData: FormData) {
     revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
   }
+}
+
+export async function createInvoiceFromPaymentScheduleItemAction(
+  estimateId: string,
+  scheduleItemId: string
+): Promise<ScheduleInvoiceActionResult> {
+  const safeEstimateId = estimateId.trim();
+  const safeScheduleItemId = scheduleItemId.trim();
+  if (!safeEstimateId || !safeScheduleItemId) {
+    return { ok: false, error: "Missing estimate or payment schedule item." };
+  }
+
+  try {
+    const db = getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+
+    const [estimateRes, metaRes, itemRes] = await Promise.all([
+      db
+        .from("estimates")
+        .select("id, number, client, project, customer_id")
+        .eq("id", safeEstimateId)
+        .maybeSingle(),
+      db
+        .from("estimate_meta")
+        .select("client_name, client_email, project_name")
+        .eq("estimate_id", safeEstimateId)
+        .maybeSingle(),
+      db
+        .from("estimate_payment_schedule_items")
+        .select("id, estimate_id, title, description, amount, due_date, status, invoice_id")
+        .eq("id", safeScheduleItemId)
+        .eq("estimate_id", safeEstimateId)
+        .maybeSingle(),
+    ]);
+
+    if (estimateRes.error) return { ok: false, error: estimateRes.error.message };
+    if (metaRes.error) return { ok: false, error: metaRes.error.message };
+    if (itemRes.error) return { ok: false, error: itemRes.error.message };
+    if (!estimateRes.data) return { ok: false, error: "Estimate not found." };
+    if (!itemRes.data) return { ok: false, error: "Payment schedule item not found." };
+
+    const estimate = estimateRes.data as EstimateInvoiceSourceRow;
+    const meta = (metaRes.data ?? null) as EstimateInvoiceMetaRow | null;
+    const item = itemRes.data as EstimatePaymentScheduleSourceRow;
+    const existingInvoiceId = cleanText(item.invoice_id);
+    if (existingInvoiceId) {
+      revalidateEstimatePaths(safeEstimateId);
+      revalidatePath(`/financial/invoices/${existingInvoiceId}`);
+      return { ok: true, invoiceId: existingInvoiceId };
+    }
+
+    const project = await resolveProjectForScheduleInvoice(db, safeEstimateId, estimate, meta);
+    const projectId = cleanText(project.id);
+    if (!projectId) return { ok: false, error: PROJECT_LINK_ERROR };
+
+    const customerId = await resolveCustomerIdForScheduleInvoice(db, estimate, meta, project);
+    if (!customerId) return { ok: false, error: CUSTOMER_LINK_ERROR };
+
+    const amount = roundMoney(item.amount);
+    if (amount <= 0) return { ok: false, error: "Payment schedule amount must be greater than 0." };
+
+    const scheduleTitle = cleanText(item.title) || "Payment";
+    const estimateNumber = cleanText(estimate.number) || safeEstimateId;
+    const clientName =
+      cleanText(meta?.client_name) ||
+      cleanText(estimate.client) ||
+      cleanText(project.client_name) ||
+      cleanText(project.client);
+    if (!clientName) return { ok: false, error: CUSTOMER_LINK_ERROR };
+
+    const today = new Date().toISOString().slice(0, 10);
+    const invoiceTitle = `Payment Schedule - ${scheduleTitle}`;
+    const notes = `Generated from Estimate ${estimateNumber}, Payment Schedule ${scheduleTitle}.`;
+    const invoiceId = await insertScheduleInvoice(db, {
+      projectId,
+      customerId,
+      clientName,
+      title: invoiceTitle,
+      notes,
+      issueDate: today,
+      dueDate: cleanText(item.due_date) || today,
+      amount,
+    });
+
+    try {
+      await insertScheduleInvoiceLine(db, invoiceId, invoiceTitle, amount);
+      const { data: linked, error: linkError } = await db
+        .from("estimate_payment_schedule_items")
+        .update({ invoice_id: invoiceId, status: "invoiced" })
+        .eq("id", safeScheduleItemId)
+        .eq("estimate_id", safeEstimateId)
+        .is("invoice_id", null)
+        .select("id, invoice_id")
+        .maybeSingle();
+      if (linkError) throw new Error(linkError.message);
+      if (!linked?.invoice_id) {
+        const { data: current } = await db
+          .from("estimate_payment_schedule_items")
+          .select("invoice_id")
+          .eq("id", safeScheduleItemId)
+          .eq("estimate_id", safeEstimateId)
+          .maybeSingle();
+        await deleteDraftInvoiceGraph(db, invoiceId);
+        const concurrentInvoiceId = cleanText(
+          (current as { invoice_id?: string | null } | null)?.invoice_id
+        );
+        if (concurrentInvoiceId) {
+          revalidateEstimatePaths(safeEstimateId);
+          revalidatePath(`/financial/invoices/${concurrentInvoiceId}`);
+          return { ok: true, invoiceId: concurrentInvoiceId };
+        }
+        return { ok: false, error: "Could not link invoice to payment schedule." };
+      }
+    } catch (error) {
+      await deleteDraftInvoiceGraph(db, invoiceId);
+      throw error;
+    }
+
+    revalidateEstimatePaths(safeEstimateId);
+    revalidatePath("/estimates");
+    revalidatePath("/financial/invoices");
+    revalidatePath(`/financial/invoices/${invoiceId}`);
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath("/financial/owner");
+
+    return { ok: true, invoiceId };
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "操作失败" };
+  }
+}
+
+export async function createInvoiceFromPaymentScheduleItemFormAction(formData: FormData) {
+  const estimateId = formData.get("estimateId");
+  const itemId = formData.get("itemId");
+  if (typeof estimateId !== "string" || typeof itemId !== "string") return;
+  const result = await createInvoiceFromPaymentScheduleItemAction(estimateId, itemId);
+  if (result.ok && result.invoiceId) {
+    redirect(`/financial/invoices/${result.invoiceId}`);
+  }
+  const error = encodeURIComponent(result.error ?? "Could not create invoice.");
+  revalidateEstimatePaths(estimateId);
+  redirect(`/estimates/${estimateId}?invoiceError=${error}`);
 }
 
 export async function reorderPaymentScheduleAction(formData: FormData) {

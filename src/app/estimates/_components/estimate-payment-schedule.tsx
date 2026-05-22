@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/toast/toast-provider";
 import {
   Sheet,
   SheetContent,
@@ -14,7 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import type { PaymentScheduleItem, PaymentScheduleTemplate } from "@/lib/data";
 import { paymentMilestoneAmount } from "@/lib/data";
-import { FileText, Pencil, Plus, Trash2 } from "lucide-react";
+import { FileCheck2, FilePlus2, FileText, Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
 import { EB, ebSheetGlassNarrow, ebSheetInput } from "./estimate-builder-ui";
@@ -23,6 +25,7 @@ import {
   ProposalPaymentMilestoneList,
   type ProposalPaymentMilestoneRow,
 } from "./proposal-payment-milestone-list";
+import { createInvoiceFromPaymentScheduleItemFormAction } from "../[id]/actions";
 
 type AddAction = (formData: FormData) => Promise<void>;
 type UpdateAction = (formData: FormData) => Promise<void>;
@@ -58,6 +61,8 @@ export function EstimatePaymentSchedule(props: {
     updatePaymentMilestoneAction,
     deletePaymentMilestoneAction,
   } = props;
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<PaymentScheduleItem | null>(null);
   const [paymentDescriptionDraft, setPaymentDescriptionDraft] = React.useState("");
@@ -66,6 +71,16 @@ export function EstimatePaymentSchedule(props: {
     if (!scheduleOpen) return;
     setPaymentDescriptionDraft(editingItem?.description ?? "");
   }, [scheduleOpen, editingItem?.id, editingItem?.description]);
+
+  React.useEffect(() => {
+    const invoiceError = searchParams.get("invoiceError");
+    if (!invoiceError) return;
+    toast({
+      title: "Create invoice failed",
+      description: invoiceError,
+      variant: "error",
+    });
+  }, [searchParams, toast]);
 
   const openScheduleDrawer = (item?: PaymentScheduleItem) => {
     setEditingItem(item ?? null);
@@ -126,6 +141,40 @@ export function EstimatePaymentSchedule(props: {
             if (!item) return null;
             return (
               <div className="flex gap-1">
+                {item.invoiceId ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    asChild
+                    className={cn(
+                      "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                      EB.btnGhost
+                    )}
+                    aria-label={`View invoice for ${item.title}`}
+                  >
+                    <Link href={`/financial/invoices/${item.invoiceId}`}>
+                      <FileCheck2 className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                ) : (
+                  <form action={createInvoiceFromPaymentScheduleItemFormAction} className="inline">
+                    <input type="hidden" name="estimateId" value={estimateId} />
+                    <input type="hidden" name="itemId" value={item.id} />
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      size="icon"
+                      className={cn(
+                        "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                        EB.btnGhost
+                      )}
+                      aria-label={`Create invoice for ${item.title}`}
+                    >
+                      <FilePlus2 className="h-4 w-4" />
+                    </Button>
+                  </form>
+                )}
                 <Button
                   type="button"
                   variant="outline"
