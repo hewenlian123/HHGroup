@@ -212,7 +212,7 @@ export function EstimateDetailClient({
   };
 
   return (
-    <EstimateBuilderShell>
+    <EstimateBuilderShell className="estimate-builder-new">
       <EstimateDetailHeader
         estimateId={estimateId}
         estimateNumber={estimateNumber}
