@@ -2,17 +2,13 @@
 
 import * as React from "react";
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { EmptyState } from "@/components/empty-state";
+import { LoadingState } from "@/components/loading-state";
+import { NeoMobileCard, NeoTable } from "@/components/base/neo-primitives";
+import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { cn } from "@/lib/utils";
 import { motionListTableRow } from "@/lib/motion-system";
-import { OS, TYPO } from "@/lib/typography";
+import { TYPO } from "@/lib/typography";
 
 export type DataTableColumn<T> = {
   key: string;
@@ -62,129 +58,97 @@ export function DataTable<T>({
     <>
       {/* Desktop/Tablet: table */}
       <div className={cn("relative hidden w-full md:block", className)}>
-        <div className={OS.tableShell}>
-          <div className="max-w-full overflow-x-auto">
-            <table className="w-full min-w-[640px] caption-bottom text-sm lg:min-w-0">
-              <TableHeader>
-                <TableRow className="hover:!translate-y-0 hover:!bg-transparent active:!scale-100 dark:hover:!bg-transparent">
-                  {columns.map((col) => (
-                    <TableHead
-                      key={col.key}
-                      className={cn(col.numeric && "text-right tabular-nums", col.className)}
-                    >
-                      {col.header}
-                    </TableHead>
-                  ))}
-                  {rowActions ? <TableHead className="w-10 px-0 text-right" /> : null}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableRow className="pointer-events-none hover:!bg-transparent active:!scale-100">
-                    <TableCell
-                      colSpan={columns.length + (rowActions ? 1 : 0)}
-                      className="py-8 text-center text-[var(--neo-text-secondary)]"
-                    >
-                      {loadingText}
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-                {!loading && data.length === 0 ? (
-                  <TableRow className="pointer-events-none hover:!bg-transparent active:!scale-100">
-                    <TableCell
-                      colSpan={columns.length + (rowActions ? 1 : 0)}
-                      className="py-8 text-center text-[var(--neo-text-secondary)]"
-                    >
-                      {emptyState}
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-                {!loading &&
-                  data.map((row, index) => {
-                    const id = getRowId(row, index);
-                    const actions = rowActions?.(row) ?? [];
-                    const isSelected = selectedRowId === id;
-                    return (
-                      <TableRow
-                        key={id}
-                        data-state={isSelected ? "selected" : undefined}
-                        aria-selected={isSelected || undefined}
-                        className={cn(
-                          "table-row-compact",
-                          motionListTableRow,
-                          onRowClick &&
-                            "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0",
-                          !onRowClick && "cursor-default"
-                        )}
-                        onClick={(e) => {
-                          const target = (e.target as HTMLElement).closest("button");
-                          if (!target && onRowClick) onRowClick(row);
-                        }}
+        <NeoTable tableClassName="min-w-[640px] caption-bottom text-sm lg:min-w-0">
+          <TableHeader>
+            <TableRow className="hover:!translate-y-0 hover:!bg-transparent active:!scale-100 dark:hover:!bg-transparent">
+              {columns.map((col) => (
+                <TableHead
+                  key={col.key}
+                  className={cn(col.numeric && "text-right tabular-nums", col.className)}
+                >
+                  {col.header}
+                </TableHead>
+              ))}
+              {rowActions ? <TableHead className="w-10 px-0 text-right" /> : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow className="pointer-events-none hover:!bg-transparent active:!scale-100">
+                <TableCell
+                  colSpan={columns.length + (rowActions ? 1 : 0)}
+                  className="py-8 text-center text-[var(--neo-text-secondary)]"
+                >
+                  {loadingText}
+                </TableCell>
+              </TableRow>
+            ) : null}
+            {!loading && data.length === 0 ? (
+              <TableRow className="pointer-events-none hover:!bg-transparent active:!scale-100">
+                <TableCell
+                  colSpan={columns.length + (rowActions ? 1 : 0)}
+                  className="py-8 text-center text-[var(--neo-text-secondary)]"
+                >
+                  {emptyState}
+                </TableCell>
+              </TableRow>
+            ) : null}
+            {!loading &&
+              data.map((row, index) => {
+                const id = getRowId(row, index);
+                const actions = rowActions?.(row) ?? [];
+                const isSelected = selectedRowId === id;
+                return (
+                  <TableRow
+                    key={id}
+                    data-state={isSelected ? "selected" : undefined}
+                    aria-selected={isSelected || undefined}
+                    className={cn(
+                      "table-row-compact",
+                      motionListTableRow,
+                      onRowClick &&
+                        "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0",
+                      !onRowClick && "cursor-default"
+                    )}
+                    onClick={(e) => {
+                      const target = (e.target as HTMLElement).closest("button");
+                      if (!target && onRowClick) onRowClick(row);
+                    }}
+                  >
+                    {columns.map((col) => (
+                      <TableCell
+                        key={col.key}
+                        className={cn(col.numeric && "num font-semibold", col.className)}
                       >
-                        {columns.map((col) => (
-                          <TableCell
-                            key={col.key}
-                            className={cn(col.numeric && "num font-semibold", col.className)}
-                          >
-                            {col.cell
-                              ? col.cell(row)
-                              : ((row as Record<string, unknown>)[col.key] as React.ReactNode)}
-                          </TableCell>
-                        ))}
-                        {rowActions ? (
-                          <TableCell
-                            className="w-10 px-0 text-right"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {actions.length > 0 ? (
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="icon"
-                                    className="btn-outline-ghost h-8 w-8 shrink-0 min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0"
-                                    aria-label="Row actions"
-                                  >
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  {actions.map((action, i) => (
-                                    <DropdownMenuItem
-                                      key={i}
-                                      onSelect={(e) => {
-                                        e.preventDefault();
-                                        action.onClick();
-                                      }}
-                                    >
-                                      {action.label}
-                                    </DropdownMenuItem>
-                                  ))}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            ) : null}
-                          </TableCell>
-                        ) : null}
-                      </TableRow>
-                    );
-                  })}
-              </TableBody>
-            </table>
-          </div>
-        </div>
+                        {col.cell
+                          ? col.cell(row)
+                          : ((row as Record<string, unknown>)[col.key] as React.ReactNode)}
+                      </TableCell>
+                    ))}
+                    {rowActions ? (
+                      <TableCell
+                        className="w-10 px-0 text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <RowActionsMenu
+                          appearance="list"
+                          actions={actions}
+                          ariaLabel="Row actions"
+                        />
+                      </TableCell>
+                    ) : null}
+                  </TableRow>
+                );
+              })}
+          </TableBody>
+        </NeoTable>
       </div>
 
       {/* Mobile: card layout */}
       <div className="grid gap-3 md:hidden">
-        {loading ? (
-          <div className={cn(OS.emptyState, "py-6 text-sm text-[var(--neo-text-secondary)]")}>
-            {loadingText}
-          </div>
-        ) : null}
+        {loading ? <LoadingState text={loadingText} className="py-6" /> : null}
         {!loading && data.length === 0 ? (
-          <div className={cn(OS.emptyState, "py-6 text-sm text-[var(--neo-text-secondary)]")}>
-            {emptyState}
-          </div>
+          <EmptyState title={typeof emptyState === "string" ? emptyState : "No records found."} />
         ) : null}
         {!loading &&
           data.map((row, index) => {
@@ -192,14 +156,11 @@ export function DataTable<T>({
             const actions = rowActions?.(row) ?? [];
             const isSelected = selectedRowId === id;
             return (
-              <div
+              <NeoMobileCard
                 key={id}
-                data-state={isSelected ? "selected" : undefined}
-                aria-selected={isSelected || undefined}
+                selected={isSelected}
                 className={cn(
-                  OS.card,
-                  "p-4 transition-colors duration-150 ease-out active:scale-[0.99] hover:bg-[var(--neo-surface-muted)]",
-                  isSelected && "border-[var(--neo-gold)] bg-[rgb(184_137_45_/_0.08)]",
+                  "p-4",
                   onRowClick &&
                     "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0"
                 )}
@@ -228,34 +189,10 @@ export function DataTable<T>({
                 </dl>
                 {actions.length > 0 ? (
                   <div className="mt-3 flex justify-end" onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="btn-outline-ghost min-h-[44px] min-w-[44px]"
-                          aria-label="Row actions"
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {actions.map((action, i) => (
-                          <DropdownMenuItem
-                            key={i}
-                            onSelect={(e) => {
-                              e.preventDefault();
-                              action.onClick();
-                            }}
-                          >
-                            {action.label}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <RowActionsMenu actions={actions} ariaLabel="Row actions" appearance="list" />
                   </div>
                 ) : null}
-              </div>
+              </NeoMobileCard>
             );
           })}
       </div>

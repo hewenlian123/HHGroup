@@ -7,6 +7,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { EmptyState } from "@/components/empty-state";
+import { NeoMobileCard } from "@/components/base/neo-primitives";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -127,7 +129,7 @@ export function DataTable<T>({
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="py-8 text-center text-muted-foreground"
+                  className="py-8 text-center text-[var(--neo-text-secondary)]"
                 >
                   {emptyText}
                 </TableCell>
@@ -221,25 +223,14 @@ export function DataTable<T>({
             ))}
           </div>
         ) : data.length === 0 ? (
-          <div className={cn(OS.emptyState, "px-4 py-6 text-sm text-[var(--neo-text-secondary)]")}>
-            {emptyText}
-          </div>
+          <EmptyState title={emptyText} className="px-4 py-6" />
         ) : (
           data.map((row) => {
             const titleCol = columns.find((c) => c.key === titleKey);
             const rowId = keyExtractor(row);
             const isSelected = selectedRowId === rowId;
             return (
-              <div
-                key={rowId}
-                data-state={isSelected ? "selected" : undefined}
-                aria-selected={isSelected || undefined}
-                className={cn(
-                  "group px-4 py-3 transition-colors duration-150 ease-out active:scale-[0.99] hover:bg-[var(--neo-surface-muted)]",
-                  OS.card,
-                  isSelected && "border-[var(--neo-gold)] bg-[rgb(184_137_45_/_0.08)]"
-                )}
-              >
+              <NeoMobileCard key={rowId} className={cn("px-4 py-3")} selected={isSelected}>
                 <div className={TYPO.primaryName}>
                   {titleCol ? getCellContent(row, titleCol) : null}
                 </div>
@@ -260,7 +251,7 @@ export function DataTable<T>({
                       </div>
                     ))}
                 </dl>
-              </div>
+              </NeoMobileCard>
             );
           })
         )}

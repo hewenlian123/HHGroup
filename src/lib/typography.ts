@@ -107,10 +107,11 @@ export function statusChipClass(tone: StatusTone = "neutral"): string {
   return STATUS_CHIP_CLASS[tone] ?? STATUS_CHIP_CLASS.neutral;
 }
 
-export type AmountTone = "neutral" | "income" | "expense" | "danger";
+export type AmountTone = "neutral" | "muted" | "income" | "expense" | "danger";
 
 export const AMOUNT_TONE_CLASS: Record<AmountTone, string> = {
   neutral: OS.neutralAmount,
+  muted: "text-[var(--neo-text-secondary)]",
   income: "text-emerald-700 dark:text-emerald-400",
   expense: OS.dangerAmount,
   danger: OS.dangerAmount,

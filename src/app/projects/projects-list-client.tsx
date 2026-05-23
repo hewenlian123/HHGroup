@@ -5,7 +5,7 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,13 +16,17 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import {
-  AmountCell,
   ConfirmDialog,
-  FilterToolbar,
+  EmptyState,
   KpiTile,
   MobileListRow,
+  NeoAmount,
+  NeoMobileCard,
+  NeoStatus,
+  NeoTable,
+  NeoToolbar,
+  RowActionsMenu,
 } from "@/components/base";
 import { cn } from "@/lib/utils";
 import { listTableRowClassName } from "@/lib/list-table-interaction";
@@ -41,12 +45,7 @@ import {
   type DeleteBlockedCounts,
 } from "./delete-blocked-config";
 import { useToast } from "@/components/toast/toast-provider";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import {
   MobileEmptyState,
   MobileFabPlus,
@@ -161,12 +160,12 @@ function normalizeProjectStatus(
 function ProjectListStatusPill({ status }: { status: string }) {
   const n = normalizeProjectStatus(status);
   const map = {
-    active: { pill: "hh-pill-success", label: "Active" },
-    completed: { pill: "hh-pill-success", label: "Completed" },
-    pending: { pill: "hh-pill-warning", label: "Pending" },
-    on_hold: { pill: "hh-pill-neutral", label: "On Hold" },
+    active: { variant: "success", label: "Active" },
+    completed: { variant: "success", label: "Completed" },
+    pending: { variant: "warning", label: "Pending" },
+    on_hold: { variant: "muted", label: "On Hold" },
     other: {
-      pill: "hh-pill-neutral",
+      variant: "default",
       label:
         status && status.trim()
           ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()
@@ -174,7 +173,7 @@ function ProjectListStatusPill({ status }: { status: string }) {
     },
   } as const;
   const c = map[n];
-  return <span className={cn(c.pill, "text-[12px] leading-tight")}>{c.label}</span>;
+  return <NeoStatus label={c.label} variant={c.variant} className="h-5 text-[11px]" />;
 }
 
 export function ProjectsListClient({
@@ -451,7 +450,7 @@ export function ProjectsListClient({
         }
       />
 
-      <FilterToolbar className="hidden md:flex lg:flex-row lg:flex-wrap">
+      <NeoToolbar className="hidden md:flex lg:flex-row lg:flex-wrap">
         <div className="relative min-w-[200px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
           <Input
@@ -486,7 +485,7 @@ export function ProjectsListClient({
           <option value="revenue">Sort: Revenue (high)</option>
           <option value="profit">Sort: Profit (high)</option>
         </select>
-      </FilterToolbar>
+      </NeoToolbar>
 
       <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
         <div className="space-y-2">
@@ -542,26 +541,32 @@ export function ProjectsListClient({
               ) : undefined
             }
           />
-          <div className={cn(OS.emptyState, "hidden px-8 py-14 text-center md:block")}>
-            <p className="text-[14px] font-medium text-[var(--neo-text-secondary)]">
-              {dataLoadWarning
+          <EmptyState
+            className="hidden px-8 py-14 md:block"
+            title={
+              dataLoadWarning
                 ? "Could not load projects."
                 : query.trim() || statusFilter !== "all"
                   ? "No projects match your filter."
-                  : "No projects yet."}
-            </p>
-            {!query.trim() && statusFilter === "all" ? (
-              <Button asChild variant="outline" className="mt-6 h-10 px-4">
-                <Link href="/projects/new">New Project</Link>
-              </Button>
-            ) : null}
-          </div>
+                  : "No projects yet."
+            }
+            description={
+              query.trim() || statusFilter !== "all"
+                ? "Adjust the search or status filter to widen the list."
+                : "Create a project to start tracking revenue, cost, and margin."
+            }
+            action={
+              !query.trim() && statusFilter === "all" ? (
+                <Button asChild variant="outline" className="mt-6 h-10 px-4">
+                  <Link href="/projects/new">New Project</Link>
+                </Button>
+              ) : undefined
+            }
+          />
         </>
       ) : (
         <>
-          <div
-            className={cn(OS.card, "divide-y divide-[var(--neo-border)] overflow-hidden md:hidden")}
-          >
+          <NeoMobileCard className="divide-y divide-[var(--neo-border)] overflow-hidden md:hidden">
             {filtered.map((r) => (
               <div key={r.id} className="flex min-h-[56px] items-center gap-2">
                 <MobileListRow asChild className="min-w-0 flex-1 rounded-none">
@@ -594,163 +599,126 @@ export function ProjectsListClient({
                     </div>
                   </Link>
                 </MobileListRow>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 shrink-0 rounded-sm"
-                      aria-label={`More actions for ${r.name}`}
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-[160px]">
-                    <DropdownMenuItem asChild>
-                      <Link href={`/projects/${r.id}`}>View</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href={`/projects/${r.id}/edit`}>Edit</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      disabled={deletingId != null}
-                      onSelect={() => void requestDelete(r)}
-                    >
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <RowActionsMenu
+                  appearance="list"
+                  ariaLabel={`More actions for ${r.name}`}
+                  className="mr-1 opacity-100"
+                  actions={[
+                    { label: "View", onClick: () => handleNavigate(r.id) },
+                    { label: "Edit", onClick: () => router.push(`/projects/${r.id}/edit`) },
+                    {
+                      label: "Delete",
+                      destructive: true,
+                      disabled: deletingId != null,
+                      onClick: () => void requestDelete(r),
+                    },
+                  ]}
+                />
               </div>
             ))}
-          </div>
-          <TableShell className="hidden md:block" aria-busy={deletingId != null || undefined}>
-            <div className="airtable-table-scroll">
-              <table className="w-full min-w-[880px] border-collapse text-[13px]">
-                <thead>
-                  <tr>
-                    <th className={tableRawThClass}>Project</th>
-                    <th className={tableRawThClass}>Client</th>
-                    <th className={tableRawThClass}>Status</th>
-                    <th className={cn(tableRawThClass, "text-right tabular-nums")}>Revenue</th>
-                    <th className={cn(tableRawThClass, "text-right tabular-nums")}>Actual Cost</th>
-                    <th className={cn(tableRawThClass, "text-right tabular-nums")}>Profit</th>
-                    <th className={tableRawThClass}>Updated</th>
-                    <th className={cn(tableRawThClass, "text-right")}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="[&_tr:last-child>td]:border-b-0">
-                  {filtered.map((r) => (
-                    <tr
-                      key={r.id}
-                      onClick={() => handleNavigate(r.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleNavigate(r.id);
-                        }
-                      }}
-                      tabIndex={0}
-                      role="link"
-                      aria-label={`Open project ${r.name}`}
-                      className={listTableRowClassName}
-                    >
-                      <td
-                        className={cn(
-                          tableRawTdClass,
-                          "font-medium text-[var(--neo-text-primary)]"
-                        )}
-                      >
-                        {r.name}
-                      </td>
-                      <td className={tableRawTdClass}>{r.clientName ?? "—"}</td>
-                      <td className={tableRawTdClass}>
-                        <ProjectListStatusPill status={r.status} />
-                      </td>
-                      <td
-                        className={cn(
-                          tableRawTdClass,
-                          "text-right font-mono tabular-nums text-[var(--neo-text-primary)]"
-                        )}
-                      >
-                        <AmountCell>{fmtUsd0(r.revenue)}</AmountCell>
-                      </td>
-                      <td
-                        className={cn(
-                          tableRawTdClass,
-                          "text-right font-mono tabular-nums text-[var(--neo-text-secondary)]"
-                        )}
-                        data-testid={`project-list-actual-cost-${r.id}`}
-                      >
-                        <AmountCell className="text-[var(--neo-text-secondary)]">
-                          {fmtUsd0(r.actualCost)}
-                        </AmountCell>
-                      </td>
-                      <td
-                        className={cn(
-                          tableRawTdClass,
-                          "text-right font-mono text-base font-semibold tabular-nums",
-                          r.profitReadinessWarning ? "text-amber-700" : profitClass(r.profit)
-                        )}
-                        data-testid={`project-list-profit-${r.id}`}
-                      >
-                        {r.profitReadinessWarning ? (
-                          "Needs review"
-                        ) : (
-                          <AmountCell tone={r.profit >= 0 ? "income" : "expense"}>
-                            {fmtUsd0(r.profit)}
-                          </AmountCell>
-                        )}
-                      </td>
-                      <td
-                        className={cn(
-                          tableRawTdClass,
-                          "font-mono text-[13px] text-[var(--neo-text-secondary)]"
-                        )}
-                      >
-                        {r.updatedAt}
-                      </td>
-                      <td
-                        className={cn(tableRawTdClass, "text-right")}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div
-                          className="inline-flex flex-wrap items-center justify-end gap-3"
-                          role="group"
-                          aria-label={`Actions for ${r.name}`}
-                        >
-                          <button
-                            type="button"
-                            className="text-[14px] font-medium text-[var(--neo-text-primary)] hover:underline"
-                            onClick={() => handleNavigate(r.id)}
-                          >
-                            View
-                          </button>
-                          <button
-                            type="button"
-                            className="text-[14px] font-medium text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)] hover:underline"
-                            onClick={() => router.push(`/projects/${r.id}/edit`)}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded-md p-1.5 text-rose-600 hover:bg-rose-600/10 disabled:opacity-50"
-                            aria-label={`Delete ${r.name}`}
-                            disabled={deletingId != null}
-                            onClick={() => void requestDelete(r)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </TableShell>
+          </NeoMobileCard>
+          <NeoTable className="hidden md:block" busy={deletingId != null}>
+            <thead>
+              <tr>
+                <th className={tableRawThClass}>Project</th>
+                <th className={tableRawThClass}>Client</th>
+                <th className={tableRawThClass}>Status</th>
+                <th className={cn(tableRawThClass, "text-right tabular-nums")}>Revenue</th>
+                <th className={cn(tableRawThClass, "text-right tabular-nums")}>Actual Cost</th>
+                <th className={cn(tableRawThClass, "text-right tabular-nums")}>Profit</th>
+                <th className={tableRawThClass}>Updated</th>
+                <th className={cn(tableRawThClass, "text-right")}>Actions</th>
+              </tr>
+            </thead>
+            <tbody className="[&_tr:last-child>td]:border-b-0">
+              {filtered.map((r) => (
+                <tr
+                  key={r.id}
+                  onClick={() => handleNavigate(r.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      handleNavigate(r.id);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="link"
+                  aria-label={`Open project ${r.name}`}
+                  className={listTableRowClassName}
+                >
+                  <td className={cn(tableRawTdClass, "font-medium text-[var(--neo-text-primary)]")}>
+                    {r.name}
+                  </td>
+                  <td className={tableRawTdClass}>{r.clientName ?? "—"}</td>
+                  <td className={tableRawTdClass}>
+                    <ProjectListStatusPill status={r.status} />
+                  </td>
+                  <td
+                    className={cn(
+                      tableRawTdClass,
+                      "text-right font-mono tabular-nums text-[var(--neo-text-primary)]"
+                    )}
+                  >
+                    <NeoAmount>{fmtUsd0(r.revenue)}</NeoAmount>
+                  </td>
+                  <td
+                    className={cn(
+                      tableRawTdClass,
+                      "text-right font-mono tabular-nums text-[var(--neo-text-secondary)]"
+                    )}
+                    data-testid={`project-list-actual-cost-${r.id}`}
+                  >
+                    <NeoAmount className="text-[var(--neo-text-secondary)]">
+                      {fmtUsd0(r.actualCost)}
+                    </NeoAmount>
+                  </td>
+                  <td
+                    className={cn(
+                      tableRawTdClass,
+                      "text-right font-mono text-base font-semibold tabular-nums",
+                      r.profitReadinessWarning ? "text-amber-700" : profitClass(r.profit)
+                    )}
+                    data-testid={`project-list-profit-${r.id}`}
+                  >
+                    {r.profitReadinessWarning ? (
+                      "Needs review"
+                    ) : (
+                      <NeoAmount tone={r.profit >= 0 ? "income" : "expense"}>
+                        {fmtUsd0(r.profit)}
+                      </NeoAmount>
+                    )}
+                  </td>
+                  <td
+                    className={cn(
+                      tableRawTdClass,
+                      "font-mono text-[13px] text-[var(--neo-text-secondary)]"
+                    )}
+                  >
+                    {r.updatedAt}
+                  </td>
+                  <td
+                    className={cn(tableRawTdClass, "text-right")}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <RowActionsMenu
+                      appearance="list"
+                      ariaLabel={`Actions for ${r.name}`}
+                      actions={[
+                        { label: "View", onClick: () => handleNavigate(r.id) },
+                        { label: "Edit", onClick: () => router.push(`/projects/${r.id}/edit`) },
+                        {
+                          label: "Delete",
+                          destructive: true,
+                          disabled: deletingId != null,
+                          onClick: () => void requestDelete(r),
+                        },
+                      ]}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </NeoTable>
         </>
       )}
 
