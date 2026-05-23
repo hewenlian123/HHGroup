@@ -5,13 +5,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/native-select";
-import { FilterBar } from "@/components/filter-bar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   MobileFabPlus,
   MobileListHeader,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
+import { NeoAmount, NeoToolbar } from "@/components/base";
 import { type LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
@@ -39,19 +39,19 @@ function sessionBadgeClass(session: LaborSession): string {
 }
 
 const timeShell =
-  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
 
 const timeKpiTile =
-  "rounded-xl border border-zinc-200/40 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.028),0_1px_12px_rgba(0,0,0,0.028)] dark:border-border/35 dark:bg-card/80 dark:shadow-none md:rounded-xl";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
 
 const timeKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100/45 text-zinc-400 md:h-8 md:w-8 dark:bg-muted/45 dark:text-muted-foreground";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
 
 const timeSegmentedShell =
-  "relative flex h-10 min-h-[44px] shrink-0 items-center rounded-md border border-zinc-200/80 bg-white/80 p-0.5 shadow-[0_1px_0_rgba(0,0,0,0.04)] backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-border/60 dark:bg-card/80 dark:shadow-none";
+  "relative flex h-10 min-h-[44px] shrink-0 items-center rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-0.5 shadow-[var(--neo-shadow-panel)] backdrop-blur";
 
 const timeSegmentedPill =
-  "absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-[6px] bg-[#0B1220] shadow-[0_6px_18px_rgba(2,6,23,0.16)] transition-transform duration-200 ease-out dark:bg-emerald-500/90 dark:shadow-none";
+  "absolute inset-y-0.5 left-0.5 w-[calc(50%-2px)] rounded-[6px] bg-[var(--neo-gold)] shadow-[0_6px_18px_rgba(184,137,45,0.18)] transition-transform duration-200 ease-out";
 
 const timeSegmentedButton =
   "relative z-10 flex h-full w-1/2 items-center justify-center gap-1.5 rounded-[6px] px-3 text-xs font-medium transition-colors duration-200";
@@ -378,26 +378,26 @@ export default function LaborPageClient() {
   return (
     <div
       className={cn(
-        "min-w-0 overflow-x-hidden bg-zinc-50 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] dark:bg-background",
+        "neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
         "flex flex-col"
       )}
     >
       <div
         className={cn(
-          "mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 dark:bg-background sm:max-w-[460px] md:max-w-6xl md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          "neo-page-on-graphite mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:max-w-6xl md:gap-2 md:px-6 md:pb-6 md:pt-3",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
             title="Daily Labor"
             subtitle="Track and manage daily labor entries by worker and project."
             actions={
               <Button
                 size="sm"
-                className="h-9 shrink-0 gap-1.5 shadow-none bg-[#0B1220] text-white hover:bg-[#0B1220]/92 dark:bg-emerald-500/90 dark:text-black dark:hover:bg-emerald-500"
+                className="h-9 shrink-0 gap-1.5 border-transparent bg-[var(--neo-gold)] text-zinc-950 shadow-none hover:bg-[var(--neo-gold-soft)]"
                 onClick={() => setModalOpen(true)}
                 disabled={loadingProjects}
               >
@@ -414,7 +414,7 @@ export default function LaborPageClient() {
         />
 
         <div className={cn(timeShell, "p-3 md:p-3")}>
-          <FilterBar className="!flex-col !items-stretch gap-3 border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
+          <NeoToolbar className="!flex-col !items-stretch gap-3 border-0 bg-transparent p-0 shadow-none dark:bg-transparent">
             <div className="flex w-full flex-wrap items-end gap-3 md:flex-nowrap">
               <div className="flex min-w-[160px] flex-1 flex-col gap-1 sm:flex-initial">
                 <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
@@ -492,7 +492,7 @@ export default function LaborPageClient() {
                   className={cn(
                     timeSegmentedButton,
                     view === "list"
-                      ? "text-white dark:text-black"
+                      ? "text-zinc-950"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -505,7 +505,7 @@ export default function LaborPageClient() {
                   className={cn(
                     timeSegmentedButton,
                     view === "calendar"
-                      ? "text-white dark:text-black"
+                      ? "text-zinc-950"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -514,7 +514,7 @@ export default function LaborPageClient() {
                 </button>
               </div>
             </div>
-          </FilterBar>
+          </NeoToolbar>
         </div>
 
         {error ? <p className="py-3 text-sm text-red-600">{error}</p> : null}
@@ -539,9 +539,9 @@ export default function LaborPageClient() {
                 <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
                   Total labor cost
                 </p>
-                <p className="mt-0.5 truncate text-base font-medium tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+                <NeoAmount className="mt-0.5 block truncate text-base leading-none md:text-xl">
                   {formatCurrency(summary.totalLaborCost)}
-                </p>
+                </NeoAmount>
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">This month</p>
               </div>
             </div>
@@ -602,9 +602,7 @@ export default function LaborPageClient() {
                     className="flex items-center justify-between gap-3 border-b border-gray-100 px-2.5 py-2.5 last:border-b-0 hover:bg-[#F9FAFB] dark:border-border dark:hover:bg-muted/40"
                   >
                     <span className="text-sm font-medium text-foreground truncate">{name}</span>
-                    <span className="text-sm tabular-nums font-medium text-foreground shrink-0">
-                      {formatCurrency(total)}
-                    </span>
+                    <NeoAmount className="shrink-0 text-sm">{formatCurrency(total)}</NeoAmount>
                   </div>
                 ))}
               </div>
@@ -669,14 +667,12 @@ export default function LaborPageClient() {
                             <span className="text-xs text-muted-foreground/80 truncate">
                               {entries.length} entries
                             </span>
-                            <span
-                              className={cn(
-                                "ml-auto text-sm font-semibold tabular-nums shrink-0",
-                                isHighCost ? "text-amber-700" : "text-hh-profit-positive"
-                              )}
+                            <NeoAmount
+                              tone={isHighCost ? "expense" : "income"}
+                              className="ml-auto shrink-0 text-sm"
                             >
                               {formatCurrency(totalPay)}
-                            </span>
+                            </NeoAmount>
                           </div>
                           <span
                             className={cn(
@@ -742,8 +738,10 @@ export default function LaborPageClient() {
                                             {sessionLabel(session)}
                                           </span>
                                         </td>
-                                        <td className="py-2 px-3 text-right tabular-nums font-semibold">
-                                          {pay > 0 ? formatCurrency(pay) : "—"}
+                                        <td className="py-2 px-3 text-right">
+                                          <NeoAmount>
+                                            {pay > 0 ? formatCurrency(pay) : "—"}
+                                          </NeoAmount>
                                         </td>
                                         <td className="py-2 px-3 text-right">
                                           <div className="flex items-center justify-end gap-2">
@@ -972,7 +970,7 @@ export default function LaborPageClient() {
                                         minimumFractionDigits: 0,
                                         maximumFractionDigits: 1,
                                       })}
-                                      h · {formatCurrency(totalPay)}
+                                      h · <NeoAmount>{formatCurrency(totalPay)}</NeoAmount>
                                     </span>
                                   ) : null}
                                 </div>
@@ -1108,8 +1106,8 @@ export default function LaborPageClient() {
                                 <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
                                   {otHours}
                                 </td>
-                                <td className="py-2 px-3 text-right tabular-nums font-semibold">
-                                  {pay > 0 ? formatCurrency(pay) : "—"}
+                                <td className="py-2 px-3 text-right">
+                                  <NeoAmount>{pay > 0 ? formatCurrency(pay) : "—"}</NeoAmount>
                                 </td>
                                 <td className="py-2 px-3 text-right">
                                   <div className="flex items-center justify-end gap-2">

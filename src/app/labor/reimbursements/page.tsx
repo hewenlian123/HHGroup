@@ -4,7 +4,6 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { FilterBar } from "@/components/filter-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
@@ -49,9 +48,15 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { DeleteRowAction } from "@/components/base";
+import {
+  DeleteRowAction,
+  NeoAmount,
+  NeoMobileCard,
+  NeoStatus,
+  NeoTable,
+  NeoToolbar,
+} from "@/components/base";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { statusChipClass } from "@/lib/typography";
 
 function todayLocalISODate(): string {
   const d = new Date();
@@ -64,10 +69,10 @@ function todayLocalISODate(): string {
 const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "paid"];
 
 const rbShell =
-  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
 
 const rbKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 md:h-8 md:w-8 dark:bg-muted dark:text-muted-foreground";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
 
 function hasReceiptUrl(r: WorkerReimbursement): boolean {
   return Boolean((r.receiptUrl ?? "").trim());
@@ -87,12 +92,12 @@ function ReimbursementStatusChip({
   hasReceipt?: boolean;
 }) {
   if (status === "paid") {
-    return <span className={statusChipClass("success")}>Paid</span>;
+    return <NeoStatus label="Paid" variant="success" />;
   }
   if (hasReceipt) {
-    return <span className={statusChipClass("warning")}>Ready to pay</span>;
+    return <NeoStatus label="Ready to pay" variant="warning" />;
   }
-  return <span className={statusChipClass("warning")}>Pending</span>;
+  return <NeoStatus label="Pending" variant="warning" />;
 }
 
 export default function WorkerReimbursementsPage() {
@@ -576,14 +581,14 @@ export default function WorkerReimbursementsPage() {
   return (
     <div
       className={cn(
-        "mx-auto flex w-full max-w-[430px] flex-col gap-0.5 bg-zinc-50 px-4 py-1 pb-2.5 dark:bg-background sm:max-w-[460px] md:max-w-6xl md:gap-0.5 md:px-6 md:pb-3 md:pt-0.5",
+        "neo-page-on-graphite mx-auto flex w-full max-w-[430px] flex-col gap-1 px-4 py-1 pb-2.5 text-[var(--neo-canvas-text-secondary)] sm:max-w-[460px] md:max-w-6xl md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
         mobileListPagePaddingClass,
-        "max-md:!gap-0.5"
+        "max-md:!gap-1"
       )}
     >
       <div className="hidden md:block">
         <PageHeader
-          className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+          className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
           title="Worker Reimbursements"
           subtitle="Review pending reimbursements, receipts, and payouts before marking paid."
           actions={
@@ -799,7 +804,7 @@ export default function WorkerReimbursementsPage() {
           Project Settings → API → Reload schema.
         </div>
       ) : null}
-      <FilterBar className="hidden md:block md:pt-0 md:pb-0">
+      <NeoToolbar className="hidden md:block md:pb-0 md:pt-0">
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div className="space-y-1 min-w-[200px] flex-1">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
@@ -822,7 +827,7 @@ export default function WorkerReimbursementsPage() {
             {selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
           </Button>
         </div>
-      </FilterBar>
+      </NeoToolbar>
       {message ? (
         <div className="rounded-lg border border-gray-100 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
           {message}
@@ -972,10 +977,9 @@ export default function WorkerReimbursementsPage() {
         ) : (
           <div className="flex flex-col gap-1.5">
             {paged.map((r) => (
-              <div
+              <NeoMobileCard
                 key={r.id}
                 className={cn(
-                  rbShell,
                   "flex flex-col gap-2 px-3 py-2.5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_2px_12px_rgba(0,0,0,0.04)]",
                   r.status === "pending" &&
                     hasReceiptUrl(r) &&
@@ -998,7 +1002,7 @@ export default function WorkerReimbursementsPage() {
                     </label>
                   ) : null}
                   <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="truncate text-[14px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-foreground">
+                    <p className="truncate text-[14px] font-semibold leading-snug tracking-normal text-[var(--neo-text-primary)]">
                       {workerName(r)}
                     </p>
                     {r.paidAt ? (
@@ -1023,9 +1027,9 @@ export default function WorkerReimbursementsPage() {
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <div className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-                      <span className="text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground">
+                      <NeoAmount className="text-base tracking-normal">
                         {formatCurrency(r.amount)}
-                      </span>
+                      </NeoAmount>
                       <ReimbursementStatusChip status={r.status} hasReceipt={hasReceiptUrl(r)} />
                       {r.receiptUrl ? (
                         <button
@@ -1078,7 +1082,7 @@ export default function WorkerReimbursementsPage() {
                 <div className="flex justify-end border-t border-zinc-100/80 pt-1.5 dark:border-border/45">
                   <ActionsDropdown r={r} />
                 </div>
-              </div>
+              </NeoMobileCard>
             ))}
           </div>
         )}
@@ -1086,217 +1090,212 @@ export default function WorkerReimbursementsPage() {
 
       {/* Desktop: table */}
       <div className="hidden md:block">
-        <div className={cn(rbShell, "overflow-hidden")}>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] border-collapse text-sm lg:min-w-0">
-              <thead>
-                <tr className="border-b border-zinc-100 bg-zinc-50/90 dark:border-border/60 dark:bg-muted/20">
-                  <th className="w-12 px-2 py-1.5 text-center">
-                    <div className="flex min-h-10 min-w-10 items-center justify-center">
-                      <input
-                        type="checkbox"
-                        aria-label="Select all pending on page"
-                        checked={
-                          pendingOnPage.length > 0 &&
-                          pendingOnPage.every((r) => selectedIds.has(r.id))
-                        }
-                        onChange={selectAllPendingOnPage}
-                        className="h-4 w-4 rounded border-input"
-                      />
+        <NeoTable tableClassName="min-w-[900px] lg:min-w-0">
+          <thead>
+            <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+              <th className="w-12 px-2 py-1.5 text-center">
+                <div className="flex min-h-10 min-w-10 items-center justify-center">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all pending on page"
+                    checked={
+                      pendingOnPage.length > 0 && pendingOnPage.every((r) => selectedIds.has(r.id))
+                    }
+                    onChange={selectAllPendingOnPage}
+                    className="h-4 w-4 rounded border-input"
+                  />
+                </div>
+              </th>
+              <th
+                className="w-[88px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] cursor-pointer select-none tabular-nums"
+                onClick={() => toggleSort("reimbursementDate")}
+              >
+                Date
+              </th>
+              <th className="min-w-[128px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+                Worker
+              </th>
+              <th className="max-w-[140px] min-w-[100px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+                Project
+              </th>
+              <th className="min-w-[160px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+                Review item
+              </th>
+              <th
+                className="w-[92px] whitespace-nowrap px-3 py-1.5 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] cursor-pointer select-none tabular-nums"
+                onClick={() => toggleSort("amount")}
+              >
+                Amount
+              </th>
+              <th
+                className="w-[108px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] cursor-pointer select-none"
+                onClick={() => toggleSort("status")}
+              >
+                Status
+              </th>
+              <th className="w-[88px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+                Receipt
+              </th>
+              <th className="w-24 px-3 py-1.5 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr className="border-b border-border/40">
+                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground text-xs">
+                  Loading…
+                </td>
+              </tr>
+            ) : paged.length === 0 ? (
+              <tr className="border-b border-border/40">
+                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground text-xs">
+                  No reimbursements yet.
+                </td>
+              </tr>
+            ) : (
+              paged.map((r) => (
+                <tr
+                  key={r.id}
+                  className={cn(
+                    listTableRowClassName,
+                    "group border-b border-zinc-100/80 transition-colors hover:bg-zinc-50/70 dark:border-border/40 dark:hover:bg-muted/15",
+                    r.status === "pending" &&
+                      hasReceiptUrl(r) &&
+                      "bg-emerald-500/[0.03] shadow-[inset_3px_0_0_0_rgba(16,185,129,0.28)] hover:bg-emerald-500/[0.05] dark:bg-emerald-500/[0.04] dark:hover:bg-emerald-500/[0.06] dark:shadow-[inset_3px_0_0_0_rgba(52,211,153,0.22)]",
+                    r.status === "pending" &&
+                      !hasReceiptUrl(r) &&
+                      "bg-amber-500/[0.03] shadow-[inset_3px_0_0_0_rgba(245,158,11,0.26)] hover:bg-amber-500/[0.045] dark:bg-amber-500/[0.05] dark:hover:bg-amber-500/[0.07] dark:shadow-[inset_3px_0_0_0_rgba(251,191,36,0.2)]"
+                  )}
+                  onClick={() => handleEdit(r)}
+                >
+                  <td
+                    className="w-12 px-2 py-2 text-center align-middle"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {r.status === "pending" ? (
+                      <div className="flex min-h-10 min-w-10 items-center justify-center">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${workerName(r)} ${formatCurrency(r.amount)}`}
+                          checked={selectedIds.has(r.id)}
+                          onChange={() => toggleSelection(r.id, r.status)}
+                          className="h-4 w-4 rounded border-input"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 align-middle text-[11px] text-muted-foreground tabular-nums leading-snug">
+                    {formatDate(r.reimbursementDate || r.createdAt)}
+                  </td>
+                  <td
+                    className={cn(
+                      "min-w-0 px-3 py-2 align-middle leading-snug",
+                      listTablePrimaryCellClassName,
+                      "text-zinc-900 dark:text-foreground"
+                    )}
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <span className="line-clamp-2 text-[13px] font-semibold tracking-normal text-[var(--neo-text-primary)]">
+                        {workerName(r)}
+                      </span>
+                      {r.paidAt ? (
+                        <span className="block text-[10px] tabular-nums leading-none text-muted-foreground/70">
+                          Paid {formatDate(r.paidAt)}
+                        </span>
+                      ) : null}
                     </div>
-                  </th>
-                  <th
-                    className="w-[88px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none tabular-nums"
-                    onClick={() => toggleSort("reimbursementDate")}
+                  </td>
+                  <td className="max-w-[160px] px-3 py-2 align-middle">
+                    {r.projectId && projectName(r) !== "—" ? (
+                      <span className="line-clamp-2 text-[12px] leading-snug text-muted-foreground">
+                        {projectName(r)}
+                      </span>
+                    ) : (
+                      <span className="text-[12px] text-muted-foreground/45">No project</span>
+                    )}
+                  </td>
+                  <td className="min-w-0 px-3 py-2 align-middle leading-snug">
+                    <div className="min-w-0 space-y-0.5">
+                      <span className="line-clamp-2 text-[12px] font-medium leading-snug text-zinc-800 dark:text-zinc-100">
+                        {r.vendor?.trim() ? r.vendor : "No vendor"}
+                      </span>
+                      {r.description?.trim() ? (
+                        <span className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+                          {r.description.trim()}
+                        </span>
+                      ) : null}
+                    </div>
+                  </td>
+                  <td
+                    className={cn(
+                      "whitespace-nowrap px-3 py-2 text-right align-middle",
+                      listTableAmountCellClassName
+                    )}
                   >
-                    Date
-                  </th>
-                  <th className="min-w-[128px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Worker
-                  </th>
-                  <th className="max-w-[140px] min-w-[100px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Project
-                  </th>
-                  <th className="min-w-[160px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Review item
-                  </th>
-                  <th
-                    className="w-[92px] whitespace-nowrap px-3 py-1.5 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none tabular-nums"
-                    onClick={() => toggleSort("amount")}
+                    <NeoAmount className="text-base">{formatCurrency(r.amount)}</NeoAmount>
+                  </td>
+                  <td className="px-3 py-2 align-middle whitespace-nowrap">
+                    <ReimbursementStatusChip status={r.status} hasReceipt={hasReceiptUrl(r)} />
+                  </td>
+                  <td
+                    className="px-3 py-2 align-middle whitespace-nowrap"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    Amount
-                  </th>
-                  <th
-                    className="w-[108px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground cursor-pointer select-none"
-                    onClick={() => toggleSort("status")}
+                    {r.receiptUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const u = r.receiptUrl;
+                          if (!u) return;
+                          void (async () => {
+                            const signed = await resolvePreviewSignedUrl({
+                              supabase,
+                              rawUrlOrPath: u,
+                              ttlSec: 3600,
+                              bucketCandidates: [
+                                "worker-receipts",
+                                "receipts",
+                                "expense-attachments",
+                              ],
+                            });
+                            openPreview({ url: signed || u, fileName: "Receipt" });
+                          })();
+                        }}
+                        aria-label="Preview receipt"
+                        className={receiptPillAttachedInteractive}
+                      >
+                        <Paperclip
+                          className="h-3 w-3 shrink-0 opacity-90"
+                          strokeWidth={2}
+                          aria-hidden
+                        />
+                        Receipt
+                      </button>
+                    ) : (
+                      <span className={receiptPillMissing}>
+                        <span
+                          className="h-1 w-1 shrink-0 rounded-full bg-amber-400/55 dark:bg-amber-400/45"
+                          aria-hidden
+                        />
+                        No receipt
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    className="px-3 py-2 text-right align-middle"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    Status
-                  </th>
-                  <th className="w-[88px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Receipt
-                  </th>
-                  <th className="w-24 px-3 py-1.5 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Actions
-                  </th>
+                    <ActionsDropdown r={r} />
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr className="border-b border-border/40">
-                    <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground text-xs">
-                      Loading…
-                    </td>
-                  </tr>
-                ) : paged.length === 0 ? (
-                  <tr className="border-b border-border/40">
-                    <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground text-xs">
-                      No reimbursements yet.
-                    </td>
-                  </tr>
-                ) : (
-                  paged.map((r) => (
-                    <tr
-                      key={r.id}
-                      className={cn(
-                        listTableRowClassName,
-                        "group border-b border-zinc-100/80 transition-colors hover:bg-zinc-50/70 dark:border-border/40 dark:hover:bg-muted/15",
-                        r.status === "pending" &&
-                          hasReceiptUrl(r) &&
-                          "bg-emerald-500/[0.03] shadow-[inset_3px_0_0_0_rgba(16,185,129,0.28)] hover:bg-emerald-500/[0.05] dark:bg-emerald-500/[0.04] dark:hover:bg-emerald-500/[0.06] dark:shadow-[inset_3px_0_0_0_rgba(52,211,153,0.22)]",
-                        r.status === "pending" &&
-                          !hasReceiptUrl(r) &&
-                          "bg-amber-500/[0.03] shadow-[inset_3px_0_0_0_rgba(245,158,11,0.26)] hover:bg-amber-500/[0.045] dark:bg-amber-500/[0.05] dark:hover:bg-amber-500/[0.07] dark:shadow-[inset_3px_0_0_0_rgba(251,191,36,0.2)]"
-                      )}
-                      onClick={() => handleEdit(r)}
-                    >
-                      <td
-                        className="w-12 px-2 py-2 text-center align-middle"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {r.status === "pending" ? (
-                          <div className="flex min-h-10 min-w-10 items-center justify-center">
-                            <input
-                              type="checkbox"
-                              aria-label={`Select ${workerName(r)} ${formatCurrency(r.amount)}`}
-                              checked={selectedIds.has(r.id)}
-                              onChange={() => toggleSelection(r.id, r.status)}
-                              className="h-4 w-4 rounded border-input"
-                            />
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 align-middle text-[11px] text-muted-foreground tabular-nums leading-snug">
-                        {formatDate(r.reimbursementDate || r.createdAt)}
-                      </td>
-                      <td
-                        className={cn(
-                          "min-w-0 px-3 py-2 align-middle leading-snug",
-                          listTablePrimaryCellClassName,
-                          "text-zinc-900 dark:text-foreground"
-                        )}
-                      >
-                        <div className="min-w-0 space-y-0.5">
-                          <span className="line-clamp-2 text-[13px] font-semibold tracking-tight">
-                            {workerName(r)}
-                          </span>
-                          {r.paidAt ? (
-                            <span className="block text-[10px] tabular-nums leading-none text-muted-foreground/70">
-                              Paid {formatDate(r.paidAt)}
-                            </span>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td className="max-w-[160px] px-3 py-2 align-middle">
-                        {r.projectId && projectName(r) !== "—" ? (
-                          <span className="line-clamp-2 text-[12px] leading-snug text-muted-foreground">
-                            {projectName(r)}
-                          </span>
-                        ) : (
-                          <span className="text-[12px] text-muted-foreground/45">No project</span>
-                        )}
-                      </td>
-                      <td className="min-w-0 px-3 py-2 align-middle leading-snug">
-                        <div className="min-w-0 space-y-0.5">
-                          <span className="line-clamp-2 text-[12px] font-medium leading-snug text-zinc-800 dark:text-zinc-100">
-                            {r.vendor?.trim() ? r.vendor : "No vendor"}
-                          </span>
-                          {r.description?.trim() ? (
-                            <span className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
-                              {r.description.trim()}
-                            </span>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td
-                        className={cn(
-                          "whitespace-nowrap px-3 py-2 text-right align-middle text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground",
-                          listTableAmountCellClassName
-                        )}
-                      >
-                        {formatCurrency(r.amount)}
-                      </td>
-                      <td className="px-3 py-2 align-middle whitespace-nowrap">
-                        <ReimbursementStatusChip status={r.status} hasReceipt={hasReceiptUrl(r)} />
-                      </td>
-                      <td
-                        className="px-3 py-2 align-middle whitespace-nowrap"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {r.receiptUrl ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const u = r.receiptUrl;
-                              if (!u) return;
-                              void (async () => {
-                                const signed = await resolvePreviewSignedUrl({
-                                  supabase,
-                                  rawUrlOrPath: u,
-                                  ttlSec: 3600,
-                                  bucketCandidates: [
-                                    "worker-receipts",
-                                    "receipts",
-                                    "expense-attachments",
-                                  ],
-                                });
-                                openPreview({ url: signed || u, fileName: "Receipt" });
-                              })();
-                            }}
-                            aria-label="Preview receipt"
-                            className={receiptPillAttachedInteractive}
-                          >
-                            <Paperclip
-                              className="h-3 w-3 shrink-0 opacity-90"
-                              strokeWidth={2}
-                              aria-hidden
-                            />
-                            Receipt
-                          </button>
-                        ) : (
-                          <span className={receiptPillMissing}>
-                            <span
-                              className="h-1 w-1 shrink-0 rounded-full bg-amber-400/55 dark:bg-amber-400/45"
-                              aria-hidden
-                            />
-                            No receipt
-                          </span>
-                        )}
-                      </td>
-                      <td
-                        className="px-3 py-2 text-right align-middle"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ActionsDropdown r={r} />
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              ))
+            )}
+          </tbody>
+        </NeoTable>
       </div>
 
       <div className="flex items-center justify-between pt-3 text-sm text-muted-foreground">

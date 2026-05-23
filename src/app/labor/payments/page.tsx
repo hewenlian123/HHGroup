@@ -38,20 +38,17 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { FilterBar } from "@/components/filter-bar";
+import { NeoAmount, NeoMobileCard, NeoTable, NeoToolbar } from "@/components/base";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import type { WorkerPayment } from "@/lib/worker-payments-db";
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
-const wpShell =
-  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
-
 const wpKpiTile =
-  "rounded-xl border border-zinc-200/40 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.028),0_1px_12px_rgba(0,0,0,0.028)] dark:border-border/35 dark:bg-card/80 dark:shadow-none md:rounded-xl";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
 
 const wpKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100/55 text-zinc-500 md:h-8 md:w-8 dark:bg-muted/60 dark:text-muted-foreground";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
 
 /** Zinc-only tints — payout history, not “demo” rainbow rings */
 const AVATAR_RING = [
@@ -349,16 +346,16 @@ export default function WorkerPaymentsPage() {
   );
 
   const thClass =
-    "px-3 py-2 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground";
+    "px-3 py-2 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]";
   const thRight =
-    "px-3 py-2 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground tabular-nums";
+    "px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums";
   const sortableTh =
-    "group/th cursor-pointer select-none text-muted-foreground transition-colors hover:text-zinc-600 dark:hover:text-zinc-300";
+    "group/th cursor-pointer select-none transition-colors hover:text-[var(--neo-text-primary)]";
 
   return (
     <div
       className={cn(
-        "min-w-0 overflow-x-hidden bg-zinc-50 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] dark:bg-background",
+        "neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
         "flex flex-col"
       )}
     >
@@ -372,14 +369,14 @@ export default function WorkerPaymentsPage() {
 
       <div
         className={cn(
-          "mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 dark:bg-background sm:max-w-[460px] md:max-w-6xl md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          "neo-page-on-graphite mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:max-w-6xl md:gap-2 md:px-6 md:pb-6 md:pt-3",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
             title="Worker Payments"
             subtitle="Payment history for worker payouts."
             actions={
@@ -532,7 +529,7 @@ export default function WorkerPaymentsPage() {
           searchSlot={searchInput}
         />
 
-        <FilterBar className="hidden min-w-0 md:flex md:flex-row md:items-center md:gap-3 md:pb-0 md:pt-0">
+        <NeoToolbar className="hidden min-w-0 md:flex md:flex-row md:items-center md:gap-3 md:pb-0 md:pt-0">
           <div className="min-w-0 flex-1">{searchInput}</div>
           <div className="flex shrink-0 items-center gap-2">
             <Button
@@ -555,7 +552,7 @@ export default function WorkerPaymentsPage() {
               {loading ? "Loading…" : "Refresh"}
             </Button>
           </div>
-        </FilterBar>
+        </NeoToolbar>
 
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
           <div className="space-y-2">
@@ -620,7 +617,7 @@ export default function WorkerPaymentsPage() {
           {initialLoading ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className={cn(wpShell, "space-y-3 p-3")}>
+                <NeoMobileCard key={i} className="space-y-3 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex min-w-0 flex-1 gap-2">
                       <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
@@ -633,18 +630,16 @@ export default function WorkerPaymentsPage() {
                   </div>
                   <Skeleton className="h-8 w-40" />
                   <Skeleton className="h-16 w-full" />
-                </div>
+                </NeoMobileCard>
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <div className={cn(wpShell, "px-4 py-10 text-center")}>
-              <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
-                No payments yet
-              </p>
+            <NeoMobileCard className="px-4 py-10 text-center">
+              <p className="text-sm font-medium text-[var(--neo-text-primary)]">No payments yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Payouts you record will appear here with receipt links.
               </p>
-            </div>
+            </NeoMobileCard>
           ) : filtered.length === 0 ? (
             <MobileEmptyState
               icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
@@ -664,13 +659,7 @@ export default function WorkerPaymentsPage() {
                 const wName = workerNameById.get(r.workerId) ?? r.workerId;
                 const proj = r.projectId ? (projectNameById.get(r.projectId) ?? r.projectId) : null;
                 return (
-                  <div
-                    key={r.id}
-                    className={cn(
-                      wpShell,
-                      "space-y-3 p-3 transition-[box-shadow,border-color] duration-200 ease-out hover:border-zinc-200/70 dark:hover:border-border/60"
-                    )}
-                  >
+                  <NeoMobileCard key={r.id} className="space-y-3 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 flex-1 items-start gap-3">
                         <span
@@ -684,7 +673,7 @@ export default function WorkerPaymentsPage() {
                           {workerInitials(wName)}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-foreground">
+                          <p className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-normal text-[var(--neo-text-primary)]">
                             {wName}
                           </p>
                         </div>
@@ -700,9 +689,12 @@ export default function WorkerPaymentsPage() {
                       <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                         Amount
                       </span>
-                      <span className="max-w-full min-w-0 text-right text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground">
+                      <NeoAmount
+                        tone="income"
+                        className="max-w-full min-w-0 text-right text-xl tracking-normal"
+                      >
                         {formatCurrency(r.amount)}
-                      </span>
+                      </NeoAmount>
                     </div>
                     <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
                       <div className="min-w-0">
@@ -738,7 +730,7 @@ export default function WorkerPaymentsPage() {
                         </dd>
                       </div>
                     </dl>
-                  </div>
+                  </NeoMobileCard>
                 );
               })}
             </div>
@@ -746,197 +738,179 @@ export default function WorkerPaymentsPage() {
         </div>
 
         {/* Desktop table */}
-        <div
+        <NeoTable
           className={cn(
-            wpShell,
-            "hidden overflow-hidden md:block",
+            "hidden md:block",
             refreshing && rows.length > 0 && "pointer-events-none opacity-60"
           )}
-          aria-busy={refreshing && rows.length > 0 ? true : undefined}
+          tableClassName="min-w-[880px] lg:min-w-0"
+          busy={refreshing && rows.length > 0}
         >
-          {refreshing && rows.length > 0 ? (
-            <div className="flex justify-center border-b border-zinc-100/90 py-1 dark:border-border/50">
-              <span className="text-xs text-muted-foreground">Updating…</span>
-            </div>
-          ) : null}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[880px] border-collapse text-sm lg:min-w-0">
-              <thead>
-                <tr className="border-b border-zinc-100 bg-zinc-50/90 dark:border-border/60 dark:bg-muted/20">
-                  <th className={cn(thClass, "min-w-[200px]")}>Worker</th>
-                  <th className={cn(thClass, "min-w-[120px]")}>Project</th>
-                  <th
-                    className={cn(thRight, sortableTh)}
-                    onClick={() => toggleSort("amount")}
-                    aria-sort={
-                      sort.key === "amount"
-                        ? sort.dir === "asc"
-                          ? "ascending"
-                          : "descending"
-                        : "none"
-                    }
-                  >
-                    <span className="flex w-full items-center justify-end gap-0.5">
-                      Amount
-                      <SortCaret active={sort.key === "amount"} dir={sort.dir} />
-                    </span>
-                  </th>
-                  <th
-                    className={cn(thClass, sortableTh)}
-                    onClick={() => toggleSort("method")}
-                    aria-sort={
-                      sort.key === "method"
-                        ? sort.dir === "asc"
-                          ? "ascending"
-                          : "descending"
-                        : "none"
-                    }
-                  >
-                    <span className="inline-flex items-center gap-0.5">
-                      Payment method
-                      <SortCaret active={sort.key === "method"} dir={sort.dir} />
-                    </span>
-                  </th>
-                  <th
-                    className={cn(thClass, "whitespace-nowrap", sortableTh)}
-                    onClick={() => toggleSort("paymentDate")}
-                    aria-sort={
-                      sort.key === "paymentDate"
-                        ? sort.dir === "asc"
-                          ? "ascending"
-                          : "descending"
-                        : "none"
-                    }
-                  >
-                    <span className="inline-flex items-center gap-0.5">
-                      Payment date
-                      <SortCaret active={sort.key === "paymentDate"} dir={sort.dir} />
-                    </span>
-                  </th>
-                  <th className={cn(thClass, "min-w-[140px]")}>Notes</th>
-                  <th className="w-12 px-2 py-2 text-right align-middle text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    <span className="sr-only">Actions</span>
-                  </th>
+          <thead>
+            <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+              <th className={cn(thClass, "min-w-[200px]")}>Worker</th>
+              <th className={cn(thClass, "min-w-[120px]")}>Project</th>
+              <th
+                className={cn(thRight, sortableTh)}
+                onClick={() => toggleSort("amount")}
+                aria-sort={
+                  sort.key === "amount" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"
+                }
+              >
+                <span className="flex w-full items-center justify-end gap-0.5">
+                  Amount
+                  <SortCaret active={sort.key === "amount"} dir={sort.dir} />
+                </span>
+              </th>
+              <th
+                className={cn(thClass, sortableTh)}
+                onClick={() => toggleSort("method")}
+                aria-sort={
+                  sort.key === "method" ? (sort.dir === "asc" ? "ascending" : "descending") : "none"
+                }
+              >
+                <span className="inline-flex items-center gap-0.5">
+                  Payment method
+                  <SortCaret active={sort.key === "method"} dir={sort.dir} />
+                </span>
+              </th>
+              <th
+                className={cn(thClass, "whitespace-nowrap", sortableTh)}
+                onClick={() => toggleSort("paymentDate")}
+                aria-sort={
+                  sort.key === "paymentDate"
+                    ? sort.dir === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
+              >
+                <span className="inline-flex items-center gap-0.5">
+                  Payment date
+                  <SortCaret active={sort.key === "paymentDate"} dir={sort.dir} />
+                </span>
+              </th>
+              <th className={cn(thClass, "min-w-[140px]")}>Notes</th>
+              <th className="w-12 px-2 py-2 text-right align-middle text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {initialLoading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <tr key={i} className="border-b border-zinc-100/55 dark:border-border/35">
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <Skeleton className="h-4 w-20" />
+                  </td>
+                  {Array.from({ length: 4 }).map((__, j) => (
+                    <td key={j} className="px-3 py-2.5">
+                      <Skeleton className="h-4 w-16" />
+                    </td>
+                  ))}
+                  <td className="px-2 py-2.5 text-right align-middle">
+                    <Skeleton className="ml-auto h-8 w-8 rounded-sm" />
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {initialLoading ? (
-                  Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i} className="border-b border-zinc-100/55 dark:border-border/35">
-                      <td className="px-3 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <Skeleton className="h-4 w-32" />
-                            <Skeleton className="h-3 w-24" />
-                          </div>
+              ))
+            ) : rows.length === 0 ? (
+              <tr className="border-b border-zinc-100/55 dark:border-border/35">
+                <td colSpan={7} className="px-6 py-12 text-center">
+                  <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
+                    No payments yet
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Payouts you record will appear here with receipt links.
+                  </p>
+                </td>
+              </tr>
+            ) : filtered.length === 0 ? (
+              <tr className="border-b border-zinc-100/55 dark:border-border/35">
+                <td colSpan={7} className="px-6 py-10 text-center text-sm text-muted-foreground">
+                  No payments match your search.
+                </td>
+              </tr>
+            ) : (
+              paged.map((r) => {
+                const wName = workerNameById.get(r.workerId) ?? r.workerId;
+                return (
+                  <tr
+                    key={r.id}
+                    className={cn(
+                      listTableRowStaticClassName,
+                      "border-b border-zinc-100/55 dark:border-border/30",
+                      "transition-[background-color] duration-200 ease-out motion-reduce:transition-none",
+                      "hover:bg-zinc-50/40 dark:hover:bg-muted/8",
+                      "focus-within:bg-zinc-50/30 dark:focus-within:bg-muted/6"
+                    )}
+                  >
+                    <td className="px-3 py-2.5 align-middle">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span
+                          className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold leading-none tabular-nums antialiased",
+                            workerAvatarRing,
+                            avatarRingClass(r.workerId)
+                          )}
+                          aria-hidden
+                        >
+                          {workerInitials(wName)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-normal text-[var(--neo-text-primary)]">
+                            {wName}
+                          </p>
                         </div>
-                      </td>
-                      <td className="px-3 py-2.5">
-                        <Skeleton className="h-4 w-20" />
-                      </td>
-                      {Array.from({ length: 4 }).map((__, j) => (
-                        <td key={j} className="px-3 py-2.5">
-                          <Skeleton className="h-4 w-16" />
-                        </td>
-                      ))}
-                      <td className="px-2 py-2.5 text-right align-middle">
-                        <Skeleton className="ml-auto h-8 w-8 rounded-sm" />
-                      </td>
-                    </tr>
-                  ))
-                ) : rows.length === 0 ? (
-                  <tr className="border-b border-zinc-100/55 dark:border-border/35">
-                    <td colSpan={7} className="px-6 py-12 text-center">
-                      <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
-                        No payments yet
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Payouts you record will appear here with receipt links.
-                      </p>
+                      </div>
                     </td>
-                  </tr>
-                ) : filtered.length === 0 ? (
-                  <tr className="border-b border-zinc-100/55 dark:border-border/35">
+                    <td className="max-w-[180px] truncate px-3 py-2.5 align-middle text-sm text-zinc-600 dark:text-zinc-300">
+                      {r.projectId ? (projectNameById.get(r.projectId) ?? r.projectId) : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle">
+                      <NeoAmount tone="income" className="text-base tracking-normal">
+                        {formatCurrency(r.amount)}
+                      </NeoAmount>
+                    </td>
+                    <td className="max-w-[160px] px-3 py-2.5 align-middle text-sm">
+                      <PaymentMethodLabel method={r.paymentMethod ?? ""} />
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 align-middle font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-300">
+                      {formatDate(r.paymentDate)}
+                    </td>
                     <td
-                      colSpan={7}
-                      className="px-6 py-10 text-center text-sm text-muted-foreground"
+                      className="max-w-[220px] truncate px-3 py-2.5 align-middle text-sm text-zinc-600 dark:text-zinc-400"
+                      title={r.notes ?? undefined}
                     >
-                      No payments match your search.
+                      {r.notes?.trim() ? r.notes : "—"}
+                    </td>
+                    <td
+                      className="whitespace-nowrap px-2 py-2.5 text-right align-middle"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex justify-end">
+                        <PaymentRowActionsMenu
+                          ariaLabel={`Actions for payment ${wName}`}
+                          layout="desktop"
+                          onViewReceipt={() => setReceiptPreviewId(r.id)}
+                          onDelete={() => handleDelete(r.id)}
+                        />
+                      </div>
                     </td>
                   </tr>
-                ) : (
-                  paged.map((r) => {
-                    const wName = workerNameById.get(r.workerId) ?? r.workerId;
-                    return (
-                      <tr
-                        key={r.id}
-                        className={cn(
-                          listTableRowStaticClassName,
-                          "border-b border-zinc-100/55 dark:border-border/30",
-                          "transition-[background-color] duration-200 ease-out motion-reduce:transition-none",
-                          "hover:bg-zinc-50/40 dark:hover:bg-muted/8",
-                          "focus-within:bg-zinc-50/30 dark:focus-within:bg-muted/6"
-                        )}
-                      >
-                        <td className="px-3 py-2.5 align-middle">
-                          <div className="flex min-w-0 items-center gap-2.5">
-                            <span
-                              className={cn(
-                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold leading-none tabular-nums antialiased",
-                                workerAvatarRing,
-                                avatarRingClass(r.workerId)
-                              )}
-                              aria-hidden
-                            >
-                              {workerInitials(wName)}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-tight text-zinc-900 dark:text-foreground">
-                                {wName}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="max-w-[180px] truncate px-3 py-2.5 align-middle text-sm text-zinc-600 dark:text-zinc-300">
-                          {r.projectId ? (projectNameById.get(r.projectId) ?? r.projectId) : "—"}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground">
-                          {formatCurrency(r.amount)}
-                        </td>
-                        <td className="max-w-[160px] px-3 py-2.5 align-middle text-sm">
-                          <PaymentMethodLabel method={r.paymentMethod ?? ""} />
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2.5 align-middle font-mono text-sm tabular-nums text-zinc-600 dark:text-zinc-300">
-                          {formatDate(r.paymentDate)}
-                        </td>
-                        <td
-                          className="max-w-[220px] truncate px-3 py-2.5 align-middle text-sm text-zinc-600 dark:text-zinc-400"
-                          title={r.notes ?? undefined}
-                        >
-                          {r.notes?.trim() ? r.notes : "—"}
-                        </td>
-                        <td
-                          className="whitespace-nowrap px-2 py-2.5 text-right align-middle"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="flex justify-end">
-                            <PaymentRowActionsMenu
-                              ariaLabel={`Actions for payment ${wName}`}
-                              layout="desktop"
-                              onViewReceipt={() => setReceiptPreviewId(r.id)}
-                              onDelete={() => handleDelete(r.id)}
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                );
+              })
+            )}
+          </tbody>
+        </NeoTable>
 
         <div
           className={cn(

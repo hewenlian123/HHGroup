@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
+import { NeoAmount, NeoMobileCard, NeoTable, NeoToolbar } from "@/components/base";
 import {
   MobileEmptyState,
   MobileFabPlus,
@@ -104,10 +105,15 @@ export default function PayrollSummaryPage() {
 
   return (
     <div
-      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn(
+        "neo-page-on-graphite page-container page-stack py-6 text-[var(--neo-canvas-text-secondary)]",
+        mobileListPagePaddingClass,
+        "max-md:!gap-3"
+      )}
     >
       <div className="hidden md:block">
         <PageHeader
+          className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
           title="Payroll Summary"
           subtitle="Summarize labor entries by worker for a date range."
           actions={
@@ -164,7 +170,7 @@ export default function PayrollSummaryPage() {
           Done
         </Button>
       </MobileFilterSheet>
-      <div className="hidden grid-cols-1 gap-3 border-b border-border/60 pb-3 sm:grid-cols-2 sm:items-end md:grid lg:flex lg:flex-wrap">
+      <NeoToolbar className="hidden gap-3 pb-3 sm:flex-row sm:flex-wrap sm:items-end md:flex">
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             From
@@ -187,7 +193,7 @@ export default function PayrollSummaryPage() {
             className="h-9 max-md:min-h-11 w-full rounded-md sm:w-[152px]"
           />
         </div>
-      </div>
+      </NeoToolbar>
       {error ? <p className="py-2 text-sm text-red-600 dark:text-red-400">{error}</p> : null}
       <div className="border-b border-border/60 pb-3 md:hidden">
         {loading ? (
@@ -204,9 +210,9 @@ export default function PayrollSummaryPage() {
           />
         ) : (
           <>
-            <div className="divide-y divide-gray-100 dark:divide-border/60">
+            <div className="flex flex-col gap-2">
               {displayRows.map((r) => (
-                <div key={r.workerId} className="flex min-h-[48px] flex-col gap-2 py-2.5">
+                <NeoMobileCard key={r.workerId} className="flex min-h-[48px] flex-col gap-2 p-3">
                   <Button
                     variant="outline"
                     size="sm"
@@ -222,14 +228,18 @@ export default function PayrollSummaryPage() {
                     </div>
                     <div>
                       <dt className="text-muted-foreground">OT</dt>
-                      <dd>{formatCurrency(r.otTotal)}</dd>
+                      <dd>
+                        <NeoAmount>{formatCurrency(r.otTotal)}</NeoAmount>
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-muted-foreground">Pay</dt>
-                      <dd className="font-medium">{formatCurrency(r.totalPay)}</dd>
+                      <dd>
+                        <NeoAmount>{formatCurrency(r.totalPay)}</NeoAmount>
+                      </dd>
                     </div>
                   </dl>
-                </div>
+                </NeoMobileCard>
               ))}
             </div>
             <div className="mt-3 border-t border-border/60 pt-3 text-xs font-medium tabular-nums">
@@ -239,80 +249,84 @@ export default function PayrollSummaryPage() {
               </div>
               <div className="flex justify-between py-2">
                 <span>Total OT</span>
-                <span>{formatCurrency(mobileTotalOt)}</span>
+                <NeoAmount>{formatCurrency(mobileTotalOt)}</NeoAmount>
               </div>
               <div className="flex justify-between border-t border-border/60 pt-2">
                 <span>Total pay</span>
-                <span>{formatCurrency(mobileTotalPay)}</span>
+                <NeoAmount>{formatCurrency(mobileTotalPay)}</NeoAmount>
               </div>
             </div>
           </>
         )}
       </div>
 
-      <div className="hidden overflow-x-auto border-b border-border/60 md:block">
-        <table className="w-full min-w-[480px] border-collapse text-sm lg:min-w-0">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Worker
-              </th>
-              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Days Worked
-              </th>
-              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                OT Total
-              </th>
-              <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Total Pay
-              </th>
+      <NeoTable className="hidden md:block" tableClassName="min-w-[480px] lg:min-w-0">
+        <thead>
+          <tr className="border-b border-border/60">
+            <th className="text-left py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Worker
+            </th>
+            <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              Days Worked
+            </th>
+            <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              OT Total
+            </th>
+            <th className="text-right py-2 px-4 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              Total Pay
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {loading ? (
+            <tr className="border-b border-border/40">
+              <td colSpan={4} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                Loading…
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={4} className="py-6 px-4 text-center text-muted-foreground text-xs">
-                  Loading…
+          ) : rows.length === 0 ? (
+            <tr className="border-b border-border/40">
+              <td colSpan={4} className="py-6 px-4 text-center text-muted-foreground text-xs">
+                No labor entries for this range.
+              </td>
+            </tr>
+          ) : (
+            rows.map((r) => (
+              <tr key={r.workerId} className="border-b border-border/40 hover:bg-muted/10">
+                <td className="py-2 px-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="btn-outline-ghost h-8 font-medium -ml-2 text-foreground"
+                    onClick={() => openWorkerDetail(r.workerId)}
+                  >
+                    {r.workerName}
+                  </Button>
+                </td>
+                <td className="py-2 px-4 text-right tabular-nums">{r.daysWorked}</td>
+                <td className="py-2 px-4 text-right">
+                  <NeoAmount>{formatCurrency(r.otTotal)}</NeoAmount>
+                </td>
+                <td className="py-2 px-4 text-right tabular-nums font-medium">
+                  <NeoAmount>{formatCurrency(r.totalPay)}</NeoAmount>
                 </td>
               </tr>
-            ) : rows.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={4} className="py-6 px-4 text-center text-muted-foreground text-xs">
-                  No labor entries for this range.
-                </td>
-              </tr>
-            ) : (
-              rows.map((r) => (
-                <tr key={r.workerId} className="border-b border-border/40 hover:bg-muted/10">
-                  <td className="py-2 px-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="btn-outline-ghost h-8 font-medium -ml-2 text-foreground"
-                      onClick={() => openWorkerDetail(r.workerId)}
-                    >
-                      {r.workerName}
-                    </Button>
-                  </td>
-                  <td className="py-2 px-4 text-right tabular-nums">{r.daysWorked}</td>
-                  <td className="py-2 px-4 text-right tabular-nums">{formatCurrency(r.otTotal)}</td>
-                  <td className="py-2 px-4 text-right tabular-nums font-medium">
-                    {formatCurrency(r.totalPay)}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-          <tfoot>
-            <tr className="border-t border-border/60 font-medium">
-              <td className="py-2 px-4">Total</td>
-              <td className="py-2 px-4 text-right tabular-nums">{totalDays}</td>
-              <td className="py-2 px-4 text-right tabular-nums">{formatCurrency(totalOt)}</td>
-              <td className="py-2 px-4 text-right tabular-nums">{formatCurrency(totalPay)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+            ))
+          )}
+        </tbody>
+        <tfoot>
+          <tr className="border-t border-border/60 font-medium">
+            <td className="py-2 px-4">Total</td>
+            <td className="py-2 px-4 text-right tabular-nums">{totalDays}</td>
+            <td className="py-2 px-4 text-right">
+              <NeoAmount>{formatCurrency(totalOt)}</NeoAmount>
+            </td>
+            <td className="py-2 px-4 text-right">
+              <NeoAmount>{formatCurrency(totalPay)}</NeoAmount>
+            </td>
+          </tr>
+        </tfoot>
+      </NeoTable>
 
       {detailWorkerId && (
         <div className="border-t border-border/60 pt-4">
