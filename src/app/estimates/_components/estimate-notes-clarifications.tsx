@@ -90,7 +90,7 @@ export function EstimateNotesClarifications({
               <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#929CAF] transition-transform group-open:rotate-180" />
               <div className="min-w-0">
                 <h2 className={EB.scopeHeading}>Notes &amp; Clarifications</h2>
-                <p className={EB.scopeSubtitle}>Exclusions, assumptions, and terms (draft only)</p>
+                <p className={EB.scopeSubtitle}>Client-facing scope notes</p>
               </div>
             </div>
             <DropdownMenu open={addOpen} onOpenChange={setAddOpen}>
@@ -125,7 +125,7 @@ export function EstimateNotesClarifications({
           <div className="mt-3 space-y-3 border-t border-white/[0.06] pt-3">
             {notes.length === 0 ? (
               <p className={EB.scopeEmptyMessage}>
-                No notes yet. Add exclusions, assumptions, or terms.
+                No notes yet. Add a client-facing clarification when needed.
               </p>
             ) : (
               notes.map((note) => (

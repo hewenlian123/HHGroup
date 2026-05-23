@@ -15,15 +15,19 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { EB, ebInput } from "./estimate-builder-ui";
+import { EB, ebSheetGlassWide, ebSheetInput } from "./estimate-builder-ui";
+import {
+  EstimateDiscountOptionsPopover,
+  EstimateTaxPresetMenu,
+  EstimateValidUntilQuickChips,
+} from "./estimate-details-drawer-controls";
 import { cn } from "@/lib/utils";
+import { Pencil } from "lucide-react";
 
-const metaLabel = "mb-0.5 block text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500";
-const metaPanel =
-  "rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2.5 sm:px-4 sm:py-3";
-const metaInput = ebInput("h-9 min-h-9 text-sm md:h-8 md:min-h-8");
-const detailsSheetClass =
-  "estimate-builder !fixed flex w-full max-w-[calc(100vw-1rem)] flex-col border-l border-white/[0.08] bg-[rgba(14,18,28,0.96)] p-0 text-zinc-100 shadow-[inset_1px_0_0_rgba(255,255,255,0.06),-12px_0_48px_rgba(0,0,0,0.35)] backdrop-blur-xl max-md:inset-y-2 max-md:right-2 max-md:h-[calc(100dvh-1rem)] max-md:!translate-x-0 max-md:rounded-xl max-md:data-[state=open]:!animate-none max-md:data-[state=open]:!transform-none sm:max-w-[440px] [&>button]:text-zinc-400 [&>button]:hover:bg-white/[0.06] [&>button]:hover:text-zinc-100";
+const metaLabel =
+  "mb-0.5 block text-[11px] font-semibold uppercase tracking-[0.06em] leading-tight text-[#9EA8B8]";
+const metaPanel = cn(EB.draftPanel, "rounded-md px-3 py-2.5 sm:px-4 sm:py-3");
+const metaInput = ebSheetInput("text-sm");
 
 export type EstimateEditCustomerMeta = {
   client: { name: string; address: string };
@@ -49,19 +53,25 @@ function ReadOnlyMetaRows({
     <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-4">
       <div className="min-w-0">
         <dt className={metaLabel}>Customer</dt>
-        <dd className="truncate text-sm font-medium text-zinc-200">{customer.trim() || "—"}</dd>
+        <dd className="truncate text-[14px] font-medium leading-snug text-[#F6F7FA]">
+          {customer.trim() || "—"}
+        </dd>
       </div>
       <div className="min-w-0">
         <dt className={metaLabel}>Project</dt>
-        <dd className="truncate text-sm font-medium text-zinc-200">{project.trim() || "—"}</dd>
+        <dd className="truncate text-[14px] font-medium leading-snug text-[#F6F7FA]">
+          {project.trim() || "—"}
+        </dd>
       </div>
       <div className="min-w-0 sm:col-span-2 lg:col-span-1">
         <dt className={metaLabel}>Address</dt>
-        <dd className="text-sm leading-snug text-zinc-400">{address.trim() || "—"}</dd>
+        <dd className="text-[14px] leading-[1.4] text-[#D8DEE8]">{address.trim() || "—"}</dd>
       </div>
       <div className="min-w-0">
         <dt className={metaLabel}>Estimate date</dt>
-        <dd className="text-sm tabular-nums text-zinc-400">{estimateDate}</dd>
+        <dd className="text-[14px] tabular-nums leading-snug text-[#D8DEE8] [font-feature-settings:'tnum']">
+          {estimateDate}
+        </dd>
       </div>
     </dl>
   );
@@ -76,6 +86,7 @@ export function EstimateEditCustomerSection({
   isReadOnly,
   tax,
   discount,
+  estimateSubtotal,
   saveEstimateMetaAction,
   onSaveDetails,
 }: {
@@ -87,6 +98,7 @@ export function EstimateEditCustomerSection({
   isReadOnly: boolean;
   tax: number;
   discount: number;
+  estimateSubtotal: number;
   saveEstimateMetaAction: (formData: FormData) => Promise<void>;
   onSaveDetails?: () => void;
 }): React.ReactElement {
@@ -94,18 +106,24 @@ export function EstimateEditCustomerSection({
   const [formResetKey, setFormResetKey] = React.useState(0);
   const [estimateDate, setEstimateDate] = React.useState(meta.estimateDate ?? today);
   const [validUntil, setValidUntil] = React.useState(meta.validUntil ?? "");
+  const [taxDraft, setTaxDraft] = React.useState(tax);
+  const [discountDraft, setDiscountDraft] = React.useState(discount);
   const formRef = React.useRef<HTMLFormElement | null>(null);
 
   React.useEffect(() => {
     setEstimateDate(meta.estimateDate ?? today);
     setValidUntil(meta.validUntil ?? "");
-  }, [meta.estimateDate, meta.validUntil, today]);
+    setTaxDraft(tax);
+    setDiscountDraft(discount);
+  }, [discount, meta.estimateDate, meta.validUntil, tax, today]);
 
   const displayDate = meta.estimateDate ?? today;
 
   const discardDetails = (): void => {
     setEstimateDate(meta.estimateDate ?? today);
     setValidUntil(meta.validUntil ?? "");
+    setTaxDraft(tax);
+    setDiscountDraft(discount);
     setFormResetKey((k) => k + 1);
   };
 
@@ -120,8 +138,8 @@ export function EstimateEditCustomerSection({
     <section className={cn(EB.section, "pb-3")}>
       <div className={metaPanel}>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="text-base font-semibold tabular-nums tracking-tight text-zinc-50 sm:text-lg">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+            <span className="text-base font-semibold tabular-nums tracking-tight text-[#F6F7FA] sm:text-lg [font-feature-settings:'tnum']">
               {estimateNumber}
             </span>
             <EstimateStatusBadge
@@ -133,11 +151,12 @@ export function EstimateEditCustomerSection({
           {!isReadOnly ? (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className={cn("shrink-0 md:min-h-8", EB.btnGhost)}
+              className={cn("min-h-11 shrink-0 gap-1.5 md:min-h-8", EB.btnText)}
               onClick={() => setDetailsOpen(true)}
             >
+              <Pencil className="h-3.5 w-3.5 opacity-80" aria-hidden />
               Edit details
             </Button>
           ) : null}
@@ -158,14 +177,14 @@ export function EstimateEditCustomerSection({
             side="right"
             aria-hidden={!detailsOpen}
             className={cn(
-              detailsSheetClass,
+              ebSheetGlassWide(),
               !detailsOpen &&
                 "invisible pointer-events-none fixed right-0 top-0 z-0 h-px min-h-0 w-px min-w-0 overflow-hidden border-0 p-0 opacity-0 shadow-none [&>button]:hidden"
             )}
           >
             <div className="flex max-h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
-              <SheetHeader className="border-b border-white/[0.06] px-4 pb-3 pt-4 text-left sm:px-5">
-                <SheetTitle className="text-sm font-semibold tracking-tight text-zinc-50">
+              <SheetHeader className={EB.sheetHeader}>
+                <SheetTitle className={EB.sheetTitle}>
                   Customer / project / pricing details
                 </SheetTitle>
                 <SheetDescription className="sr-only">
@@ -173,19 +192,19 @@ export function EstimateEditCustomerSection({
                 </SheetDescription>
               </SheetHeader>
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 pt-4 sm:px-5">
+              <div className={EB.sheetContent}>
                 <form
                   ref={formRef}
                   key={formResetKey}
                   id="estimate-meta-form"
                   action={saveEstimateMetaAction}
-                  className="space-y-4"
+                  className={EB.sheetContentInner}
                 >
                   <input type="hidden" name="estimateId" value={estimateId} />
                   <input type="hidden" name="notes" value={meta.notes ?? ""} />
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className="min-w-0">
-                      <Label htmlFor="clientName" className={metaLabel}>
+                    <div className={cn(EB.sheetField, "min-w-0")}>
+                      <Label htmlFor="clientName" className={EB.sheetLabel}>
                         Customer
                       </Label>
                       <Input
@@ -196,8 +215,8 @@ export function EstimateEditCustomerSection({
                         className={metaInput}
                       />
                     </div>
-                    <div className="min-w-0">
-                      <Label htmlFor="projectName" className={metaLabel}>
+                    <div className={cn(EB.sheetField, "min-w-0")}>
+                      <Label htmlFor="projectName" className={EB.sheetLabel}>
                         Project
                       </Label>
                       <Input
@@ -208,8 +227,8 @@ export function EstimateEditCustomerSection({
                         className={metaInput}
                       />
                     </div>
-                    <div className="min-w-0 sm:col-span-2">
-                      <Label htmlFor="address" className={metaLabel}>
+                    <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
+                      <Label htmlFor="address" className={EB.sheetLabel}>
                         Address
                       </Label>
                       <Input
@@ -220,8 +239,8 @@ export function EstimateEditCustomerSection({
                         className={metaInput}
                       />
                     </div>
-                    <div className="min-w-0 sm:col-span-2">
-                      <Label htmlFor="estimateDate" className={metaLabel}>
+                    <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
+                      <Label htmlFor="estimateDate" className={EB.sheetLabel}>
                         Estimate date
                       </Label>
                       <input type="hidden" name="estimateDate" value={estimateDate} />
@@ -230,16 +249,16 @@ export function EstimateEditCustomerSection({
                         size="sm"
                         value={estimateDate}
                         onChange={setEstimateDate}
-                        className={ebInput(cn(EB.dateField, "h-9 min-h-9 md:h-8 md:min-h-8"))}
+                        className={ebSheetInput(cn(EB.dateField, "text-sm"))}
                       />
                     </div>
                   </div>
 
-                  <div className="border-t border-white/[0.06] pt-3">
-                    <p className={cn(metaLabel, "mb-2 !text-zinc-500")}>Terms & pricing</p>
+                  <div className="border-t border-white/[0.08] pt-4">
+                    <p className={EB.sheetSectionLabel}>Terms & pricing</p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div className="min-w-0">
-                        <Label htmlFor="validUntil" className={metaLabel}>
+                      <div className={cn(EB.sheetField, "min-w-0")}>
+                        <Label htmlFor="validUntil" className={EB.sheetLabel}>
                           Valid until
                         </Label>
                         <input type="hidden" name="validUntil" value={validUntil} />
@@ -248,12 +267,16 @@ export function EstimateEditCustomerSection({
                           size="sm"
                           value={validUntil}
                           onChange={setValidUntil}
-                          className={ebInput(cn(EB.dateField, "h-9 min-h-9 md:h-8 md:min-h-8"))}
+                          className={ebSheetInput(cn(EB.dateField, "text-sm"))}
                           allowClear
                         />
+                        <EstimateValidUntilQuickChips
+                          estimateDate={estimateDate}
+                          onValidUntilChange={setValidUntil}
+                        />
                       </div>
-                      <div className="min-w-0">
-                        <Label htmlFor="salesPerson" className={metaLabel}>
+                      <div className={cn(EB.sheetField, "min-w-0")}>
+                        <Label htmlFor="salesPerson" className={EB.sheetLabel}>
                           Sales
                         </Label>
                         <Input
@@ -264,30 +287,55 @@ export function EstimateEditCustomerSection({
                           className={metaInput}
                         />
                       </div>
-                      <div className="min-w-0">
-                        <Label htmlFor="tax" className={metaLabel}>
-                          Tax
-                        </Label>
+                      <div className={cn(EB.sheetField, "min-w-0")}>
+                        <div className={EB.sheetLabelRow}>
+                          <Label htmlFor="tax" className={EB.sheetLabel}>
+                            Tax
+                          </Label>
+                          <EstimateTaxPresetMenu
+                            estimateSubtotal={estimateSubtotal}
+                            tax={taxDraft}
+                            onApplyTax={setTaxDraft}
+                            onTaxTouched={() => undefined}
+                          />
+                        </div>
                         <Input
                           id="tax"
                           name="tax"
                           type="number"
                           step="0.01"
-                          defaultValue={tax}
-                          className={ebInput(cn(metaInput, EB.inputNumeric))}
+                          min={0}
+                          value={taxDraft}
+                          onChange={(e) => {
+                            const n = Number(e.target.value);
+                            setTaxDraft(Number.isFinite(n) ? Math.max(0, n) : 0);
+                          }}
+                          className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
                         />
                       </div>
-                      <div className="min-w-0">
-                        <Label htmlFor="discount" className={metaLabel}>
-                          Discount
-                        </Label>
+                      <div className={cn(EB.sheetField, "min-w-0")}>
+                        <div className={EB.sheetLabelRow}>
+                          <Label htmlFor="discount" className={EB.sheetLabel}>
+                            Discount
+                          </Label>
+                          <EstimateDiscountOptionsPopover
+                            discount={discountDraft}
+                            preDiscountTotal={estimateSubtotal + taxDraft}
+                            onDiscountChange={setDiscountDraft}
+                          />
+                        </div>
                         <Input
                           id="discount"
                           name="discount"
                           type="number"
                           step="0.01"
-                          defaultValue={discount}
-                          className={ebInput(cn(metaInput, EB.inputNumeric))}
+                          min={0}
+                          value={discountDraft}
+                          onChange={(e) => {
+                            const n = Number(e.target.value);
+                            setDiscountDraft(Number.isFinite(n) ? Math.max(0, n) : 0);
+                          }}
+                          className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
                         />
                       </div>
                     </div>
@@ -295,30 +343,32 @@ export function EstimateEditCustomerSection({
                 </form>
               </div>
 
-              <SheetFooter className="mt-auto border-t border-white/[0.06] bg-[rgba(10,12,18,0.55)] px-4 py-3 sm:px-5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className={cn(EB.btnGhost)}
-                  onClick={() => setDetailsOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className={cn(EB.btnPrimary)}
-                  onClick={() => {
-                    if (onSaveDetails) {
-                      onSaveDetails();
-                      return;
-                    }
-                    formRef.current?.requestSubmit();
-                  }}
-                >
-                  Save
-                </Button>
+              <SheetFooter className={EB.sheetFooter}>
+                <div className={EB.sheetFooterActions}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className={EB.sheetPrimary}
+                    onClick={() => {
+                      if (onSaveDetails) {
+                        onSaveDetails();
+                        return;
+                      }
+                      formRef.current?.requestSubmit();
+                    }}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className={EB.sheetSecondary}
+                    onClick={() => setDetailsOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
               </SheetFooter>
             </div>
           </SheetContent>

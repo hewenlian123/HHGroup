@@ -22,6 +22,11 @@ import { formatEstimateCurrency } from "./estimate-currency";
 import { EB, ebSheetGlassNarrow, ebSheetInput } from "./estimate-builder-ui";
 import { ProposalScopeEditor } from "./proposal-scope-editor";
 import {
+  parsePaymentPercentInput,
+  paymentAmountFromPercent,
+  paymentPercentFromAmount,
+} from "./estimate-payment-percent";
+import {
   ProposalPaymentMilestoneList,
   type ProposalPaymentMilestoneRow,
 } from "./proposal-payment-milestone-list";
@@ -43,6 +48,7 @@ export function EstimatePaymentSchedule(props: {
   paymentSchedule: PaymentScheduleItem[];
   estimateTotal: number;
   isLocked: boolean;
+  nested?: boolean;
   paymentTemplates?: PaymentScheduleTemplate[];
   addPaymentMilestoneAction: AddAction;
   updatePaymentMilestoneAction: UpdateAction;
@@ -57,6 +63,7 @@ export function EstimatePaymentSchedule(props: {
     paymentSchedule,
     estimateTotal,
     isLocked,
+    nested = false,
     addPaymentMilestoneAction,
     updatePaymentMilestoneAction,
     deletePaymentMilestoneAction,
@@ -66,11 +73,16 @@ export function EstimatePaymentSchedule(props: {
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<PaymentScheduleItem | null>(null);
   const [paymentDescriptionDraft, setPaymentDescriptionDraft] = React.useState("");
+  const [amountDraft, setAmountDraft] = React.useState("");
+  const [percentDraft, setPercentDraft] = React.useState("");
 
   React.useEffect(() => {
     if (!scheduleOpen) return;
+    const amount = editingItem ? paymentMilestoneAmount(editingItem, estimateTotal) : 0;
     setPaymentDescriptionDraft(editingItem?.description ?? "");
-  }, [scheduleOpen, editingItem?.id, editingItem?.description]);
+    setAmountDraft(editingItem ? String(amount) : "");
+    setPercentDraft(editingItem ? paymentPercentFromAmount(amount, estimateTotal) : "");
+  }, [scheduleOpen, editingItem, estimateTotal]);
 
   React.useEffect(() => {
     const invoiceError = searchParams.get("invoiceError");
@@ -92,6 +104,35 @@ export function EstimatePaymentSchedule(props: {
     0
   );
   const remaining = Math.max(0, estimateTotal - totalScheduled);
+  const amountNumber = Number(amountDraft);
+  const amountPercentDisplay = paymentPercentFromAmount(
+    Number.isFinite(amountNumber) ? amountNumber : 0,
+    estimateTotal
+  );
+  const paymentPercentHelper =
+    estimateTotal <= 0
+      ? "Add scope pricing first to use percentages."
+      : amountDraft.trim() && amountPercentDisplay
+        ? Number(amountPercentDisplay) > 100
+          ? "Exceeds estimate total."
+          : `${amountPercentDisplay}% of ${fmt(estimateTotal)}`
+        : null;
+
+  const handleAmountChange = (value: string): void => {
+    setAmountDraft(value);
+    const n = Number(value);
+    setPercentDraft(Number.isFinite(n) ? paymentPercentFromAmount(n, estimateTotal) : "");
+  };
+
+  const handlePercentChange = (value: string): void => {
+    setPercentDraft(value);
+    const pct = parsePaymentPercentInput(value);
+    if (pct == null) {
+      setAmountDraft("");
+      return;
+    }
+    setAmountDraft(String(paymentAmountFromPercent(pct, estimateTotal)));
+  };
 
   const milestoneRows: ProposalPaymentMilestoneRow[] = paymentSchedule.map((item) => ({
     id: item.id,
@@ -102,11 +143,13 @@ export function EstimatePaymentSchedule(props: {
   }));
 
   return (
-    <section className={EB.paymentSchedule}>
+    <section className={cn(EB.paymentSchedule, nested && EB.paymentScheduleNested)}>
       <div className="flex flex-wrap items-start justify-between gap-3 py-2">
         <div className="min-w-0">
-          <h3 className={EB.paymentTitle}>Payment schedule</h3>
-          <p className={EB.paymentSubtitle}>Contractor milestones</p>
+          <h3 className={cn(EB.paymentTitle, nested && EB.paymentHeaderDuplicate)}>
+            Payment schedule
+          </h3>
+          <p className={EB.paymentSubtitle}>Client payment milestones</p>
         </div>
         {!isLocked && (
           <Button
@@ -267,19 +310,53 @@ export function EstimatePaymentSchedule(props: {
                   />
                 </div>
                 <div className={EB.sheetField}>
-                  <label className={EB.sheetLabel}>Amount</label>
-                  <Input
-                    name="amount"
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    placeholder="2500"
-                    defaultValue={editingItem?.amount ?? ""}
-                    className={ebSheetInput(
-                      cn("text-sm text-right text-slate-50", EB.inputNumeric)
-                    )}
-                    required
-                  />
+                  <div className={EB.paymentAmountRow}>
+                    <div className={EB.paymentAmountCol}>
+                      <label htmlFor="payment-milestone-amount" className={EB.sheetLabel}>
+                        Amount
+                      </label>
+                      <Input
+                        id="payment-milestone-amount"
+                        name="amount"
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        placeholder="2500"
+                        value={amountDraft}
+                        onChange={(e) => handleAmountChange(e.target.value)}
+                        className={ebSheetInput(
+                          cn("text-sm text-right text-slate-50", EB.inputNumeric)
+                        )}
+                        required
+                      />
+                    </div>
+                    <div className={EB.paymentPercentCol}>
+                      <label htmlFor="payment-milestone-percent" className={EB.sheetLabel}>
+                        % of estimate
+                      </label>
+                      <Input
+                        id="payment-milestone-percent"
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        max={100}
+                        placeholder="20"
+                        value={percentDraft}
+                        onChange={(e) => handlePercentChange(e.target.value)}
+                        className={ebSheetInput(
+                          cn("text-sm text-right text-slate-50", EB.inputNumeric)
+                        )}
+                        aria-describedby={
+                          paymentPercentHelper ? "payment-percent-helper" : undefined
+                        }
+                      />
+                    </div>
+                  </div>
+                  {paymentPercentHelper ? (
+                    <p id="payment-percent-helper" className={EB.paymentPercentHelper}>
+                      {paymentPercentHelper}
+                    </p>
+                  ) : null}
                 </div>
                 <input type="hidden" name="description" value={paymentDescriptionDraft} />
                 <div className={EB.sheetField}>

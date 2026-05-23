@@ -534,7 +534,7 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
                   <h3 className={cn(EB.paymentTitle, EB.paymentHeaderDuplicate)}>
                     Payment schedule
                   </h3>
-                  <p className={EB.paymentSubtitle}>Contractor milestones</p>
+                  <p className={EB.paymentSubtitle}>Client payment milestones</p>
                 </div>
                 <Button
                   type="button"

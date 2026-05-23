@@ -108,7 +108,7 @@ function SortableCategorySection({
   const dragHandle = (
     <button
       type="button"
-      className="flex h-8 w-8 shrink-0 cursor-grab touch-none items-center justify-center rounded-sm text-muted-foreground hover:bg-muted/50 active:cursor-grabbing"
+      className={EB.scopeSectionDragHandle}
       aria-label="Reorder section"
       {...attributes}
       {...listeners}
@@ -440,6 +440,7 @@ export function EstimateEditor({
             isReadOnly={isReadOnly}
             tax={summary?.tax ?? 0}
             discount={summary?.discount ?? 0}
+            estimateSubtotal={summary?.subtotal ?? 0}
             saveEstimateMetaAction={saveEstimateMetaAction}
             onSaveDetails={onSaveDetails}
           />
@@ -678,6 +679,7 @@ export function EstimateEditor({
               paymentSchedule={paymentSchedule}
               estimateTotal={summary?.grandTotal ?? 0}
               isLocked={isReadOnly}
+              nested
               paymentTemplates={paymentTemplates}
               addPaymentMilestoneAction={addPaymentMilestoneAction}
               updatePaymentMilestoneAction={updatePaymentMilestoneAction}
@@ -819,15 +821,59 @@ function LineItemRow({
     (document.getElementById(formId) as HTMLFormElement | null)?.requestSubmit();
   };
 
+  const lineActions = !isLocked ? (
+    <>
+      <form ref={duplicateFormRef} action={duplicateLineItemAction} className="hidden" aria-hidden>
+        <input type="hidden" name="estimateId" value={estimateId} />
+        <input type="hidden" name="itemId" value={row.id} />
+      </form>
+      <form ref={deleteFormRef} action={deleteLineItemAction} className="hidden" aria-hidden>
+        <input type="hidden" name="estimateId" value={estimateId} />
+        <input type="hidden" name="itemId" value={row.id} />
+      </form>
+      <EstimateLineItemMoreMenu
+        hideAmountOnPdf={row.hideAmountOnPdf}
+        showHideAmountOnPdf
+        onToggleHideAmountOnPdf={() => {
+          const fd = new FormData();
+          fd.set("estimateId", estimateId);
+          fd.set("itemId", row.id);
+          fd.set("hideAmountOnPdf", row.hideAmountOnPdf ? "0" : "1");
+          void toggleLineItemHideAmountOnPdfAction(fd).then((res) => {
+            if (res.ok) router.refresh();
+          });
+        }}
+        showSetStatus
+        currentStatus={row.status}
+        onSetStatus={(nextStatus) => {
+          const fd = new FormData();
+          fd.set("estimateId", estimateId);
+          fd.set("itemId", row.id);
+          fd.set("status", nextStatus);
+          void setLineItemStatusAction(fd).then((res) => {
+            if (res.ok) router.refresh();
+          });
+        }}
+        onDuplicate={() => duplicateFormRef.current?.requestSubmit()}
+        onDelete={() => deleteFormRef.current?.requestSubmit()}
+      />
+    </>
+  ) : null;
+
   const inlinePricing = (
-    <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
-      <span className="hidden pb-1.5 text-[10px] tabular-nums text-zinc-600 sm:inline">
-        #{lineOrdinal}
-      </span>
-      <div className="flex flex-col gap-0.5">
-        <span className={EB.readLabel}>Qty</span>
+    <>
+      <div className={cn(EB.lineFieldStackContents, EB.linePricingQty)}>
+        <span className={cn(EB.readLabel, EB.lineQtyLabel)}>Qty</span>
         {isLocked ? (
-          <span className="pb-0.5 text-xs tabular-nums text-zinc-400">{row.qty}</span>
+          <span
+            className={cn(
+              "flex h-8 min-h-8 items-center justify-end px-2 text-[13px] text-[#D8DEE8]",
+              EB.inputNumeric,
+              EB.lineQtyInput
+            )}
+          >
+            {row.qty}
+          </span>
         ) : (
           <Input
             form={formId}
@@ -837,17 +883,21 @@ function LineItemRow({
             value={qty}
             onChange={(e) => setQty(Number(e.target.value) || 0)}
             onBlur={submitForm}
-            className={ebInput(
-              `h-7 min-h-7 w-[3.25rem] px-1.5 text-xs ${EB.inputNumeric} ${EB.inputMuted}`
-            )}
+            className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`)}
             aria-label="Line item quantity"
           />
         )}
       </div>
-      <div className="flex flex-col gap-0.5">
-        <span className={EB.readLabel}>Unit price</span>
+      <div className={cn(EB.lineFieldStackContents, EB.linePricingUnit)}>
+        <span className={cn(EB.readLabel, EB.lineUnitLabel)}>Unit price</span>
         {isLocked ? (
-          <span className="pb-0.5 text-xs tabular-nums text-zinc-400">
+          <span
+            className={cn(
+              "flex h-8 min-h-8 items-center justify-end px-2 text-[13px] text-[#D8DEE8]",
+              EB.inputNumeric,
+              EB.lineUnitInput
+            )}
+          >
             {formatEstimateCurrency(row.unitCost)}
           </span>
         ) : (
@@ -859,42 +909,23 @@ function LineItemRow({
             value={unitCost}
             onChange={(e) => setUnitCost(Number(e.target.value) || 0)}
             onBlur={submitForm}
-            className={ebInput(
-              `h-7 min-h-7 w-[9.5rem] max-w-full px-1.5 text-xs ${EB.inputNumeric} ${EB.inputMuted}`
-            )}
+            className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`)}
             aria-label="Line item unit price"
           />
         )}
       </div>
-      <div className="flex flex-col gap-0.5">
-        <span className={EB.readLabel}>UoM</span>
-        {isLocked ? (
-          <span className="pb-0.5 text-xs text-zinc-500">{row.unit || "—"}</span>
-        ) : (
-          <Input
-            form={formId}
-            name="unit"
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-            onBlur={submitForm}
-            className={ebInput("h-7 min-h-7 w-[2.75rem] px-1.5 text-xs")}
-            placeholder="EA"
-            aria-label="Line item unit"
-          />
-        )}
+      <div className={cn(EB.linePricingTotalCol, EB.lineTotalActionArea)}>
+        <div className={EB.lineTotalBlock}>
+          <span className={cn(EB.readLabel, EB.lineTotalLabel)}>Total</span>
+          <div className={cn(EB.linePricingTotal, EB.lineTotalAmount)}>
+            <span className={cn(EB.lineTotal, "leading-none")}>
+              {formatEstimateCurrency(lineTotalDisplay)}
+            </span>
+          </div>
+        </div>
+        {lineActions}
       </div>
-      <div className="flex flex-col items-end gap-0.5">
-        <span className={EB.readLabel}>Total</span>
-        <span
-          className={cn(
-            "min-w-[8.5rem] max-w-full pb-0.5 text-right text-xs font-medium tabular-nums",
-            EB.lineTotal
-          )}
-        >
-          {formatEstimateCurrency(lineTotalDisplay)}
-        </span>
-      </div>
-    </div>
+    </>
   );
 
   return (
@@ -910,6 +941,7 @@ function LineItemRow({
         </form>
       ) : null}
       <ProposalScopeWorkCard
+        lineItemGridLayout
         readOnly={isLocked}
         title={title}
         description={desc}
@@ -919,6 +951,7 @@ function LineItemRow({
         onDescriptionBlur={isLocked ? undefined : submitForm}
         titleInputAriaLabel={isLocked ? undefined : "Line item title"}
         descriptionEditorAriaLabel={isLocked ? undefined : "Line item description"}
+        lineIndex={lineOrdinal}
         titleTrailingSlot={<EstimateLineItemStatusPill status={row.status} />}
         inlinePricing={inlinePricing}
         dragSlot={
@@ -926,63 +959,14 @@ function LineItemRow({
             <button
               type="button"
               {...dragHandleProps}
-              className="flex h-8 w-8 cursor-grab touch-none items-center justify-center rounded-sm text-zinc-500 hover:bg-white/[0.08] active:cursor-grabbing"
+              className={EB.scopeSectionDragHandle}
               aria-label="Drag to reorder line item"
             >
               <GripVertical className="h-4 w-4" strokeWidth={1.5} aria-hidden />
             </button>
           ) : undefined
         }
-        duplicateNode={
-          !isLocked ? (
-            <>
-              <form
-                ref={duplicateFormRef}
-                action={duplicateLineItemAction}
-                className="hidden"
-                aria-hidden
-              >
-                <input type="hidden" name="estimateId" value={estimateId} />
-                <input type="hidden" name="itemId" value={row.id} />
-              </form>
-              <form
-                ref={deleteFormRef}
-                action={deleteLineItemAction}
-                className="hidden"
-                aria-hidden
-              >
-                <input type="hidden" name="estimateId" value={estimateId} />
-                <input type="hidden" name="itemId" value={row.id} />
-              </form>
-              <EstimateLineItemMoreMenu
-                hideAmountOnPdf={row.hideAmountOnPdf}
-                showHideAmountOnPdf
-                onToggleHideAmountOnPdf={() => {
-                  const fd = new FormData();
-                  fd.set("estimateId", estimateId);
-                  fd.set("itemId", row.id);
-                  fd.set("hideAmountOnPdf", row.hideAmountOnPdf ? "0" : "1");
-                  void toggleLineItemHideAmountOnPdfAction(fd).then((res) => {
-                    if (res.ok) router.refresh();
-                  });
-                }}
-                showSetStatus
-                currentStatus={row.status}
-                onSetStatus={(nextStatus) => {
-                  const fd = new FormData();
-                  fd.set("estimateId", estimateId);
-                  fd.set("itemId", row.id);
-                  fd.set("status", nextStatus);
-                  void setLineItemStatusAction(fd).then((res) => {
-                    if (res.ok) router.refresh();
-                  });
-                }}
-                onDuplicate={() => duplicateFormRef.current?.requestSubmit()}
-                onDelete={() => deleteFormRef.current?.requestSubmit()}
-              />
-            </>
-          ) : undefined
-        }
+        duplicateNode={undefined}
         deleteNode={undefined}
       />
     </div>
