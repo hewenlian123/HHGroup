@@ -21,7 +21,7 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
     className={cn(
-      "fixed inset-0 z-50 bg-black/40 duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/45 duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -31,7 +31,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 overflow-y-auto overscroll-y-contain border-gray-100 bg-white p-6 shadow-sm transition-all duration-150 ease-out [-webkit-overflow-scrolling:touch] data-[state=open]:animate-in data-[state=closed]:animate-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none max-md:rounded-none dark:border-border dark:bg-background dark:shadow-none",
+  "fixed z-50 gap-4 overflow-y-auto overscroll-y-contain border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] transition-all duration-150 ease-out [-webkit-overflow-scrolling:touch] data-[state=open]:animate-in data-[state=closed]:animate-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none max-md:rounded-none",
   {
     variants: {
       side: {
@@ -70,7 +70,7 @@ const SheetContent = React.forwardRef<
       )}
       {...props}
     >
-      <SheetPrimitive.Close className="absolute right-4 top-4 flex items-center justify-center rounded-sm opacity-70 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-0 active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96] disabled:pointer-events-none touch-manipulation data-[state=open]:bg-secondary dark:hover:bg-muted/40 max-lg:min-h-[44px] max-lg:min-w-[44px] lg:min-h-0 lg:min-w-0">
+      <SheetPrimitive.Close className="absolute right-4 top-4 flex items-center justify-center rounded-sm opacity-70 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--neo-surface-muted)] hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0 active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96] disabled:pointer-events-none touch-manipulation data-[state=open]:bg-[var(--neo-surface-muted)] max-lg:min-h-[44px] max-lg:min-w-[44px] lg:min-h-0 lg:min-w-0">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>
@@ -103,7 +103,7 @@ const SheetTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold text-foreground", className)}
+    className={cn("text-lg font-semibold text-[var(--neo-text-primary)]", className)}
     {...props}
   />
 ));
@@ -115,7 +115,7 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-[var(--neo-text-secondary)]", className)}
     {...props}
   />
 ));

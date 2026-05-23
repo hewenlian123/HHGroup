@@ -213,7 +213,7 @@ export function ExpenseDateRangeFilter({
         <button
           type="button"
           className={cn(
-            "inline-flex h-8 min-w-[7.5rem] items-center justify-between gap-2 rounded-lg border border-slate-200/70 bg-white px-2.5 text-left text-xs font-medium text-slate-950 shadow-none transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/30 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted/50",
+            "inline-flex h-8 min-w-[7.5rem] items-center justify-between gap-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 text-left text-xs font-medium text-[var(--neo-text-primary)] shadow-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
             className
           )}
         >
@@ -304,15 +304,15 @@ export function ExpenseDateRangeFilter({
                   ),
                   selected: cn(
                     rdp.selected,
-                    "!bg-emerald-600 font-medium !text-white hover:!bg-emerald-600"
+                    "!bg-[var(--neo-gold)] font-medium !text-white hover:!bg-[var(--neo-gold)]"
                   ),
-                  range_start: cn(rdp.range_start, "rounded-r-none !bg-emerald-600"),
-                  range_end: cn(rdp.range_end, "rounded-l-none !bg-emerald-600"),
+                  range_start: cn(rdp.range_start, "rounded-r-none !bg-[var(--neo-gold)]"),
+                  range_end: cn(rdp.range_end, "rounded-l-none !bg-[var(--neo-gold)]"),
                   range_middle: cn(
                     rdp.range_middle,
-                    "rounded-none bg-emerald-100 text-slate-950 dark:bg-emerald-950/40 dark:text-foreground"
+                    "rounded-none bg-[rgb(184_137_45_/_0.14)] text-slate-950 dark:text-foreground"
                   ),
-                  today: cn(rdp.today, "font-semibold text-emerald-700"),
+                  today: cn(rdp.today, "font-semibold text-[var(--neo-gold)]"),
                   outside: cn(rdp.outside, "text-zinc-400 opacity-60"),
                   disabled: cn(rdp.disabled, "opacity-40"),
                 }}
@@ -376,7 +376,7 @@ export function ExpenseDateRangeFilter({
                   <Button
                     type="button"
                     size="sm"
-                    className="h-8 flex-1 rounded-lg border-0 bg-[#081225] text-xs text-white hover:bg-[#0F172A]"
+                    className="h-8 flex-1 rounded-lg border-0 text-xs"
                     disabled={!draft?.from}
                     onClick={applyCustom}
                   >

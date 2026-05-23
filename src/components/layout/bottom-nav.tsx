@@ -55,9 +55,7 @@ const BottomNavItem = React.memo(function BottomNavItem({
       className={cn(
         "flex min-h-[44px] min-w-[40px] flex-1 flex-col items-center justify-center gap-0.5 text-xs touch-manipulation cursor-pointer",
         "transition-[color_transform_opacity] duration-75 active:opacity-80 active:scale-[0.97]",
-        isActive
-          ? "font-medium text-text-primary dark:text-foreground"
-          : "text-sm text-text-secondary dark:text-muted-foreground"
+        isActive ? "font-medium text-[var(--neo-gold)]" : "text-sm text-[var(--neo-text-secondary)]"
       )}
       aria-current={isActive ? "page" : undefined}
     >
@@ -84,7 +82,7 @@ export function BottomNav({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        "flex min-h-14 items-center justify-around border-t border-gray-100 bg-white pb-[env(safe-area-inset-bottom)] print:hidden dark:border-border dark:bg-background",
+        "neo-command-bar flex min-h-14 items-center justify-around rounded-t-xl border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] print:hidden sm:rounded-none",
         className
       )}
       aria-label="Bottom navigation"

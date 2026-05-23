@@ -89,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <LaborAddEntryProvider>
               <ScrollLockRecovery />
               <SystemHealthPoller />
-              <div className="app-shell hh-app-shell flex min-h-0 overflow-hidden bg-slate-50 dark:bg-background">
+              <div className="app-shell hh-app-shell neo-app-shell flex min-h-0 overflow-hidden sm:gap-3 sm:p-3">
                 {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
                 <Sidebar
                   className="hidden sm:flex shrink-0 transition-[width] duration-200"
@@ -102,11 +102,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     side="left"
                     className={cn(
                       "w-[210px] max-w-[85vw] p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
-                      "border-r border-white/[0.08] bg-[linear-gradient(180deg,#081225_0%,#0F172A_100%)]"
+                      "border-r border-white/[0.08] bg-[var(--neo-graphite-950)]"
                     )}
                   >
                     <Sidebar
-                      className="h-full w-full border-none"
+                      className="h-full w-full !rounded-none !border-none !shadow-none"
                       onNavigate={() => setMobileOpen(false)}
                     />
                   </SheetContent>
@@ -122,7 +122,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <main
                     data-app-scroll-root
                     className={cn(
-                      "min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden bg-slate-50 overscroll-y-contain [-webkit-overflow-scrolling:touch]",
+                      "neo-workspace-canvas min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch]",
                       "pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
                     )}
                   >

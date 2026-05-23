@@ -16,4 +16,4 @@ export function formatLedgerDate(
 }
 
 export const LEDGER_DATE_CLASS =
-  'font-sans text-[13px] font-medium tracking-tight tabular-nums text-zinc-500 dark:text-zinc-400 [font-feature-settings:"zero"_0]';
+  'font-sans text-[13px] font-medium tracking-normal tabular-nums text-zinc-500 dark:text-zinc-400 [font-feature-settings:"zero"_0]';

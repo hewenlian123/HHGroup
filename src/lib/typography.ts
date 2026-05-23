@@ -1,81 +1,106 @@
 export const TYPO = {
   /** 1. Page title */
   pageTitle:
-    "text-[34px] leading-tight font-semibold tracking-tight text-zinc-950 dark:text-zinc-50 md:text-[36px]",
+    "text-[34px] leading-tight font-semibold tracking-normal text-zinc-950 dark:text-zinc-50 md:text-[36px]",
 
   /** 2. Page subtitle */
   pageSubtitle: "text-[15px] leading-relaxed text-zinc-500 dark:text-zinc-400",
 
   /** 3. Section label */
   sectionLabel:
-    "text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400 dark:text-zinc-500",
+    "text-[11px] font-medium uppercase tracking-normal text-zinc-400 dark:text-zinc-500",
 
   /** 4. KPI value */
-  kpiValue: "tabular-nums tracking-tight font-semibold text-zinc-950 dark:text-zinc-50",
+  kpiValue: "tabular-nums tracking-normal font-semibold text-zinc-950 dark:text-zinc-50",
 
   /** 5. KPI subtitle */
   kpiSubtitle: "text-[13px] font-medium text-zinc-500 dark:text-zinc-400",
 
   /** 5a. KPI label */
-  kpiLabel: "text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-500 dark:text-zinc-400",
+  kpiLabel: "text-[11px] font-medium uppercase tracking-normal text-zinc-500 dark:text-zinc-400",
 
   /** 6. Table headers */
-  tableHeader:
-    "text-[11px] font-medium uppercase tracking-[0.12em] text-zinc-400 dark:text-zinc-500",
+  tableHeader: "text-[11px] font-medium uppercase tracking-normal text-zinc-400 dark:text-zinc-500",
 
   /** 7. Primary names */
-  primaryName: "text-[15px] font-medium tracking-[-0.01em] text-zinc-900 dark:text-zinc-100",
+  primaryName: "text-[15px] font-medium tracking-normal text-zinc-900 dark:text-zinc-100",
 
   /** 8. Secondary IDs */
   secondaryId: "font-mono text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500",
 
   /** 9. Financial amounts */
-  amount: "tabular-nums tracking-tight font-semibold text-zinc-950 dark:text-zinc-50",
+  amount: "tabular-nums tracking-normal font-semibold text-zinc-950 dark:text-zinc-50",
 
   /** 10. Dates */
-  date: "font-mono text-[13px] tabular-nums tracking-tight text-zinc-500 dark:text-zinc-400",
+  date: "font-mono text-[13px] tabular-nums tracking-normal text-zinc-500 dark:text-zinc-400",
 
   /** 11. Status chips */
-  chip: "text-[12px] font-medium tracking-tight",
+  chip: "text-[12px] font-medium tracking-normal",
 
   /** 12. Buttons */
-  button: "text-[14px] font-medium tracking-tight",
+  button: "text-[14px] font-medium tracking-normal",
 
   /** 13. Muted body copy */
   mutedText: "text-sm leading-relaxed text-zinc-500 dark:text-zinc-400",
 } as const;
 
+export const NEO = {
+  workspace: "neo-workspace-canvas",
+  appShell: "neo-app-shell",
+  commandBar: "neo-command-bar",
+  sidebar: "neo-sidebar",
+  panel: "neo-panel",
+  toolbar: "neo-toolbar",
+  input: "neo-input",
+  amount: "neo-amount",
+  surface:
+    "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+  surfaceMuted:
+    "rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-primary)]",
+  buttonPrimary:
+    "border-transparent bg-[var(--neo-graphite-950)] text-white hover:bg-[var(--neo-graphite-800)] focus-visible:ring-[var(--neo-gold-ring)] dark:bg-[var(--neo-gold)] dark:text-zinc-950 dark:hover:bg-[var(--neo-gold-soft)]",
+  buttonSecondary:
+    "border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)] dark:border-[var(--neo-border)] dark:bg-[var(--neo-surface-raised)] dark:text-[var(--neo-text-primary)] dark:hover:bg-[var(--neo-surface-muted)]",
+  buttonGhost:
+    "border-0 bg-transparent text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]",
+  focusRing:
+    "focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0",
+  status: {
+    success: "hh-pill-success",
+    warning: "hh-pill-warning",
+    danger: "hh-pill-danger",
+    neutral: "hh-pill-neutral",
+    info: "hh-pill-info",
+  },
+} as const;
+
 export const OS = {
-  workspace: "bg-slate-50 dark:bg-background",
-  card: "rounded-xl border border-slate-900/[0.06] bg-white/[0.92] shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-border/60 dark:bg-card/90 dark:shadow-none",
+  workspace: NEO.workspace,
+  card: NEO.surface,
   cardHover:
-    "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-slate-900/[0.1] hover:shadow-[0_8px_32px_rgba(15,23,42,0.07)] dark:hover:border-border",
+    "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--neo-border-strong)] hover:shadow-[0_18px_44px_rgba(17,19,21,0.08)]",
   iconWell:
-    "rounded-md border border-slate-900/[0.06] bg-slate-50/75 p-2 text-zinc-500 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-400",
-  tableShell:
-    "relative w-full overflow-hidden rounded-xl border border-slate-900/[0.06] bg-white/[0.92] shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-border/60 dark:bg-card/90",
-  tableDivider: "border-slate-900/[0.06] dark:border-border/60",
-  filterSurface:
-    "rounded-xl border border-slate-900/[0.06] bg-white/[0.92] shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-border/60 dark:bg-card/90",
+    "rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-2 text-[var(--neo-text-secondary)]",
+  tableShell: `relative w-full overflow-hidden ${NEO.surface}`,
+  tableDivider: "border-[var(--neo-border)]",
+  filterSurface: NEO.surface,
   emptyState:
-    "rounded-xl border border-dashed border-slate-900/[0.08] bg-slate-50/50 px-5 py-12 text-center dark:border-border/60 dark:bg-muted/15",
-  primaryButton:
-    "bg-[#081225] text-white hover:bg-[#0F172A] focus-visible:ring-emerald-500/30 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400",
-  secondaryButton:
-    "border border-slate-900/[0.08] bg-white text-zinc-900 hover:bg-slate-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted/45",
+    "rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-5 py-12 text-center",
+  primaryButton: NEO.buttonPrimary,
+  secondaryButton: NEO.buttonSecondary,
   emeraldAccent: "text-emerald-700 dark:text-emerald-400",
   dangerAmount: "text-rose-600 dark:text-rose-400",
-  neutralAmount: "text-zinc-950 dark:text-zinc-50",
+  neutralAmount: "text-[var(--neo-text-primary)]",
 } as const;
 
 export type StatusTone = "success" | "warning" | "danger" | "neutral" | "info";
 
 export const STATUS_CHIP_CLASS: Record<StatusTone, string> = {
-  success: "hh-pill-success",
-  warning: "hh-pill-warning",
-  danger: "hh-pill-danger",
-  neutral: "hh-pill-neutral",
-  info: "hh-pill-info",
+  success: NEO.status.success,
+  warning: NEO.status.warning,
+  danger: NEO.status.danger,
+  neutral: NEO.status.neutral,
+  info: NEO.status.info,
 };
 
 export function statusChipClass(tone: StatusTone = "neutral"): string {

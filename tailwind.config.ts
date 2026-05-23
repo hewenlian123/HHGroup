@@ -21,7 +21,7 @@ const config: Config = {
       colors: {
         /** Semantic UI tokens — single source of truth (Linear / Apple SaaS) */
         brand: {
-          primary: "#059669",
+          primary: "#B8892D",
         },
         page: "#F8FAFC",
         text: {
@@ -37,6 +37,36 @@ const config: Config = {
         money: {
           expense: "#E11D48",
           income: "#059669",
+        },
+        neo: {
+          graphite: {
+            950: "#0A0D10",
+            900: "#101418",
+            850: "#151A20",
+            800: "#1B2229",
+          },
+          surface: {
+            canvas: "#11161C",
+            base: "#F5F6F7",
+            raised: "#FFFFFF",
+            muted: "#EEF0F2",
+          },
+          gold: {
+            500: "#B8892D",
+            400: "#D2A64A",
+            300: "#E1C16C",
+          },
+          emerald: {
+            600: "#047857",
+            500: "#059669",
+            100: "#DDF8EC",
+          },
+          titanium: {
+            950: "#111315",
+            700: "#3E454C",
+            500: "#6B747D",
+            300: "#CBD0D5",
+          },
         },
         /** HH Group legacy aliases (prefer brand/page/text-* above) */
         hh: {

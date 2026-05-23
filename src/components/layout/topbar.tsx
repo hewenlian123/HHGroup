@@ -157,7 +157,7 @@ export function Topbar({
     <header
       data-app-topbar
       className={cn(
-        "sticky top-0 z-40 flex h-11 min-h-11 shrink-0 items-center border-b border-border/60 bg-white/80 px-3 backdrop-blur-md backdrop-saturate-150 sm:min-h-0 sm:px-6 dark:border-border dark:bg-background/80",
+        "neo-command-bar sticky top-0 z-40 flex h-12 min-h-12 shrink-0 items-center px-3 sm:min-h-0 sm:rounded-xl sm:px-4",
         "flex-row gap-3 sm:gap-4"
       )}
     >
@@ -201,7 +201,7 @@ export function Topbar({
         >
           <span className="sr-only">Search</span>
           <Search
-            className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[#9CA3AF] dark:text-muted-foreground"
+            className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[var(--neo-text-tertiary)]"
             strokeWidth={1.75}
             aria-hidden
           />
@@ -210,8 +210,8 @@ export function Topbar({
             type="search"
             placeholder="Search projects, workers, invoices..."
             className={cn(
-              "h-[30px] w-full rounded-lg border-[0.5px] border-gray-100 bg-white pl-8 pr-2.5 text-[13px] text-[#374151] shadow-none dark:border-border dark:bg-card dark:text-foreground placeholder:text-[#9CA3AF] dark:placeholder:text-muted-foreground",
-              "outline-none transition-colors duration-150 focus:border-[#111827] focus:ring-2 focus:ring-[#111827]/10 dark:focus:ring-ring/30",
+              "neo-input h-[30px] w-full rounded-lg border-[0.5px] pl-8 pr-2.5 text-[13px] shadow-none placeholder:text-[var(--neo-text-tertiary)]",
+              "outline-none transition-colors duration-150 focus:border-[var(--neo-gold)] focus:ring-2 focus:ring-[var(--neo-gold-ring)]",
               "min-w-0 max-sm:placeholder:opacity-0"
             )}
           />
@@ -220,10 +220,10 @@ export function Topbar({
           <Button
             variant="outline"
             size="icon"
-            className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md border-[0.5px] border-gray-300 bg-white shadow-none transition-all duration-150 ease-out sm:h-[30px] sm:w-[30px] sm:min-h-0 sm:min-w-0 dark:border-border dark:bg-card"
+            className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md shadow-none transition-all duration-150 ease-out sm:h-[30px] sm:w-[30px] sm:min-h-0 sm:min-w-0"
             aria-label="Notifications"
           >
-            <Bell className="h-4 w-4 text-text-secondary dark:text-muted-foreground" />
+            <Bell className="h-4 w-4 text-[var(--neo-text-secondary)]" />
           </Button>
           {systemHealth.status === "warning" && (
             <span
@@ -241,7 +241,7 @@ export function Topbar({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 min-h-[44px] rounded-md border-[0.5px] border-gray-300 bg-white px-3.5 py-2.5 text-sm font-medium text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 hover:text-text-primary active:scale-[0.97] active:duration-100 sm:min-h-0 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted/40"
+              className="h-9 min-h-[44px] rounded-md px-3.5 py-2.5 text-sm font-medium shadow-none transition-all duration-150 ease-out hover:-translate-y-px active:scale-[0.97] active:duration-100 sm:min-h-0"
             >
               <Plus className="mr-2 h-4 w-4" />
               New

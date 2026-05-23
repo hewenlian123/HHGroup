@@ -16,26 +16,24 @@ export const listTablePrimaryCellClassName =
 
 /** Currency / numeric emphasis columns (beats per-column color on hover). */
 export const listTableAmountCellClassName = cn(
-  "tabular-nums tracking-tight font-semibold transition-colors duration-200 group-hover:!text-zinc-950 dark:group-hover:!text-foreground"
+  "tabular-nums tracking-normal font-semibold transition-colors duration-200 group-hover:!text-[var(--neo-text-primary)]"
 );
 
 /** Row actions trigger: hidden until row hover/focus on desktop; always visible on touch (<md). */
 export const listRowActionsTriggerClassName = cn(
-  "h-auto w-auto min-h-0 min-w-0 shrink-0 rounded-lg p-2 text-muted-foreground",
+  "h-auto w-auto min-h-0 min-w-0 shrink-0 rounded-lg p-2 text-[var(--neo-text-secondary)]",
   "opacity-0 transition-all duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100",
-  "hover:-translate-y-px hover:bg-white hover:text-foreground hover:shadow-sm active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96]",
-  "data-[state=open]:!opacity-100 data-[state=open]:bg-white data-[state=open]:shadow-sm dark:data-[state=open]:bg-popover"
+  "hover:-translate-y-px hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] hover:shadow-sm active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96]",
+  "data-[state=open]:!opacity-100 data-[state=open]:bg-[var(--neo-surface-muted)] data-[state=open]:shadow-sm"
 );
 
 export const listRowActionsContentClassName = cn(
-  "min-w-[160px] rounded-md border border-slate-900/[0.06] bg-white/95 p-0 py-2 shadow-sm",
-  "dark:border-border dark:bg-popover dark:text-popover-foreground"
+  "min-w-[160px] rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-0 py-2 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
 );
 
 export const listRowActionsItemClassName = cn(
   "cursor-pointer rounded-none px-4 py-2 text-sm",
-  "focus:bg-slate-50 hover:bg-slate-50",
-  "dark:focus:bg-muted/60 dark:hover:bg-muted/60"
+  "focus:bg-[var(--neo-surface-muted)] hover:bg-[var(--neo-surface-muted)]"
 );
 
 export const listRowActionsDestructiveClassName = cn(

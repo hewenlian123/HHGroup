@@ -3,7 +3,7 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
-import { TYPO } from "@/lib/typography";
+import { NEO, TYPO } from "@/lib/typography";
 import {
   motionClickableActive,
   motionIconButtonActive,
@@ -22,21 +22,19 @@ const buttonVariants = cva(
     TYPO.button,
     motionTransition,
     motionInteractiveHover,
-    "hover:opacity-90",
     motionClickableActive,
-    "focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-0"
+    NEO.focusRing
   ),
   {
     variants: {
       variant: {
-        default:
-          "border border-transparent bg-[#081225] text-white hover:bg-[#0F172A] hover:opacity-100 dark:bg-emerald-500 dark:text-slate-950 dark:hover:bg-emerald-400 dark:hover:opacity-100",
-        secondary:
-          "border border-slate-900/[0.08] bg-white text-zinc-900 shadow-none hover:bg-slate-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
-        outline:
-          "border border-slate-900/[0.08] bg-white text-zinc-900 shadow-none hover:bg-slate-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted",
-        ghost:
-          "border-0 !border-transparent bg-transparent text-zinc-900 shadow-none hover:!translate-y-0 hover:bg-slate-100/80 hover:opacity-100 hover:!shadow-none active:!scale-[0.97] active:!duration-100 max-md:active:!scale-[0.96] dark:bg-transparent dark:text-foreground dark:hover:bg-muted/40",
+        default: cn("border shadow-none", NEO.buttonPrimary),
+        secondary: cn("border shadow-none", NEO.buttonSecondary),
+        outline: cn("border shadow-none", NEO.buttonSecondary),
+        ghost: cn(
+          "shadow-none hover:!translate-y-0 hover:!shadow-none active:!scale-[0.97] active:!duration-100 max-md:active:!scale-[0.96]",
+          NEO.buttonGhost
+        ),
       },
       size: {
         /* Touch-friendly: min 44px on mobile/tablet (max-lg) */
