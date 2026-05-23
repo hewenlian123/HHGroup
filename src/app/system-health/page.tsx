@@ -3,9 +3,26 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
-import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import {
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  Database,
+  GitCommit,
+  Globe2,
+  Info,
+  KeyRound,
+  Layers3,
+  RefreshCw,
+  Route as RouteIcon,
+  Server,
+  ShieldCheck,
+  Table2,
+  type LucideIcon,
+} from "lucide-react";
 
 const REFRESH_INTERVAL_MS = 30_000;
 
@@ -243,80 +260,117 @@ function integrityCount(check?: { count?: unknown } | null): number {
   return safeNumber(check?.count);
 }
 
-function StatusDot({ ok }: { ok: boolean }) {
-  return (
-    <span className={`inline-block h-2 w-2 rounded-full ${ok ? "bg-[#166534]" : "bg-red-500"}`} />
-  );
+function qaStatusToHealthStatus(status?: SystemQaStatus): HealthCheckStatus {
+  if (status === "critical") return "fail";
+  if (status === "warning") return "warning";
+  return "ok";
 }
 
-function StatusLabel({ ok }: { ok: boolean }) {
+function healthStatusLabel(status: HealthCheckStatus, options?: { executive?: boolean }): string {
+  if (status === "ok") return options?.executive ? "Healthy" : "OK";
+  if (status === "warning") return "Warning";
+  return options?.executive ? "Critical" : "Failed";
+}
+
+type StatusPillVariant = "default" | "calm" | "hero";
+
+function statusToneClasses(
+  status: HealthCheckStatus,
+  variant: StatusPillVariant = "default"
+): {
+  pill: string;
+  dot: string;
+  text: string;
+  border: string;
+  glow: string;
+} {
+  if (status === "fail") {
+    return {
+      pill:
+        variant === "calm"
+          ? "border-red-400/32 bg-red-500/[0.09] text-red-200"
+          : "border-red-400/45 bg-red-500/12 text-red-200",
+      dot:
+        variant === "calm" ? "bg-red-300" : "bg-red-400 shadow-[0_0_14px_rgba(248,113,113,0.55)]",
+      text: "text-red-200",
+      border: "border-red-400/35",
+      glow: "shadow-[0_0_34px_rgba(248,113,113,0.15)]",
+    };
+  }
+  if (status === "warning") {
+    return {
+      pill:
+        variant === "calm"
+          ? "border-amber-300/32 bg-amber-400/[0.09] text-amber-100"
+          : "border-amber-300/45 bg-amber-400/12 text-amber-100",
+      dot:
+        variant === "calm"
+          ? "bg-amber-300"
+          : "bg-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.45)]",
+      text: "text-amber-100",
+      border: "border-amber-300/30",
+      glow: "shadow-[0_0_34px_rgba(251,191,36,0.12)]",
+    };
+  }
+  return {
+    pill:
+      variant === "calm"
+        ? "border-emerald-300/16 bg-emerald-300/[0.045] text-emerald-100/70"
+        : "border-emerald-300/35 bg-emerald-400/10 text-emerald-100",
+    dot:
+      variant === "calm"
+        ? "bg-emerald-300/60"
+        : "bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.45)]",
+    text: "text-emerald-100",
+    border: "border-emerald-300/25",
+    glow: "shadow-[0_0_34px_rgba(45,212,191,0.10)]",
+  };
+}
+
+function StatusPill({
+  status,
+  label,
+  compact = false,
+  variant = "default",
+}: {
+  status: HealthCheckStatus;
+  label?: string;
+  compact?: boolean;
+  variant?: StatusPillVariant;
+}) {
+  const tone = statusToneClasses(status, variant);
   return (
     <span
-      className={`flex items-center gap-2 ${
-        ok
-          ? "text-hh-profit-positive dark:text-hh-profit-positive"
-          : "text-red-600 dark:text-red-400"
+      className={`inline-flex shrink-0 items-center gap-2 rounded-full border font-medium ${tone.pill} ${
+        compact ? "px-1.5 py-0.5 text-[10px]" : "px-2.5 py-1.5 text-xs"
       }`}
     >
-      <StatusDot ok={ok} />
-      {ok ? "OK" : "Failed"}
+      <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
+      {label ?? healthStatusLabel(status)}
     </span>
   );
 }
 
 function QaStatusLabel({ status }: { status: SystemQaStatus }) {
-  const pass = status === "pass";
-  const warning = status === "warning";
   return (
-    <span
-      className={`inline-flex items-center gap-2 ${
-        pass
-          ? "text-hh-profit-positive dark:text-hh-profit-positive"
-          : warning
-            ? "text-amber-700 dark:text-amber-300"
-            : "text-red-600 dark:text-red-400"
-      }`}
-    >
-      <span
-        className={`inline-block h-2 w-2 rounded-full ${
-          pass ? "bg-[#166534]" : warning ? "bg-amber-500" : "bg-red-500"
-        }`}
-      />
-      {pass ? "Pass" : warning ? "Warning" : "Critical"}
-    </span>
+    <StatusPill
+      status={qaStatusToHealthStatus(status)}
+      label={status === "pass" ? "Pass" : status === "warning" ? "Warning" : "Critical"}
+      compact
+      variant={status === "pass" ? "calm" : "default"}
+    />
   );
 }
 
 function HealthStatusLabel({ status }: { status: HealthCheckStatus }) {
-  const ok = status === "ok";
-  const warning = status === "warning";
-  return (
-    <span
-      className={`flex items-center gap-2 ${
-        ok
-          ? "text-hh-profit-positive dark:text-hh-profit-positive"
-          : warning
-            ? "text-amber-700 dark:text-amber-300"
-            : "text-red-600 dark:text-red-400"
-      }`}
-    >
-      <span
-        className={`inline-block h-2 w-2 rounded-full ${
-          ok ? "bg-[#166534]" : warning ? "bg-amber-500" : "bg-red-500"
-        }`}
-      />
-      {ok ? "OK" : warning ? "Warning" : "Failed"}
-    </span>
-  );
+  return <StatusPill status={status} compact variant={status === "ok" ? "calm" : "default"} />;
 }
 
 function QaSummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-sm border border-border/70 bg-card px-4 py-3">
-      <p className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{value}</p>
+    <div className="rounded-lg border border-white/10 bg-white/[0.035] px-4 py-3">
+      <p className="text-xs font-medium uppercase tracking-[0.06em] text-slate-400">{label}</p>
+      <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-50">{value}</p>
     </div>
   );
 }
@@ -327,6 +381,22 @@ function DataQualityStatusLabel({ status }: { status: DataQualityStatus }) {
       status={status === "ok" ? "ok" : status === "warning" ? "warning" : "fail"}
     />
   );
+}
+
+function dataQualityStatusToHealthStatus(
+  status: DataQualityStatus | DataQualitySeverity
+): HealthCheckStatus | "info" {
+  if (status === "critical") return "fail";
+  if (status === "warning") return "warning";
+  if (status === "info") return "info";
+  return "ok";
+}
+
+function dataQualityPriority(status: DataQualityStatus | DataQualitySeverity): number {
+  if (status === "critical") return 0;
+  if (status === "warning") return 1;
+  if (status === "info") return 2;
+  return 3;
 }
 
 function DataQualityPanel({
@@ -343,9 +413,15 @@ function DataQualityPanel({
   const summary = dataQuality?.summary;
   const modules = dataQuality?.modules ?? [];
   const issues = dataQuality?.issues ?? [];
+  const sortedModules = [...modules].sort(
+    (a, b) => dataQualityPriority(a.status) - dataQualityPriority(b.status)
+  );
+  const sortedIssues = [...issues].sort(
+    (a, b) => dataQualityPriority(a.severity) - dataQualityPriority(b.severity)
+  );
 
   return (
-    <div className="rounded-sm border border-border/70 bg-card p-4">
+    <div className="guardian-panel p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-foreground">Supabase Data / Number Check</h2>
@@ -421,20 +497,29 @@ function DataQualityPanel({
                   </tr>
                 </thead>
                 <tbody>
-                  {modules.map((module) => (
-                    <tr key={module.module} className={listTableRowStaticClassName}>
-                      <td className="py-2.5 pr-6 font-medium">{module.label}</td>
-                      <td className="py-2.5 pr-6">
-                        <DataQualityStatusLabel status={module.status} />
-                      </td>
-                      <td className="py-2.5 pr-6 text-xs text-muted-foreground">
-                        {module.checked}
-                      </td>
-                      <td className="py-2.5 text-xs text-muted-foreground">
-                        {module.critical} critical · {module.warning} warning · {module.info} info
-                      </td>
-                    </tr>
-                  ))}
+                  {sortedModules.map((module) => {
+                    const rowStatus = dataQualityStatusToHealthStatus(module.status);
+                    const tone = detailRowTone(rowStatus);
+                    return (
+                      <tr
+                        key={module.module}
+                        className={`guardian-command-row border-b transition duration-150 ${tone.row} last:border-0`}
+                      >
+                        <td
+                          className={`border-l-2 py-2.5 pl-3 pr-6 font-medium ${tone.accent} ${tone.title}`}
+                        >
+                          {module.label}
+                        </td>
+                        <td className="py-2.5 pr-6">
+                          <DataQualityStatusLabel status={module.status} />
+                        </td>
+                        <td className={`py-2.5 pr-6 text-xs ${tone.detail}`}>{module.checked}</td>
+                        <td className={`py-2.5 text-xs ${tone.detail}`}>
+                          {module.critical} critical · {module.warning} warning · {module.info} info
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -469,46 +554,53 @@ function DataQualityPanel({
                         </td>
                       </tr>
                     ) : (
-                      issues.map((issue) => (
-                        <tr
-                          key={`${issue.issueCode}:${issue.entityId ?? issue.entityName ?? issue.module}`}
-                          className={listTableRowStaticClassName}
-                        >
-                          <td className="py-2.5 pr-6">
-                            <span className="block font-medium">
-                              {issue.link ? (
-                                <Link href={issue.link} className="underline underline-offset-2">
-                                  {issue.entityName ?? issue.issueCode}
-                                </Link>
-                              ) : (
-                                (issue.entityName ?? issue.issueCode)
-                              )}
-                            </span>
-                            <span className="block text-xs text-muted-foreground">
-                              {issue.message}
-                            </span>
-                            <code className="mt-1 inline-block rounded bg-muted px-1 py-0.5 text-[11px]">
-                              {issue.issueCode}
-                            </code>
-                          </td>
-                          <td className="py-2.5 pr-6 text-xs capitalize text-muted-foreground">
-                            {issue.severity}
-                          </td>
-                          <td className="py-2.5 pr-6 text-xs text-muted-foreground">
-                            <span className="block">
-                              Current:{" "}
-                              {issue.currentValue == null ? "n/a" : String(issue.currentValue)}
-                            </span>
-                            <span className="block">
-                              Expected:{" "}
-                              {issue.expectedValue == null ? "n/a" : String(issue.expectedValue)}
-                            </span>
-                          </td>
-                          <td className="py-2.5 text-xs text-muted-foreground">
-                            {issue.recommendedAction}
-                          </td>
-                        </tr>
-                      ))
+                      sortedIssues.map((issue) => {
+                        const rowStatus = dataQualityStatusToHealthStatus(issue.severity);
+                        const tone = detailRowTone(rowStatus);
+                        return (
+                          <tr
+                            key={`${issue.issueCode}:${issue.entityId ?? issue.entityName ?? issue.module}`}
+                            className={`guardian-command-row border-b transition duration-150 ${tone.row} last:border-0`}
+                          >
+                            <td className={`border-l-2 py-2.5 pl-3 pr-6 ${tone.accent}`}>
+                              <span className={`block font-medium ${tone.title}`}>
+                                {issue.link ? (
+                                  <Link
+                                    href={issue.link}
+                                    className="no-underline underline-offset-4 hover:underline"
+                                  >
+                                    {issue.entityName ?? issue.issueCode}
+                                  </Link>
+                                ) : (
+                                  (issue.entityName ?? issue.issueCode)
+                                )}
+                              </span>
+                              <span className={`block text-xs ${tone.detail}`}>
+                                {issue.message}
+                              </span>
+                              <span className="mt-1 inline-flex">
+                                <CodeBadge value={issue.issueCode} status={rowStatus} />
+                              </span>
+                            </td>
+                            <td className="py-2.5 pr-6 text-xs capitalize">
+                              <DetailStatusPill status={rowStatus} />
+                            </td>
+                            <td className={`py-2.5 pr-6 text-xs ${tone.detail}`}>
+                              <span className="block">
+                                Current:{" "}
+                                {issue.currentValue == null ? "n/a" : String(issue.currentValue)}
+                              </span>
+                              <span className="block">
+                                Expected:{" "}
+                                {issue.expectedValue == null ? "n/a" : String(issue.expectedValue)}
+                              </span>
+                            </td>
+                            <td className={`py-2.5 text-xs ${tone.detail}`}>
+                              {issue.recommendedAction}
+                            </td>
+                          </tr>
+                        );
+                      })
                     )}
                   </tbody>
                 </table>
@@ -525,11 +617,34 @@ function DataQualityPanel({
   );
 }
 
+function qaCheckPresentationStatus(check: SystemQaCheck): DetailRowStatus {
+  if (check.category === "optionalModule" || check.category === "informational") return "info";
+  return qaStatusToHealthStatus(check.status);
+}
+
+function sortedQaChecks(checks: SystemQaCheck[]): SystemQaCheck[] {
+  return [...checks].sort((a, b) => {
+    const byStatus =
+      healthStatusPriority(qaCheckPresentationStatus(a)) -
+      healthStatusPriority(qaCheckPresentationStatus(b));
+    if (byStatus !== 0) return byStatus;
+    return a.name.localeCompare(b.name);
+  });
+}
+
 function SystemQaSectionTable({ section }: { section: SystemQaSection }) {
+  const checks = sortedQaChecks(section.checks);
+  const passCount = section.checks.filter((check) => check.status === "pass").length;
+
   return (
-    <div className="border-t border-border/60 pt-5">
+    <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-sm font-medium text-foreground">{section.name}</h3>
+        <div>
+          <h3 className="text-sm font-medium text-foreground">{section.name}</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            {passCount} / {section.checks.length} checks passed
+          </p>
+        </div>
         <QaStatusLabel status={section.status} />
       </div>
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
@@ -552,34 +667,45 @@ function SystemQaSectionTable({ section }: { section: SystemQaSection }) {
               </tr>
             </thead>
             <tbody>
-              {section.checks.map((check) => (
-                <tr key={check.id} className={listTableRowStaticClassName}>
-                  <td className="py-2.5 pr-6 font-medium">{check.name}</td>
-                  <td className="py-2.5 pr-6">
-                    <QaStatusLabel status={check.status} />
-                  </td>
-                  <td className="py-2.5 pr-6 text-xs text-muted-foreground">
-                    {check.page ? (
-                      <Link href={check.page} className="underline underline-offset-2">
-                        {check.page}
-                      </Link>
-                    ) : (
-                      check.type
-                    )}
-                  </td>
-                  <td className="py-2.5 text-xs leading-5 text-muted-foreground">
-                    <span className="block">{check.message}</span>
-                    {check.recommendedAction ? (
-                      <span className="block text-foreground/80">{check.recommendedAction}</span>
-                    ) : null}
-                    {check.diagnosticCode ? (
-                      <code className="mt-1 inline-block rounded bg-muted px-1 py-0.5">
-                        {check.diagnosticCode}
-                      </code>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
+              {checks.map((check) => {
+                const rowStatus = qaCheckPresentationStatus(check);
+                const tone = detailRowTone(rowStatus);
+                return (
+                  <tr
+                    key={check.id}
+                    className={`guardian-command-row border-b transition duration-150 ${tone.row} last:border-0`}
+                  >
+                    <td
+                      className={`border-l-2 py-2.5 pl-3 pr-6 font-medium ${tone.accent} ${tone.title}`}
+                    >
+                      {check.name}
+                    </td>
+                    <td className="py-2.5 pr-6">
+                      <DetailStatusPill status={rowStatus} />
+                    </td>
+                    <td className={`py-2.5 pr-6 text-xs ${tone.detail}`}>
+                      {check.page ? (
+                        <CodePath value={check.page} href={check.page} />
+                      ) : (
+                        <CodeBadge value={check.type} status={rowStatus} />
+                      )}
+                    </td>
+                    <td className={`py-2.5 text-xs leading-5 ${tone.detail}`}>
+                      <span className="block">{check.message}</span>
+                      {check.recommendedAction ? (
+                        <span className="mt-1 block text-slate-200/75">
+                          {check.recommendedAction}
+                        </span>
+                      ) : null}
+                      {check.diagnosticCode ? (
+                        <span className="mt-1 inline-flex">
+                          <CodeBadge value={check.diagnosticCode} status={rowStatus} />
+                        </span>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -603,7 +729,7 @@ function SystemQaPanel({
   const sections = Array.isArray(qa?.sections) ? qa.sections : [];
 
   return (
-    <div className="rounded-sm border border-border/70 bg-card p-4">
+    <div className="guardian-panel p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold text-foreground">System QA</h2>
@@ -660,29 +786,6 @@ function SystemQaPanel({
   );
 }
 
-function HealthCard({ title, check }: { title: string; check?: HealthCheck }) {
-  return (
-    <div className="rounded-sm border border-border/70 bg-card px-4 py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
-            {title}
-          </p>
-          <p className="mt-1 text-sm font-medium text-foreground">{check?.name ?? "Not checked"}</p>
-        </div>
-        {check ? (
-          <HealthStatusLabel status={check.status} />
-        ) : (
-          <span className="text-xs text-muted-foreground">Loading</span>
-        )}
-      </div>
-      {check?.message && (
-        <p className="mt-2 text-xs leading-5 text-muted-foreground">{check.message}</p>
-      )}
-    </div>
-  );
-}
-
 function isOptionalModuleCheck(check?: HealthCheck | null): boolean {
   return check?.category === "optionalModule" || check?.code === "optional_module_disabled";
 }
@@ -709,93 +812,701 @@ function uniqueHealthChecks(checks: HealthCheck[]): HealthCheck[] {
   return unique;
 }
 
-function IssueList({
-  title,
-  checks,
-  tone = "neutral",
-}: {
+type DetailRowStatus = HealthCheckStatus | "info";
+
+type HealthDetailRowData = {
+  id: string;
+  name: string;
+  status: DetailRowStatus;
+  message?: string;
+  code?: string;
+  href?: string;
+  meta?: string;
+  action?: React.ReactNode;
+};
+
+type ActiveIssue = {
+  id: string;
   title: string;
-  checks: HealthCheck[];
-  tone?: "critical" | "attention" | "optional" | "neutral";
-}) {
-  if (checks.length === 0) return null;
-  const toneClass =
-    tone === "critical"
-      ? "border-red-200 bg-red-50 text-red-800 dark:border-red-800/40 dark:bg-red-950/20 dark:text-red-300"
-      : tone === "attention"
-        ? "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-200"
-        : "border-border/70 bg-card text-foreground";
+  status: "fail" | "warning";
+  message: string;
+  href?: string;
+  meta?: string;
+};
+
+function healthStatusPriority(status: DetailRowStatus): number {
+  if (status === "fail") return 0;
+  if (status === "warning") return 1;
+  if (status === "info") return 2;
+  return 3;
+}
+
+function sortedDetailRows(rows: HealthDetailRowData[]): HealthDetailRowData[] {
+  return [...rows].sort((a, b) => {
+    const byStatus = healthStatusPriority(a.status) - healthStatusPriority(b.status);
+    if (byStatus !== 0) return byStatus;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+function worstHealthStatus(checks: HealthCheck[], fallback: HealthCheckStatus = "ok") {
+  if (checks.length === 0) return fallback;
+  if (checks.some((check) => check.status === "fail")) return "fail";
+  if (checks.some((check) => check.status === "warning" && isActionableHealthCheck(check))) {
+    return "warning";
+  }
+  return "ok";
+}
+
+function countOk(checks: HealthCheck[]): { ok: number; total: number } {
+  return {
+    ok: checks.filter((check) => check.status === "ok").length,
+    total: checks.length,
+  };
+}
+
+function formatCount(count?: { ok: number; total: number } | null): string | undefined {
+  if (!count || count.total === 0) return undefined;
+  return `${count.ok} / ${count.total} OK`;
+}
+
+function formatBlockedRouteCount(
+  section?: SystemQaSection | null,
+  fallbackLabel = "routes blocked"
+): string | undefined {
+  if (!section || section.checks.length === 0) return undefined;
+  const pass = section.checks.filter((check) => check.status === "pass").length;
+  return `${pass} / ${section.checks.length} ${fallbackLabel}`;
+}
+
+function shortCommit(commit?: string | null): string {
+  return commit ? commit.slice(0, 7) : "n/a";
+}
+
+function formatCheckedAt(value?: string | Date | null): string {
+  if (!value) return "Checking...";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "Checking...";
+  return date.toLocaleString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function checkToDetailRow(check: HealthCheck, fallbackId?: string): HealthDetailRowData {
+  return {
+    id: fallbackId ?? `${check.name}:${check.code ?? ""}:${check.message ?? ""}`,
+    name: check.name,
+    status: isOptionalModuleCheck(check) || isInformationalCheck(check) ? "info" : check.status,
+    message: check.message,
+    code: check.code,
+    href: check.href,
+    meta: isOptionalModuleCheck(check) ? "Optional module" : undefined,
+  };
+}
+
+function qaCheckToDetailRow(check: SystemQaCheck, sectionId: string): HealthDetailRowData {
+  return {
+    id: `${sectionId}:${check.id}`,
+    name: check.name,
+    status:
+      check.category === "optionalModule" || check.category === "informational"
+        ? "info"
+        : qaStatusToHealthStatus(check.status),
+    message: check.message,
+    code: check.diagnosticCode,
+    href: check.page,
+    meta: check.type,
+  };
+}
+
+function isCodePathValue(value: string): boolean {
+  return (
+    value.startsWith("/") ||
+    value.includes("_") ||
+    value.startsWith("GET ") ||
+    /^[a-z0-9./:-]+$/.test(value)
+  );
+}
+
+function isDiagnosticCode(value: string): boolean {
+  return /^[a-z0-9_:-]+$/i.test(value) && !value.includes(" ");
+}
+
+function CodeBadge({ value, status = "info" }: { value: string; status?: DetailRowStatus }) {
+  const tone =
+    status === "fail"
+      ? "border-red-300/25 bg-red-400/[0.09] text-red-100"
+      : status === "warning"
+        ? "border-amber-300/25 bg-amber-300/[0.1] text-amber-100"
+        : status === "ok"
+          ? "border-emerald-300/14 bg-emerald-300/[0.045] text-emerald-100/70"
+          : "border-cyan-200/18 bg-cyan-200/[0.07] text-cyan-100/75";
 
   return (
-    <div className={`rounded-sm border px-4 py-3 text-sm ${toneClass}`}>
-      <p className="font-medium">{title}</p>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5">
-        {checks.map((check) => (
-          <li key={`${check.name}:${check.code ?? ""}:${check.message ?? ""}`}>
-            {check.href ? (
-              <Link href={check.href} className="underline underline-offset-2">
-                {check.name}
-              </Link>
-            ) : (
-              <span>{check.name}</span>
-            )}
-            {": "}
-            <span>{check.message ?? check.code ?? "Needs review"}</span>
-          </li>
-        ))}
-      </ul>
+    <code
+      className={`inline-flex max-w-full items-center rounded-md border px-1.5 py-0.5 font-mono text-[11px] leading-4 ${tone}`}
+    >
+      <span className="truncate">{value}</span>
+    </code>
+  );
+}
+
+function CodePath({ value, href }: { value: string; href?: string }) {
+  const className =
+    "inline-flex max-w-full items-center rounded-md border border-cyan-200/12 bg-cyan-100/[0.055] px-2 py-1 font-mono text-[11px] leading-4 text-cyan-50/78 no-underline transition hover:border-cyan-200/32 hover:bg-cyan-100/[0.085] hover:text-cyan-50";
+  const content = <span className="break-all">{value}</span>;
+
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  return <span className={className}>{content}</span>;
+}
+
+function detailRowTone(status: DetailRowStatus): {
+  row: string;
+  accent: string;
+  title: string;
+  detail: string;
+} {
+  if (status === "fail") {
+    return {
+      row: "border-red-300/14 bg-red-500/[0.025] hover:bg-red-400/[0.055] hover:shadow-[inset_0_0_0_1px_rgba(248,113,113,0.12)]",
+      accent: "border-red-300/55",
+      title: "text-red-50",
+      detail: "text-red-100/78",
+    };
+  }
+  if (status === "warning") {
+    return {
+      row: "border-amber-300/14 bg-amber-400/[0.025] hover:bg-amber-300/[0.055] hover:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.12)]",
+      accent: "border-amber-300/60",
+      title: "text-amber-50",
+      detail: "text-amber-100/80",
+    };
+  }
+  if (status === "info") {
+    return {
+      row: "border-cyan-200/10 hover:bg-cyan-200/[0.035]",
+      accent: "border-cyan-200/22",
+      title: "text-cyan-50/88",
+      detail: "text-slate-300/82",
+    };
+  }
+  return {
+    row: "border-white/[0.045] hover:bg-cyan-100/[0.025]",
+    accent: "border-transparent",
+    title: "text-slate-200",
+    detail: "text-slate-400",
+  };
+}
+
+function DetailStatusPill({ status }: { status: DetailRowStatus }) {
+  if (status === "info") {
+    return (
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-cyan-200/18 bg-cyan-300/[0.07] px-1.5 py-0.5 text-[10px] font-medium text-cyan-100/75">
+        <span className="h-1.5 w-1.5 rounded-full bg-cyan-200/70" />
+        Info
+      </span>
+    );
+  }
+  return <StatusPill status={status} compact variant={status === "ok" ? "calm" : "default"} />;
+}
+
+function GuardianScanLine() {
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-0 h-px overflow-hidden">
+      <span className="guardian-scan-line block h-px w-1/2 bg-gradient-to-r from-transparent via-cyan-200/80 to-transparent" />
     </div>
   );
 }
 
-function HealthTable({ title, checks }: { title: string; checks?: HealthCheck[] }) {
+function GuardianRefreshLine({ status }: { status: HealthCheckStatus }) {
+  const tone =
+    status === "fail"
+      ? "from-red-400 via-red-200 to-red-400"
+      : status === "warning"
+        ? "from-amber-300 via-cyan-100 to-amber-300"
+        : "from-emerald-300 via-cyan-100 to-teal-300";
+
   return (
-    <div className="border-t border-border/60 pt-5">
-      <h2 className="mb-3 text-sm font-medium text-foreground">{title}</h2>
-      {!checks ? (
-        <p className="text-sm text-muted-foreground">Checking…</p>
-      ) : (
-        <div className="airtable-table-wrap airtable-table-wrap--ruled">
-          <div className="airtable-table-scroll">
-            <table className="w-full min-w-[360px] text-sm sm:min-w-0">
-              <thead>
-                <tr className="text-left">
-                  <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                    Check
-                  </th>
-                  <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                    Status
-                  </th>
-                  <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                    Detail
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {checks.length === 0 ? (
-                  <tr>
-                    <td colSpan={3} className="py-6 text-center text-muted-foreground">
-                      No checks configured.
-                    </td>
-                  </tr>
-                ) : (
-                  checks.map((check) => (
-                    <tr key={check.name} className={listTableRowStaticClassName}>
-                      <td className="py-2.5 pr-6 font-medium">{check.name}</td>
-                      <td className="py-2.5 pr-6">
-                        <HealthStatusLabel status={check.status} />
-                      </td>
-                      <td className="py-2.5 text-xs text-muted-foreground">
-                        {check.message ?? check.code ?? "—"}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+    <div className="guardian-refresh-line absolute inset-x-5 bottom-4 h-px overflow-hidden rounded-full bg-white/10">
+      <span className={`block h-full bg-gradient-to-r ${tone}`} />
+    </div>
+  );
+}
+
+function StatusOrb({ status }: { status: HealthCheckStatus }) {
+  const score = status === "ok" ? "100" : status === "warning" ? "72" : "28";
+  const ring =
+    status === "fail"
+      ? "from-red-400 via-red-300 to-zinc-800"
+      : status === "warning"
+        ? "from-amber-300 via-cyan-200 to-zinc-800"
+        : "from-emerald-300 via-cyan-200 to-zinc-800";
+
+  return (
+    <div
+      className={`relative grid h-28 w-28 shrink-0 place-items-center rounded-full bg-gradient-to-br ${ring} p-px shadow-[0_0_36px_rgba(45,212,191,0.18)] sm:h-32 sm:w-32`}
+      aria-hidden="true"
+    >
+      <div className="grid h-full w-full place-items-center rounded-full border border-white/10 bg-[#071012]">
+        <div className="text-center">
+          <p className="text-3xl font-semibold tabular-nums text-slate-50">{score}</p>
+          <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-cyan-100/70">
+            health
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HealthHero({
+  overallStatus,
+  checkedAt,
+  cadenceSeconds,
+  environment,
+  onRefresh,
+  disabled,
+  refreshing,
+}: {
+  overallStatus: HealthCheckStatus;
+  checkedAt?: string | Date | null;
+  cadenceSeconds: number;
+  environment?: SystemHealthResult["environment"];
+  onRefresh: () => void;
+  disabled: boolean;
+  refreshing: boolean;
+}) {
+  const tone = statusToneClasses(overallStatus);
+  const environmentLabel = environment?.vercelEnv ?? environment?.nodeEnv ?? "local";
+
+  return (
+    <section className={`guardian-hero relative overflow-hidden rounded-2xl border ${tone.border}`}>
+      <GuardianScanLine />
+      <div className="relative z-10 grid gap-5 p-4 pb-10 sm:p-5 sm:pb-10 lg:grid-cols-[1fr_auto] lg:items-center lg:p-6 lg:pb-11">
+        <div className="min-w-0">
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="inline-flex min-h-[32px] items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 text-xs font-medium uppercase tracking-[0.08em] text-cyan-100">
+              <Activity className="h-3.5 w-3.5" />
+              Command Center
+            </span>
+            <StatusPill
+              status={overallStatus}
+              label={healthStatusLabel(overallStatus, { executive: true })}
+            />
+          </div>
+          <h1 className="text-3xl font-semibold tracking-normal text-white sm:text-4xl">
+            System Guardian
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+            Production health, data reachability, route availability, and safety guards.
+          </p>
+
+          <div className="mt-5 grid gap-2 text-xs text-slate-300 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="guardian-hero-metric">
+              <span className="text-slate-500">Overall Status</span>
+              <span className={tone.text}>
+                {healthStatusLabel(overallStatus, { executive: true })}
+              </span>
+            </div>
+            <div className="guardian-hero-metric">
+              <span className="text-slate-500">Last Checked</span>
+              <span>{formatCheckedAt(checkedAt)}</span>
+            </div>
+            <div className="guardian-hero-metric">
+              <span className="text-slate-500">Auto Refresh</span>
+              <span>{cadenceSeconds}s cadence</span>
+            </div>
+            <div className="guardian-hero-metric">
+              <span className="text-slate-500">Environment</span>
+              <span className="truncate">{environmentLabel}</span>
+            </div>
           </div>
         </div>
+
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center lg:flex-col">
+          <StatusOrb status={overallStatus} />
+          <div className="grid min-w-[12rem] gap-2">
+            <div className="guardian-hero-metric">
+              <span className="inline-flex items-center gap-1.5 text-slate-500">
+                <GitCommit className="h-3.5 w-3.5" />
+                Commit
+              </span>
+              <code className="font-mono text-xs text-cyan-100">
+                {shortCommit(environment?.commit)}
+              </code>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-h-[44px] border-cyan-200/25 bg-cyan-100/10 text-cyan-50 hover:border-cyan-100/50 hover:bg-cyan-100/15"
+              onClick={onRefresh}
+              disabled={disabled}
+            >
+              <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+              {refreshing ? "Checking..." : "Refresh Now"}
+            </Button>
+          </div>
+        </div>
+      </div>
+      <GuardianRefreshLine status={overallStatus} />
+    </section>
+  );
+}
+
+function HealthSummaryCard({
+  title,
+  status,
+  summary,
+  count,
+  icon: Icon,
+}: {
+  title: string;
+  status: HealthCheckStatus;
+  summary: string;
+  count?: string;
+  icon: LucideIcon;
+}) {
+  const tone = statusToneClasses(status);
+  return (
+    <div
+      className={`group rounded-xl border border-white/10 bg-white/[0.035] p-4 transition duration-200 hover:-translate-y-0.5 hover:border-cyan-200/35 ${tone.glow}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-cyan-200/15 bg-cyan-200/10 text-cyan-100">
+          <Icon className="h-4 w-4" />
+        </div>
+        <StatusPill status={status} compact />
+      </div>
+      <div className="mt-4 min-w-0">
+        <h2 className="text-sm font-semibold text-slate-50">{title}</h2>
+        <p className="mt-1 text-xs leading-5 text-slate-400">{summary}</p>
+        {count ? <p className="mt-3 font-mono text-xs text-cyan-100/80">{count}</p> : null}
+      </div>
+    </div>
+  );
+}
+
+function ActiveIssuesPanel({
+  issues,
+  optionalModules,
+}: {
+  issues: ActiveIssue[];
+  optionalModules: HealthCheck[];
+}) {
+  const critical = issues.filter((issue) => issue.status === "fail");
+  const warnings = issues.filter((issue) => issue.status === "warning");
+
+  return (
+    <section className="guardian-panel p-4 sm:p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-50">Active Issues</h2>
+          <p className="mt-1 text-xs leading-5 text-slate-400">
+            Critical alerts surface first; optional modules stay informational.
+          </p>
+        </div>
+        <StatusPill
+          status={critical.length ? "fail" : warnings.length ? "warning" : "ok"}
+          label={critical.length ? "Critical" : warnings.length ? "Warning" : "Clear"}
+        />
+      </div>
+
+      {issues.length === 0 ? (
+        <div className="mt-4 rounded-xl border border-emerald-300/15 bg-emerald-300/8 p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-200" />
+            <div>
+              <p className="text-sm font-medium text-emerald-50">No active issues</p>
+              <p className="mt-1 text-xs leading-5 text-emerald-100/75">
+                Guardian found no blocking problems in production.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-3">
+          {[...critical, ...warnings].map((issue) => {
+            const tone = statusToneClasses(issue.status);
+            const metaIsCode = issue.meta ? isDiagnosticCode(issue.meta) : false;
+            return (
+              <div
+                key={issue.id}
+                className={`relative overflow-hidden rounded-xl border ${tone.border} bg-white/[0.035] p-3 transition duration-150 hover:bg-white/[0.05] ${tone.glow}`}
+              >
+                <span
+                  className={`absolute inset-y-3 left-0 w-px ${
+                    issue.status === "fail" ? "bg-red-300/65" : "bg-amber-300/65"
+                  }`}
+                />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-50">
+                      {issue.href ? (
+                        <Link
+                          href={issue.href}
+                          className="no-underline underline-offset-4 hover:underline"
+                        >
+                          {issue.title}
+                        </Link>
+                      ) : (
+                        issue.title
+                      )}
+                    </p>
+                    <p
+                      className={`mt-1 text-xs leading-5 ${
+                        issue.status === "fail" ? "text-red-100/78" : "text-amber-100/82"
+                      }`}
+                    >
+                      {issue.message}
+                    </p>
+                    {issue.meta ? (
+                      <div className="mt-2">
+                        {metaIsCode ? (
+                          <CodeBadge value={issue.meta} status={issue.status} />
+                        ) : (
+                          <span className="inline-flex rounded-md border border-white/10 bg-white/[0.045] px-2 py-0.5 text-[11px] text-slate-300/75">
+                            {issue.meta}
+                          </span>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                  <StatusPill status={issue.status} compact />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
+
+      {optionalModules.length ? (
+        <div className="mt-4 rounded-xl border border-cyan-200/15 bg-cyan-200/8 p-3 text-xs leading-5 text-cyan-50/80">
+          <span className="font-medium text-cyan-50">Informational modules:</span>{" "}
+          {optionalModules.map((check) => check.name).join(", ")}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function HealthDetailRow({ row }: { row: HealthDetailRowData }) {
+  const tone = detailRowTone(row.status);
+  const showCodePath = isCodePathValue(row.name);
+
+  return (
+    <tr
+      className={`guardian-command-row border-b transition duration-150 ${tone.row} last:border-0`}
+    >
+      <td className={`border-l-2 py-3 pl-3 pr-4 align-top ${tone.accent}`}>
+        <div className="min-w-0">
+          {showCodePath ? (
+            <CodePath value={row.name} href={row.href} />
+          ) : (
+            <>
+              <span className={`text-sm font-medium ${tone.title}`}>{row.name}</span>
+              {row.href ? (
+                <span className="mt-1 block">
+                  <CodePath value={row.href} href={row.href} />
+                </span>
+              ) : null}
+            </>
+          )}
+          {row.meta ? <p className="mt-1 text-[11px] text-slate-500">{row.meta}</p> : null}
+        </div>
+      </td>
+      <td className="py-3 pr-4 align-top">
+        <DetailStatusPill status={row.status} />
+      </td>
+      <td className={`py-3 align-top text-xs leading-5 ${tone.detail}`}>
+        {row.message ?? row.code ?? "-"}
+        {row.code ? (
+          <span className="ml-2 inline-flex align-middle">
+            <CodeBadge value={row.code} status={row.status} />
+          </span>
+        ) : null}
+        {row.action ? <div className="mt-2">{row.action}</div> : null}
+      </td>
+    </tr>
+  );
+}
+
+function HealthDetailCard({ row }: { row: HealthDetailRowData }) {
+  const tone = detailRowTone(row.status);
+  const showCodePath = isCodePathValue(row.name);
+
+  return (
+    <div
+      className={`rounded-xl border bg-white/[0.028] p-3 transition duration-150 ${tone.row} ${row.status === "warning" ? "shadow-[inset_2px_0_0_rgba(251,191,36,0.45)]" : ""}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          {showCodePath ? (
+            <CodePath value={row.name} href={row.href} />
+          ) : (
+            <>
+              <p className={`break-words text-sm font-medium ${tone.title}`}>{row.name}</p>
+              {row.href ? (
+                <span className="mt-1 block">
+                  <CodePath value={row.href} href={row.href} />
+                </span>
+              ) : null}
+            </>
+          )}
+          {row.meta ? <p className="mt-1 text-[11px] text-slate-500">{row.meta}</p> : null}
+        </div>
+        <DetailStatusPill status={row.status} />
+      </div>
+      <p className={`mt-3 text-xs leading-5 ${tone.detail}`}>{row.message ?? row.code ?? "-"}</p>
+      {row.code ? (
+        <span className="mt-2 inline-flex">
+          <CodeBadge value={row.code} status={row.status} />
+        </span>
+      ) : null}
+      {row.action ? <div className="mt-3">{row.action}</div> : null}
+    </div>
+  );
+}
+
+function HealthDetailTable({
+  rows,
+  loading,
+  emptyMessage = "No checks configured.",
+}: {
+  rows?: HealthDetailRowData[];
+  loading?: boolean;
+  emptyMessage?: string;
+}) {
+  if (loading && !rows) {
+    return <p className="px-4 pb-4 text-sm text-slate-400">Checking...</p>;
+  }
+
+  const sortedRows = sortedDetailRows(rows ?? []);
+  if (sortedRows.length === 0) {
+    return <p className="px-4 pb-4 text-sm text-slate-400">{emptyMessage}</p>;
+  }
+
+  return (
+    <>
+      <div className="grid gap-3 px-4 pb-4 sm:hidden">
+        {sortedRows.map((row) => (
+          <HealthDetailCard key={row.id} row={row} />
+        ))}
+      </div>
+      <div className="hidden max-w-full overflow-hidden px-4 pb-4 sm:block">
+        <div className="guardian-table-shell overflow-x-auto">
+          <table className="guardian-detail-table w-full min-w-[620px] text-sm">
+            <thead>
+              <tr className="text-left">
+                <th className="h-9 px-3 pr-4 text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                  Check
+                </th>
+                <th className="h-9 pr-4 text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                  Status
+                </th>
+                <th className="h-9 text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                  Detail
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedRows.map((row) => (
+                <HealthDetailRow key={row.id} row={row} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function HealthSection({
+  title,
+  icon: Icon,
+  status,
+  count,
+  description,
+  defaultOpen,
+  children,
+}: {
+  title: string;
+  icon: LucideIcon;
+  status: HealthCheckStatus;
+  count?: string;
+  description?: string;
+  defaultOpen: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  const tone = statusToneClasses(status, status === "ok" ? "calm" : "default");
+
+  React.useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
+
+  return (
+    <details
+      className={`guardian-panel group/section overflow-hidden transition duration-200 hover:border-cyan-200/22 ${tone.glow}`}
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary className="flex min-h-[60px] cursor-pointer list-none items-center gap-3 px-4 py-3 transition hover:bg-cyan-100/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/60 sm:px-5">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-cyan-200/15 bg-cyan-200/10 text-cyan-100">
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+            <span className="text-sm font-semibold text-slate-50">{title}</span>
+          </span>
+          {description ? (
+            <span className="mt-0.5 block text-xs leading-5 text-slate-500">{description}</span>
+          ) : null}
+        </span>
+        <span className="ml-auto hidden items-center gap-2 sm:flex">
+          {count ? (
+            <span className="rounded-md border border-cyan-200/12 bg-cyan-100/[0.045] px-2 py-1 font-mono text-[11px] text-cyan-100/70">
+              {count}
+            </span>
+          ) : null}
+          <StatusPill status={status} compact variant={status === "ok" ? "calm" : "default"} />
+        </span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition details-chevron" />
+      </summary>
+      <div className="flex flex-wrap items-center gap-2 px-4 pb-3 sm:hidden">
+        {count ? (
+          <span className="rounded-md border border-cyan-200/12 bg-cyan-100/[0.045] px-2 py-1 font-mono text-[11px] text-cyan-100/70">
+            {count}
+          </span>
+        ) : null}
+        <StatusPill status={status} compact variant={status === "ok" ? "calm" : "default"} />
+      </div>
+      {children}
+    </details>
+  );
+}
+
+function MetadataGrid({ rows }: { rows: Array<{ label: string; value: React.ReactNode }> }) {
+  return (
+    <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2 lg:grid-cols-3">
+      {rows.map((row) => (
+        <div key={row.label} className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+          <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+            {row.label}
+          </p>
+          <div className="mt-1 min-w-0 text-sm text-slate-100">{row.value}</div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -974,9 +1685,6 @@ export default function SystemHealthPage() {
       ? "warning"
       : "ok";
   const summary = health?.summary;
-  const apBillNames = new Set(summary?.apBills.map((check) => check.name) ?? []);
-  const optionalWithoutAp =
-    summary?.optionalTables.filter((check) => !apBillNames.has(check.name)) ?? undefined;
   const healthChecks = summary
     ? [
         summary.app,
@@ -1012,339 +1720,635 @@ export default function SystemHealthPage() {
   const staleTaskCount = integrityCount(integrity?.staleTestData?.tasks);
   const staleProjectCount = integrityCount(integrity?.staleTestData?.projects);
   const staleTestDataCount = staleTaskCount + staleProjectCount;
+  const cadenceSeconds = REFRESH_INTERVAL_MS / 1000;
+  const displayCheckedAt = lastRefreshed ?? health?.checkedAt ?? summary?.checkedAt ?? null;
+  const dataLayerChecks = summary
+    ? [summary.projectFinancialSnapshot, ...summary.requiredTables]
+    : [];
+  const supabaseChecks = summary ? [summary.supabase, ...summary.storageBuckets] : [];
+  const routeCheckRows: HealthDetailRowData[] | undefined = result?.checks.map((check) => ({
+    id: check.name,
+    name: check.name,
+    status: check.ok ? "ok" : "fail",
+    message: check.ok ? "Reachable" : (check.error ?? "Check failed"),
+    meta: check.name.startsWith("/") ? "route" : "module",
+  }));
+  const routeStatus: HealthCheckStatus = result
+    ? result.ok
+      ? "ok"
+      : "fail"
+    : loading
+      ? "ok"
+      : "warning";
+  const routeCount = result
+    ? {
+        ok: result.checks.filter((check) => check.ok).length,
+        total: result.checks.length,
+      }
+    : null;
+  const coreHealthChecks = summary
+    ? [
+        summary.app,
+        summary.supabase,
+        summary.companyProfile,
+        summary.pin,
+        summary.projectFinancialSnapshot,
+        ...summary.storageBuckets,
+        ...summary.apBills,
+      ]
+    : [];
+  const coreHealthRows = summary
+    ? coreHealthChecks.map((check, index) => checkToDetailRow(check, `core:${index}:${check.name}`))
+    : undefined;
+  const qaSections = qa?.sections ?? [];
+  const destructiveSafetySection = qaSections.find(
+    (section) =>
+      section.id === "destructive-safety" ||
+      section.name.toLowerCase().includes("destructive action safety")
+  );
+  const previewSection = qaSections.find(
+    (section) =>
+      section.id === "preview" ||
+      section.name.toLowerCase().includes("preview") ||
+      section.checks.some((check) => check.type === "preview")
+  );
+  const destructiveSafetyRows = destructiveSafetySection?.checks.map((check) =>
+    qaCheckToDetailRow(check, destructiveSafetySection.id)
+  );
+  const previewRows = previewSection?.checks.map((check) =>
+    qaCheckToDetailRow(check, previewSection.id)
+  );
+  const destructiveSafetyStatus = qa
+    ? qaStatusToHealthStatus(destructiveSafetySection?.status ?? qa.summary.status)
+    : "ok";
+  const previewStatus = qa ? qaStatusToHealthStatus(previewSection?.status ?? "pass") : "ok";
+  const optionalModuleChecks = uniqueHealthChecks([
+    ...optionalModules,
+    ...(summary?.apBills ?? []).filter(isOptionalModuleCheck),
+    ...informationalItems,
+  ]);
+  const requiredTableRows = summary?.requiredTables.map((check, index) =>
+    checkToDetailRow(check, `required:${index}:${check.name}`)
+  );
+  const optionalRows = optionalModuleChecks.map((check, index) =>
+    checkToDetailRow(check, `optional:${index}:${check.name}`)
+  );
+  const dataIntegrityRows: HealthDetailRowData[] | undefined = integrity?.errors?.length
+    ? integrity.errors.map((message, index) => ({
+        id: `integrity-error-${index}`,
+        name: "Integrity check error",
+        status: "fail",
+        message,
+      }))
+    : integrity
+      ? [
+          {
+            id: "orphaned-tasks",
+            name: "Orphaned tasks",
+            status: orphanedTaskCount === 0 ? "ok" : "warning",
+            message:
+              orphanedTaskCount > 0
+                ? `${orphanedTaskCount} task(s) with missing project`
+                : "No orphaned tasks detected.",
+            action:
+              orphanedTaskCount > 0 ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="min-h-[44px] border-amber-200/30 bg-amber-300/10 text-amber-50 hover:bg-amber-300/15"
+                  onClick={() => runCleanup("orphaned")}
+                  disabled={cleanupBusy !== null}
+                >
+                  {cleanupBusy === "orphaned" ? "Cleaning..." : "Clean up"}
+                </Button>
+              ) : undefined,
+          },
+          {
+            id: "ghost-tasks",
+            name: "Ghost tasks",
+            status: ghostTaskCount === 0 ? "ok" : "warning",
+            message:
+              ghostTaskCount > 0
+                ? `${ghostTaskCount} task(s) with no title`
+                : "No ghost tasks detected.",
+            action:
+              ghostTaskCount > 0 ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="min-h-[44px] border-amber-200/30 bg-amber-300/10 text-amber-50 hover:bg-amber-300/15"
+                  onClick={() => runCleanup("ghost")}
+                  disabled={cleanupBusy !== null}
+                >
+                  {cleanupBusy === "ghost" ? "Cleaning..." : "Clean up"}
+                </Button>
+              ) : undefined,
+          },
+          {
+            id: "duplicate-tasks",
+            name: "Duplicate tasks",
+            status: duplicateTaskCount === 0 ? "ok" : "warning",
+            message:
+              duplicateTaskCount > 0
+                ? `${duplicateTaskCount} duplicate(s) in same project`
+                : "No duplicate tasks detected.",
+            action:
+              duplicateTaskCount > 0 ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="min-h-[44px] border-amber-200/30 bg-amber-300/10 text-amber-50 hover:bg-amber-300/15"
+                  onClick={() => runCleanup("duplicate")}
+                  disabled={cleanupBusy !== null}
+                >
+                  {cleanupBusy === "duplicate" ? "Cleaning..." : "Clean up"}
+                </Button>
+              ) : undefined,
+          },
+          {
+            id: "overdue-not-completed",
+            name: "Overdue not completed",
+            status: overdueNotCompletedCount === 0 ? "ok" : "warning",
+            message:
+              overdueNotCompletedCount > 0
+                ? `${overdueNotCompletedCount} task(s) past due`
+                : "No overdue incomplete tasks detected.",
+          },
+          {
+            id: "stale-test-data",
+            name: "Stale test data",
+            status: staleTestDataCount === 0 ? "ok" : "warning",
+            message:
+              staleTestDataCount > 0
+                ? `${staleTaskCount} task(s), ${staleProjectCount} project(s)`
+                : "No stale test data detected.",
+            action:
+              staleTestDataCount > 0 ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="min-h-[44px] border-amber-200/30 bg-amber-300/10 text-amber-50 hover:bg-amber-300/15"
+                  onClick={() => runCleanup("stale")}
+                  disabled={cleanupBusy !== null}
+                >
+                  {cleanupBusy === "stale" ? "Cleaning..." : "Clean up"}
+                </Button>
+              ) : undefined,
+          },
+        ]
+      : undefined;
+  const dataIntegrityStatus: HealthCheckStatus = dataIntegrityRows?.some(
+    (row) => row.status === "fail"
+  )
+    ? "fail"
+    : dataIntegrityRows?.some((row) => row.status === "warning")
+      ? "warning"
+      : "ok";
+  const healthActiveIssues: ActiveIssue[] = [...criticalIssues, ...needsAttention].map(
+    (check, index) => ({
+      id: `health:${index}:${check.name}:${check.code ?? ""}`,
+      title: check.name,
+      status: check.status === "fail" ? "fail" : "warning",
+      message: check.message ?? check.code ?? "Needs review",
+      href: check.href,
+      meta: check.code,
+    })
+  );
+  const guardianActiveIssues: ActiveIssue[] =
+    result?.checks
+      .filter((check) => !check.ok)
+      .map((check, index) => ({
+        id: `guardian:${index}:${check.name}`,
+        title: check.name,
+        status: "fail",
+        message: check.error ?? "Guardian route check failed.",
+        meta: "guardian",
+      })) ?? [];
+  const qaActiveIssues: ActiveIssue[] = qaSections.flatMap((section) =>
+    section.checks
+      .filter(
+        (check) =>
+          check.status !== "pass" &&
+          check.category !== "optionalModule" &&
+          check.category !== "informational"
+      )
+      .map((check) => ({
+        id: `qa:${section.id}:${check.id}`,
+        title: check.name,
+        status: qaStatusToHealthStatus(check.status) === "fail" ? "fail" : "warning",
+        message: check.message,
+        href: check.page,
+        meta: section.name,
+      }))
+  );
+  const dataQualityActiveIssues: ActiveIssue[] =
+    dataQuality?.issues
+      ?.filter((issue) => issue.severity === "critical" || issue.severity === "warning")
+      .map((issue, index) => ({
+        id: `data-quality:${index}:${issue.issueCode}`,
+        title: issue.entityName ?? issue.issueCode,
+        status: issue.severity === "critical" ? "fail" : "warning",
+        message: issue.message,
+        href: issue.link,
+        meta: issue.recommendedAction,
+      })) ?? [];
+  const activeIssues = [
+    ...healthActiveIssues,
+    ...guardianActiveIssues,
+    ...qaActiveIssues,
+    ...dataQualityActiveIssues,
+  ];
+  const metadataRows = [
+    {
+      label: "Environment",
+      value: (
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <Globe2 className="h-4 w-4 shrink-0 text-cyan-100/70" />
+          <span className="truncate">
+            {health?.environment?.vercelEnv ?? health?.environment?.nodeEnv ?? "local"}
+          </span>
+        </span>
+      ),
+    },
+    {
+      label: "Commit",
+      value: (
+        <code className="font-mono text-cyan-100">
+          {health?.environment?.commit ? shortCommit(health.environment.commit) : "n/a"}
+        </code>
+      ),
+    },
+    {
+      label: "Health API Checked",
+      value: formatCheckedAt(health?.checkedAt),
+    },
+    {
+      label: "Guardian Checked",
+      value: formatCheckedAt(result?.checkedAt ?? lastRefreshed),
+    },
+    {
+      label: "System QA Mode",
+      value: qa
+        ? qa.mode === "production-safe"
+          ? "Production safe"
+          : "Local safe"
+        : "Checking...",
+    },
+    {
+      label: "Schema Notes",
+      value: summary?.schemaDriftWarnings?.length
+        ? summary.schemaDriftWarnings.join("; ")
+        : "No schema drift notes.",
+    },
+  ];
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title="System Health"
-        description="System Guardian verifies each critical module every 30 seconds."
-        actions={
-          <Button
-            size="sm"
-            variant="outline"
-            className="min-h-[44px] sm:min-h-0 w-full sm:w-auto"
-            onClick={() => refreshAll(true)}
-            disabled={loading || healthLoading || refreshing}
-          >
-            {refreshing ? "Checking…" : "Refresh Now"}
-          </Button>
+    <div className="system-health-command-center min-h-screen px-3 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-4 text-slate-100 sm:px-4 lg:px-6">
+      <style jsx global>{`
+        .system-health-command-center {
+          color-scheme: dark;
+          background:
+            radial-gradient(circle at 20% 0%, rgba(45, 212, 191, 0.16), transparent 30rem),
+            radial-gradient(circle at 82% 8%, rgba(16, 185, 129, 0.08), transparent 24rem),
+            linear-gradient(180deg, #030607 0%, #071011 42%, #050607 100%);
         }
-      />
+        .system-health-command-center .guardian-hero {
+          background:
+            radial-gradient(circle at 22% 10%, rgba(45, 212, 191, 0.2), transparent 28rem),
+            linear-gradient(135deg, rgba(12, 18, 20, 0.96), rgba(4, 8, 10, 0.98));
+          box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.08),
+            0 24px 80px rgba(0, 0, 0, 0.36);
+        }
+        .system-health-command-center .guardian-panel {
+          border: 1px solid rgba(148, 163, 184, 0.14);
+          border-radius: 1rem;
+          background: linear-gradient(180deg, rgba(15, 23, 26, 0.84), rgba(6, 10, 12, 0.88));
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        .system-health-command-center .guardian-hero-metric {
+          min-width: 0;
+          border-radius: 0.75rem;
+          border: 1px solid rgba(148, 163, 184, 0.12);
+          background: rgba(255, 255, 255, 0.035);
+          padding: 0.65rem 0.75rem;
+        }
+        .system-health-command-center .guardian-hero-metric span {
+          display: block;
+          min-width: 0;
+        }
+        .system-health-command-center details[open] .details-chevron {
+          transform: rotate(180deg);
+        }
+        .system-health-command-center summary::-webkit-details-marker {
+          display: none;
+        }
+        .system-health-command-center .guardian-scan-line {
+          animation: guardian-scan 5s ease-in-out infinite;
+        }
+        .system-health-command-center .guardian-refresh-line span {
+          width: 42%;
+          animation: guardian-refresh ${cadenceSeconds}s linear infinite;
+        }
+        .system-health-command-center .airtable-table-wrap {
+          max-width: 100%;
+          overflow: hidden;
+          border-color: rgba(148, 163, 184, 0.12) !important;
+          border-radius: 0.875rem;
+          background: rgba(5, 8, 10, 0.72) !important;
+        }
+        .system-health-command-center .airtable-table-scroll {
+          max-width: 100%;
+          overflow-x: auto;
+        }
+        .system-health-command-center .guardian-table-shell {
+          max-width: 100%;
+          overflow: hidden;
+          border: 1px solid rgba(148, 163, 184, 0.1);
+          border-radius: 0.875rem;
+          background: rgba(5, 8, 10, 0.58);
+        }
+        .system-health-command-center .guardian-detail-table,
+        .system-health-command-center .airtable-table-wrap table {
+          border-collapse: separate;
+          border-spacing: 0;
+        }
+        .system-health-command-center .guardian-detail-table thead tr,
+        .system-health-command-center .airtable-table-wrap thead tr {
+          background: linear-gradient(
+            180deg,
+            rgba(15, 23, 26, 0.92),
+            rgba(8, 13, 16, 0.92)
+          ) !important;
+        }
+        .system-health-command-center .guardian-detail-table th,
+        .system-health-command-center .airtable-table-wrap th {
+          border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+          background: transparent !important;
+          color: rgba(148, 163, 184, 0.72) !important;
+        }
+        .system-health-command-center .guardian-detail-table td,
+        .system-health-command-center .airtable-table-wrap td {
+          border-color: rgba(148, 163, 184, 0.075) !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+        .system-health-command-center .guardian-command-row {
+          background-clip: padding-box;
+        }
+        .system-health-command-center .bg-card,
+        .system-health-command-center .bg-muted {
+          background-color: rgba(255, 255, 255, 0.045) !important;
+        }
+        .system-health-command-center .text-foreground {
+          color: rgb(248, 250, 252) !important;
+        }
+        .system-health-command-center .text-muted-foreground {
+          color: rgb(148, 163, 184) !important;
+        }
+        .system-health-command-center .border-border\\/70,
+        .system-health-command-center .border-border\\/60 {
+          border-color: rgba(148, 163, 184, 0.11) !important;
+        }
+        @keyframes guardian-scan {
+          0% {
+            transform: translateX(-60%);
+            opacity: 0;
+          }
+          18%,
+          72% {
+            opacity: 1;
+          }
+          100% {
+            transform: translateX(220%);
+            opacity: 0;
+          }
+        }
+        @keyframes guardian-refresh {
+          0% {
+            transform: translateX(-110%);
+          }
+          100% {
+            transform: translateX(245%);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .system-health-command-center *,
+          .system-health-command-center *::before,
+          .system-health-command-center *::after {
+            animation-duration: 0.001ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.001ms !important;
+            scroll-behavior: auto !important;
+          }
+        }
+      `}</style>
 
-      {/* Warning banner */}
-      {guardianFailed && !loading ? (
-        <div className="flex items-start gap-3 rounded-sm border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800/40 dark:bg-red-950/20 dark:text-red-300">
-          <span className="text-base leading-none">⚠</span>
-          <div>
-            <p className="font-medium">System issue detected.</p>
-            <p className="mt-0.5 text-xs text-red-700 dark:text-red-400">
-              One or more modules are not responding correctly. Check the table below for details.
-              Failures are recorded in{" "}
-              <Link href="/system-logs" className="underline underline-offset-2">
-                System Logs
-              </Link>
-              .
-            </p>
-          </div>
-        </div>
-      ) : healthWarning && !loading ? (
-        <div className="flex items-start gap-3 rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-200">
-          <span className="text-base leading-none">⚠</span>
-          <div>
-            <p className="font-medium">System warnings need review.</p>
-            <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-300">
-              Core app checks are responding, but one or more health warnings need owner review.
-              Optional modules are listed separately from critical failures.
-            </p>
-          </div>
-        </div>
-      ) : null}
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+        <HealthHero
+          overallStatus={overallStatus}
+          checkedAt={displayCheckedAt}
+          cadenceSeconds={cadenceSeconds}
+          environment={health?.environment}
+          onRefresh={() => void refreshAll(true)}
+          disabled={loading || healthLoading || refreshing}
+          refreshing={refreshing}
+        />
 
-      {/* Last refreshed + overall status */}
-      {!loading && result && (
-        <div className="flex flex-wrap items-center gap-4 text-sm">
-          <span className="flex items-center gap-2 font-medium">
-            Overall: <HealthStatusLabel status={overallStatus} />
-          </span>
-          {lastRefreshed && (
-            <span className="text-xs text-muted-foreground">
-              Last checked{" "}
-              {lastRefreshed.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-                second: "2-digit",
-              })}
-              {" · "}auto-refreshes every 30 s
-            </span>
-          )}
-        </div>
-      )}
-
-      <div className="space-y-5">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <HealthCard title="App status" check={summary?.app} />
-          <HealthCard title="Supabase connection" check={summary?.supabase} />
-          <HealthCard title="Company profile status" check={summary?.companyProfile} />
-          <HealthCard title="PIN status" check={summary?.pin} />
-          <HealthCard
-            title="Project financial snapshot"
-            check={summary?.projectFinancialSnapshot}
-          />
-          <div className="rounded-sm border border-border/70 bg-card px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground">
-              Last checked
-            </p>
-            <p className="mt-1 text-sm font-medium text-foreground">
-              {health?.checkedAt
-                ? new Date(health.checkedAt).toLocaleString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                  })
-                : "Checking…"}
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Environment: {health?.environment?.vercelEnv ?? health?.environment?.nodeEnv ?? "—"}
-              {health?.environment?.commit ? ` · ${health.environment.commit}` : ""}
-            </p>
-          </div>
-        </div>
-
-        <IssueList title="Critical issues" checks={criticalIssues} tone="critical" />
-        <IssueList title="Needs attention" checks={needsAttention} tone="attention" />
-        <IssueList title="Optional modules" checks={optionalModules} tone="optional" />
-        <IssueList title="Info" checks={informationalItems} />
-
-        <HealthTable title="Required tables" checks={summary?.requiredTables} />
-        <HealthTable title="Optional tables" checks={optionalWithoutAp} />
-        <HealthTable title="Storage buckets" checks={summary?.storageBuckets} />
-        <HealthTable title="AP bills schema status" checks={summary?.apBills} />
-      </div>
-
-      <SystemQaPanel
-        qa={qa}
-        loading={qaLoading}
-        error={qaError}
-        onRun={() => void fetchSystemQa()}
-      />
-
-      <DataQualityPanel
-        dataQuality={dataQuality}
-        loading={dataQualityLoading}
-        error={dataQualityError}
-        onRun={() => void fetchDataQuality()}
-      />
-
-      {/* Checks table */}
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Checking modules…</p>
-      ) : error ? (
-        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-      ) : (
-        <div className="airtable-table-wrap airtable-table-wrap--ruled">
-          <div className="airtable-table-scroll">
-            <table className="w-full min-w-[360px] text-sm sm:min-w-0">
-              <thead>
-                <tr className="text-left">
-                  <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                    Module
-                  </th>
-                  <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                    Status
-                  </th>
-                  <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                    Detail
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {!result?.checks?.length ? (
-                  <tr>
-                    <td colSpan={3} className="py-6 text-center text-muted-foreground">
-                      <span className="block">Module status could not be loaded.</span>
-                      <span className="block mt-1 text-xs">
-                        Ensure <code className="rounded bg-muted px-1">/api/system/guardian</code>{" "}
-                        is available, then{" "}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-7 rounded-sm inline-flex"
-                          onClick={() => refreshAll(true)}
-                        >
-                          Refresh Now
-                        </Button>
-                      </span>
-                    </td>
-                  </tr>
-                ) : (
-                  result?.checks.map((ch) => (
-                    <tr key={ch.name} className={listTableRowStaticClassName}>
-                      <td className="py-2.5 pr-6 font-medium">{ch.name}</td>
-                      <td className="py-2.5 pr-6">
-                        <StatusLabel ok={ch.ok} />
-                      </td>
-                      <td className="py-2.5 text-xs text-muted-foreground">
-                        {ch.ok ? "—" : (ch.error ?? "Check failed")}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Data Integrity */}
-      <div className="border-t border-border/60 pt-6">
-        <h2 className="text-sm font-medium text-foreground mb-3">Data Integrity</h2>
-        {integrityLoading && !integrity ? (
-          <p className="text-sm text-muted-foreground">Checking data integrity…</p>
-        ) : integrity?.errors?.length ? (
-          <p className="text-sm text-red-600 dark:text-red-400">{integrity.errors.join("; ")}</p>
-        ) : (
-          <div className="airtable-table-wrap airtable-table-wrap--ruled">
-            <div className="airtable-table-scroll">
-              <table className="w-full min-w-[360px] text-sm sm:min-w-0">
-                <thead>
-                  <tr className="text-left">
-                    <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Check
-                    </th>
-                    <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Status
-                    </th>
-                    <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Detail
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className={listTableRowStaticClassName}>
-                    <td className="py-2.5 pr-6 font-medium">Orphaned tasks</td>
-                    <td className="py-2.5 pr-6">
-                      <StatusLabel ok={orphanedTaskCount === 0} />
-                    </td>
-                    <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                      {orphanedTaskCount > 0 ? (
-                        <>
-                          <span>{orphanedTaskCount} task(s) with missing project</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="rounded-sm h-7"
-                            onClick={() => runCleanup("orphaned")}
-                            disabled={cleanupBusy !== null}
-                          >
-                            {cleanupBusy === "orphaned" ? "Cleaning…" : "Clean up"}
-                          </Button>
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                  <tr className={listTableRowStaticClassName}>
-                    <td className="py-2.5 pr-6 font-medium">Ghost tasks</td>
-                    <td className="py-2.5 pr-6">
-                      <StatusLabel ok={ghostTaskCount === 0} />
-                    </td>
-                    <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                      {ghostTaskCount > 0 ? (
-                        <>
-                          <span>{ghostTaskCount} task(s) with no title</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="rounded-sm h-7"
-                            onClick={() => runCleanup("ghost")}
-                            disabled={cleanupBusy !== null}
-                          >
-                            {cleanupBusy === "ghost" ? "Cleaning…" : "Clean up"}
-                          </Button>
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                  <tr className={listTableRowStaticClassName}>
-                    <td className="py-2.5 pr-6 font-medium">Duplicate tasks</td>
-                    <td className="py-2.5 pr-6">
-                      <StatusLabel ok={duplicateTaskCount === 0} />
-                    </td>
-                    <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                      {duplicateTaskCount > 0 ? (
-                        <>
-                          <span>{duplicateTaskCount} duplicate(s) in same project</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="rounded-sm h-7"
-                            onClick={() => runCleanup("duplicate")}
-                            disabled={cleanupBusy !== null}
-                          >
-                            {cleanupBusy === "duplicate" ? "Cleaning…" : "Clean up"}
-                          </Button>
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                  <tr className={listTableRowStaticClassName}>
-                    <td className="py-2.5 pr-6 font-medium">Overdue not completed</td>
-                    <td className="py-2.5 pr-6">
-                      <StatusLabel ok={overdueNotCompletedCount === 0} />
-                    </td>
-                    <td className="py-2.5 text-xs text-muted-foreground">
-                      {overdueNotCompletedCount > 0
-                        ? `${overdueNotCompletedCount} task(s) past due`
-                        : "—"}
-                    </td>
-                  </tr>
-                  <tr className={listTableRowStaticClassName}>
-                    <td className="py-2.5 pr-6 font-medium">Stale test data</td>
-                    <td className="py-2.5 pr-6">
-                      <StatusLabel ok={staleTestDataCount === 0} />
-                    </td>
-                    <td className="py-2.5 text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                      {staleTestDataCount > 0 ? (
-                        <>
-                          <span>
-                            {staleTaskCount} task(s), {staleProjectCount} project(s)
-                          </span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="rounded-sm h-7"
-                            onClick={() => runCleanup("stale")}
-                            disabled={cleanupBusy !== null}
-                          >
-                            {cleanupBusy === "stale" ? "Cleaning…" : "Clean up"}
-                          </Button>
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+        {error ? (
+          <div className="guardian-panel border-red-400/25 p-4 text-sm text-red-100">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
+              <div>
+                <p className="font-medium">Guardian request failed.</p>
+                <p className="mt-1 text-xs leading-5 text-red-100/75">{error}</p>
+              </div>
             </div>
           </div>
-        )}
-      </div>
+        ) : null}
 
-      <Link href="/dashboard">
-        <Button variant="outline" size="sm" className="min-h-[44px] sm:min-h-0 w-full sm:w-auto">
-          Back to Dashboard
-        </Button>
-      </Link>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <HealthSummaryCard
+            title="Core App"
+            status={summary?.app.status ?? "ok"}
+            summary={summary?.app.message ?? "Application shell and core runtime are checking."}
+            count={summary?.app ? "1 / 1 OK" : undefined}
+            icon={Server}
+          />
+          <HealthSummaryCard
+            title="Data Layer"
+            status={worstHealthStatus(dataLayerChecks)}
+            summary="Required tables and project financial snapshot dependencies."
+            count={formatCount(countOk(dataLayerChecks))}
+            icon={Layers3}
+          />
+          <HealthSummaryCard
+            title="Supabase"
+            status={worstHealthStatus(supabaseChecks)}
+            summary={summary?.supabase.message ?? "Database and storage reachability checks."}
+            count={formatCount(countOk(supabaseChecks))}
+            icon={Database}
+          />
+          <HealthSummaryCard
+            title="Security / PIN"
+            status={summary?.pin.status ?? "ok"}
+            summary={summary?.pin.message ?? "PIN auth guard status is checking."}
+            count={summary?.pin ? "1 / 1 OK" : undefined}
+            icon={KeyRound}
+          />
+          <HealthSummaryCard
+            title="Critical Routes"
+            status={routeStatus}
+            summary="Guardian route and module availability checks."
+            count={formatCount(routeCount)}
+            icon={RouteIcon}
+          />
+          <HealthSummaryCard
+            title="Destructive Safety"
+            status={destructiveSafetyStatus}
+            summary="Safe route checks for wipe, seed, cleanup, restore, and mutation guards."
+            count={formatBlockedRouteCount(destructiveSafetySection)}
+            icon={ShieldCheck}
+          />
+        </div>
+
+        <ActiveIssuesPanel issues={activeIssues} optionalModules={optionalModuleChecks} />
+
+        <div className="grid gap-3">
+          <HealthSection
+            title="Core Health Checks"
+            icon={Server}
+            status={worstHealthStatus(coreHealthChecks)}
+            count={formatCount(countOk(coreHealthChecks))}
+            description="App, Supabase, storage, company profile, PIN, AP bills, and project snapshot checks."
+            defaultOpen={Boolean(
+              coreHealthRows?.some((row) => row.status !== "ok" && row.status !== "info")
+            )}
+          >
+            <HealthDetailTable rows={coreHealthRows} loading={healthLoading} />
+          </HealthSection>
+
+          <HealthSection
+            title="Required Tables"
+            icon={Table2}
+            status={worstHealthStatus(summary?.requiredTables ?? [])}
+            count={formatCount(summary ? countOk(summary.requiredTables) : null)}
+            description="Core public tables used by production health checks."
+            defaultOpen={Boolean(requiredTableRows?.some((row) => row.status !== "ok"))}
+          >
+            <HealthDetailTable rows={requiredTableRows} loading={healthLoading} />
+          </HealthSection>
+
+          <HealthSection
+            title="Critical Routes"
+            icon={RouteIcon}
+            status={routeStatus}
+            count={formatCount(routeCount)}
+            description="Guardian route checks are pinned first when they fail."
+            defaultOpen={Boolean(routeCheckRows?.some((row) => row.status !== "ok"))}
+          >
+            <HealthDetailTable rows={routeCheckRows} loading={loading} />
+          </HealthSection>
+
+          <HealthSection
+            title="Preview Routes"
+            icon={Activity}
+            status={previewStatus}
+            count={formatCount(
+              previewSection
+                ? {
+                    ok: previewSection.checks.filter((check) => check.status === "pass").length,
+                    total: previewSection.checks.length,
+                  }
+                : null
+            )}
+            description="Receipt, attachment, invoice, estimate, and PDF preview readiness."
+            defaultOpen={Boolean(
+              previewRows?.some((row) => row.status !== "ok" && row.status !== "info")
+            )}
+          >
+            <HealthDetailTable rows={previewRows} loading={qaLoading} />
+          </HealthSection>
+
+          <HealthSection
+            title="Optional Modules"
+            icon={Info}
+            status="ok"
+            count={
+              optionalModuleChecks.length
+                ? `${optionalModuleChecks.length} informational`
+                : undefined
+            }
+            description="Disabled optional modules are informational, not production blockers."
+            defaultOpen={false}
+          >
+            <HealthDetailTable
+              rows={optionalRows}
+              loading={healthLoading}
+              emptyMessage="No optional module notices."
+            />
+          </HealthSection>
+
+          <HealthSection
+            title="Destructive Action Safety"
+            icon={ShieldCheck}
+            status={destructiveSafetyStatus}
+            count={formatBlockedRouteCount(destructiveSafetySection)}
+            description="Read-only visibility into destructive route protections."
+            defaultOpen={Boolean(
+              destructiveSafetyRows?.some((row) => row.status !== "ok" && row.status !== "info")
+            )}
+          >
+            <HealthDetailTable rows={destructiveSafetyRows} loading={qaLoading} />
+          </HealthSection>
+
+          <HealthSection
+            title="System Metadata"
+            icon={Clock3}
+            status="ok"
+            description="Runtime, commit, health timestamps, QA mode, and schema notes."
+            defaultOpen={false}
+          >
+            <MetadataGrid rows={metadataRows} />
+          </HealthSection>
+
+          <HealthSection
+            title="Data Integrity"
+            icon={CheckCircle2}
+            status={dataIntegrityStatus}
+            description="Current task integrity checks with guarded cleanup actions."
+            defaultOpen={Boolean(dataIntegrityRows?.some((row) => row.status !== "ok"))}
+          >
+            <HealthDetailTable rows={dataIntegrityRows} loading={integrityLoading} />
+          </HealthSection>
+        </div>
+
+        <SystemQaPanel
+          qa={qa}
+          loading={qaLoading}
+          error={qaError}
+          onRun={() => void fetchSystemQa()}
+        />
+
+        <DataQualityPanel
+          dataQuality={dataQuality}
+          loading={dataQualityLoading}
+          error={dataQualityError}
+          onRun={() => void fetchDataQuality()}
+        />
+
+        <div className="flex justify-end">
+          <Link href="/dashboard" className="w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-[44px] w-full border-white/15 bg-white/[0.035] text-slate-100 hover:bg-white/[0.065] sm:w-auto"
+            >
+              Back to Dashboard
+            </Button>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

@@ -45,8 +45,8 @@ test.describe("system owner access", () => {
     await expect(sidebar.locator('a[href="/system/backups"]')).toHaveCount(1);
 
     for (const [path, heading] of [
-      ["/system-health", "System Health"],
-      ["/settings/system-health", "System Health"],
+      ["/system-health", "System Guardian"],
+      ["/settings/system-health", "System Guardian"],
       ["/system-metrics", "System Metrics"],
       ["/system-logs", "System Logs"],
       ["/system/backups", "System Backups"],
@@ -60,12 +60,11 @@ test.describe("system owner access", () => {
       await expect(page).not.toHaveURL(/\/login/);
       await expect(page.getByRole("heading", { name: heading })).toBeVisible();
       if (path === "/system-health") {
-        await expect(page.getByText("Required tables")).toBeVisible();
-        await expect(page.getByText("Optional tables")).toBeVisible();
-        await expect(page.getByText("Storage buckets")).toBeVisible();
-        await expect(page.getByText("Company profile status")).toBeVisible();
-        await expect(page.getByText("PIN status")).toBeVisible();
-        await expect(page.getByText("AP bills schema status")).toBeVisible();
+        await expect(page.getByText("Required Tables").first()).toBeVisible();
+        await expect(page.getByText("Optional Modules").first()).toBeVisible();
+        await expect(page.getByText("Supabase", { exact: true }).first()).toBeVisible();
+        await expect(page.getByText("Security / PIN").first()).toBeVisible();
+        await expect(page.getByText("Destructive Safety").first()).toBeVisible();
       }
     }
 
