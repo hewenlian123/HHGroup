@@ -9,6 +9,20 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import {
+  ConfirmDialog,
+  EmptyState,
+  NeoAmount,
+  NeoMobileCard,
+  NeoStatus,
+  NeoTable,
+  NeoToolbar,
+  RowActionsMenu,
+  type StatusBadgeVariant,
+} from "@/components/base";
+import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
+import { listTableRowClassName } from "@/lib/list-table-interaction";
+import { NEO, OS, TYPO } from "@/lib/typography";
+import {
   getInvoicesWithDerived,
   getProjects,
   duplicateInvoice,
@@ -25,7 +39,6 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { EmptyState } from "@/components/empty-state";
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSearchParams } from "next/navigation";
@@ -39,45 +52,48 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { RowActionsMenu } from "@/components/base/row-actions-menu";
-import { ConfirmDialog } from "@/components/base";
 import { formatCurrency, formatDate, formatInteger } from "@/lib/formatters";
 import { deleteInvoiceAction } from "./actions";
 
-const invoicesShell =
-  "rounded-xl border border-stone-200/70 bg-stone-50/72 dark:border-border/60 dark:bg-card";
+const invoicesShell = OS.card;
 
 const kpiTile =
-  "rounded-lg border border-stone-200/65 bg-white/82 dark:border-border/60 dark:bg-muted/20";
+  "rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-primary)]";
 
 const financePageTitleClass =
-  "text-[19px] font-semibold leading-none tracking-[-0.02em] text-zinc-950 dark:text-zinc-50";
+  "text-[24px] font-semibold leading-none tracking-normal text-[var(--neo-canvas-text-primary)]";
 
 const financeSubtitleClass =
-  "mt-0.5 text-[12px] leading-[1.35] tracking-[-0.003em] text-stone-600 dark:text-zinc-400";
+  "mt-1 text-[13px] leading-snug tracking-normal text-[var(--neo-canvas-text-secondary)]";
 
-const financeSectionLabelClass =
-  "text-[10px] font-semibold uppercase tracking-[0.17em] text-stone-600/85 dark:text-zinc-500";
+const financeSectionLabelClass = cn(
+  TYPO.sectionLabel,
+  "text-[10px] text-[var(--neo-text-tertiary)]"
+);
 
-const financeControlLabelClass =
-  "text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-600/85 dark:text-zinc-500";
+const financeControlLabelClass = cn(
+  TYPO.sectionLabel,
+  "text-[10px] text-[var(--neo-text-tertiary)]"
+);
 
-const financePrimaryTextClass =
-  "text-[14px] font-semibold leading-[1.15] tracking-[-0.013em] text-zinc-950 dark:text-zinc-50";
+const financePrimaryTextClass = cn(
+  TYPO.primaryName,
+  "text-[14px] font-semibold leading-[1.2] text-[var(--neo-text-primary)]"
+);
 
 const financeMetadataClass =
-  "text-[11px] leading-[1.35] tracking-[-0.004em] text-stone-600 dark:text-zinc-300";
+  "text-[11px] leading-[1.35] tracking-normal text-[var(--neo-text-secondary)]";
 
 const financeMetadataStrongClass =
-  "text-[11px] font-medium tabular-nums tracking-[-0.012em] text-zinc-800 dark:text-zinc-100";
+  "text-[11px] font-medium tabular-nums tracking-normal text-[var(--neo-text-primary)]";
 
 const financeAmountClass =
-  "min-w-[104px] text-right text-[18.5px] font-semibold leading-none tracking-[-0.048em] tabular-nums text-zinc-950 dark:text-zinc-50";
+  "min-w-[104px] text-right text-[16px] font-semibold leading-none tracking-normal tabular-nums";
 
 const financeSecondaryAmountClass =
-  "text-[10.5px] tabular-nums tracking-[-0.014em] text-zinc-800/85 dark:text-zinc-300";
+  "text-[10.5px] tabular-nums tracking-normal text-[var(--neo-text-secondary)]";
 
-const financeToolbarButtonTextClass = "text-[12px] font-medium tracking-[-0.012em]";
+const financeToolbarButtonTextClass = "text-[12px] font-medium tracking-normal";
 
 const invoiceActionsMenuContentClassName =
   "z-[1000] min-w-[160px] overflow-hidden rounded-xl border border-stone-200 bg-popover p-1 py-2 text-popover-foreground !opacity-100 shadow-xl backdrop-blur-none data-[state=open]:!animate-none data-[state=closed]:!animate-none dark:border-border dark:bg-popover dark:text-popover-foreground";
@@ -91,51 +107,38 @@ const invoiceActionsMenuContentStyle: React.CSSProperties = {
   filter: "none",
 };
 
-function statusChipClass(status: InvoiceComputedStatus): {
+function invoiceStatusMeta(status: InvoiceComputedStatus): {
   label: string;
-  dotClassName: string;
-  badgeClassName: string;
+  variant: StatusBadgeVariant;
 } {
   if (status === "Draft")
     return {
       label: "Draft",
-      dotClassName: "bg-stone-400 dark:bg-zinc-500",
-      badgeClassName:
-        "border-stone-200/75 bg-stone-50/88 text-stone-600 dark:border-zinc-700 dark:bg-zinc-900/35 dark:text-zinc-300",
+      variant: "muted",
     };
   if (status === "Void")
     return {
       label: "Void",
-      dotClassName: "bg-stone-300 dark:bg-zinc-600",
-      badgeClassName:
-        "border-stone-200/75 bg-stone-50/82 text-stone-500 dark:border-zinc-700 dark:bg-zinc-900/35 dark:text-zinc-400",
+      variant: "danger",
     };
   if (status === "Paid")
     return {
       label: "Paid",
-      dotClassName: "bg-emerald-500 dark:bg-emerald-400",
-      badgeClassName:
-        "border-emerald-200/50 bg-emerald-50/58 text-emerald-700 dark:border-emerald-900/65 dark:bg-emerald-950/34 dark:text-emerald-300",
+      variant: "success",
     };
   if (status === "Overdue")
     return {
       label: "Overdue",
-      dotClassName: "bg-rose-500 dark:bg-rose-400",
-      badgeClassName:
-        "border-rose-200/50 bg-rose-50/58 text-rose-700 dark:border-rose-900/65 dark:bg-rose-950/34 dark:text-rose-300",
+      variant: "danger",
     };
   if (status === "Partial")
     return {
       label: "Partial",
-      dotClassName: "bg-amber-500 dark:bg-amber-400",
-      badgeClassName:
-        "border-amber-200/50 bg-amber-50/56 text-amber-700 dark:border-amber-900/65 dark:bg-amber-950/34 dark:text-amber-300",
+      variant: "warning",
     };
   return {
-    label: "Sent",
-    dotClassName: "bg-sky-500 dark:bg-sky-400",
-    badgeClassName:
-      "border-sky-200/50 bg-sky-50/56 text-sky-700 dark:border-sky-900/65 dark:bg-sky-950/34 dark:text-sky-300",
+    label: status === "Unpaid" ? "Unpaid" : "Sent",
+    variant: "default",
   };
 }
 
@@ -146,19 +149,14 @@ function InvoiceStatusText({
   status: InvoiceComputedStatus;
   className?: string;
 }) {
-  const chip = statusChipClass(status);
+  const statusMeta = invoiceStatusMeta(status);
 
   return (
-    <span
-      className={cn(
-        "inline-flex h-[18px] items-center gap-1 rounded-full border px-1.5 text-[9.5px] font-medium tracking-[0.015em] leading-none whitespace-nowrap",
-        chip.badgeClassName,
-        className
-      )}
-    >
-      <span className={cn("h-1 w-1 rounded-full", chip.dotClassName)} />
-      {chip.label}
-    </span>
+    <NeoStatus
+      label={statusMeta.label}
+      variant={statusMeta.variant}
+      className={cn("h-5 px-2 text-[11px] whitespace-nowrap", className)}
+    />
   );
 }
 
@@ -183,15 +181,15 @@ function InvoiceMiniMetric({
   emphasized?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-stone-200/65 bg-white/82 px-2.5 py-1.5 dark:border-border/60 dark:bg-muted/20">
+    <div className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2.5 py-1.5">
       <p className={financeSectionLabelClass}>{label}</p>
       <p
         className={cn(
-          "mt-1 text-[13px] font-medium tabular-nums leading-none tracking-[-0.015em] text-zinc-900 dark:text-zinc-50",
-          emphasized && "text-[14px] font-semibold tracking-[-0.022em]"
+          "mt-1 text-[13px] font-medium tabular-nums leading-none tracking-normal text-[var(--neo-text-primary)]",
+          emphasized && "text-[14px] font-semibold"
         )}
       >
-        {value}
+        <NeoAmount>{value}</NeoAmount>
       </p>
     </div>
   );
@@ -201,8 +199,8 @@ function CompactSummaryMetric({ label, value }: { label: string; value: string }
   return (
     <div className={cn(kpiTile, "px-2.5 py-2")}>
       <p className={financeSectionLabelClass}>{label}</p>
-      <p className="mt-1 text-[13px] font-semibold tabular-nums leading-none tracking-[-0.02em] text-zinc-950 dark:text-zinc-50">
-        {value}
+      <p className="mt-1 text-[13px] font-semibold tabular-nums leading-none tracking-normal text-[var(--neo-text-primary)]">
+        <NeoAmount>{value}</NeoAmount>
       </p>
     </div>
   );
@@ -211,11 +209,11 @@ function CompactSummaryMetric({ label, value }: { label: string; value: string }
 function InvoiceListSkeleton() {
   return (
     <section className={cn(invoicesShell, "overflow-hidden p-0")}>
-      <div className="hidden border-b border-zinc-200/60 px-5 py-3 md:flex md:items-center md:justify-between">
+      <div className="hidden border-b border-[var(--neo-border)] px-5 py-3 md:flex md:items-center md:justify-between">
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-3 w-20" />
       </div>
-      <div className="hidden divide-y divide-zinc-200/60 md:block">
+      <div className="hidden divide-y divide-[var(--neo-border)] md:block">
         {Array.from({ length: 5 }).map((_, index) => (
           <div
             key={`desktop-skeleton-${index}`}
@@ -244,10 +242,7 @@ function InvoiceListSkeleton() {
       </div>
       <div className="space-y-3 p-3 md:hidden">
         {Array.from({ length: 4 }).map((_, index) => (
-          <div
-            key={`mobile-skeleton-${index}`}
-            className="rounded-xl border border-zinc-200/70 bg-white p-4 dark:border-border/60 dark:bg-card"
-          >
+          <NeoMobileCard key={`mobile-skeleton-${index}`} className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-2">
                 <Skeleton className="h-5 w-44" />
@@ -264,7 +259,7 @@ function InvoiceListSkeleton() {
               <Skeleton className="h-10 flex-1 rounded-md" />
               <Skeleton className="h-10 flex-1 rounded-md" />
             </div>
-          </div>
+          </NeoMobileCard>
         ))}
       </div>
     </section>
@@ -552,7 +547,7 @@ function InvoicesPageInner() {
   return (
     <div
       className={cn(
-        "financial-nums min-w-0 overflow-x-hidden bg-stone-50 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] dark:bg-background",
+        "financial-nums neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
         "flex flex-col"
       )}
     >
@@ -563,12 +558,12 @@ function InvoicesPageInner() {
         )}
       >
         <div className="hidden md:block">
-          <div className="flex items-center justify-between gap-4 border-b border-stone-200/70 pb-2 dark:border-border/60">
+          <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-3">
             <div className="min-w-0">
               <div className="flex items-center gap-3">
                 <h1 className={financePageTitleClass}>Invoices</h1>
                 {refreshing ? (
-                  <span className="text-[11px] font-medium tracking-[-0.01em] text-stone-500 dark:text-zinc-400">
+                  <span className="text-[11px] font-medium tracking-normal text-[var(--neo-canvas-text-tertiary)]">
                     Updating...
                   </span>
                 ) : null}
@@ -579,7 +574,8 @@ function InvoicesPageInner() {
               asChild
               size="sm"
               className={cn(
-                "h-8 shrink-0 gap-1.5 rounded-sm shadow-none bg-[#0B1220] px-3 text-white hover:bg-[#0B1220]/92 dark:bg-emerald-500/90 dark:text-black dark:hover:bg-emerald-500",
+                OS.primaryButton,
+                "h-8 shrink-0 gap-1.5 rounded-md px-3 shadow-none",
                 financeToolbarButtonTextClass
               )}
             >
@@ -602,12 +598,12 @@ function InvoicesPageInner() {
           filtersTriggerClassName="min-h-11"
           searchSlot={
             <div className="relative w-full">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-500 dark:text-zinc-500" />
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
               <Input
                 placeholder="Invoice #, client, project…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-11 pl-8 text-[13.5px] tracking-[-0.012em] text-zinc-900 placeholder:text-stone-500 placeholder:tracking-[-0.008em] dark:text-zinc-100"
+                className="h-11 pl-8 text-[13.5px] tracking-normal text-[var(--neo-text-primary)] placeholder:text-[var(--neo-text-tertiary)]"
               />
             </div>
           }
@@ -669,12 +665,10 @@ function InvoicesPageInner() {
         </MobileFilterSheet>
 
         {(isInitialLoading || invoices.length > 0) && !loadError ? (
-          <section
-            className={cn(invoicesShell, "overflow-hidden bg-stone-50/78 p-0 dark:bg-muted/10")}
-          >
+          <section className={cn(invoicesShell, "overflow-hidden p-0")}>
             <button
               type="button"
-              className="flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left transition-colors duration-150 hover:bg-white/52 dark:hover:bg-background/10"
+              className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors duration-150 hover:bg-[var(--neo-surface-muted)]"
               aria-expanded={summaryOpen}
               onClick={() => setSummaryOpen((open) => !open)}
             >
@@ -689,33 +683,33 @@ function InvoicesPageInner() {
                 ) : (
                   <div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-1">
                     <span className="inline-flex items-baseline gap-1">
-                      <span className="text-[11px] leading-none text-stone-600 dark:text-zinc-400">
+                      <span className="text-[11px] leading-none text-[var(--neo-text-secondary)]">
                         Open
                       </span>
-                      <span className="text-[13.5px] font-semibold tabular-nums tracking-[-0.016em] text-zinc-950 dark:text-zinc-50">
+                      <span className="text-[13.5px] font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
                         {formatInteger(summary.openCount)}
                       </span>
                     </span>
                     <span className="inline-flex items-baseline gap-1">
-                      <span className="text-[11px] leading-none text-stone-600 dark:text-zinc-400">
+                      <span className="text-[11px] leading-none text-[var(--neo-text-secondary)]">
                         Outstanding
                       </span>
-                      <span className="text-[13.5px] font-semibold tabular-nums tracking-[-0.016em] text-zinc-950 dark:text-zinc-50">
+                      <NeoAmount className="text-[13.5px] font-semibold leading-none">
                         {formatCurrency(summary.outstanding)}
-                      </span>
+                      </NeoAmount>
                     </span>
                     <span className="inline-flex items-baseline gap-1">
-                      <span className="text-[11px] leading-none text-stone-600 dark:text-zinc-400">
+                      <span className="text-[11px] leading-none text-[var(--neo-text-secondary)]">
                         Overdue
                       </span>
-                      <span className="text-[13.5px] font-semibold tabular-nums tracking-[-0.016em] text-zinc-950 dark:text-zinc-50">
+                      <NeoAmount tone="danger" className="text-[13.5px] font-semibold leading-none">
                         {formatCurrency(summary.overdue)}
-                      </span>
+                      </NeoAmount>
                     </span>
                   </div>
                 )}
               </div>
-              <span className="shrink-0 text-stone-600 dark:text-zinc-400">
+              <span className="shrink-0 text-[var(--neo-text-secondary)]">
                 {summaryOpen ? (
                   <ChevronUp className="h-4 w-4" aria-hidden />
                 ) : (
@@ -724,7 +718,7 @@ function InvoicesPageInner() {
               </span>
             </button>
             {summaryOpen ? (
-              <div className="border-t border-stone-200/60 p-2.5 dark:border-border/60">
+              <div className="border-t border-[var(--neo-border)] p-2.5">
                 <div className="grid grid-cols-2 gap-2 md:grid-cols-6">
                   {isInitialLoading ? (
                     Array.from({ length: 6 }).map((_, index) => (
@@ -764,20 +758,15 @@ function InvoicesPageInner() {
           </section>
         ) : null}
 
-        <div
-          className={cn(
-            invoicesShell,
-            "hidden border-stone-200/70 bg-stone-50/74 p-2 md:block dark:bg-muted/10"
-          )}
-        >
-          <div className="flex items-center gap-1.5 rounded-lg border border-stone-200/70 bg-white/66 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.84)] dark:border-border/60 dark:bg-background/15">
+        <NeoToolbar className="hidden gap-2 p-2 md:flex md:flex-col md:items-stretch">
+          <div className="flex items-center gap-1.5 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-1">
             <div className="relative min-w-0 flex-1">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-500 dark:text-zinc-500" />
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
               <Input
                 placeholder="Invoice #, client, project…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 border-transparent bg-white/92 pl-8 text-[13.5px] tracking-[-0.012em] text-zinc-900 placeholder:text-stone-500 placeholder:tracking-[-0.008em] shadow-none transition-colors focus-visible:border-stone-300/75 focus-visible:bg-white dark:text-zinc-100"
+                className="h-8 border-transparent bg-[var(--neo-surface-raised)] pl-8 text-[13.5px] tracking-normal text-[var(--neo-text-primary)] placeholder:text-[var(--neo-text-tertiary)] shadow-none transition-colors focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)]"
               />
             </div>
             <Button
@@ -785,7 +774,8 @@ function InvoicesPageInner() {
               size="sm"
               variant="outline"
               className={cn(
-                "h-8 shrink-0 gap-1.5 rounded-sm border-transparent bg-white/78 text-stone-800 shadow-none transition-colors hover:bg-white hover:text-zinc-950 dark:bg-background/50 dark:text-zinc-200",
+                OS.secondaryButton,
+                "h-8 shrink-0 gap-1.5 rounded-md border-transparent shadow-none",
                 financeToolbarButtonTextClass
               )}
               aria-expanded={desktopFiltersOpen}
@@ -794,7 +784,7 @@ function InvoicesPageInner() {
               <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
               Filters
               {hasAdvancedFilters ? (
-                <span className="rounded-full bg-stone-100/95 px-1.5 py-0.5 text-[10.5px] font-medium tracking-[-0.01em] text-stone-800 dark:bg-muted dark:text-zinc-200">
+                <span className="rounded-full bg-[rgb(184_137_45_/_0.12)] px-1.5 py-0.5 text-[10.5px] font-medium tracking-normal text-[var(--neo-gold)]">
                   {activeDrawerFilterCount}
                 </span>
               ) : null}
@@ -804,7 +794,8 @@ function InvoicesPageInner() {
               size="sm"
               variant="outline"
               className={cn(
-                "h-8 shrink-0 rounded-sm border-transparent bg-transparent text-stone-600 shadow-none transition-colors hover:bg-white/72 hover:text-zinc-950 dark:hover:bg-background/40 dark:text-zinc-400",
+                NEO.buttonGhost,
+                "h-8 shrink-0 rounded-md shadow-none",
                 financeToolbarButtonTextClass
               )}
               onClick={() => void refresh()}
@@ -819,7 +810,7 @@ function InvoicesPageInner() {
                 <button
                   key={chip.key}
                   type="button"
-                  className="inline-flex h-6 items-center gap-1 rounded-full border border-stone-200/70 bg-white/78 px-2.5 text-[10px] font-medium tracking-[-0.008em] text-stone-700 transition-colors hover:bg-white dark:border-border/60 dark:bg-background/35 dark:text-zinc-200"
+                  className="inline-flex h-6 items-center gap-1 rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2.5 text-[10px] font-medium tracking-normal text-[var(--neo-text-secondary)] transition-colors hover:text-[var(--neo-text-primary)]"
                   onClick={() => clearFilterChip(chip.key)}
                 >
                   <span>{chip.label}</span>
@@ -828,7 +819,7 @@ function InvoicesPageInner() {
               ))}
               <button
                 type="button"
-                className="text-[10.5px] font-medium tracking-[-0.008em] text-stone-500 transition-colors hover:text-zinc-900 dark:text-zinc-400"
+                className="text-[10.5px] font-medium tracking-normal text-[var(--neo-text-secondary)] transition-colors hover:text-[var(--neo-text-primary)]"
                 onClick={clearAdvancedFilters}
               >
                 Clear all
@@ -837,13 +828,13 @@ function InvoicesPageInner() {
           ) : null}
 
           {desktopFiltersOpen ? (
-            <div className="mt-2 grid gap-2 border-t border-stone-200/60 pt-2 md:grid-cols-[168px_208px_156px_156px] dark:border-border/60">
+            <div className="mt-2 grid gap-2 border-t border-[var(--neo-border)] pt-2 md:grid-cols-[168px_208px_156px_156px]">
               <div className="space-y-1">
                 <label className={financeControlLabelClass}>Status</label>
                 <Select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as "" | InvoiceComputedStatus)}
-                  className="h-8 w-full bg-white/80"
+                  className="h-8 w-full bg-[var(--neo-surface-raised)]"
                 >
                   {STATUS_OPTIONS.map((o) => (
                     <option key={o.value || "all"} value={o.value}>
@@ -857,7 +848,7 @@ function InvoicesPageInner() {
                 <Select
                   value={projectFilter}
                   onChange={(e) => setProjectFilter(e.target.value)}
-                  className="h-8 w-full bg-white/80"
+                  className="h-8 w-full bg-[var(--neo-surface-raised)]"
                 >
                   <option value="">All projects</option>
                   {projects.map((p) => (
@@ -873,7 +864,7 @@ function InvoicesPageInner() {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="h-8 bg-white/80 tabular-nums"
+                  className="h-8 bg-[var(--neo-surface-raised)] tabular-nums"
                 />
               </div>
               <div className="space-y-1">
@@ -882,12 +873,12 @@ function InvoicesPageInner() {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="h-8 bg-white/80 tabular-nums"
+                  className="h-8 bg-[var(--neo-surface-raised)] tabular-nums"
                 />
               </div>
             </div>
           ) : null}
-        </div>
+        </NeoToolbar>
 
         {activeFilterChips.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2 md:hidden">
@@ -895,7 +886,7 @@ function InvoicesPageInner() {
               <button
                 key={`mobile-${chip.key}`}
                 type="button"
-                className="inline-flex h-7 items-center gap-1 rounded-full border border-stone-200/80 bg-white/90 px-2.5 text-[11px] font-medium tracking-[-0.008em] text-stone-700 dark:border-border/60 dark:bg-card dark:text-zinc-200"
+                className="inline-flex h-7 items-center gap-1 rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 text-[11px] font-medium tracking-normal text-[var(--neo-text-secondary)]"
                 onClick={() => clearFilterChip(chip.key)}
               >
                 <span>{chip.label}</span>
@@ -911,16 +902,16 @@ function InvoicesPageInner() {
           <EmptyState
             title="Could not load invoices"
             description={loadError}
-            icon={
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200/75 bg-white/76 text-stone-600 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-300">
-                <AlertTriangle className="h-5 w-5" aria-hidden />
-              </span>
-            }
+            icon={<AlertTriangle className="h-5 w-5" aria-hidden />}
             action={
               <Button
                 size="sm"
                 variant="outline"
-                className={cn("h-9 rounded-sm shadow-none", financeToolbarButtonTextClass)}
+                className={cn(
+                  OS.secondaryButton,
+                  "h-9 rounded-md shadow-none",
+                  financeToolbarButtonTextClass
+                )}
                 onClick={() => void refresh()}
               >
                 Try again
@@ -932,16 +923,16 @@ function InvoicesPageInner() {
             <EmptyState
               title="No invoices match your filters"
               description="Try adjusting filters or widening the date range."
-              icon={
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-stone-200/75 bg-white/76 text-stone-600 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-300">
-                  <Search className="h-5 w-5" aria-hidden />
-                </span>
-              }
+              icon={<Search className="h-5 w-5" aria-hidden />}
               action={
                 <Button
                   size="sm"
                   variant="outline"
-                  className={cn("h-9 rounded-sm shadow-none", financeToolbarButtonTextClass)}
+                  className={cn(
+                    OS.secondaryButton,
+                    "h-9 rounded-md shadow-none",
+                    financeToolbarButtonTextClass
+                  )}
                   onClick={() => {
                     setSearch("");
                     setStatusFilter("");
@@ -955,189 +946,202 @@ function InvoicesPageInner() {
               }
             />
           ) : (
-            <div className={cn(invoicesShell, "px-6 py-12 text-center")}>
-              <span className="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full border border-stone-200/75 bg-white/76 text-stone-600 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-300">
-                <FileText className="h-5 w-5" aria-hidden />
-              </span>
-              <p className="text-[15px] font-semibold tracking-[-0.015em] text-zinc-900 dark:text-zinc-50">
-                No invoices yet
-              </p>
-              <p className="mt-1 text-[13px] leading-[1.45] tracking-[-0.005em] text-stone-500 dark:text-zinc-400">
-                Create your first invoice to start tracking receivables, balances, and payment
-                activity.
-              </p>
-              <Button
-                asChild
-                size="sm"
-                className={cn(
-                  "mt-5 h-9 rounded-sm shadow-none bg-[#0B1220] text-white hover:bg-[#0B1220]/92 dark:bg-emerald-500/90 dark:text-black dark:hover:bg-emerald-500",
-                  financeToolbarButtonTextClass
-                )}
-              >
-                <Link href="/financial/invoices/new">
-                  <Plus className="mr-2 h-3.5 w-3.5" aria-hidden />
-                  Create first invoice
-                </Link>
-              </Button>
-            </div>
+            <EmptyState
+              title="No invoices yet"
+              description="Create your first invoice to start tracking receivables, balances, and payment activity."
+              icon={<FileText className="h-5 w-5" aria-hidden />}
+              action={
+                <Button
+                  asChild
+                  size="sm"
+                  className={cn(
+                    OS.primaryButton,
+                    "h-9 rounded-md shadow-none",
+                    financeToolbarButtonTextClass
+                  )}
+                >
+                  <Link href="/financial/invoices/new">
+                    <Plus className="mr-2 h-3.5 w-3.5" aria-hidden />
+                    Create first invoice
+                  </Link>
+                </Button>
+              }
+            />
           )
         ) : (
-          <section className={cn(invoicesShell, "overflow-hidden p-0")}>
-            <div
-              className="hidden items-center justify-between border-b border-stone-200/70 px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-stone-600/85 md:flex dark:border-border/60 dark:text-zinc-500"
+          <>
+            <NeoTable
+              className="hidden md:block"
+              tableClassName="min-w-[760px] table-fixed"
+              busy={voidBusyId != null || deleteBusyId != null}
               data-testid="invoices-desktop-list"
             >
-              <div className="flex items-center gap-3">
-                <span className={financeSectionLabelClass}>Invoice list</span>
-                <span className="text-[10.5px] font-medium normal-case tracking-[-0.006em] text-stone-600 dark:text-zinc-400">
-                  {formatInteger(total)} shown
-                </span>
-              </div>
-              <div className={cn(financeSectionLabelClass, "pr-10 text-right")}>Balance</div>
-            </div>
+              <colgroup>
+                <col className="w-[27%]" />
+                <col className="w-[17%]" />
+                <col className="w-[10%]" />
+                <col className="w-[12%]" />
+                <col className="w-[12%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[6%]" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th className={tableRawThClass}>Invoice</th>
+                  <th className={tableRawThClass}>Project</th>
+                  <th className={tableRawThClass}>Status</th>
+                  <th className={tableRawThClass}>Due</th>
+                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Balance</th>
+                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Paid</th>
+                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Total</th>
+                  <th className={cn(tableRawThClass, "text-right")}>Actions</th>
+                </tr>
+              </thead>
+              <tbody className="[&_tr:last-child>td]:border-b-0">
+                {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => {
+                  const isBusy = voidBusyId === inv.id || deleteBusyId === inv.id;
+                  const canDelete =
+                    inv.computedStatus === "Draft" ||
+                    inv.computedStatus === "Void" ||
+                    isTestInvoiceRow(inv);
+                  const canRecordPayment =
+                    inv.computedStatus !== "Draft" &&
+                    inv.computedStatus !== "Void" &&
+                    inv.computedStatus !== "Paid" &&
+                    inv.balanceDue > 0;
+                  const dueTone =
+                    inv.computedStatus === "Overdue"
+                      ? OS.dangerAmount
+                      : "text-[var(--neo-text-secondary)]";
+                  const balanceTone = inv.computedStatus === "Overdue" ? "danger" : "neutral";
+                  const rowActions = [
+                    {
+                      label: "View",
+                      onClick: () =>
+                        startTransition(() => router.push(`/financial/invoices/${inv.id}`)),
+                    },
+                    ...(canRecordPayment
+                      ? [
+                          {
+                            label: "Receive payment",
+                            onClick: () =>
+                              startTransition(() =>
+                                router.push(`/financial/invoices/${inv.id}?receivePayment=1`)
+                              ),
+                          },
+                        ]
+                      : []),
+                    ...(inv.computedStatus !== "Void"
+                      ? [
+                          {
+                            label: "Duplicate",
+                            onClick: () => void handleDuplicate(inv.id),
+                          },
+                          {
+                            label: "Void",
+                            destructive: true,
+                            disabled: isBusy,
+                            onClick: () => setVoidTarget(inv),
+                          },
+                        ]
+                      : []),
+                    ...(canDelete
+                      ? [
+                          {
+                            label: "Delete",
+                            destructive: true,
+                            disabled: isBusy,
+                            onClick: () => setDeleteTarget(inv),
+                          },
+                        ]
+                      : []),
+                  ];
 
-            <div className="hidden space-y-1 p-1.5 md:block">
-              {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => {
-                const isBusy = voidBusyId === inv.id || deleteBusyId === inv.id;
-                const canDelete =
-                  inv.computedStatus === "Draft" ||
-                  inv.computedStatus === "Void" ||
-                  isTestInvoiceRow(inv);
-                const canRecordPayment =
-                  inv.computedStatus !== "Draft" &&
-                  inv.computedStatus !== "Void" &&
-                  inv.computedStatus !== "Paid" &&
-                  inv.balanceDue > 0;
-                const dueTone =
-                  inv.computedStatus === "Overdue"
-                    ? "text-rose-700 dark:text-rose-300"
-                    : "text-stone-500 dark:text-zinc-400";
-                const rowActions = [
-                  {
-                    label: "View",
-                    onClick: () =>
-                      startTransition(() => router.push(`/financial/invoices/${inv.id}`)),
-                  },
-                  ...(canRecordPayment
-                    ? [
-                        {
-                          label: "Receive payment",
-                          onClick: () =>
-                            startTransition(() =>
-                              router.push(`/financial/invoices/${inv.id}?receivePayment=1`)
-                            ),
-                        },
-                      ]
-                    : []),
-                  ...(inv.computedStatus !== "Void"
-                    ? [
-                        {
-                          label: "Duplicate",
-                          onClick: () => void handleDuplicate(inv.id),
-                        },
-                        {
-                          label: "Void",
-                          destructive: true,
-                          disabled: isBusy,
-                          onClick: () => setVoidTarget(inv),
-                        },
-                      ]
-                    : []),
-                  ...(canDelete
-                    ? [
-                        {
-                          label: "Delete",
-                          destructive: true,
-                          disabled: isBusy,
-                          onClick: () => setDeleteTarget(inv),
-                        },
-                      ]
-                    : []),
-                ];
-
-                return (
-                  <div
-                    key={inv.id}
-                    data-testid={`invoice-row-${inv.invoiceNo}`}
-                    className="group grid grid-cols-[minmax(0,1fr)_220px_32px] items-center gap-2.5 rounded-lg border border-transparent px-3 py-[9px] transition-[background-color,border-color,box-shadow] duration-150 ease-out hover:border-stone-300/70 hover:bg-white/82 hover:shadow-[inset_0_0_0_1px_rgba(255,251,247,0.9),0_1px_3px_rgba(24,24,27,0.04),0_8px_24px_rgba(24,24,27,0.03)] dark:hover:border-border/70 dark:hover:bg-muted/20"
-                  >
-                    <button
-                      type="button"
-                      className="min-w-0 text-left"
+                  return (
+                    <tr
+                      key={inv.id}
+                      data-testid={`invoice-row-${inv.invoiceNo}`}
+                      className={listTableRowClassName}
                       onClick={() =>
                         startTransition(() => router.push(`/financial/invoices/${inv.id}`))
                       }
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          startTransition(() => router.push(`/financial/invoices/${inv.id}`));
+                        }
+                      }}
+                      tabIndex={0}
+                      role="link"
+                      aria-label={`Open invoice ${inv.invoiceNo} for ${inv.clientName}`}
                     >
-                      <div
-                        className={cn(
-                          financePrimaryTextClass,
-                          "truncate transition-colors duration-150 group-hover:text-black dark:group-hover:text-white"
-                        )}
-                      >
-                        {inv.clientName}
-                      </div>
-                      <div
-                        className={cn(
-                          financeMetadataClass,
-                          "mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 transition-colors duration-150 group-hover:text-stone-700 dark:group-hover:text-zinc-400"
-                        )}
-                      >
-                        <span className={financeMetadataStrongClass}>{inv.invoiceNo}</span>
-                        <span aria-hidden className="text-stone-300 dark:text-zinc-600">
-                          ·
+                      <td className={cn(tableRawTdClass, "max-w-[280px]")}>
+                        <button
+                          type="button"
+                          className="block w-full min-w-0 text-left"
+                          aria-label={`${inv.clientName} ${inv.invoiceNo}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startTransition(() => router.push(`/financial/invoices/${inv.id}`));
+                          }}
+                        >
+                          <span className={cn(financePrimaryTextClass, "block truncate")}>
+                            {inv.clientName}
+                          </span>
+                          <span className={cn(financeMetadataStrongClass, "mt-0.5 block")}>
+                            {inv.invoiceNo}
+                          </span>
+                        </button>
+                      </td>
+                      <td className={cn(tableRawTdClass, "max-w-[220px]")}>
+                        <span className="block truncate text-[var(--neo-text-secondary)]">
+                          {projectLabel}
                         </span>
-                        <span className="min-w-0 max-w-[210px] truncate">{projectLabel}</span>
-                        <span aria-hidden className="text-stone-300 dark:text-zinc-600">
-                          ·
-                        </span>
-                        <span className="inline-flex items-center gap-1 whitespace-nowrap">
-                          <span className="text-stone-500 dark:text-zinc-500">Due</span>
+                      </td>
+                      <td className={tableRawTdClass}>
+                        <InvoiceStatusText status={inv.computedStatus} />
+                      </td>
+                      <td className={tableRawTdClass}>
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap text-[12px]">
+                          <span className="text-[var(--neo-text-tertiary)]">Due</span>
                           <span className={cn("tabular-nums", dueTone)}>
                             {formatDate(inv.dueDate)}
                           </span>
                         </span>
-                      </div>
-                    </button>
-
-                    <div className="min-w-0 text-right">
-                      <div className="flex items-baseline justify-end gap-1.5">
-                        <div
-                          className={cn(
-                            financeAmountClass,
-                            "transition-colors duration-150 group-hover:text-black dark:group-hover:text-white"
-                          )}
-                        >
+                      </td>
+                      <td className={cn(tableRawTdClass, "text-right")}>
+                        <NeoAmount tone={balanceTone} className={financeAmountClass}>
                           {formatCurrency(inv.balanceDue)}
-                        </div>
-                        <InvoiceStatusText status={inv.computedStatus} />
-                      </div>
-                      <div className="mt-1 inline-flex items-center justify-end gap-1.5 text-[10.5px] leading-none text-stone-600 transition-colors duration-150 group-hover:text-stone-700 dark:group-hover:text-zinc-400 dark:text-zinc-400">
-                        <span className="text-stone-500 dark:text-zinc-500">Paid</span>
-                        <span className={financeSecondaryAmountClass}>
+                        </NeoAmount>
+                      </td>
+                      <td className={cn(tableRawTdClass, "text-right")}>
+                        <NeoAmount tone="muted" className={financeSecondaryAmountClass}>
                           {formatCurrency(inv.paidTotal)}
-                        </span>
-                        <span className="text-stone-300 dark:text-zinc-600">/</span>
-                        <span className="text-stone-500 dark:text-zinc-500">Total</span>
-                        <span className={financeSecondaryAmountClass}>
+                        </NeoAmount>
+                      </td>
+                      <td className={cn(tableRawTdClass, "text-right")}>
+                        <NeoAmount className={financeSecondaryAmountClass}>
                           {formatCurrency(inv.total)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-                      <RowActionsMenu
-                        appearance="list"
-                        ariaLabel={`Actions for ${inv.invoiceNo}`}
-                        className="text-stone-500 transition-colors group-hover:text-stone-700 dark:text-zinc-500 dark:group-hover:text-zinc-300"
-                        contentClassName={invoiceActionsMenuContentClassName}
-                        contentStyle={invoiceActionsMenuContentStyle}
-                        actions={rowActions}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                        </NeoAmount>
+                      </td>
+                      <td
+                        className={cn(tableRawTdClass, "text-right")}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <RowActionsMenu
+                          appearance="list"
+                          ariaLabel={`Actions for ${inv.invoiceNo}`}
+                          contentClassName={invoiceActionsMenuContentClassName}
+                          contentStyle={invoiceActionsMenuContentStyle}
+                          actions={rowActions}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </NeoTable>
 
             <div className="space-y-2 p-2.5 md:hidden">
               {tableInvoiceRows.map(({ invoice: inv, projectLabel }) => {
@@ -1153,8 +1157,8 @@ function InvoicesPageInner() {
                   inv.balanceDue > 0;
                 const dueTone =
                   inv.computedStatus === "Overdue"
-                    ? "text-rose-700 dark:text-rose-300"
-                    : "text-stone-500 dark:text-zinc-400";
+                    ? OS.dangerAmount
+                    : "text-[var(--neo-text-secondary)]";
                 const secondaryAction =
                   inv.computedStatus === "Draft"
                     ? {
@@ -1214,10 +1218,10 @@ function InvoicesPageInner() {
                 ];
 
                 return (
-                  <div
+                  <NeoMobileCard
                     key={inv.id}
                     data-testid={`invoice-mobile-card-${inv.invoiceNo}`}
-                    className="rounded-xl border border-stone-200/75 bg-white/92 p-3 shadow-[0_1px_2px_rgba(24,24,27,0.03)] transition-colors dark:border-border/60 dark:bg-card dark:shadow-none"
+                    className="p-3"
                   >
                     <div className="flex items-start gap-3">
                       <button
@@ -1237,7 +1241,7 @@ function InvoicesPageInner() {
                       <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                         <RowActionsMenu
                           ariaLabel={`Actions for ${inv.invoiceNo}`}
-                          className="h-10 w-10 min-h-10 min-w-10 rounded-lg border-stone-200/70 bg-white/86 shadow-none hover:bg-stone-50 dark:border-border/70 dark:bg-card dark:hover:bg-muted/35"
+                          className="h-10 w-10 min-h-10 min-w-10 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-none hover:bg-[var(--neo-surface-muted)]"
                           contentAvoidCollisions={false}
                           contentSide="bottom"
                           contentSideOffset={8}
@@ -1246,7 +1250,7 @@ function InvoicesPageInner() {
                             "w-36 min-w-36 rounded-lg py-1"
                           )}
                           contentStyle={invoiceActionsMenuContentStyle}
-                          itemClassName="relative z-10 h-8 rounded-md px-3 py-0 text-[13px] font-medium tracking-[-0.01em]"
+                          itemClassName="relative z-10 h-8 rounded-md px-3 py-0 text-[13px] font-medium tracking-normal"
                           destructiveItemClassName="text-rose-600 focus:bg-rose-50 focus:text-rose-700 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-400 dark:focus:bg-rose-950/35 dark:focus:text-rose-300 dark:hover:bg-rose-950/35 dark:hover:text-rose-300"
                           touchFriendly={false}
                           actions={rowActions}
@@ -1285,7 +1289,8 @@ function InvoicesPageInner() {
                         size="sm"
                         variant="outline"
                         className={cn(
-                          "h-9 flex-1 rounded-sm shadow-none",
+                          OS.secondaryButton,
+                          "h-9 flex-1 rounded-md shadow-none",
                           financeToolbarButtonTextClass
                         )}
                       >
@@ -1296,18 +1301,19 @@ function InvoicesPageInner() {
                         size="sm"
                         variant="outline"
                         className={cn(
-                          "h-9 flex-1 rounded-sm shadow-none",
+                          OS.secondaryButton,
+                          "h-9 flex-1 rounded-md shadow-none",
                           financeToolbarButtonTextClass
                         )}
                       >
                         <Link href={secondaryAction.href}>{secondaryAction.label}</Link>
                       </Button>
                     </div>
-                  </div>
+                  </NeoMobileCard>
                 );
               })}
             </div>
-          </section>
+          </>
         )}
 
         {total > 0 ? (
