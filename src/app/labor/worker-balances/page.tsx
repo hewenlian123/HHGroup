@@ -26,7 +26,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-import { FilterBar } from "@/components/filter-bar";
 import {
   MobileEmptyState,
   MobileFilterSheet,
@@ -34,10 +33,10 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
+import { NeoAmount, NeoMobileCard, NeoStatus, NeoTable, NeoToolbar } from "@/components/base";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { formatCurrency } from "@/lib/formatters";
-import { statusChipClass } from "@/lib/typography";
 
 type WorkerBalanceRow = {
   workerId: string;
@@ -50,15 +49,12 @@ type WorkerBalanceRow = {
   deletable?: boolean;
 };
 
-const wbShell =
-  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
-
 /** KPI strip only — lighter edge + shadow than main surfaces */
 const wbKpiTile =
-  "rounded-xl border border-zinc-200/40 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.028),0_1px_12px_rgba(0,0,0,0.028)] dark:border-border/35 dark:bg-card/80 dark:shadow-none md:rounded-xl";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
 
 const wbKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100/90 text-zinc-500 md:h-8 md:w-8 dark:bg-muted dark:text-muted-foreground";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
 
 const AVATAR_RING = [
   "bg-slate-500/[0.08] text-slate-900 dark:text-slate-100",
@@ -88,9 +84,9 @@ function avatarRingClass(workerId: string): string {
 
 function BalanceStatusChip({ balance }: { balance: number }) {
   if (balance > 0) {
-    return <span className={statusChipClass("danger")}>Owed</span>;
+    return <NeoStatus label="Owed" variant="danger" />;
   }
-  return <span className={statusChipClass("success")}>Paid</span>;
+  return <NeoStatus label="Paid" variant="success" />;
 }
 
 export default function WorkerBalancesPage() {
@@ -202,20 +198,20 @@ export default function WorkerBalancesPage() {
   return (
     <div
       className={cn(
-        "min-w-0 overflow-x-hidden bg-zinc-50 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] dark:bg-background",
+        "neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
         "flex flex-col"
       )}
     >
       <div
         className={cn(
-          "mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 dark:bg-background sm:max-w-[460px] md:max-w-6xl md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          "neo-page-on-graphite mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:max-w-6xl md:gap-2 md:px-6 md:pb-6 md:pt-3",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
             title="Worker Balances"
             subtitle="Labor owed, reimbursements, payments, and balance per worker."
             actions={
@@ -372,7 +368,7 @@ export default function WorkerBalancesPage() {
           searchSlot={searchInput}
         />
 
-        <FilterBar className="hidden min-w-0 md:flex md:flex-row md:items-center md:gap-3 md:pb-0 md:pt-0">
+        <NeoToolbar className="hidden min-w-0 md:flex md:flex-row md:items-center md:gap-3 md:pb-0 md:pt-0">
           <div className="min-w-0 flex-1">{searchInput}</div>
           <Button
             type="button"
@@ -383,7 +379,7 @@ export default function WorkerBalancesPage() {
           >
             Filters
           </Button>
-        </FilterBar>
+        </NeoToolbar>
 
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Actions">
           <Button
@@ -420,7 +416,7 @@ export default function WorkerBalancesPage() {
           {initialLoading ? (
             <div className="flex flex-col gap-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className={cn(wbShell, "space-y-3 p-3")}>
+                <NeoMobileCard key={i} className="space-y-3 p-3">
                   <div className="flex items-center gap-2">
                     <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
                     <div className="min-w-0 flex-1 space-y-2">
@@ -435,18 +431,16 @@ export default function WorkerBalancesPage() {
                     <Skeleton className="h-12 w-full" />
                     <Skeleton className="h-12 w-full" />
                   </div>
-                </div>
+                </NeoMobileCard>
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <div className={cn(wbShell, "px-4 py-10 text-center")}>
-              <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
-                No workers yet
-              </p>
+            <NeoMobileCard className="px-4 py-10 text-center">
+              <p className="text-sm font-medium text-[var(--neo-text-primary)]">No workers yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Balances appear when workers have labor, reimbursements, or payments.
               </p>
-            </div>
+            </NeoMobileCard>
           ) : filteredRows.length === 0 ? (
             <MobileEmptyState
               icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
@@ -463,13 +457,7 @@ export default function WorkerBalancesPage() {
                 </div>
               ) : null}
               {filteredRows.map((r) => (
-                <div
-                  key={r.workerId}
-                  className={cn(
-                    wbShell,
-                    "space-y-3 p-3 transition-[box-shadow,border-color] duration-150 hover:border-zinc-300/80 dark:hover:border-border"
-                  )}
-                >
+                <NeoMobileCard key={r.workerId} className="space-y-3 p-3">
                   <div className="flex items-start gap-3">
                     <span
                       className={cn(
@@ -485,7 +473,7 @@ export default function WorkerBalancesPage() {
                       <Link
                         href={`/labor/workers/${r.workerId}/balance`}
                         title={r.workerName}
-                        className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-zinc-900 hover:underline dark:text-foreground"
+                        className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-normal text-[var(--neo-text-primary)] hover:underline"
                       >
                         {r.workerName}
                       </Link>
@@ -496,9 +484,12 @@ export default function WorkerBalancesPage() {
                       Balance
                     </span>
                     <div className="flex flex-wrap items-center justify-end gap-2">
-                      <span className="text-xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground">
+                      <NeoAmount
+                        tone={r.balance > 0 ? "danger" : "income"}
+                        className="text-xl tracking-normal"
+                      >
                         {formatCurrency(r.balance)}
-                      </span>
+                      </NeoAmount>
                       <BalanceStatusChip balance={r.balance} />
                     </div>
                   </div>
@@ -507,32 +498,32 @@ export default function WorkerBalancesPage() {
                       <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Labor
                       </dt>
-                      <dd className="truncate tabular-nums text-zinc-800 dark:text-zinc-100">
-                        {formatCurrency(r.laborOwed)}
+                      <dd className="truncate">
+                        <NeoAmount>{formatCurrency(r.laborOwed)}</NeoAmount>
                       </dd>
                     </div>
                     <div className="min-w-0">
                       <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Reimb.
                       </dt>
-                      <dd className="truncate tabular-nums text-zinc-800 dark:text-zinc-100">
-                        {formatCurrency(r.reimbursements)}
+                      <dd className="truncate">
+                        <NeoAmount>{formatCurrency(r.reimbursements)}</NeoAmount>
                       </dd>
                     </div>
                     <div className="min-w-0">
                       <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Payments
                       </dt>
-                      <dd className="truncate tabular-nums text-zinc-800 dark:text-zinc-100">
-                        {formatCurrency(r.payments)}
+                      <dd className="truncate">
+                        <NeoAmount tone="income">{formatCurrency(r.payments)}</NeoAmount>
                       </dd>
                     </div>
                     <div className="min-w-0">
                       <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         Advances
                       </dt>
-                      <dd className="truncate tabular-nums text-zinc-800 dark:text-zinc-100">
-                        {formatCurrency(r.advances)}
+                      <dd className="truncate">
+                        <NeoAmount>{formatCurrency(r.advances)}</NeoAmount>
                       </dd>
                     </div>
                   </dl>
@@ -560,177 +551,168 @@ export default function WorkerBalancesPage() {
                       </Button>
                     ) : null}
                   </div>
-                </div>
+                </NeoMobileCard>
               ))}
             </div>
           )}
         </div>
 
         {/* Desktop table */}
-        <div
+        <NeoTable
           className={cn(
-            wbShell,
-            "hidden overflow-hidden md:block",
+            "hidden md:block",
             refreshing && rows.length > 0 && "pointer-events-none opacity-60"
           )}
-          aria-busy={refreshing && rows.length > 0 ? true : undefined}
+          tableClassName="min-w-[720px] lg:min-w-0"
+          busy={refreshing && rows.length > 0}
         >
-          {refreshing && rows.length > 0 ? (
-            <div className="flex justify-center border-b border-zinc-100/90 py-1 dark:border-border/50">
-              <span className="text-xs text-muted-foreground">Updating…</span>
-            </div>
-          ) : null}
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-collapse text-sm lg:min-w-0">
-              <thead>
-                <tr className="border-b border-zinc-100 bg-zinc-50/90 dark:border-border/60 dark:bg-muted/20">
-                  <th className="min-w-[200px] px-3 py-2 text-left text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Worker
-                  </th>
-                  <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
-                    Labor
-                  </th>
-                  <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
-                    Reimb.
-                  </th>
-                  <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
-                    Payments
-                  </th>
-                  <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
-                    Advances
-                  </th>
-                  <th className="min-w-[128px] whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
-                    Balance
-                  </th>
-                  <th className="w-14 px-2 py-2 text-right text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                    <span className="sr-only">Actions</span>
-                  </th>
+          <thead>
+            <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+              <th className="min-w-[200px] px-3 py-2 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+                Worker
+              </th>
+              <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums">
+                Labor
+              </th>
+              <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums">
+                Reimb.
+              </th>
+              <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums">
+                Payments
+              </th>
+              <th className="whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums">
+                Advances
+              </th>
+              <th className="min-w-[128px] whitespace-nowrap px-3 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] tabular-nums">
+                Balance
+              </th>
+              <th className="w-14 px-2 py-2 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {initialLoading ? (
+              Array.from({ length: 8 }).map((_, i) => (
+                <tr key={i} className="border-b border-zinc-100/80 dark:border-border/40">
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <Skeleton className="h-4 w-32" />
+                        <Skeleton className="h-3 w-24" />
+                      </div>
+                    </div>
+                  </td>
+                  {Array.from({ length: 5 }).map((__, j) => (
+                    <td key={j} className="px-3 py-2.5 text-right">
+                      <Skeleton className="ml-auto h-4 w-14" />
+                    </td>
+                  ))}
+                  <td className="px-2 py-2.5 text-right">
+                    <Skeleton className="ml-auto h-8 w-8 rounded-sm" />
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {initialLoading ? (
-                  Array.from({ length: 8 }).map((_, i) => (
-                    <tr key={i} className="border-b border-zinc-100/80 dark:border-border/40">
-                      <td className="px-3 py-2.5">
-                        <div className="flex items-center gap-2">
-                          <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
-                          <div className="min-w-0 flex-1 space-y-1">
-                            <Skeleton className="h-4 w-32" />
-                            <Skeleton className="h-3 w-24" />
-                          </div>
-                        </div>
-                      </td>
-                      {Array.from({ length: 5 }).map((__, j) => (
-                        <td key={j} className="px-3 py-2.5 text-right">
-                          <Skeleton className="ml-auto h-4 w-14" />
-                        </td>
-                      ))}
-                      <td className="px-2 py-2.5 text-right">
-                        <Skeleton className="ml-auto h-8 w-8 rounded-sm" />
-                      </td>
-                    </tr>
-                  ))
-                ) : rows.length === 0 ? (
-                  <tr className="border-b border-zinc-100/80 dark:border-border/40">
-                    <td colSpan={7} className="px-6 py-12 text-center">
-                      <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
-                        No workers yet
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Balances appear when workers have labor, reimbursements, or payments.
-                      </p>
-                    </td>
-                  </tr>
-                ) : filteredRows.length === 0 ? (
-                  <tr className="border-b border-zinc-100/80 dark:border-border/40">
-                    <td
-                      colSpan={7}
-                      className="px-6 py-10 text-center text-sm text-muted-foreground"
-                    >
-                      No workers match your search.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRows.map((r) => (
-                    <tr
-                      key={r.workerId}
-                      className={cn(
-                        listTableRowStaticClassName,
-                        "border-b border-zinc-100/70 dark:border-border/35",
-                        "transition-[background-color] duration-200 ease-out motion-reduce:transition-none",
-                        "hover:bg-zinc-50/55 dark:hover:bg-muted/10",
-                        "focus-within:bg-zinc-50/45 dark:focus-within:bg-muted/8"
-                      )}
-                    >
-                      <td className="px-3 py-2.5 align-middle">
-                        <div className="flex min-w-0 items-center gap-2.5">
-                          <span
-                            className={cn(
-                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold leading-none tabular-nums antialiased",
-                              workerAvatarRing,
-                              avatarRingClass(r.workerId)
-                            )}
-                            aria-hidden
-                          >
-                            {workerInitials(r.workerName)}
-                          </span>
-                          <div className="min-w-0">
-                            <Link
-                              href={`/labor/workers/${r.workerId}/balance`}
-                              title={r.workerName}
-                              className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-tight text-zinc-900 hover:underline dark:text-foreground"
-                            >
-                              {r.workerName}
-                            </Link>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2.5 text-right align-middle text-[13px] tabular-nums text-zinc-600 dark:text-zinc-300">
-                        {formatCurrency(r.laborOwed)}
-                      </td>
-                      <td className="px-3 py-2.5 text-right align-middle text-[13px] tabular-nums text-zinc-600 dark:text-zinc-300">
-                        {formatCurrency(r.reimbursements)}
-                      </td>
-                      <td className="px-3 py-2.5 text-right align-middle text-[13px] tabular-nums text-zinc-600 dark:text-zinc-300">
-                        {formatCurrency(r.payments)}
-                      </td>
-                      <td className="px-3 py-2.5 text-right align-middle text-[13px] tabular-nums text-zinc-600 dark:text-zinc-300">
-                        {formatCurrency(r.advances)}
-                      </td>
-                      <td className="px-3 py-2.5 text-right align-middle">
-                        <div className="flex flex-wrap items-center justify-end gap-2">
-                          <span className="text-base font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-foreground">
-                            {formatCurrency(r.balance)}
-                          </span>
-                          <BalanceStatusChip balance={r.balance} />
-                        </div>
-                      </td>
-                      <td
-                        className="px-2 py-2.5 text-right align-middle"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {r.deletable ? (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-10 w-10 rounded-sm text-muted-foreground/35 opacity-100 transition-opacity hover:bg-zinc-100/80 hover:text-destructive dark:text-muted-foreground/30 dark:hover:bg-muted/40 md:h-8 md:w-8 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
-                            aria-label={`Delete ${r.workerName}`}
-                            onClick={() => setDeleteTarget(r)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        ) : (
-                          <span className="inline-block w-8" aria-hidden />
+              ))
+            ) : rows.length === 0 ? (
+              <tr className="border-b border-zinc-100/80 dark:border-border/40">
+                <td colSpan={7} className="px-6 py-12 text-center">
+                  <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
+                    No workers yet
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Balances appear when workers have labor, reimbursements, or payments.
+                  </p>
+                </td>
+              </tr>
+            ) : filteredRows.length === 0 ? (
+              <tr className="border-b border-zinc-100/80 dark:border-border/40">
+                <td colSpan={7} className="px-6 py-10 text-center text-sm text-muted-foreground">
+                  No workers match your search.
+                </td>
+              </tr>
+            ) : (
+              filteredRows.map((r) => (
+                <tr
+                  key={r.workerId}
+                  className={cn(
+                    listTableRowStaticClassName,
+                    "border-b border-zinc-100/70 dark:border-border/35",
+                    "transition-[background-color] duration-200 ease-out motion-reduce:transition-none",
+                    "hover:bg-zinc-50/55 dark:hover:bg-muted/10",
+                    "focus-within:bg-zinc-50/45 dark:focus-within:bg-muted/8"
+                  )}
+                >
+                  <td className="px-3 py-2.5 align-middle">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span
+                        className={cn(
+                          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold leading-none tabular-nums antialiased",
+                          workerAvatarRing,
+                          avatarRingClass(r.workerId)
                         )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                        aria-hidden
+                      >
+                        {workerInitials(r.workerName)}
+                      </span>
+                      <div className="min-w-0">
+                        <Link
+                          href={`/labor/workers/${r.workerId}/balance`}
+                          title={r.workerName}
+                          className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-tight text-zinc-900 hover:underline dark:text-foreground"
+                        >
+                          {r.workerName}
+                        </Link>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 text-right align-middle">
+                    <NeoAmount>{formatCurrency(r.laborOwed)}</NeoAmount>
+                  </td>
+                  <td className="px-3 py-2.5 text-right align-middle">
+                    <NeoAmount>{formatCurrency(r.reimbursements)}</NeoAmount>
+                  </td>
+                  <td className="px-3 py-2.5 text-right align-middle">
+                    <NeoAmount tone="income">{formatCurrency(r.payments)}</NeoAmount>
+                  </td>
+                  <td className="px-3 py-2.5 text-right align-middle">
+                    <NeoAmount>{formatCurrency(r.advances)}</NeoAmount>
+                  </td>
+                  <td className="px-3 py-2.5 text-right align-middle">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <NeoAmount
+                        tone={r.balance > 0 ? "danger" : "income"}
+                        className="text-base tracking-normal"
+                      >
+                        {formatCurrency(r.balance)}
+                      </NeoAmount>
+                      <BalanceStatusChip balance={r.balance} />
+                    </div>
+                  </td>
+                  <td
+                    className="px-2 py-2.5 text-right align-middle"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {r.deletable ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-sm text-muted-foreground/35 opacity-100 transition-opacity hover:bg-zinc-100/80 hover:text-destructive dark:text-muted-foreground/30 dark:hover:bg-muted/40 md:h-8 md:w-8 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                        aria-label={`Delete ${r.workerName}`}
+                        onClick={() => setDeleteTarget(r)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <span className="inline-block w-8" aria-hidden />
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </NeoTable>
 
         <Dialog
           open={deleteTarget != null}

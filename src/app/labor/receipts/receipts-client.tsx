@@ -29,7 +29,14 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import { FilterBar } from "@/components/filter-bar";
+import {
+  NeoAmount,
+  NeoMobileCard,
+  NeoStatus,
+  NeoTable,
+  NeoToolbar,
+  RowActionsMenu,
+} from "@/components/base";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import {
   Dialog,
@@ -39,22 +46,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { WorkerReceipt, WorkerReceiptStatus } from "@/lib/worker-receipts-db";
-import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-import { statusChipClass, TYPO } from "@/lib/typography";
+import { TYPO } from "@/lib/typography";
 import { formatCurrency } from "@/lib/formatters";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 
 export type ReceiptRow = WorkerReceipt & { projectName: string };
 
-const recShell =
-  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
-
 const recKpiTile =
-  "rounded-xl border border-zinc-200/40 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.028),0_1px_12px_rgba(0,0,0,0.028)] dark:border-border/35 dark:bg-card/80 dark:shadow-none md:rounded-xl";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
 
 const recKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-100/55 text-zinc-500 md:h-8 md:w-8 dark:bg-muted/60 dark:text-muted-foreground";
+  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
 
 const AVATAR_RING = [
   "bg-zinc-200/80 text-zinc-800 dark:bg-zinc-700/50 dark:text-zinc-100",
@@ -87,15 +90,15 @@ function workerFilterKey(r: ReceiptRow): string {
 
 function ReceiptUploadStatusChip({ status }: { status: WorkerReceiptStatus }) {
   if (status === "Pending") {
-    return <span className={statusChipClass("warning")}>Pending</span>;
+    return <NeoStatus label="Pending" variant="warning" />;
   }
   if (status === "Approved") {
-    return <span className={statusChipClass("success")}>Approved</span>;
+    return <NeoStatus label="Approved" variant="success" />;
   }
   if (status === "Rejected") {
-    return <span className={statusChipClass("danger")}>Rejected</span>;
+    return <NeoStatus label="Rejected" variant="danger" />;
   }
-  return <span className={statusChipClass("success")}>Paid</span>;
+  return <NeoStatus label="Paid" variant="success" />;
 }
 
 export function ReceiptsClient({
@@ -465,20 +468,20 @@ export function ReceiptsClient({
   return (
     <div
       className={cn(
-        "min-w-0 overflow-x-hidden bg-zinc-50 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] dark:bg-background",
+        "neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
         "flex flex-col"
       )}
     >
       <div
         className={cn(
-          "mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 dark:bg-background sm:max-w-[460px] md:max-w-6xl md:gap-2 md:px-6 md:pb-6 md:pt-3",
+          "neo-page-on-graphite mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-2 px-4 py-2 pb-4 sm:max-w-[460px] md:max-w-6xl md:gap-2 md:px-6 md:pb-6 md:pt-3",
           mobileListPagePaddingClass,
           "max-md:!gap-2"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
             title="Worker Receipt Uploads"
             subtitle="Approve or reject uploaded receipts; approved items become reimbursements."
             actions={
@@ -621,7 +624,7 @@ export function ReceiptsClient({
           searchSlot={searchInput}
         />
 
-        <FilterBar className="hidden min-w-0 md:flex md:flex-col md:gap-2.5 md:pb-0 md:pt-0 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-3 lg:gap-y-2.5">
+        <NeoToolbar className="hidden min-w-0 md:flex md:flex-col md:gap-2.5 md:pb-0 md:pt-0 lg:flex-row lg:flex-wrap lg:items-center lg:gap-x-3 lg:gap-y-2.5">
           <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:contents">
             {filterControls}
           </div>
@@ -639,7 +642,7 @@ export function ReceiptsClient({
             <RefreshCw className={cn("h-3.5 w-3.5", fetchBusy && "animate-spin")} aria-hidden />
             {fetchBusy ? "Loading…" : "Refresh"}
           </Button>
-        </FilterBar>
+        </NeoToolbar>
 
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
           <div className="space-y-2">
@@ -752,8 +755,8 @@ export function ReceiptsClient({
         {/* Mobile cards */}
         <div className="md:hidden">
           {rows.length === 0 ? (
-            <div className={cn(recShell, "px-4 py-10 text-center")}>
-              <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
+            <NeoMobileCard className="px-4 py-10 text-center">
+              <p className="text-sm font-medium text-[var(--neo-text-primary)]">
                 No uploads in queue
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
@@ -762,7 +765,7 @@ export function ReceiptsClient({
               <Button variant="outline" size="sm" className="mt-4 rounded-sm" asChild>
                 <Link href="/upload-receipt">Upload receipt</Link>
               </Button>
-            </div>
+            </NeoMobileCard>
           ) : displayRows.length === 0 ? (
             <MobileEmptyState
               icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
@@ -784,13 +787,7 @@ export function ReceiptsClient({
               {displayRows.map((r) => {
                 const seed = r.workerId ?? r.id;
                 return (
-                  <div
-                    key={r.id}
-                    className={cn(
-                      recShell,
-                      "space-y-3 p-3 transition-[box-shadow,border-color] duration-200 ease-out hover:border-zinc-200/70 dark:hover:border-border/60"
-                    )}
-                  >
+                  <NeoMobileCard key={r.id} className="space-y-3 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 flex-1 items-start gap-3">
                         <span
@@ -819,9 +816,9 @@ export function ReceiptsClient({
                     </div>
                     <div className="flex flex-wrap items-end justify-between gap-2 border-b border-zinc-100/70 pb-2 dark:border-border/40">
                       <span className={TYPO.sectionLabel}>Amount</span>
-                      <span className={cn("max-w-full min-w-0 text-right text-xl", TYPO.amount)}>
+                      <NeoAmount className="max-w-full min-w-0 text-right text-xl">
                         {formatCurrency(r.amount)}
-                      </span>
+                      </NeoAmount>
                     </div>
                     <dl className="grid grid-cols-1 gap-x-3 gap-y-2 text-xs sm:grid-cols-2">
                       <div className="min-w-0 sm:col-span-2">
@@ -886,7 +883,7 @@ export function ReceiptsClient({
                         {r.rejectionReason}
                       </p>
                     ) : null}
-                  </div>
+                  </NeoMobileCard>
                 );
               })}
             </div>
@@ -894,175 +891,155 @@ export function ReceiptsClient({
         </div>
 
         {/* Desktop table */}
-        <div
+        <NeoTable
           className={cn(
-            recShell,
-            "hidden overflow-hidden md:block",
+            "hidden md:block",
             refreshing && rows.length > 0 && "pointer-events-none opacity-60"
           )}
-          aria-busy={refreshing && rows.length > 0 ? true : undefined}
+          tableClassName="min-w-[960px] lg:min-w-0"
+          busy={refreshing && rows.length > 0}
         >
-          {refreshing && rows.length > 0 ? (
-            <div className="flex justify-center border-b border-zinc-100/90 py-1 dark:border-border/50">
-              <span className="text-xs text-muted-foreground">Updating…</span>
-            </div>
-          ) : null}
-          <div className="overflow-x-auto pb-1 md:pb-3">
-            <table className="w-full min-w-[960px] border-collapse text-sm lg:min-w-0">
-              <thead>
-                <tr className="border-b border-zinc-100/90 bg-zinc-50/90 dark:border-border/60 dark:bg-muted/20">
-                  <th className={cn(thClass, "min-w-[200px]")}>Worker</th>
-                  <th className={cn(thClass, "min-w-[120px]")}>Project</th>
-                  <th className={cn(thClass, "min-w-[100px]")}>Expense type</th>
-                  <th className={cn(thClass, "min-w-[120px]")}>Vendor</th>
-                  <th className={cn(thRight, "min-w-[100px]")}>Amount</th>
-                  <th className={cn(thClass, "min-w-[88px]")}>Receipt</th>
-                  <th className={cn(thClass, "min-w-[100px]")}>Status</th>
-                  <th className={cn(thRight, "whitespace-nowrap")}>Date</th>
-                  <th className="w-12 px-2 py-2 text-right align-middle text-[10px] font-medium uppercase leading-none tracking-[0.08em] text-muted-foreground">
-                    <span className="sr-only">Actions</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="[&_tr:last-child]:border-b-0">
-                {rows.length === 0 ? (
-                  <tr className="border-b border-zinc-100/55 dark:border-border/35">
-                    <td colSpan={9} className="px-6 py-12 text-center">
-                      <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
-                        No uploads in queue
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Worker-submitted receipts will appear here for review.
-                      </p>
-                      <Button variant="outline" size="sm" className="mt-4 rounded-sm" asChild>
-                        <Link href="/upload-receipt">Upload receipt</Link>
-                      </Button>
+          <thead>
+            <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+              <th className={cn(thClass, "min-w-[200px]")}>Worker</th>
+              <th className={cn(thClass, "min-w-[120px]")}>Project</th>
+              <th className={cn(thClass, "min-w-[100px]")}>Expense type</th>
+              <th className={cn(thClass, "min-w-[120px]")}>Vendor</th>
+              <th className={cn(thRight, "min-w-[100px]")}>Amount</th>
+              <th className={cn(thClass, "min-w-[88px]")}>Receipt</th>
+              <th className={cn(thClass, "min-w-[100px]")}>Status</th>
+              <th className={cn(thRight, "whitespace-nowrap")}>Date</th>
+              <th className="w-12 px-2 py-2 text-right align-middle text-[10px] font-medium uppercase leading-none tracking-normal text-[var(--neo-text-secondary)]">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="[&_tr:last-child]:border-b-0">
+            {rows.length === 0 ? (
+              <tr className="border-b border-zinc-100/55 dark:border-border/35">
+                <td colSpan={9} className="px-6 py-12 text-center">
+                  <p className="text-sm font-medium text-zinc-900 dark:text-foreground">
+                    No uploads in queue
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Worker-submitted receipts will appear here for review.
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-4 rounded-sm" asChild>
+                    <Link href="/upload-receipt">Upload receipt</Link>
+                  </Button>
+                </td>
+              </tr>
+            ) : displayRows.length === 0 ? (
+              <tr className="border-b border-zinc-100/55 dark:border-border/35">
+                <td colSpan={9} className="px-6 py-10 text-center text-sm text-muted-foreground">
+                  No receipts match your filters.
+                </td>
+              </tr>
+            ) : (
+              displayRows.map((r) => {
+                const seed = r.workerId ?? r.id;
+                return (
+                  <tr
+                    key={r.id}
+                    className={cn(
+                      listTableRowStaticClassName,
+                      "border-b border-zinc-100/45 dark:border-border/22",
+                      "!transition-colors duration-150 ease-out motion-reduce:!transition-none",
+                      "hover:!bg-zinc-50/[0.38] dark:hover:!bg-muted/[0.06]",
+                      "focus-within:!bg-zinc-50/28 dark:focus-within:!bg-muted/[0.05]"
+                    )}
+                  >
+                    <td className="px-3 py-2.5 align-middle">
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span
+                          className={cn(
+                            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold leading-none tabular-nums antialiased",
+                            workerAvatarRing,
+                            avatarRingClass(seed)
+                          )}
+                          aria-hidden
+                        >
+                          {workerInitials(r.workerName)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-normal text-[var(--neo-text-primary)]">
+                            {r.workerName}
+                          </p>
+                        </div>
+                      </div>
                     </td>
-                  </tr>
-                ) : displayRows.length === 0 ? (
-                  <tr className="border-b border-zinc-100/55 dark:border-border/35">
                     <td
-                      colSpan={9}
-                      className="px-6 py-10 text-center text-sm text-muted-foreground"
+                      className={cn(
+                        "max-w-[180px] truncate px-3 py-2.5 align-middle text-sm",
+                        r.projectId
+                          ? "text-zinc-600 dark:text-zinc-300"
+                          : "text-muted-foreground/80"
+                      )}
                     >
-                      No receipts match your filters.
+                      {r.projectId ? r.projectName || "—" : "No project"}
+                    </td>
+                    <td className="px-3 py-2.5 align-middle">
+                      <span className="inline-flex max-w-[140px] truncate rounded-md border border-zinc-200/70 bg-zinc-50/80 px-1.5 py-px text-[10px] font-normal text-zinc-500 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-400">
+                        {r.expenseType || "—"}
+                      </span>
+                    </td>
+                    <td className="max-w-[160px] truncate px-3 py-2.5 align-middle text-sm font-medium text-zinc-800 dark:text-zinc-100">
+                      {r.vendor?.trim() ? r.vendor : "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2.5 text-right align-middle">
+                      <NeoAmount className="text-base">{formatCurrency(r.amount)}</NeoAmount>
+                    </td>
+                    <td className="px-3 py-2.5 align-middle">
+                      {r.receiptUrl ? (
+                        <button
+                          type="button"
+                          onClick={() => setViewReceiptUrl(r.receiptUrl)}
+                          className="inline-flex items-center gap-1 rounded-md border border-transparent px-1.5 py-1 text-xs font-medium text-zinc-600 transition-colors hover:border-zinc-200/80 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-muted/30 dark:hover:text-zinc-100"
+                        >
+                          <Paperclip className="h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden />
+                          View
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 align-middle">
+                      <ReceiptUploadStatusChip status={r.status} />
+                      {r.status === "Rejected" && r.rejectionReason ? (
+                        <span
+                          className="mt-1 block max-w-[200px] truncate text-[11px] text-muted-foreground"
+                          title={r.rejectionReason}
+                        >
+                          {r.rejectionReason}
+                        </span>
+                      ) : null}
+                    </td>
+                    <td
+                      className={cn(
+                        "whitespace-nowrap px-3 py-2.5 text-right align-middle",
+                        LEDGER_DATE_CLASS
+                      )}
+                    >
+                      {formatLedgerDate(r.createdAt)}
+                    </td>
+                    <td
+                      className="whitespace-nowrap px-2 py-2.5 text-right align-middle"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex justify-end">
+                        <RowActionsMenu
+                          appearance="list"
+                          ariaLabel={`Actions for receipt ${r.workerName}`}
+                          actions={rowActions(r)}
+                        />
+                      </div>
                     </td>
                   </tr>
-                ) : (
-                  displayRows.map((r) => {
-                    const seed = r.workerId ?? r.id;
-                    return (
-                      <tr
-                        key={r.id}
-                        className={cn(
-                          listTableRowStaticClassName,
-                          "border-b border-zinc-100/45 dark:border-border/22",
-                          "!transition-colors duration-150 ease-out motion-reduce:!transition-none",
-                          "hover:!bg-zinc-50/[0.38] dark:hover:!bg-muted/[0.06]",
-                          "focus-within:!bg-zinc-50/28 dark:focus-within:!bg-muted/[0.05]"
-                        )}
-                      >
-                        <td className="px-3 py-2.5 align-middle">
-                          <div className="flex min-w-0 items-center gap-2.5">
-                            <span
-                              className={cn(
-                                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold leading-none tabular-nums antialiased",
-                                workerAvatarRing,
-                                avatarRingClass(seed)
-                              )}
-                              aria-hidden
-                            >
-                              {workerInitials(r.workerName)}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="line-clamp-2 text-[13px] font-medium leading-snug tracking-tight text-zinc-900 dark:text-foreground">
-                                {r.workerName}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td
-                          className={cn(
-                            "max-w-[180px] truncate px-3 py-2.5 align-middle text-sm",
-                            r.projectId
-                              ? "text-zinc-600 dark:text-zinc-300"
-                              : "text-muted-foreground/80"
-                          )}
-                        >
-                          {r.projectId ? r.projectName || "—" : "No project"}
-                        </td>
-                        <td className="px-3 py-2.5 align-middle">
-                          <span className="inline-flex max-w-[140px] truncate rounded-md border border-zinc-200/70 bg-zinc-50/80 px-1.5 py-px text-[10px] font-normal text-zinc-500 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-400">
-                            {r.expenseType || "—"}
-                          </span>
-                        </td>
-                        <td className="max-w-[160px] truncate px-3 py-2.5 align-middle text-sm font-medium text-zinc-800 dark:text-zinc-100">
-                          {r.vendor?.trim() ? r.vendor : "—"}
-                        </td>
-                        <td
-                          className={cn(
-                            "whitespace-nowrap px-3 py-2.5 text-right align-middle text-base",
-                            TYPO.amount
-                          )}
-                        >
-                          {formatCurrency(r.amount)}
-                        </td>
-                        <td className="px-3 py-2.5 align-middle">
-                          {r.receiptUrl ? (
-                            <button
-                              type="button"
-                              onClick={() => setViewReceiptUrl(r.receiptUrl)}
-                              className="inline-flex items-center gap-1 rounded-md border border-transparent px-1.5 py-1 text-xs font-medium text-zinc-600 transition-colors hover:border-zinc-200/80 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-muted/30 dark:hover:text-zinc-100"
-                            >
-                              <Paperclip
-                                className="h-3.5 w-3.5 shrink-0 text-zinc-400"
-                                aria-hidden
-                              />
-                              View
-                            </button>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2.5 align-middle">
-                          <ReceiptUploadStatusChip status={r.status} />
-                          {r.status === "Rejected" && r.rejectionReason ? (
-                            <span
-                              className="mt-1 block max-w-[200px] truncate text-[11px] text-muted-foreground"
-                              title={r.rejectionReason}
-                            >
-                              {r.rejectionReason}
-                            </span>
-                          ) : null}
-                        </td>
-                        <td
-                          className={cn(
-                            "whitespace-nowrap px-3 py-2.5 text-right align-middle",
-                            LEDGER_DATE_CLASS
-                          )}
-                        >
-                          {formatLedgerDate(r.createdAt)}
-                        </td>
-                        <td
-                          className="whitespace-nowrap px-2 py-2.5 text-right align-middle"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="flex justify-end">
-                            <RowActionsMenu
-                              appearance="list"
-                              ariaLabel={`Actions for receipt ${r.workerName}`}
-                              actions={rowActions(r)}
-                            />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                );
+              })
+            )}
+          </tbody>
+        </NeoTable>
       </div>
 
       <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
