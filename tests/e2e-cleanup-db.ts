@@ -96,6 +96,10 @@ async function collectIdsByIlike(
 
 async function collectInvoiceIdsForCleanup(c: SupabaseClient): Promise<string[]> {
   const ids = await collectIdsByIlike(c, "invoices", "client_name", E2E_TEST_SUBSTRINGS);
+  const invoiceNoPatterns = [...E2E_TEST_SUBSTRINGS, "%TEST-EI-FLOW%", "%safe to delete%"];
+  for (const id of await collectIdsByIlike(c, "invoices", "invoice_no", invoiceNoPatterns)) {
+    ids.push(id);
+  }
   const { data: e2eInvoices } = await c.from("invoices").select("id").like("client_name", "[E2E]%");
   for (const row of e2eInvoices ?? []) ids.push((row as { id: string }).id);
   return uniqueIds(ids);
@@ -126,7 +130,7 @@ async function collectCustomerIdsForCleanup(c: SupabaseClient): Promise<string[]
 
 /**
  * Delete Playwright / E2E test rows. Safe for repeated runs.
- * Invoices use column **`client_name`** (not `client`).
+ * Invoices use **`client_name`** and **`invoice_no`** (not `client`).
  */
 export async function cleanupTestData(supabase: SupabaseClient): Promise<CleanupTestDataResult> {
   assertE2ESupabaseUrlSafeForMutations(process.env.NEXT_PUBLIC_SUPABASE_URL);
@@ -138,6 +142,33 @@ export async function cleanupTestData(supabase: SupabaseClient): Promise<Cleanup
 
   const invoiceIds = await collectInvoiceIdsForCleanup(supabase);
   if (invoiceIds.length > 0) {
+    const { data: paymentReceivedRows } = await supabase
+      .from("payments_received")
+      .select("id")
+      .in("invoice_id", invoiceIds);
+    const paymentReceivedIds = (paymentReceivedRows ?? []).map((r: { id: string }) => r.id);
+    if (paymentReceivedIds.length > 0) {
+      const { error: attachmentError } = await supabase
+        .from("payment_received_attachments")
+        .delete()
+        .in("payment_id", paymentReceivedIds);
+      if (attachmentError)
+        warnings.push(`payment_received_attachments: ${attachmentError.message}`);
+      else bump("payment_received_attachments", paymentReceivedIds.length);
+    }
+    const { error: depositError } = await supabase
+      .from("deposits")
+      .delete()
+      .in("invoice_id", invoiceIds);
+    if (depositError) warnings.push(`deposits: ${depositError.message}`);
+    if (paymentReceivedIds.length > 0) {
+      const { error: paymentReceivedError } = await supabase
+        .from("payments_received")
+        .delete()
+        .in("invoice_id", invoiceIds);
+      if (paymentReceivedError) warnings.push(`payments_received: ${paymentReceivedError.message}`);
+      else bump("payments_received", paymentReceivedIds.length);
+    }
     const { data: payRows } = await supabase
       .from("invoice_payments")
       .select("id")
@@ -147,6 +178,16 @@ export async function cleanupTestData(supabase: SupabaseClient): Promise<Cleanup
       const { error } = await supabase.from("invoice_payments").delete().in("id", payIds);
       if (error) warnings.push(`invoice_payments: ${error.message}`);
       else bump("invoice_payments", payIds.length);
+    }
+    const { data: itemRows } = await supabase
+      .from("invoice_items")
+      .select("id")
+      .in("invoice_id", invoiceIds);
+    const itemIds = (itemRows ?? []).map((r: { id: string }) => r.id);
+    if (itemIds.length > 0) {
+      const { error } = await supabase.from("invoice_items").delete().in("id", itemIds);
+      if (error) warnings.push(`invoice_items: ${error.message}`);
+      else bump("invoice_items", itemIds.length);
     }
     const { error: invErr } = await supabase.from("invoices").delete().in("id", invoiceIds);
     if (invErr) warnings.push(`invoices: ${invErr.message}`);

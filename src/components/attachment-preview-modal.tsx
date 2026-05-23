@@ -1249,12 +1249,12 @@ export function AttachmentPreviewModal({
           data-attachment-preview-modal
           className="fixed inset-0 z-[201] flex min-h-0 flex-col bg-gradient-to-b from-zinc-900 via-zinc-950 to-black text-zinc-100 before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(ellipse_85%_65%_at_50%_35%,rgba(255,255,255,0.06),transparent_58%)]"
           style={{ zIndex: 10000, pointerEvents: "auto" }}
-          initial={fastPreviewMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.97 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={fastPreviewMotion ? { opacity: 1 } : { opacity: 0 }}
+          animate={{ opacity: 1 }}
           exit={
             fastPreviewMotion
-              ? { opacity: 0, scale: 1, transition: { duration: 0.08, ease: "linear" } }
-              : { opacity: 0, scale: 0.98, transition: { duration: 0.16, ease: "easeOut" } }
+              ? { opacity: 0, transition: { duration: 0.08, ease: "linear" } }
+              : { opacity: 0, transition: { duration: 0.16, ease: "easeOut" } }
           }
           transition={
             fastPreviewMotion ? { duration: 0 } : { duration: 0.18, ease: [0.22, 1, 0.36, 1] }
