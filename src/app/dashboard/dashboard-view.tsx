@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { StatusBadge } from "@/components/base";
+import { NeoAmount, NeoPanel, NeoStatus } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import type { RecentTransaction, ProjectRiskOverview } from "@/lib/data";
 import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
@@ -170,7 +170,7 @@ function TaskDueChip({ due }: { due: string }) {
       ? "bg-rose-500"
       : tone === "warning"
         ? "bg-amber-500"
-        : "bg-slate-400 dark:bg-zinc-500";
+        : "bg-[var(--neo-text-tertiary)]";
   return (
     <span
       className={cn(
@@ -315,7 +315,7 @@ function CashPressureTimelineChart({ series }: { series: CashPressurePoint[] }) 
         </span>
         <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
           <span
-            className="h-1 w-1 shrink-0 rounded-full bg-zinc-400/70 dark:bg-zinc-500/70"
+            className="h-1 w-1 shrink-0 rounded-full bg-[var(--neo-text-tertiary)]"
             aria-hidden
           />
           Net
@@ -368,7 +368,7 @@ function CashPressureTimelineChart({ series }: { series: CashPressurePoint[] }) 
                 d={netPath}
                 fill="none"
                 stroke="currentColor"
-                className="text-zinc-400 dark:text-zinc-500"
+                className="text-[var(--neo-text-tertiary)]"
                 strokeWidth={0.75}
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -438,6 +438,131 @@ function CashPressureTimelineChart({ series }: { series: CashPressurePoint[] }) 
   );
 }
 
+function ExecutiveBriefing({
+  cashIn,
+  cashNet,
+  expensesThisMonth,
+  apBillsSummary,
+  stats,
+  negativeMarginCount,
+  operationalRiskCount,
+  upcomingTasks,
+}: {
+  cashIn: number;
+  cashNet: number;
+  expensesThisMonth: number;
+  apBillsSummary: ApBillsSummary;
+  stats: DashboardViewProps["stats"];
+  negativeMarginCount: number;
+  operationalRiskCount: number;
+  upcomingTasks: UpcomingTask[];
+}) {
+  const profitPositive = stats.totalProfit >= 0;
+  const nextAction = upcomingTasks[0];
+  const apRisk = apBillsSummary.overdueCount > 0 || apBillsSummary.overdueAmount > 0.005;
+  const riskVariant = operationalRiskCount > 0 ? "warning" : "success";
+
+  const briefingItems = [
+    {
+      label: "Cash collected",
+      value: formatCurrency(cashIn),
+      meta: `${formatCurrency(cashNet)} net window`,
+      amountTone: "income" as const,
+      status: cashNet >= 0 ? ("Positive" as const) : ("Pressure" as const),
+      statusVariant: cashNet >= 0 ? ("success" as const) : ("danger" as const),
+    },
+    {
+      label: "Expenses",
+      value: formatCurrency(expensesThisMonth),
+      meta: "This month",
+      amountTone: expensesThisMonth > 0.005 ? ("expense" as const) : ("neutral" as const),
+      status: expensesThisMonth > 0.005 ? ("Active" as const) : ("Clear" as const),
+      statusVariant: expensesThisMonth > 0.005 ? ("default" as const) : ("success" as const),
+    },
+    {
+      label: "Pending AP",
+      value: formatCurrency(apBillsSummary.totalOutstanding),
+      meta: `${apBillsSummary.overdueCount} overdue · ${formatCurrency(apBillsSummary.overdueAmount)}`,
+      amountTone: apRisk ? ("danger" as const) : ("neutral" as const),
+      status: apRisk ? ("Aging" as const) : ("Current" as const),
+      statusVariant: apRisk ? ("danger" as const) : ("success" as const),
+    },
+    {
+      label: "Profit posture",
+      value: formatCurrency(stats.totalProfit),
+      meta: `${negativeMarginCount} margin flags`,
+      amountTone: profitPositive ? ("income" as const) : ("danger" as const),
+      status: profitPositive ? ("Healthy" as const) : ("Review" as const),
+      statusVariant: profitPositive ? ("success" as const) : ("warning" as const),
+    },
+  ];
+
+  return (
+    <NeoPanel
+      className="ring-1 ring-[rgb(184_137_45_/_0.10)]"
+      bodyClassName="p-3 sm:p-4"
+      eyebrow="Executive briefing"
+      title="Today’s operating picture"
+      description="Cash, cost, payables, margin, and action signals from the current dashboard feed."
+      action={
+        <NeoStatus
+          label={operationalRiskCount > 0 ? `${operationalRiskCount} signals` : "Stable"}
+          variant={riskVariant}
+        />
+      }
+    >
+      <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          {briefingItems.map((item) => (
+            <div
+              key={item.label}
+              className="min-w-0 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3"
+            >
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <p className={TYPO.kpiLabel}>{item.label}</p>
+                <NeoStatus
+                  label={item.status}
+                  variant={item.statusVariant}
+                  className="max-sm:hidden"
+                  showDot={false}
+                />
+              </div>
+              <NeoAmount
+                tone={item.amountTone}
+                className="mt-2 block truncate text-[18px] leading-tight md:text-[19px]"
+              >
+                {item.value}
+              </NeoAmount>
+              <p className="mt-1 truncate text-[12px] font-medium text-[var(--neo-text-secondary)]">
+                {item.meta}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="min-w-0 rounded-lg border border-[rgb(184_137_45_/_0.18)] bg-[rgb(184_137_45_/_0.08)] px-3 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className={TYPO.kpiLabel}>Next action</p>
+              <p className={cn(TYPO.primaryName, "mt-1 truncate text-[14px]")}>
+                {nextAction?.title ?? "No operational follow-ups"}
+              </p>
+            </div>
+            <NeoStatus
+              label={nextAction?.due ?? "Clear"}
+              variant={nextAction ? (nextAction.due === "Today" ? "danger" : "warning") : "success"}
+              showDot={Boolean(nextAction)}
+            />
+          </div>
+          <p className="mt-2 line-clamp-2 text-[12px] leading-snug text-[var(--neo-text-secondary)]">
+            {nextAction?.meta ?? "No risk-driven action queue items are waiting in this view."}
+          </p>
+        </div>
+      </div>
+    </NeoPanel>
+  );
+}
+
 export function DashboardView(props: DashboardViewProps): React.ReactNode {
   const {
     stats,
@@ -446,6 +571,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
     expensesThisMonth,
     overdueInvoices,
     transactions,
+    riskOverview,
     riskByProjectId,
     outstandingSubcontracts,
     projectHealthRows,
@@ -476,6 +602,11 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
     .sort((a, b) => a.marginPct - b.marginPct);
   const projectRowsSnapshot = projectHealthRows.slice(0, 8);
   const operatingPressure = apBillsSummary.overdueAmount + laborCostThisWeek;
+  const operationalRiskCount =
+    riskOverview.summary.highCount +
+    riskOverview.summary.overBudgetCount +
+    riskOverview.summary.laborOverCount +
+    riskOverview.summary.lowRunwayCount;
 
   return (
     <>
@@ -487,6 +618,17 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           {dataLoadWarning}
         </p>
       ) : null}
+
+      <ExecutiveBriefing
+        cashIn={cashIn}
+        cashNet={cashNet}
+        expensesThisMonth={expensesThisMonth}
+        apBillsSummary={apBillsSummary}
+        stats={stats}
+        negativeMarginCount={negativeMarginRows.length}
+        operationalRiskCount={operationalRiskCount}
+        upcomingTasks={upcomingTasks}
+      />
 
       <div className="grid min-w-0 max-w-full grid-cols-1 gap-3 md:gap-4 lg:grid-cols-12 lg:gap-5">
         {/* Priority queue: collections → payroll → margin stress */}
@@ -549,7 +691,10 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 <tbody>
                   {overduePreview.length === 0 ? (
                     <tr>
-                      <td colSpan={2} className="py-8 text-center text-[13px] text-zinc-500">
+                      <td
+                        colSpan={2}
+                        className="py-8 text-center text-[13px] text-[var(--neo-text-secondary)]"
+                      >
                         No overdue invoices.
                       </td>
                     </tr>
@@ -679,7 +824,10 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 <tbody>
                   {negativeMarginRows.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="py-8 text-center text-[13px] text-zinc-500">
+                      <td
+                        colSpan={3}
+                        className="py-8 text-center text-[13px] text-[var(--neo-text-secondary)]"
+                      >
                         No negative-margin jobs.
                       </td>
                     </tr>
@@ -815,7 +963,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               <div className={cn("mt-3 border-b pb-3", dividerLine)}>
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[12px] font-semibold leading-tight text-zinc-800 dark:text-zinc-100">
+                    <p className="text-[12px] font-semibold leading-tight text-[var(--neo-text-primary)]">
                       Operating pressure
                     </p>
                     <p className="mt-1.5 text-[11px] leading-snug text-[var(--neo-text-secondary)]">
@@ -826,9 +974,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     className={cn(
                       TYPO.amount,
                       "shrink-0 break-words text-right text-[14px] tabular-nums sm:text-[15px] leading-none",
-                      operatingPressure > 0.005
-                        ? OS.dangerAmount
-                        : "text-zinc-800 dark:text-zinc-200"
+                      operatingPressure > 0.005 ? OS.dangerAmount : "text-[var(--neo-text-primary)]"
                     )}
                   >
                     {formatCurrency(operatingPressure)}
@@ -847,7 +993,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   <span
                     className={cn(
                       TYPO.amount,
-                      "max-w-[55%] shrink-0 break-words text-right text-[12px] tabular-nums sm:text-[13px] text-zinc-700 dark:text-zinc-300"
+                      "max-w-[55%] shrink-0 break-words text-right text-[12px] tabular-nums text-[var(--neo-text-secondary)] sm:text-[13px]"
                     )}
                   >
                     {formatCurrency(laborCostThisWeek)}
@@ -860,7 +1006,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   <span
                     className={cn(
                       TYPO.amount,
-                      "max-w-[55%] shrink-0 break-words text-right text-[12px] tabular-nums sm:text-[13px] text-zinc-700 dark:text-zinc-300"
+                      "max-w-[55%] shrink-0 break-words text-right text-[12px] tabular-nums text-[var(--neo-text-secondary)] sm:text-[13px]"
                     )}
                   >
                     {formatCurrency(expensesThisMonth)}
@@ -870,7 +1016,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
 
               <div className={cn("mt-4 border-t pt-3", dividerLine)}>
                 <div className="flex min-w-0 items-center justify-between gap-2">
-                  <span className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">
+                  <span className="text-[12px] font-medium text-[var(--neo-text-secondary)]">
                     Subcontract IOU
                   </span>
                   <span
@@ -934,9 +1080,9 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 <span>Budget usage</span>
                 <span className={cn(TYPO.amount, "text-[14px]")}>{budgetUsagePct.toFixed(0)}%</span>
               </div>
-              <div className="h-[3px] overflow-hidden rounded-full bg-slate-200/65 ring-1 ring-inset ring-slate-900/[0.04] dark:bg-zinc-800/75 dark:ring-white/[0.04]">
+              <div className="h-[3px] overflow-hidden rounded-full bg-[var(--neo-surface-muted)] ring-1 ring-inset ring-[var(--neo-border)]">
                 <div
-                  className="h-full rounded-full bg-zinc-800/80 transition-[width] duration-500 ease-out dark:bg-zinc-300/55"
+                  className="h-full rounded-full bg-[var(--neo-gold)] transition-[width] duration-500 ease-out"
                   style={{ width: `${Math.min(100, budgetUsagePct)}%` }}
                 />
               </div>
@@ -1002,7 +1148,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 )}
               >
                 <span className="tabular-nums">{apBillsSummary.overdueCount}</span>
-                <span className="mx-1 text-zinc-400">·</span>
+                <span className="mx-1 text-[var(--neo-text-tertiary)]">·</span>
                 <span className="tabular-nums">{formatCurrency(apBillsSummary.overdueAmount)}</span>
               </span>
             </div>
@@ -1010,7 +1156,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               <span className="text-[13px] text-[var(--neo-text-secondary)]">Due this week</span>
               <span className={cn(TYPO.amount, "text-end text-[14px]")}>
                 <span className="tabular-nums">{apBillsSummary.dueThisWeekCount}</span>
-                <span className="mx-1 text-zinc-400">·</span>
+                <span className="mx-1 text-[var(--neo-text-tertiary)]">·</span>
                 <span className="tabular-nums">
                   {formatCurrency(apBillsSummary.dueThisWeekAmount)}
                 </span>
@@ -1148,13 +1294,13 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     >
                       <div className="min-w-0 flex-1">
                         <p className={cn(TYPO.primaryName, "truncate text-[14px]")}>{p.name}</p>
-                        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] text-zinc-500 tabular-nums dark:text-zinc-400">
+                        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] text-[var(--neo-text-secondary)] tabular-nums">
                           <span>
                             {p.profitReady
                               ? `${fmtPct(p.marginPct)} margin`
                               : "Contract value needs review"}
                           </span>
-                          <span className="text-zinc-300 dark:text-zinc-600">·</span>
+                          <span className="text-[var(--neo-text-tertiary)]">·</span>
                           <RiskChip risk={risk} />
                         </div>
                       </div>
@@ -1172,7 +1318,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                         >
                           {p.profitReady ? formatCurrency(p.profit) : "Review"}
                         </span>
-                        <StatusBadge label={status.label} variant={status.variant} />
+                        <NeoStatus label={status.label} variant={status.variant} />
                       </div>
                     </Link>
                   );
@@ -1209,7 +1355,10 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 <tbody>
                   {projectRowsSnapshot.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-10 text-center text-[13px] text-zinc-500">
+                      <td
+                        colSpan={8}
+                        className="py-10 text-center text-[13px] text-[var(--neo-text-secondary)]"
+                      >
                         No projects yet.
                       </td>
                     </tr>
@@ -1278,11 +1427,11 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                                   ? fmtPct(progressPct)
                                   : "Review"}
                               </span>
-                              <div className="h-[3px] w-[6.5rem] overflow-hidden rounded-full bg-slate-200/55 ring-1 ring-inset ring-slate-900/[0.04] dark:bg-zinc-800/70 dark:ring-white/[0.04]">
+                              <div className="h-[3px] w-[6.5rem] overflow-hidden rounded-full bg-[var(--neo-surface-muted)] ring-1 ring-inset ring-[var(--neo-border)]">
                                 <div
                                   className={cn(
                                     "h-full rounded-full transition-[width] duration-500 ease-out",
-                                    over ? "bg-rose-500/75" : "bg-zinc-700/85 dark:bg-zinc-300/65"
+                                    over ? "bg-rose-500/75" : "bg-[var(--neo-gold)]"
                                   )}
                                   style={{
                                     width: `${p.profitReady ? Math.min(100, Math.max(0, progressPct)) : 0}%`,
@@ -1292,7 +1441,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                             </div>
                           </td>
                           <td className="py-2.5 pl-2 pr-4">
-                            <StatusBadge label={status.label} variant={status.variant} />
+                            <NeoStatus label={status.label} variant={status.variant} />
                           </td>
                         </tr>
                       );
@@ -1410,7 +1559,10 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 <tbody>
                   {outstandingSubcontracts.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="py-8 text-center text-[13px] text-zinc-500">
+                      <td
+                        colSpan={3}
+                        className="py-8 text-center text-[13px] text-[var(--neo-text-secondary)]"
+                      >
                         No outstanding balances.
                       </td>
                     </tr>

@@ -10,7 +10,7 @@ type ApBillsSummaryKpi = {
 };
 
 const dashboardKpiTileClass =
-  "max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:min-h-[118px] max-md:snap-start max-md:snap-always";
+  "max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:min-h-[118px] max-md:snap-start max-md:snap-always md:min-h-[116px] ring-1 ring-transparent hover:ring-[var(--neo-gold-ring)]";
 
 /** Command-center KPIs: collections, payables, labor, margin stress, risk flags, ledger pulse. */
 export function DashboardKpiStrip({
@@ -45,7 +45,7 @@ export function DashboardKpiStrip({
     >
       <KpiTile
         className={dashboardKpiTileClass}
-        label="Overdue invoices"
+        label="Cash to collect"
         value={formatCurrency(overdueTotal)}
         meta={`${overdueInvoices.length} open`}
         tone={overdueTotal > 0.005 ? "negative" : "neutral"}
@@ -53,7 +53,7 @@ export function DashboardKpiStrip({
 
       <KpiTile
         className={dashboardKpiTileClass}
-        label="Unpaid bills (AP)"
+        label="AP exposure"
         value={formatCurrency(apBillsSummary.totalOutstanding)}
         meta={
           <>
@@ -66,7 +66,7 @@ export function DashboardKpiStrip({
 
       <KpiTile
         className={dashboardKpiTileClass}
-        label="Labor cost"
+        label="Labor pressure"
         value={formatCurrency(laborCostThisWeek)}
         meta="Current period"
         tone={laborCostThisWeek > 0.005 ? "negative" : "neutral"}
@@ -90,7 +90,7 @@ export function DashboardKpiStrip({
 
       <KpiTile
         className={dashboardKpiTileClass}
-        label="Ledger window net"
+        label="Liquidity window"
         value={formatCurrency(ledgerNet)}
         meta="Recent transactions"
         tone={ledgerTone === "income" ? "positive" : "negative"}
