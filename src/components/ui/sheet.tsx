@@ -31,7 +31,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 overflow-y-auto overscroll-y-contain border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] transition-all duration-150 ease-out [-webkit-overflow-scrolling:touch] data-[state=open]:animate-in data-[state=closed]:animate-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none max-md:rounded-none",
+  "dark fixed z-50 gap-4 overflow-y-auto overscroll-y-contain border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] transition-all duration-150 ease-out [-webkit-overflow-scrolling:touch] data-[state=open]:animate-in data-[state=closed]:animate-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none max-md:rounded-none",
   {
     variants: {
       side: {

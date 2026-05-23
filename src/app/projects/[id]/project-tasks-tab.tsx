@@ -2,16 +2,19 @@
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { SectionHeader } from "@/components/base";
+  NeoFieldLabel,
+  NeoFormGrid,
+  NeoFormSection,
+  NeoInput,
+  NeoModal,
+  NeoSelect,
+  NeoTextarea,
+  SectionHeader,
+  neoFormErrorClassName,
+  neoFormFieldClassName,
+} from "@/components/base";
 import { createProjectTaskAction, updateProjectTaskAction } from "../actions";
 import type { ProjectTaskWithWorker } from "@/lib/data";
 import type { Worker } from "@/lib/labor-db";
@@ -169,43 +172,58 @@ export function ProjectTasksTab({
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg rounded-xl border-gray-100 shadow-sm">
-          <DialogHeader>
-            <DialogTitle>New Task</DialogTitle>
-            <DialogDescription>Add a task to this project.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
-                Title
-              </label>
-              <Input
+        <NeoModal
+          title="New Task"
+          description="Add a task to this project."
+          footer={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setModalOpen(false)}
+                className="h-10 rounded-md"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="h-10 rounded-md"
+                onClick={handleSave}
+                disabled={submitting}
+              >
+                Save
+              </Button>
+            </>
+          }
+        >
+          <NeoFormSection>
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="project-task-title">Title</NeoFieldLabel>
+              <NeoInput
+                id="project-task-title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Task title"
-                className="mt-1.5 h-10 rounded-lg border-gray-100"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
-                Description
-              </label>
-              <textarea
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="project-task-description">Description</NeoFieldLabel>
+              <NeoTextarea
+                id="project-task-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Optional description"
                 rows={3}
-                className="mt-1.5 w-full rounded-lg border border-gray-100 px-3 py-2 text-sm"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
-                Assigned Worker
-              </label>
-              <select
+          </NeoFormSection>
+          <NeoFormGrid>
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="project-task-assigned">Assigned Worker</NeoFieldLabel>
+              <NeoSelect
+                id="project-task-assigned"
                 value={assignedWorkerId}
                 onChange={(e) => setAssignedWorkerId(e.target.value)}
-                className="mt-1.5 h-10 w-full rounded-lg border border-gray-100 bg-white px-3 text-sm"
               >
                 <option value="">—</option>
                 {workers.map((w) => (
@@ -213,54 +231,32 @@ export function ProjectTasksTab({
                     {w.name}
                   </option>
                 ))}
-              </select>
+              </NeoSelect>
             </div>
-            <div>
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
-                Due Date
-              </label>
-              <Input
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="project-task-due-date">Due Date</NeoFieldLabel>
+              <NeoInput
+                id="project-task-due-date"
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="mt-1.5 h-10 rounded-lg border-gray-100"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">
-                Priority
-              </label>
-              <select
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="project-task-priority">Priority</NeoFieldLabel>
+              <NeoSelect
+                id="project-task-priority"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as "low" | "medium" | "high")}
-                className="mt-1.5 h-10 w-full rounded-lg border border-gray-100 bg-white px-3 text-sm"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
-              </select>
+              </NeoSelect>
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-          </div>
-          <DialogFooter className="border-t border-gray-100 pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setModalOpen(false)}
-              className="rounded-lg"
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              className="rounded-lg bg-black text-white hover:bg-black/90"
-              onClick={handleSave}
-              disabled={submitting}
-            >
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+          </NeoFormGrid>
+          {error && <p className={neoFormErrorClassName}>{error}</p>}
+        </NeoModal>
       </Dialog>
     </div>
   );

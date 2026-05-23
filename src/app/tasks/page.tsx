@@ -5,17 +5,24 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { startTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { PageLayout, PageHeader, Drawer } from "@/components/base";
+import {
+  Drawer,
+  NeoActionFooter,
+  NeoFieldLabel,
+  NeoFormGrid,
+  NeoFormSection,
+  NeoInput,
+  NeoModal,
+  NeoSelect,
+  NeoTextarea,
+  PageHeader,
+  PageLayout,
+  neoFormErrorClassName,
+  neoFormFieldClassName,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -892,101 +899,106 @@ export default function TasksPage() {
       >
         {selectedTask && (
           <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Title</label>
-              <Input
-                value={drawerForm.title}
-                onChange={(e) => setDrawerForm((p) => ({ ...p, title: e.target.value }))}
-                className="mt-1 h-9 rounded-sm border-border/60"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <textarea
-                value={drawerForm.description}
-                onChange={(e) => setDrawerForm((p) => ({ ...p, description: e.target.value }))}
-                rows={3}
-                className="mt-1 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Assigned</label>
-              <select
-                value={drawerForm.assigned_worker_id}
-                onChange={(e) =>
-                  setDrawerForm((p) => ({ ...p, assigned_worker_id: e.target.value }))
-                }
-                className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
-              >
-                <option value="">—</option>
-                {workers.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Due date</label>
-              <Input
-                type="date"
-                value={drawerForm.due_date}
-                onChange={(e) => setDrawerForm((p) => ({ ...p, due_date: e.target.value }))}
-                className="mt-1 h-9 rounded-sm border-border/60"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Priority</label>
-              <select
-                value={drawerForm.priority}
-                onChange={(e) =>
-                  setDrawerForm((p) => ({
-                    ...p,
-                    priority: e.target.value as "low" | "medium" | "high",
-                  }))
-                }
-                className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <select
-                value={drawerForm.status}
-                onChange={(e) =>
-                  setDrawerForm((p) => ({
-                    ...p,
-                    status: e.target.value as "todo" | "in_progress" | "done",
-                  }))
-                }
-                className="mt-1 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
-              >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/60">
+            <NeoFormSection>
+              <div className={neoFormFieldClassName}>
+                <NeoFieldLabel htmlFor="task-drawer-title">Title</NeoFieldLabel>
+                <NeoInput
+                  id="task-drawer-title"
+                  value={drawerForm.title}
+                  onChange={(e) => setDrawerForm((p) => ({ ...p, title: e.target.value }))}
+                />
+              </div>
+              <div className={neoFormFieldClassName}>
+                <NeoFieldLabel htmlFor="task-drawer-description">Description</NeoFieldLabel>
+                <NeoTextarea
+                  id="task-drawer-description"
+                  value={drawerForm.description}
+                  onChange={(e) => setDrawerForm((p) => ({ ...p, description: e.target.value }))}
+                  rows={3}
+                />
+              </div>
+            </NeoFormSection>
+
+            <NeoFormGrid>
+              <div className={neoFormFieldClassName}>
+                <NeoFieldLabel htmlFor="task-drawer-assigned">Assigned</NeoFieldLabel>
+                <NeoSelect
+                  id="task-drawer-assigned"
+                  value={drawerForm.assigned_worker_id}
+                  onChange={(e) =>
+                    setDrawerForm((p) => ({ ...p, assigned_worker_id: e.target.value }))
+                  }
+                >
+                  <option value="">—</option>
+                  {workers.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </NeoSelect>
+              </div>
+              <div className={neoFormFieldClassName}>
+                <NeoFieldLabel htmlFor="task-drawer-due-date">Due date</NeoFieldLabel>
+                <NeoInput
+                  id="task-drawer-due-date"
+                  type="date"
+                  value={drawerForm.due_date}
+                  onChange={(e) => setDrawerForm((p) => ({ ...p, due_date: e.target.value }))}
+                />
+              </div>
+              <div className={neoFormFieldClassName}>
+                <NeoFieldLabel htmlFor="task-drawer-priority">Priority</NeoFieldLabel>
+                <NeoSelect
+                  id="task-drawer-priority"
+                  value={drawerForm.priority}
+                  onChange={(e) =>
+                    setDrawerForm((p) => ({
+                      ...p,
+                      priority: e.target.value as "low" | "medium" | "high",
+                    }))
+                  }
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </NeoSelect>
+              </div>
+              <div className={neoFormFieldClassName}>
+                <NeoFieldLabel htmlFor="task-drawer-status">Status</NeoFieldLabel>
+                <NeoSelect
+                  id="task-drawer-status"
+                  value={drawerForm.status}
+                  onChange={(e) =>
+                    setDrawerForm((p) => ({
+                      ...p,
+                      status: e.target.value as "todo" | "in_progress" | "done",
+                    }))
+                  }
+                >
+                  {STATUS_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </NeoSelect>
+              </div>
+            </NeoFormGrid>
+            {error && <p className={neoFormErrorClassName}>{error}</p>}
+            <NeoActionFooter className="sm:justify-between">
               <Button
                 size="sm"
                 variant="outline"
-                className="btn-outline-ghost rounded-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+                className="btn-outline-destructive h-10 rounded-md max-sm:w-full"
                 onClick={handleDeleteTask}
                 disabled={submitting}
               >
                 Delete
               </Button>
-              <div className="flex gap-2">
+              <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
                 <Button
                   size="sm"
                   variant="outline"
-                  className="rounded-sm"
+                  className="h-10 rounded-md"
                   onClick={() => setDrawerOpen(false)}
                   disabled={submitting}
                 >
@@ -994,31 +1006,50 @@ export default function TasksPage() {
                 </Button>
                 <Button
                   size="sm"
-                  className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+                  className="h-10 rounded-md"
                   onClick={handleSaveDrawer}
                   disabled={submitting}
                 >
                   Save
                 </Button>
               </div>
-            </div>
+            </NeoActionFooter>
           </div>
         )}
       </Drawer>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg rounded-sm border-border/60 p-6">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">New Task</DialogTitle>
-            <DialogDescription>Create a task and assign it to a project.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Project</label>
-              <select
+        <NeoModal
+          title="New Task"
+          description="Create a task and assign it to a project."
+          footer={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-10 rounded-md"
+                onClick={() => setModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="h-10 rounded-md"
+                onClick={handleSaveNew}
+                disabled={submitting}
+              >
+                Save
+              </Button>
+            </>
+          }
+        >
+          <NeoFormSection>
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="task-new-project">Project</NeoFieldLabel>
+              <NeoSelect
+                id="task-new-project"
                 value={form.project_id}
                 onChange={(e) => setForm((p) => ({ ...p, project_id: e.target.value }))}
-                className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
@@ -1026,34 +1057,36 @@ export default function TasksPage() {
                     {p.name}
                   </option>
                 ))}
-              </select>
+              </NeoSelect>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Title</label>
-              <Input
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="task-new-title">Title</NeoFieldLabel>
+              <NeoInput
+                id="task-new-title"
                 value={form.title}
                 onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
                 placeholder="Task title"
-                className="mt-1.5 h-9 rounded-sm border-border/60"
                 ref={titleInputRef}
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <textarea
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="task-new-description">Description</NeoFieldLabel>
+              <NeoTextarea
+                id="task-new-description"
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Optional"
                 rows={2}
-                className="mt-1.5 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Assigned Worker</label>
-              <select
+          </NeoFormSection>
+          <NeoFormGrid>
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="task-new-assigned">Assigned Worker</NeoFieldLabel>
+              <NeoSelect
+                id="task-new-assigned"
                 value={form.assigned_worker_id}
                 onChange={(e) => setForm((p) => ({ ...p, assigned_worker_id: e.target.value }))}
-                className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
               >
                 <option value="">—</option>
                 {workers.map((w) => (
@@ -1061,34 +1094,35 @@ export default function TasksPage() {
                     {w.name}
                   </option>
                 ))}
-              </select>
+              </NeoSelect>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Due Date</label>
-              <Input
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="task-new-due-date">Due Date</NeoFieldLabel>
+              <NeoInput
+                id="task-new-due-date"
                 type="date"
                 value={form.due_date}
                 onChange={(e) => setForm((p) => ({ ...p, due_date: e.target.value }))}
-                className="mt-1.5 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Priority</label>
-              <select
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="task-new-priority">Priority</NeoFieldLabel>
+              <NeoSelect
+                id="task-new-priority"
                 value={form.priority}
                 onChange={(e) =>
                   setForm((p) => ({ ...p, priority: e.target.value as "low" | "medium" | "high" }))
                 }
-                className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
-              </select>
+              </NeoSelect>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <select
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="task-new-status">Status</NeoFieldLabel>
+              <NeoSelect
+                id="task-new-status"
                 value={form.status}
                 onChange={(e) =>
                   setForm((p) => ({
@@ -1096,36 +1130,17 @@ export default function TasksPage() {
                     status: e.target.value as "todo" | "in_progress" | "done",
                   }))
                 }
-                className="mt-1.5 h-9 w-full rounded-sm border border-border/60 bg-background px-2.5 text-sm"
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </select>
+              </NeoSelect>
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-          </div>
-          <DialogFooter className="border-t border-border/60 pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-sm"
-              onClick={() => setModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
-              onClick={handleSaveNew}
-              disabled={submitting}
-            >
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+          </NeoFormGrid>
+          {error && <p className={neoFormErrorClassName}>{error}</p>}
+        </NeoModal>
       </Dialog>
     </PageLayout>
   );

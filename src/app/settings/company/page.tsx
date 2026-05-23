@@ -9,6 +9,7 @@ import { flushSync } from "react-dom";
 import { Building2, Search, Upload, Image as ImageIcon, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SectionHeader } from "@/components/section-header";
+import { NeoTextarea } from "@/components/base";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
@@ -643,7 +644,7 @@ export default function SettingsCompanyPage() {
 
       <section
         className={cn(
-          "border-b border-gray-100 pb-8 dark:border-border",
+          "border-b border-[var(--neo-border)] pb-8",
           q && !brandHit && "max-md:hidden"
         )}
       >
@@ -656,7 +657,7 @@ export default function SettingsCompanyPage() {
             htmlFor="logo-upload"
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDrop}
-            className="flex min-h-28 cursor-pointer items-center gap-3 rounded-sm border border-dashed border-gray-100 bg-background px-4 py-3 text-sm text-muted-foreground hover:bg-[#F9FAFB]/80 dark:border-border dark:hover:bg-muted/20"
+            className="flex min-h-28 cursor-pointer items-center gap-3 rounded-lg border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-raised)] px-4 py-3 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)]"
           >
             {profile?.logo_url && !logoLoadError ? (
               // eslint-disable-next-line @next/next/no-img-element -- Supabase public URL; avoids next/image remote host config errors
@@ -665,16 +666,18 @@ export default function SettingsCompanyPage() {
                 alt="Company logo"
                 width={48}
                 height={48}
-                className="h-12 w-12 rounded-sm object-contain bg-white p-1"
+                className="h-12 w-12 rounded-md bg-[var(--neo-surface-muted)] object-contain p-1"
                 onError={() => setLogoLoadError(true)}
               />
             ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#F3F4F6] dark:bg-muted/40">
+              <div className="flex h-12 w-12 items-center justify-center rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
                 <ImageIcon className="h-5 w-5" />
               </div>
             )}
             <div className="space-y-1">
-              <p className="font-medium text-foreground">Drag & drop logo or click to upload</p>
+              <p className="font-medium text-[var(--neo-text-primary)]">
+                Drag & drop logo or click to upload
+              </p>
               <p className="text-xs">PNG/JPG/SVG up to 5MB. Stored in `branding/company/logo.*`.</p>
             </div>
             <input
@@ -831,28 +834,28 @@ export default function SettingsCompanyPage() {
           />
         </div>
         <div className="mt-3 grid gap-3">
-          <textarea
+          <NeoTextarea
             value={form.default_terms}
             onChange={(e) => updateField("default_terms", e.target.value)}
             placeholder="Default Terms"
-            className="min-h-20 rounded-sm border border-gray-100 bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
+            className="min-h-20"
           />
-          <textarea
+          <NeoTextarea
             value={form.invoice_footer}
             onChange={(e) => updateField("invoice_footer", e.target.value)}
             placeholder="Invoice Footer"
-            className="min-h-20 rounded-sm border border-gray-100 bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
+            className="min-h-20"
           />
-          <textarea
+          <NeoTextarea
             value={form.notes}
             onChange={(e) => updateField("notes", e.target.value)}
             placeholder="Notes"
             data-testid="company-input-notes"
             aria-label="Notes"
-            className="min-h-24 rounded-sm border border-gray-100 bg-background px-3 py-2 text-sm outline-none ring-offset-background placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring dark:border-border"
+            className="min-h-24"
           />
         </div>
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex justify-end border-t border-[var(--neo-border)] pt-4">
           <Button
             type="button"
             size="sm"

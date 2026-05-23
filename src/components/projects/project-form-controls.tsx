@@ -3,15 +3,14 @@
 import * as React from "react";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+  NeoFieldLabel,
+  NeoFormGrid,
+  NeoInput,
+  NeoModal,
+  neoFormFieldClassName,
+} from "@/components/base";
 import { cn } from "@/lib/utils";
 
 export type AddressDetails = {
@@ -104,19 +103,19 @@ export function ProjectBudgetInput({
   const estimate = React.useMemo(() => formatBudgetEstimate(value), [value]);
 
   return (
-    <div className={className ?? "space-y-1"}>
+    <div className={className ?? neoFormFieldClassName}>
       <div className="flex items-center justify-between gap-2">
-        <label htmlFor={inputId} className="text-xs text-muted-foreground">
-          {label}
-        </label>
-        <p className="min-w-0 truncate text-right text-[11px] font-medium tabular-nums text-muted-foreground">
+        <NeoFieldLabel htmlFor={inputId}>{label}</NeoFieldLabel>
+        <p className="min-w-0 truncate text-right text-[11px] font-medium tabular-nums text-[var(--neo-text-secondary)]">
           {estimate || estimateFallback}
         </p>
       </div>
-      <div className="group flex h-11 items-center overflow-hidden rounded-[10px] border border-input bg-white shadow-[0_1px_0_rgba(15,23,42,0.03)] transition-colors focus-within:border-slate-400 focus-within:ring-2 focus-within:ring-emerald-500/15 dark:bg-card dark:focus-within:border-emerald-500/50">
-        <div className="flex h-full items-center gap-2 border-r border-slate-900/[0.08] bg-muted/30 px-3 text-xs font-semibold tracking-[0.08em] text-muted-foreground dark:border-border">
+      <div className="group flex h-11 items-center overflow-hidden rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-none transition-all duration-150 ease-out focus-within:border-[var(--neo-gold)] focus-within:ring-2 focus-within:ring-[var(--neo-gold-ring)]">
+        <div className="flex h-full items-center gap-2 border-r border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 text-xs font-semibold tracking-normal text-[var(--neo-text-secondary)]">
           <span>USD</span>
-          <span className="financial-nums text-sm tracking-normal text-foreground/80">$</span>
+          <span className="financial-nums text-sm tracking-normal text-[var(--neo-text-primary)]">
+            $
+          </span>
         </div>
         <input
           id={inputId}
@@ -130,7 +129,7 @@ export function ProjectBudgetInput({
           onChange={(e) => onValueChange(budgetDigits(e.target.value))}
           disabled={disabled}
           aria-invalid={error}
-          className="financial-nums h-full min-w-0 flex-1 bg-transparent px-3 text-right text-[15px] font-semibold tracking-[0.01em] text-foreground outline-none placeholder:text-muted-foreground/45 disabled:cursor-not-allowed disabled:opacity-50"
+          className="financial-nums h-full min-w-0 flex-1 bg-transparent px-3 text-right text-[15px] font-semibold tracking-normal text-[var(--neo-text-primary)] outline-none placeholder:text-[var(--neo-text-tertiary)] disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
     </div>
@@ -177,16 +176,14 @@ export function ProjectAddressField({
   }, [draft, onChange]);
 
   return (
-    <div className="space-y-1">
+    <div className={neoFormFieldClassName}>
       <div className="flex items-center justify-between gap-2">
-        <label htmlFor={inputId} className="text-xs text-muted-foreground">
-          {label}
-        </label>
+        <NeoFieldLabel htmlFor={inputId}>{label}</NeoFieldLabel>
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="h-8 px-2 text-xs"
+          className="h-8 px-2 text-xs text-[var(--neo-gold)] hover:text-[var(--neo-gold-soft)]"
           onClick={openAddressEditor}
           disabled={disabled}
         >
@@ -203,94 +200,80 @@ export function ProjectAddressField({
         aria-label={value ? `Project address: ${value}` : "Add project address"}
         onClick={openAddressEditor}
         className={cn(
-          "flex min-h-10 w-full items-center rounded-md border border-gray-100 bg-white px-3 py-2 text-left text-sm text-text-primary shadow-none transition-colors",
-          "cursor-pointer hover:border-slate-300 hover:bg-slate-50 focus-visible:border-brand-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary",
-          "disabled:cursor-not-allowed disabled:opacity-50 dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-muted/30",
-          error &&
-            "border-destructive focus-visible:border-destructive focus-visible:ring-destructive"
+          "flex min-h-10 w-full items-center rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-2 text-left text-sm text-[var(--neo-text-primary)] shadow-none transition-all duration-150 ease-out",
+          "cursor-pointer hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
+          "disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-11",
+          error && "border-rose-500/45 focus-visible:border-rose-400 focus-visible:ring-rose-500/20"
         )}
       >
-        <span className={cn("min-w-0 truncate", !value && "text-muted-foreground")}>
+        <span className={cn("min-w-0 truncate", !value && "text-[var(--neo-text-tertiary)]")}>
           {value || "Add project address"}
         </span>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[520px] gap-4 max-md:flex max-md:flex-col max-md:overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>Address details</DialogTitle>
-            <DialogDescription>
-              Save will update the one-line project address summary.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="mobile-native-scroll grid gap-3 max-md:min-h-0 max-md:flex-1 max-md:overflow-y-auto max-md:pb-2">
-            <div className="space-y-1.5">
-              <label
-                htmlFor={`${inputId}-street`}
-                className="text-xs font-medium text-muted-foreground"
+        <NeoModal
+          title="Address details"
+          description="Save will update the one-line project address summary."
+          footer={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 rounded-md"
+                onClick={() => setOpen(false)}
               >
-                Street address
-              </label>
-              <Input
+                Cancel
+              </Button>
+              <Button type="button" className="min-h-11 rounded-md" onClick={saveAddressDetails}>
+                Save address
+              </Button>
+            </>
+          }
+        >
+          <div className="grid gap-3">
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor={`${inputId}-street`}>Street address</NeoFieldLabel>
+              <NeoInput
                 id={`${inputId}-street`}
                 value={draft.street}
                 onChange={(e) => setDraft((prev) => ({ ...prev, street: e.target.value }))}
                 autoComplete="street-address"
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor={`${inputId}-unit`}
-                  className="text-xs font-medium text-muted-foreground"
-                >
-                  Unit / Apt
-                </label>
-                <Input
+            <NeoFormGrid>
+              <div className={neoFormFieldClassName}>
+                <NeoFieldLabel htmlFor={`${inputId}-unit`}>Unit / Apt</NeoFieldLabel>
+                <NeoInput
                   id={`${inputId}-unit`}
                   value={draft.unit}
                   onChange={(e) => setDraft((prev) => ({ ...prev, unit: e.target.value }))}
                   autoComplete="address-line2"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor={`${inputId}-city`}
-                  className="text-xs font-medium text-muted-foreground"
-                >
-                  City
-                </label>
-                <Input
+              <div className={neoFormFieldClassName}>
+                <NeoFieldLabel htmlFor={`${inputId}-city`}>City</NeoFieldLabel>
+                <NeoInput
                   id={`${inputId}-city`}
                   value={draft.city}
                   onChange={(e) => setDraft((prev) => ({ ...prev, city: e.target.value }))}
                   autoComplete="address-level2"
                 />
               </div>
-            </div>
+            </NeoFormGrid>
             <div className="grid gap-3 sm:grid-cols-[1fr_1.2fr]">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor={`${inputId}-state`}
-                  className="text-xs font-medium text-muted-foreground"
-                >
-                  State
-                </label>
-                <Input
+              <div className={neoFormFieldClassName}>
+                <NeoFieldLabel htmlFor={`${inputId}-state`}>State</NeoFieldLabel>
+                <NeoInput
                   id={`${inputId}-state`}
                   value={draft.state}
                   onChange={(e) => setDraft((prev) => ({ ...prev, state: e.target.value }))}
                   autoComplete="address-level1"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor={`${inputId}-zip`}
-                  className="text-xs font-medium text-muted-foreground"
-                >
-                  Zip code
-                </label>
-                <Input
+              <div className={neoFormFieldClassName}>
+                <NeoFieldLabel htmlFor={`${inputId}-zip`}>Zip code</NeoFieldLabel>
+                <NeoInput
                   id={`${inputId}-zip`}
                   value={draft.zip}
                   onChange={(e) => setDraft((prev) => ({ ...prev, zip: e.target.value }))}
@@ -298,14 +281,9 @@ export function ProjectAddressField({
                 />
               </div>
             </div>
-            <div className="space-y-1.5">
-              <label
-                htmlFor={`${inputId}-notes`}
-                className="text-xs font-medium text-muted-foreground"
-              >
-                Notes / access info
-              </label>
-              <Input
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor={`${inputId}-notes`}>Notes / access info</NeoFieldLabel>
+              <NeoInput
                 id={`${inputId}-notes`}
                 value={draft.notes}
                 onChange={(e) => setDraft((prev) => ({ ...prev, notes: e.target.value }))}
@@ -313,20 +291,7 @@ export function ProjectAddressField({
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11"
-              onClick={() => setOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="button" className="min-h-11" onClick={saveAddressDetails}>
-              Save address
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        </NeoModal>
       </Dialog>
     </div>
   );

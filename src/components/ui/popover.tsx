@@ -22,10 +22,9 @@ const PopoverContent = React.forwardRef<
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 w-auto overflow-visible rounded-md border border-gray-100 bg-white p-0 text-text-primary shadow-md outline-none",
+        "dark z-50 w-auto overflow-visible rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] outline-none",
         motionPopoverLayer,
         "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        "dark:border-border dark:bg-popover dark:text-popover-foreground",
         className
       )}
       {...props}

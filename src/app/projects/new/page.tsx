@@ -4,10 +4,20 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import {
+  NeoActionFooter,
+  NeoFieldLabel,
+  NeoFormGrid,
+  NeoFormSection,
+  NeoInput,
+  NeoPanel,
+  NeoSelect,
+  neoFormErrorClassName,
+  neoFormFieldClassName,
+  neoFormNoticeClassName,
+} from "@/components/base";
 import {
   CustomerSelectWithAdd,
   type CustomerOption,
@@ -101,18 +111,18 @@ export default function NewProjectPage() {
   );
 
   return (
-    <div className="page-container page-stack py-6">
+    <div className="dark neo-page-on-graphite page-container page-stack py-6 text-[var(--neo-canvas-text-secondary)]">
       <div className="flex flex-col gap-2">
         <Link
           href="/projects"
-          className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex w-fit items-center gap-1.5 text-sm text-[var(--neo-canvas-text-secondary)] transition-colors hover:text-[var(--neo-canvas-text-primary)]"
         >
           <ArrowLeft className="h-4 w-4" />
           Projects
         </Link>
         <PageHeader title="New Project" subtitle="Create a project with basic baseline fields." />
       </div>
-      <Card className="max-w-[640px] p-5">
+      <NeoPanel className="max-w-[640px]" bodyClassName="p-5">
         <form onSubmit={handleSubmit} noValidate className="grid gap-3">
           <div className="space-y-1">
             <CustomerSelectWithAdd
@@ -121,34 +131,34 @@ export default function NewProjectPage() {
               onChange={applyCustomerSelection}
             />
             <input type="hidden" name="customerId" value={customerId ?? ""} />
-            {customerNotice ? (
-              <p className="rounded-md border border-emerald-100 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-100">
-                {customerNotice}
-              </p>
-            ) : null}
+            {customerNotice ? <p className={neoFormNoticeClassName}>{customerNotice}</p> : null}
           </div>
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Project Name</p>
-            <Input
-              name="name"
-              placeholder="Luxury Villa E"
-              required
-              disabled={submitting}
-              aria-invalid={submitAttempted && Boolean(error?.includes("Project name"))}
-            />
-          </div>
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Client</p>
-            <Input
-              name="client"
-              placeholder="Client or company name"
-              value={client}
-              onChange={(e) => setClient(e.target.value)}
-              required
-              disabled={submitting}
-              aria-invalid={submitAttempted && Boolean(error?.includes("Client name"))}
-            />
-          </div>
+          <NeoFormSection>
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="new-project-name">Project Name</NeoFieldLabel>
+              <NeoInput
+                id="new-project-name"
+                name="name"
+                placeholder="Luxury Villa E"
+                required
+                disabled={submitting}
+                aria-invalid={submitAttempted && Boolean(error?.includes("Project name"))}
+              />
+            </div>
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="new-project-client">Client</NeoFieldLabel>
+              <NeoInput
+                id="new-project-client"
+                name="client"
+                placeholder="Client or company name"
+                value={client}
+                onChange={(e) => setClient(e.target.value)}
+                required
+                disabled={submitting}
+                aria-invalid={submitAttempted && Boolean(error?.includes("Client name"))}
+              />
+            </div>
+          </NeoFormSection>
           <ProjectAddressField
             value={address}
             onChange={setAddress}
@@ -162,28 +172,30 @@ export default function NewProjectPage() {
             disabled={submitting}
             error={submitAttempted && Boolean(error?.includes("Budget"))}
           />
-          <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Status</p>
-            <select
-              name="status"
-              className="h-10 rounded-[10px] border border-input bg-muted/20 px-3 text-sm"
-              value={status}
-              onChange={(e) =>
-                setStatus((e.target.value as "active" | "pending" | "completed") ?? "pending")
-              }
-              disabled={submitting}
-            >
-              <option value="pending">Pending</option>
-              <option value="active">Active</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
+          <NeoFormGrid className="sm:grid-cols-1">
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor="new-project-status">Status</NeoFieldLabel>
+              <NeoSelect
+                id="new-project-status"
+                name="status"
+                value={status}
+                onChange={(e) =>
+                  setStatus((e.target.value as "active" | "pending" | "completed") ?? "pending")
+                }
+                disabled={submitting}
+              >
+                <option value="pending">Pending</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+              </NeoSelect>
+            </div>
+          </NeoFormGrid>
           {error ? (
-            <p role="alert" className="text-sm text-red-600/80">
+            <p role="alert" className={neoFormErrorClassName}>
               {error}
             </p>
           ) : null}
-          <div className="mt-2 flex flex-col-reverse gap-2 border-t border-zinc-200/60 pt-3 dark:border-border sm:flex-row sm:justify-end">
+          <NeoActionFooter>
             <Button type="button" variant="outline" asChild>
               <Link href="/projects">Cancel</Link>
             </Button>
@@ -191,9 +203,9 @@ export default function NewProjectPage() {
               <SubmitSpinner loading={submitting} className="mr-2" />
               {submitting ? "Creating…" : "Create Project"}
             </Button>
-          </div>
+          </NeoActionFooter>
         </form>
-      </Card>
+      </NeoPanel>
     </div>
   );
 }
