@@ -3,20 +3,13 @@ import { formatDate } from "@/lib/formatters";
 import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
-function greeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-}
-
 export function DashboardPageHeader() {
   const chipDate = formatDate(new Date());
 
   return (
     <header
       data-neo-page-header="true"
-      className="flex min-w-0 max-w-full shrink-0 flex-col gap-3 border-b border-white/10 pb-4 max-md:gap-3 md:flex-row md:items-center md:justify-between md:gap-4 md:pb-5"
+      className="flex min-w-0 max-w-full shrink-0 flex-col gap-3 border-b border-white/10 pb-4 max-md:gap-3 md:flex-row md:items-end md:justify-between md:gap-4 md:pb-5"
     >
       <div className="min-w-0">
         <p className={cn(TYPO.sectionLabel, "text-[var(--neo-canvas-text-tertiary)]")}>
@@ -28,7 +21,7 @@ export function DashboardPageHeader() {
             "text-[26px] leading-tight text-[var(--neo-canvas-text-primary)] md:text-[32px]"
           )}
         >
-          {greeting()}
+          Executive Command Center
         </h1>
         <p
           className={cn(
@@ -36,7 +29,7 @@ export function DashboardPageHeader() {
             "mt-1 line-clamp-4 text-pretty text-[var(--neo-canvas-text-secondary)] max-md:text-[14px]"
           )}
         >
-          Risk, payables, and liquidity — not generic analytics.
+          Liquidity, margin, payables, risk, and next actions in one operating view.
         </p>
       </div>
       <span

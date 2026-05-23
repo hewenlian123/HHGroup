@@ -33,6 +33,21 @@ export function DashboardMainSkeleton() {
     "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-[var(--neo-shadow-panel)]";
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5" aria-hidden>
+      <div className={cnPad(block, "lg:col-span-12")}>
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <Skeleton className="h-3 w-32" />
+            <Skeleton className="mt-2 h-4 w-48" />
+            <Skeleton className="mt-2 h-3 max-w-md" />
+          </div>
+          <Skeleton className="h-6 w-24 rounded-full" />
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+      </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:col-span-12 lg:grid-cols-3">
         <Skeleton className="h-36 w-full rounded-sm lg:col-span-1" />
         <Skeleton className="h-36 w-full rounded-sm lg:col-span-1" />
