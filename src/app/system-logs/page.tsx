@@ -4,6 +4,7 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import {
   DataTable,
+  NeoPanel,
   PageHeader,
   PageLayout,
   StatusBadge,
@@ -75,6 +76,7 @@ export default function SystemLogsPage() {
 
   return (
     <PageLayout
+      className="dark"
       header={
         <PageHeader
           title="System Logs"
@@ -87,15 +89,26 @@ export default function SystemLogsPage() {
         />
       }
     >
-      {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+      {error ? (
+        <NeoPanel bodyClassName="px-4 py-3">
+          <p className="text-sm font-medium text-rose-300">{error}</p>
+        </NeoPanel>
+      ) : null}
 
-      <DataTable<LogEntry>
-        columns={logColumns}
-        data={logs}
-        getRowId={(entry, index) => `${entry.time}-${index}`}
-        loading={loading}
-        emptyState="No log entries yet. Server console output will appear here after instrumentation captures it."
-      />
+      <NeoPanel
+        eyebrow="System telemetry"
+        title="Recent events"
+        description="Operational log entries from server instrumentation."
+        bodyClassName="p-3"
+      >
+        <DataTable<LogEntry>
+          columns={logColumns}
+          data={logs}
+          getRowId={(entry, index) => `${entry.time}-${index}`}
+          loading={loading}
+          emptyState="No log entries yet. Server console output will appear here after instrumentation captures it."
+        />
+      </NeoPanel>
     </PageLayout>
   );
 }

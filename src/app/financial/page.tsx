@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Divider, PageHeader, PageLayout } from "@/components/base";
+import { FilterToolbar, NeoPanel, PageHeader, PageLayout } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { OS, TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
@@ -64,6 +64,7 @@ const financeLinks = [
 export default function FinancialPage() {
   return (
     <PageLayout
+      className="dark"
       header={
         <PageHeader
           title="Financial"
@@ -79,24 +80,43 @@ export default function FinancialPage() {
         />
       }
     >
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[var(--neo-text-secondary)]">
-        <Link href="/financial/owner" className="hover:text-foreground">
+      <FilterToolbar className="items-start gap-2 md:flex-wrap md:items-center">
+        <Link
+          href="/financial/owner"
+          className="rounded-md px-2.5 py-1.5 text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+        >
           Owner dashboard
         </Link>
-        <Link href="/financial/accounts" className="hover:text-foreground">
+        <Link
+          href="/financial/accounts"
+          className="rounded-md px-2.5 py-1.5 text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+        >
           Accounts
         </Link>
-        <Link href="/financial/dashboard" className="hover:text-foreground">
+        <Link
+          href="/financial/dashboard"
+          className="rounded-md px-2.5 py-1.5 text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+        >
           Company Dashboard
         </Link>
-      </div>
-      <Divider />
+      </FilterToolbar>
 
-      <section>
-        <h2 className={cn("mb-4", TYPO.sectionLabel)}>Finance overview</h2>
+      <NeoPanel
+        eyebrow="Finance overview"
+        title="Financial workspaces"
+        description="Move between cash controls, invoices, payments, deposits, bills, and receipt workflows."
+        bodyClassName="p-3"
+      >
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {financeLinks.map(({ href, title, description, icon: Icon }) => (
-            <Link key={href} href={href} className={cn("group p-4", OS.card, OS.cardHover)}>
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "group rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-4 text-[var(--neo-text-primary)]",
+                "transition-[border-color,background-color,transform] duration-200 ease-out hover:-translate-y-px hover:border-[rgb(184_137_45_/_0.32)] hover:bg-[rgb(184_137_45_/_0.08)]"
+              )}
+            >
               <div className="flex items-start gap-3">
                 <span className={OS.iconWell}>
                   <Icon className="h-4 w-4" aria-hidden />
@@ -109,7 +129,7 @@ export default function FinancialPage() {
             </Link>
           ))}
         </div>
-      </section>
+      </NeoPanel>
     </PageLayout>
   );
 }
