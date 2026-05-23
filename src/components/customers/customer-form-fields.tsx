@@ -106,16 +106,19 @@ function FieldLabel({
   required?: boolean;
 }): React.ReactElement {
   return (
-    <label htmlFor={htmlFor} className="text-xs font-medium text-muted-foreground">
+    <label
+      htmlFor={htmlFor}
+      className="text-[11px] font-medium uppercase leading-none tracking-normal text-[var(--neo-text-tertiary)]"
+    >
       {children}
-      {required ? <span className="text-red-500"> *</span> : null}
+      {required ? <span className="ml-1 text-[var(--neo-gold)]">*</span> : null}
     </label>
   );
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
-    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground/80">
+    <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
       {children}
     </p>
   );
@@ -147,12 +150,12 @@ export function CustomerFormFields({
           data-testid={`${idPrefix}-name`}
           value={values.name}
           onChange={(e) => onChange({ name: e.target.value })}
-          className="h-8 rounded-md text-sm"
+          className="h-9 rounded-md text-sm"
           autoComplete="name"
         />
       </div>
 
-      <div className="flex flex-col gap-1.5 border-t border-border/60 pt-2.5">
+      <div className="flex flex-col gap-1.5 border-t border-[var(--neo-border)] pt-2.5">
         <SectionLabel>Contact</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="flex flex-col gap-1">
@@ -168,7 +171,7 @@ export function CustomerFormFields({
                   onChange({ phone: formatPhoneInputValue(values.phone) });
                 }
               }}
-              className="h-8 rounded-md text-sm"
+              className="h-9 rounded-md text-sm"
               placeholder={US_PHONE_PLACEHOLDER}
               autoComplete="tel"
             />
@@ -181,14 +184,14 @@ export function CustomerFormFields({
               type="email"
               value={values.email}
               onChange={(e) => onChange({ email: e.target.value })}
-              className="h-8 rounded-md text-sm"
+              className="h-9 rounded-md text-sm"
               autoComplete="email"
             />
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5 border-t border-border/60 pt-2.5">
+      <div className="flex flex-col gap-1.5 border-t border-[var(--neo-border)] pt-2.5">
         <SectionLabel>Address</SectionLabel>
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
@@ -198,7 +201,7 @@ export function CustomerFormFields({
               data-testid={`${idPrefix}-address`}
               value={values.address}
               onChange={(e) => onChange({ address: e.target.value })}
-              className="h-8 rounded-md text-sm"
+              className="h-9 rounded-md text-sm"
               autoComplete="street-address"
             />
           </div>
@@ -210,7 +213,7 @@ export function CustomerFormFields({
                 data-testid={`${idPrefix}-city`}
                 value={values.city}
                 onChange={(e) => onChange({ city: e.target.value })}
-                className="h-8 rounded-md text-sm"
+                className="h-9 rounded-md text-sm"
                 autoComplete="address-level2"
               />
             </div>
@@ -221,7 +224,7 @@ export function CustomerFormFields({
                 data-testid={`${idPrefix}-state`}
                 value={values.state}
                 onChange={(e) => onChange({ state: e.target.value })}
-                className="h-8 rounded-md text-sm"
+                className="h-9 rounded-md text-sm"
                 autoComplete="address-level1"
                 maxLength={32}
               />
@@ -233,7 +236,7 @@ export function CustomerFormFields({
                 data-testid={`${idPrefix}-zip`}
                 value={values.zip}
                 onChange={(e) => onChange({ zip: e.target.value })}
-                className="h-8 rounded-md text-sm"
+                className="h-9 rounded-md text-sm"
                 autoComplete="postal-code"
                 inputMode="numeric"
               />
@@ -242,7 +245,7 @@ export function CustomerFormFields({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5 border-t border-border/60 pt-2.5">
+      <div className="flex flex-col gap-1.5 border-t border-[var(--neo-border)] pt-2.5">
         <SectionLabel>Additional</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="flex flex-col gap-1">
@@ -252,7 +255,7 @@ export function CustomerFormFields({
               data-testid={`${idPrefix}-contact-person`}
               value={values.contact_person}
               onChange={(e) => onChange({ contact_person: e.target.value })}
-              className="h-8 rounded-md text-sm"
+              className="h-9 rounded-md text-sm"
               autoComplete="name"
             />
           </div>
@@ -263,21 +266,21 @@ export function CustomerFormFields({
               data-testid={`${idPrefix}-company-name`}
               value={values.company_name}
               onChange={(e) => onChange({ company_name: e.target.value })}
-              className="h-8 rounded-md text-sm"
+              className="h-9 rounded-md text-sm"
               autoComplete="organization"
             />
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-1 border-t border-border/60 pt-2.5">
+      <div className="flex flex-col gap-1 border-t border-[var(--neo-border)] pt-2.5">
         <FieldLabel htmlFor={`${idPrefix}-notes`}>Internal notes</FieldLabel>
         <Textarea
           id={`${idPrefix}-notes`}
           data-testid={`${idPrefix}-notes`}
           value={values.notes}
           onChange={(e) => onChange({ notes: e.target.value })}
-          className="min-h-[72px] rounded-md text-sm py-2"
+          className="min-h-[76px] rounded-md py-2 text-sm"
           placeholder="Gate code, preferred contact time, billing notes..."
         />
       </div>

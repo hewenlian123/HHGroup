@@ -36,6 +36,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid max-h-[min(90vh,calc(100dvh-2rem))] w-full max-w-[480px] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto overscroll-y-contain rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] ease-out [-webkit-overflow-scrolling:touch]",
+        "dark",
         "md:data-[state=open]:animate-hh-dialog-in md:data-[state=closed]:animate-hh-dialog-out",
         "max-md:data-[state=open]:animate-in max-md:data-[state=closed]:animate-out max-md:data-[state=closed]:fade-out-0 max-md:data-[state=open]:fade-in-0 max-md:data-[state=open]:slide-in-from-bottom-4 max-md:data-[state=closed]:slide-out-to-bottom-4 max-md:duration-200",
         "max-md:fixed max-md:inset-0 max-md:left-0 max-md:top-0 max-md:translate-x-0 max-md:translate-y-0 max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none max-md:rounded-none max-md:border-0 max-md:px-[max(1rem,env(safe-area-inset-left))] max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:pt-[max(1rem,env(safe-area-inset-top))]",

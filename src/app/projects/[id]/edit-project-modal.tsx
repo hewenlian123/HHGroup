@@ -2,28 +2,23 @@
 
 import * as React from "react";
 import { flushSync } from "react-dom";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import {
+  NeoActionFooter,
+  NeoFieldLabel,
+  NeoInput,
+  NeoModal,
+  neoFormErrorClassName,
+  neoFormFieldClassName,
+} from "@/components/base";
 import {
   budgetDigits,
   ProjectAddressField,
   ProjectBudgetInput,
 } from "@/components/projects/project-form-controls";
 import type { Project } from "@/lib/data";
-
-const MODAL =
-  "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0_0_0_0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
-const LBL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
-const FIELD =
-  "h-10 rounded-lg border border-gray-100 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
 
 /** Payload passed to parent for optimistic UI + background server action. */
 export type ProjectEditSavePatch = {
@@ -105,32 +100,23 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={MODAL}>
-        <DialogHeader className="text-left">
-          <DialogTitle className="text-xl font-bold text-text-primary">Edit project</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
-          <div>
-            <label htmlFor="edit-project-name" className={LBL}>
-              Project name
-            </label>
-            <Input
+      <NeoModal title="Edit project" bodyClassName="p-0">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 py-4">
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel htmlFor="edit-project-name">Project name</NeoFieldLabel>
+            <NeoInput
               id="edit-project-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className={FIELD}
               disabled={saving}
             />
           </div>
-          <div>
-            <label htmlFor="edit-project-client" className={LBL}>
-              Client
-            </label>
-            <Input
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel htmlFor="edit-project-client">Client</NeoFieldLabel>
+            <NeoInput
               id="edit-project-client"
               value={client}
               onChange={(e) => setClient(e.target.value)}
-              className={FIELD}
               disabled={saving}
             />
           </div>
@@ -146,29 +132,24 @@ export function EditProjectModal({ open, onOpenChange, project, onSave }: Props)
             onValueChange={setBudget}
             disabled={saving}
           />
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+          {error ? <p className={neoFormErrorClassName}>{error}</p> : null}
+          <NeoActionFooter>
             <Button
               type="button"
               variant="outline"
-              className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+              className="h-10 rounded-md"
               onClick={() => onOpenChange(false)}
               disabled={saving}
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
-              disabled={saving}
-              aria-busy={saving}
-            >
+            <Button type="submit" className="h-10 rounded-md" disabled={saving} aria-busy={saving}>
               <SubmitSpinner loading={saving} className="mr-2" />
               {saving ? "Saving…" : "Save"}
             </Button>
-          </DialogFooter>
+          </NeoActionFooter>
         </form>
-      </DialogContent>
+      </NeoModal>
     </Dialog>
   );
 }

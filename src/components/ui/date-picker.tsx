@@ -102,7 +102,7 @@ export function FinanceDatePicker({
           "w-[280px] max-w-[calc(100vw-16px)]",
           isGlass
             ? "rounded-xl border border-white/10 bg-[rgba(18,22,34,0.96)] text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_20px_48px_rgba(0,0,0,0.42)] backdrop-blur-[28px] backdrop-saturate-[175%]"
-            : "rounded-2xl border border-border/35 bg-white shadow-[0_10px_28px_rgba(15,23,42,0.10)] dark:bg-popover dark:shadow-none"
+            : "dark rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
         )}
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
@@ -127,63 +127,69 @@ export function FinanceDatePicker({
             caption_label: cn(
               rdp.caption_label,
               "flex items-center justify-center text-sm font-semibold leading-none",
-              isGlass ? "text-zinc-50" : "text-zinc-900"
+              isGlass ? "text-zinc-50" : "text-[var(--neo-text-primary)]"
             ),
             nav: cn(rdp.nav, "gap-1 items-center"),
             button_previous: cn(
               rdp.button_previous,
               "flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent transition-colors",
-              isGlass ? "hover:bg-white/[0.08]" : "hover:bg-zinc-100 dark:hover:bg-muted/40"
+              isGlass ? "hover:bg-white/[0.08]" : "hover:bg-[var(--neo-surface-muted)]"
             ),
             button_next: cn(
               rdp.button_next,
               "flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent transition-colors",
-              isGlass ? "hover:bg-white/[0.08]" : "hover:bg-zinc-100 dark:hover:bg-muted/40"
+              isGlass ? "hover:bg-white/[0.08]" : "hover:bg-[var(--neo-surface-muted)]"
             ),
             weekdays: cn(
               rdp.weekdays,
               "text-[10px] font-medium",
-              isGlass ? "text-zinc-500" : "text-zinc-400"
+              isGlass ? "text-zinc-500" : "text-[var(--neo-text-tertiary)]"
             ),
             weekday: cn(rdp.weekday, "w-8 text-center"),
             week: cn(rdp.week, "gap-1"),
             day: cn(
               rdp.day,
               "h-8 w-8 rounded-md text-sm transition-colors",
-              isGlass ? "hover:bg-white/[0.08]" : "hover:bg-zinc-100 dark:hover:bg-muted/30"
+              isGlass ? "hover:bg-white/[0.08]" : "hover:bg-[var(--neo-surface-muted)]"
             ),
             day_button: cn(
               (rdp as unknown as Record<string, string>).day_button ?? "",
               "flex h-8 w-8 items-center justify-center rounded-md text-sm font-medium leading-none",
-              isGlass ? "text-zinc-300" : "text-zinc-800"
+              isGlass ? "text-zinc-300" : "text-[var(--neo-text-primary)]"
             ),
             today: cn(
               rdp.today,
               isGlass
                 ? "ring-1 ring-inset ring-amber-300/30"
-                : "ring-1 ring-inset ring-emerald-500/25 dark:ring-emerald-400/25"
+                : "ring-1 ring-inset ring-[var(--neo-gold-ring)]"
             ),
             selected: cn(
               rdp.selected,
               isGlass
                 ? "bg-amber-200/20 ring-0 hover:bg-amber-200/20 [&_button]:border [&_button]:border-amber-200/35 [&_button]:text-amber-50"
-                : "bg-emerald-600 text-white ring-0 hover:bg-emerald-600 dark:bg-emerald-500 dark:text-slate-950"
+                : "bg-[var(--neo-gold)] text-zinc-950 ring-0 hover:bg-[var(--neo-gold)] [&_button]:text-zinc-950"
             ),
             outside: cn(
               rdp.outside,
-              isGlass ? "text-zinc-600" : "text-zinc-300 dark:text-zinc-600"
+              isGlass ? "text-zinc-600" : "text-[var(--neo-text-tertiary)] opacity-60"
             ),
           }}
           components={{
             Chevron: (props) =>
               props.orientation === "left" ? (
                 <ChevronLeft
-                  className={cn("h-4 w-4", isGlass ? "text-zinc-400" : "text-zinc-600")}
+                  className={cn(
+                    "h-4 w-4",
+                    isGlass ? "text-zinc-400" : "text-[var(--neo-text-secondary)]"
+                  )}
                   aria-hidden
                 />
               ) : (
                 <ChevronRight
-                  className={cn("h-4 w-4", isGlass ? "text-zinc-400" : "text-zinc-600")}
+                  className={cn(
+                    "h-4 w-4",
+                    isGlass ? "text-zinc-400" : "text-[var(--neo-text-secondary)]"
+                  )}
                   aria-hidden
                 />
               ),
@@ -193,7 +199,7 @@ export function FinanceDatePicker({
               <div
                 className={cn(
                   "mt-2 flex items-center justify-between border-t pt-2",
-                  isGlass ? "border-white/10" : "border-border/30"
+                  isGlass ? "border-white/10" : "border-[var(--neo-border)]"
                 )}
               >
                 <button
@@ -202,7 +208,7 @@ export function FinanceDatePicker({
                     "text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-40",
                     isGlass
                       ? "text-amber-200/80 hover:text-amber-100"
-                      : "text-emerald-700 hover:text-emerald-800"
+                      : "text-[var(--neo-gold)] hover:text-[var(--neo-gold-soft)]"
                   )}
                   disabled={!allowClear}
                   onClick={() => {
@@ -218,7 +224,7 @@ export function FinanceDatePicker({
                     "text-xs font-medium transition-colors",
                     isGlass
                       ? "text-amber-200/80 hover:text-amber-100"
-                      : "text-emerald-700 hover:text-emerald-800"
+                      : "text-[var(--neo-gold)] hover:text-[var(--neo-gold-soft)]"
                   )}
                   onClick={() => {
                     const today = new Date();

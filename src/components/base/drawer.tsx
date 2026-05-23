@@ -35,13 +35,13 @@ export function Drawer({
       <SheetContent
         side="right"
         className={cn(
-          "w-full max-w-md border-l border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:max-w-md",
+          "dark flex h-full w-full max-w-md flex-col gap-0 border-l border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:max-w-md",
           "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
           className
         )}
       >
         {(title || description) && (
-          <SheetHeader>
+          <SheetHeader className="border-b border-[var(--neo-border)] px-5 py-4 pr-12 text-left">
             {title && (
               <SheetTitle className="text-base font-semibold text-[var(--neo-text-primary)]">
                 {title}
@@ -52,7 +52,9 @@ export function Drawer({
             )}
           </SheetHeader>
         )}
-        <div className={cn((title || description) && "mt-4")}>{children}</div>
+        <div className="mobile-native-scroll min-h-0 flex-1 overflow-y-auto px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+          {children}
+        </div>
       </SheetContent>
     </Sheet>
   );

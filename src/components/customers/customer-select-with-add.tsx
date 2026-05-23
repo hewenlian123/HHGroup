@@ -4,13 +4,8 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
+import { NeoFieldLabel, NeoModal, neoFormErrorClassName } from "@/components/base";
 import {
   buildCustomerApiPayload,
   CustomerFormFields,
@@ -124,11 +119,11 @@ export function CustomerSelectWithAdd({
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
+        <NeoFieldLabel>{label}</NeoFieldLabel>
         {current ? (
           <button
             type="button"
-            className="text-[11px] text-muted-foreground hover:text-foreground"
+            className="text-[11px] text-[var(--neo-text-secondary)] transition-colors hover:text-[var(--neo-text-primary)]"
             onClick={() => onChange(null, null)}
           >
             Clear
@@ -139,7 +134,7 @@ export function CustomerSelectWithAdd({
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-left text-sm",
+          "flex h-10 w-full items-center justify-between rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-left text-sm text-[var(--neo-text-primary)] transition-all duration-150 ease-out hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11",
           triggerClassName
         )}
       >
@@ -148,37 +143,36 @@ export function CustomerSelectWithAdd({
             <>
               {current.name}
               {current.email ? (
-                <span className="text-xs text-muted-foreground"> · {current.email}</span>
+                <span className="text-xs text-[var(--neo-text-secondary)]"> · {current.email}</span>
               ) : null}
             </>
           ) : (
-            <span className="text-muted-foreground">Select customer</span>
+            <span className="text-[var(--neo-text-tertiary)]">Select customer</span>
           )}
         </span>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-sm border-border/60 rounded-md p-4 space-y-3">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Select customer</DialogTitle>
-          </DialogHeader>
+        <NeoModal title="Select customer" className="max-w-sm" bodyClassName="space-y-3">
           <Input
             placeholder="Search by name or email"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 text-sm"
+            className="h-9 text-sm"
           />
-          <div className="max-h-64 overflow-y-auto rounded-md border border-border/60 bg-background">
+          <div className="max-h-64 overflow-y-auto rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
             {loading ? (
-              <div className="px-3 py-2 text-xs text-muted-foreground">Loading…</div>
+              <div className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">Loading…</div>
             ) : filtered.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-muted-foreground">No customers found.</div>
+              <div className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+                No customers found.
+              </div>
             ) : (
               filtered.map((c) => (
                 <button
                   type="button"
                   key={c.id}
-                  className="flex w-full flex-col items-start px-3 py-2 text-left text-sm hover:bg-muted/60"
+                  className="flex w-full flex-col items-start px-3 py-2 text-left text-sm text-[var(--neo-text-primary)] transition-colors hover:bg-[var(--neo-surface-raised)]"
                   onClick={() => {
                     onChange(c.id, c);
                     setOpen(false);
@@ -186,7 +180,7 @@ export function CustomerSelectWithAdd({
                 >
                   <span className="font-medium">{c.name}</span>
                   {c.email ? (
-                    <span className="text-xs text-muted-foreground">{c.email}</span>
+                    <span className="text-xs text-[var(--neo-text-secondary)]">{c.email}</span>
                   ) : null}
                 </button>
               ))
@@ -201,42 +195,44 @@ export function CustomerSelectWithAdd({
           >
             + New Customer
           </Button>
-        </DialogContent>
+        </NeoModal>
       </Dialog>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-md border-border/60 rounded-md p-4 flex flex-col gap-2.5 max-h-[min(90vh,720px)] overflow-y-auto">
-          <DialogHeader className="space-y-0 pb-0">
-            <DialogTitle className="text-sm font-semibold">New customer</DialogTitle>
-          </DialogHeader>
-
+        <NeoModal
+          title="New customer"
+          className="max-w-md"
+          bodyClassName="space-y-3"
+          footer={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 rounded-md"
+                onClick={() => setAddOpen(false)}
+                disabled={addBusy}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                className="h-9 rounded-md"
+                data-testid="new-customer-save"
+                onClick={handleCreate}
+                disabled={addBusy}
+              >
+                <SubmitSpinner loading={addBusy} className="mr-2" />
+                {addBusy ? "Saving…" : "Save"}
+              </Button>
+            </>
+          }
+        >
           <CustomerFormFields idPrefix="new-customer" values={addForm} onChange={patchAddForm} />
-          {addError ? <p className="text-xs text-red-600">{addError}</p> : null}
-          <DialogFooter className="gap-2 pt-1 sm:justify-end border-t border-border/60 mt-0.5">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 rounded-sm"
-              onClick={() => setAddOpen(false)}
-              disabled={addBusy}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              className="h-8 rounded-sm"
-              data-testid="new-customer-save"
-              onClick={handleCreate}
-              disabled={addBusy}
-            >
-              <SubmitSpinner loading={addBusy} className="mr-2" />
-              {addBusy ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+          {addError ? <p className={neoFormErrorClassName}>{addError}</p> : null}
+        </NeoModal>
       </Dialog>
     </div>
   );
