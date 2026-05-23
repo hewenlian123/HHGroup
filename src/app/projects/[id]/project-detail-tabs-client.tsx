@@ -628,7 +628,7 @@ export function ProjectDetailTabsClient({
   return (
     <PageLayout
       divider={false}
-      className="py-6 max-md:!pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]"
+      className="dark py-6 max-md:!pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]"
       header={
         <div className="space-y-4">
           <Link
@@ -819,7 +819,7 @@ export function ProjectDetailTabsClient({
             className="w-full"
           >
             <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-0">
-              <TabsList className="h-10 min-h-0 flex-1 justify-start gap-0 overflow-x-auto whitespace-nowrap rounded-none border-0 bg-transparent p-0">
+              <TabsList className="h-10 min-h-0 flex-1 justify-start gap-0 overflow-x-auto whitespace-nowrap rounded-none border-0 bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {(
                   [
                     { key: "overview" as const, label: "Overview" },
