@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { NeoBulkActions } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -50,28 +51,23 @@ export function ExpenseBulkActionBar({
 
   const controlSm = inbox
     ? "h-10 min-h-10 rounded-md px-3 text-xs sm:h-8 sm:min-h-0"
-    : "h-7 rounded-sm text-xs";
+    : "h-7 rounded-md text-xs";
 
   return (
-    <div
+    <NeoBulkActions
+      count={selectedCount}
       className={cn(
-        "sticky top-0 z-30 flex flex-wrap items-center gap-2 border-b px-3 py-2 text-sm",
-        inbox
-          ? "border-zinc-200/90 bg-zinc-50/98 shadow-[0_4px_24px_rgba(0,0,0,0.06)] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-50/92 dark:border-border/55 dark:bg-muted/95 dark:shadow-[0_4px_24px_rgba(0,0,0,0.25)]"
-          : "border-border/60 bg-background/95 backdrop-blur-sm supports-[backdrop-filter]:bg-background/90"
+        "sticky top-0 z-30 rounded-none border-x-0 border-t-0 px-3 py-2 text-sm backdrop-blur-md",
+        inbox ? "shadow-[var(--neo-shadow-panel)]" : "shadow-none"
       )}
-      role="region"
       aria-label="Bulk actions"
     >
-      <span className="min-h-9 text-muted-foreground sm:min-h-0">
-        <span className="font-medium text-foreground">{selectedCount}</span> selected
-      </span>
       <Button
         type="button"
         variant="ghost"
         size="sm"
         className={cn(
-          "shrink-0 text-xs",
+          "shrink-0 text-xs text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]",
           inbox ? "h-10 min-h-10 min-w-10 sm:h-8 sm:min-h-0 sm:min-w-0" : "h-7"
         )}
         disabled={busy}
@@ -79,8 +75,10 @@ export function ExpenseBulkActionBar({
       >
         Clear
       </Button>
-      <div className="mx-1 hidden h-4 w-px bg-border/80 sm:block" aria-hidden />
-      {busy ? <SubmitSpinner loading className="h-4 w-4 shrink-0 text-muted-foreground" /> : null}
+      <div className="mx-1 hidden h-4 w-px bg-[var(--neo-border)] sm:block" aria-hidden />
+      {busy ? (
+        <SubmitSpinner loading className="h-4 w-4 shrink-0 text-[var(--neo-text-secondary)]" />
+      ) : null}
 
       {inbox ? (
         <>
@@ -88,7 +86,10 @@ export function ExpenseBulkActionBar({
             type="button"
             variant="outline"
             size="sm"
-            className={cn("shrink-0 shadow-none", controlSm)}
+            className={cn(
+              "shrink-0 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]",
+              controlSm
+            )}
             disabled={busy || selectedCount === 0}
             onClick={onMarkDone}
           >
@@ -100,7 +101,10 @@ export function ExpenseBulkActionBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className={cn("gap-1 shadow-none", controlSm)}
+                className={cn(
+                  "gap-1 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]",
+                  controlSm
+                )}
                 disabled={busy || selectedCount === 0}
               >
                 Assign Project
@@ -131,7 +135,10 @@ export function ExpenseBulkActionBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className={cn("gap-1 shadow-none", controlSm)}
+                className={cn(
+                  "gap-1 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]",
+                  controlSm
+                )}
                 disabled={busy || selectedCount === 0 || categories.length === 0}
               >
                 Set Category
@@ -156,7 +163,10 @@ export function ExpenseBulkActionBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className={cn("gap-1 shadow-none", controlSm)}
+                className={cn(
+                  "gap-1 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]",
+                  controlSm
+                )}
                 disabled={busy || selectedCount === 0 || paymentAccounts.length === 0}
               >
                 Payment
@@ -190,7 +200,7 @@ export function ExpenseBulkActionBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 gap-1 rounded-sm text-xs shadow-none"
+                className="h-7 gap-1 rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]"
                 disabled={busy || selectedCount === 0}
               >
                 Edit Project
@@ -221,7 +231,7 @@ export function ExpenseBulkActionBar({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-7 gap-1 rounded-sm text-xs shadow-none"
+                className="h-7 gap-1 rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)]"
                 disabled={busy || selectedCount === 0 || categories.length === 0}
               >
                 Edit Category
@@ -244,7 +254,7 @@ export function ExpenseBulkActionBar({
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 shrink-0 rounded-sm border-red-200 text-xs text-red-700 shadow-none hover:bg-red-50 dark:border-red-900/40 dark:text-red-400 dark:hover:bg-red-950/30"
+            className="h-7 shrink-0 rounded-md border-rose-500/20 bg-[var(--neo-surface-raised)] text-xs text-rose-600 shadow-none hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
             disabled={busy || selectedCount === 0}
             onClick={onDeleteMany}
           >
@@ -254,7 +264,7 @@ export function ExpenseBulkActionBar({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 gap-1 text-xs text-muted-foreground"
+            className="h-7 gap-1 text-xs text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
             disabled={busy || selectedCount === 0}
             onClick={onDownload}
           >
@@ -263,6 +273,6 @@ export function ExpenseBulkActionBar({
           </Button>
         </>
       )}
-    </div>
+    </NeoBulkActions>
   );
 }

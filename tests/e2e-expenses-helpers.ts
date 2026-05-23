@@ -566,7 +566,7 @@ export async function pickOrCreatePaymentInSelect(
     await control.selectOption({ label: "+ Add new account" });
     const sub = page.getByRole("dialog", { name: /New payment account/i });
     await expect(sub).toBeVisible({ timeout: 15_000 });
-    await sub.getByPlaceholder("Name (e.g. Amex)").fill(name);
+    await fillControlledTextInput(sub.getByPlaceholder("Name (e.g. Amex)"), name);
     await sub.getByPlaceholder("Name (e.g. Amex)").press("Enter");
     await expect(sub).toBeHidden({ timeout: 30_000 });
     return name;
@@ -604,7 +604,7 @@ export async function pickOrCreatePaymentInSelect(
   await listbox.getByRole("option", { name: "+ Add new account", exact: true }).click();
   const sub = page.getByRole("dialog", { name: /New payment account/i });
   await expect(sub).toBeVisible({ timeout: 15_000 });
-  await sub.getByPlaceholder("Name (e.g. Amex)").fill(name);
+  await fillControlledTextInput(sub.getByPlaceholder("Name (e.g. Amex)"), name);
   await sub.getByPlaceholder("Name (e.g. Amex)").press("Enter");
   await expect(sub).toBeHidden({ timeout: 30_000 });
   return name;
