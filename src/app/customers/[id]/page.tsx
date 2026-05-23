@@ -7,12 +7,19 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createBrowserClient } from "@/lib/supabase";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
-import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
+import {
+  EmptyState,
+  LoadingState,
+  NeoFieldLabel,
+  NeoInput,
+  NeoPanel,
+  NeoSelect,
+  NeoStatus,
+  PageHeader,
+  PageLayout,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/native-select";
 
 type CustomerRow = {
   id: string;
@@ -261,112 +268,116 @@ export default function CustomerDetailPage() {
 
   if (loading) {
     return (
-      <div className="page-container page-stack py-6 text-sm text-muted-foreground">
-        Loading customer...
-      </div>
+      <PageLayout header={null} divider={false} className="dark">
+        <LoadingState text="Loading customer..." />
+      </PageLayout>
     );
   }
 
   if (notFound) {
     return (
-      <div className="page-container page-stack py-6">
-        <PageHeader title="Customer not found" subtitle="The selected customer does not exist." />
+      <PageLayout
+        divider={false}
+        className="dark"
+        header={
+          <PageHeader
+            title="Customer not found"
+            description="The selected customer does not exist."
+          />
+        }
+      >
+        <EmptyState
+          title="Customer not found"
+          description="Return to the customer directory to choose another profile."
+        />
         <Button asChild variant="outline" size="sm" className="w-fit">
           <Link href="/customers">Back to Customers</Link>
         </Button>
-      </div>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title={form.name?.trim() || "Customer"}
-        subtitle="View and edit customer profile."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => router.push("/customers")}>
-              Back
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              <SubmitSpinner loading={saving} className="mr-2" />
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        }
-      />
-
+    <PageLayout
+      divider={false}
+      className="dark"
+      header={
+        <PageHeader
+          title={form.name?.trim() || "Customer"}
+          description="View and edit customer profile."
+          actions={
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => router.push("/customers")}>
+                Back
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={saving}>
+                <SubmitSpinner loading={saving} className="mr-2" />
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          }
+        />
+      }
+    >
       {message ? (
-        <div className="rounded-lg border border-gray-100 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]">
           {message}
         </div>
       ) : null}
 
-      <Card className="border-gray-100 p-4 dark:border-border">
+      <NeoPanel bodyClassName="p-4">
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Customer Name
-            </p>
-            <Input
+            <NeoFieldLabel>Customer Name</NeoFieldLabel>
+            <NeoInput
               value={form.name}
               onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
               placeholder="Optional"
             />
           </div>
           <div className="space-y-1">
-            <p className="text-xs text-muted-foreground">Contact Person</p>
-            <Input
+            <NeoFieldLabel>Contact Person</NeoFieldLabel>
+            <NeoInput
               value={form.contact_person}
               onChange={(e) => setForm((prev) => ({ ...prev, contact_person: e.target.value }))}
               placeholder="Optional"
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Phone
-            </p>
-            <Input
+            <NeoFieldLabel>Phone</NeoFieldLabel>
+            <NeoInput
               value={form.phone}
               onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))}
               placeholder="Optional"
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Email
-            </p>
-            <Input
+            <NeoFieldLabel>Email</NeoFieldLabel>
+            <NeoInput
               value={form.email}
               onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
               placeholder="Optional"
             />
           </div>
           <div className="space-y-1 md:col-span-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Address
-            </p>
-            <Input
+            <NeoFieldLabel>Address</NeoFieldLabel>
+            <NeoInput
               value={form.address}
               onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
               placeholder="Optional"
             />
           </div>
           <div className="space-y-1 md:col-span-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Notes
-            </p>
-            <Input
+            <NeoFieldLabel>Notes</NeoFieldLabel>
+            <NeoInput
               value={form.notes}
               onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
               placeholder="Optional"
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Status
-            </p>
-            <Select
+            <NeoFieldLabel>Status</NeoFieldLabel>
+            <NeoSelect
               value={form.status}
               onChange={(e) =>
                 setForm((prev) => ({
@@ -377,27 +388,27 @@ export default function CustomerDetailPage() {
             >
               <option value="active">active</option>
               <option value="inactive">inactive</option>
-            </Select>
+            </NeoSelect>
           </div>
         </div>
-      </Card>
+      </NeoPanel>
 
-      <Card className="border-gray-100 p-4 dark:border-border">
+      <NeoPanel bodyClassName="p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Related work</h2>
-            <p className="text-xs text-muted-foreground">
+            <h2 className="text-sm font-semibold text-[var(--neo-text-primary)]">Related work</h2>
+            <p className="text-xs text-[var(--neo-text-secondary)]">
               Projects, estimates, and change orders connected to this customer.
             </p>
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
               Projects
             </p>
             {relatedWork.projects.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No related projects.</p>
+              <p className="text-sm text-[var(--neo-text-secondary)]">No related projects.</p>
             ) : (
               <div className="divide-y divide-border/60">
                 {relatedWork.projects.map((project) => (
@@ -406,23 +417,21 @@ export default function CustomerDetailPage() {
                     href={`/projects/${project.id}`}
                     className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
                   >
-                    <span className="min-w-0 truncate font-medium text-foreground">
+                    <span className="min-w-0 truncate font-medium text-[var(--neo-text-primary)]">
                       {project.name ?? "Untitled project"}
                     </span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {project.status ?? "—"}
-                    </span>
+                    <NeoStatus label={project.status ?? "—"} variant="default" />
                   </Link>
                 ))}
               </div>
             )}
           </div>
           <div className="space-y-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
               Estimates
             </p>
             {relatedWork.estimates.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No related estimates.</p>
+              <p className="text-sm text-[var(--neo-text-secondary)]">No related estimates.</p>
             ) : (
               <div className="divide-y divide-border/60">
                 {relatedWork.estimates.map((estimate) => (
@@ -431,23 +440,21 @@ export default function CustomerDetailPage() {
                     href={`/estimates/${estimate.id}`}
                     className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
                   >
-                    <span className="min-w-0 truncate font-medium text-foreground">
+                    <span className="min-w-0 truncate font-medium text-[var(--neo-text-primary)]">
                       {estimate.number ?? "Estimate"}
                     </span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {estimate.status ?? "—"}
-                    </span>
+                    <NeoStatus label={estimate.status ?? "—"} variant="default" />
                   </Link>
                 ))}
               </div>
             )}
           </div>
           <div className="space-y-2">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+            <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
               Change Orders
             </p>
             {relatedWork.changeOrders.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No related change orders.</p>
+              <p className="text-sm text-[var(--neo-text-secondary)]">No related change orders.</p>
             ) : (
               <div className="divide-y divide-border/60">
                 {relatedWork.changeOrders.map((co) => (
@@ -456,19 +463,17 @@ export default function CustomerDetailPage() {
                     href={`/projects/${co.project_id}/change-orders/${co.id}`}
                     className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
                   >
-                    <span className="min-w-0 truncate font-medium text-foreground">
+                    <span className="min-w-0 truncate font-medium text-[var(--neo-text-primary)]">
                       {co.title ?? co.number ?? "Change order"}
                     </span>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {co.status ?? "—"}
-                    </span>
+                    <NeoStatus label={co.status ?? "—"} variant="default" />
                   </Link>
                 ))}
               </div>
             )}
           </div>
         </div>
-      </Card>
-    </div>
+      </NeoPanel>
+    </PageLayout>
   );
 }
