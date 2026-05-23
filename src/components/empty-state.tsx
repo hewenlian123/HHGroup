@@ -8,15 +8,16 @@ export function EmptyState({
   icon,
   action,
   className,
+  ...rest
 }: {
   title?: string;
   description?: string;
   icon?: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
-}) {
+} & React.ComponentPropsWithoutRef<"div">) {
   return (
-    <div className={cn(OS.emptyState, "px-4 py-10 text-center", className)}>
+    <div className={cn(OS.emptyState, "px-4 py-10 text-center", className)} {...rest}>
       {icon ? (
         <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-secondary)]">
           {icon}

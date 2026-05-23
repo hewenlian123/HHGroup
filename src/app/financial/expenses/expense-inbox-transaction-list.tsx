@@ -1,13 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  NeoAmount,
+  NeoMobileCard,
+  NeoStatus,
+  NeoTable,
+  RowActionsMenu as BaseRowActionsMenu,
+  type StatusBadgeVariant,
+} from "@/components/base";
 import { getExpenseTotal, type Expense, type PaymentAccountRow } from "@/lib/data";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import {
@@ -18,12 +19,12 @@ import {
   Copy,
   Fuel,
   HelpCircle,
-  MoreHorizontal,
   Paperclip,
   ShoppingBag,
   Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { tableRawThClass } from "@/components/ui/table";
 import {
   expenseHasCategoryForWorkflow,
   expenseHasProjectForWorkflow,
@@ -46,10 +47,10 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
  * Under description: receipt preview or missing receipt (own line, aligned with text block); other signals below.
  */
 const chipWarn =
-  "inline-flex items-center rounded-md border border-amber-500/18 bg-amber-500/[0.07] px-1.5 py-0.5 text-[10px] font-medium leading-tight text-amber-950/78 dark:border-amber-500/14 dark:bg-amber-500/[0.09] dark:text-amber-100/78";
+  "inline-flex items-center rounded-md border border-[rgb(184_137_45_/_0.22)] bg-[rgb(184_137_45_/_0.09)] px-1.5 py-0.5 text-[10px] font-medium leading-tight text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]";
 
 const chipDup =
-  "inline-flex items-center gap-0.5 rounded-md border border-zinc-400/15 bg-zinc-500/[0.06] px-1.5 py-0.5 text-[10px] font-medium leading-tight text-zinc-700/75 dark:border-zinc-500/12 dark:bg-zinc-500/[0.08] dark:text-zinc-200/75";
+  "inline-flex items-center gap-0.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-1.5 py-0.5 text-[10px] font-medium leading-tight text-[var(--neo-text-secondary)]";
 
 function InboxDescriptionSignals({
   row,
@@ -80,7 +81,7 @@ function InboxDescriptionSignals({
   }, [row.id]);
 
   const receiptBtnShared =
-    "inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 font-medium transition-colors duration-200 focus-visible:outline focus-visible:ring-1 focus-visible:ring-ring md:min-h-[32px]";
+    "inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 font-medium transition-colors duration-150 focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)] md:min-h-[32px]";
 
   if (triageLayout) {
     const chipRow = missingProject || missingCategory || duplicate;
@@ -92,7 +93,7 @@ function InboxDescriptionSignals({
               type="button"
               className={cn(
                 receiptBtnShared,
-                "bg-emerald-500/[0.08] text-emerald-900 hover:border-emerald-500/22 hover:bg-emerald-500/[0.12] dark:text-emerald-200/95 dark:hover:border-emerald-500/28 dark:hover:bg-emerald-500/[0.15]"
+                "border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)] hover:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300"
               )}
               onMouseEnter={() => onReceiptPrefetch?.()}
               onTouchStart={() => {
@@ -120,12 +121,12 @@ function InboxDescriptionSignals({
               </span>
             </button>
           ) : (
-            <span className="inline-flex min-h-[36px] items-center gap-1.5 rounded-md border border-amber-500/14 bg-amber-500/[0.05] px-1.5 py-1 text-muted-foreground dark:border-amber-500/12 dark:bg-amber-500/[0.07] md:min-h-[32px]">
+            <span className="inline-flex min-h-[36px] items-center gap-1.5 rounded-md border border-[rgb(184_137_45_/_0.20)] bg-[rgb(184_137_45_/_0.08)] px-1.5 py-1 text-[var(--neo-text-secondary)] md:min-h-[32px]">
               <span
-                className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500/65 dark:bg-amber-400/65"
+                className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--neo-gold)]"
                 aria-hidden
               />
-              <span className="font-medium text-amber-950/72 dark:text-amber-100/72">
+              <span className="font-medium text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
                 No receipt
               </span>
             </span>
@@ -155,7 +156,7 @@ function InboxDescriptionSignals({
             type="button"
             className={cn(
               receiptBtnShared,
-              "bg-emerald-500/[0.07] text-emerald-800 hover:border-emerald-500/20 hover:bg-emerald-500/[0.11] dark:text-emerald-300/95 dark:hover:border-emerald-500/25 dark:hover:bg-emerald-500/[0.14]"
+              "border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)] hover:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300"
             )}
             onMouseEnter={() => onReceiptPrefetch?.()}
             onTouchStart={() => {
@@ -176,24 +177,24 @@ function InboxDescriptionSignals({
             <span>
               Receipt
               {items.length > 1 ? (
-                <span className="ml-1 tabular-nums font-semibold text-emerald-900/80 dark:text-emerald-200/90">
-                  ({items.length})
-                </span>
+                <span className="ml-1 tabular-nums font-semibold">({items.length})</span>
               ) : null}
             </span>
           </button>
         ) : (
-          <span className="inline-flex min-h-[32px] items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.06] px-1.5 py-1 text-muted-foreground dark:border-amber-500/12 dark:bg-amber-500/[0.08]">
+          <span className="inline-flex min-h-[32px] items-center gap-1.5 rounded-md border border-[rgb(184_137_45_/_0.20)] bg-[rgb(184_137_45_/_0.08)] px-1.5 py-1 text-[var(--neo-text-secondary)]">
             <span
-              className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500/70 dark:bg-amber-400/75"
+              className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--neo-gold)]"
               aria-hidden
             />
-            <span className="font-medium text-amber-950/75 dark:text-amber-100/75">No receipt</span>
+            <span className="font-medium text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
+              No receipt
+            </span>
           </span>
         )}
       </div>
       {missingProject ? (
-        <div className="flex items-start gap-1 text-[11px] leading-snug text-amber-800/85 dark:text-amber-200/80">
+        <div className="flex items-start gap-1 text-[11px] leading-snug text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
           <AlertTriangle
             className="mt-0.5 h-3 w-3 shrink-0 opacity-80"
             strokeWidth={2}
@@ -203,15 +204,15 @@ function InboxDescriptionSignals({
         </div>
       ) : null}
       {extraSignals ? (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-snug text-muted-foreground">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-snug text-[var(--neo-text-secondary)]">
           {missingCategory ? (
-            <span className="inline-flex items-center gap-1 text-amber-900/75 dark:text-amber-200/75">
+            <span className="inline-flex items-center gap-1 text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
               <AlertTriangle className="h-3 w-3 shrink-0 opacity-75" strokeWidth={2} aria-hidden />
               Missing category
             </span>
           ) : null}
           {duplicate ? (
-            <span className="inline-flex items-center gap-1 text-zinc-600/85 dark:text-zinc-300/85">
+            <span className="inline-flex items-center gap-1 text-[var(--neo-text-secondary)]">
               <Copy className="h-3 w-3 shrink-0 opacity-75" strokeWidth={2} aria-hidden />
               Duplicate
             </span>
@@ -322,7 +323,7 @@ function inboxVendorAvatarKind(vendor: string): AvatarKind {
 function VendorAvatar({ vendor }: { vendor: string }) {
   const kind = inboxVendorAvatarKind(vendor);
   const wrap =
-    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-gray-100 text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500";
+    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]";
   const iconSm = "h-3 w-3";
   switch (kind) {
     case "unknown":
@@ -358,7 +359,7 @@ function VendorAvatar({ vendor }: { vendor: string }) {
     default:
       return (
         <span
-          className={cn(wrap, "text-[10px] font-medium text-gray-500 dark:text-gray-400")}
+          className={cn(wrap, "text-[10px] font-medium text-[var(--neo-text-secondary)]")}
           aria-hidden
         >
           {(vendor ?? "").trim().slice(0, 1).toUpperCase() || "?"}
@@ -378,25 +379,28 @@ function inboxRowActivateIgnored(target: EventTarget | null): boolean {
   );
 }
 
-function inboxStatusBadgeStyle(status: string | undefined): { dot: string; label: string } {
+function inboxStatusMeta(status: string | undefined): {
+  label: string;
+  variant: StatusBadgeVariant;
+} {
   const s = String(status ?? "")
     .trim()
     .toLowerCase();
   if (s === "draft") {
-    return { dot: "bg-slate-400", label: "Draft" };
+    return { label: "Draft", variant: "muted" };
   }
   if (s === "approved") {
-    return { dot: "bg-emerald-500", label: "Approved" };
+    return { label: "Approved", variant: "success" };
   }
   if (expenseNeedsReviewFromDb(status)) {
     return {
-      dot: "bg-amber-500",
       label: "Needs Review",
+      variant: "warning",
     };
   }
   return {
-    dot: "bg-emerald-500",
     label: "Done",
+    variant: "success",
   };
 }
 
@@ -465,44 +469,40 @@ function RowActionsMenu({ row }: { row: Expense }) {
   const inboxUploadRow = isInboxUploadExpenseReference(row.referenceNo);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="exp-icon-btn h-11 min-h-11 w-11 shrink-0 rounded-md text-muted-foreground transition-colors duration-200 hover:bg-zinc-100 hover:text-foreground dark:hover:bg-muted md:h-8 md:min-h-0 md:w-8"
-          aria-label="Row actions"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <MoreHorizontal className="h-4 w-4" strokeWidth={1.75} />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem
-          className="cursor-pointer"
-          onClick={() => a.openExpensePreview(row, { mode: "edit" })}
-        >
-          Edit
-        </DropdownMenuItem>
-        {showMarkDone ? (
-          <DropdownMenuItem className="cursor-pointer" onClick={() => a.toggleStatus(row)}>
-            {inboxUploadRow ? "Approve" : "Mark Done"}
-          </DropdownMenuItem>
-        ) : null}
-        <DropdownMenuItem
-          className="cursor-pointer gap-2 text-red-600 focus:bg-red-50 focus:text-red-700 dark:focus:bg-red-950/30 dark:focus:text-red-400"
-          disabled={a.deletingExpenseId === row.id}
-          onClick={() => a.handleDelete(row)}
-        >
-          <SubmitSpinner loading={a.deletingExpenseId === row.id} className="shrink-0" />
-          {a.deletingExpenseId !== row.id ? (
-            <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          ) : null}
-          Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <BaseRowActionsMenu
+      ariaLabel="Row actions"
+      appearance="list"
+      className="h-11 min-h-11 w-11 min-w-11 md:h-8 md:min-h-0 md:w-8 md:min-w-0"
+      contentClassName="w-44"
+      actions={[
+        {
+          label: "Edit",
+          onClick: () => a.openExpensePreview(row, { mode: "edit" }),
+        },
+        ...(showMarkDone
+          ? [
+              {
+                label: inboxUploadRow ? "Approve" : "Mark Done",
+                onClick: () => a.toggleStatus(row),
+              },
+            ]
+          : []),
+        {
+          label: (
+            <span className="inline-flex items-center gap-2">
+              <SubmitSpinner loading={a.deletingExpenseId === row.id} className="shrink-0" />
+              {a.deletingExpenseId !== row.id ? (
+                <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              ) : null}
+              Delete
+            </span>
+          ),
+          destructive: true,
+          disabled: a.deletingExpenseId === row.id,
+          onClick: () => a.handleDelete(row),
+        },
+      ]}
+    />
   );
 }
 
@@ -533,18 +533,18 @@ function DateGroupDesktopHeader({
   }, [groupSelect?.indeterminate, groupSelect?.show]);
 
   return (
-    <tr className="border-b border-zinc-100/80 bg-zinc-50/45 dark:border-border/50 dark:bg-muted/10">
+    <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
       <td colSpan={COL_COUNT} className="p-0 align-middle">
         <div className="flex min-w-0 items-stretch">
           {groupSelect?.show ? (
-            <div className="flex shrink-0 items-center border-r border-border/50 px-2 dark:border-border/40">
+            <div className="flex shrink-0 items-center border-r border-[var(--neo-border)] px-2">
               <input
                 ref={groupCbRef}
                 type="checkbox"
                 checked={groupSelect.checked}
                 onChange={groupSelect.onToggleGroup}
                 onClick={(e) => e.stopPropagation()}
-                className="h-4 w-4 shrink-0 rounded border-gray-300 text-foreground dark:border-gray-600"
+                className="h-4 w-4 shrink-0 rounded border-[var(--neo-border)] text-[var(--neo-gold)]"
                 aria-label={`Select all for ${chunk.dateLabel}`}
               />
             </div>
@@ -556,27 +556,27 @@ function DateGroupDesktopHeader({
             aria-expanded={expanded}
             className={cn(
               "flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm transition-colors duration-200 ease-out md:min-h-0",
-              "hover:bg-muted/25 disabled:cursor-default disabled:hover:bg-transparent"
+              "hover:bg-[var(--neo-surface-raised)] disabled:cursor-default disabled:hover:bg-transparent"
             )}
           >
             <ChevronRight
               className={cn(
-                "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out",
+                "h-4 w-4 shrink-0 text-[var(--neo-text-secondary)] transition-transform duration-200 ease-out",
                 expanded && "rotate-90"
               )}
               aria-hidden
             />
-            <span className="font-medium text-foreground">{chunk.dateLabel}</span>
-            <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-muted-foreground">
+            <span className="font-medium text-[var(--neo-text-primary)]">{chunk.dateLabel}</span>
+            <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-[var(--neo-text-secondary)]">
               <span className="tabular-nums">{chunk.itemCount}</span>
               <span aria-hidden>·</span>
-              <span className="tabular-nums text-red-600 dark:text-red-500/90">
+              <NeoAmount tone="expense" className="text-[12px]">
                 {formatCurrency(-chunk.totalAmount)}
-              </span>
+              </NeoAmount>
               {chunk.missingReceiptCount > 0 ? (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="text-amber-800/70 dark:text-amber-400/65">
+                  <span className="text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
                     {chunk.missingReceiptCount} missing receipt
                     {chunk.missingReceiptCount !== 1 ? "s" : ""}
                   </span>
@@ -622,9 +622,9 @@ function DesktopRows({
   const dupIds = possibleDuplicateIds;
 
   const projectBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-[10rem] items-center gap-1 truncate rounded-md border border-zinc-200/85 bg-zinc-50/95 px-1.5 py-0 text-[11px] font-medium text-zinc-800 shadow-none transition-colors duration-200 dark:border-border/55 dark:bg-muted/30 dark:text-zinc-200";
+    "inline-flex h-6 max-h-6 max-w-[10rem] items-center gap-1 truncate rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-1.5 py-0 text-[11px] font-medium text-[var(--neo-text-primary)] shadow-none transition-colors duration-150";
   const categoryBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-[6.5rem] items-center truncate rounded-md border border-zinc-200/85 bg-white px-1.5 py-0 text-[11px] font-normal text-zinc-700 shadow-none transition-colors duration-200 dark:border-border/55 dark:bg-muted/20 dark:text-zinc-300";
+    "inline-flex h-6 max-h-6 max-w-[6.5rem] items-center truncate rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-1.5 py-0 text-[11px] font-normal text-[var(--neo-text-secondary)] shadow-none transition-colors duration-150";
 
   return (
     <>
@@ -659,7 +659,7 @@ function DesktopRows({
                   const rowTotal = getExpenseTotal(row);
                   const projLabel = projectLabel(row, a.projectNameById);
                   const status = row.status ?? "pending";
-                  const inboxSt = inboxStatusBadgeStyle(status);
+                  const inboxSt = inboxStatusMeta(status);
                   const catLabel = primaryCategory(row);
                   const missingProject = !expenseHasProjectForWorkflow(row);
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
@@ -682,7 +682,7 @@ function DesktopRows({
                         a.rowElsRef.current[row.id] = el;
                       }}
                       className={cn(
-                        "exp-row group min-h-[52px] cursor-pointer border-b border-zinc-100/90 bg-white transition-[background-color,box-shadow] duration-200 ease-out hover:bg-zinc-50/95 [&>td]:align-middle [&>td]:px-3 [&>td]:py-3 dark:border-border/50 dark:bg-card dark:hover:bg-muted/25",
+                        "exp-row group min-h-[52px] cursor-pointer border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] transition-[background-color,box-shadow] duration-150 ease-out hover:bg-[var(--neo-surface-muted)] [&>td]:align-middle [&>td]:px-3 [&>td]:py-3",
                         a.deletingExpenseId === row.id &&
                           "pointer-events-none opacity-0 duration-300 ease-out",
                         uploadHighlight &&
@@ -692,8 +692,8 @@ function DesktopRows({
                           "ring-1 ring-inset ring-amber-400/35 dark:ring-amber-500/30",
                         rowSelected &&
                           (triageLayout
-                            ? "bg-zinc-100 shadow-[inset_3px_0_0_0_rgba(113,113,122,0.65)] ring-1 ring-inset ring-zinc-400/50 dark:bg-zinc-900/60 dark:shadow-[inset_3px_0_0_0_rgba(161,161,170,0.45)] dark:ring-zinc-600/55"
-                            : "bg-zinc-100/95 ring-1 ring-inset ring-zinc-300/65 dark:bg-zinc-900/50 dark:ring-zinc-600/55")
+                            ? "bg-[rgb(184_137_45_/_0.09)] shadow-[inset_3px_0_0_0_var(--neo-gold)] ring-1 ring-inset ring-[rgb(184_137_45_/_0.28)]"
+                            : "bg-[rgb(184_137_45_/_0.08)] ring-1 ring-inset ring-[rgb(184_137_45_/_0.24)]")
                       )}
                       onClick={(e) => {
                         if (selectionEnabled && (e.metaKey || e.ctrlKey || e.shiftKey)) {
@@ -717,13 +717,13 @@ function DesktopRows({
                                 toggleSelected(row.id, e.target.checked);
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="mt-1 h-4 w-4 shrink-0 rounded border-gray-300 text-foreground dark:border-gray-600"
+                              className="mt-1 h-4 w-4 shrink-0 rounded border-[var(--neo-border)] text-[var(--neo-gold)]"
                               aria-label={`Select ${vendorTitle}`}
                             />
                           ) : (
                             <button
                               type="button"
-                              className="mt-1 h-4 w-4 shrink-0 rounded-sm border border-transparent hover:border-border/80 focus-visible:outline focus-visible:ring-1 focus-visible:ring-ring"
+                              className="mt-1 h-4 w-4 shrink-0 rounded-sm border border-transparent hover:border-[var(--neo-border-strong)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]"
                               aria-label={`Select ${vendorTitle}`}
                               title="Select"
                               onClick={(e) => {
@@ -735,12 +735,12 @@ function DesktopRows({
                           <VendorAvatar vendor={vendorClean} />
                           <div className="min-w-0 flex-1">
                             <p
-                              className="line-clamp-2 min-w-0 max-w-full break-words text-sm font-semibold leading-snug text-zinc-900 md:line-clamp-none md:truncate md:font-medium dark:text-zinc-100"
+                              className="line-clamp-2 min-w-0 max-w-full break-words text-sm font-semibold leading-snug text-[var(--neo-text-primary)] md:line-clamp-none md:truncate md:font-medium"
                               title={vendorClean || vendorTitle}
                             >
                               {vendorTitle}
                             </p>
-                            <p className="mt-1 truncate text-[11px] leading-snug text-muted-foreground">
+                            <p className="mt-1 truncate text-[11px] leading-snug text-[var(--neo-text-secondary)]">
                               {secondaryLine}
                             </p>
                             <InboxDescriptionSignals
@@ -757,7 +757,10 @@ function DesktopRows({
                       </td>
                       <td className="w-[148px] shrink-0">
                         <span className={cn(projectBadgeClass, "max-w-[9rem]")} title={projLabel}>
-                          <Building2 className="h-2.5 w-2.5 shrink-0 text-gray-400" aria-hidden />
+                          <Building2
+                            className="h-2.5 w-2.5 shrink-0 text-[var(--neo-text-tertiary)]"
+                            aria-hidden
+                          />
                           {projLabel}
                         </span>
                       </td>
@@ -767,30 +770,19 @@ function DesktopRows({
                         </span>
                       </td>
                       <td className="w-[128px] shrink-0 whitespace-nowrap">
-                        <span
-                          className={cn(
-                            "inline-flex h-6 max-h-6 items-center gap-1 rounded-full border px-2 py-0 text-[11px] font-medium shadow-none",
-                            expenseNeedsReviewFromDb(status)
-                              ? "border-amber-200/60 bg-amber-50/80 text-amber-900/90 dark:border-amber-500/20 dark:bg-amber-950/30 dark:text-amber-100"
-                              : "border-emerald-200/60 bg-emerald-50/80 text-emerald-900/90 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:text-emerald-100"
-                          )}
-                        >
-                          <span
-                            className={cn("h-1 w-1 shrink-0 rounded-full", inboxSt.dot)}
-                            aria-hidden
-                          />
-                          {inboxSt.label}
-                        </span>
+                        <NeoStatus
+                          label={inboxSt.label}
+                          variant={inboxSt.variant}
+                          className="h-6 max-h-6 px-2 text-[11px]"
+                        />
                       </td>
                       <td className="w-[96px] shrink-0 whitespace-nowrap text-right tabular-nums">
-                        <span
-                          className={cn(
-                            "font-semibold text-red-600 dark:text-red-500/90",
-                            triageLayout ? "text-[15px] leading-none tracking-tight" : "text-sm"
-                          )}
+                        <NeoAmount
+                          tone="expense"
+                          className={cn(triageLayout ? "text-[15px] leading-none" : "text-sm")}
                         >
                           {formatCurrency(-rowTotal)}
-                        </span>
+                        </NeoAmount>
                       </td>
                       <td className="w-10 shrink-0 text-right">
                         <RowActionsMenu row={row} />
@@ -831,17 +823,17 @@ function DateGroupMobileHeader({
   }, [groupSelect?.indeterminate, groupSelect?.show]);
 
   return (
-    <li className="list-none border-b border-zinc-100/80 bg-zinc-50/40 p-0 dark:border-border/50 dark:bg-muted/10">
+    <li className="list-none border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-0">
       <div className="flex min-w-0 items-stretch">
         {groupSelect?.show ? (
-          <div className="flex shrink-0 items-center border-r border-border/50 px-2 dark:border-border/40">
+          <div className="flex shrink-0 items-center border-r border-[var(--neo-border)] px-2">
             <input
               ref={groupCbRef}
               type="checkbox"
               checked={groupSelect.checked}
               onChange={groupSelect.onToggleGroup}
               onClick={(e) => e.stopPropagation()}
-              className="h-4 w-4 shrink-0 rounded border-gray-300 text-foreground dark:border-gray-600"
+              className="h-4 w-4 shrink-0 rounded border-[var(--neo-border)] text-[var(--neo-gold)]"
               aria-label={`Select all for ${chunk.dateLabel}`}
             />
           </div>
@@ -853,28 +845,28 @@ function DateGroupMobileHeader({
           aria-expanded={expanded}
           className={cn(
             "flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors duration-200 ease-out",
-            "hover:bg-muted/30 disabled:cursor-default disabled:hover:bg-transparent"
+            "hover:bg-[var(--neo-surface-raised)] disabled:cursor-default disabled:hover:bg-transparent"
           )}
         >
           <ChevronRight
             className={cn(
-              "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out",
+              "h-4 w-4 shrink-0 text-[var(--neo-text-secondary)] transition-transform duration-200 ease-out",
               expanded && "rotate-90"
             )}
             aria-hidden
           />
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="font-medium text-foreground">{chunk.dateLabel}</span>
-            <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
+            <span className="font-medium text-[var(--neo-text-primary)]">{chunk.dateLabel}</span>
+            <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-[var(--neo-text-secondary)]">
               <span className="tabular-nums">{chunk.itemCount} items</span>
               <span aria-hidden>·</span>
-              <span className="tabular-nums text-red-600 dark:text-red-500/90">
+              <NeoAmount tone="expense" className="text-[12px]">
                 {formatCurrency(-chunk.totalAmount)}
-              </span>
+              </NeoAmount>
               {chunk.missingReceiptCount > 0 ? (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="text-amber-800/70 dark:text-amber-400/65">
+                  <span className="text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
                     {chunk.missingReceiptCount} missing receipt
                     {chunk.missingReceiptCount !== 1 ? "s" : ""}
                   </span>
@@ -926,9 +918,9 @@ function MobileRows({
   const triageLayout = a.dateGroupPool === "inbox";
   const dupIds = possibleDuplicateIds;
   const projectBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-zinc-200/85 bg-zinc-50/95 px-1.5 py-0 text-[11px] font-medium text-zinc-800 shadow-none transition-colors duration-200 dark:border-border/55 dark:bg-muted/30 dark:text-zinc-200";
+    "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-1.5 py-0 text-[11px] font-medium text-[var(--neo-text-primary)] shadow-none transition-colors duration-150";
   const categoryBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-zinc-200/85 bg-white px-1.5 py-0 text-[11px] font-normal text-zinc-700 shadow-none transition-colors duration-200 dark:border-border/55 dark:bg-muted/20 dark:text-zinc-300";
+    "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-1.5 py-0 text-[11px] font-normal text-[var(--neo-text-secondary)] shadow-none transition-colors duration-150";
 
   return (
     <>
@@ -963,7 +955,7 @@ function MobileRows({
                   const rowTotal = getExpenseTotal(row);
                   const projLabel = projectLabel(row, a.projectNameById);
                   const status = row.status ?? "pending";
-                  const inboxSt = inboxStatusBadgeStyle(status);
+                  const inboxSt = inboxStatusMeta(status);
                   const catLabel = primaryCategory(row);
                   const missingProject = !expenseHasProjectForWorkflow(row);
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
@@ -979,130 +971,124 @@ function MobileRows({
                   const isInboxUploadDraft = isInboxUploadExpenseReference(row.referenceNo);
 
                   return (
-                    <li
-                      key={row.id}
-                      data-expense-id={row.id}
-                      data-inbox-upload-draft={isInboxUploadDraft ? "" : undefined}
-                      ref={(el) => {
-                        a.rowElsRef.current[row.id] = el;
-                      }}
-                      className={cn(
-                        "exp-row group list-none cursor-pointer border-b border-zinc-100/90 bg-white px-3 py-3.5 transition-[background-color,box-shadow] duration-200 ease-out hover:bg-zinc-50/95 dark:border-border/50 dark:bg-card dark:hover:bg-muted/25",
-                        "min-h-[52px]",
-                        a.deletingExpenseId === row.id &&
-                          "pointer-events-none opacity-0 duration-300 ease-out",
-                        uploadHighlight &&
-                          "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
-                        a.listView === "unreviewed" &&
-                          a.activeExpenseId === row.id &&
-                          "ring-1 ring-inset ring-amber-400/35 dark:ring-amber-500/30",
-                        rowSelected &&
-                          (triageLayout
-                            ? "bg-zinc-100 shadow-[inset_3px_0_0_0_rgba(113,113,122,0.65)] ring-1 ring-inset ring-zinc-400/50 dark:bg-zinc-900/60 dark:shadow-[inset_3px_0_0_0_rgba(161,161,170,0.45)] dark:ring-zinc-600/55"
-                            : "bg-zinc-100/95 ring-1 ring-inset ring-zinc-300/65 dark:bg-zinc-900/50 dark:ring-zinc-600/55")
-                      )}
-                      onTouchStart={
-                        selectionEnabled && !showSelectionUi ? lp.onTouchStart : undefined
-                      }
-                      onTouchEnd={selectionEnabled && !showSelectionUi ? lp.onTouchEnd : undefined}
-                      onTouchCancel={
-                        selectionEnabled && !showSelectionUi ? lp.onTouchCancel : undefined
-                      }
-                      onTouchMove={
-                        selectionEnabled && !showSelectionUi ? lp.onTouchMove : undefined
-                      }
-                      onClick={(e) => {
-                        if (selectionEnabled && (e.metaKey || e.ctrlKey || e.shiftKey)) {
-                          e.preventDefault();
-                          onModifierRowClick(row.id, e.shiftKey);
-                          return;
-                        }
-                        if (inboxRowActivateIgnored(e.target)) return;
-                        if (a.listView === "unreviewed") a.setActiveExpenseId(row.id);
-                        a.openExpensePreview(row);
-                      }}
-                    >
-                      <div className="flex gap-2">
-                        {!selectionEnabled ? null : showSelectionUi ? (
-                          <input
-                            type="checkbox"
-                            checked={rowSelected}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              toggleSelected(row.id, e.target.checked);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="mt-1 h-4 w-4 shrink-0 rounded border-border dark:border-gray-600"
-                            aria-label={`Select ${vendorTitle}`}
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            className="mt-1 h-4 w-4 shrink-0 rounded-sm border border-transparent hover:border-border/80 focus-visible:outline focus-visible:ring-1 focus-visible:ring-ring"
-                            aria-label={`Select ${vendorTitle}`}
-                            title="Select (long-press row)"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onGutterSelect(row.id);
-                            }}
-                          />
+                    <NeoMobileCard asChild selected={rowSelected} key={row.id}>
+                      <li
+                        data-expense-id={row.id}
+                        data-inbox-upload-draft={isInboxUploadDraft ? "" : undefined}
+                        ref={(el) => {
+                          a.rowElsRef.current[row.id] = el;
+                        }}
+                        className={cn(
+                          "exp-row group list-none cursor-pointer rounded-none border-x-0 border-t-0 border-b border-[var(--neo-border)] px-3 py-3.5 shadow-none",
+                          "min-h-[52px] hover:bg-[var(--neo-surface-muted)]",
+                          a.deletingExpenseId === row.id &&
+                            "pointer-events-none opacity-0 duration-300 ease-out",
+                          uploadHighlight &&
+                            "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
+                          a.listView === "unreviewed" &&
+                            a.activeExpenseId === row.id &&
+                            "ring-1 ring-inset ring-amber-400/35 dark:ring-amber-500/30",
+                          rowSelected &&
+                            (triageLayout
+                              ? "shadow-[inset_3px_0_0_0_var(--neo-gold)]"
+                              : "ring-1 ring-inset ring-[rgb(184_137_45_/_0.24)]")
                         )}
-                        <VendorAvatar vendor={vendorClean} />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0 flex-1">
-                              <p
-                                className="line-clamp-2 min-w-0 break-words text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100"
-                                title={vendorClean || vendorTitle}
-                              >
-                                {vendorTitle}
-                              </p>
-                              <p className="mt-1 truncate text-[11px] leading-snug text-muted-foreground">
-                                {secondaryLine}
-                              </p>
-                              <InboxDescriptionSignals
-                                row={row}
-                                onReceiptPreview={() => a.openReceiptPreview(row)}
-                                onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
-                                missingProject={missingProject}
-                                missingCategory={missingCategory}
-                                duplicate={showDupHint}
-                                triageLayout={triageLayout}
-                              />
+                        onTouchStart={
+                          selectionEnabled && !showSelectionUi ? lp.onTouchStart : undefined
+                        }
+                        onTouchEnd={
+                          selectionEnabled && !showSelectionUi ? lp.onTouchEnd : undefined
+                        }
+                        onTouchCancel={
+                          selectionEnabled && !showSelectionUi ? lp.onTouchCancel : undefined
+                        }
+                        onTouchMove={
+                          selectionEnabled && !showSelectionUi ? lp.onTouchMove : undefined
+                        }
+                        onClick={(e) => {
+                          if (selectionEnabled && (e.metaKey || e.ctrlKey || e.shiftKey)) {
+                            e.preventDefault();
+                            onModifierRowClick(row.id, e.shiftKey);
+                            return;
+                          }
+                          if (inboxRowActivateIgnored(e.target)) return;
+                          if (a.listView === "unreviewed") a.setActiveExpenseId(row.id);
+                          a.openExpensePreview(row);
+                        }}
+                      >
+                        <div className="flex gap-2">
+                          {!selectionEnabled ? null : showSelectionUi ? (
+                            <input
+                              type="checkbox"
+                              checked={rowSelected}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                toggleSelected(row.id, e.target.checked);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-1 h-4 w-4 shrink-0 rounded border-[var(--neo-border)] text-[var(--neo-gold)]"
+                              aria-label={`Select ${vendorTitle}`}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className="mt-1 h-4 w-4 shrink-0 rounded-sm border border-transparent hover:border-[var(--neo-border-strong)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]"
+                              aria-label={`Select ${vendorTitle}`}
+                              title="Select (long-press row)"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onGutterSelect(row.id);
+                              }}
+                            />
+                          )}
+                          <VendorAvatar vendor={vendorClean} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p
+                                  className="line-clamp-2 min-w-0 break-words text-sm font-semibold leading-snug text-[var(--neo-text-primary)]"
+                                  title={vendorClean || vendorTitle}
+                                >
+                                  {vendorTitle}
+                                </p>
+                                <p className="mt-1 truncate text-[11px] leading-snug text-[var(--neo-text-secondary)]">
+                                  {secondaryLine}
+                                </p>
+                                <InboxDescriptionSignals
+                                  row={row}
+                                  onReceiptPreview={() => a.openReceiptPreview(row)}
+                                  onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
+                                  missingProject={missingProject}
+                                  missingCategory={missingCategory}
+                                  duplicate={showDupHint}
+                                  triageLayout={triageLayout}
+                                />
+                              </div>
+                              <div className="flex max-w-[42%] shrink-0 flex-col items-end gap-1">
+                                <NeoAmount
+                                  tone="expense"
+                                  className={cn(
+                                    triageLayout ? "text-base leading-none" : "text-sm"
+                                  )}
+                                >
+                                  {formatCurrency(-rowTotal)}
+                                </NeoAmount>
+                              </div>
                             </div>
-                            <div className="flex max-w-[42%] shrink-0 flex-col items-end gap-1">
-                              <span
-                                className={cn(
-                                  "font-semibold tabular-nums text-red-600 dark:text-red-500/90",
-                                  triageLayout ? "text-base leading-none tracking-tight" : "text-sm"
-                                )}
-                              >
-                                {formatCurrency(-rowTotal)}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                            <span className={projectBadgeClass}>{projLabel}</span>
-                            <span className={categoryBadgeClass}>{catLabel}</span>
-                            <span
-                              className={cn(
-                                "inline-flex h-6 max-h-6 items-center gap-1 rounded-full border px-2 py-0 text-[11px] font-medium shadow-none",
-                                expenseNeedsReviewFromDb(status)
-                                  ? "border-amber-200/60 bg-amber-50/80 text-amber-900/90 dark:border-amber-500/20 dark:bg-amber-950/30 dark:text-amber-100"
-                                  : "border-emerald-200/60 bg-emerald-50/80 text-emerald-900/90 dark:border-emerald-500/20 dark:bg-emerald-950/30 dark:text-emerald-100"
-                              )}
-                            >
-                              <span
-                                className={cn("h-1 w-1 rounded-full", inboxSt.dot)}
-                                aria-hidden
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <span className={projectBadgeClass}>{projLabel}</span>
+                              <span className={categoryBadgeClass}>{catLabel}</span>
+                              <NeoStatus
+                                label={inboxSt.label}
+                                variant={inboxSt.variant}
+                                className="h-6 max-h-6 px-2 text-[11px]"
                               />
-                              {inboxSt.label}
-                            </span>
-                            <RowActionsMenu row={row} />
+                              <RowActionsMenu row={row} />
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </li>
+                      </li>
+                    </NeoMobileCard>
                   );
                 })
               : null}
@@ -1318,48 +1304,44 @@ export function ExpenseInboxTransactionList({
           />
         ) : null}
         {desktopLayout ? (
-          <div className="overflow-x-auto bg-white dark:bg-card">
-            <table className="w-full min-w-[820px] border-collapse text-sm">
-              <thead>
-                <tr className="border-b border-zinc-100 bg-zinc-50/55 dark:border-border/50 dark:bg-muted/15">
-                  <th className="h-9 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    {api.dateGroupPool === "inbox" ? "Review item" : "Description"}
-                  </th>
-                  <th className="h-9 w-[148px] shrink-0 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Project
-                  </th>
-                  <th className="h-9 w-[104px] shrink-0 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Category
-                  </th>
-                  <th className="h-9 w-[128px] shrink-0 px-3 align-middle text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Status
-                  </th>
-                  <th className="h-9 w-[96px] shrink-0 px-3 align-middle text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Amount
-                  </th>
-                  <th className="h-9 w-10 shrink-0 px-2 align-middle text-right" aria-hidden />
-                </tr>
-              </thead>
-              <tbody>
-                <DesktopRows
-                  dateChunks={dateChunks}
-                  expandedByDate={expandedByDate}
-                  autoExpandDateGroups={api.autoExpandDateGroups}
-                  onToggleDateKey={onToggleDateKey}
-                  possibleDuplicateIds={dupIds}
-                  selectedIds={selectedIds}
-                  selectionEnabled={selectionEnabled}
-                  showSelectionUi={selectionEnabled && showSelectionUi}
-                  toggleSelected={toggleSelected}
-                  onGutterSelect={onGutterSelect}
-                  onModifierRowClick={onModifierRowClick}
-                  onToggleDateGroupRows={onToggleDateGroupRows}
-                />
-              </tbody>
-            </table>
-          </div>
+          <NeoTable
+            className="rounded-none border-0 shadow-none"
+            scrollClassName="bg-[var(--neo-surface-raised)]"
+            tableClassName="min-w-[820px] text-sm"
+          >
+            <thead>
+              <tr>
+                <th className={tableRawThClass}>
+                  {api.dateGroupPool === "inbox" ? "Review item" : "Description"}
+                </th>
+                <th className={cn(tableRawThClass, "w-[148px] shrink-0")}>Project</th>
+                <th className={cn(tableRawThClass, "w-[104px] shrink-0")}>Category</th>
+                <th className={cn(tableRawThClass, "w-[128px] shrink-0")}>Status</th>
+                <th className={cn(tableRawThClass, "w-[96px] shrink-0 text-right tabular-nums")}>
+                  Amount
+                </th>
+                <th className={cn(tableRawThClass, "w-10 shrink-0 px-2 text-right")} aria-hidden />
+              </tr>
+            </thead>
+            <tbody>
+              <DesktopRows
+                dateChunks={dateChunks}
+                expandedByDate={expandedByDate}
+                autoExpandDateGroups={api.autoExpandDateGroups}
+                onToggleDateKey={onToggleDateKey}
+                possibleDuplicateIds={dupIds}
+                selectedIds={selectedIds}
+                selectionEnabled={selectionEnabled}
+                showSelectionUi={selectionEnabled && showSelectionUi}
+                toggleSelected={toggleSelected}
+                onGutterSelect={onGutterSelect}
+                onModifierRowClick={onModifierRowClick}
+                onToggleDateGroupRows={onToggleDateGroupRows}
+              />
+            </tbody>
+          </NeoTable>
         ) : (
-          <ul className="exp-divide flex flex-col border-y border-zinc-100/90 dark:border-border/50">
+          <ul className="exp-divide flex flex-col border-y border-[var(--neo-border)]">
             <MobileRows
               dateChunks={dateChunks}
               expandedByDate={expandedByDate}

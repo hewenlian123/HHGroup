@@ -1,5 +1,5 @@
 import { Slot } from "@radix-ui/react-slot";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/base/status-badge";
 import { TableShell } from "@/components/ui/table";
 import { amountClass, OS, TYPO, type AmountTone } from "@/lib/typography";
@@ -172,21 +172,21 @@ export function MobileListRow({
   );
 }
 
-export function NeoMobileCard({
-  children,
-  className,
-  asChild = false,
-  selected = false,
-  ...rest
-}: {
+type NeoMobileCardProps = {
   children: ReactNode;
   className?: string;
   asChild?: boolean;
   selected?: boolean;
-} & Omit<ComponentPropsWithoutRef<"div">, "children">) {
+} & Omit<ComponentPropsWithoutRef<"div">, "children">;
+
+export const NeoMobileCard = forwardRef<HTMLDivElement, NeoMobileCardProps>(function NeoMobileCard(
+  { children, className, asChild = false, selected = false, ...rest },
+  ref
+) {
   const Comp = asChild ? Slot : "div";
   return (
     <Comp
+      ref={ref}
       data-neo-mobile-card="true"
       data-state={selected ? "selected" : undefined}
       aria-selected={selected || undefined}
@@ -201,7 +201,7 @@ export function NeoMobileCard({
       {children}
     </Comp>
   );
-}
+});
 
 export function NeoAmount({
   children,
@@ -244,11 +244,12 @@ export function NeoBulkActions({
   count,
   children,
   className,
+  ...rest
 }: {
   count: number;
   children: ReactNode;
   className?: string;
-}) {
+} & Omit<ComponentPropsWithoutRef<"div">, "children">) {
   if (count <= 0) return null;
 
   return (
@@ -260,6 +261,7 @@ export function NeoBulkActions({
         className
       )}
       role="status"
+      {...rest}
     >
       <p className="text-[13px] font-medium tabular-nums">
         {count.toLocaleString("en-US")} selected

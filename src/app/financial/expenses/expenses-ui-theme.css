@@ -1,6 +1,6 @@
 /* Expenses route: HH Finance OS — page tint aligns with the app workspace; shell bg from Tailwind */
 .expenses-ui {
-  --exp-page-bg: var(--neo-surface-base);
+  --exp-page-bg: transparent;
   --exp-content-bg: transparent;
   --exp-primary: var(--neo-text-primary);
   --exp-secondary: var(--neo-text-secondary);

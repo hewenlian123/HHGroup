@@ -3,9 +3,9 @@
 import * as React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { OS } from "@/lib/typography";
 
-const skeletonShell =
-  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
+const skeletonShell = OS.card;
 
 function SkeletonRow() {
   return (
@@ -59,7 +59,7 @@ export function ExpensesListSkeleton({
           <SkeletonRow key={i} />
         ))}
       </ul>
-      <div className="border-t border-zinc-100 px-1 py-2 dark:border-border/60">
+      <div className="border-t border-[var(--neo-border)] px-1 py-2">
         <Skeleton className="h-11 max-w-xs rounded-lg md:h-7" />
       </div>
     </div>
