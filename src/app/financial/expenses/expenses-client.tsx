@@ -155,6 +155,9 @@ const financeMetricValueClass =
 const financeToolbarButtonClass =
   "h-9 shrink-0 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs font-medium text-[var(--neo-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--neo-surface-muted)] focus-visible:ring-[var(--neo-gold-ring)]";
 
+const financePrimaryActionClass =
+  "border-transparent bg-[var(--neo-gold)] text-zinc-950 shadow-none hover:bg-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)]";
+
 function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense {
   const nextLines =
     e.lines.length > 0
@@ -377,7 +380,7 @@ function TransactionInboxEntryActions({
         variant="default"
         size={compact ? "sm" : quickButtonSize}
         className={cn(
-          OS.primaryButton,
+          financePrimaryActionClass,
           "shrink-0 shadow-none touch-manipulation",
           compact && "h-9 px-2.5 text-xs font-medium"
         )}
@@ -2045,7 +2048,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                     type="button"
                     variant="default"
                     size="sm"
-                    className={cn(OS.primaryButton, "h-10 w-full shrink-0 rounded-md shadow-none")}
+                    className={cn(
+                      financePrimaryActionClass,
+                      "h-10 w-full shrink-0 rounded-md shadow-none"
+                    )}
                     onClick={() => {
                       setQuickExpenseOpen(true);
                       setFiltersDrawerOpen(false);
@@ -2103,7 +2109,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 />
                 <Button
                   type="button"
-                  className={cn(OS.primaryButton, "w-full")}
+                  className={cn(financePrimaryActionClass, "w-full")}
                   onClick={() => setFiltersDrawerOpen(false)}
                 >
                   Done

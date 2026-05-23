@@ -1170,7 +1170,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           draggable={false}
           className={cn(
             "flex flex-col gap-0 overflow-hidden border-border/60 p-0 shadow-none",
-            "md:!fixed md:left-1/2 md:top-1/2 md:max-h-[min(92dvh,820px)] md:w-full md:max-w-[560px] md:rounded-sm md:!translate-x-[-50%] md:!translate-y-[-50%]",
+            "md:!fixed md:left-1/2 md:top-1/2 md:h-[min(78dvh,720px)] md:max-h-[min(92dvh,820px)] md:w-full md:max-w-[560px] md:rounded-sm md:!translate-x-[-50%] md:!translate-y-[-50%]",
             "max-md:!fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:flex max-md:max-h-[94dvh] max-md:min-h-[82dvh] max-md:w-full max-md:max-w-none max-md:!translate-x-0 max-md:!translate-y-0 max-md:rounded-t-[14px] max-md:rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:border-t max-md:p-0",
             "max-md:pointer-events-auto max-md:!opacity-100 max-md:!transform-none max-md:!transition-none max-md:!duration-0",
             "max-md:data-[state=open]:!animate-none max-md:data-[state=open]:!opacity-100 max-md:data-[state=open]:!transform-none",

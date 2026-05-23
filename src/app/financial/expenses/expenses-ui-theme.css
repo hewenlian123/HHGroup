@@ -1,5 +1,16 @@
 /* Expenses route: HH Finance OS — page tint aligns with the app workspace; shell bg from Tailwind */
 .expenses-ui {
+  --neo-surface-base: #101418;
+  --neo-surface-raised: #151a20;
+  --neo-surface-muted: #1b2229;
+  --neo-text-primary: #f3f4f5;
+  --neo-text-secondary: #b6bdc5;
+  --neo-text-tertiary: #7f8892;
+  --neo-border: rgb(255 255 255 / 0.09);
+  --neo-border-strong: rgb(255 255 255 / 0.14);
+  --neo-gold-ring: rgb(210 166 74 / 0.28);
+  --neo-emerald-soft: rgb(16 185 129 / 0.14);
+  --neo-shadow-panel: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 18px 44px rgb(0 0 0 / 0.22);
   --exp-page-bg: transparent;
   --exp-content-bg: transparent;
   --exp-primary: var(--neo-text-primary);
@@ -66,13 +77,24 @@
 
 .expenses-ui .exp-icon-danger:hover {
   color: var(--exp-negative) !important;
-  background-color: rgb(254 242 242 / 0.9) !important;
+  background-color: rgb(225 29 72 / 0.12) !important;
 }
 
 /* Row dividers: use Tailwind `divide-y` on the list inside `.exp-list-card` */
 
 /* Dialog when using expenses palette */
 .expenses-ui-dialog {
+  --neo-surface-base: #101418;
+  --neo-surface-raised: #151a20;
+  --neo-surface-muted: #1b2229;
+  --neo-text-primary: #f3f4f5;
+  --neo-text-secondary: #b6bdc5;
+  --neo-text-tertiary: #7f8892;
+  --neo-border: rgb(255 255 255 / 0.09);
+  --neo-border-strong: rgb(255 255 255 / 0.14);
+  --neo-gold-ring: rgb(210 166 74 / 0.28);
+  --neo-emerald-soft: rgb(16 185 129 / 0.14);
+  --neo-shadow-panel: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 18px 44px rgb(0 0 0 / 0.22);
   --exp-primary: var(--neo-text-primary);
   --exp-secondary: var(--neo-text-secondary);
   --exp-border: var(--neo-border);
@@ -99,6 +121,22 @@
 }
 
 .expenses-ui-dialog .exp-btn-secondary:hover {
+  background-color: var(--neo-surface-muted) !important;
+}
+
+.expenses-ui-dialog :where(.text-foreground) {
+  color: var(--neo-text-primary) !important;
+}
+
+.expenses-ui-dialog :where(.text-muted-foreground) {
+  color: var(--neo-text-secondary) !important;
+}
+
+.expenses-ui-dialog :where(.bg-background) {
+  background-color: var(--neo-surface-raised) !important;
+}
+
+.expenses-ui-dialog :where(.bg-muted, .bg-muted\/25, .bg-muted\/30, .bg-muted\/40) {
   background-color: var(--neo-surface-muted) !important;
 }
 
