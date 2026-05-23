@@ -246,7 +246,10 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
   return (
     <div className={cn("space-y-4", mobileListPagePaddingClass, "max-md:!space-y-3")}>
       {dataLoadWarning ? (
-        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+        <p
+          className="border-b border-white/10 pb-3 text-sm text-[var(--neo-canvas-text-secondary)]"
+          role="status"
+        >
           {dataLoadWarning}
         </p>
       ) : null}
@@ -258,10 +261,12 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
 
       <div className="hidden flex-col gap-3 md:flex md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
+          <h1 className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--neo-canvas-text-tertiary)]">
             Customers
           </h1>
-          <p className="text-sm text-muted-foreground">Manage your clients and contacts.</p>
+          <p className="text-sm text-[var(--neo-canvas-text-secondary)]">
+            Manage your clients and contacts.
+          </p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center md:w-auto">
           <Input
@@ -272,7 +277,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
           />
           <Button
             type="button"
-            className="h-11 w-full rounded-sm px-3 text-sm md:h-9 md:w-auto"
+            className="h-11 w-full rounded-md px-3 text-sm md:h-9 md:w-auto"
             onClick={openNew}
           >
             + New Customer

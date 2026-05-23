@@ -6,15 +6,34 @@ import { Filter, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { OS } from "@/lib/typography";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 /** Vertical rhythm on small screens; horizontal padding comes from `.page-container`. */
 export const mobileListPagePaddingClass = "max-md:!py-2.5";
 
-export function MobileListHeader({ title, fab }: { title: string; fab: React.ReactNode }) {
+export function MobileListHeader({
+  title,
+  fab,
+  tone = "canvas",
+}: {
+  title: string;
+  fab: React.ReactNode;
+  tone?: "canvas" | "page";
+}) {
   return (
-    <div className="flex h-11 shrink-0 items-center justify-between gap-2 md:hidden">
-      <h1 className="text-base font-medium tracking-normal text-foreground">{title}</h1>
+    <div
+      data-neo-mobile-list-header={tone}
+      className="flex h-11 shrink-0 items-center justify-between gap-3 md:hidden"
+    >
+      <h1
+        className={cn(
+          "text-base font-medium tracking-normal",
+          tone === "canvas" ? "text-[var(--neo-canvas-text-primary)]" : "text-text-primary"
+        )}
+      >
+        {title}
+      </h1>
       {fab}
     </div>
   );
@@ -24,7 +43,7 @@ export function MobileFabPlus({ href, ariaLabel }: { href: string; ariaLabel: st
   return (
     <Link
       href={href}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--neo-graphite-950)] text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)]"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[var(--neo-graphite-900)] text-white shadow-[0_10px_26px_rgba(0,0,0,0.22)] ring-1 ring-black/10"
       aria-label={ariaLabel}
     >
       <Plus className="h-5 w-5" strokeWidth={2} aria-hidden />
@@ -46,7 +65,7 @@ export function MobileFabButton({
     <button
       type="button"
       className={cn(
-        "flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-[var(--neo-graphite-950)] text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)]",
+        "flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/[0.08] bg-[var(--neo-graphite-900)] text-white shadow-[0_10px_26px_rgba(0,0,0,0.22)] ring-1 ring-black/10",
         className
       )}
       aria-label={ariaLabel}
@@ -134,11 +153,9 @@ export function MobileEmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center border-b border-gray-100 py-10 md:hidden dark:border-border/60">
-      <div className="text-text-secondary dark:text-muted-foreground">{icon}</div>
-      <p className="mt-3 text-center text-sm text-text-secondary dark:text-muted-foreground">
-        {message}
-      </p>
+    <div className={cn(OS.emptyState, "flex flex-col items-center px-4 py-10 md:hidden")}>
+      <div className="text-[var(--neo-text-secondary)]">{icon}</div>
+      <p className="mt-3 text-center text-sm text-[var(--neo-text-secondary)]">{message}</p>
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );

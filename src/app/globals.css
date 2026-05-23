@@ -66,6 +66,36 @@
     background:
       radial-gradient(circle at top right, rgb(184 137 45 / 0.08), transparent 24rem),
       linear-gradient(180deg, var(--neo-canvas-top), var(--neo-canvas));
+    color: var(--neo-canvas-text-secondary);
+  }
+
+  .neo-workspace-canvas :where(.neo-page-on-graphite > [data-neo-page-header="true"] h1) {
+    color: var(--neo-canvas-text-primary);
+  }
+
+  .neo-workspace-canvas :where(.neo-page-on-graphite > [data-neo-page-header="true"] p) {
+    color: var(--neo-canvas-text-secondary);
+  }
+
+  .neo-workspace-canvas
+    :where(.neo-page-on-graphite > .ui-divider, .neo-page-on-graphite .ui-divider) {
+    border-color: rgb(255 255 255 / 0.1);
+  }
+
+  .neo-workspace-canvas :where([data-neo-mobile-list-header="canvas"] h1) {
+    color: var(--neo-canvas-text-primary);
+  }
+
+  .neo-on-canvas-primary {
+    color: var(--neo-canvas-text-primary);
+  }
+
+  .neo-on-canvas-secondary {
+    color: var(--neo-canvas-text-secondary);
+  }
+
+  .neo-on-canvas-tertiary {
+    color: var(--neo-canvas-text-tertiary);
   }
 
   .neo-panel {
@@ -391,7 +421,10 @@
    * Do not use --ruled together with tableRawThClass / tableRawTdClass (borders would double).
    */
   .airtable-table-wrap {
-    @apply relative w-full overflow-hidden rounded-[10px] border-[0.5px] border-solid border-slate-900/[0.06] bg-white/[0.92] dark:border-border;
+    @apply relative w-full overflow-hidden rounded-[10px] border-[0.5px] border-solid;
+    border-color: var(--neo-border);
+    background: var(--neo-surface-raised);
+    box-shadow: var(--neo-shadow-panel);
   }
   .airtable-table-scroll {
     @apply max-w-full overflow-x-auto;
@@ -401,19 +434,15 @@
   }
   .airtable-table-wrap--ruled > .airtable-table-scroll > table th,
   .airtable-table-wrap--ruled > .airtable-table-scroll > table td {
-    border-bottom: 0.5px solid #e5e7eb;
-    border-right: 0.5px solid #e5e7eb;
-  }
-  .dark .airtable-table-wrap--ruled > .airtable-table-scroll > table th,
-  .dark .airtable-table-wrap--ruled > .airtable-table-scroll > table td {
-    border-color: hsl(var(--border));
+    border-bottom: 0.5px solid var(--neo-border);
+    border-right: 0.5px solid var(--neo-border);
   }
   .airtable-table-wrap--ruled > .airtable-table-scroll > table th:last-child,
   .airtable-table-wrap--ruled > .airtable-table-scroll > table td:last-child {
     border-right-width: 0;
   }
   .airtable-table-wrap--ruled > .airtable-table-scroll > table thead th {
-    @apply bg-slate-50;
+    background: var(--neo-surface-muted);
   }
   .airtable-table-wrap--ruled > .airtable-table-scroll > table tbody tr:last-child > th,
   .airtable-table-wrap--ruled > .airtable-table-scroll > table tbody tr:last-child > td {
@@ -436,6 +465,9 @@
     --neo-text-primary: #111315;
     --neo-text-secondary: #5f6872;
     --neo-text-tertiary: #8a939d;
+    --neo-canvas-text-primary: #f3f4f5;
+    --neo-canvas-text-secondary: #c4c9cf;
+    --neo-canvas-text-tertiary: #929ba5;
     --neo-border: rgb(17 19 21 / 0.09);
     --neo-border-strong: rgb(17 19 21 / 0.14);
     --neo-command-border: rgb(17 19 21 / 0.1);

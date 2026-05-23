@@ -62,8 +62,8 @@ export default async function FinanceOverviewPage() {
             href={item.href}
             className={
               item.href === "/finance"
-                ? "font-medium text-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                ? "font-medium text-[var(--neo-gold-soft)]"
+                : "text-[var(--neo-canvas-text-secondary)] hover:text-[var(--neo-canvas-text-primary)]"
             }
           >
             {item.label}
@@ -109,52 +109,76 @@ export default async function FinanceOverviewPage() {
 
       <section>
         <div className="flex items-center gap-2 pb-2">
-          <Activity className="h-4 w-4 text-muted-foreground" />
+          <Activity className="h-4 w-4 text-[var(--neo-canvas-text-tertiary)]" />
           <span className={TYPO.sectionLabel}>Recent financial activity</span>
         </div>
         <div className="border-b border-border/60" />
         {recent.length === 0 ? (
-          <p className="py-6 text-sm text-muted-foreground">No recent activity.</p>
+          <p className="py-6 text-sm text-[var(--neo-canvas-text-secondary)]">
+            No recent activity.
+          </p>
         ) : (
-          <TableShell>
-            <div className="max-w-full overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className={tableRawThClass}>Type</th>
-                    <th className={tableRawThClass}>Description</th>
-                    <th className={tableRawThClass}>Project</th>
-                    <th className={cn(tableRawThClass, "text-right tabular-nums")}>Amount</th>
-                    <th className={tableRawThClass}>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recent.map((tx) => (
-                    <tr key={`${tx.type}-${tx.id}`} className={listTableRowStaticClassName}>
-                      <td
-                        className={cn(
-                          tableRawTdClass,
-                          "capitalize text-[var(--neo-text-secondary)]"
-                        )}
-                      >
-                        {tx.type}
-                      </td>
-                      <td className={tableRawTdClass}>{tx.description}</td>
-                      <td className={cn(tableRawTdClass, "text-[var(--neo-text-secondary)]")}>
-                        {tx.projectName ?? "—"}
-                      </td>
-                      <td className={cn(tableRawTdClass, "text-right", TYPO.amount)}>
-                        {fmtUsd(tx.amount)}
-                      </td>
-                      <td className={cn(tableRawTdClass, "text-[var(--neo-text-secondary)]")}>
-                        {tx.date ? new Date(tx.date).toLocaleDateString() : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <>
+            <div className="grid gap-3 md:hidden">
+              {recent.map((tx) => (
+                <div key={`${tx.type}-${tx.id}`} className={cn(OS.card, "p-4")}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className={TYPO.primaryName}>{tx.description}</p>
+                      <p className="mt-1 text-xs capitalize text-[var(--neo-text-secondary)]">
+                        {tx.type} / {tx.projectName ?? "No project"}
+                      </p>
+                    </div>
+                    <p className={cn(TYPO.amount, "shrink-0 text-right text-base")}>
+                      {fmtUsd(tx.amount)}
+                    </p>
+                  </div>
+                  <p className="mt-3 text-xs text-[var(--neo-text-secondary)]">
+                    {tx.date ? new Date(tx.date).toLocaleDateString() : "—"}
+                  </p>
+                </div>
+              ))}
             </div>
-          </TableShell>
+            <TableShell className="hidden md:block">
+              <div className="max-w-full overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className={tableRawThClass}>Type</th>
+                      <th className={tableRawThClass}>Description</th>
+                      <th className={tableRawThClass}>Project</th>
+                      <th className={cn(tableRawThClass, "text-right tabular-nums")}>Amount</th>
+                      <th className={tableRawThClass}>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recent.map((tx) => (
+                      <tr key={`${tx.type}-${tx.id}`} className={listTableRowStaticClassName}>
+                        <td
+                          className={cn(
+                            tableRawTdClass,
+                            "capitalize text-[var(--neo-text-secondary)]"
+                          )}
+                        >
+                          {tx.type}
+                        </td>
+                        <td className={tableRawTdClass}>{tx.description}</td>
+                        <td className={cn(tableRawTdClass, "text-[var(--neo-text-secondary)]")}>
+                          {tx.projectName ?? "—"}
+                        </td>
+                        <td className={cn(tableRawTdClass, "text-right", TYPO.amount)}>
+                          {fmtUsd(tx.amount)}
+                        </td>
+                        <td className={cn(tableRawTdClass, "text-[var(--neo-text-secondary)]")}>
+                          {tx.date ? new Date(tx.date).toLocaleDateString() : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </TableShell>
+          </>
         )}
       </section>
     </PageLayout>

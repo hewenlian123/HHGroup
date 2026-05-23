@@ -15,7 +15,7 @@ import {
   MobileListHeader,
   MobileSearchFiltersRow,
 } from "@/components/mobile/mobile-list-chrome";
-import { TYPO } from "@/lib/typography";
+import { OS, TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 export type SubcontractorSummaryRow = {
@@ -115,20 +115,25 @@ export function SubcontractorsListClient({
         </>
       ) : (
         <>
-          <div className="md:hidden divide-y divide-gray-100 dark:divide-border/60">
-            {filtered.length === 0 ? (
-              <MobileEmptyState
-                icon={<Users className="h-5 w-5" />}
-                message="No subcontractors match your search."
-              />
-            ) : (
-              filtered.map((r) => (
+          {filtered.length === 0 ? (
+            <MobileEmptyState
+              icon={<Users className="h-5 w-5" />}
+              message="No subcontractors match your search."
+            />
+          ) : (
+            <div
+              className={cn(
+                OS.card,
+                "divide-y divide-[var(--neo-border)] overflow-hidden md:hidden"
+              )}
+            >
+              {filtered.map((r) => (
                 <Link
                   key={r.id}
                   href={`/subcontractors/${r.id}`}
-                  className="flex min-h-[48px] flex-col justify-center gap-1 py-2"
+                  className="flex min-h-[56px] flex-col justify-center gap-1 px-4 py-3"
                 >
-                  <p className="font-medium text-foreground">{r.name}</p>
+                  <p className="font-medium text-[var(--neo-text-primary)]">{r.name}</p>
                   <div>
                     {r.insurance_expiration_date ? (
                       r.insurance_alert ? (
@@ -137,30 +142,32 @@ export function SubcontractorsListClient({
                           variant="warning"
                         />
                       ) : (
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-[var(--neo-text-secondary)]">
                           {r.insurance_expiration_date}
                         </span>
                       )
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs text-[var(--neo-text-secondary)]">—</span>
                     )}
                   </div>
-                  <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums text-muted-foreground">
+                  <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums text-[var(--neo-text-secondary)]">
                     <div>
                       <dt className="inline text-[10px] uppercase tracking-wide">Contracts</dt>{" "}
-                      <dd className="inline text-foreground">${fmtUsd(r.totalContracts)}</dd>
+                      <dd className="inline text-[var(--neo-text-primary)]">
+                        ${fmtUsd(r.totalContracts)}
+                      </dd>
                     </div>
                     <div>
                       <dt className="inline text-[10px] uppercase tracking-wide">Outstanding</dt>{" "}
-                      <dd className="inline font-medium text-foreground">
+                      <dd className="inline font-medium text-[var(--neo-text-primary)]">
                         ${fmtUsd(r.outstanding)}
                       </dd>
                     </div>
                   </dl>
                 </Link>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
           <div className="airtable-table-wrap airtable-table-wrap--ruled hidden md:block">
             <div className="airtable-table-scroll overflow-x-auto">
               <table className="w-full min-w-[640px] text-sm lg:min-w-0">
