@@ -200,7 +200,7 @@ export function ProjectAddressField({
         type="button"
         disabled={disabled}
         data-invalid={error ? "true" : undefined}
-        aria-label={value ? `Project address: ${value}` : "Add project address"}
+        aria-label={value ? "Project address" : "Add project address"}
         onClick={openAddressEditor}
         className={cn(
           "flex min-h-10 w-full items-center rounded-md border border-gray-100 bg-white px-3 py-2 text-left text-sm text-text-primary shadow-none transition-colors",

@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const KPI_COUNT = 6;
 
 const kpiSkeletonCard =
-  "rounded-sm border border-slate-900/[0.045] bg-white/[0.72] px-3 py-3 shadow-[0_1px_0_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.04)] backdrop-blur-[10px] dark:border-border/50 dark:bg-zinc-950/32";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
 
 /** Matches KPI strip card height so layout does not shift when data arrives. */
 export function DashboardKpiSkeleton() {
@@ -30,7 +30,7 @@ const ROW_SKELETONS = 5;
  */
 export function DashboardMainSkeleton() {
   const block =
-    "rounded-sm border border-slate-900/[0.045] bg-white/[0.78] shadow-[0_1px_0_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.04)] backdrop-blur-[6px] dark:border-border/50 dark:bg-zinc-950/32";
+    "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-[var(--neo-shadow-panel)]";
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5" aria-hidden>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:col-span-12 lg:grid-cols-3">

@@ -76,13 +76,15 @@ export interface DashboardViewProps {
   contractReview: ProjectContractReviewSummary;
 }
 
-const shell =
-  "rounded-sm border border-slate-900/[0.045] bg-white/[0.78] shadow-[0_1px_0_rgba(15,23,42,0.03),0_1px_2px_rgba(15,23,42,0.04)] backdrop-blur-[6px] transition-[box-shadow] duration-300 ease-out hover:shadow-[0_1px_0_rgba(15,23,42,0.035),0_4px_16px_rgba(15,23,42,0.045)] dark:border-border/50 dark:bg-zinc-950/30 dark:shadow-[0_1px_0_rgba(0,0,0,0.14)] dark:hover:shadow-[0_1px_0_rgba(0,0,0,0.2),0_6px_22px_rgba(0,0,0,0.12)]";
+const shell = cn(
+  OS.card,
+  "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--neo-border-strong)]"
+);
 
-const dividerLine = "border-slate-900/[0.04] dark:border-border/45";
+const dividerLine = "border-[var(--neo-border)]";
 
 const linkGhost =
-  "touch-manipulation inline-flex min-h-[44px] items-center gap-1 rounded-sm px-1 text-[13px] font-medium text-[#081225] transition-colors hover:text-emerald-700 active:bg-slate-100/80 md:min-h-0 md:active:bg-transparent dark:text-zinc-100 dark:hover:text-emerald-400 dark:active:bg-zinc-800/50 md:dark:active:bg-transparent";
+  "touch-manipulation inline-flex min-h-[44px] items-center gap-1 rounded-md px-2 text-[13px] font-medium text-[var(--neo-gold)] transition-colors hover:bg-[rgb(184_137_45_/_0.1)] hover:text-[var(--neo-gold-soft)] active:bg-[rgb(184_137_45_/_0.12)] md:min-h-0";
 
 function RiskChip({ risk }: { risk: "HIGH" | "MEDIUM" | "LOW" }) {
   const cfg =
@@ -92,7 +94,7 @@ function RiskChip({ risk }: { risk: "HIGH" | "MEDIUM" | "LOW" }) {
         ? { label: "Medium", dot: "bg-amber-500/55 ring-1 ring-amber-500/15" }
         : { label: "Low", dot: "bg-emerald-500/45 ring-1 ring-emerald-500/15" };
   return (
-    <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-500 tabular-nums dark:text-zinc-500">
+    <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
       <span className={cn("h-1 w-1 shrink-0 rounded-full", cfg.dot)} aria-hidden />
       {cfg.label}
     </span>
@@ -172,12 +174,12 @@ function TaskDueChip({ due }: { due: string }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-slate-900/[0.05] bg-white/75 px-2 py-1 text-[11px] font-medium tabular-nums dark:border-border/45 dark:bg-zinc-900/25",
-        tone === "danger" &&
-          "border-rose-200/80 text-rose-700 dark:border-rose-900/50 dark:text-rose-400",
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] font-medium tabular-nums",
+        tone === "danger" && "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300",
         tone === "warning" &&
-          "border-amber-200/80 text-amber-800 dark:border-amber-900/40 dark:text-amber-400",
-        tone === "neutral" && "text-zinc-600 dark:text-zinc-400"
+          "border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold)]",
+        tone === "neutral" &&
+          "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]"
       )}
     >
       <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dot)} aria-hidden />
@@ -196,8 +198,8 @@ function ActivityTypeChip({ type }: { type: RecentTransaction["type"] }) {
           ? "Expense"
           : "Labor";
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-sm border border-slate-900/[0.05] bg-transparent px-2 py-0.5 text-[10px] font-medium capitalize tracking-tight text-zinc-500 dark:border-border/40 dark:text-zinc-500">
-      <span className="h-1 w-1 shrink-0 rounded-full bg-zinc-400/80 dark:bg-zinc-500" aria-hidden />
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 py-0.5 text-[10px] font-medium capitalize tracking-normal text-[var(--neo-text-secondary)]">
+      <span className="h-1 w-1 shrink-0 rounded-full bg-[var(--neo-text-tertiary)]" aria-hidden />
       {label}
     </span>
   );
@@ -297,21 +299,21 @@ function CashPressureTimelineChart({ series }: { series: CashPressurePoint[] }) 
   return (
     <div className="min-w-0 space-y-2.5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <span className="inline-flex items-center gap-1.5 rounded-sm border border-slate-900/[0.05] bg-white/[0.4] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500 dark:border-border/40 dark:bg-transparent dark:text-zinc-500">
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
           <span
             className="h-1 w-1 shrink-0 rounded-full bg-emerald-600/45 dark:bg-emerald-400/35"
             aria-hidden
           />
           Inflow
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-sm border border-slate-900/[0.05] bg-white/[0.4] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500 dark:border-border/40 dark:bg-transparent dark:text-zinc-500">
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
           <span
             className="h-1 w-1 shrink-0 rounded-full bg-rose-600/40 dark:bg-rose-400/35"
             aria-hidden
           />
           Outflow
         </span>
-        <span className="inline-flex items-center gap-1.5 rounded-sm border border-slate-900/[0.05] bg-white/[0.4] px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-400 dark:border-border/35 dark:bg-transparent dark:text-zinc-500">
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
           <span
             className="h-1 w-1 shrink-0 rounded-full bg-zinc-400/70 dark:bg-zinc-500/70"
             aria-hidden
@@ -322,17 +324,17 @@ function CashPressureTimelineChart({ series }: { series: CashPressurePoint[] }) 
       {n === 0 ? (
         <p className={cn(TYPO.mutedText, "py-10 text-center text-[13px]")}>No transactions yet.</p>
       ) : (
-        <div className="min-w-0 space-y-2 border-t border-slate-900/[0.04] pt-3 dark:border-border/45">
+        <div className={cn("min-w-0 space-y-2 border-t pt-3", dividerLine)}>
           <p
             className={cn(
               TYPO.mutedText,
-              "text-[12px] leading-snug tracking-tight text-zinc-500/90 md:text-[13px] dark:text-zinc-400/85"
+              "text-[12px] leading-snug tracking-normal text-[var(--neo-text-secondary)] md:text-[13px]"
             )}
           >
             Cash inflow vs operating pressure.
           </p>
           {lowActivity ? (
-            <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+            <p className="text-[11px] font-medium text-[var(--neo-text-tertiary)]">
               Low activity in this window — muted scale.
             </p>
           ) : null}
@@ -422,7 +424,7 @@ function CashPressureTimelineChart({ series }: { series: CashPressurePoint[] }) 
                   x={cx}
                   y={ty}
                   textAnchor="middle"
-                  className="fill-zinc-400 text-[10px] font-medium tabular-nums tracking-[0.06em] dark:fill-zinc-500"
+                  className="fill-zinc-400 text-[10px] font-medium tabular-nums tracking-normal dark:fill-zinc-500"
                   style={{ fontFamily: "ui-sans-serif, system-ui" }}
                 >
                   {s.label}
@@ -479,7 +481,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
     <>
       {dataLoadWarning ? (
         <p
-          className="rounded-sm border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/25 dark:text-amber-100"
+          className="rounded-xl border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-sm text-[var(--neo-text-primary)]"
           role="status"
         >
           {dataLoadWarning}
@@ -502,24 +504,24 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           <div className="md:hidden">
             {overduePreview.length === 0 ? (
               <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-emerald-200/80 bg-emerald-50/80 dark:border-emerald-900/40 dark:bg-emerald-950/30">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-emerald-500/20 bg-[var(--neo-emerald-soft)] dark:bg-emerald-500/15">
                   <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
                 </span>
                 <p className={TYPO.mutedText}>No overdue invoices.</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-900/[0.04] dark:divide-border/45">
+              <div className="divide-y divide-[var(--neo-border)]">
                 {overduePreview.map((row) => (
                   <Link
                     key={row.id}
                     href={`/financial/invoices/${row.id}`}
-                    className="flex min-h-[52px] items-center gap-3 px-3 py-3 sm:px-4 transition-colors duration-300 ease-out hover:bg-slate-50/60 dark:hover:bg-zinc-900/22"
+                    className="flex min-h-[52px] items-center gap-3 px-3 py-3 transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-muted)] sm:px-4"
                   >
                     <div className="min-w-0 flex-1">
                       <p className={cn(TYPO.primaryName, "truncate text-[14px]")}>
                         {row.projectName || row.projectId || "—"}
                       </p>
-                      <p className="mt-0.5 truncate text-[12px] text-zinc-500 dark:text-zinc-400">
+                      <p className="mt-0.5 truncate text-[12px] text-[var(--neo-text-secondary)]">
                         {row.clientName} · <span className="tabular-nums">{row.daysOverdue}d</span>
                       </p>
                     </div>
@@ -537,7 +539,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[280px] text-sm">
                 <thead>
-                  <tr className="border-b border-slate-900/[0.04] dark:border-border/45">
+                  <tr className={cn("border-b", dividerLine)}>
                     <th className={cn(TYPO.tableHeader, "py-2 pl-4 pr-2 text-left")}>Project</th>
                     <th className={cn(TYPO.tableHeader, "py-2 pl-2 pr-4 text-right tabular-nums")}>
                       Due
@@ -553,10 +555,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     </tr>
                   ) : (
                     overduePreview.map((row) => (
-                      <tr
-                        key={row.id}
-                        className="border-b border-slate-900/[0.04] dark:border-border/45"
-                      >
+                      <tr key={row.id} className={cn("border-b", dividerLine)}>
                         <td className="py-2 pl-4 pr-2">
                           <Link
                             href={`/financial/invoices/${row.id}`}
@@ -595,7 +594,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           }
         >
           <div className="px-3 py-4 sm:px-4">
-            <div className="rounded-sm border border-slate-900/[0.045] bg-white/[0.58] px-3 py-3 dark:border-border/45 dark:bg-zinc-950/28">
+            <div className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3">
               <p className={TYPO.kpiLabel}>Labor cost</p>
               <p className={cn(TYPO.kpiValue, "mt-2 text-[20px]", OS.dangerAmount)}>
                 {formatCurrency(laborCostThisWeek)}
@@ -604,7 +603,12 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 Shown from the same period used by the dashboard KPI.
               </p>
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-900/[0.04] pt-3 dark:border-border/45">
+            <div
+              className={cn(
+                "mt-3 flex items-center justify-between gap-3 border-t pt-3",
+                dividerLine
+              )}
+            >
               <span className={cn(TYPO.mutedText, "text-[12px]")}>Expenses this month</span>
               <span className={cn(TYPO.amount, "text-[13px]", OS.dangerAmount)}>
                 {formatCurrency(expensesThisMonth)}
@@ -630,18 +634,18 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 No negative-margin jobs.
               </p>
             ) : (
-              <div className="divide-y divide-slate-900/[0.04] dark:divide-border/45">
+              <div className="divide-y divide-[var(--neo-border)]">
                 {negativeMarginRows.slice(0, 6).map((p) => {
                   const risk = riskByProjectId.get(p.id) ?? "LOW";
                   return (
                     <Link
                       key={p.id}
                       href={`/projects/${p.id}`}
-                      className="flex min-h-[52px] items-center gap-3 px-3 py-3 sm:px-4 transition-colors duration-300 ease-out hover:bg-slate-50/60 dark:hover:bg-zinc-900/22"
+                      className="flex min-h-[52px] items-center gap-3 px-3 py-3 transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-muted)] sm:px-4"
                     >
                       <div className="min-w-0 flex-1">
                         <p className={cn(TYPO.primaryName, "truncate text-[14px]")}>{p.name}</p>
-                        <p className="mt-0.5 text-[12px] text-zinc-500 dark:text-zinc-400">
+                        <p className="mt-0.5 text-[12px] text-[var(--neo-text-secondary)]">
                           <RiskChip risk={risk} />
                         </p>
                       </div>
@@ -664,7 +668,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[320px] text-sm">
                 <thead>
-                  <tr className="border-b border-slate-900/[0.04] dark:border-border/45">
+                  <tr className={cn("border-b", dividerLine)}>
                     <th className={cn(TYPO.tableHeader, "py-2.5 pl-4 pr-2 text-left")}>Project</th>
                     <th className={cn(TYPO.tableHeader, "px-2 py-2.5 text-right tabular-nums")}>
                       Margin
@@ -683,10 +687,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     negativeMarginRows.slice(0, 8).map((p) => {
                       const risk = riskByProjectId.get(p.id) ?? "LOW";
                       return (
-                        <tr
-                          key={p.id}
-                          className="border-b border-slate-900/[0.04] dark:border-border/45"
-                        >
+                        <tr key={p.id} className={cn("border-b", dividerLine)}>
                           <td className="py-2 pl-4 pr-2">
                             <Link
                               href={`/projects/${p.id}`}
@@ -720,7 +721,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
         {/* Cash flow first — full-width hero below KPIs */}
         <DashSection
           emphasize
-          className="lg:col-span-12 ring-1 ring-[#081225]/[0.035] dark:ring-border/45"
+          className="lg:col-span-12 ring-1 ring-[var(--neo-border-strong)]"
           eyebrow="Cash position"
           title="Cash Flow Overview"
           description="Liquidity pulse vs operating pressure: use this with overdue AR, AP, and labor cost context."
@@ -733,12 +734,12 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           <div className="flex flex-col gap-4 px-3 py-4 max-md:gap-4 md:px-5 md:py-5 lg:flex-row lg:items-stretch lg:gap-8">
             <div className="flex min-w-0 flex-1 flex-col gap-4 max-md:gap-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:gap-4">
-                <div className="rounded-sm border border-slate-900/[0.045] bg-white/[0.65] px-3 py-3 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-[8px] dark:border-border/45 dark:bg-zinc-950/28 sm:px-3.5 sm:py-3.5">
+                <div className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 sm:px-3.5 sm:py-3.5">
                   <p className={TYPO.kpiLabel}>Inflows</p>
                   <p
                     className={cn(
                       TYPO.kpiValue,
-                      "mt-2 break-words text-[17px] tabular-nums tracking-[-0.02em] sm:text-[18px] md:text-[19px] text-emerald-800/[0.88] dark:text-emerald-400/72"
+                      "mt-2 break-words text-[17px] tabular-nums tracking-normal text-[var(--neo-emerald)] dark:text-emerald-300 sm:text-[18px] md:text-[19px]"
                     )}
                   >
                     {formatCurrency(cashIn)}
@@ -746,18 +747,18 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   <p
                     className={cn(
                       TYPO.kpiSubtitle,
-                      "mt-1 text-[12px] font-normal text-zinc-500/88 dark:text-zinc-400/82"
+                      "mt-1 text-[12px] font-normal text-[var(--neo-text-secondary)]"
                     )}
                   >
                     Recent credits
                   </p>
                 </div>
-                <div className="rounded-sm border border-slate-900/[0.045] bg-white/[0.65] px-3 py-3 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-[8px] dark:border-border/45 dark:bg-zinc-950/28 sm:px-3.5 sm:py-3.5">
+                <div className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 sm:px-3.5 sm:py-3.5">
                   <p className={TYPO.kpiLabel}>Outflows</p>
                   <p
                     className={cn(
                       TYPO.kpiValue,
-                      "mt-2 break-words text-[17px] tabular-nums tracking-[-0.02em] sm:text-[18px] md:text-[19px] text-rose-600/[0.88] dark:text-rose-400/72"
+                      "mt-2 break-words text-[17px] tabular-nums tracking-normal text-rose-600 dark:text-rose-300 sm:text-[18px] md:text-[19px]"
                     )}
                   >
                     {formatCurrency(cashOut)}
@@ -765,18 +766,18 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   <p
                     className={cn(
                       TYPO.kpiSubtitle,
-                      "mt-1 text-[12px] font-normal text-zinc-500/88 dark:text-zinc-400/82"
+                      "mt-1 text-[12px] font-normal text-[var(--neo-text-secondary)]"
                     )}
                   >
                     Recent debits
                   </p>
                 </div>
-                <div className="rounded-sm border border-slate-900/[0.045] bg-white/[0.65] px-3 py-3 shadow-[0_1px_0_rgba(15,23,42,0.02)] backdrop-blur-[8px] dark:border-border/45 dark:bg-zinc-950/28 sm:px-3.5 sm:py-3.5">
+                <div className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 sm:px-3.5 sm:py-3.5">
                   <p className={TYPO.kpiLabel}>Net</p>
                   <p
                     className={cn(
                       TYPO.kpiValue,
-                      "mt-2 break-words text-[17px] tabular-nums tracking-[-0.02em] sm:text-[18px] md:text-[19px]",
+                      "mt-2 break-words text-[17px] tabular-nums tracking-normal sm:text-[18px] md:text-[19px]",
                       cashNet >= 0
                         ? "text-emerald-800/[0.88] dark:text-emerald-400/72"
                         : "text-rose-600/[0.88] dark:text-rose-400/72"
@@ -787,7 +788,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   <p
                     className={cn(
                       TYPO.kpiSubtitle,
-                      "mt-1 tabular-nums text-[12px] font-normal text-zinc-500/88 dark:text-zinc-400/82"
+                      "mt-1 tabular-nums text-[12px] font-normal text-[var(--neo-text-secondary)]"
                     )}
                   >
                     {cashSlice.length} tx window
@@ -803,16 +804,21 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               </div>
             </div>
 
-            <div className="flex w-full min-w-0 shrink-0 flex-col justify-center gap-0 border-t border-slate-900/[0.04] px-0 pt-4 dark:border-border/45 max-md:pb-1 lg:w-60 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0 xl:w-64">
+            <div
+              className={cn(
+                "flex w-full min-w-0 shrink-0 flex-col justify-center gap-0 border-t px-0 pt-4 max-md:pb-1 lg:w-60 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0 xl:w-64",
+                dividerLine
+              )}
+            >
               <p className={TYPO.sectionLabel}>Exposure stack</p>
 
-              <div className="mt-3 border-b border-slate-900/[0.04] pb-3 dark:border-border/45">
+              <div className={cn("mt-3 border-b pb-3", dividerLine)}>
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-[12px] font-semibold leading-tight text-zinc-800 dark:text-zinc-100">
                       Operating pressure
                     </p>
-                    <p className="mt-1.5 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">
+                    <p className="mt-1.5 text-[11px] leading-snug text-[var(--neo-text-secondary)]">
                       Overdue bills + current labor cost context.
                     </p>
                   </div>
@@ -830,7 +836,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 </div>
               </div>
 
-              <p className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              <p className="mt-3 text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                 Cost context
               </p>
               <div className="mt-2 space-y-2.5">
@@ -862,7 +868,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 </div>
               </div>
 
-              <div className="mt-4 border-t border-slate-900/[0.04] pt-3 dark:border-border/45">
+              <div className={cn("mt-4 border-t pt-3", dividerLine)}>
                 <div className="flex min-w-0 items-center justify-between gap-2">
                   <span className="text-[12px] font-medium text-zinc-700 dark:text-zinc-300">
                     Subcontract IOU
@@ -904,13 +910,13 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 excluded from budget and profit totals.
               </div>
             ) : null}
-            <div className="divide-y divide-slate-900/[0.04] dark:divide-border/45">
+            <div className="divide-y divide-[var(--neo-border)]">
               {kpis.map((k) => (
                 <div
                   key={k.key}
                   className="flex items-center justify-between gap-3 py-2.5 first:pt-0"
                 >
-                  <span className="flex min-w-0 items-center gap-2 text-[13px] text-zinc-500 dark:text-zinc-400">
+                  <span className="flex min-w-0 items-center gap-2 text-[13px] text-[var(--neo-text-secondary)]">
                     {k.icon ? (
                       <k.icon className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
                     ) : null}
@@ -923,8 +929,8 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               ))}
             </div>
 
-            <div className="mt-4 space-y-3 border-t border-slate-900/[0.04] pt-4 dark:border-border/45">
-              <div className="flex items-center justify-between gap-3 text-[13px] text-zinc-500 dark:text-zinc-400">
+            <div className={cn("mt-4 space-y-3 border-t pt-4", dividerLine)}>
+              <div className="flex items-center justify-between gap-3 text-[13px] text-[var(--neo-text-secondary)]">
                 <span>Budget usage</span>
                 <span className={cn(TYPO.amount, "text-[14px]")}>{budgetUsagePct.toFixed(0)}%</span>
               </div>
@@ -934,13 +940,13 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   style={{ width: `${Math.min(100, budgetUsagePct)}%` }}
                 />
               </div>
-              <div className="flex items-center justify-between gap-3 text-[13px] text-zinc-500 dark:text-zinc-400">
+              <div className="flex items-center justify-between gap-3 text-[13px] text-[var(--neo-text-secondary)]">
                 <span className="tabular-nums">Total spent</span>
                 <span className={cn(TYPO.amount, "truncate text-[14px]")}>
                   {formatCurrency(stats.totalSpent)}
                 </span>
               </div>
-              <div className="flex items-center justify-between gap-3 text-[13px] text-zinc-500 dark:text-zinc-400">
+              <div className="flex items-center justify-between gap-3 text-[13px] text-[var(--neo-text-secondary)]">
                 <span>Total profit</span>
                 <span
                   className={cn(
@@ -968,14 +974,24 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           }
         >
           <div className="space-y-0 px-3 py-3 sm:px-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-900/[0.04] py-3 dark:border-border/45">
-              <span className="text-[13px] text-zinc-500 dark:text-zinc-400">Outstanding</span>
+            <div
+              className={cn(
+                "flex flex-wrap items-center justify-between gap-2 border-b py-3",
+                dividerLine
+              )}
+            >
+              <span className="text-[13px] text-[var(--neo-text-secondary)]">Outstanding</span>
               <span className={cn(TYPO.amount, "text-[14px]")}>
                 {formatCurrency(apBillsSummary.totalOutstanding)}
               </span>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-900/[0.04] py-3 dark:border-border/45">
-              <span className="text-[13px] text-zinc-500 dark:text-zinc-400">Overdue</span>
+            <div
+              className={cn(
+                "flex flex-wrap items-center justify-between gap-2 border-b py-3",
+                dividerLine
+              )}
+            >
+              <span className="text-[13px] text-[var(--neo-text-secondary)]">Overdue</span>
               <span
                 className={cn(
                   TYPO.amount,
@@ -991,7 +1007,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               </span>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 py-3">
-              <span className="text-[13px] text-zinc-500 dark:text-zinc-400">Due this week</span>
+              <span className="text-[13px] text-[var(--neo-text-secondary)]">Due this week</span>
               <span className={cn(TYPO.amount, "text-end text-[14px]")}>
                 <span className="tabular-nums">{apBillsSummary.dueThisWeekCount}</span>
                 <span className="mx-1 text-zinc-400">·</span>
@@ -1000,13 +1016,8 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 </span>
               </span>
             </div>
-            <div className="hidden border-t border-slate-900/[0.04] pt-3 dark:border-border/45 md:block">
-              <Button
-                asChild
-                size="sm"
-                variant="outline"
-                className="w-full border-[#081225]/15 hover:bg-slate-50 dark:border-border"
-              >
+            <div className={cn("hidden border-t pt-3 md:block", dividerLine)}>
+              <Button asChild size="sm" variant="outline" className="w-full">
                 <Link href="/bills/new">New bill</Link>
               </Button>
             </div>
@@ -1025,7 +1036,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             </Link>
           }
         >
-          <div className="divide-y divide-slate-900/[0.04] dark:divide-border/45">
+          <div className="divide-y divide-[var(--neo-border)]">
             {recentActivity.length === 0 ? (
               <div className="flex flex-col items-center px-4 py-12">
                 <p className={TYPO.mutedText}>No activity.</p>
@@ -1042,10 +1053,10 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               recentActivity.slice(0, 5).map((tx) => (
                 <div
                   key={tx.id}
-                  className="group flex min-h-[52px] items-center gap-3 px-3 py-2.5 sm:px-4 transition-colors duration-300 ease-out hover:bg-slate-50/60 dark:hover:bg-zinc-900/22"
+                  className="group flex min-h-[52px] items-center gap-3 px-3 py-2.5 transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-muted)] sm:px-4"
                 >
                   <div
-                    className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-slate-900/[0.04] bg-white/40 text-zinc-400/65 dark:border-border/35 dark:bg-zinc-900/35 dark:text-zinc-500/80 md:flex"
+                    className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)] md:flex"
                     aria-hidden
                   >
                     <svg
@@ -1064,23 +1075,25 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <span className={cn(TYPO.primaryName, "truncate text-[14px] tracking-tight")}>
+                      <span
+                        className={cn(TYPO.primaryName, "truncate text-[14px] tracking-normal")}
+                      >
                         {tx.projectName}
                       </span>
                       <ActivityTypeChip type={tx.type} />
                     </div>
-                    <p className="mt-0.5 truncate text-[13px] leading-snug text-zinc-500/85 dark:text-zinc-400/75">
+                    <p className="mt-0.5 truncate text-[13px] leading-snug text-[var(--neo-text-secondary)]">
                       {tx.description}
                     </p>
                   </div>
                   <div className="flex w-[6.5rem] shrink-0 flex-col items-end justify-center gap-0.5 tabular-nums sm:w-[7rem]">
-                    <div className="text-[10px] font-normal uppercase tracking-[0.1em] text-zinc-400/75 dark:text-zinc-500/80">
+                    <div className="text-[10px] font-normal uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                       {formatDate(tx.date, "compact")}
                     </div>
                     <div
                       className={cn(
                         TYPO.amount,
-                        "text-[14px] font-semibold tracking-tight",
+                        "text-[14px] font-semibold tracking-normal",
                         tx.amount < 0
                           ? "text-rose-600/[0.9] dark:text-rose-400/78"
                           : "text-emerald-800/[0.9] dark:text-emerald-400/75"
@@ -1121,7 +1134,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 </Button>
               </div>
             ) : (
-              <div className="divide-y divide-slate-900/[0.04] dark:divide-border/45">
+              <div className="divide-y divide-[var(--neo-border)]">
                 {projectRowsSnapshot.map((p) => {
                   const status = p.profitReady
                     ? getHealthStatus(p.marginPct)
@@ -1131,7 +1144,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     <Link
                       key={p.id}
                       href={`/projects/${p.id}`}
-                      className="flex min-h-[52px] items-center gap-3 px-3 py-3 sm:px-4 transition-colors duration-300 ease-out hover:bg-slate-50/60 dark:hover:bg-zinc-900/22"
+                      className="flex min-h-[52px] items-center gap-3 px-3 py-3 transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-muted)] sm:px-4"
                     >
                       <div className="min-w-0 flex-1">
                         <p className={cn(TYPO.primaryName, "truncate text-[14px]")}>{p.name}</p>
@@ -1149,12 +1162,12 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                         <span
                           className={cn(
                             TYPO.amount,
-                            "max-w-[44vw] truncate text-[14px] font-semibold tracking-tight",
+                            "max-w-[44vw] truncate text-[14px] font-semibold tracking-normal",
                             p.profitReady && p.profit >= 0
                               ? "text-emerald-800/[0.88] dark:text-emerald-400/72"
                               : p.profitReady
                                 ? "text-rose-600/[0.88] dark:text-rose-400/72"
-                                : "text-zinc-500 dark:text-zinc-400"
+                                : "text-[var(--neo-text-secondary)]"
                           )}
                         >
                           {p.profitReady ? formatCurrency(p.profit) : "Review"}
@@ -1172,7 +1185,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-sm">
                 <thead>
-                  <tr className="border-b border-slate-900/[0.04] dark:border-border/45">
+                  <tr className={cn("border-b", dividerLine)}>
                     <th className={cn(TYPO.tableHeader, "py-2.5 pl-4 pr-2 text-left")}>Project</th>
                     <th className={cn(TYPO.tableHeader, "px-2 py-2.5 text-right tabular-nums")}>
                       Revenue
@@ -1212,7 +1225,10 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                       return (
                         <tr
                           key={p.id}
-                          className="border-b border-slate-900/[0.04] transition-colors duration-300 ease-out hover:bg-slate-50/65 dark:border-border/45 dark:hover:bg-zinc-900/20"
+                          className={cn(
+                            "border-b transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-muted)]",
+                            dividerLine
+                          )}
                         >
                           <td className="py-2.5 pl-4 pr-2">
                             <Link
@@ -1221,7 +1237,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                             >
                               {p.name}
                             </Link>
-                            <p className="mt-0.5 text-[12px] text-zinc-500 dark:text-zinc-400">
+                            <p className="mt-0.5 text-[12px] text-[var(--neo-text-secondary)]">
                               {risk === "HIGH" ? "At risk" : "Active"}
                             </p>
                           </td>
@@ -1239,7 +1255,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                                 ? "text-emerald-800/[0.88] dark:text-emerald-400/72"
                                 : p.profitReady
                                   ? "text-rose-600/[0.88] dark:text-rose-400/72"
-                                  : "text-zinc-500 dark:text-zinc-400"
+                                  : "text-[var(--neo-text-secondary)]"
                             )}
                           >
                             {p.profitReady ? formatCurrency(p.profit) : "Review"}
@@ -1255,7 +1271,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                               <span
                                 className={cn(
                                   "text-[11px] tabular-nums",
-                                  over ? OS.dangerAmount : "text-zinc-500 dark:text-zinc-400"
+                                  over ? OS.dangerAmount : "text-[var(--neo-text-secondary)]"
                                 )}
                               >
                                 {p.profitReady && Number.isFinite(progressPct)
@@ -1295,7 +1311,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
           title="Upcoming Tasks"
           description="Operational follow-ups from risk signals."
         >
-          <div className="divide-y divide-slate-900/[0.04] dark:divide-border/45">
+          <div className="divide-y divide-[var(--neo-border)]">
             {upcomingTasks.length === 0 ? (
               <div className="px-4 py-10 text-center">
                 <p className={TYPO.mutedText}>All clear — no operational follow-ups.</p>
@@ -1304,7 +1320,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
               upcomingTasks.map((t) => (
                 <div
                   key={t.id}
-                  className="flex min-h-[52px] items-start justify-between gap-3 px-3 py-3 sm:px-4 transition-colors duration-300 ease-out hover:bg-slate-50/60 dark:hover:bg-zinc-900/22"
+                  className="flex min-h-[52px] items-start justify-between gap-3 px-3 py-3 transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-muted)] sm:px-4"
                 >
                   <div className="flex min-w-0 flex-1 items-start gap-2">
                     <span
@@ -1313,7 +1329,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     />
                     <div className="min-w-0">
                       <p className={cn(TYPO.primaryName, "text-[14px]")}>{t.title}</p>
-                      <p className="mt-0.5 truncate text-[13px] text-zinc-500 dark:text-zinc-400">
+                      <p className="mt-0.5 truncate text-[13px] text-[var(--neo-text-secondary)]">
                         {t.meta}
                       </p>
                     </div>
@@ -1351,18 +1367,18 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                 </Button>
               </div>
             ) : (
-              <div className="divide-y divide-slate-900/[0.04] dark:divide-border/45">
+              <div className="divide-y divide-[var(--neo-border)]">
                 {outstandingSubcontracts.map((r) => (
                   <Link
                     key={r.id}
                     href={`/projects/${r.project_id}/subcontracts`}
-                    className="flex min-h-[52px] items-center gap-3 px-3 py-3 sm:px-4 transition-colors duration-300 ease-out hover:bg-slate-50/60 dark:hover:bg-zinc-900/22"
+                    className="flex min-h-[52px] items-center gap-3 px-3 py-3 transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-muted)] sm:px-4"
                   >
                     <div className="min-w-0 flex-1">
                       <p className={cn(TYPO.primaryName, "truncate text-[14px]")}>
                         {r.subcontractor_name}
                       </p>
-                      <p className="mt-0.5 truncate text-[13px] text-zinc-500 dark:text-zinc-400">
+                      <p className="mt-0.5 truncate text-[13px] text-[var(--neo-text-secondary)]">
                         {r.project_name}
                       </p>
                     </div>
@@ -1379,7 +1395,7 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[520px] text-sm">
                 <thead>
-                  <tr className="border-b border-slate-900/[0.04] dark:border-border/45">
+                  <tr className={cn("border-b", dividerLine)}>
                     <th className={cn(TYPO.tableHeader, "py-2.5 pl-4 pr-2 text-left")}>
                       Subcontractor
                     </th>
@@ -1402,12 +1418,15 @@ export function DashboardView(props: DashboardViewProps): React.ReactNode {
                     outstandingSubcontracts.map((r) => (
                       <tr
                         key={r.id}
-                        className="border-b border-slate-900/[0.04] transition-colors duration-300 ease-out hover:bg-slate-50/65 dark:border-border/45 dark:hover:bg-zinc-900/20"
+                        className={cn(
+                          "border-b transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-muted)]",
+                          dividerLine
+                        )}
                       >
                         <td className={cn(TYPO.primaryName, "py-2.5 pl-4 pr-2 text-[13px]")}>
                           {r.subcontractor_name}
                         </td>
-                        <td className="px-2 py-2.5 text-[13px] text-zinc-600 dark:text-zinc-400">
+                        <td className="px-2 py-2.5 text-[13px] text-[var(--neo-text-secondary)]">
                           <Link
                             href={`/projects/${r.project_id}/subcontracts`}
                             className="hover:underline"

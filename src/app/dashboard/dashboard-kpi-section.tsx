@@ -61,7 +61,10 @@ export async function DashboardKpiSection() {
         ? "Database connection is not configured. Check NEXT_PUBLIC_SUPABASE_URL and keys in the deployment environment."
         : `Could not load KPIs: ${msg}`;
     return (
-      <p className="border-b border-border/45 pb-3 text-sm text-muted-foreground" role="status">
+      <p
+        className="border-b border-white/10 pb-3 text-sm text-[var(--neo-canvas-text-secondary)]"
+        role="status"
+      >
         {friendly}
       </p>
     );

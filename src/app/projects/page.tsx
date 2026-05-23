@@ -73,7 +73,7 @@ export default async function ProjectsPage({
   });
 
   return (
-    <div className="min-h-full bg-page">
+    <div className="min-h-full">
       <ProjectsListClient
         rows={rows}
         dataLoadWarning={dataLoadWarning}
