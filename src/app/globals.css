@@ -251,29 +251,46 @@
   }
   /* Unified status pills */
   .hh-pill-success {
-    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tracking-normal;
-    background-color: #d1fae5;
-    color: #047857;
+    @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tracking-normal;
+    border-color: rgb(5 150 105 / 0.2);
+    background-color: var(--neo-emerald-soft);
+    color: var(--neo-emerald);
   }
   .hh-pill-warning {
-    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tracking-normal;
-    background-color: #fef3c7;
-    color: #92400e;
+    @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tracking-normal;
+    border-color: rgb(184 137 45 / 0.24);
+    background-color: rgb(184 137 45 / 0.12);
+    color: var(--neo-gold);
   }
   .hh-pill-neutral {
-    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tracking-normal;
-    background-color: #f4f4f5;
-    color: #52525b;
+    @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tracking-normal;
+    border-color: var(--neo-border);
+    background-color: var(--neo-surface-muted);
+    color: var(--neo-text-secondary);
   }
   .hh-pill-danger {
-    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tracking-normal;
-    background-color: #ffe4e6;
-    color: #be123c;
+    @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tracking-normal;
+    border-color: rgb(225 29 72 / 0.2);
+    background-color: rgb(255 228 230);
+    color: rgb(190 18 60);
   }
   .hh-pill-info {
-    @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tracking-normal;
-    background-color: #eef0f2;
-    color: #3e454c;
+    @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tracking-normal;
+    border-color: var(--neo-border);
+    background-color: var(--neo-surface-muted);
+    color: var(--neo-text-secondary);
+  }
+  .dark .hh-pill-success {
+    border-color: rgb(16 185 129 / 0.24);
+    background-color: rgb(16 185 129 / 0.15);
+    color: rgb(110 231 183);
+  }
+  .dark .hh-pill-warning {
+    color: var(--neo-gold-soft);
+  }
+  .dark .hh-pill-danger {
+    background-color: rgb(225 29 72 / 0.15);
+    color: rgb(253 164 175);
   }
   /**
    * Interactive list rows / links: desktop hover, mobile press.

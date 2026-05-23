@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 
 export interface ConfirmDialogProps {
   open: boolean;
@@ -75,20 +76,21 @@ export function ConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "max-w-sm border-border/60 p-5 shadow-[var(--shadow-1)] rounded-md",
+          "max-w-sm rounded-xl border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-5 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+          destructive && "border-rose-500/25",
           className
         )}
       >
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold">{title}</DialogTitle>
+          <DialogTitle className="text-base font-semibold text-[var(--neo-text-primary)]">
+            {title}
+          </DialogTitle>
           {description && (
-            <DialogDescription className="text-sm text-muted-foreground">
-              {description}
-            </DialogDescription>
+            <DialogDescription className={TYPO.mutedText}>{description}</DialogDescription>
           )}
         </DialogHeader>
         {children}
-        <DialogFooter className="gap-2 pt-3">
+        <DialogFooter className="gap-2 border-t border-[var(--neo-border)] pt-3">
           <Button
             variant="outline"
             size="default"

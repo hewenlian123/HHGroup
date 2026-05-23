@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 
 export interface SectionHeaderProps {
   label: string;
@@ -15,9 +16,7 @@ export function SectionHeader({ label, action, className }: SectionHeaderProps) 
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-          {label}
-        </span>
+        <span className={TYPO.sectionLabel}>{label}</span>
         {action}
       </div>
       <div className="ui-divider" />

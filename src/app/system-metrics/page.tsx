@@ -1,7 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { PageHeader } from "@/components/page-header";
+import { PageHeader, PageLayout } from "@/components/base";
+import { OS, TYPO } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 type Metrics = {
   projects: number;
@@ -60,25 +62,25 @@ export default function SystemMetricsPage() {
   }, []);
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader title="System Metrics" description="Database row counts for core tables." />
-
+    <PageLayout
+      header={
+        <PageHeader title="System Metrics" description="Database row counts for core tables." />
+      }
+    >
       {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {METRIC_ITEMS.map(({ key, label }) => (
-          <div key={key} className="rounded-sm border border-border/60 px-4 py-4 w-full">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              {label}
-            </p>
+          <div key={key} className={cn(OS.card, "w-full px-4 py-4")}>
+            <p className={TYPO.kpiLabel}>{label}</p>
             {loading ? (
               <div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" />
             ) : (
-              <p className="mt-2 text-2xl font-semibold tabular-nums">{metrics?.[key] ?? 0}</p>
+              <p className={cn(TYPO.kpiValue, "mt-2 text-2xl")}>{metrics?.[key] ?? 0}</p>
             )}
           </div>
         ))}
       </div>
-    </div>
+    </PageLayout>
   );
 }

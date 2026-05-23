@@ -2,7 +2,7 @@
 
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { TYPO } from "@/lib/typography";
+import { NEO, TYPO } from "@/lib/typography";
 
 /** Page-level title and optional description. */
 export function PageHeader({
@@ -21,7 +21,7 @@ export function PageHeader({
 }) {
   const rightContent = children ?? actions;
   return (
-    <header className={cn("flex flex-col gap-1", className)}>
+    <header data-neo-page-header="true" className={cn("flex flex-col gap-1", className)}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
         <div className="min-w-0">
           <h1 className={TYPO.pageTitle}>{title}</h1>
@@ -59,7 +59,8 @@ export function ActionBar({
   return (
     <div
       className={cn(
-        "flex flex-col gap-2 border-b border-gray-100 pb-3 sm:flex-row sm:items-center sm:justify-between",
+        NEO.toolbar,
+        "flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between",
         className
       )}
     >
@@ -94,7 +95,13 @@ export function PageLayout({
   divider?: boolean;
 }) {
   return (
-    <div className={cn("page-container page-stack flex flex-col", className)}>
+    <div
+      data-neo-page-layout="true"
+      className={cn(
+        "page-container page-stack flex flex-col pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
+        className
+      )}
+    >
       {header}
       {actionBar}
       {divider ? <Divider /> : null}
