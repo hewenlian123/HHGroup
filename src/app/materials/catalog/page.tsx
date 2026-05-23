@@ -2,20 +2,28 @@
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { PageLayout, PageHeader } from "@/components/base";
+import {
+  EmptyState,
+  LoadingState,
+  NeoAmount,
+  NeoFieldLabel,
+  NeoInput,
+  NeoMobileCard,
+  NeoModal,
+  NeoSelect,
+  NeoTable,
+  NeoTextarea,
+  NeoToolbar,
+  PageLayout,
+  PageHeader,
+  neoFormErrorClassName,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 import { Package, Search } from "lucide-react";
 import {
   MobileEmptyState,
@@ -253,7 +261,7 @@ export default function MaterialCatalogPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("dark md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -261,11 +269,7 @@ export default function MaterialCatalogPage() {
               title="Material Catalog"
               description="Standard materials library."
               actions={
-                <Button
-                  size="sm"
-                  className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
-                  onClick={openModal}
-                >
+                <Button size="sm" onClick={openModal}>
                   + Add Material
                 </Button>
               }
@@ -288,7 +292,7 @@ export default function MaterialCatalogPage() {
           searchSlot={
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+              <NeoInput
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search materials…"
@@ -299,11 +303,11 @@ export default function MaterialCatalogPage() {
         />
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Category</p>
-            <select
+            <NeoFieldLabel>Category</NeoFieldLabel>
+            <NeoSelect
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="w-full"
             >
               <option value="">All categories</option>
               {categoryOptions.map((c) => (
@@ -311,17 +315,17 @@ export default function MaterialCatalogPage() {
                   {c}
                 </option>
               ))}
-            </select>
+            </NeoSelect>
           </div>
           <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
             Done
           </Button>
         </MobileFilterSheet>
 
-        <div className="hidden flex-wrap items-end gap-3 md:flex">
+        <NeoToolbar className="hidden flex-wrap items-end gap-3 md:flex">
           <div className="relative min-w-[200px] flex-1 max-w-md">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <NeoInput
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search materials…"
@@ -329,13 +333,11 @@ export default function MaterialCatalogPage() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Category
-            </p>
-            <select
+            <NeoFieldLabel>Category</NeoFieldLabel>
+            <NeoSelect
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="h-9 min-w-[160px] rounded-md border border-input bg-background px-3 text-sm"
+              className="h-9 min-w-[160px]"
             >
               <option value="">All</option>
               {categoryOptions.map((c) => (
@@ -343,15 +345,15 @@ export default function MaterialCatalogPage() {
                   {c}
                 </option>
               ))}
-            </select>
+            </NeoSelect>
           </div>
-        </div>
+        </NeoToolbar>
 
-        <div className="airtable-table-wrap airtable-table-wrap--ruled max-md:border-0 max-md:bg-transparent">
+        <div>
           {loading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
+            <LoadingState text="Loading materials..." />
           ) : error && materials.length === 0 ? (
-            <div className="py-10 text-center text-sm text-destructive">{error}</div>
+            <EmptyState title="Material catalog unavailable" description={error} />
           ) : materials.length === 0 ? (
             <>
               <MobileEmptyState
@@ -363,190 +365,214 @@ export default function MaterialCatalogPage() {
                   </Button>
                 }
               />
-              <div className="hidden py-10 text-center text-sm text-muted-foreground md:block">
-                No materials yet. Add one to get started.
-              </div>
+              <EmptyState
+                title="No materials yet"
+                description="Add one standard material to get started."
+                action={
+                  <Button size="sm" onClick={openModal}>
+                    Add material
+                  </Button>
+                }
+                className="hidden md:block"
+              />
             </>
           ) : filteredMaterials.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">No matches.</div>
+            <EmptyState title="No matches" description="Try a different material search." />
           ) : (
             <>
-              <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+              <div className="space-y-2 md:hidden">
                 {filteredMaterials.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => handleEdit(m)}
-                    className="flex min-h-[48px] w-full items-center gap-3 py-2.5 text-left"
-                  >
-                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-sm border border-border/60 bg-muted/30">
-                      {m.photo_url ? (
-                        <img
-                          src={photoUrl(m.photo_url)}
-                          alt=""
-                          className="h-full w-full object-cover"
-                        />
-                      ) : null}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {m.material_name || "—"}
-                      </p>
-                      <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
-                        {(m.category || "—") + (m.supplier ? ` · ${m.supplier}` : "")}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
-                      {m.cost != null
-                        ? `$${Number(m.cost).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
-                        : "—"}
-                    </span>
-                  </button>
+                  <NeoMobileCard asChild key={m.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleEdit(m)}
+                      className="flex min-h-[68px] w-full items-center gap-3 p-3 text-left"
+                    >
+                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                        {m.photo_url ? (
+                          <img
+                            src={photoUrl(m.photo_url)}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : null}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+                          {m.material_name || "—"}
+                        </p>
+                        <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                          {(m.category || "—") + (m.supplier ? ` · ${m.supplier}` : "")}
+                        </p>
+                      </div>
+                      <NeoAmount className="shrink-0 text-sm">
+                        {m.cost != null
+                          ? `$${Number(m.cost).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                          : "—"}
+                      </NeoAmount>
+                    </button>
+                  </NeoMobileCard>
                 ))}
               </div>
-              <div className="airtable-table-scroll hidden md:block">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr>
-                      <th className="h-8 w-12 px-2 sm:px-3" aria-label="Photo" />
-                      <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                        Category
-                      </th>
-                      <th className="h-8 px-2 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                        Material name
-                      </th>
-                      <th className="hidden h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:table-cell">
-                        Supplier
-                      </th>
-                      <th className="h-8 px-2 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                        Cost
-                      </th>
-                      <th className="h-8 w-[140px] px-2 text-right align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {materials.map((m) => (
-                      <tr key={m.id} className={listTableRowStaticClassName}>
-                        <td className="h-11 min-h-[44px] px-2 py-0 align-middle sm:px-3">
-                          {m.photo_url ? (
-                            <a
-                              href={photoUrl(m.photo_url)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block w-10 h-10 rounded-sm border border-border/60 overflow-hidden bg-muted/30"
-                            >
-                              <img
-                                src={photoUrl(m.photo_url)}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            </a>
-                          ) : (
-                            <span
-                              className="block w-10 h-10 rounded-sm border border-border/60 bg-muted/30"
-                              aria-hidden
+              <NeoTable className="hidden md:block" tableClassName="min-w-[860px] lg:min-w-0">
+                <thead>
+                  <tr>
+                    <th className="h-9 w-12 px-3" aria-label="Photo" />
+                    <th className={cn("h-9 px-3 text-left align-middle", TYPO.tableHeader)}>
+                      Category
+                    </th>
+                    <th className={cn("h-9 px-3 text-left align-middle", TYPO.tableHeader)}>
+                      Material name
+                    </th>
+                    <th
+                      className={cn(
+                        "hidden h-9 px-3 text-left align-middle sm:table-cell",
+                        TYPO.tableHeader
+                      )}
+                    >
+                      Supplier
+                    </th>
+                    <th className={cn("h-9 px-3 text-right align-middle", TYPO.tableHeader)}>
+                      Cost
+                    </th>
+                    <th
+                      className={cn("h-9 w-[140px] px-3 text-right align-middle", TYPO.tableHeader)}
+                    >
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMaterials.map((m) => (
+                    <tr key={m.id} className={listTableRowStaticClassName}>
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle">
+                        {m.photo_url ? (
+                          <a
+                            href={photoUrl(m.photo_url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block h-10 w-10 overflow-hidden rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)]"
+                          >
+                            <img
+                              src={photoUrl(m.photo_url)}
+                              alt=""
+                              className="h-full w-full object-cover"
                             />
-                          )}
-                        </td>
-                        <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] text-muted-foreground sm:px-3">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(m)}
-                            className="w-full cursor-pointer bg-transparent p-0 text-left font-inherit text-inherit hover:underline"
-                          >
-                            {m.category || "—"}
-                          </button>
-                        </td>
-                        <td className="h-11 min-h-[44px] px-2 py-0 align-middle text-[13px] font-medium sm:px-3">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(m)}
-                            className="w-full cursor-pointer bg-transparent p-0 text-left font-inherit text-inherit hover:underline"
-                          >
-                            {m.material_name || "—"}
-                          </button>
-                        </td>
-                        <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground sm:table-cell">
-                          {m.supplier ?? "—"}
-                        </td>
-                        <td className="h-11 min-h-[44px] px-2 py-0 text-right align-middle font-mono text-[13px] tabular-nums text-muted-foreground sm:px-3">
+                          </a>
+                        ) : (
+                          <span
+                            className="block h-10 w-10 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)]"
+                            aria-hidden
+                          />
+                        )}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-[var(--neo-text-secondary)]">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(m)}
+                          className="w-full cursor-pointer bg-transparent p-0 text-left font-inherit text-inherit hover:underline"
+                        >
+                          {m.category || "—"}
+                        </button>
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-[var(--neo-text-primary)]">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(m)}
+                          className="w-full cursor-pointer bg-transparent p-0 text-left font-inherit text-inherit hover:underline"
+                        >
+                          {m.material_name || "—"}
+                        </button>
+                      </td>
+                      <td className="hidden h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-[var(--neo-text-secondary)] sm:table-cell">
+                        {m.supplier ?? "—"}
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle">
+                        <NeoAmount className="text-[13px]">
                           {m.cost != null
                             ? `$${Number(m.cost).toLocaleString("en-US", { minimumFractionDigits: 2 })}`
                             : "—"}
-                        </td>
-                        <td className="h-11 min-h-[44px] px-2 py-0 text-right align-middle text-[13px] sm:px-3">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="btn-outline-ghost rounded-sm h-8 px-2"
-                            onClick={() => handleEdit(m)}
-                          >
-                            Edit
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </NeoAmount>
+                      </td>
+                      <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-[13px]">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="btn-outline-ghost rounded-sm h-8 px-2"
+                          onClick={() => handleEdit(m)}
+                        >
+                          Edit
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </NeoTable>
             </>
           )}
         </div>
       </div>
 
       <Dialog open={modalOpen} onOpenChange={handleModalOpenChange}>
-        <DialogContent className="max-w-lg rounded-sm border-border/60 p-6">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">
-              {editingMaterial ? "Edit Material" : "Add Material"}
-            </DialogTitle>
-            <DialogDescription>Add a material to the catalog.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Category</label>
-              <Input
+        <NeoModal
+          title={editingMaterial ? "Edit Material" : "Add Material"}
+          description="Add a material to the catalog."
+          footer={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-sm"
+                onClick={() => handleModalOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button size="sm" onClick={() => void handleSave()} disabled={submitting}>
+                <SubmitSpinner loading={submitting} className="mr-2" />
+                {submitting ? "Saving…" : editingMaterial ? "Save" : "Add"}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Category</NeoFieldLabel>
+              <NeoInput
                 value={form.category}
                 onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
                 placeholder="e.g. Flooring, Paint"
-                className="mt-1 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Material name</label>
-              <Input
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Material name</NeoFieldLabel>
+              <NeoInput
                 value={form.material_name}
                 onChange={(e) => setForm((p) => ({ ...p, material_name: e.target.value }))}
                 placeholder="Required"
-                className="mt-1 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Supplier</label>
-              <Input
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Supplier</NeoFieldLabel>
+              <NeoInput
                 value={form.supplier}
                 onChange={(e) => setForm((p) => ({ ...p, supplier: e.target.value }))}
                 placeholder="Optional"
-                className="mt-1 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Cost</label>
-              <Input
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Cost</NeoFieldLabel>
+              <NeoInput
                 type="number"
                 step="0.01"
                 min="0"
                 value={form.cost}
                 onChange={(e) => setForm((p) => ({ ...p, cost: e.target.value }))}
                 placeholder="0.00"
-                className="mt-1 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Photo</label>
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Photo</NeoFieldLabel>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -555,59 +581,40 @@ export default function MaterialCatalogPage() {
                 className="hidden"
                 onChange={handleFileChange}
               />
-              <div className="mt-1 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="rounded-sm"
                   disabled={uploading}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {uploading ? "Uploading…" : "Upload photo"}
                 </Button>
-                {form.photo_url && <span className="text-xs text-muted-foreground">Uploaded</span>}
+                {form.photo_url && (
+                  <span className="text-xs text-[var(--neo-text-secondary)]">Uploaded</span>
+                )}
               </div>
               {previewUrl ? (
                 <img
                   src={previewUrl}
                   alt="Preview"
-                  className="mt-2 w-full h-40 object-cover rounded-lg border border-border/60"
+                  className="mt-2 h-40 w-full rounded-lg border border-[var(--neo-border)] object-cover"
                 />
               ) : null}
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <textarea
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Description</NeoFieldLabel>
+              <NeoTextarea
                 value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
                 placeholder="Optional"
                 rows={2}
-                className="mt-1 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className={neoFormErrorClassName}>{error}</p>}
           </div>
-          <DialogFooter className="border-t border-border/60 pt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-sm"
-              onClick={() => handleModalOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
-              onClick={() => void handleSave()}
-              disabled={submitting}
-            >
-              <SubmitSpinner loading={submitting} className="mr-2" />
-              {submitting ? "Saving…" : editingMaterial ? "Save" : "Add"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        </NeoModal>
       </Dialog>
     </PageLayout>
   );

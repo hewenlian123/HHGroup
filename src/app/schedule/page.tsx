@@ -2,20 +2,28 @@
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { PageLayout, PageHeader } from "@/components/base";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/native-select";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  EmptyState,
+  LoadingState,
+  NeoFieldLabel,
+  NeoInput,
+  NeoMobileCard,
+  NeoModal,
+  NeoPanel,
+  NeoSelect,
+  NeoStatus,
+  NeoTable,
+  NeoToolbar,
+  PageLayout,
+  PageHeader,
+  neoFormErrorClassName,
+  type StatusBadgeVariant,
+} from "@/components/base";
+import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import { TYPO } from "@/lib/typography";
 import { Search } from "lucide-react";
 import {
   MobileFabButton,
@@ -36,20 +44,30 @@ type ScheduleRow = {
   status: string;
 };
 
-const STATUS_STYLES: Record<string, string> = {
-  planned: "bg-muted text-muted-foreground",
-  scheduled: "bg-muted text-muted-foreground",
-  in_progress: "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300",
-  done: "bg-[#DCFCE7] text-[#166534] dark:bg-green-950 dark:text-green-300",
-  delayed: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-};
-
 const STATUS_LABEL: Record<string, string> = {
   planned: "Planned",
   scheduled: "Planned",
   in_progress: "In progress",
   done: "Done",
   delayed: "Delayed",
+};
+
+const STATUS_VARIANT: Record<string, StatusBadgeVariant> = {
+  planned: "muted",
+  scheduled: "muted",
+  in_progress: "warning",
+  done: "success",
+  delayed: "danger",
+};
+
+const CALENDAR_STATUS_CLASS: Record<string, string> = {
+  planned:
+    "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]",
+  scheduled:
+    "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]",
+  in_progress: "border-[rgb(184_137_45_/_0.26)] bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold)]",
+  done: "border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)]",
+  delayed: "border-rose-500/20 bg-rose-500/10 text-rose-300",
 };
 
 function formatDateRange(start: string | null, end: string | null): string {
@@ -66,11 +84,9 @@ function formatDateRange(start: string | null, end: string | null): string {
 /** Simple month calendar grid: one row per week, items under their start_date. */
 function ScheduleCalendarGrid({
   schedule,
-  statusStyle,
   statusLabel,
 }: {
   schedule: ScheduleRow[];
-  statusStyle: (s: string) => string;
   statusLabel: (s: string) => string;
 }) {
   const [viewDate, setViewDate] = React.useState(() => new Date());
@@ -116,24 +132,24 @@ function ScheduleCalendarGrid({
         <button
           type="button"
           onClick={prevMonth}
-          className="text-sm font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded"
+          className="rounded-md px-2 py-1 text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
         >
           ←
         </button>
-        <span className="text-sm font-semibold text-foreground">{monthLabel}</span>
+        <span className="text-sm font-semibold text-[var(--neo-text-primary)]">{monthLabel}</span>
         <button
           type="button"
           onClick={nextMonth}
-          className="text-sm font-medium text-muted-foreground hover:text-foreground px-2 py-1 rounded"
+          className="rounded-md px-2 py-1 text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
         >
           →
         </button>
       </div>
-      <div className="grid grid-cols-7 gap-px border border-gray-100 rounded-sm overflow-hidden bg-[#E5E7EB] dark:border-border/60 dark:bg-border/40">
+      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-[var(--neo-border)] bg-[var(--neo-border)]">
         {weekDays.map((w) => (
           <div
             key={w}
-            className="bg-background py-1.5 text-center text-xs font-medium text-muted-foreground"
+            className="bg-[var(--neo-surface-muted)] py-1.5 text-center text-xs font-medium text-[var(--neo-text-secondary)]"
           >
             {w}
           </div>
@@ -142,18 +158,23 @@ function ScheduleCalendarGrid({
           <div
             key={i}
             className={cn(
-              "min-h-[72px] bg-background p-1.5 text-left",
-              c.day == null && "bg-[#F3F4F6] dark:bg-muted/20"
+              "min-h-[72px] bg-[var(--neo-surface-raised)] p-1.5 text-left",
+              c.day == null && "bg-[var(--neo-surface-muted)]"
             )}
           >
             {c.day != null && (
               <>
-                <span className="text-xs font-medium text-muted-foreground">{c.day}</span>
+                <span className="text-xs font-medium text-[var(--neo-text-secondary)]">
+                  {c.day}
+                </span>
                 <div className="mt-1 space-y-1">
                   {(itemsByDate.get(c.dateKey) ?? []).map((s) => (
                     <div
                       key={s.id}
-                      className={cn("text-xs truncate rounded px-1 py-0.5", statusStyle(s.status))}
+                      className={cn(
+                        "truncate rounded-md border px-1.5 py-0.5 text-xs font-medium",
+                        CALENDAR_STATUS_CLASS[s.status] ?? CALENDAR_STATUS_CLASS.planned
+                      )}
                       title={`${s.title} — ${statusLabel(s.status)}`}
                     >
                       {s.title || "—"}
@@ -171,33 +192,26 @@ function ScheduleCalendarGrid({
 
 const ScheduleTableRow = React.memo(function ScheduleTableRow({
   item,
-  statusStyle,
   statusLabel,
+  statusVariant,
 }: {
   item: ScheduleRow;
-  statusStyle: (s: string) => string;
   statusLabel: (s: string) => string;
+  statusVariant: (s: string) => StatusBadgeVariant;
 }) {
   return (
     <tr className={listTableRowStaticClassName}>
-      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-foreground">
+      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium text-[var(--neo-text-primary)]">
         {item.title || "—"}
       </td>
-      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
+      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-[var(--neo-text-secondary)]">
         {item.project_name ?? "—"}
       </td>
-      <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-muted-foreground">
+      <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)]">
         {formatDateRange(item.start_date, item.end_date)}
       </td>
       <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
-        <span
-          className={cn(
-            "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium",
-            statusStyle(item.status)
-          )}
-        >
-          {statusLabel(item.status)}
-        </span>
+        <NeoStatus label={statusLabel(item.status)} variant={statusVariant(item.status)} />
       </td>
     </tr>
   );
@@ -289,8 +303,8 @@ export default function SchedulePage() {
     }
   }, [form, load]);
 
-  const statusStyle = React.useCallback(
-    (status: string) => STATUS_STYLES[status] ?? "bg-muted text-muted-foreground",
+  const statusVariant = React.useCallback(
+    (status: string) => STATUS_VARIANT[status] ?? "default",
     []
   );
   const statusLabel = React.useCallback((status: string) => STATUS_LABEL[status] ?? status, []);
@@ -310,7 +324,7 @@ export default function SchedulePage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("dark md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -318,11 +332,7 @@ export default function SchedulePage() {
               title="Schedule"
               description="Project schedule across all projects."
               actions={
-                <Button
-                  size="sm"
-                  className="h-9 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
-                  onClick={openModal}
-                >
+                <Button size="sm" onClick={openModal}>
                   + New schedule item
                 </Button>
               }
@@ -345,7 +355,7 @@ export default function SchedulePage() {
           searchSlot={
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+              <NeoInput
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search schedule…"
@@ -355,13 +365,15 @@ export default function SchedulePage() {
           }
         />
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="View">
-          <div className="flex gap-1 rounded-sm border border-gray-100 bg-background p-0.5 dark:border-border/60">
+          <div className="flex gap-1 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-1">
             <button
               type="button"
               onClick={() => setViewMode("list")}
               className={cn(
-                "flex-1 rounded-md px-3 py-2 text-sm font-medium",
-                viewMode === "list" ? "bg-foreground text-background" : "text-muted-foreground"
+                "min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                viewMode === "list"
+                  ? "bg-[var(--neo-gold)] text-zinc-950"
+                  : "text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
               )}
             >
               List
@@ -370,8 +382,10 @@ export default function SchedulePage() {
               type="button"
               onClick={() => setViewMode("calendar")}
               className={cn(
-                "flex-1 rounded-md px-3 py-2 text-sm font-medium",
-                viewMode === "calendar" ? "bg-foreground text-background" : "text-muted-foreground"
+                "min-h-11 flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                viewMode === "calendar"
+                  ? "bg-[var(--neo-gold)] text-zinc-950"
+                  : "text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
               )}
             >
               Calendar
@@ -382,119 +396,116 @@ export default function SchedulePage() {
           </Button>
         </MobileFilterSheet>
 
-        {/* View switch: List | Calendar */}
-        <div className="hidden w-fit items-center gap-1 rounded-sm border border-gray-100 bg-background p-0.5 dark:border-border/60 md:flex">
-          <button
-            type="button"
-            onClick={() => setViewMode("list")}
-            className={cn(
-              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-              viewMode === "list"
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            List
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode("calendar")}
-            className={cn(
-              "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-              viewMode === "calendar"
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Calendar
-          </button>
-        </div>
-
-        <div className="hidden md:flex md:max-w-md md:items-center md:gap-2">
-          <div className="relative min-w-0 flex-1">
+        <NeoToolbar className="hidden justify-between md:flex">
+          <div className="flex items-center gap-1 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                viewMode === "list"
+                  ? "bg-[var(--neo-gold)] text-zinc-950"
+                  : "text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+              )}
+            >
+              List
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("calendar")}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                viewMode === "calendar"
+                  ? "bg-[var(--neo-gold)] text-zinc-950"
+                  : "text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+              )}
+            >
+              Calendar
+            </button>
+          </div>
+          <div className="relative min-w-0 flex-1 md:max-w-md">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <NeoInput
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search schedule…"
               className="h-9 pl-8 text-sm"
             />
           </div>
-        </div>
+        </NeoToolbar>
 
         {/* List view — compact list */}
         {viewMode === "list" && (
-          <div className="airtable-table-wrap airtable-table-wrap--ruled bg-background max-md:border-0 max-md:bg-transparent">
+          <div>
             {loading ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+              <LoadingState text="Loading schedule..." />
             ) : error ? (
-              <div className="py-8 text-center text-sm text-destructive">{error}</div>
+              <EmptyState title="Schedule unavailable" description={error} />
             ) : schedule.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-sm text-muted-foreground">No schedule items yet.</p>
-                <Button onClick={openModal} className="mt-3" size="sm">
-                  New schedule item
-                </Button>
-              </div>
+              <EmptyState
+                title="No schedule items yet"
+                description="Add the next project milestone or field task."
+                action={
+                  <Button onClick={openModal} size="sm">
+                    New schedule item
+                  </Button>
+                }
+              />
             ) : filteredSchedule.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">No matches.</div>
+              <EmptyState title="No matches" description="Try a different schedule search." />
             ) : (
               <>
-                <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+                <div className="space-y-2 md:hidden">
                   {filteredSchedule.map((s) => (
-                    <div key={s.id} className="flex min-h-[48px] flex-col gap-1 py-2.5">
+                    <NeoMobileCard key={s.id} className="flex min-h-[64px] flex-col gap-2 p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">{s.title || "—"}</p>
-                          <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                          <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+                            {s.title || "—"}
+                          </p>
+                          <p className="truncate text-xs text-[var(--neo-text-secondary)]">
                             {s.project_name ?? "—"}
                           </p>
                         </div>
-                        <span
-                          className={cn(
-                            "inline-flex shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                            statusStyle(s.status)
-                          )}
-                        >
-                          {statusLabel(s.status)}
-                        </span>
+                        <NeoStatus
+                          label={statusLabel(s.status)}
+                          variant={statusVariant(s.status)}
+                        />
                       </div>
-                      <p className="text-sm font-medium tabular-nums text-foreground">
+                      <p className="font-mono text-sm font-medium tabular-nums text-[var(--neo-text-secondary)]">
                         {formatDateRange(s.start_date, s.end_date)}
                       </p>
-                    </div>
+                    </NeoMobileCard>
                   ))}
                 </div>
-                <div className="airtable-table-scroll hidden md:block">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr>
-                        <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                          Title
-                        </th>
-                        <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                          Project
-                        </th>
-                        <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                          Dates
-                        </th>
-                        <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredSchedule.map((s) => (
-                        <ScheduleTableRow
-                          key={s.id}
-                          item={s}
-                          statusStyle={statusStyle}
-                          statusLabel={statusLabel}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <NeoTable className="hidden md:block" tableClassName="min-w-[720px] lg:min-w-0">
+                  <thead>
+                    <tr>
+                      <th className={cn("h-9 px-3 text-left align-middle", TYPO.tableHeader)}>
+                        Title
+                      </th>
+                      <th className={cn("h-9 px-3 text-left align-middle", TYPO.tableHeader)}>
+                        Project
+                      </th>
+                      <th className={cn("h-9 px-3 text-left align-middle", TYPO.tableHeader)}>
+                        Dates
+                      </th>
+                      <th className={cn("h-9 px-3 text-left align-middle", TYPO.tableHeader)}>
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSchedule.map((s) => (
+                      <ScheduleTableRow
+                        key={s.id}
+                        item={s}
+                        statusLabel={statusLabel}
+                        statusVariant={statusVariant}
+                      />
+                    ))}
+                  </tbody>
+                </NeoTable>
               </>
             )}
           </div>
@@ -502,76 +513,79 @@ export default function SchedulePage() {
 
         {/* Calendar view — placeholder */}
         {viewMode === "calendar" && (
-          <div className="overflow-hidden border border-gray-100 bg-background dark:border-border/60">
+          <NeoPanel bodyClassName="p-3 md:p-4">
             {loading ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
+              <LoadingState text="Loading calendar..." />
             ) : error ? (
-              <div className="py-8 text-center text-sm text-destructive">{error}</div>
+              <EmptyState title="Calendar unavailable" description={error} />
             ) : schedule.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-sm text-muted-foreground">No schedule items yet.</p>
-                <Button onClick={openModal} className="mt-3" size="sm">
-                  New schedule item
-                </Button>
-              </div>
+              <EmptyState
+                title="No schedule items yet"
+                description="Add the next project milestone or field task."
+                action={
+                  <Button onClick={openModal} size="sm">
+                    New schedule item
+                  </Button>
+                }
+              />
             ) : filteredSchedule.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted-foreground">No matches.</div>
+              <EmptyState title="No matches" description="Try a different schedule search." />
             ) : (
               <>
-                <div className="divide-y divide-gray-100 dark:divide-border/60 lg:hidden">
+                <div className="space-y-2 lg:hidden">
                   {filteredSchedule.map((s) => (
-                    <div
-                      key={s.id}
-                      className="flex min-h-[48px] flex-col gap-1 px-0 py-2.5 sm:px-4"
-                    >
+                    <NeoMobileCard key={s.id} className="flex min-h-[64px] flex-col gap-2 p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground">{s.title || "—"}</p>
-                          <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                          <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+                            {s.title || "—"}
+                          </p>
+                          <p className="truncate text-xs text-[var(--neo-text-secondary)]">
                             {s.project_name ?? "—"}
                           </p>
                         </div>
-                        <span
-                          className={cn(
-                            "inline-flex shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium",
-                            statusStyle(s.status)
-                          )}
-                        >
-                          {statusLabel(s.status)}
-                        </span>
+                        <NeoStatus
+                          label={statusLabel(s.status)}
+                          variant={statusVariant(s.status)}
+                        />
                       </div>
-                      <p className="text-sm font-medium tabular-nums text-foreground">
+                      <p className="font-mono text-sm font-medium tabular-nums text-[var(--neo-text-secondary)]">
                         {formatDateRange(s.start_date, s.end_date)}
                       </p>
-                    </div>
+                    </NeoMobileCard>
                   ))}
                 </div>
-                <div className="hidden p-4 lg:block">
-                  <ScheduleCalendarGrid
-                    schedule={filteredSchedule}
-                    statusStyle={statusStyle}
-                    statusLabel={statusLabel}
-                  />
+                <div className="hidden lg:block">
+                  <ScheduleCalendarGrid schedule={filteredSchedule} statusLabel={statusLabel} />
                 </div>
               </>
             )}
-          </div>
+          </NeoPanel>
         )}
       </div>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg p-6">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">New schedule item</DialogTitle>
-            <DialogDescription>Add a task to the schedule.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Project</label>
-              <Select
+        <NeoModal
+          title="New schedule item"
+          description="Add a task to the schedule."
+          footer={
+            <>
+              <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleCreate} disabled={submitting}>
+                Add
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Project</NeoFieldLabel>
+              <NeoSelect
                 value={form.project_id}
                 onChange={(e) => setForm((p) => ({ ...p, project_id: e.target.value }))}
-                className="mt-1.5 w-full"
+                className="w-full"
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
@@ -579,61 +593,50 @@ export default function SchedulePage() {
                     {p.name}
                   </option>
                 ))}
-              </Select>
+              </NeoSelect>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Task</label>
-              <Input
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Task</NeoFieldLabel>
+              <NeoInput
                 value={form.title}
                 onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
                 placeholder="Task name"
-                className="mt-1.5 h-9 rounded-sm border-border/60"
               />
             </div>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">Start date</label>
-                <Input
+              <div className="space-y-1.5">
+                <NeoFieldLabel>Start date</NeoFieldLabel>
+                <NeoInput
                   type="date"
                   value={form.start_date}
                   onChange={(e) => setForm((p) => ({ ...p, start_date: e.target.value }))}
-                  className="mt-1.5 h-9 rounded-sm border-border/60"
                 />
               </div>
-              <div>
-                <label className="text-xs font-medium text-muted-foreground">End date</label>
-                <Input
+              <div className="space-y-1.5">
+                <NeoFieldLabel>End date</NeoFieldLabel>
+                <NeoInput
                   type="date"
                   value={form.end_date}
                   onChange={(e) => setForm((p) => ({ ...p, end_date: e.target.value }))}
-                  className="mt-1.5 h-9 rounded-sm border-border/60"
                 />
               </div>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <Select
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Status</NeoFieldLabel>
+              <NeoSelect
                 value={form.status}
                 onChange={(e) => setForm((p) => ({ ...p, status: e.target.value }))}
-                className="mt-1.5 w-full"
+                className="w-full"
               >
                 <option value="planned">Planned</option>
                 <option value="in_progress">In progress</option>
                 <option value="done">Done</option>
                 <option value="delayed">Delayed</option>
-              </Select>
+              </NeoSelect>
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className={neoFormErrorClassName}>{error}</p>}
           </div>
-          <DialogFooter className="border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button size="sm" onClick={handleCreate} disabled={submitting}>
-              Add
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        </NeoModal>
       </Dialog>
     </PageLayout>
   );

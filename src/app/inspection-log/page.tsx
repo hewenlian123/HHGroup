@@ -2,20 +2,30 @@
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { PageLayout, PageHeader, Drawer } from "@/components/base";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/native-select";
-import { listTablePrimaryCellClassName, listTableRowClassName } from "@/lib/list-table-interaction";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Drawer,
+  EmptyState,
+  LoadingState,
+  NeoActionFooter,
+  NeoFieldLabel,
+  NeoInput,
+  NeoMobileCard,
+  NeoModal,
+  NeoSelect,
+  NeoStatus,
+  NeoTable,
+  NeoTextarea,
+  NeoToolbar,
+  PageLayout,
+  PageHeader,
+  neoFormErrorClassName,
+  type StatusBadgeVariant,
+} from "@/components/base";
+import { Button } from "@/components/ui/button";
+import { listTablePrimaryCellClassName, listTableRowClassName } from "@/lib/list-table-interaction";
+import { Dialog } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 import { Search } from "lucide-react";
 import {
   MobileEmptyState,
@@ -44,11 +54,15 @@ const STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
 ];
 
-const STATUS_STYLES: Record<string, string> = {
-  passed: "bg-[#DCFCE7] text-[#166534] dark:bg-green-950 dark:text-green-300",
-  failed: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300",
-  pending: "bg-muted text-muted-foreground",
+const STATUS_VARIANT: Record<string, StatusBadgeVariant> = {
+  passed: "success",
+  failed: "danger",
+  pending: "warning",
 };
+
+function statusLabel(status: string) {
+  return STATUS_OPTIONS.find((option) => option.value === status)?.label ?? status;
+}
 
 export default function InspectionLogPage() {
   const [entries, setEntries] = React.useState<InspectionRow[]>([]);
@@ -215,7 +229,7 @@ export default function InspectionLogPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("dark md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -246,7 +260,7 @@ export default function InspectionLogPage() {
           searchSlot={
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
+              <NeoInput
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search inspections…"
@@ -257,11 +271,11 @@ export default function InspectionLogPage() {
         />
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Project</p>
-            <Select
+            <NeoFieldLabel>Project</NeoFieldLabel>
+            <NeoSelect
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="mt-1 w-full"
+              className="w-full"
             >
               <option value="">All projects</option>
               {projects.map((p) => (
@@ -269,14 +283,14 @@ export default function InspectionLogPage() {
                   {p.name}
                 </option>
               ))}
-            </Select>
+            </NeoSelect>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Status</p>
-            <Select
+            <NeoFieldLabel>Status</NeoFieldLabel>
+            <NeoSelect
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="mt-1 w-full"
+              className="w-full"
             >
               <option value="">All statuses</option>
               {STATUS_OPTIONS.map((o) => (
@@ -284,17 +298,17 @@ export default function InspectionLogPage() {
                   {o.label}
                 </option>
               ))}
-            </Select>
+            </NeoSelect>
           </div>
           <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
             Done
           </Button>
         </MobileFilterSheet>
 
-        <div className="hidden flex-wrap items-end gap-3 md:flex">
+        <NeoToolbar className="hidden flex-wrap items-end gap-3 md:flex">
           <div className="relative min-w-[200px] flex-1 max-w-md">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <NeoInput
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search inspections…"
@@ -302,10 +316,8 @@ export default function InspectionLogPage() {
             />
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Project
-            </p>
-            <Select
+            <NeoFieldLabel>Project</NeoFieldLabel>
+            <NeoSelect
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
               className="h-9 min-w-[160px]"
@@ -316,13 +328,11 @@ export default function InspectionLogPage() {
                   {p.name}
                 </option>
               ))}
-            </Select>
+            </NeoSelect>
           </div>
           <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Status
-            </p>
-            <Select
+            <NeoFieldLabel>Status</NeoFieldLabel>
+            <NeoSelect
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="h-9 min-w-[120px]"
@@ -333,15 +343,15 @@ export default function InspectionLogPage() {
                   {o.label}
                 </option>
               ))}
-            </Select>
+            </NeoSelect>
           </div>
-        </div>
+        </NeoToolbar>
 
-        <div className="airtable-table-wrap airtable-table-wrap--ruled max-md:border-0 max-md:bg-transparent">
+        <div>
           {loading ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
+            <LoadingState text="Loading inspections..." />
           ) : error ? (
-            <div className="px-3 py-10 text-center text-sm text-destructive">{error}</div>
+            <EmptyState title="Inspection log unavailable" description={error} />
           ) : entries.length === 0 ? (
             <>
               <MobileEmptyState
@@ -353,113 +363,116 @@ export default function InspectionLogPage() {
                   </Button>
                 }
               />
-              <div className="hidden py-10 text-center text-sm text-muted-foreground md:block">
-                No inspections yet.
-              </div>
+              <EmptyState
+                title="No inspections yet"
+                description="Add the first inspection entry for a project."
+                action={
+                  <Button size="sm" onClick={openModal}>
+                    New inspection
+                  </Button>
+                }
+                className="hidden md:block"
+              />
             </>
           ) : filteredEntries.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">No matches.</div>
+            <EmptyState title="No matches" description="Try a different inspection filter." />
           ) : (
             <>
-              <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+              <div className="space-y-2 md:hidden">
                 {filteredEntries.map((row) => (
-                  <button
-                    key={row.id}
-                    type="button"
-                    onClick={() => openDrawer(row)}
-                    className="flex w-full min-h-[48px] flex-col gap-1 py-2.5 text-left"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">
-                          {row.inspection_type || "—"}
-                        </p>
-                        <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
-                          {(row.project_name ?? "—") +
-                            " · " +
-                            (row.inspection_date
-                              ? new Date(row.inspection_date).toLocaleDateString()
-                              : "—")}
-                        </p>
+                  <NeoMobileCard asChild key={row.id}>
+                    <button
+                      type="button"
+                      onClick={() => openDrawer(row)}
+                      className="flex w-full min-h-[64px] flex-col gap-2 p-3 text-left"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+                            {row.inspection_type || "—"}
+                          </p>
+                          <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                            {(row.project_name ?? "—") +
+                              " · " +
+                              (row.inspection_date
+                                ? new Date(row.inspection_date).toLocaleDateString()
+                                : "—")}
+                          </p>
+                        </div>
+                        <NeoStatus
+                          label={statusLabel(row.status)}
+                          variant={STATUS_VARIANT[row.status] ?? "default"}
+                        />
                       </div>
-                      <span
-                        className={cn(
-                          "inline-flex shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium capitalize",
-                          STATUS_STYLES[row.status] ?? STATUS_STYLES.pending
-                        )}
-                      >
-                        {row.status}
-                      </span>
-                    </div>
-                    {row.inspector ? (
-                      <p className="text-xs text-muted-foreground">{row.inspector}</p>
-                    ) : null}
-                  </button>
+                      {row.inspector ? (
+                        <p className="text-xs text-[var(--neo-text-secondary)]">{row.inspector}</p>
+                      ) : null}
+                    </button>
+                  </NeoMobileCard>
                 ))}
               </div>
-              <div className="airtable-table-scroll hidden md:block">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr>
-                      <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                        Date
-                      </th>
-                      <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                        Project
-                      </th>
-                      <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                        Inspection Type
-                      </th>
-                      <th className="hidden h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] md:table-cell">
-                        Inspector
-                      </th>
-                      <th className="h-8 px-2 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] sm:px-3">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredEntries.map((row) => (
-                      <tr
-                        key={row.id}
-                        onClick={() => openDrawer(row)}
-                        className={listTableRowClassName}
+              <NeoTable className="hidden md:block" tableClassName="min-w-[780px] lg:min-w-0">
+                <thead>
+                  <tr>
+                    <th className={cn("h-9 px-3 text-left align-middle", TYPO.tableHeader)}>
+                      Date
+                    </th>
+                    <th className={cn("h-9 px-3 text-left align-middle", TYPO.tableHeader)}>
+                      Project
+                    </th>
+                    <th className={cn("h-9 px-3 text-left align-middle", TYPO.tableHeader)}>
+                      Inspection Type
+                    </th>
+                    <th
+                      className={cn(
+                        "hidden h-9 px-3 text-left align-middle md:table-cell",
+                        TYPO.tableHeader
+                      )}
+                    >
+                      Inspector
+                    </th>
+                    <th className={cn("h-9 px-3 text-left align-middle", TYPO.tableHeader)}>
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEntries.map((row) => (
+                    <tr
+                      key={row.id}
+                      onClick={() => openDrawer(row)}
+                      className={listTableRowClassName}
+                    >
+                      <td className="h-11 px-3 py-0 align-middle font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)]">
+                        {row.inspection_date
+                          ? new Date(row.inspection_date).toLocaleDateString()
+                          : "—"}
+                      </td>
+                      <td className="h-11 px-3 py-0 align-middle text-[13px] text-[var(--neo-text-secondary)]">
+                        {row.project_name ?? "—"}
+                      </td>
+                      <td
+                        className={cn(
+                          "h-11 px-3 py-0 align-middle text-[13px] font-medium text-[var(--neo-text-primary)]",
+                          listTablePrimaryCellClassName,
+                          "hover:underline"
+                        )}
                       >
-                        <td className="py-2 px-2 sm:px-3 text-muted-foreground tabular-nums">
-                          {row.inspection_date
-                            ? new Date(row.inspection_date).toLocaleDateString()
-                            : "—"}
-                        </td>
-                        <td className="py-2 px-2 sm:px-3 text-muted-foreground">
-                          {row.project_name ?? "—"}
-                        </td>
-                        <td
-                          className={cn(
-                            "py-2 px-2 sm:px-3 font-medium",
-                            listTablePrimaryCellClassName,
-                            "hover:underline"
-                          )}
-                        >
-                          {row.inspection_type || "—"}
-                        </td>
-                        <td className="hidden md:table-cell py-2 px-3 text-muted-foreground">
-                          {row.inspector ?? "—"}
-                        </td>
-                        <td className="py-2 px-2 sm:px-3">
-                          <span
-                            className={cn(
-                              "inline-flex rounded-sm px-1.5 py-0.5 text-xs font-medium capitalize",
-                              STATUS_STYLES[row.status] ?? STATUS_STYLES.pending
-                            )}
-                          >
-                            {row.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        {row.inspection_type || "—"}
+                      </td>
+                      <td className="hidden h-11 px-3 py-0 align-middle text-[13px] text-[var(--neo-text-secondary)] md:table-cell">
+                        {row.inspector ?? "—"}
+                      </td>
+                      <td className="h-11 px-3 py-0 align-middle">
+                        <NeoStatus
+                          label={statusLabel(row.status)}
+                          variant={STATUS_VARIANT[row.status] ?? "default"}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </NeoTable>
             </>
           )}
         </div>
@@ -473,34 +486,31 @@ export default function InspectionLogPage() {
       >
         {selectedEntry && (
           <div className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Inspection type</label>
-              <Input
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Inspection type</NeoFieldLabel>
+              <NeoInput
                 value={drawerForm.inspection_type}
                 onChange={(e) => setDrawerForm((f) => ({ ...f, inspection_type: e.target.value }))}
-                className="mt-1 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Inspector</label>
-              <Input
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Inspector</NeoFieldLabel>
+              <NeoInput
                 value={drawerForm.inspector}
                 onChange={(e) => setDrawerForm((f) => ({ ...f, inspector: e.target.value }))}
-                className="mt-1 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Inspection date</label>
-              <Input
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Inspection date</NeoFieldLabel>
+              <NeoInput
                 type="date"
                 value={drawerForm.inspection_date}
                 onChange={(e) => setDrawerForm((f) => ({ ...f, inspection_date: e.target.value }))}
-                className="mt-1 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <Select
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Status</NeoFieldLabel>
+              <NeoSelect
                 value={drawerForm.status}
                 onChange={(e) =>
                   setDrawerForm((f) => ({
@@ -508,50 +518,58 @@ export default function InspectionLogPage() {
                     status: e.target.value as "passed" | "failed" | "pending",
                   }))
                 }
-                className="mt-1 w-full"
+                className="w-full"
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </Select>
+              </NeoSelect>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Notes</label>
-              <textarea
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Notes</NeoFieldLabel>
+              <NeoTextarea
                 value={drawerForm.notes}
                 onChange={(e) => setDrawerForm((f) => ({ ...f, notes: e.target.value }))}
                 rows={3}
-                className="mt-1 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
-            <div className="flex gap-2 pt-2">
+            {error && <p className={neoFormErrorClassName}>{error}</p>}
+            <NeoActionFooter>
               <Button size="sm" variant="outline" onClick={() => setDrawerOpen(false)}>
                 Cancel
               </Button>
               <Button size="sm" onClick={handleSaveDrawer} disabled={submitting}>
                 Save
               </Button>
-            </div>
+            </NeoActionFooter>
           </div>
         )}
       </Drawer>
 
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="max-w-lg p-6">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">New Inspection</DialogTitle>
-            <DialogDescription>Add an inspection log entry.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Project</label>
-              <Select
+        <NeoModal
+          title="New Inspection"
+          description="Add an inspection log entry."
+          footer={
+            <>
+              <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleCreate} disabled={submitting}>
+                Add
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Project</NeoFieldLabel>
+              <NeoSelect
                 value={form.project_id}
                 onChange={(e) => setForm((f) => ({ ...f, project_id: e.target.value }))}
-                className="mt-1.5 w-full"
+                className="w-full"
               >
                 <option value="">Select project</option>
                 {projects.map((p) => (
@@ -559,38 +577,35 @@ export default function InspectionLogPage() {
                     {p.name}
                   </option>
                 ))}
-              </Select>
+              </NeoSelect>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Inspection type</label>
-              <Input
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Inspection type</NeoFieldLabel>
+              <NeoInput
                 value={form.inspection_type}
                 onChange={(e) => setForm((f) => ({ ...f, inspection_type: e.target.value }))}
                 placeholder="e.g. Foundation, Framing"
-                className="mt-1.5 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Inspector</label>
-              <Input
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Inspector</NeoFieldLabel>
+              <NeoInput
                 value={form.inspector}
                 onChange={(e) => setForm((f) => ({ ...f, inspector: e.target.value }))}
                 placeholder="Inspector name"
-                className="mt-1.5 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Inspection date</label>
-              <Input
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Inspection date</NeoFieldLabel>
+              <NeoInput
                 type="date"
                 value={form.inspection_date}
                 onChange={(e) => setForm((f) => ({ ...f, inspection_date: e.target.value }))}
-                className="mt-1.5 h-9 rounded-sm border-border/60"
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <Select
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Status</NeoFieldLabel>
+              <NeoSelect
                 value={form.status}
                 onChange={(e) =>
                   setForm((f) => ({
@@ -598,36 +613,27 @@ export default function InspectionLogPage() {
                     status: e.target.value as "passed" | "failed" | "pending",
                   }))
                 }
-                className="mt-1.5 w-full"
+                className="w-full"
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
                 ))}
-              </Select>
+              </NeoSelect>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Notes</label>
-              <textarea
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Notes</NeoFieldLabel>
+              <NeoTextarea
                 value={form.notes}
                 onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
                 placeholder="Optional"
                 rows={2}
-                className="mt-1.5 w-full rounded-sm border border-border/60 px-2.5 py-2 text-sm"
               />
             </div>
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p className={neoFormErrorClassName}>{error}</p>}
           </div>
-          <DialogFooter className="border-t border-border/60 pt-4">
-            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button size="sm" onClick={handleCreate} disabled={submitting}>
-              Add
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        </NeoModal>
       </Dialog>
     </PageLayout>
   );

@@ -6,9 +6,18 @@ import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blockin
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { ChevronDown, FileStack, Plus } from "lucide-react";
-import { PageLayout, PageHeader } from "@/components/base";
+import {
+  EmptyState,
+  NeoAmount,
+  NeoInput,
+  NeoPanel,
+  NeoStatus,
+  NeoToolbar,
+  PageLayout,
+  PageHeader,
+  type StatusBadgeVariant,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,18 +45,18 @@ function statusLabel(s: string): string {
   return s;
 }
 
-function statusClass(s: string): string {
+function statusVariant(s: string): StatusBadgeVariant {
   switch (s) {
     case "Draft":
-      return "bg-[#f3f4f6] text-text-secondary";
+      return "muted";
     case "Pending Approval":
-      return "bg-[#fff7ed] text-[#c2410c]";
+      return "warning";
     case "Approved":
-      return "bg-[#f0fdf4] text-[#166534]";
+      return "success";
     case "Rejected":
-      return "bg-[#fef2f2] text-[#b91c1c]";
+      return "danger";
     default:
-      return "bg-[#f3f4f6] text-text-secondary";
+      return "default";
   }
 }
 
@@ -104,23 +113,27 @@ export function ChangeOrdersView({
       actions={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              className="h-9 rounded-lg bg-[#111] px-4 font-medium text-white hover:bg-[#333]"
-            >
+            <Button size="sm" className="h-9 px-4">
               <Plus className="mr-2 h-4 w-4" />
               New Change Order
               <ChevronDown className="ml-2 h-4 w-4 opacity-80" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[220px] rounded-lg">
+          <DropdownMenuContent
+            align="end"
+            className="min-w-[220px] rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+          >
             {projects.length === 0 ? (
-              <DropdownMenuItem disabled className="text-muted-foreground">
+              <DropdownMenuItem disabled className="text-[var(--neo-text-secondary)]">
                 No projects
               </DropdownMenuItem>
             ) : (
               projects.map((p) => (
-                <DropdownMenuItem key={p.id} asChild>
+                <DropdownMenuItem
+                  key={p.id}
+                  asChild
+                  className="hover:bg-[var(--neo-surface-muted)] focus:bg-[var(--neo-surface-muted)]"
+                >
                   <Link href={`/projects/${p.id}/change-orders/new`}>{p.name}</Link>
                 </DropdownMenuItem>
               ))
@@ -134,7 +147,7 @@ export function ChangeOrdersView({
   return (
     <PageLayout
       divider={false}
-      className={cn(mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("dark", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden w-full md:block">{desktopHeader}</div>
@@ -177,12 +190,12 @@ export function ChangeOrdersView({
       </MobileFilterSheet>
 
       <div
-        className="min-w-0 space-y-3 font-sans md:space-y-0"
+        className="min-w-0 space-y-3 font-sans"
         style={{ fontFamily: "var(--font-inter), Inter, system-ui, sans-serif" }}
       >
         {grouped.length > 0 ? (
           <div className="md:hidden">
-            <Input
+            <NeoInput
               placeholder="Search change orders…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -191,18 +204,21 @@ export function ChangeOrdersView({
           </div>
         ) : null}
         {grouped.length > 0 ? (
-          <div className="hidden md:block">
-            <Input
+          <NeoToolbar className="hidden md:flex">
+            <NeoInput
               placeholder="Search change orders…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-9 max-w-sm text-sm"
             />
-          </div>
+          </NeoToolbar>
         ) : null}
 
         {dataLoadWarning ? (
-          <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+          <p
+            className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]"
+            role="status"
+          >
             {dataLoadWarning}
           </p>
         ) : null}
@@ -226,71 +242,62 @@ export function ChangeOrdersView({
                 ) : undefined
               }
             />
-            <div className="hidden py-24 text-center md:block">
-              <p className="text-[15px] text-text-secondary">
-                {dataLoadWarning ? "Could not load change orders." : "No change orders yet."}
-              </p>
-              <p className="mt-1 text-sm text-[#9ca3af]">
-                {dataLoadWarning
+            <EmptyState
+              title={dataLoadWarning ? "Could not load change orders" : "No change orders yet"}
+              description={
+                dataLoadWarning
                   ? "Check your connection and database configuration, then refresh."
-                  : "Create a project first, then add change orders from the project."}
-              </p>
-              {projects.length > 0 && (
-                <Button
-                  asChild
-                  size="sm"
-                  className="mt-6 rounded-lg bg-[#111] text-white hover:bg-[#333]"
-                >
-                  <Link href={`/projects/${projects[0].id}/change-orders/new`}>
-                    New Change Order
-                  </Link>
-                </Button>
-              )}
-            </div>
+                  : "Create a project first, then add change orders from the project."
+              }
+              action={
+                projects.length > 0 ? (
+                  <Button asChild size="sm">
+                    <Link href={`/projects/${projects[0].id}/change-orders/new`}>
+                      New Change Order
+                    </Link>
+                  </Button>
+                ) : undefined
+              }
+              className="hidden md:block"
+            />
           </>
         ) : filteredGrouped.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No matches.</p>
+          <EmptyState title="No matches" description="Try a different change order search." />
         ) : (
-          <div className="space-y-8 md:space-y-12">
+          <div className="space-y-3">
             {filteredGrouped.map(({ project, changeOrders }) => (
-              <section key={project.id} className="space-y-2 md:space-y-3">
-                <h2 className="text-[13px] font-semibold uppercase tracking-wider text-[#9ca3af]">
-                  {project.name}
-                </h2>
-                <div className="overflow-hidden rounded-lg border border-[#eee] max-md:rounded-none max-md:border-0 dark:border-border/60">
-                  <div className="divide-y divide-gray-100 dark:divide-border/60">
-                    {changeOrders.map((co) => (
-                      <Link
-                        key={co.id}
-                        href={`/projects/${co.projectId}/change-orders/${co.id}`}
-                        className={cn(
-                          listFlexRowClassName,
-                          "flex min-h-[48px] items-center justify-between gap-3 px-0 py-2.5 md:gap-4 md:px-5 md:py-4"
-                        )}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium text-[#111] dark:text-foreground">
-                            {co.number}
-                          </div>
-                          <div className="mt-0.5 truncate text-xs text-text-secondary dark:text-muted-foreground">
-                            {co.title || "Untitled"}
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 flex-col items-end gap-1">
-                          <span className="text-sm font-medium tabular-nums text-[#111] dark:text-foreground">
-                            {formatAmount(co.total, co.amount)}
-                          </span>
-                          <span
-                            className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ${statusClass(co.status)}`}
-                          >
-                            {statusLabel(co.status)}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </section>
+              <NeoPanel
+                key={project.id}
+                title={project.name}
+                bodyClassName="divide-y divide-[var(--neo-border)]"
+              >
+                {changeOrders.map((co) => (
+                  <Link
+                    key={co.id}
+                    href={`/projects/${co.projectId}/change-orders/${co.id}`}
+                    className={cn(
+                      listFlexRowClassName,
+                      "group flex min-h-[64px] items-center justify-between gap-3 px-3 py-3 md:gap-4 md:px-4"
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-medium text-[var(--neo-text-primary)]">
+                        {co.number}
+                      </div>
+                      <div className="mt-0.5 truncate text-xs text-[var(--neo-text-secondary)]">
+                        {co.title || "Untitled"}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <NeoAmount className="text-sm">{formatAmount(co.total, co.amount)}</NeoAmount>
+                      <NeoStatus
+                        label={statusLabel(co.status)}
+                        variant={statusVariant(co.status)}
+                      />
+                    </div>
+                  </Link>
+                ))}
+              </NeoPanel>
             ))}
           </div>
         )}
