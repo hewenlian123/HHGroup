@@ -264,14 +264,23 @@ test.describe("System QA check", () => {
       const page = await context.newPage();
 
       await page.goto("/system-health", { waitUntil: "domcontentloaded" });
-      await expect(page.getByRole("heading", { name: "System Health" })).toBeVisible({
+      await expect(page.getByRole("heading", { name: "System Guardian" })).toBeVisible({
         timeout: 30_000,
       });
       await expect(page.getByRole("heading", { name: "System QA" })).toBeVisible();
-      await expect(page.getByText("Needs attention")).toBeVisible({ timeout: 30_000 });
-      await expect(page.getByText("Optional modules", { exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Active Issues" })).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByText("Optional Modules", { exact: true })).toBeVisible();
+      const optionalModulesSection = page
+        .locator("details")
+        .filter({ hasText: "Optional Modules" })
+        .first();
+      await optionalModulesSection.locator("summary").click();
       await expect(
-        page.getByText("AP Bills module is optional and not configured.").first()
+        optionalModulesSection
+          .getByRole("cell", { name: /AP Bills module is optional and not configured\./ })
+          .first()
       ).toBeVisible();
 
       await page.getByRole("button", { name: /Run System QA|Running QA/ }).click();
@@ -327,7 +336,7 @@ test.describe("System QA check", () => {
     });
 
     await page.goto("/system-health", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: "System Health" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "System Guardian" })).toBeVisible({
       timeout: 30_000,
     });
     await expect(page.getByRole("heading", { name: "System QA" })).toBeVisible();
