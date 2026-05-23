@@ -2,8 +2,14 @@
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { PageHeader } from "@/components/page-header";
-import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import {
+  DataTable,
+  PageHeader,
+  PageLayout,
+  StatusBadge,
+  type DataTableColumn,
+} from "@/components/base";
+import { Button } from "@/components/ui/button";
 
 type LogEntry = {
   time: string;
@@ -11,6 +17,28 @@ type LogEntry = {
   type: string;
   message: string;
 };
+
+function logVariant(type: string) {
+  if (type === "Error") return "danger" as const;
+  if (type === "Warning") return "warning" as const;
+  return "muted" as const;
+}
+
+const logColumns: DataTableColumn<LogEntry>[] = [
+  { key: "time", header: "Time", className: "w-[90px] text-[var(--neo-text-secondary)]" },
+  { key: "module", header: "Module", className: "w-[140px]" },
+  {
+    key: "type",
+    header: "Type",
+    className: "w-[100px]",
+    cell: (entry) => <StatusBadge label={entry.type} variant={logVariant(entry.type)} />,
+  },
+  {
+    key: "message",
+    header: "Message",
+    className: "break-words text-[var(--neo-text-secondary)]",
+  },
+];
 
 export default function SystemLogsPage() {
   const [logs, setLogs] = React.useState<LogEntry[]>([]);
@@ -46,78 +74,28 @@ export default function SystemLogsPage() {
   );
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title="System Logs"
-        description="Recent system events and errors from server console."
-      />
-
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={load}
-          disabled={loading}
-          className="min-h-[44px] min-w-[44px] rounded-md px-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 disabled:opacity-50 flex items-center justify-center touch-target"
-        >
-          {loading ? "Loading…" : "Refresh"}
-        </button>
-      </div>
-
+    <PageLayout
+      header={
+        <PageHeader
+          title="System Logs"
+          description="Recent system events and errors from server console."
+          actions={
+            <Button type="button" variant="outline" size="sm" onClick={load} disabled={loading}>
+              {loading ? "Loading…" : "Refresh"}
+            </Button>
+          }
+        />
+      }
+    >
       {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
 
-      <div className="airtable-table-wrap airtable-table-wrap--ruled">
-        <div className="airtable-table-scroll">
-          <table className="w-full min-w-[360px] text-sm sm:min-w-0">
-            <thead>
-              <tr className="text-left">
-                <th className="h-8 w-[90px] px-3 py-0 pr-4 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                  Time
-                </th>
-                <th className="h-8 w-[140px] px-3 py-0 pr-4 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                  Module
-                </th>
-                <th className="h-8 w-[80px] px-3 py-0 pr-4 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                  Type
-                </th>
-                <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                  Message
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.length === 0 && !loading ? (
-                <tr>
-                  <td colSpan={4} className="py-8 text-center text-muted-foreground">
-                    No log entries yet. Server console output will appear here after instrumentation
-                    captures it.
-                  </td>
-                </tr>
-              ) : (
-                logs.map((entry, i) => (
-                  <tr key={`${entry.time}-${i}`} className={listTableRowStaticClassName}>
-                    <td className="py-2 pr-4 tabular-nums text-muted-foreground">{entry.time}</td>
-                    <td className="py-2 pr-4">{entry.module}</td>
-                    <td className="py-2 pr-4">
-                      <span
-                        className={
-                          entry.type === "Error"
-                            ? "text-red-600 dark:text-red-400"
-                            : entry.type === "Warning"
-                              ? "text-amber-600 dark:text-amber-400"
-                              : "text-muted-foreground"
-                        }
-                      >
-                        {entry.type}
-                      </span>
-                    </td>
-                    <td className="py-2 text-muted-foreground break-words">{entry.message}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+      <DataTable<LogEntry>
+        columns={logColumns}
+        data={logs}
+        getRowId={(entry, index) => `${entry.time}-${index}`}
+        loading={loading}
+        emptyState="No log entries yet. Server console output will appear here after instrumentation captures it."
+      />
+    </PageLayout>
   );
 }

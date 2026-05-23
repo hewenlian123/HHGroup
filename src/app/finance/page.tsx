@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { PageLayout, PageHeader, Divider } from "@/components/base";
+import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import { getFinanceOverviewStats, getRecentTransactions } from "@/lib/data";
 import { DollarSign, Banknote, ShoppingCart, Clock, TrendingUp, Activity } from "lucide-react";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-import { TYPO } from "@/lib/typography";
+import { OS, TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -74,14 +75,10 @@ export default async function FinanceOverviewPage() {
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {cards.map(({ label, value, icon: Icon, href }) => {
           const content = (
-            <div className="flex flex-col gap-1 border-b border-border/60 pb-4">
+            <div className={cn(OS.card, "flex flex-col gap-1 p-4")}>
               <div className="flex items-center justify-between">
                 <span className={TYPO.sectionLabel}>{label}</span>
-                {href ? (
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                )}
+                <Icon className="h-4 w-4 text-[var(--neo-text-secondary)]" />
               </div>
               <p
                 className={cn(
@@ -99,7 +96,7 @@ export default async function FinanceOverviewPage() {
             </div>
           );
           return href ? (
-            <Link key={label} href={href} className="block hover:opacity-90">
+            <Link key={label} href={href} className="block">
               {content}
             </Link>
           ) : (
@@ -119,36 +116,37 @@ export default async function FinanceOverviewPage() {
         {recent.length === 0 ? (
           <p className="py-6 text-sm text-muted-foreground">No recent activity.</p>
         ) : (
-          <div className="airtable-table-wrap airtable-table-wrap--ruled">
-            <div className="airtable-table-scroll">
+          <TableShell>
+            <div className="max-w-full overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Type
-                    </th>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Description
-                    </th>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Project
-                    </th>
-                    <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                      Amount
-                    </th>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Date
-                    </th>
+                    <th className={tableRawThClass}>Type</th>
+                    <th className={tableRawThClass}>Description</th>
+                    <th className={tableRawThClass}>Project</th>
+                    <th className={cn(tableRawThClass, "text-right tabular-nums")}>Amount</th>
+                    <th className={tableRawThClass}>Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recent.map((tx) => (
                     <tr key={`${tx.type}-${tx.id}`} className={listTableRowStaticClassName}>
-                      <td className="px-3 py-1.5 text-muted-foreground capitalize">{tx.type}</td>
-                      <td className="px-3 py-1.5">{tx.description}</td>
-                      <td className="px-3 py-1.5 text-muted-foreground">{tx.projectName ?? "—"}</td>
-                      <td className="px-3 py-1.5 text-right tabular-nums">{fmtUsd(tx.amount)}</td>
-                      <td className="px-3 py-1.5 text-muted-foreground">
+                      <td
+                        className={cn(
+                          tableRawTdClass,
+                          "capitalize text-[var(--neo-text-secondary)]"
+                        )}
+                      >
+                        {tx.type}
+                      </td>
+                      <td className={tableRawTdClass}>{tx.description}</td>
+                      <td className={cn(tableRawTdClass, "text-[var(--neo-text-secondary)]")}>
+                        {tx.projectName ?? "—"}
+                      </td>
+                      <td className={cn(tableRawTdClass, "text-right", TYPO.amount)}>
+                        {fmtUsd(tx.amount)}
+                      </td>
+                      <td className={cn(tableRawTdClass, "text-[var(--neo-text-secondary)]")}>
                         {tx.date ? new Date(tx.date).toLocaleDateString() : "—"}
                       </td>
                     </tr>
@@ -156,7 +154,7 @@ export default async function FinanceOverviewPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </TableShell>
         )}
       </section>
     </PageLayout>

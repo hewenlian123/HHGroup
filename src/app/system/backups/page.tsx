@@ -2,8 +2,17 @@
 
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { PageHeader } from "@/components/page-header";
+import {
+  DataTable,
+  PageHeader,
+  PageLayout,
+  SectionHeader,
+  type DataTableColumn,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { TYPO } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 type BackupListItem = {
   filename: string;
@@ -62,6 +71,33 @@ export default function SystemBackupsPage() {
   const [createResult, setCreateResult] = React.useState<CreateResult | null>(null);
   const [confirmingCreate, setConfirmingCreate] = React.useState(false);
   const [confirmation, setConfirmation] = React.useState("");
+  const backupColumns = React.useMemo<DataTableColumn<BackupListItem>[]>(
+    () => [
+      {
+        key: "filename",
+        header: "Filename",
+        cell: (backup) => (
+          <span className="text-xs font-medium text-[var(--neo-text-primary)]">
+            {backup.filename}
+          </span>
+        ),
+      },
+      { key: "date", header: "Date", className: "text-[var(--neo-text-secondary)]" },
+      {
+        key: "sizeBytes",
+        header: "Size",
+        numeric: true,
+        cell: (backup) => formatBytes(backup.sizeBytes),
+      },
+      {
+        key: "createdAt",
+        header: "Created",
+        className: "text-[var(--neo-text-secondary)]",
+        cell: (backup) => formatDate(backup.createdAt),
+      },
+    ],
+    []
+  );
 
   // ── load backup list ────────────────────────────────────────────────────────
   const loadList = React.useCallback(async () => {
@@ -120,36 +156,38 @@ export default function SystemBackupsPage() {
   }, [confirmation, loadList]);
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title="System Backups"
-        description="Create and manage JSON exports of all critical database tables."
-        actions={
-          <Button
-            size="sm"
-            variant="outline"
-            className="min-h-[44px] sm:min-h-0 w-full sm:w-auto"
-            onClick={() => setConfirmingCreate(true)}
-            disabled={creating}
-          >
-            {creating ? "Creating Backup…" : "Create Backup Now"}
-          </Button>
-        }
-      />
-
+    <PageLayout
+      header={
+        <PageHeader
+          title="System Backups"
+          description="Create and manage JSON exports of all critical database tables."
+          actions={
+            <Button
+              size="sm"
+              variant="outline"
+              className="min-h-[44px] w-full sm:min-h-0 sm:w-auto"
+              onClick={() => setConfirmingCreate(true)}
+              disabled={creating}
+            >
+              {creating ? "Creating Backup…" : "Create Backup Now"}
+            </Button>
+          }
+        />
+      }
+    >
       {confirmingCreate ? (
-        <div className="rounded-sm border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-200">
+        <div className="rounded-xl border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-4 py-3 text-sm text-[var(--neo-text-primary)]">
           <p className="font-medium">Confirm backup export</p>
-          <p className="mt-1 text-xs">
+          <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">
             This creates a database JSON export for the owner account. Type{" "}
-            <span className="font-mono font-semibold">BACKUP</span> to continue.
+            <span className="font-semibold text-[var(--neo-gold)]">BACKUP</span> to continue.
           </p>
           <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-            <input
+            <Input
               value={confirmation}
               onChange={(event) => setConfirmation(event.target.value)}
               placeholder="BACKUP"
-              className="min-h-[44px] w-full rounded-sm border border-border bg-background px-3 text-sm outline-none focus:border-foreground sm:max-w-[220px]"
+              className="min-h-[44px] w-full sm:max-w-[220px]"
               autoComplete="off"
             />
             <div className="flex gap-2">
@@ -182,19 +220,17 @@ export default function SystemBackupsPage() {
       {/* Create result banner */}
       {createResult && (
         <div
-          className={`flex flex-col gap-1 rounded-sm border px-4 py-3 text-sm ${
+          className={cn(
+            "flex flex-col gap-1 rounded-xl border px-4 py-3 text-sm",
             createResult.ok
-              ? "border-[#DCFCE7] bg-[#DCFCE7] text-[#166534] dark:border-emerald-800/40 dark:bg-emerald-950/20 dark:text-emerald-300"
-              : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300"
-          }`}
+              ? "border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)] dark:bg-emerald-500/15 dark:text-emerald-300"
+              : "border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]"
+          )}
         >
-          <p className="font-medium">
-            {createResult.ok ? "✓ " : "⚠ "}
-            {createResult.message}
-          </p>
+          <p className="font-medium">{createResult.message}</p>
           {createResult.ok && createResult.filename && (
             <p className="text-xs">
-              {createResult.filename} — {formatBytes(createResult.sizeBytes ?? 0)}
+              {createResult.filename} - {formatBytes(createResult.sizeBytes ?? 0)}
             </p>
           )}
           {Array.isArray(createResult.tableErrors) && createResult.tableErrors.length > 0 && (
@@ -217,61 +253,30 @@ export default function SystemBackupsPage() {
 
       {/* Backup list */}
       <div className="flex flex-col gap-1">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Saved Backups
-        </p>
-        <p className="text-xs text-muted-foreground -mt-0.5">
+        <SectionHeader label="Saved Backups" />
+        <p className={cn("-mt-0.5 text-xs", TYPO.mutedText)}>
           Files are saved to <code className="rounded bg-muted px-1 py-0.5">backups/database/</code>{" "}
           in the project root. Only available in local or self-hosted environments.
         </p>
       </div>
 
-      {loadingList ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
-      ) : listError ? (
+      {listError ? (
         <p className="text-sm text-amber-600 dark:text-amber-400">{listError}</p>
       ) : (
-        <div className="table-responsive">
-          <table className="w-full min-w-[420px] sm:min-w-0 border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="py-2 pr-6 font-medium">Filename</th>
-                <th className="py-2 pr-6 font-medium">Date</th>
-                <th className="py-2 pr-6 font-medium">Size</th>
-                <th className="py-2 font-medium">Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {backups.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
-                    No backups yet. Click &ldquo;Create Backup Now&rdquo; to create the first one.
-                  </td>
-                </tr>
-              ) : (
-                backups.map((b) => (
-                  <tr key={b.filename} className="border-b border-border/30">
-                    <td className="py-2.5 pr-6 font-medium font-mono text-xs">{b.filename}</td>
-                    <td className="py-2.5 pr-6 tabular-nums">{b.date}</td>
-                    <td className="py-2.5 pr-6 tabular-nums text-muted-foreground">
-                      {formatBytes(b.sizeBytes)}
-                    </td>
-                    <td className="py-2.5 text-muted-foreground text-xs">
-                      {formatDate(b.createdAt)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable<BackupListItem>
+          columns={backupColumns}
+          data={backups}
+          getRowId={(backup) => backup.filename}
+          loading={loadingList}
+          emptyState='No backups yet. Click "Create Backup Now" to create the first one.'
+        />
       )}
 
       {/* Info note */}
-      <div className="border-t border-border/60 pt-4">
-        <p className="text-xs text-muted-foreground">
+      <div className="border-t border-[var(--neo-border)] pt-4">
+        <p className={cn("text-xs", TYPO.mutedText)}>
           Backups export all rows from:{" "}
-          <span className="font-mono">
+          <span className="font-medium text-[var(--neo-text-primary)]">
             projects, workers, worker_receipts, worker_reimbursements, labor_entries, expenses,
             expense_lines, invoices, payments_received
           </span>
@@ -282,6 +287,6 @@ export default function SystemBackupsPage() {
           .
         </p>
       </div>
-    </div>
+    </PageLayout>
   );
 }

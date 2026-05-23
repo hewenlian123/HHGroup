@@ -9,6 +9,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 
 export interface DrawerProps {
   open: boolean;
@@ -34,18 +35,20 @@ export function Drawer({
       <SheetContent
         side="right"
         className={cn(
-          "w-full max-w-md border-l border-border/60 bg-background p-6 shadow-[var(--shadow-0)] sm:max-w-md",
+          "w-full max-w-md border-l border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:max-w-md",
           "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
           className
         )}
       >
         {(title || description) && (
           <SheetHeader>
-            {title && <SheetTitle className="text-base font-semibold">{title}</SheetTitle>}
+            {title && (
+              <SheetTitle className="text-base font-semibold text-[var(--neo-text-primary)]">
+                {title}
+              </SheetTitle>
+            )}
             {description && (
-              <SheetDescription className="text-sm text-muted-foreground">
-                {description}
-              </SheetDescription>
+              <SheetDescription className={TYPO.mutedText}>{description}</SheetDescription>
             )}
           </SheetHeader>
         )}

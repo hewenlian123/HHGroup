@@ -15,6 +15,7 @@ import {
   listTableRowClassName,
   listTableRowStaticClassName,
 } from "@/lib/list-table-interaction";
+import { NEO, OS, TYPO } from "@/lib/typography";
 
 export interface Column<T> {
   key: string;
@@ -46,6 +47,8 @@ interface DataTableProps<T> {
   amountColumnKeys?: string[];
   /** Stops row click when interacting with this column (default `actions`). */
   actionsColumnKey?: string;
+  /** Optional selected row id for gold-accent row state. */
+  selectedRowId?: string | null;
 }
 
 function getCellContent<T>(row: T, col: Column<T>): React.ReactNode {
@@ -70,6 +73,7 @@ export function DataTable<T>({
   primaryColumnKey,
   amountColumnKeys,
   actionsColumnKey = "actions",
+  selectedRowId,
 }: DataTableProps<T>) {
   const dataColumns = columns.filter((c) => c.key !== actionsColumnKey);
   const actionsColumn = columns.find((c) => c.key === actionsColumnKey);
@@ -92,10 +96,7 @@ export function DataTable<T>({
               {columns.map((col) => (
                 <TableHead
                   key={col.key}
-                  className={cn(
-                    col.align === "right" && "text-right font-mono tabular-nums",
-                    col.className
-                  )}
+                  className={cn(col.align === "right" && "text-right tabular-nums", col.className)}
                 >
                   {col.header}
                 </TableHead>
@@ -133,66 +134,74 @@ export function DataTable<T>({
               </TableRow>
             ) : null}
             {!loading &&
-              data.map((row, index) => (
-                <TableRow
-                  key={keyExtractor(row)}
-                  tabIndex={onRowClick ? 0 : undefined}
-                  role={onRowClick ? "link" : undefined}
-                  onClick={
-                    onRowClick
-                      ? (e) => {
-                          const el = e.target as HTMLElement;
-                          if (
-                            el.closest(
-                              "a,button,[role=menuitem],[data-radix-popper-content-wrapper]"
+              data.map((row, index) => {
+                const rowId = keyExtractor(row);
+                const isSelected = selectedRowId === rowId;
+                return (
+                  <TableRow
+                    key={rowId}
+                    data-state={isSelected ? "selected" : undefined}
+                    aria-selected={isSelected || undefined}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    role={onRowClick ? "link" : undefined}
+                    onClick={
+                      onRowClick
+                        ? (e) => {
+                            const el = e.target as HTMLElement;
+                            if (
+                              el.closest(
+                                "a,button,[role=menuitem],[data-radix-popper-content-wrapper]"
+                              )
                             )
-                          )
-                            return;
-                          onRowClick(row);
-                        }
-                      : undefined
-                  }
-                  onKeyDown={
-                    onRowClick
-                      ? (e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
+                              return;
                             onRowClick(row);
                           }
+                        : undefined
+                    }
+                    onKeyDown={
+                      onRowClick
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              onRowClick(row);
+                            }
+                          }
+                        : undefined
+                    }
+                    className={cn(
+                      onRowClick ? listTableRowClassName : listTableRowStaticClassName,
+                      zebra && index % 2 === 1 && !onRowClick && "bg-slate-50/70 dark:bg-muted/10",
+                      rowClassName
+                    )}
+                  >
+                    {columns.map((col) => (
+                      <TableCell
+                        key={col.key}
+                        onClick={
+                          onRowClick && col.key === actionsColumnKey
+                            ? (e) => e.stopPropagation()
+                            : undefined
                         }
-                      : undefined
-                  }
-                  className={cn(
-                    onRowClick ? listTableRowClassName : listTableRowStaticClassName,
-                    zebra && index % 2 === 1 && !onRowClick && "bg-slate-50/70 dark:bg-muted/10",
-                    rowClassName
-                  )}
-                >
-                  {columns.map((col) => (
-                    <TableCell
-                      key={col.key}
-                      onClick={
-                        onRowClick && col.key === actionsColumnKey
-                          ? (e) => e.stopPropagation()
-                          : undefined
-                      }
-                      className={cn(
-                        col.align === "right" && "text-right font-mono tabular-nums",
-                        onRowClick && col.key === primaryColumnKey && listTablePrimaryCellClassName,
-                        cellClassName,
-                        col.className,
-                        onRowClick &&
-                          amountColumnKeys?.includes(col.key) &&
-                          listTableAmountCellClassName
-                      )}
-                    >
-                      {col.render
-                        ? col.render(row)
-                        : ((row as Record<string, unknown>)[col.key] as React.ReactNode)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
+                        className={cn(
+                          col.align === "right" && NEO.amount,
+                          onRowClick &&
+                            col.key === primaryColumnKey &&
+                            listTablePrimaryCellClassName,
+                          cellClassName,
+                          col.className,
+                          onRowClick &&
+                            amountColumnKeys?.includes(col.key) &&
+                            listTableAmountCellClassName
+                        )}
+                      >
+                        {col.render
+                          ? col.render(row)
+                          : ((row as Record<string, unknown>)[col.key] as React.ReactNode)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                );
+              })}
           </TableBody>
         </Table>
       </div>
@@ -202,10 +211,7 @@ export function DataTable<T>({
         {loading ? (
           <div className="grid gap-3">
             {Array.from({ length: 4 }, (_, i) => (
-              <div
-                key={`msk-${i}`}
-                className="rounded-xl border border-slate-900/[0.06] bg-white/[0.92] px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] dark:border-border dark:bg-card"
-              >
+              <div key={`msk-${i}`} className={cn(OS.card, "px-4 py-3")}>
                 <Skeleton className="h-5 w-2/3 rounded-md" />
                 <div className="mt-3 space-y-2">
                   <Skeleton className="h-4 w-full rounded-md" />
@@ -215,18 +221,26 @@ export function DataTable<T>({
             ))}
           </div>
         ) : data.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-900/[0.08] bg-slate-50/50 px-4 py-6 text-center text-sm text-muted-foreground dark:border-border/60 dark:bg-muted/15">
+          <div className={cn(OS.emptyState, "px-4 py-6 text-sm text-[var(--neo-text-secondary)]")}>
             {emptyText}
           </div>
         ) : (
           data.map((row) => {
             const titleCol = columns.find((c) => c.key === titleKey);
+            const rowId = keyExtractor(row);
+            const isSelected = selectedRowId === rowId;
             return (
               <div
-                key={keyExtractor(row)}
-                className="group rounded-xl border border-slate-900/[0.06] bg-white/[0.92] px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors duration-150 ease-out active:scale-[0.99] hover:bg-slate-50 dark:border-border dark:bg-card dark:shadow-none dark:hover:bg-muted/40"
+                key={rowId}
+                data-state={isSelected ? "selected" : undefined}
+                aria-selected={isSelected || undefined}
+                className={cn(
+                  "group px-4 py-3 transition-colors duration-150 ease-out active:scale-[0.99] hover:bg-[var(--neo-surface-muted)]",
+                  OS.card,
+                  isSelected && "border-[var(--neo-gold)] bg-[rgb(184_137_45_/_0.08)]"
+                )}
               >
-                <div className="text-sm font-medium text-text-primary dark:text-foreground">
+                <div className={TYPO.primaryName}>
                   {titleCol ? getCellContent(row, titleCol) : null}
                 </div>
                 <dl className="mt-3 space-y-2">
@@ -234,13 +248,11 @@ export function DataTable<T>({
                     .filter((col) => col.key !== titleKey)
                     .map((col) => (
                       <div key={col.key} className="flex justify-between gap-2 text-sm">
-                        <dt className="text-sm text-text-secondary dark:text-muted-foreground">
-                          {col.header}
-                        </dt>
+                        <dt className={TYPO.tableHeader}>{col.header}</dt>
                         <dd
                           className={cn(
-                            "text-right tabular-nums",
-                            col.align === "right" && "text-right"
+                            "text-right",
+                            col.align === "right" ? NEO.amount : "text-[var(--neo-text-primary)]"
                           )}
                         >
                           {getCellContent(row, col)}

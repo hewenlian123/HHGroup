@@ -15,6 +15,8 @@ import {
   MobileListHeader,
   MobileSearchFiltersRow,
 } from "@/components/mobile/mobile-list-chrome";
+import { TYPO } from "@/lib/typography";
+import { cn } from "@/lib/utils";
 
 export type SubcontractorSummaryRow = {
   id: string;
@@ -30,6 +32,10 @@ export type SubcontractorSummaryRow = {
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+
+const tableHeadClass = cn("h-8 px-3 text-left", TYPO.tableHeader);
+const numericHeadClass = cn(tableHeadClass, "text-right tabular-nums");
+const amountCellClass = cn("py-1.5 px-3 text-right", TYPO.amount);
 
 export function SubcontractorsListClient({
   rows,
@@ -160,24 +166,12 @@ export function SubcontractorsListClient({
               <table className="w-full min-w-[640px] text-sm lg:min-w-0">
                 <thead>
                   <tr>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Subcontractor
-                    </th>
-                    <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                      Insurance
-                    </th>
-                    <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                      Total Contracts
-                    </th>
-                    <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                      Approved
-                    </th>
-                    <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                      Paid
-                    </th>
-                    <th className="h-8 px-3 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
-                      Outstanding
-                    </th>
+                    <th className={tableHeadClass}>Subcontractor</th>
+                    <th className={tableHeadClass}>Insurance</th>
+                    <th className={numericHeadClass}>Total Contracts</th>
+                    <th className={numericHeadClass}>Approved</th>
+                    <th className={numericHeadClass}>Paid</th>
+                    <th className={numericHeadClass}>Outstanding</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -207,14 +201,10 @@ export function SubcontractorsListClient({
                           <span className="text-muted-foreground text-xs">—</span>
                         )}
                       </td>
-                      <td className="py-1.5 px-3 text-right tabular-nums">
-                        ${fmtUsd(r.totalContracts)}
-                      </td>
-                      <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.approved)}</td>
-                      <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(r.paid)}</td>
-                      <td className="py-1.5 px-3 text-right tabular-nums">
-                        ${fmtUsd(r.outstanding)}
-                      </td>
+                      <td className={amountCellClass}>${fmtUsd(r.totalContracts)}</td>
+                      <td className={amountCellClass}>${fmtUsd(r.approved)}</td>
+                      <td className={amountCellClass}>${fmtUsd(r.paid)}</td>
+                      <td className={amountCellClass}>${fmtUsd(r.outstanding)}</td>
                     </tr>
                   ))}
                 </tbody>

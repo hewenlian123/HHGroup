@@ -42,6 +42,7 @@ import {
   MobileListHeader,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
+import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -50,6 +51,8 @@ type Props = {
 };
 
 type Draft = CustomerFormValues & { id?: string };
+
+const tableHeadClass = cn("h-8 px-3 text-left", TYPO.tableHeader);
 
 function truncateText(s: string | null | undefined, max: number): string {
   const t = (s ?? "").trim();
@@ -388,27 +391,13 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                 <table className="min-w-[640px] w-full text-sm lg:min-w-0">
                   <thead>
                     <tr>
-                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Name
-                      </th>
-                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Company
-                      </th>
-                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Email
-                      </th>
-                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Phone
-                      </th>
-                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Address
-                      </th>
-                      <th className="h-8 px-3 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Created
-                      </th>
-                      <th className="h-8 w-8 px-2 text-right text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
-                        Actions
-                      </th>
+                      <th className={tableHeadClass}>Name</th>
+                      <th className={tableHeadClass}>Company</th>
+                      <th className={tableHeadClass}>Email</th>
+                      <th className={tableHeadClass}>Phone</th>
+                      <th className={tableHeadClass}>Address</th>
+                      <th className={tableHeadClass}>Created</th>
+                      <th className={cn(tableHeadClass, "w-8 px-2 text-right")}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>

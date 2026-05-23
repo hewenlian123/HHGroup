@@ -19,6 +19,7 @@ export function PageHeader({
 
   return (
     <div
+      data-neo-page-header="true"
       className={cn("flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between", className)}
     >
       <div className="min-w-0">
