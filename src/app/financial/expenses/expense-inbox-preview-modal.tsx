@@ -73,10 +73,18 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
 
-const FIELD_LABEL = "text-xs uppercase tracking-wide text-muted-foreground";
-const INPUT_CLASS = "h-10 rounded-sm border-border/60 text-sm max-md:min-h-11 max-md:text-base";
+const FIELD_LABEL =
+  "text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]";
+const INPUT_CLASS =
+  "h-10 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-sm text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11 max-md:text-base";
 const SELECT_TRIGGER_CLASS =
-  "h-10 max-md:min-h-11 max-md:text-base rounded-sm border-border/60 text-sm [&>span]:line-clamp-1";
+  "h-10 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-sm text-[var(--neo-text-primary)] shadow-none focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11 max-md:text-base [&>span]:line-clamp-1";
+const PREVIEW_SECONDARY_BUTTON =
+  "rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] focus-visible:ring-[var(--neo-gold-ring)]";
+const PREVIEW_PRIMARY_BUTTON =
+  "rounded-lg border-transparent bg-[var(--neo-gold)] text-zinc-950 shadow-none hover:bg-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)]";
+const PREVIEW_WARNING_CHIP =
+  "rounded-md border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]";
 
 const selectPopperContentProps = {
   position: "popper" as const,
@@ -158,7 +166,7 @@ function projectLabelFromExpense(expense: Expense, projectNameById: Map<string, 
 function ModalSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <h3 className={cn(FIELD_LABEL, "border-b border-border/60 pb-2 font-medium")}>{title}</h3>
+      <h3 className={cn(FIELD_LABEL, "border-b border-[var(--neo-border)] pb-2")}>{title}</h3>
       {children}
     </div>
   );
@@ -168,7 +176,7 @@ function PreviewRow({ label, children }: { label: string; children: React.ReactN
   return (
     <div className="flex flex-col gap-1 py-2.5">
       <div className={FIELD_LABEL}>{label}</div>
-      <div className="text-sm text-foreground">{children}</div>
+      <div className="text-sm text-[var(--neo-text-primary)]">{children}</div>
     </div>
   );
 }
@@ -715,7 +723,7 @@ export function ExpenseInboxPreviewModal({
     projectId && String(projectId).trim() !== "" ? projectId : EXPENSE_PROJECT_SELECT_NONE;
   const workerRadixValue =
     workerId && String(workerId).trim() !== "" ? workerId : EXPENSE_WORKER_SELECT_NONE;
-  const previewDivide = "divide-y divide-border/60";
+  const previewDivide = "divide-y divide-[var(--neo-border)]";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -726,10 +734,10 @@ export function ExpenseInboxPreviewModal({
         onInteractOutside={(e) => {
           if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
         }}
-        className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-border/60 p-0"
+        className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-[var(--neo-border)] bg-[var(--neo-surface-base)] p-0 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
       >
-        <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3">
-          <DialogTitle className="text-sm font-semibold text-foreground">
+        <DialogHeader className="shrink-0 border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3">
+          <DialogTitle className="text-sm font-semibold text-[var(--neo-text-primary)]">
             {mode === "preview" ? "Expense" : "Edit expense"}
           </DialogTitle>
         </DialogHeader>
@@ -739,7 +747,7 @@ export function ExpenseInboxPreviewModal({
             <div className="space-y-6">
               {possibleDuplicate ? (
                 <p
-                  className="rounded-sm border border-amber-200/70 bg-amber-50/80 px-2 py-1.5 text-xs text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/40 dark:text-amber-50"
+                  className="rounded-md border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-2 py-1.5 text-xs text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]"
                   role="status"
                 >
                   This transaction may be a duplicate.
@@ -748,19 +756,13 @@ export function ExpenseInboxPreviewModal({
               {(missingProject || missingCategory || missingReceipt) && (
                 <div className="flex flex-wrap gap-1">
                   {missingProject ? (
-                    <span className="rounded-sm border border-amber-200/80 bg-amber-50/80 px-1.5 py-0.5 text-[11px] text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-50">
-                      Missing project
-                    </span>
+                    <span className={PREVIEW_WARNING_CHIP}>Missing project</span>
                   ) : null}
                   {missingCategory ? (
-                    <span className="rounded-sm border border-amber-200/80 bg-amber-50/80 px-1.5 py-0.5 text-[11px] text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-50">
-                      Missing category
-                    </span>
+                    <span className={PREVIEW_WARNING_CHIP}>Missing category</span>
                   ) : null}
                   {missingReceipt ? (
-                    <span className="rounded-sm border border-amber-200/80 bg-amber-50/80 px-1.5 py-0.5 text-[11px] text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-50">
-                      Missing receipt
-                    </span>
+                    <span className={PREVIEW_WARNING_CHIP}>Missing receipt</span>
                   ) : null}
                 </div>
               )}
@@ -770,7 +772,7 @@ export function ExpenseInboxPreviewModal({
                     {(expense.vendorName ?? "").trim() !== "" ? expense.vendorName : "Needs Review"}
                   </PreviewRow>
                   <PreviewRow label="Amount">
-                    <span className="tabular-nums font-semibold tracking-tight text-rose-600 dark:text-rose-400">
+                    <span className="tabular-nums font-semibold tracking-normal text-rose-300">
                       {formatCurrency(-getExpenseTotal(expense))}
                     </span>
                   </PreviewRow>
@@ -826,7 +828,7 @@ export function ExpenseInboxPreviewModal({
               <ModalSection title="Attachments">
                 <div className="pt-1" data-testid="expense-preview-attachments">
                   {receiptItems.length === 0 ? (
-                    <span className="text-sm text-muted-foreground">—</span>
+                    <span className="text-sm text-[var(--neo-text-secondary)]">—</span>
                   ) : (
                     <ul className="space-y-3">
                       {receiptItems.map((item, idx) => {
@@ -844,7 +846,7 @@ export function ExpenseInboxPreviewModal({
                             <li key={`${item.url}-${idx}`}>
                               <button
                                 type="button"
-                                className="text-left text-sm text-foreground underline-offset-2 hover:underline"
+                                className="text-left text-sm text-[var(--neo-text-primary)] underline-offset-2 hover:text-[var(--neo-gold-soft)] hover:underline"
                                 onClick={() => void openReceiptItemPreview(item)}
                               >
                                 {item.fileName}
@@ -861,7 +863,7 @@ export function ExpenseInboxPreviewModal({
                         if (thumbState === undefined) {
                           return (
                             <li key={`${item.url}-${idx}`}>
-                              <Skeleton className="h-[200px] max-h-[240px] w-full rounded-sm" />
+                              <Skeleton className="h-[200px] max-h-[240px] w-full rounded-lg bg-[var(--neo-surface-muted)]" />
                             </li>
                           );
                         }
@@ -869,13 +871,13 @@ export function ExpenseInboxPreviewModal({
                         if (thumbState === null || loadFailed) {
                           return (
                             <li key={`${item.url}-${idx}`}>
-                              <div className="flex flex-col gap-1 border-b border-border/60 py-2.5 last:border-b-0">
+                              <div className="flex flex-col gap-1 border-b border-[var(--neo-border)] py-2.5 last:border-b-0">
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm text-foreground">
+                                    <p className="truncate text-sm text-[var(--neo-text-primary)]">
                                       {item.fileName}
                                     </p>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p className="text-xs text-[var(--neo-text-secondary)]">
                                       Preview unavailable
                                     </p>
                                   </div>
@@ -883,7 +885,7 @@ export function ExpenseInboxPreviewModal({
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    className="h-8 shrink-0 rounded-sm"
+                                    className={cn(PREVIEW_SECONDARY_BUTTON, "h-8 shrink-0")}
                                     onClick={() => void openReceiptItemPreview(item)}
                                   >
                                     Open
@@ -898,7 +900,7 @@ export function ExpenseInboxPreviewModal({
                           <li key={`${item.url}-${idx}`}>
                             <button
                               type="button"
-                              className="block w-full max-w-full overflow-hidden rounded-sm border border-border/60 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                              className="block w-full max-w-full overflow-hidden rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
                               onClick={() => void openReceiptItemPreview(item)}
                               aria-label={ariaPreview}
                             >
@@ -1122,7 +1124,7 @@ export function ExpenseInboxPreviewModal({
         </div>
 
         {mode === "preview" ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-border/60 px-4 py-3">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <div className="flex flex-wrap gap-1">
               {previewNav ? (
                 <>
@@ -1130,7 +1132,7 @@ export function ExpenseInboxPreviewModal({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-9 rounded-sm"
+                    className={cn(PREVIEW_SECONDARY_BUTTON, "h-9")}
                     disabled={!previewNav.canPrev}
                     onClick={() => previewNav.onPrev()}
                   >
@@ -1140,7 +1142,7 @@ export function ExpenseInboxPreviewModal({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-9 rounded-sm"
+                    className={cn(PREVIEW_SECONDARY_BUTTON, "h-9")}
                     disabled={!previewNav.canNext}
                     onClick={() => previewNav.onNext()}
                   >
@@ -1154,7 +1156,7 @@ export function ExpenseInboxPreviewModal({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-sm"
+                className={cn(PREVIEW_SECONDARY_BUTTON, "h-9")}
                 onClick={() => onOpenChange(false)}
               >
                 Close
@@ -1162,7 +1164,7 @@ export function ExpenseInboxPreviewModal({
               <Button
                 type="button"
                 size="sm"
-                className="h-9 rounded-sm"
+                className={cn(PREVIEW_PRIMARY_BUTTON, "h-9")}
                 onClick={() => setMode("edit")}
               >
                 Edit
@@ -1172,7 +1174,7 @@ export function ExpenseInboxPreviewModal({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-9 rounded-sm"
+                  className={cn(PREVIEW_SECONDARY_BUTTON, "h-9")}
                   disabled={markBusy}
                   onClick={() => void handleMarkReviewed()}
                 >
@@ -1183,12 +1185,12 @@ export function ExpenseInboxPreviewModal({
             </div>
           </div>
         ) : (
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/60 px-4 py-3">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              className="h-10 rounded-sm"
+              className={cn(PREVIEW_SECONDARY_BUTTON, "h-10")}
               disabled={saving}
               onClick={cancelEdit}
             >
@@ -1197,7 +1199,7 @@ export function ExpenseInboxPreviewModal({
             <Button
               type="button"
               size="sm"
-              className="h-10 rounded-sm bg-black px-5 text-white hover:bg-neutral-900 dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
+              className={cn(PREVIEW_PRIMARY_BUTTON, "h-10 px-5")}
               disabled={saving}
               onClick={() => void handleSave()}
             >

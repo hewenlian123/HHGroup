@@ -254,7 +254,7 @@ export function ExpenseBulkActionBar({
             type="button"
             variant="outline"
             size="sm"
-            className="h-7 shrink-0 rounded-md border-rose-500/20 bg-[var(--neo-surface-raised)] text-xs text-rose-600 shadow-none hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
+            className="h-7 shrink-0 rounded-md border-rose-500/25 bg-[var(--neo-surface-raised)] text-xs text-rose-300 shadow-none hover:bg-rose-500/10 hover:text-rose-200"
             disabled={busy || selectedCount === 0}
             onClick={onDeleteMany}
           >

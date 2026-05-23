@@ -29,7 +29,7 @@ function attachmentIsImage(att: ExpenseAttachment): boolean {
 }
 
 const CARD_FRAME =
-  "relative flex h-24 w-24 shrink-0 flex-col overflow-hidden rounded-lg border border-border/50 bg-background shadow-sm transition-[box-shadow,border-color]";
+  "relative flex h-24 w-24 shrink-0 flex-col overflow-hidden rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] shadow-none transition-[box-shadow,border-color,background-color]";
 
 export type ExpenseEditAttachmentsSectionProps = {
   expense: Expense;
@@ -221,7 +221,9 @@ export function ExpenseEditAttachmentsSection({
         )}
       >
         {!supabase ? (
-          <p className="text-xs text-muted-foreground">Configure Supabase to add attachments.</p>
+          <p className="text-xs text-[var(--neo-text-secondary)]">
+            Configure Supabase to add attachments.
+          </p>
         ) : showEmptyIdle ? (
           <button
             type="button"
@@ -234,23 +236,23 @@ export function ExpenseEditAttachmentsSection({
               }
             }}
             className={cn(
-              "group flex w-full max-w-md cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-muted bg-muted/25 px-5 py-5 text-center outline-none ring-offset-background",
+              "group flex w-full max-w-md cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-5 py-5 text-center outline-none",
               "transition-[border-color,box-shadow,transform,background-color] duration-200 ease-out",
-              "hover:border-foreground/20 hover:bg-muted/40 hover:shadow-sm",
-              "active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              "hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-raised)]",
+              "active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
               "disabled:cursor-not-allowed disabled:opacity-50"
             )}
           >
             <Upload
-              className="size-[18px] shrink-0 text-muted-foreground transition-colors duration-200 group-hover:text-foreground"
+              className="size-[18px] shrink-0 text-[var(--neo-text-secondary)] transition-colors duration-200 group-hover:text-[var(--neo-gold-soft)]"
               strokeWidth={2}
               aria-hidden
             />
             <div className="flex flex-col gap-0.5 pt-0.5">
-              <span className="text-sm font-medium tracking-tight text-foreground">
+              <span className="text-sm font-medium tracking-normal text-[var(--neo-text-primary)]">
                 Add receipt
               </span>
-              <span className="text-xs leading-snug text-muted-foreground">
+              <span className="text-xs leading-snug text-[var(--neo-text-secondary)]">
                 Tap to upload or take a photo
               </span>
             </div>
@@ -276,10 +278,10 @@ export function ExpenseEditAttachmentsSection({
                     {isPdf ? (
                       <div className="flex flex-1 flex-col items-center justify-center gap-1 px-1.5 pb-2 pt-3">
                         <FileText
-                          className="h-7 w-7 shrink-0 text-muted-foreground"
+                          className="h-7 w-7 shrink-0 text-[var(--neo-text-secondary)]"
                           strokeWidth={1.5}
                         />
-                        <span className="line-clamp-2 w-full text-center text-[10px] leading-tight text-muted-foreground">
+                        <span className="line-clamp-2 w-full text-center text-[10px] leading-tight text-[var(--neo-text-secondary)]">
                           {att.fileName}
                         </span>
                       </div>
@@ -287,8 +289,8 @@ export function ExpenseEditAttachmentsSection({
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={thumb} alt="" className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex flex-1 items-center justify-center bg-foreground/[0.03]">
-                        <Skeleton className="h-16 w-16 rounded-md" />
+                      <div className="flex flex-1 items-center justify-center bg-[var(--neo-surface-raised)]">
+                        <Skeleton className="h-16 w-16 rounded-md bg-[var(--neo-surface-muted)]" />
                       </div>
                     )}
                   </button>
@@ -296,7 +298,7 @@ export function ExpenseEditAttachmentsSection({
                     <button
                       type="button"
                       className={cn(
-                        "absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-border/60 bg-background/95 text-muted-foreground shadow-sm backdrop-blur-sm transition-opacity hover:bg-destructive/10 hover:text-destructive",
+                        "absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-secondary)] shadow-sm backdrop-blur-sm transition-opacity hover:bg-rose-500/10 hover:text-rose-200",
                         "opacity-100 md:opacity-0 md:group-hover/card:opacity-100"
                       )}
                       aria-label="Remove attachment"
@@ -311,8 +313,8 @@ export function ExpenseEditAttachmentsSection({
             })}
 
             {uploadBusy ? (
-              <div className={cn(CARD_FRAME, "items-center justify-center bg-background")}>
-                <Skeleton className="h-14 w-14 rounded-md" />
+              <div className={cn(CARD_FRAME, "items-center justify-center")}>
+                <Skeleton className="h-14 w-14 rounded-md bg-[var(--neo-surface-raised)]" />
               </div>
             ) : null}
 
@@ -323,8 +325,8 @@ export function ExpenseEditAttachmentsSection({
               aria-label="Add attachment"
               className={cn(
                 CARD_FRAME,
-                "cursor-pointer items-center justify-center border border-dashed border-muted bg-background text-muted-foreground shadow-none transition-[border-color,box-shadow,background-color] duration-200 ease-out",
-                "hover:border-foreground/20 hover:bg-muted/30 hover:text-foreground hover:shadow-sm active:scale-[0.98]"
+                "cursor-pointer items-center justify-center border border-dashed border-[var(--neo-border-strong)] text-[var(--neo-text-secondary)] shadow-none transition-[border-color,box-shadow,background-color] duration-200 ease-out",
+                "hover:border-[var(--neo-gold)] hover:bg-[rgb(184_137_45_/_0.10)] hover:text-[var(--neo-gold-soft)] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
               )}
             >
               <Plus className="h-7 w-7" strokeWidth={1.5} />
