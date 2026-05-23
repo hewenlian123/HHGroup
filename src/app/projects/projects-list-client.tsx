@@ -17,9 +17,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
-import { ConfirmDialog } from "@/components/base";
+import {
+  AmountCell,
+  ConfirmDialog,
+  FilterToolbar,
+  KpiTile,
+  MobileListRow,
+} from "@/components/base";
 import { cn } from "@/lib/utils";
 import { listTableRowClassName } from "@/lib/list-table-interaction";
+import { OS } from "@/lib/typography";
 import {
   deleteProjectAction,
   getProjectUsageAction,
@@ -92,11 +99,11 @@ type SnapshotBatchResponse =
     }
   | { ok: false; message?: string };
 
-const PAGE_BG = "bg-page";
+const PAGE_BG = "neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]";
 const FIELD =
-  "h-10 rounded-lg border-[0.5px] border-gray-100 bg-white text-[14px] focus-visible:border-[#111827] focus-visible:ring-2 focus-visible:ring-[#111827]/15";
+  "h-10 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] text-[var(--neo-text-primary)] shadow-none focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
 const MODAL =
-  "max-w-[480px] w-full gap-0 border-[0.5px] border-gray-100 p-8 shadow-modal rounded-modal sm:max-w-[480px]";
+  "max-w-[480px] w-full gap-0 border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-8 shadow-[var(--neo-shadow-panel)] rounded-xl sm:max-w-[480px]";
 
 function fmtUsd0(n: number): string {
   const rounded = Math.round(Math.abs(n));
@@ -104,9 +111,9 @@ function fmtUsd0(n: number): string {
 }
 
 function profitClass(n: number): string {
-  if (n > 0.005) return "text-[#166534]";
-  if (n < -0.005) return "text-red-600";
-  return "text-text-secondary";
+  if (n > 0.005) return OS.emeraldAccent;
+  if (n < -0.005) return OS.dangerAmount;
+  return "text-[var(--neo-text-secondary)]";
 }
 
 function applySnapshotFinancials(
@@ -357,17 +364,20 @@ export function ProjectsListClient({
         "page-container page-stack py-8 text-[14px] leading-normal",
         PAGE_BG,
         mobileListPagePaddingClass,
-        "max-md:!gap-3"
+        "max-md:!gap-3 max-md:!pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]"
       )}
     >
       {dataLoadWarning ? (
-        <p className="border-b border-gray-100 pb-3 text-sm text-text-secondary" role="status">
+        <p
+          className="border-b border-white/10 pb-3 text-sm text-[var(--neo-canvas-text-secondary)]"
+          role="status"
+        >
           {dataLoadWarning}
         </p>
       ) : null}
       {snapshotListWarning ? (
         <p
-          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-800"
+          className="rounded-xl border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[12px] font-medium text-[var(--neo-text-primary)]"
           role="status"
         >
           {snapshotListWarning}
@@ -376,7 +386,7 @@ export function ProjectsListClient({
 
       <MobileListHeader
         title="Projects"
-        tone="page"
+        tone="canvas"
         fab={<MobileFabPlus href="/projects/new" ariaLabel="New project" />}
       />
 
@@ -384,18 +394,17 @@ export function ProjectsListClient({
         <div>
           <h1
             data-testid="projects-page-heading"
-            className="text-2xl font-bold tracking-tight text-text-primary"
+            className="text-2xl font-semibold tracking-normal text-[var(--neo-canvas-text-primary)]"
           >
             Projects
           </h1>
-          <p className="mt-1 max-w-xl text-[14px] text-text-secondary">
+          <p className="mt-1 max-w-xl text-[14px] text-[var(--neo-canvas-text-secondary)]">
             Revenue, actual cost, and guarded profit — click a row or View to open a project.
           </p>
         </div>
         <Button
           asChild
-          variant="outline"
-          className="h-10 shrink-0 rounded-md border-[0.5px] border-gray-100 bg-white px-4 text-[14px] font-medium text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:hover:bg-muted/40"
+          className="h-10 shrink-0 rounded-md bg-[var(--neo-gold)] px-4 text-[14px] font-medium text-zinc-950 hover:bg-[var(--neo-gold-soft)]"
         >
           <Link href="/projects/new">
             <Plus className="mr-2 h-4 w-4" />
@@ -404,7 +413,7 @@ export function ProjectsListClient({
         </Button>
       </div>
 
-      <div className="hidden grid-cols-2 gap-[10px] sm:grid-cols-2 lg:grid-cols-4 md:grid">
+      <div className="hidden grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4 md:grid">
         {(
           [
             ["TOTAL PROJECTS", summary.total],
@@ -413,15 +422,13 @@ export function ProjectsListClient({
             ["TOTAL BUDGET", summary.totalBudget],
           ] as const
         ).map(([label, value]) => (
-          <div
+          <KpiTile
             key={label}
-            className="rounded-[10px] border-[0.5px] border-solid border-gray-100 bg-white px-4 py-[14px]"
-          >
-            <p className="kpi-metric-label">{label}</p>
-            <p className="kpi-metric-value mt-0.5 font-mono tabular-nums text-text-primary">
-              {label === "TOTAL BUDGET" ? fmtUsd0(value as number) : (value as number)}
-            </p>
-          </div>
+            label={label}
+            value={label === "TOTAL BUDGET" ? fmtUsd0(value as number) : (value as number)}
+            className="min-h-[92px]"
+            valueClassName="text-[20px]"
+          />
         ))}
       </div>
 
@@ -431,7 +438,7 @@ export function ProjectsListClient({
         activeFilterCount={activeDrawerFilterCount}
         searchSlot={
           <div className="relative w-full">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
             <Input
               data-testid="projects-list-search"
               value={query}
@@ -444,9 +451,9 @@ export function ProjectsListClient({
         }
       />
 
-      <div className="hidden flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center md:flex">
+      <FilterToolbar className="hidden md:flex lg:flex-row lg:flex-wrap">
         <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
           <Input
             data-testid="projects-list-search-desktop"
             value={query}
@@ -479,11 +486,11 @@ export function ProjectsListClient({
           <option value="revenue">Sort: Revenue (high)</option>
           <option value="profit">Sort: Profit (high)</option>
         </select>
-      </div>
+      </FilterToolbar>
 
       <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
         <div className="space-y-2">
-          <p className="text-xs font-medium text-text-secondary">Status</p>
+          <p className="text-xs font-medium text-[var(--neo-text-secondary)]">Status</p>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as ProjectListStatusFilter)}
@@ -498,7 +505,7 @@ export function ProjectsListClient({
           </select>
         </div>
         <div className="space-y-2">
-          <p className="text-xs font-medium text-text-secondary">Sort</p>
+          <p className="text-xs font-medium text-[var(--neo-text-secondary)]">Sort</p>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
@@ -535,8 +542,8 @@ export function ProjectsListClient({
               ) : undefined
             }
           />
-          <div className="hidden rounded-lg bg-white px-8 py-14 text-center shadow-[0_1px_3px_rgba(0_0_0_0.06)] md:block dark:bg-card">
-            <p className="text-[14px] font-medium text-text-secondary">
+          <div className={cn(OS.emptyState, "hidden px-8 py-14 text-center md:block")}>
+            <p className="text-[14px] font-medium text-[var(--neo-text-secondary)]">
               {dataLoadWarning
                 ? "Could not load projects."
                 : query.trim() || statusFilter !== "all"
@@ -544,11 +551,7 @@ export function ProjectsListClient({
                   : "No projects yet."}
             </p>
             {!query.trim() && statusFilter === "all" ? (
-              <Button
-                asChild
-                variant="outline"
-                className="mt-6 h-10 rounded-md border-[0.5px] border-gray-100 bg-white px-4 text-text-primary shadow-none transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-50 active:scale-[0.97] active:duration-100 dark:hover:bg-muted/40"
-              >
+              <Button asChild variant="outline" className="mt-6 h-10 px-4">
                 <Link href="/projects/new">New Project</Link>
               </Button>
             ) : null}
@@ -556,38 +559,41 @@ export function ProjectsListClient({
         </>
       ) : (
         <>
-          <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+          <div
+            className={cn(OS.card, "divide-y divide-[var(--neo-border)] overflow-hidden md:hidden")}
+          >
             {filtered.map((r) => (
-              <div key={r.id} className="flex min-h-[48px] items-center gap-2 py-2">
-                <Link
-                  href={`/projects/${r.id}`}
-                  className="hh-row-interactive flex min-w-0 flex-1 items-center gap-3 rounded-sm text-left"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-text-primary">{r.name}</p>
-                    <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
-                      {(r.clientName ?? "—") + " · " + r.updatedAt}
-                    </p>
-                  </div>
-                  <div className="flex min-w-[4.5rem] shrink-0 flex-col items-end gap-1 text-right">
-                    <span
-                      className="text-xs font-medium tabular-nums text-text-secondary"
-                      data-testid={`project-list-actual-cost-${r.id}`}
-                    >
-                      Cost {fmtUsd0(r.actualCost)}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-sm font-medium tabular-nums",
-                        r.profitReadinessWarning ? "text-amber-700" : profitClass(r.profit)
-                      )}
-                      data-testid={`project-list-profit-${r.id}`}
-                    >
-                      {r.profitReadinessWarning ? "Needs review" : fmtUsd0(r.profit)}
-                    </span>
-                    <ProjectListStatusPill status={r.status} />
-                  </div>
-                </Link>
+              <div key={r.id} className="flex min-h-[56px] items-center gap-2">
+                <MobileListRow asChild className="min-w-0 flex-1 rounded-none">
+                  <Link href={`/projects/${r.id}`}>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+                        {r.name}
+                      </p>
+                      <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                        {(r.clientName ?? "—") + " · " + r.updatedAt}
+                      </p>
+                    </div>
+                    <div className="flex min-w-[4.5rem] shrink-0 flex-col items-end gap-1 text-right">
+                      <span
+                        className="text-xs font-medium tabular-nums text-[var(--neo-text-secondary)]"
+                        data-testid={`project-list-actual-cost-${r.id}`}
+                      >
+                        Cost {fmtUsd0(r.actualCost)}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-sm font-medium tabular-nums",
+                          r.profitReadinessWarning ? "text-amber-700" : profitClass(r.profit)
+                        )}
+                        data-testid={`project-list-profit-${r.id}`}
+                      >
+                        {r.profitReadinessWarning ? "Needs review" : fmtUsd0(r.profit)}
+                      </span>
+                      <ProjectListStatusPill status={r.status} />
+                    </div>
+                  </Link>
+                </MobileListRow>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -650,7 +656,12 @@ export function ProjectsListClient({
                       aria-label={`Open project ${r.name}`}
                       className={listTableRowClassName}
                     >
-                      <td className={cn(tableRawTdClass, "font-medium text-text-primary")}>
+                      <td
+                        className={cn(
+                          tableRawTdClass,
+                          "font-medium text-[var(--neo-text-primary)]"
+                        )}
+                      >
                         {r.name}
                       </td>
                       <td className={tableRawTdClass}>{r.clientName ?? "—"}</td>
@@ -660,19 +671,21 @@ export function ProjectsListClient({
                       <td
                         className={cn(
                           tableRawTdClass,
-                          "text-right font-mono tabular-nums text-text-primary"
+                          "text-right font-mono tabular-nums text-[var(--neo-text-primary)]"
                         )}
                       >
-                        {fmtUsd0(r.revenue)}
+                        <AmountCell>{fmtUsd0(r.revenue)}</AmountCell>
                       </td>
                       <td
                         className={cn(
                           tableRawTdClass,
-                          "text-right font-mono tabular-nums text-text-secondary"
+                          "text-right font-mono tabular-nums text-[var(--neo-text-secondary)]"
                         )}
                         data-testid={`project-list-actual-cost-${r.id}`}
                       >
-                        {fmtUsd0(r.actualCost)}
+                        <AmountCell className="text-[var(--neo-text-secondary)]">
+                          {fmtUsd0(r.actualCost)}
+                        </AmountCell>
                       </td>
                       <td
                         className={cn(
@@ -682,10 +695,19 @@ export function ProjectsListClient({
                         )}
                         data-testid={`project-list-profit-${r.id}`}
                       >
-                        {r.profitReadinessWarning ? "Needs review" : fmtUsd0(r.profit)}
+                        {r.profitReadinessWarning ? (
+                          "Needs review"
+                        ) : (
+                          <AmountCell tone={r.profit >= 0 ? "income" : "expense"}>
+                            {fmtUsd0(r.profit)}
+                          </AmountCell>
+                        )}
                       </td>
                       <td
-                        className={cn(tableRawTdClass, "font-mono text-[13px] text-text-secondary")}
+                        className={cn(
+                          tableRawTdClass,
+                          "font-mono text-[13px] text-[var(--neo-text-secondary)]"
+                        )}
                       >
                         {r.updatedAt}
                       </td>
@@ -700,21 +722,21 @@ export function ProjectsListClient({
                         >
                           <button
                             type="button"
-                            className="text-[14px] font-medium text-text-primary hover:underline"
+                            className="text-[14px] font-medium text-[var(--neo-text-primary)] hover:underline"
                             onClick={() => handleNavigate(r.id)}
                           >
                             View
                           </button>
                           <button
                             type="button"
-                            className="text-[14px] font-medium text-text-secondary hover:text-text-primary hover:underline"
+                            className="text-[14px] font-medium text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)] hover:underline"
                             onClick={() => router.push(`/projects/${r.id}/edit`)}
                           >
                             Edit
                           </button>
                           <button
                             type="button"
-                            className="rounded-md p-1.5 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                            className="rounded-md p-1.5 text-rose-600 hover:bg-rose-600/10 disabled:opacity-50"
                             aria-label={`Delete ${r.name}`}
                             disabled={deletingId != null}
                             onClick={() => void requestDelete(r)}
@@ -754,16 +776,16 @@ export function ProjectsListClient({
       <Dialog open={deleteBlockedOpen} onOpenChange={setDeleteBlockedOpen}>
         <DialogContent className={MODAL}>
           <DialogHeader className="text-left">
-            <DialogTitle className="text-xl font-bold text-text-primary">
+            <DialogTitle className="text-xl font-semibold text-[var(--neo-text-primary)]">
               Cannot delete project
             </DialogTitle>
-            <DialogDescription className="text-[13px] leading-relaxed text-text-secondary">
+            <DialogDescription className="text-[13px] leading-relaxed text-[var(--neo-text-secondary)]">
               This project has related records. Remove or reassign them first, or archive the
               project.
             </DialogDescription>
           </DialogHeader>
           {deleteBlockedCounts && deleteBlockedProjectId != null && (
-            <ul className="max-h-[40vh] space-y-2 overflow-y-auto text-[14px] text-[#374151]">
+            <ul className="max-h-[40vh] space-y-2 overflow-y-auto text-[14px] text-[var(--neo-text-primary)]">
               {DELETE_BLOCKED_RELATED_CONFIG.map(({ key }) => {
                 const n = deleteBlockedCounts[key] ?? 0;
                 if (n <= 0) return null;
@@ -775,7 +797,7 @@ export function ProjectsListClient({
                 return (
                   <li
                     key={key}
-                    className="flex items-center justify-between gap-3 border-b border-[#E8E4DD] pb-2 last:border-0 last:pb-0"
+                    className="flex items-center justify-between gap-3 border-b border-[var(--neo-border)] pb-2 last:border-0 last:pb-0"
                   >
                     <span>
                       {label} ({n})
@@ -784,7 +806,7 @@ export function ProjectsListClient({
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-9 shrink-0 rounded-lg border-gray-100 text-[13px]"
+                        className="h-9 shrink-0 rounded-lg text-[13px]"
                         asChild
                       >
                         <Link href={href} onClick={() => setDeleteBlockedOpen(false)}>
@@ -802,7 +824,7 @@ export function ProjectsListClient({
                 .map(([key, n]) => (
                   <li
                     key={key}
-                    className="flex items-center justify-between gap-3 border-b border-[#E8E4DD] pb-2 last:border-0 last:pb-0"
+                    className="flex items-center justify-between gap-3 border-b border-[var(--neo-border)] pb-2 last:border-0 last:pb-0"
                   >
                     <span>
                       {getLabelForKey(key)} ({n})
@@ -811,10 +833,10 @@ export function ProjectsListClient({
                 ))}
             </ul>
           )}
-          <DialogFooter className="mt-4 flex-wrap gap-2 border-t border-[#F0EDE8] bg-transparent pt-4">
+          <DialogFooter className="mt-4 flex-wrap gap-2 border-t border-[var(--neo-border)] bg-transparent pt-4">
             <Button
               variant="outline"
-              className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary"
+              className="h-10 rounded-lg text-[14px] font-medium"
               onClick={() => setDeleteBlockedOpen(false)}
               disabled={forceDeleteInProgress}
             >
@@ -824,7 +846,7 @@ export function ProjectsListClient({
               <>
                 <Button
                   variant="outline"
-                  className="h-10 rounded-lg border-gray-100 text-[14px] font-medium"
+                  className="h-10 rounded-lg text-[14px] font-medium"
                   onClick={async () => {
                     if (!deleteBlockedProjectId) return;
                     const result = await archiveProjectAction(deleteBlockedProjectId);
@@ -842,7 +864,7 @@ export function ProjectsListClient({
                   Archive project
                 </Button>
                 <Button
-                  className="h-10 rounded-lg bg-red-600 text-[14px] font-medium text-white hover:bg-red-700"
+                  className="h-10 rounded-lg bg-rose-600 text-[14px] font-medium text-white hover:bg-rose-700"
                   disabled={forceDeleteInProgress || deletingId != null}
                   onClick={async () => {
                     if (!deleteBlockedProjectId || !deleteBlockedCounts) return;

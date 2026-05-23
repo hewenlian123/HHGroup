@@ -12,8 +12,9 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
-import { ConfirmDialog, PageLayout, Divider, SectionHeader } from "@/components/base";
+import { AmountCell, ConfirmDialog, PageLayout, Divider, SectionHeader } from "@/components/base";
 import { cn } from "@/lib/utils";
+import { OS, TYPO } from "@/lib/typography";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,7 @@ function ProjectDetailStatusPill({ status }: { status: string }) {
 }
 
 const TAB_PANEL =
-  "mt-4 rounded-xl border border-border/60 bg-white p-4 sm:p-5 text-[14px] leading-normal";
+  "mt-4 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-4 text-[14px] leading-normal text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:p-5";
 
 function fmtMoney(n: number, opts?: { maximumFractionDigits?: number }) {
   const fd = opts?.maximumFractionDigits ?? 0;
@@ -229,19 +230,18 @@ function SnapshotMetricCard({
   active?: boolean;
 }) {
   const className = cn(
-    "rounded-xl border border-border/60 bg-white px-3 py-3 text-left transition-colors",
-    onClick && (active ? "bg-muted/20 ring-1 ring-foreground/20" : "hover:bg-muted/10")
+    OS.card,
+    "px-3 py-3 text-left transition-colors",
+    onClick &&
+      (active
+        ? "border-[var(--neo-gold)] bg-[rgb(184_137_45_/_0.08)] ring-1 ring-[var(--neo-gold-ring)]"
+        : "hover:bg-[var(--neo-surface-muted)]")
   );
 
   const body = (
     <>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p
-        data-testid={testId}
-        className="mt-1 font-mono text-[16px] font-semibold tabular-nums text-text-primary"
-      >
+      <p className={cn(TYPO.kpiLabel, "text-[10px]")}>{label}</p>
+      <p data-testid={testId} className={cn(TYPO.amount, "mt-1 text-[16px]")}>
         {fmtExactMoney(value)}
       </p>
     </>
@@ -268,14 +268,9 @@ function SnapshotTextMetricCard({
   testId: string;
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-white px-3 py-3 text-left">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <p
-        data-testid={testId}
-        className="mt-1 font-mono text-[16px] font-semibold tabular-nums text-text-primary"
-      >
+    <div className={cn(OS.card, "px-3 py-3 text-left")}>
+      <p className={cn(TYPO.kpiLabel, "text-[10px]")}>{label}</p>
+      <p data-testid={testId} className={cn(TYPO.amount, "mt-1 text-[16px]")}>
         {value}
       </p>
     </div>
@@ -633,27 +628,27 @@ export function ProjectDetailTabsClient({
   return (
     <PageLayout
       divider={false}
-      className="bg-page py-6"
+      className="py-6 max-md:!pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]"
       header={
         <div className="space-y-4">
           <Link
             href="/projects"
-            className="inline-flex items-center gap-1.5 text-[12px] font-medium text-text-secondary hover:text-text-primary"
+            className="inline-flex min-h-[36px] items-center gap-1.5 rounded-md px-1 text-[12px] font-medium text-[var(--neo-canvas-text-secondary)] hover:text-[var(--neo-canvas-text-primary)]"
           >
             <ArrowLeft className="h-4 w-4" />
             Projects
           </Link>
-          <div className="rounded-lg bg-white p-5 shadow-[0_1px_3px_rgba(0_0_0_0.06)] sm:p-6">
+          <div className={cn(OS.card, "p-5 sm:p-6")}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 space-y-2">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-xl font-bold tracking-tight text-text-primary sm:text-2xl">
+                  <h1 className="text-xl font-semibold tracking-normal text-[var(--neo-text-primary)] sm:text-2xl">
                     {displayProject.name}
                   </h1>
                   <ProjectDetailStatusPill status={displayProject.status} />
                 </div>
                 {(displayProject.client || displayProject.address) && (
-                  <p className="text-[14px] text-text-secondary">
+                  <p className="text-[14px] text-[var(--neo-text-secondary)]">
                     {[displayProject.client, displayProject.address].filter(Boolean).join(" · ")}
                   </p>
                 )}
@@ -662,7 +657,7 @@ export function ProjectDetailTabsClient({
                 <Button
                   type="button"
                   size="sm"
-                  className="h-9 rounded-lg text-[13px]"
+                  className="h-9 rounded-lg bg-[var(--neo-gold)] text-[13px] text-zinc-950 hover:bg-[var(--neo-gold-soft)]"
                   onClick={() => setEditModalOpen(true)}
                 >
                   Edit
@@ -672,7 +667,7 @@ export function ProjectDetailTabsClient({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-9 rounded-lg border-gray-100 text-[13px] text-text-secondary"
+                      className="h-9 rounded-lg text-[13px]"
                       aria-label="Project actions"
                       data-testid="project-detail-actions"
                     >
@@ -702,80 +697,73 @@ export function ProjectDetailTabsClient({
                 </DropdownMenu>
               </div>
             </div>
-            <div className="mt-6 border-t border-gray-100 pt-6">
-              <div className="rounded-xl border border-border/60 bg-white p-4 sm:p-5">
-                <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                      Budget
-                    </p>
-                    <p
-                      data-testid="project-header-contract-value"
-                      className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary"
-                    >
-                      {fmtMoney(budgetVal)}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={goToCostTab}
-                    className="rounded-lg text-left outline-none ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                      Actual Cost
-                    </p>
-                    <p
-                      data-testid="project-header-actual-cost"
-                      className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary underline decoration-border underline-offset-4"
-                    >
-                      {fmtMoney(headerActualCost)}
-                    </p>
-                  </button>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                      Confirmed Profit
-                    </p>
-                    {headerProfitValue == null ? (
-                      <p
-                        data-testid="project-header-profit"
-                        className="mt-1 text-[13px] font-semibold text-amber-700"
-                      >
-                        {snapshotState.status === "loading" ? "Loading…" : "Needs review"}
-                      </p>
-                    ) : (
-                      <p
-                        data-testid="project-header-profit"
-                        className={cn(
-                          "mt-1 font-mono text-2xl font-bold tabular-nums",
-                          headerProfitValue >= 0 ? "text-hh-profit-positive" : "text-red-600"
-                        )}
-                      >
-                        {headerProfitValue >= 0 ? "" : "−"}
-                        {fmtMoney(Math.abs(headerProfitValue))}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#9CA3AF]">
-                      Confirmed Margin
-                    </p>
-                    <p
-                      data-testid="project-header-margin"
-                      className="mt-1 font-mono text-2xl font-bold tabular-nums text-text-primary"
-                    >
-                      {headerMarginValue == null ? "—" : `${headerMarginValue.toFixed(1)}%`}
-                    </p>
-                  </div>
-                </div>
-                {headerFinancialWarning ? (
+            <div className="mt-5 border-t border-[var(--neo-border)] pt-5">
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <div>
+                  <p className={TYPO.kpiLabel}>Budget</p>
                   <p
-                    data-testid="project-header-financial-warning"
-                    className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-800"
+                    data-testid="project-header-contract-value"
+                    className={cn(TYPO.amount, "mt-1 text-2xl")}
                   >
-                    {headerFinancialWarning}
+                    {fmtMoney(budgetVal)}
                   </p>
-                ) : null}
+                </div>
+                <button
+                  type="button"
+                  onClick={goToCostTab}
+                  className="rounded-lg text-left outline-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                >
+                  <p className={TYPO.kpiLabel}>Actual Cost</p>
+                  <p
+                    data-testid="project-header-actual-cost"
+                    className={cn(
+                      TYPO.amount,
+                      "mt-1 text-2xl underline decoration-[var(--neo-border)] underline-offset-4"
+                    )}
+                  >
+                    {fmtMoney(headerActualCost)}
+                  </p>
+                </button>
+                <div>
+                  <p className={TYPO.kpiLabel}>Confirmed Profit</p>
+                  {headerProfitValue == null ? (
+                    <p
+                      data-testid="project-header-profit"
+                      className="mt-1 text-[13px] font-semibold text-[var(--neo-gold)]"
+                    >
+                      {snapshotState.status === "loading" ? "Loading…" : "Needs review"}
+                    </p>
+                  ) : (
+                    <p
+                      data-testid="project-header-profit"
+                      className={cn(
+                        "mt-1 font-mono text-2xl font-bold tabular-nums",
+                        headerProfitValue >= 0 ? OS.emeraldAccent : OS.dangerAmount
+                      )}
+                    >
+                      {headerProfitValue >= 0 ? "" : "−"}
+                      {fmtMoney(Math.abs(headerProfitValue))}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className={TYPO.kpiLabel}>Confirmed Margin</p>
+                  <p
+                    data-testid="project-header-margin"
+                    className={cn(TYPO.amount, "mt-1 text-2xl")}
+                  >
+                    {headerMarginValue == null ? "—" : `${headerMarginValue.toFixed(1)}%`}
+                  </p>
+                </div>
               </div>
+              {headerFinancialWarning ? (
+                <p
+                  data-testid="project-header-financial-warning"
+                  className="mt-3 rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[12px] font-medium text-[var(--neo-gold)]"
+                >
+                  {headerFinancialWarning}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>
@@ -830,7 +818,7 @@ export function ProjectDetailTabsClient({
             }}
             className="w-full"
           >
-            <div className="flex items-center justify-between gap-2 border-b-2 border-gray-100 pb-0">
+            <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-0">
               <TabsList className="h-10 min-h-0 flex-1 justify-start gap-0 overflow-x-auto whitespace-nowrap rounded-none border-0 bg-transparent p-0">
                 {(
                   [
@@ -844,7 +832,7 @@ export function ProjectDetailTabsClient({
                   <TabsTrigger
                     key={t.key}
                     value={t.key}
-                    className="rounded-none border-b-2 border-transparent px-3 py-2.5 text-[13px] font-medium text-text-secondary data-[state=active]:border-[#111827] data-[state=active]:text-text-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-[14px]"
+                    className="rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-[13px] font-medium text-[var(--neo-canvas-text-secondary)] shadow-none data-[state=active]:border-[var(--neo-gold)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--neo-canvas-text-primary)] data-[state=active]:shadow-none sm:text-[14px]"
                   >
                     {t.label}
                   </TabsTrigger>
@@ -875,13 +863,13 @@ export function ProjectDetailTabsClient({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="btn-outline-ghost h-9 shrink-0 px-2 text-[13px] text-text-secondary hover:text-text-primary"
+                    className="h-9 shrink-0 border-white/10 bg-white/[0.06] px-2 text-[13px] text-[var(--neo-canvas-text-secondary)] hover:bg-white/[0.1] hover:text-[var(--neo-canvas-text-primary)]"
                   >
                     More ▾
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="min-w-[220px]">
-                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)]">
                     Cost
                   </DropdownMenuLabel>
                   <DropdownMenuItem
@@ -913,7 +901,7 @@ export function ProjectDetailTabsClient({
                     Subcontracts
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)]">
                     Project
                   </DropdownMenuLabel>
                   <DropdownMenuItem
@@ -938,7 +926,7 @@ export function ProjectDetailTabsClient({
                     Material Selections
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)]">
                     Activity
                   </DropdownMenuLabel>
                   <DropdownMenuItem
@@ -956,7 +944,7 @@ export function ProjectDetailTabsClient({
                     Punch List
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)]">
                     Final
                   </DropdownMenuLabel>
                   <DropdownMenuItem
@@ -982,7 +970,10 @@ export function ProjectDetailTabsClient({
               <div
                 role="button"
                 tabIndex={0}
-                className="cursor-pointer rounded-xl border border-border/60 bg-white px-4 py-4 outline-none transition-colors hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className={cn(
+                  OS.card,
+                  "cursor-pointer px-4 py-4 outline-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                )}
                 onClick={goToCostTab}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -994,9 +985,9 @@ export function ProjectDetailTabsClient({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <SectionHeader
                     label="Cost snapshot"
-                    className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                    className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                   />
-                  <span className="text-[12px] font-medium text-muted-foreground underline-offset-4 hover:underline">
+                  <span className="text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline">
                     View cost details
                   </span>
                 </div>
@@ -1012,34 +1003,32 @@ export function ProjectDetailTabsClient({
                     ] as const
                   ).map((cell) => (
                     <div key={cell.label} className="min-w-0">
-                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {cell.label}
-                      </p>
-                      <p className="mt-1 font-mono text-[15px] font-semibold tabular-nums text-text-primary">
+                      <p className={cn(TYPO.kpiLabel, "text-[10px]")}>{cell.label}</p>
+                      <AmountCell className="mt-1 block text-[15px]">
                         {fmtMoney(cell.value)}
-                      </p>
+                      </AmountCell>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* B. Alerts */}
-              <div className="rounded-xl border border-border/60 bg-white px-4 py-4">
+              <div className={cn(OS.card, "px-4 py-4")}>
                 <SectionHeader
                   label="Alerts / issues"
-                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                 />
                 <Divider />
-                <ul className="mt-3 divide-y divide-border/60 text-[13px]">
+                <ul className="mt-3 divide-y divide-[var(--neo-border)] text-[13px]">
                   <li className="py-0">
                     <Link
                       href={inboxProjectHref}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-sm py-2.5 text-text-primary outline-none ring-offset-background hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md py-2.5 text-[var(--neo-text-primary)] outline-none hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
                     >
                       <span>Needs review expenses</span>
-                      <span className="tabular-nums text-muted-foreground">
+                      <span className="tabular-nums text-[var(--neo-text-secondary)]">
                         {projectCost.alerts.needsReviewCount}
-                        <span className="ml-2 text-[12px] font-medium text-foreground">
+                        <span className="ml-2 text-[12px] font-medium text-[var(--neo-gold)]">
                           Inbox →
                         </span>
                       </span>
@@ -1048,12 +1037,12 @@ export function ProjectDetailTabsClient({
                   <li className="py-0">
                     <Link
                       href={expensesProjectHref}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-sm py-2.5 text-text-primary outline-none ring-offset-background hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md py-2.5 text-[var(--neo-text-primary)] outline-none hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
                     >
                       <span>Missing receipt</span>
-                      <span className="tabular-nums text-muted-foreground">
+                      <span className="tabular-nums text-[var(--neo-text-secondary)]">
                         {projectCost.alerts.missingReceiptCount}
-                        <span className="ml-2 text-[12px] font-medium text-foreground">
+                        <span className="ml-2 text-[12px] font-medium text-[var(--neo-gold)]">
                           Expenses →
                         </span>
                       </span>
@@ -1062,21 +1051,23 @@ export function ProjectDetailTabsClient({
                   <li className="py-0">
                     <Link
                       href={inboxProjectHref}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-sm py-2.5 text-text-primary outline-none ring-offset-background hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md py-2.5 text-[var(--neo-text-primary)] outline-none hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
                     >
                       <span>Duplicate expenses</span>
-                      <span className="text-[12px] font-medium text-muted-foreground">Inbox →</span>
+                      <span className="text-[12px] font-medium text-[var(--neo-gold)]">
+                        Inbox →
+                      </span>
                     </Link>
                   </li>
                   <li className="py-0">
                     <Link
                       href={expensesProjectHref}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-sm py-2.5 text-text-primary outline-none ring-offset-background hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-md py-2.5 text-[var(--neo-text-primary)] outline-none hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
                     >
                       <span>Missing project / category</span>
-                      <span className="tabular-nums text-muted-foreground">
+                      <span className="tabular-nums text-[var(--neo-text-secondary)]">
                         {projectCost.alerts.missingClassificationCount}
-                        <span className="ml-2 text-[12px] font-medium text-foreground">
+                        <span className="ml-2 text-[12px] font-medium text-[var(--neo-gold)]">
                           Expenses →
                         </span>
                       </span>
@@ -1086,26 +1077,26 @@ export function ProjectDetailTabsClient({
               </div>
 
               {/* C. Recent costs (done only, max 5) */}
-              <div className="rounded-xl border border-border/60 bg-white px-4 py-4">
+              <div className={cn(OS.card, "px-4 py-4")}>
                 <SectionHeader
                   label="Recent costs"
-                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                 />
                 <Divider />
                 <div className="mt-2">
                   {recentExpenseLines.length === 0 ? (
-                    <p className="py-6 text-center text-sm text-muted-foreground">
+                    <p className="py-6 text-center text-sm text-[var(--neo-text-secondary)]">
                       No recorded costs yet.
                     </p>
                   ) : (
                     <RecentExpenseLines rows={recentExpenseLines} />
                   )}
                 </div>
-                <div className="mt-3 border-t border-border/60 pt-3">
+                <div className="mt-3 border-t border-[var(--neo-border)] pt-3">
                   <button
                     type="button"
                     onClick={goToCostTab}
-                    className="text-[12px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                    className="text-[12px] font-medium text-[var(--neo-gold)] underline-offset-2 hover:underline"
                   >
                     View all costs →
                   </button>
@@ -1113,10 +1104,10 @@ export function ProjectDetailTabsClient({
               </div>
 
               {/* D. Quick actions */}
-              <div className="rounded-xl border border-border/60 bg-white px-4 py-4">
+              <div className={cn(OS.card, "px-4 py-4")}>
                 <SectionHeader
                   label="Quick actions"
-                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                 />
                 <Divider />
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -1139,26 +1130,26 @@ export function ProjectDetailTabsClient({
               </div>
 
               {/* Compact context (no KPI repeat) */}
-              <div className="rounded-xl border border-border/60 bg-white px-4 py-4">
+              <div className={cn(OS.card, "px-4 py-4")}>
                 <SectionHeader
                   label="Project context"
-                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                 />
                 <Divider />
                 <div className="mt-2 grid grid-cols-1 gap-2 text-[13px] sm:grid-cols-2">
                   <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-muted-foreground">Client</span>
+                    <span className="text-[var(--neo-text-secondary)]">Client</span>
                     {displayProject.customerId ? (
                       <Link
                         href={`/customers/${displayProject.customerId}`}
-                        className="truncate text-right font-medium text-text-primary underline-offset-2 hover:underline"
+                        className="truncate text-right font-medium text-[var(--neo-text-primary)] underline-offset-2 hover:underline"
                       >
                         {displayProject.client ??
                           (displayProject as { client_name?: string }).client_name ??
                           "Customer"}
                       </Link>
                     ) : (
-                      <span className="truncate text-right font-medium text-text-primary">
+                      <span className="truncate text-right font-medium text-[var(--neo-text-primary)]">
                         {displayProject.client ??
                           (displayProject as { client_name?: string }).client_name ??
                           "—"}
@@ -1166,22 +1157,22 @@ export function ProjectDetailTabsClient({
                     )}
                   </div>
                   <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-muted-foreground">Contract value</span>
-                    <span className="tabular-nums text-right font-medium text-text-primary">
+                    <span className="text-[var(--neo-text-secondary)]">Contract value</span>
+                    <span className="tabular-nums text-right font-medium text-[var(--neo-text-primary)]">
                       {fmtMoney(canonicalProfit.revenue)}
                     </span>
                   </div>
                   {financialSummary ? (
                     <>
                       <div className="flex items-center justify-between gap-3 py-2">
-                        <span className="text-muted-foreground">Collected</span>
-                        <span className="tabular-nums text-right text-text-primary">
+                        <span className="text-[var(--neo-text-secondary)]">Collected</span>
+                        <span className="tabular-nums text-right text-[var(--neo-text-primary)]">
                           {fmtMoney(financialSummary.collected)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-3 py-2">
-                        <span className="text-muted-foreground">AR outstanding</span>
-                        <span className="tabular-nums text-right text-text-primary">
+                        <span className="text-[var(--neo-text-secondary)]">AR outstanding</span>
+                        <span className="tabular-nums text-right text-[var(--neo-text-primary)]">
                           {fmtMoney(financialSummary.outstanding)}
                         </span>
                       </div>
@@ -1190,28 +1181,28 @@ export function ProjectDetailTabsClient({
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border/60 bg-white px-4 py-4">
+              <div className={cn(OS.card, "px-4 py-4")}>
                 <SectionHeader
                   label="Related estimates"
-                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                 />
                 <Divider />
                 {relatedEstimates.length === 0 ? (
-                  <p className="mt-3 text-sm text-muted-foreground">
+                  <p className="mt-3 text-sm text-[var(--neo-text-secondary)]">
                     No estimates linked by this project or client name.
                   </p>
                 ) : (
-                  <div className="mt-2 divide-y divide-border/60">
+                  <div className="mt-2 divide-y divide-[var(--neo-border)]">
                     {relatedEstimates.slice(0, 5).map((estimate) => (
                       <Link
                         key={estimate.id}
                         href={`/estimates/${estimate.id}`}
                         className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
                       >
-                        <span className="min-w-0 truncate font-medium text-text-primary">
+                        <span className="min-w-0 truncate font-medium text-[var(--neo-text-primary)]">
                           {estimate.number}
                         </span>
-                        <span className="shrink-0 text-xs text-muted-foreground">
+                        <span className="shrink-0 text-xs text-[var(--neo-text-secondary)]">
                           {estimate.status}
                         </span>
                       </Link>
@@ -1238,11 +1229,11 @@ export function ProjectDetailTabsClient({
             <TabsContent value="schedule" className={TAB_PANEL}>
               <SectionHeader
                 label="Schedule"
-                className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                className="text-[11px] tracking-normal text-[var(--neo-text-tertiary)] font-medium"
               />
               <Divider />
               {scheduleItems.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">
+                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
                   No schedule milestones for this project.
                 </p>
               ) : (
@@ -1252,16 +1243,16 @@ export function ProjectDetailTabsClient({
                       <table className="w-full text-sm">
                         <thead>
                           <tr>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                               Title
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                               Start
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                               End
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                               Status
                             </th>
                           </tr>
@@ -1290,7 +1281,7 @@ export function ProjectDetailTabsClient({
                   <div className="mt-3">
                     <Link
                       href="/schedule"
-                      className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                      className="text-xs font-medium text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
                     >
                       Open company schedule →
                     </Link>
@@ -1303,7 +1294,7 @@ export function ProjectDetailTabsClient({
               <div>
                 <SectionHeader
                   label="Cost breakdown"
-                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                 />
                 <Divider />
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -1359,10 +1350,10 @@ export function ProjectDetailTabsClient({
                 </div>
                 <div
                   data-testid="snapshot-cost-status"
-                  className="mt-2 space-y-1 text-[12px] text-muted-foreground"
+                  className="mt-2 space-y-1 text-[12px] text-[var(--neo-text-secondary)]"
                 >
                   {snapshotState.status === "error" ? (
-                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                    <p className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[var(--neo-gold)]">
                       Using legacy cost data. Snapshot unavailable.
                     </p>
                   ) : null}
@@ -1379,7 +1370,7 @@ export function ProjectDetailTabsClient({
                       {snapshotNotes.slice(0, 4).map((note) => (
                         <li
                           key={note}
-                          className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800"
+                          className="rounded-full border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-2 py-1 text-[11px] font-medium text-[var(--neo-gold)]"
                         >
                           {note}
                         </li>
@@ -1387,7 +1378,7 @@ export function ProjectDetailTabsClient({
                     </ul>
                   ) : null}
                   {pendingCostReviewNote ? (
-                    <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                    <p className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[var(--neo-gold)]">
                       <span className="font-medium">Pending review costs are not included.</span>{" "}
                       {pendingCostReviewNote}
                     </p>
@@ -1399,7 +1390,7 @@ export function ProjectDetailTabsClient({
                 <div>
                   <SectionHeader
                     label="Confirmed profit"
-                    className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                    className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                   />
                   <Divider />
                   {showSnapshotProfit ? (
@@ -1421,14 +1412,14 @@ export function ProjectDetailTabsClient({
                           testId="snapshot-profit-actual-cost"
                         />
                       </div>
-                      <p className="mt-2 rounded-lg border border-border/60 bg-muted/10 px-3 py-2 text-[12px] text-muted-foreground">
+                      <p className="mt-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 text-[12px] text-[var(--neo-text-secondary)]">
                         Profit is based on confirmed costs only. Pending review costs, unpaid
                         reimbursements, and generic AP are shown separately and are not included
                         yet.
                       </p>
                     </>
                   ) : (
-                    <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] font-medium text-amber-800">
+                    <p className="mt-3 rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[12px] font-medium text-[var(--neo-gold)]">
                       {profitReadinessWarning}
                     </p>
                   )}
@@ -1438,7 +1429,7 @@ export function ProjectDetailTabsClient({
               <div>
                 <SectionHeader
                   label="Cost detail"
-                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                 />
                 <Divider />
                 <div className="mt-3">
@@ -1455,13 +1446,13 @@ export function ProjectDetailTabsClient({
                 <ProjectFinancialSnapshotComparisonPanel projectId={projectId} />
               ) : null}
 
-              <div className="border-t border-border/60 pt-6">
+              <div className="border-t border-[var(--neo-border)] pt-6">
                 <SectionHeader
                   label="Invoicing"
-                  className="text-[11px] tracking-[0.08em] text-[#9CA3AF] font-medium"
+                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                 />
                 <Divider />
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-[var(--neo-text-secondary)]">
                   Billed{" "}
                   <span data-testid="snapshot-ar-billed">
                     {fmtExactMoney(snapshotCostSummary.billedAmount)}
@@ -1476,28 +1467,28 @@ export function ProjectDetailTabsClient({
                   </span>
                 </p>
                 {projectInvoices.length === 0 ? (
-                  <p className="py-6 text-sm text-muted-foreground">
+                  <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
                     No invoices for this project.
                   </p>
                 ) : (
-                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-xl border border-border/60 bg-white">
+                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)]">
                     <div className="airtable-table-scroll">
                       <table className="w-full text-sm">
                         <thead>
                           <tr>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                               Invoice
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                               Issue date
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                               Status
                             </th>
-                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
                               Total
                             </th>
-                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
                               Balance
                             </th>
                           </tr>
@@ -1508,7 +1499,7 @@ export function ProjectDetailTabsClient({
                               <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
                                 <Link
                                   href={`/financial/invoices/${inv.id}`}
-                                  className="font-medium text-foreground hover:underline"
+                                  className="font-medium text-[var(--neo-text-primary)] hover:underline"
                                 >
                                   {inv.invoiceNo}
                                 </Link>
@@ -1535,7 +1526,7 @@ export function ProjectDetailTabsClient({
                 <div className="mt-3">
                   <Link
                     href="/financial/invoices"
-                    className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                    className="text-xs font-medium text-[var(--neo-gold)] hover:underline"
                   >
                     View all invoices →
                   </Link>
@@ -1550,7 +1541,7 @@ export function ProjectDetailTabsClient({
             <TabsContent value="expenses" className={TAB_PANEL}>
               <SectionHeader
                 label="Expenses"
-                className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
+                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
               />
               <Divider />
               <div className="mt-2">
@@ -1559,7 +1550,7 @@ export function ProjectDetailTabsClient({
               <div className="mt-3">
                 <Link
                   href={`/financial/expenses?project_id=${encodeURIComponent(projectId)}`}
-                  className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                  className="text-xs font-medium text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
                 >
                   View all expenses →
                 </Link>
@@ -1568,11 +1559,11 @@ export function ProjectDetailTabsClient({
             <TabsContent value="budget" className={TAB_PANEL}>
               <SectionHeader
                 label="Budget"
-                className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
+                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
               />
               <Divider />
               {budgetItems.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">
+                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
                   No budget items for this project.
                 </p>
               ) : (
@@ -1581,10 +1572,10 @@ export function ProjectDetailTabsClient({
                     <table className="w-full text-sm">
                       <thead>
                         <tr>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                             Cost code
                           </th>
-                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
                             Total
                           </th>
                         </tr>
@@ -1609,16 +1600,18 @@ export function ProjectDetailTabsClient({
             <TabsContent value="activity" className={TAB_PANEL}>
               <SectionHeader
                 label="Activity"
-                className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
+                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
               />
               <Divider />
               {activityLogs.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">No activity for this project.</p>
+                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                  No activity for this project.
+                </p>
               ) : (
                 <ul className="space-y-2 py-2">
                   {activityLogs.map((log) => (
-                    <li key={log.id} className="text-sm border-b border-border/30 pb-2">
-                      <span className="text-muted-foreground">
+                    <li key={log.id} className="text-sm border-b border-[var(--neo-border)] pb-2">
+                      <span className="text-[var(--neo-text-secondary)]">
                         {log.created_at?.slice(0, 19).replace("T", " ")}
                       </span>
                       {" — "}
@@ -1631,11 +1624,11 @@ export function ProjectDetailTabsClient({
             <TabsContent value="change-orders" className={TAB_PANEL}>
               <SectionHeader
                 label="Change Orders"
-                className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
+                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
               />
               <Divider />
               {changeOrders.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">
+                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
                   No change orders for this project.
                 </p>
               ) : (
@@ -1644,13 +1637,13 @@ export function ProjectDetailTabsClient({
                     <table className="w-full text-sm">
                       <thead>
                         <tr>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                             Number
                           </th>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                             Status
                           </th>
-                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
                             Amount
                           </th>
                         </tr>
@@ -1667,7 +1660,7 @@ export function ProjectDetailTabsClient({
                                   {co.number ?? "—"}
                                 </Link>
                                 {co.title ? (
-                                  <span className="mt-0.5 max-w-[18rem] truncate text-xs font-normal text-muted-foreground">
+                                  <span className="mt-0.5 max-w-[18rem] truncate text-xs font-normal text-[var(--neo-text-secondary)]">
                                     {co.title}
                                   </span>
                                 ) : null}
@@ -1718,7 +1711,7 @@ export function ProjectDetailTabsClient({
               />
             </TabsContent>
             <TabsContent value="commission" className={cn(TAB_PANEL, "p-0 overflow-hidden sm:p-0")}>
-              <div className="rounded-lg bg-page p-4 sm:p-5">
+              <div className="rounded-lg bg-[var(--neo-surface-muted)] p-4 sm:p-5">
                 <ProjectCommissionTab
                   projectId={projectId}
                   commissions={commissions}
@@ -1734,11 +1727,11 @@ export function ProjectDetailTabsClient({
             <TabsContent value="subcontracts" className={TAB_PANEL}>
               <SectionHeader
                 label="Subcontracts"
-                className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
+                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
               />
               <Divider />
               {subcontracts.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">
+                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
                   No subcontracts for this project.
                 </p>
               ) : (
@@ -1747,10 +1740,10 @@ export function ProjectDetailTabsClient({
                     <table className="w-full text-sm">
                       <thead>
                         <tr>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                             Subcontractor
                           </th>
-                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
                             Contract amount
                           </th>
                         </tr>
@@ -1775,24 +1768,26 @@ export function ProjectDetailTabsClient({
             <TabsContent value="bills" className={TAB_PANEL}>
               <SectionHeader
                 label="Bills (AP)"
-                className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
+                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
               />
               <Divider />
               {bills.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">No bills for this project.</p>
+                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                  No bills for this project.
+                </p>
               ) : (
                 <div className="airtable-table-wrap airtable-table-wrap--ruled mt-2">
                   <div className="airtable-table-scroll">
                     <table className="w-full text-sm">
                       <thead>
                         <tr>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                             Vendor
                           </th>
-                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                          <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                             Bill no
                           </th>
-                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                          <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
                             Amount
                           </th>
                         </tr>
@@ -1820,11 +1815,11 @@ export function ProjectDetailTabsClient({
             <TabsContent value="labor" className={TAB_PANEL}>
               <SectionHeader
                 label="Labor"
-                className="text-[11px] tracking-[0.08em] text-muted-foreground font-medium"
+                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
               />
               <Divider />
               {laborEntries.length === 0 ? (
-                <p className="py-6 text-sm text-muted-foreground">
+                <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
                   No labor entries for this project.
                 </p>
               ) : (
@@ -1834,13 +1829,13 @@ export function ProjectDetailTabsClient({
                       <table className="w-full text-sm">
                         <thead>
                           <tr>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                               Worker
                             </th>
-                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                               Date
                             </th>
-                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
                               Cost
                             </th>
                           </tr>
@@ -1866,7 +1861,7 @@ export function ProjectDetailTabsClient({
                   <div className="mt-3">
                     <Link
                       href={`/projects/${projectId}/labor`}
-                      className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                      className="text-xs font-medium text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
                     >
                       View full labor log →
                     </Link>
