@@ -110,6 +110,17 @@ export function EstimateDetailClient({
   };
 
   const onSave = () => {
+    const finishWithoutMetaForm = () => {
+      setSaveStatus("saving");
+      startTransition(async () => {
+        setEditing(false);
+        setDirty(false);
+        setSaveStatus("saved");
+        syncRouterNonBlocking(router);
+        window.setTimeout(() => setSaveStatus("idle"), 2000);
+      });
+    };
+
     const run = (form: HTMLFormElement) => {
       const fd = new FormData(form);
       setSaveStatus("saving");
@@ -142,12 +153,7 @@ export function EstimateDetailClient({
     requestAnimationFrame(() => {
       const f = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
       if (f) run(f);
-      else
-        toast({
-          title: "Nothing to save",
-          description: "Estimate form not found.",
-          variant: "error",
-        });
+      else finishWithoutMetaForm();
     });
   };
 

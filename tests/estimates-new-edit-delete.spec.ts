@@ -306,6 +306,18 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
     timeout: 30_000,
   });
 
+  const savedCollapse = page.getByRole("button", { name: "Collapse section" }).first();
+  await expect(savedCollapse).toBeVisible({ timeout: 15_000 });
+  await savedCollapse.click();
+  await expect(page.getByRole("button", { name: "Expand section" }).first()).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page.locator(".eb-scope-section-body--collapsed").first()).toBeAttached();
+  await page.getByRole("button", { name: "Expand section" }).first().click();
+  await expect(page.getByText(lineTitle, { exact: true }).locator("visible=true")).toBeVisible({
+    timeout: 10_000,
+  });
+
   const detailUrl = page.url();
   await page.goto("/estimates");
   await page.waitForLoadState("domcontentloaded");
@@ -341,6 +353,14 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   await expect(page.getByText(savedClientName, { exact: true }).first()).toBeVisible({
     timeout: 30_000,
   });
+
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.locator("header").getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.locator("body")).not.toContainText("Estimate form not found.");
+  await expect(page.locator("body")).not.toContainText("Nothing to save");
 
   await page.getByRole("button", { name: "Delete estimate" }).click();
   let deleteDialog = page.getByRole("dialog", { name: "Delete estimate?" });
@@ -384,6 +404,38 @@ test("keeps saved estimate detail header actions compact on desktop and mobile",
   await page.waitForLoadState("domcontentloaded");
   await expect(page.getByTestId("estimate-detail-header")).toBeVisible({ timeout: 30_000 });
   await expectNoHorizontalOverflow(page);
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Collapse section" }).first()).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByRole("button", { name: /^Add line$/i }).first()).toBeVisible({
+    timeout: 15_000,
+  });
+  await expectNoHorizontalOverflow(page);
+});
+
+test("renders seeded legacy estimate with the unified composer shell", async ({ page }) => {
+  test.setTimeout(90_000);
+
+  await page.goto("/estimates/44444444-4444-4444-4444-444444444449");
+  await page.waitForLoadState("domcontentloaded");
+  await expect(page.getByText("[E2E]-EST-001", { exact: true }).first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.locator(".estimate-builder-new").first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator("main")).toContainText("Scope of work", { timeout: 15_000 });
+
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByRole("button", { name: /Edit details/i })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByRole("button", { name: /^Add Section$/i }).first()).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.locator("details").filter({ hasText: "Payment schedule" }).first()).toBeVisible(
+    { timeout: 15_000 }
+  );
+  await expect(page.locator("body")).not.toContainText("Something went wrong");
 });
 
 test("opens approved estimate conversion without creating a project", async ({ page }) => {

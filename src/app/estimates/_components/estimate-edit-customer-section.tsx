@@ -117,6 +117,10 @@ export function EstimateEditCustomerSection({
     setDiscountDraft(discount);
   }, [discount, meta.estimateDate, meta.validUntil, tax, today]);
 
+  React.useEffect(() => {
+    if (isReadOnly) setDetailsOpen(false);
+  }, [isReadOnly]);
+
   const displayDate = meta.estimateDate ?? today;
 
   const discardDetails = (): void => {
