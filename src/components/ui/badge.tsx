@@ -4,18 +4,18 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-brand-primary/25",
+  "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--neo-gold-ring)]",
   {
     variants: {
       variant: {
         default:
-          "border border-transparent bg-text-primary text-white dark:bg-zinc-100 dark:text-zinc-900",
+          "border border-transparent bg-[var(--neo-graphite-950)] text-white dark:bg-[var(--neo-gold)] dark:text-zinc-950",
         secondary:
-          "border border-transparent bg-page text-text-secondary dark:bg-zinc-800 dark:text-zinc-300",
+          "border border-transparent bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]",
         destructive:
           "border border-transparent bg-[#FEE2E2] text-[#991B1B] dark:bg-red-950/40 dark:text-red-300",
         outline:
-          "border border-gray-200 bg-white text-text-primary dark:border-zinc-700 dark:bg-card dark:text-zinc-300",
+          "border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)]",
       },
     },
     defaultVariants: {

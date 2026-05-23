@@ -6,6 +6,7 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { motionPopoverLayer } from "@/lib/motion-system";
+import { NEO } from "@/lib/typography";
 
 const Select = SelectPrimitive.Root;
 
@@ -20,7 +21,8 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-gray-100 bg-white px-3 py-2 text-sm shadow-none transition-all duration-150 ease-out data-[placeholder]:text-text-secondary hover:bg-gray-50/80 focus:outline-none focus-visible:border-brand-primary focus-visible:ring-1 focus-visible:ring-brand-primary disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-[44px] max-md:text-base md:text-sm [&>span]:line-clamp-1 dark:border-border dark:bg-card dark:hover:bg-muted/30",
+      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border px-3 py-2 text-sm shadow-none transition-all duration-150 ease-out data-[placeholder]:text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-muted)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-[44px] max-md:text-base md:text-sm [&>span]:line-clamp-1",
+      NEO.input,
       "active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96]",
       className
     )}
@@ -70,7 +72,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-[999] max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md origin-[--radix-select-content-transform-origin]",
+        "relative z-[999] max-h-[--radix-select-content-available-height] min-w-[8rem] origin-[--radix-select-content-transform-origin] overflow-y-auto overflow-x-hidden rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
         motionPopoverLayer,
         "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         position === "popper" &&
@@ -115,7 +117,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none transition-all duration-150 ease-out focus:bg-accent focus:text-accent-foreground hover:bg-accent/80 active:scale-[0.99] active:duration-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none transition-all duration-150 ease-out focus:bg-[var(--neo-surface-muted)] focus:text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)] active:scale-[0.99] active:duration-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}

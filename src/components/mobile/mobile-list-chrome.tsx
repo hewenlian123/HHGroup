@@ -14,7 +14,7 @@ export const mobileListPagePaddingClass = "max-md:!py-2.5";
 export function MobileListHeader({ title, fab }: { title: string; fab: React.ReactNode }) {
   return (
     <div className="flex h-11 shrink-0 items-center justify-between gap-2 md:hidden">
-      <h1 className="text-base font-medium tracking-tight text-foreground">{title}</h1>
+      <h1 className="text-base font-medium tracking-normal text-foreground">{title}</h1>
       {fab}
     </div>
   );
@@ -24,7 +24,7 @@ export function MobileFabPlus({ href, ariaLabel }: { href: string; ariaLabel: st
   return (
     <Link
       href={href}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white"
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--neo-graphite-950)] text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)]"
       aria-label={ariaLabel}
     >
       <Plus className="h-5 w-5" strokeWidth={2} aria-hidden />
@@ -46,7 +46,7 @@ export function MobileFabButton({
     <button
       type="button"
       className={cn(
-        "flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-black text-white",
+        "flex h-10 w-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-[var(--neo-graphite-950)] text-white shadow-[0_8px_22px_rgba(0,0,0,0.18)]",
         className
       )}
       aria-label={ariaLabel}

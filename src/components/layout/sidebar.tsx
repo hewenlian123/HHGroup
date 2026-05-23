@@ -334,30 +334,31 @@ export function Sidebar({
       active
         ? cn(
             "font-medium text-white",
-            "bg-white/[0.048] hover:bg-white/[0.065]",
-            "before:absolute before:inset-y-2 before:left-0 before:w-px before:rounded-full before:bg-emerald-400/42 before:content-['']"
+            "bg-[rgb(184_137_45_/_0.12)] hover:bg-[rgb(184_137_45_/_0.17)]",
+            "before:absolute before:inset-y-2 before:left-0 before:w-px before:rounded-full before:bg-[var(--neo-gold-soft)] before:content-['']"
           )
         : "font-normal text-zinc-300 hover:bg-white/[0.038] active:bg-white/[0.055]"
     );
 
   const navIconClass = (active: boolean, extra?: string) =>
-    cn("h-[15px] w-[15px] shrink-0", active ? "text-emerald-300/75" : "text-zinc-300", extra);
+    cn(
+      "h-[15px] w-[15px] shrink-0",
+      active ? "text-[var(--neo-gold-soft)]" : "text-zinc-300",
+      extra
+    );
 
   return (
     <aside
       data-app-sidebar
       className={cn(
-        "relative flex h-full shrink-0 flex-col overflow-hidden border-r border-white/[0.065]",
-        "bg-[linear-gradient(180deg,#081225_0%,#0F172A_100%)]",
-        "before:pointer-events-none before:absolute before:inset-0 before:bg-[radial-gradient(900px_circle_at_20%_-10%,rgba(16,185,129,0.09),transparent_55%)] before:opacity-70 before:content-['']",
-        "after:pointer-events-none after:absolute after:inset-0 after:bg-[radial-gradient(600px_circle_at_110%_40%,rgba(255,255,255,0.045),transparent_50%)] after:content-['']",
+        "neo-sidebar relative flex h-full shrink-0 flex-col overflow-hidden",
         collapsed ? "w-[72px]" : "w-[210px]",
         className
       )}
     >
       <div
         className={cn(
-          "relative z-[1] flex h-12 items-center gap-2 border-b border-white/[0.065] bg-white/[0.022] backdrop-blur-sm",
+          "relative z-[1] flex h-12 items-center gap-2 border-b border-white/[0.08] bg-white/[0.035] backdrop-blur-sm",
           collapsed ? "px-3" : "px-3"
         )}
       >
@@ -372,7 +373,7 @@ export function Sidebar({
             <p className="truncate text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
               HH Unified
             </p>
-            <p className="truncate text-[13px] font-medium tracking-tight text-zinc-100">
+            <p className="truncate text-[13px] font-medium tracking-normal text-zinc-100">
               {orgName}
             </p>
           </div>
@@ -445,7 +446,7 @@ export function Sidebar({
                                 key={expenseInboxPoolAnimKey}
                                 className={cn(
                                   "absolute -right-2 -top-1 z-[1] flex min-h-[15px] min-w-[15px] items-center justify-center rounded-sm px-1 text-[10px] font-semibold tabular-nums leading-none animate-receipt-queue-badge",
-                                  active ? "text-emerald-300/75" : "text-zinc-100"
+                                  active ? "text-[var(--neo-gold-soft)]" : "text-zinc-100"
                                 )}
                                 aria-hidden
                               >

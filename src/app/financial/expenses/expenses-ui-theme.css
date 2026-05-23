@@ -1,15 +1,15 @@
 /* Expenses route: HH Finance OS — page tint aligns with the app workspace; shell bg from Tailwind */
 .expenses-ui {
-  --exp-page-bg: transparent;
+  --exp-page-bg: var(--neo-surface-base);
   --exp-content-bg: transparent;
-  --exp-primary: #081225;
-  --exp-secondary: #52525b;
+  --exp-primary: var(--neo-text-primary);
+  --exp-secondary: var(--neo-text-secondary);
   --exp-negative: #e11d48;
-  --exp-positive: #059669;
-  --exp-row-hover: #ffffff;
-  --exp-border: rgb(15 23 42 / 0.06);
-  --exp-icon: #9ca3af;
-  --exp-icon-hover: #374151;
+  --exp-positive: var(--neo-emerald);
+  --exp-row-hover: var(--neo-surface-raised);
+  --exp-border: var(--neo-border);
+  --exp-icon: var(--neo-text-tertiary);
+  --exp-icon-hover: var(--neo-text-secondary);
   background-color: var(--exp-page-bg);
   color: var(--exp-primary);
 }
@@ -22,7 +22,7 @@
 /* Row motion: Tailwind `transition-all` on `<li.exp-row>` (hover lift/shadow, active scale) */
 
 .expenses-ui .exp-btn-primary {
-  background-color: var(--exp-primary) !important;
+  background-color: var(--neo-graphite-950) !important;
   color: #ffffff !important;
   border-color: transparent !important;
 }
@@ -32,15 +32,15 @@
 }
 
 .expenses-ui .exp-btn-secondary {
-  background-color: rgb(255 255 255 / 0.72) !important;
+  background-color: var(--neo-surface-raised) !important;
   color: var(--exp-primary) !important;
-  border-color: rgb(0 0 0 / 0.08) !important;
+  border-color: var(--neo-border) !important;
   box-shadow: none !important;
   backdrop-filter: blur(8px);
 }
 
 .expenses-ui .exp-btn-secondary:hover {
-  background-color: #ffffff !important;
+  background-color: var(--neo-surface-muted) !important;
 }
 
 .expenses-ui .exp-btn-secondary svg {
@@ -57,7 +57,7 @@
 
 .expenses-ui .exp-icon-btn:hover {
   color: var(--exp-icon-hover) !important;
-  background-color: #f3f4f6 !important;
+  background-color: var(--neo-surface-muted) !important;
 }
 
 .expenses-ui .exp-icon-danger {
@@ -73,11 +73,11 @@
 
 /* Dialog when using expenses palette */
 .expenses-ui-dialog {
-  --exp-primary: #081225;
-  --exp-secondary: #52525b;
-  --exp-border: rgb(15 23 42 / 0.06);
-  --exp-row-hover: #f8fafc;
-  background-color: #ffffff !important;
+  --exp-primary: var(--neo-text-primary);
+  --exp-secondary: var(--neo-text-secondary);
+  --exp-border: var(--neo-border);
+  --exp-row-hover: var(--neo-surface-muted);
+  background-color: var(--neo-surface-raised) !important;
   color: var(--exp-primary) !important;
   border-color: var(--exp-border) !important;
 }
@@ -87,19 +87,19 @@
 }
 
 .expenses-ui-dialog .exp-btn-primary {
-  background-color: #081225 !important;
+  background-color: var(--neo-graphite-950) !important;
   color: #ffffff !important;
   border-color: transparent !important;
 }
 
 .expenses-ui-dialog .exp-btn-secondary {
-  background-color: #ffffff !important;
-  color: #081225 !important;
-  border-color: rgb(15 23 42 / 0.08) !important;
+  background-color: var(--neo-surface-raised) !important;
+  color: var(--neo-text-primary) !important;
+  border-color: var(--neo-border) !important;
 }
 
 .expenses-ui-dialog .exp-btn-secondary:hover {
-  background-color: #f8fafc !important;
+  background-color: var(--neo-surface-muted) !important;
 }
 
 /* Portal content lives under <body>, so these mobile safety rules are intentionally global. */

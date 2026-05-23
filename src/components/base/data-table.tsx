@@ -76,7 +76,7 @@ export function DataTable<T>({
                     "table-row-compact",
                     motionListTableRow,
                     onRowClick &&
-                      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-0",
+                      "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0",
                     !onRowClick && "cursor-default"
                   )}
                   onClick={(e) => {
@@ -143,7 +143,7 @@ export function DataTable<T>({
               className={cn(
                 "rounded-xl border border-slate-900/[0.06] bg-white/[0.92] p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors duration-150 ease-out active:scale-[0.99] hover:bg-slate-50 dark:border-border dark:hover:bg-muted/40",
                 onRowClick &&
-                  "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/30 focus-visible:ring-offset-0"
+                  "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0"
               )}
               role={onRowClick ? "button" : undefined}
               tabIndex={onRowClick ? 0 : undefined}

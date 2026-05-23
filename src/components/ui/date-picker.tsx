@@ -77,10 +77,10 @@ export function FinanceDatePicker({
           type="button"
           disabled={disabled}
           className={cn(
-            "inline-flex w-full items-center justify-between gap-2 rounded-md border px-3 text-left font-medium tracking-tight transition-colors focus-visible:outline-none",
+            "inline-flex w-full items-center justify-between gap-2 rounded-md border px-3 text-left font-medium tracking-normal transition-colors focus-visible:outline-none",
             isGlass
               ? "eb-date-field border-white/[0.06] bg-white/[0.02] text-zinc-100 hover:border-white/[0.09] hover:bg-white/[0.035] focus-visible:border-white/[0.14] focus-visible:shadow-[0_0_0_2px_rgba(255,255,255,0.05)]"
-              : "border-border/60 bg-transparent text-zinc-800 hover:bg-muted/10 focus-visible:ring-2 focus-visible:ring-emerald-400/30",
+              : "border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
             size === "md" ? "h-11 min-h-[44px] text-sm" : "h-9 text-sm",
             disabled && "pointer-events-none opacity-60",
             className

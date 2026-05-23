@@ -34,23 +34,23 @@ const COLOR_TOKENS: {
   {
     swatchClass: "bg-brand-primary",
     name: "brand.primary",
-    hex: "#2563eb",
+    hex: "#B8892D",
     tailwind: "bg-brand-primary, text-brand-primary",
-    usage: "Brand actions and secondary solid buttons; links and focus accents.",
+    usage: "Warm gold focus, active state, and restrained command accents.",
   },
   {
-    swatchClass: "bg-page",
-    name: "page",
-    hex: "#f5f5f7",
-    tailwind: "bg-page",
-    usage: "App canvas and main column background behind content.",
+    swatchClass: "bg-neo-graphite-950",
+    name: "neo.graphite.950",
+    hex: "#0A0D10",
+    tailwind: "bg-neo-graphite-950",
+    usage: "App shell and spatial graphite backdrop.",
   },
   {
     swatchClass: "bg-white ring-1 ring-inset ring-gray-300",
     name: "card",
     hex: "#ffffff",
     tailwind: "bg-card (shadcn HSL; light mode ≈ white)",
-    usage: "Panels, modals, inputs, and elevated surfaces on the page background.",
+    usage: "Panels, modals, inputs, and elevated surfaces on the graphite workspace.",
   },
   {
     swatchClass: "bg-text-primary",
@@ -83,9 +83,9 @@ const COLOR_TOKENS: {
   {
     swatchClass: "bg-status-success",
     name: "status.success",
-    hex: "#16a34a",
+    hex: "#059669",
     tailwind: "text-status-success, bg-status-success",
-    usage: "Completed, paid, reconciled, and positive process outcomes.",
+    usage: "Soft emerald finance states: paid, reconciled, and positive process outcomes.",
   },
   {
     swatchClass: "bg-status-pending",
@@ -129,7 +129,7 @@ export default function DesignSystemShowcasePage() {
     <div className="page-container page-stack">
       <PageHeader
         title="Design system"
-        description="Phase 1: global design system, app shell, and core components. Dark luxury SaaS — Linear + Vercel inspired."
+        description="Neo Operations OS foundation: graphite shell, warm gold active states, titanium type, and emerald finance states."
       />
 
       <Card>
