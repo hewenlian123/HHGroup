@@ -1,9 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { PageHeader, PageLayout } from "@/components/base";
-import { OS, TYPO } from "@/lib/typography";
-import { cn } from "@/lib/utils";
+import { KpiTile, NeoPanel, PageHeader, PageLayout } from "@/components/base";
 
 type Metrics = {
   projects: number;
@@ -63,24 +61,41 @@ export default function SystemMetricsPage() {
 
   return (
     <PageLayout
+      className="dark"
       header={
         <PageHeader title="System Metrics" description="Database row counts for core tables." />
       }
     >
-      {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
+      {error ? (
+        <NeoPanel bodyClassName="px-4 py-3">
+          <p className="text-sm font-medium text-rose-300">{error}</p>
+        </NeoPanel>
+      ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {METRIC_ITEMS.map(({ key, label }) => (
-          <div key={key} className={cn(OS.card, "w-full px-4 py-4")}>
-            <p className={TYPO.kpiLabel}>{label}</p>
-            {loading ? (
-              <div className="mt-2 h-8 w-16 animate-pulse rounded bg-muted" />
-            ) : (
-              <p className={cn(TYPO.kpiValue, "mt-2 text-2xl")}>{metrics?.[key] ?? 0}</p>
-            )}
-          </div>
-        ))}
-      </div>
+      <NeoPanel
+        eyebrow="System counts"
+        title="Core table inventory"
+        description="Live row counts for operational modules."
+        bodyClassName="p-3"
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {METRIC_ITEMS.map(({ key, label }) => (
+            <KpiTile
+              key={key}
+              label={label}
+              value={
+                loading ? (
+                  <span className="block h-7 w-16 animate-pulse rounded-md bg-[var(--neo-surface-muted)]" />
+                ) : (
+                  <span>{(metrics?.[key] ?? 0).toLocaleString("en-US")}</span>
+                )
+              }
+              meta="Rows tracked"
+              className="min-h-[108px]"
+            />
+          ))}
+        </div>
+      </NeoPanel>
     </PageLayout>
   );
 }
