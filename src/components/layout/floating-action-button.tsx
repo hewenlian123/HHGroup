@@ -103,9 +103,9 @@ export function FloatingActionButton() {
     <>
       <div
         className={cn(
-          "fixed z-40 right-4 lg:hidden",
-          /* bottom-20 (5rem) + safe area — clears bottom tab bar */
-          "bottom-[calc(5rem+env(safe-area-inset-bottom_0px))]"
+          "fixed right-3 z-40 lg:hidden sm:right-4",
+          /* Keep the quick action clear of the bottom nav, toast stack, and iOS home indicator. */
+          "bottom-[calc(5.5rem+env(safe-area-inset-bottom_0px))] sm:bottom-[calc(5.25rem+env(safe-area-inset-bottom_0px))]"
         )}
         aria-label="Quick actions"
       >
@@ -117,9 +117,9 @@ export function FloatingActionButton() {
           whileTap={{ scale: 0.9 }}
           transition={FAB_SPRING}
           className={cn(
-            "flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-black text-white shadow-lg",
-            "cursor-pointer touch-manipulation hover:bg-black/90",
-            "focus:outline-none focus:ring-2 focus:ring-black/30 focus:ring-offset-2"
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[var(--neo-graphite-900)] text-white shadow-[0_14px_34px_rgb(0_0_0_/_0.28)]",
+            "cursor-pointer touch-manipulation hover:bg-[var(--neo-graphite-800)]",
+            "focus:outline-none focus:ring-2 focus:ring-[var(--neo-gold-ring)] focus:ring-offset-2 focus:ring-offset-[var(--neo-canvas)] sm:h-14 sm:w-14"
           )}
           aria-label="Open quick actions"
         >

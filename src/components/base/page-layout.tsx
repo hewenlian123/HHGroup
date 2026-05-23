@@ -24,9 +24,17 @@ export function PageHeader({
     <header data-neo-page-header="true" className={cn("flex flex-col gap-1", className)}>
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
         <div className="min-w-0">
-          <h1 className={TYPO.pageTitle}>{title}</h1>
+          <h1 className={cn(TYPO.pageTitle, "text-[var(--neo-canvas-text-primary)]")}>{title}</h1>
           {description ? (
-            <p className={cn("mt-1 max-w-2xl", TYPO.pageSubtitle)}>{description}</p>
+            <p
+              className={cn(
+                "mt-1 max-w-2xl",
+                TYPO.pageSubtitle,
+                "text-[var(--neo-canvas-text-secondary)]"
+              )}
+            >
+              {description}
+            </p>
           ) : null}
         </div>
         {rightContent ? (
@@ -76,7 +84,11 @@ export function ActionBar({
 
 /** Main content wrapper for page body (no card, no heavy shadow). */
 export function MainContent({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("flex flex-1 flex-col gap-4", className)}>{children}</div>;
+  return (
+    <div data-neo-main-content="true" className={cn("flex flex-1 flex-col gap-4", className)}>
+      {children}
+    </div>
+  );
 }
 
 /** Composes PageHeader, optional ActionBar, Divider, and MainContent for a consistent page shell. */
@@ -98,7 +110,7 @@ export function PageLayout({
     <div
       data-neo-page-layout="true"
       className={cn(
-        "page-container page-stack flex flex-col pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
+        "neo-page-on-graphite page-container page-stack flex flex-col pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
         className
       )}
     >

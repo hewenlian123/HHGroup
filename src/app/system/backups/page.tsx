@@ -11,7 +11,6 @@ import {
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type BackupListItem = {
@@ -254,8 +253,11 @@ export default function SystemBackupsPage() {
       {/* Backup list */}
       <div className="flex flex-col gap-1">
         <SectionHeader label="Saved Backups" />
-        <p className={cn("-mt-0.5 text-xs", TYPO.mutedText)}>
-          Files are saved to <code className="rounded bg-muted px-1 py-0.5">backups/database/</code>{" "}
+        <p className="-mt-0.5 text-xs leading-relaxed text-[var(--neo-canvas-text-secondary)]">
+          Files are saved to{" "}
+          <code className="rounded bg-white/[0.92] px-1 py-0.5 text-[var(--neo-text-primary)]">
+            backups/database/
+          </code>{" "}
           in the project root. Only available in local or self-hosted environments.
         </p>
       </div>
@@ -274,9 +276,9 @@ export default function SystemBackupsPage() {
 
       {/* Info note */}
       <div className="border-t border-[var(--neo-border)] pt-4">
-        <p className={cn("text-xs", TYPO.mutedText)}>
+        <p className="text-xs leading-relaxed text-[var(--neo-canvas-text-secondary)]">
           Backups export all rows from:{" "}
-          <span className="font-medium text-[var(--neo-text-primary)]">
+          <span className="font-medium text-[var(--neo-canvas-text-primary)]">
             projects, workers, worker_receipts, worker_reimbursements, labor_entries, expenses,
             expense_lines, invoices, payments_received
           </span>

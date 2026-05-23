@@ -27,9 +27,9 @@ export function SystemHealthPoller() {
             if (!hasShownToastRef.current) {
               hasShownToastRef.current = true;
               toast({
-                title: "⚠ System issue detected",
+                title: "System issue detected",
                 description: "Click to open System Health",
-                variant: "error",
+                variant: "system",
                 durationMs: 8000,
                 onClick: () => router.push("/system-health"),
               });
@@ -44,9 +44,9 @@ export function SystemHealthPoller() {
           if (!hasShownToastRef.current) {
             hasShownToastRef.current = true;
             toast({
-              title: "⚠ System issue detected",
+              title: "System issue detected",
               description: "Click to open System Health",
-              variant: "error",
+              variant: "system",
               durationMs: 8000,
               onClick: () => router.push("/system-health"),
             });

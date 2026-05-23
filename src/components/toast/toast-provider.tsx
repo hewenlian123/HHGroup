@@ -3,7 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export type ToastVariant = "default" | "success" | "error";
+export type ToastVariant = "default" | "success" | "error" | "system";
 
 export type ToastInput = {
   title: string;
@@ -33,9 +33,16 @@ function variantClasses(v: ToastVariant) {
       return "border-[#DCFCE7] bg-[#DCFCE7] text-[#166534] dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-50";
     case "error":
       return "border-red-200 bg-red-50 text-red-950 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-50";
+    case "system":
+      return "border-[rgb(184_137_45_/_0.3)] bg-[rgb(18_22_27_/_0.94)] text-[#f3f4f5] shadow-[0_18px_48px_rgb(0_0_0_/_0.28)] backdrop-blur-xl";
     default:
       return "border-zinc-200 bg-background text-foreground dark:border-border";
   }
+}
+
+function variantDescriptionClasses(v: ToastVariant) {
+  if (v === "system") return "text-[#c4c9cf]";
+  return "text-muted-foreground";
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -69,9 +76,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[360px] max-w-[calc(100vw-2rem)] flex-col gap-2">
+      <div className="pointer-events-none fixed bottom-[calc(8rem+env(safe-area-inset-bottom))] right-3 z-50 flex w-[min(320px,calc(100vw-1.5rem))] flex-col gap-2 sm:bottom-4 sm:right-4 sm:w-[340px]">
         {toasts.map((t) => {
           const Wrapper = t.onClick ? "button" : "div";
+          const variant = t.variant ?? "default";
           return (
             <Wrapper
               key={t.id}
@@ -79,7 +87,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               onClick={t.onClick}
               className={cn(
                 "pointer-events-auto w-full rounded-md border px-3 py-2 text-left shadow-[var(--shadow-1)] will-change-transform",
-                variantClasses(t.variant ?? "default"),
+                variantClasses(variant),
                 t.onClick && !t.exiting && "cursor-pointer hover:opacity-90",
                 t.exiting ? "animate-toast-out" : "animate-toast-in"
               )}
@@ -88,7 +96,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             >
               <div className="text-sm font-medium">{t.title}</div>
               {t.description ? (
-                <div className="mt-0.5 text-sm text-muted-foreground">{t.description}</div>
+                <div className={cn("mt-0.5 text-sm", variantDescriptionClasses(variant))}>
+                  {t.description}
+                </div>
               ) : null}
             </Wrapper>
           );

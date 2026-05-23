@@ -376,6 +376,7 @@ export function ProjectsListClient({
 
       <MobileListHeader
         title="Projects"
+        tone="page"
         fab={<MobileFabPlus href="/projects/new" ariaLabel="New project" />}
       />
 
