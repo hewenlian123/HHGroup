@@ -7,10 +7,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { MoreHorizontal, UserRound } from "lucide-react";
+import { Search, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { Input } from "@/components/ui/input";
 import {
   buildCustomerApiPayload,
   CustomerFormFields,
@@ -20,19 +19,17 @@ import {
   formatCustomerAddressLine,
   type CustomerFormValues,
 } from "@/components/customers/customer-form-fields";
+import { Dialog } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  EmptyState,
+  NeoInput,
+  NeoMobileCard,
+  NeoModal,
+  NeoTable,
+  NeoToolbar,
+  RowActionsMenu,
+  neoFormErrorClassName,
+} from "@/components/base";
 import type { Customer } from "@/lib/customers-db";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
@@ -259,45 +256,61 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
         fab={<MobileFabButton onClick={openNew} ariaLabel="New customer" />}
       />
 
-      <div className="hidden flex-col gap-3 md:flex md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--neo-canvas-text-tertiary)]">
-            Customers
-          </h1>
-          <p className="text-sm text-[var(--neo-canvas-text-secondary)]">
-            Manage your clients and contacts.
-          </p>
-        </div>
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center md:w-auto">
-          <Input
-            placeholder="Search customers…"
-            value={search}
-            onChange={(e) => startTransition(() => setSearch(e.target.value))}
-            className="h-11 w-full text-sm md:h-9 md:w-64"
-          />
+      <div className="hidden flex-col gap-3 md:flex">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className={cn(TYPO.pageTitle, "text-[var(--neo-canvas-text-primary)]")}>
+              Customers
+            </h1>
+            <p
+              className={cn(
+                "mt-1 max-w-2xl",
+                TYPO.pageSubtitle,
+                "text-[var(--neo-canvas-text-secondary)]"
+              )}
+            >
+              Manage your clients and contacts.
+            </p>
+          </div>
           <Button
             type="button"
-            className="h-11 w-full rounded-md px-3 text-sm md:h-9 md:w-auto"
+            className="h-9 w-full rounded-md px-3 text-sm md:w-auto"
             onClick={openNew}
           >
             + New Customer
           </Button>
         </div>
+        <NeoToolbar className="justify-between">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+            <NeoInput
+              aria-label="Search customers"
+              placeholder="Search customers…"
+              value={search}
+              onChange={(e) => startTransition(() => setSearch(e.target.value))}
+              className="h-9 pl-8 text-sm"
+            />
+          </div>
+          <p className="shrink-0 text-xs text-[var(--neo-text-secondary)]">
+            Total customers:{" "}
+            <span className="font-medium text-[var(--neo-text-primary)]">{items.length}</span>
+          </p>
+        </NeoToolbar>
       </div>
 
       <div className="md:hidden">
-        <Input
-          placeholder="Search customers…"
-          value={search}
-          onChange={(e) => startTransition(() => setSearch(e.target.value))}
-          className="h-10 w-full text-sm"
-        />
+        <div className="relative w-full">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+          <NeoInput
+            placeholder="Search customers…"
+            value={search}
+            onChange={(e) => startTransition(() => setSearch(e.target.value))}
+            className="h-10 w-full pl-8 text-sm"
+          />
+        </div>
       </div>
 
-      <div className="rounded-sm border border-border/60 bg-background max-md:rounded-none max-md:border-0 max-md:bg-transparent dark:max-md:bg-transparent">
-        <div className="hidden border-b border-border/60 px-4 py-2.5 text-xs text-muted-foreground md:block">
-          Total customers: {items.length}
-        </div>
+      <div>
         {items.length === 0 ? (
           <>
             <MobileEmptyState
@@ -315,189 +328,145 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                 ) : undefined
               }
             />
-            <div className="hidden flex-col items-center justify-center gap-2 py-10 text-center md:flex">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-border/60 text-xs text-muted-foreground">
-                ☺
-              </div>
-              <p className="text-sm font-medium text-foreground">
-                {dataLoadWarning ? "Could not load customers." : "No customers yet."}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {dataLoadWarning
+            <EmptyState
+              title={dataLoadWarning ? "Could not load customers" : "No customers yet"}
+              description={
+                dataLoadWarning
                   ? "Check your connection and database configuration, then refresh."
-                  : "Add your first client to start tracking projects and estimates."}
-              </p>
-              <Button
-                type="button"
-                size="sm"
-                className="mt-2 h-8 rounded-sm px-3 text-xs"
-                onClick={openNew}
-              >
-                + Add customer
-              </Button>
-            </div>
+                  : "Add your first client to start tracking projects and estimates."
+              }
+              icon={<UserRound className="h-5 w-5" aria-hidden />}
+              action={
+                !dataLoadWarning ? (
+                  <Button type="button" size="sm" onClick={openNew}>
+                    Add customer
+                  </Button>
+                ) : undefined
+              }
+              className="hidden md:block"
+            />
           </>
         ) : (
           <>
-            <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+            <div className="space-y-2 md:hidden">
               {filtered.map((c) => (
-                <div key={c.id} className="flex min-h-[48px] items-center gap-2 py-2.5">
+                <NeoMobileCard key={c.id} className="flex min-h-[64px] items-center gap-2 p-3">
                   <Link
                     href={`/customers/${c.id}`}
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left active:bg-muted/30"
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">{c.name}</p>
-                      <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                      <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+                        {c.name}
+                      </p>
+                      <p className="truncate text-xs text-[var(--neo-text-secondary)]">
                         {customerListSubtitle(c)}
                       </p>
                     </div>
-                    <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
+                    <span className="shrink-0 text-sm font-medium tabular-nums text-[var(--neo-text-primary)]">
                       {c.phone?.trim() ? c.phone : "—"}
                     </span>
                   </Link>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 shrink-0 rounded-sm"
-                        aria-label={`Actions for ${c.name}`}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="min-w-[160px]">
-                      <DropdownMenuItem
-                        onSelect={(e) => {
-                          e.preventDefault();
-                          openEdit(c);
-                        }}
-                      >
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onSelect={(e) => {
-                          e.preventDefault();
-                          confirmDelete(c);
-                        }}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        Delete…
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+                  <RowActionsMenu
+                    ariaLabel={`Actions for ${c.name}`}
+                    actions={[
+                      { label: "Edit", onClick: () => openEdit(c) },
+                      { label: "Delete…", onClick: () => confirmDelete(c), destructive: true },
+                    ]}
+                    contentClassName="dark border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)]"
+                  />
+                </NeoMobileCard>
               ))}
             </div>
-            <div className="airtable-table-wrap airtable-table-wrap--ruled hidden md:block">
-              <div className="airtable-table-scroll overflow-x-auto">
-                <table className="min-w-[640px] w-full text-sm lg:min-w-0">
-                  <thead>
-                    <tr>
-                      <th className={tableHeadClass}>Name</th>
-                      <th className={tableHeadClass}>Company</th>
-                      <th className={tableHeadClass}>Email</th>
-                      <th className={tableHeadClass}>Phone</th>
-                      <th className={tableHeadClass}>Address</th>
-                      <th className={tableHeadClass}>Created</th>
-                      <th className={cn(tableHeadClass, "w-8 px-2 text-right")}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((c) => (
-                      <tr key={c.id} className={listTableRowStaticClassName}>
-                        <td className="min-h-[44px] px-3 py-2 align-middle font-medium">
-                          <Link
-                            href={`/customers/${c.id}`}
-                            className="text-foreground hover:underline underline-offset-2"
-                          >
-                            {c.name}
-                          </Link>
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {c.company_name?.trim() ? c.company_name : "—"}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {c.email ?? "—"}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {c.phone ?? "—"}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {truncateText(formatCustomerAddressLine(c), 40)}
-                        </td>
-                        <td className="px-3 py-2 text-xs text-muted-foreground">
-                          {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
-                        </td>
-                        <td className="px-2 py-2 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="btn-outline-ghost h-7 w-7 rounded-sm"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="min-w-[160px]">
-                              <DropdownMenuItem
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  openEdit(c);
-                                }}
-                              >
-                                Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  confirmDelete(c);
-                                }}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                Delete…
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <NeoTable className="hidden md:block" tableClassName="min-w-[760px] lg:min-w-0">
+              <thead>
+                <tr>
+                  <th className={tableHeadClass}>Name</th>
+                  <th className={tableHeadClass}>Company</th>
+                  <th className={tableHeadClass}>Email</th>
+                  <th className={tableHeadClass}>Phone</th>
+                  <th className={tableHeadClass}>Address</th>
+                  <th className={tableHeadClass}>Created</th>
+                  <th className={cn(tableHeadClass, "w-8 px-2 text-right")}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((c) => (
+                  <tr key={c.id} className={listTableRowStaticClassName}>
+                    <td className="min-h-[44px] px-3 py-2 align-middle font-medium">
+                      <Link
+                        href={`/customers/${c.id}`}
+                        className="text-[var(--neo-text-primary)] underline-offset-2 hover:underline"
+                      >
+                        {c.name}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+                      {c.company_name?.trim() ? c.company_name : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+                      {c.email ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+                      {c.phone ?? "—"}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+                      {truncateText(formatCustomerAddressLine(c), 40)}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+                      {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
+                    </td>
+                    <td className="px-2 py-2 text-right">
+                      <RowActionsMenu
+                        ariaLabel={`Actions for ${c.name}`}
+                        actions={[
+                          { label: "Edit", onClick: () => openEdit(c) },
+                          {
+                            label: "Delete…",
+                            onClick: () => confirmDelete(c),
+                            destructive: true,
+                          },
+                        ]}
+                        className="h-7 w-7 md:h-7 md:w-7"
+                        contentClassName="dark border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)]"
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </NeoTable>
           </>
         )}
       </div>
 
       <Dialog
         open={modalOpen}
-        onOpenChange={(open) => !open && setDraft(null) && setModalOpen(false)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDraft(null);
+            setModalOpen(false);
+          }
+        }}
       >
-        <DialogContent className="max-w-md border-border/60 rounded-md p-4 flex flex-col gap-2.5 max-h-[min(90vh,720px)] overflow-y-auto">
-          <DialogHeader className="space-y-0 pb-0">
-            <DialogTitle className="text-sm font-semibold">
-              {draft?.id ? "Edit customer" : "New customer"}
-            </DialogTitle>
-          </DialogHeader>
-          {draft && (
+        <NeoModal
+          title={draft?.id ? "Edit customer" : "New customer"}
+          description="Keep the customer profile compact and ready for project work."
+          className="max-w-[560px]"
+        >
+          {draft ? (
             <form onSubmit={handleSubmit} className="flex flex-col gap-2.5">
               <CustomerFormFields
                 idPrefix="customers-modal"
                 values={draft}
                 onChange={(patch) => setDraft((d) => (d ? { ...d, ...patch } : d))}
               />
-              {error ? <p className="text-xs text-red-600">{error}</p> : null}
-              <DialogFooter className="gap-2 pt-1 sm:justify-end border-t border-border/60 mt-0.5">
+              {error ? <p className={neoFormErrorClassName}>{error}</p> : null}
+              <div className="-mx-5 mt-2 flex flex-col-reverse gap-2 border-t border-[var(--neo-border)] px-5 pt-4 sm:flex-row sm:justify-end">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 rounded-sm"
+                  className="h-9 rounded-sm"
                   onClick={() => setModalOpen(false)}
                   disabled={busy}
                 >
@@ -506,31 +475,28 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                 <Button
                   type="submit"
                   size="sm"
-                  className="h-8 rounded-sm"
+                  className="h-9 rounded-sm"
                   data-testid="customers-modal-save"
                   disabled={busy}
                 >
                   <SubmitSpinner loading={busy} className="mr-2" />
                   {busy ? "Saving…" : "Save"}
                 </Button>
-              </DialogFooter>
+              </div>
             </form>
-          )}
-        </DialogContent>
+          ) : null}
+        </NeoModal>
       </Dialog>
 
       <Dialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-        <DialogContent className="max-w-sm border-border/60 rounded-md p-5">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Delete customer</DialogTitle>
-          </DialogHeader>
+        <NeoModal title="Delete customer" className="max-w-sm">
           <p className="text-sm text-muted-foreground">
             Are you sure you want to delete{" "}
             <span className="font-medium">{deleteTarget?.name}</span>? This action cannot be undone.
             Customers with linked projects cannot be deleted.
           </p>
-          {deleteError ? <p className="pt-2 text-xs text-red-600">{deleteError}</p> : null}
-          <DialogFooter className="mt-3 gap-2 border-t border-border/60 pt-3">
+          {deleteError ? <p className={neoFormErrorClassName}>{deleteError}</p> : null}
+          <div className="-mx-5 mt-1 flex flex-col-reverse gap-2 border-t border-[var(--neo-border)] px-5 pt-4 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
@@ -551,8 +517,8 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
             >
               {deleteBusy ? "Deleting…" : "Delete"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
+          </div>
+        </NeoModal>
       </Dialog>
     </div>
   );

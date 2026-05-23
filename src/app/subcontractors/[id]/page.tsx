@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PageLayout, PageHeader, Divider, SectionHeader, StatusBadge } from "@/components/base";
+import {
+  EmptyState,
+  NeoAmount,
+  NeoPanel,
+  NeoStatus,
+  NeoTable,
+  PageLayout,
+  PageHeader,
+  StatusBadge,
+} from "@/components/base";
 import {
   getSubcontractorById,
   getSubcontractsBySubcontractor,
@@ -103,6 +112,8 @@ export default async function SubcontractorDetailPage({ params }: Props) {
 
   return (
     <PageLayout
+      divider={false}
+      className="dark"
       header={
         <PageHeader
           title={subcontractor.name}
@@ -123,12 +134,15 @@ export default async function SubcontractorDetailPage({ params }: Props) {
     >
       <SetBreadcrumbEntityTitle label={subcontractor.name} />
       {dataLoadWarning ? (
-        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+        <p
+          className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]"
+          role="status"
+        >
           {dataLoadWarning}
         </p>
       ) : null}
       {insuranceAlert ? (
-        <div className="py-2 px-3 border-b border-border/60 bg-amber-500/10 dark:bg-amber-500/10">
+        <div className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2">
           <StatusBadge
             label={
               new Date(subcontractor.insurance_expiration_date!).getTime() < Date.now()
@@ -140,201 +154,236 @@ export default async function SubcontractorDetailPage({ params }: Props) {
         </div>
       ) : null}
 
-      <SectionHeader label="Profile" />
-      <Divider />
-      <div className="grid grid-cols-1 gap-y-3 py-4 text-sm">
-        <div className="flex flex-wrap gap-x-6 gap-y-1">
-          <span className="text-muted-foreground">Phone</span>
-          <span>{subcontractor.phone ?? "—"}</span>
-        </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-1">
-          <span className="text-muted-foreground">Email</span>
-          <span>{subcontractor.email ?? "—"}</span>
-        </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-1">
-          <span className="text-muted-foreground">Address</span>
-          <span>{subcontractor.address ?? "—"}</span>
-        </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-1">
-          <span className="text-muted-foreground">Insurance expiration</span>
-          <span>{subcontractor.insurance_expiration_date ?? "—"}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1">
-          <span className="text-muted-foreground">W9</span>
-          <SubcontractorW9 subcontractorId={id} w9StoragePath={subcontractor.w9_storage_path} />
-        </div>
-        {subcontractor.notes ? (
-          <div className="flex flex-wrap gap-x-6 gap-y-1">
-            <span className="text-muted-foreground">Notes</span>
-            <span className="max-w-xl">{subcontractor.notes}</span>
+      <NeoPanel title="Profile" bodyClassName="p-4">
+        <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+          {[
+            ["Phone", subcontractor.phone ?? "—"],
+            ["Email", subcontractor.email ?? "—"],
+            ["Address", subcontractor.address ?? "—"],
+            ["Insurance expiration", subcontractor.insurance_expiration_date ?? "—"],
+          ].map(([label, value]) => (
+            <div key={label} className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                {label}
+              </p>
+              <p className="mt-1 break-words text-[var(--neo-text-primary)]">{value}</p>
+            </div>
+          ))}
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+              W9
+            </p>
+            <div className="mt-1">
+              <SubcontractorW9 subcontractorId={id} w9StoragePath={subcontractor.w9_storage_path} />
+            </div>
           </div>
-        ) : null}
-      </div>
-      <Divider />
-      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 py-3 border-b border-border/60">
-        <span className="text-sm text-muted-foreground">Total Contracts</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(totalContracts)}</span>
-        <span className="text-sm text-muted-foreground">Approved</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(approved)}</span>
-        <span className="text-sm text-muted-foreground">Paid</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(paid)}</span>
-        <span className="text-sm text-muted-foreground">Outstanding</span>
-        <span className="text-lg font-medium tabular-nums">${fmtUsd(outstanding)}</span>
-      </div>
-      <Divider />
+          {subcontractor.notes ? (
+            <div className="min-w-0 md:col-span-2">
+              <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                Notes
+              </p>
+              <p className="mt-1 max-w-3xl break-words text-[var(--neo-text-primary)]">
+                {subcontractor.notes}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </NeoPanel>
 
-      <SectionHeader label="Contracts" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
+      <NeoPanel bodyClassName="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Total Contracts", value: totalContracts, tone: "neutral" as const },
+          { label: "Approved", value: approved, tone: "neutral" as const },
+          { label: "Paid", value: paid, tone: "income" as const },
+          {
+            label: "Outstanding",
+            value: outstanding,
+            tone: outstanding > 0 ? ("expense" as const) : ("neutral" as const),
+          },
+        ].map((item) => (
+          <div key={item.label} className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+              {item.label}
+            </p>
+            <p className="mt-1 text-lg">
+              <NeoAmount tone={item.tone}>${fmtUsd(item.value)}</NeoAmount>
+            </p>
+          </div>
+        ))}
+      </NeoPanel>
+
+      <NeoPanel title="Contracts" bodyClassName="p-0">
+        <NeoTable className="border-0 shadow-none" tableClassName="min-w-[880px]">
           <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <tr className="border-b border-[var(--neo-border)]">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
                 Project
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
                 Cost Code
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Contract Amount
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Retainage %
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Revised Contract
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Paid
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Exposure
               </th>
             </tr>
           </thead>
           <tbody>
             {contractRows.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={7} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No contracts.
+              <tr className="border-b border-[var(--neo-border)]">
+                <td colSpan={7} className="py-6 px-3">
+                  <EmptyState
+                    title="No contracts"
+                    description="No contract records for this subcontractor."
+                  />
                 </td>
               </tr>
             ) : (
               contractRows.map((c) => {
                 const exposurePositive = c.exposure > 0;
                 const paidInFull = c.paid >= c.revised;
-                const rowClass = paidInFull
-                  ? "bg-[#166534]/10 dark:bg-[#166534]/10"
-                  : exposurePositive
-                    ? "bg-orange-500/10 dark:bg-orange-500/10"
-                    : "";
                 return (
-                  <tr key={c.id} className={`border-b border-border/40 ${rowClass}`}>
+                  <tr
+                    key={c.id}
+                    className={`border-b border-[var(--neo-border)] ${
+                      paidInFull
+                        ? "bg-emerald-500/10"
+                        : exposurePositive
+                          ? "bg-[rgb(184_137_45_/_0.08)]"
+                          : ""
+                    }`}
+                  >
                     <td className="py-1.5 px-3">{c.project_name}</td>
                     <td className="py-1.5 px-3">{c.cost_code ?? "—"}</td>
                     <td className="py-1.5 px-3 text-right tabular-nums">
-                      ${fmtUsd(c.contract_amount)}
+                      <NeoAmount>${fmtUsd(c.contract_amount)}</NeoAmount>
                     </td>
                     <td className="py-1.5 px-3 text-right tabular-nums">—</td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(c.revised)}</td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(c.paid)}</td>
-                    <td
-                      className={`py-1.5 px-3 text-right tabular-nums ${exposurePositive ? "text-orange-600 dark:text-orange-400" : paidInFull ? "text-hh-profit-positive dark:text-hh-profit-positive" : ""}`}
-                    >
-                      ${fmtUsd(c.exposure)}
+                    <td className="py-1.5 px-3 text-right tabular-nums">
+                      <NeoAmount>${fmtUsd(c.revised)}</NeoAmount>
+                    </td>
+                    <td className="py-1.5 px-3 text-right tabular-nums">
+                      <NeoAmount tone="income">${fmtUsd(c.paid)}</NeoAmount>
+                    </td>
+                    <td className="py-1.5 px-3 text-right tabular-nums">
+                      <NeoAmount
+                        tone={exposurePositive ? "expense" : paidInFull ? "income" : "neutral"}
+                      >
+                        ${fmtUsd(c.exposure)}
+                      </NeoAmount>
                     </td>
                   </tr>
                 );
               })
             )}
           </tbody>
-        </table>
-      </div>
-      <Divider />
+        </NeoTable>
+      </NeoPanel>
 
-      <SectionHeader label="Progress bills" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
+      <NeoPanel title="Progress bills" bodyClassName="p-0">
+        <NeoTable className="border-0 shadow-none" tableClassName="min-w-[640px]">
           <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <tr className="border-b border-[var(--neo-border)]">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
                 Project
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
                 Date
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Amount
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
                 Status
               </th>
             </tr>
           </thead>
           <tbody>
             {bills.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={4} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No bills.
+              <tr className="border-b border-[var(--neo-border)]">
+                <td colSpan={4} className="py-6 px-3">
+                  <EmptyState title="No bills" description="No approved progress bills yet." />
                 </td>
               </tr>
             ) : (
               bills.map((b) => (
-                <tr key={b.id} className="border-b border-border/40">
+                <tr key={b.id} className="border-b border-[var(--neo-border)]">
                   <td className="py-1.5 px-3">
                     {subcontractIdToProjectName.get(b.subcontract_id) ?? "—"}
                   </td>
                   <td className="py-1.5 px-3">{b.bill_date}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(b.amount)}</td>
-                  <td className="py-1.5 px-3">{b.status}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">
+                    <NeoAmount>${fmtUsd(b.amount)}</NeoAmount>
+                  </td>
+                  <td className="py-1.5 px-3">
+                    <NeoStatus
+                      label={b.status}
+                      variant={b.status === "Paid" ? "success" : "default"}
+                    />
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
-        </table>
-      </div>
-      <Divider />
+        </NeoTable>
+      </NeoPanel>
 
-      <SectionHeader label="Payment history" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
+      <NeoPanel title="Payment history" bodyClassName="p-0">
+        <NeoTable className="border-0 shadow-none" tableClassName="min-w-[640px]">
           <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <tr className="border-b border-[var(--neo-border)]">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
                 Project
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
                 Date
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Amount
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
                 Method
               </th>
             </tr>
           </thead>
           <tbody>
             {payments.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={4} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No payments.
+              <tr className="border-b border-[var(--neo-border)]">
+                <td colSpan={4} className="py-6 px-3">
+                  <EmptyState
+                    title="No payments"
+                    description="No subcontractor payments recorded."
+                  />
                 </td>
               </tr>
             ) : (
               payments.map((p) => (
-                <tr key={p.id} className="border-b border-border/40">
+                <tr key={p.id} className="border-b border-[var(--neo-border)]">
                   <td className="py-1.5 px-3">
                     {subcontractIdToProjectName.get(p.subcontract_id) ?? "—"}
                   </td>
                   <td className="py-1.5 px-3">{p.payment_date}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(p.amount)}</td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">
+                    <NeoAmount tone="income">${fmtUsd(p.amount)}</NeoAmount>
+                  </td>
                   <td className="py-1.5 px-3">{p.method ?? "—"}</td>
                 </tr>
               ))
             )}
           </tbody>
-        </table>
-      </div>
+        </NeoTable>
+      </NeoPanel>
     </PageLayout>
   );
 }

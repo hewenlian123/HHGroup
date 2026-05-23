@@ -76,7 +76,8 @@ export default async function SubcontractorsPage() {
 
   return (
     <PageLayout
-      className={cn("max-md:!py-3", "max-md:!gap-3")}
+      divider={false}
+      className={cn("dark max-md:!py-3", "max-md:!gap-3")}
       header={
         <div className="hidden md:block">
           <PageHeader

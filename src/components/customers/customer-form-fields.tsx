@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { NeoInput, NeoTextarea } from "@/components/base";
 import type { Customer } from "@/lib/customers-db";
 import {
   formatPhoneInputValue,
@@ -145,7 +144,7 @@ export function CustomerFormFields({
         <FieldLabel htmlFor={`${idPrefix}-name`} required>
           Customer name
         </FieldLabel>
-        <Input
+        <NeoInput
           id={`${idPrefix}-name`}
           data-testid={`${idPrefix}-name`}
           value={values.name}
@@ -160,7 +159,7 @@ export function CustomerFormFields({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="flex flex-col gap-1">
             <FieldLabel htmlFor={`${idPrefix}-phone`}>Phone</FieldLabel>
-            <Input
+            <NeoInput
               id={`${idPrefix}-phone`}
               data-testid={`${idPrefix}-phone`}
               type="tel"
@@ -178,7 +177,7 @@ export function CustomerFormFields({
           </div>
           <div className="flex flex-col gap-1">
             <FieldLabel htmlFor={`${idPrefix}-email`}>Email</FieldLabel>
-            <Input
+            <NeoInput
               id={`${idPrefix}-email`}
               data-testid={`${idPrefix}-email`}
               type="email"
@@ -196,7 +195,7 @@ export function CustomerFormFields({
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
             <FieldLabel htmlFor={`${idPrefix}-address`}>Street address</FieldLabel>
-            <Input
+            <NeoInput
               id={`${idPrefix}-address`}
               data-testid={`${idPrefix}-address`}
               value={values.address}
@@ -208,7 +207,7 @@ export function CustomerFormFields({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="flex flex-col gap-1">
               <FieldLabel htmlFor={`${idPrefix}-city`}>City</FieldLabel>
-              <Input
+              <NeoInput
                 id={`${idPrefix}-city`}
                 data-testid={`${idPrefix}-city`}
                 value={values.city}
@@ -219,7 +218,7 @@ export function CustomerFormFields({
             </div>
             <div className="flex flex-col gap-1">
               <FieldLabel htmlFor={`${idPrefix}-state`}>State</FieldLabel>
-              <Input
+              <NeoInput
                 id={`${idPrefix}-state`}
                 data-testid={`${idPrefix}-state`}
                 value={values.state}
@@ -231,7 +230,7 @@ export function CustomerFormFields({
             </div>
             <div className="flex flex-col gap-1">
               <FieldLabel htmlFor={`${idPrefix}-zip`}>ZIP</FieldLabel>
-              <Input
+              <NeoInput
                 id={`${idPrefix}-zip`}
                 data-testid={`${idPrefix}-zip`}
                 value={values.zip}
@@ -250,7 +249,7 @@ export function CustomerFormFields({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="flex flex-col gap-1">
             <FieldLabel htmlFor={`${idPrefix}-contact-person`}>Contact person</FieldLabel>
-            <Input
+            <NeoInput
               id={`${idPrefix}-contact-person`}
               data-testid={`${idPrefix}-contact-person`}
               value={values.contact_person}
@@ -261,7 +260,7 @@ export function CustomerFormFields({
           </div>
           <div className="flex flex-col gap-1">
             <FieldLabel htmlFor={`${idPrefix}-company-name`}>Company name</FieldLabel>
-            <Input
+            <NeoInput
               id={`${idPrefix}-company-name`}
               data-testid={`${idPrefix}-company-name`}
               value={values.company_name}
@@ -275,7 +274,7 @@ export function CustomerFormFields({
 
       <div className="flex flex-col gap-1 border-t border-[var(--neo-border)] pt-2.5">
         <FieldLabel htmlFor={`${idPrefix}-notes`}>Internal notes</FieldLabel>
-        <Textarea
+        <NeoTextarea
           id={`${idPrefix}-notes`}
           data-testid={`${idPrefix}-notes`}
           value={values.notes}

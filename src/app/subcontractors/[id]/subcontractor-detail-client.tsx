@@ -6,14 +6,8 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
+import { NeoFieldLabel, NeoInput, NeoModal, neoFormErrorClassName } from "@/components/base";
 import type { SubcontractorRow } from "@/lib/data";
 import { deleteSubcontractorAction, updateSubcontractorProfile } from "./actions";
 
@@ -103,14 +97,11 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit subcontractor</DialogTitle>
-          </DialogHeader>
+        <NeoModal title="Edit subcontractor" className="max-w-md">
           <div className="grid gap-3 py-2">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Name (required)</label>
-              <Input
+              <NeoFieldLabel required>Name</NeoFieldLabel>
+              <NeoInput
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="mt-1 h-9"
@@ -119,16 +110,16 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Phone</label>
-                <Input
+                <NeoFieldLabel>Phone</NeoFieldLabel>
+                <NeoInput
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="mt-1 h-9"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Email</label>
-                <Input
+                <NeoFieldLabel>Email</NeoFieldLabel>
+                <NeoInput
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -137,18 +128,16 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Address</label>
-              <Input
+              <NeoFieldLabel>Address</NeoFieldLabel>
+              <NeoInput
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 className="mt-1 h-9"
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                Insurance expiration
-              </label>
-              <Input
+              <NeoFieldLabel>Insurance expiration</NeoFieldLabel>
+              <NeoInput
                 type="date"
                 value={insuranceExpiration}
                 onChange={(e) => setInsuranceExpiration(e.target.value)}
@@ -156,16 +145,16 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Notes</label>
-              <Input
+              <NeoFieldLabel>Notes</NeoFieldLabel>
+              <NeoInput
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 className="mt-1 h-9"
               />
             </div>
-            {error ? <p className="text-xs text-destructive">{error}</p> : null}
+            {error ? <p className={neoFormErrorClassName}>{error}</p> : null}
           </div>
-          <DialogFooter>
+          <div className="-mx-5 mt-2 flex flex-col-reverse gap-2 border-t border-[var(--neo-border)] px-5 pt-4 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
@@ -179,8 +168,8 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Save"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
+          </div>
+        </NeoModal>
       </Dialog>
     </>
   );

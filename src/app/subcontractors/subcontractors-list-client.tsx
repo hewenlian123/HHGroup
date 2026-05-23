@@ -5,9 +5,15 @@ import Link from "next/link";
 import { Users } from "lucide-react";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { StatusBadge } from "@/components/base";
-import { EmptyState } from "@/components/empty-state";
+import {
+  EmptyState,
+  NeoAmount,
+  NeoInput,
+  NeoMobileCard,
+  NeoStatus,
+  NeoTable,
+  NeoToolbar,
+} from "@/components/base";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import {
   MobileEmptyState,
@@ -15,7 +21,7 @@ import {
   MobileListHeader,
   MobileSearchFiltersRow,
 } from "@/components/mobile/mobile-list-chrome";
-import { OS, TYPO } from "@/lib/typography";
+import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 export type SubcontractorSummaryRow = {
@@ -57,7 +63,14 @@ export function SubcontractorsListClient({
 
   return (
     <>
-      {dataLoadWarning ? <p className="text-sm text-muted-foreground">{dataLoadWarning}</p> : null}
+      {dataLoadWarning ? (
+        <p
+          className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]"
+          role="status"
+        >
+          {dataLoadWarning}
+        </p>
+      ) : null}
 
       <MobileListHeader
         title="Subcontractors"
@@ -69,8 +82,8 @@ export function SubcontractorsListClient({
         activeFilterCount={activeFilterCount}
         searchSlot={
           <div className="relative w-full">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+            <NeoInput
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search subcontractor…"
@@ -88,6 +101,22 @@ export function SubcontractorsListClient({
           Done
         </Button>
       </MobileFilterSheet>
+
+      <NeoToolbar className="hidden justify-between md:flex">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+          <NeoInput
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search subcontractor…"
+            className="h-9 pl-8 text-sm"
+            aria-label="Search subcontractors"
+          />
+        </div>
+        <Button asChild variant="outline" size="sm" className="h-9 rounded-sm">
+          <Link href="/settings/subcontractors">Manage in settings</Link>
+        </Button>
+      </NeoToolbar>
 
       {rows.length === 0 ? (
         <>
@@ -121,23 +150,79 @@ export function SubcontractorsListClient({
               message="No subcontractors match your search."
             />
           ) : (
-            <div
-              className={cn(
-                OS.card,
-                "divide-y divide-[var(--neo-border)] overflow-hidden md:hidden"
-              )}
-            >
+            <div className="space-y-2 md:hidden">
               {filtered.map((r) => (
-                <Link
-                  key={r.id}
-                  href={`/subcontractors/${r.id}`}
-                  className="flex min-h-[56px] flex-col justify-center gap-1 px-4 py-3"
-                >
-                  <p className="font-medium text-[var(--neo-text-primary)]">{r.name}</p>
-                  <div>
+                <NeoMobileCard asChild key={r.id}>
+                  <Link
+                    href={`/subcontractors/${r.id}`}
+                    className="flex min-h-[72px] flex-col justify-center gap-1 p-3"
+                  >
+                    <p className="font-medium text-[var(--neo-text-primary)]">{r.name}</p>
+                    <div>
+                      {r.insurance_expiration_date ? (
+                        r.insurance_alert ? (
+                          <NeoStatus
+                            label={`Expires ${r.insurance_expiration_date}`}
+                            variant="warning"
+                          />
+                        ) : (
+                          <span className="text-xs text-[var(--neo-text-secondary)]">
+                            {r.insurance_expiration_date}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-xs text-[var(--neo-text-secondary)]">—</span>
+                      )}
+                    </div>
+                    <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums text-[var(--neo-text-secondary)]">
+                      <div>
+                        <dt className="inline text-[10px] uppercase tracking-normal">Contracts</dt>{" "}
+                        <dd className="inline">
+                          <NeoAmount>${fmtUsd(r.totalContracts)}</NeoAmount>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="inline text-[10px] uppercase tracking-normal">
+                          Outstanding
+                        </dt>{" "}
+                        <dd className="inline">
+                          <NeoAmount tone={r.outstanding > 0 ? "expense" : "neutral"}>
+                            ${fmtUsd(r.outstanding)}
+                          </NeoAmount>
+                        </dd>
+                      </div>
+                    </dl>
+                  </Link>
+                </NeoMobileCard>
+              ))}
+            </div>
+          )}
+          <NeoTable className="hidden md:block" tableClassName="min-w-[760px] lg:min-w-0">
+            <thead>
+              <tr>
+                <th className={tableHeadClass}>Subcontractor</th>
+                <th className={tableHeadClass}>Insurance</th>
+                <th className={numericHeadClass}>Total Contracts</th>
+                <th className={numericHeadClass}>Approved</th>
+                <th className={numericHeadClass}>Paid</th>
+                <th className={numericHeadClass}>Outstanding</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id} className={listTableRowStaticClassName}>
+                  <td className="py-2 px-3">
+                    <Link
+                      href={`/subcontractors/${r.id}`}
+                      className="font-medium text-[var(--neo-text-primary)] underline-offset-2 hover:underline"
+                    >
+                      {r.name}
+                    </Link>
+                  </td>
+                  <td className="py-2 px-3">
                     {r.insurance_expiration_date ? (
                       r.insurance_alert ? (
-                        <StatusBadge
+                        <NeoStatus
                           label={`Expires ${r.insurance_expiration_date}`}
                           variant="warning"
                         />
@@ -149,75 +234,25 @@ export function SubcontractorsListClient({
                     ) : (
                       <span className="text-xs text-[var(--neo-text-secondary)]">—</span>
                     )}
-                  </div>
-                  <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums text-[var(--neo-text-secondary)]">
-                    <div>
-                      <dt className="inline text-[10px] uppercase tracking-wide">Contracts</dt>{" "}
-                      <dd className="inline text-[var(--neo-text-primary)]">
-                        ${fmtUsd(r.totalContracts)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="inline text-[10px] uppercase tracking-wide">Outstanding</dt>{" "}
-                      <dd className="inline font-medium text-[var(--neo-text-primary)]">
-                        ${fmtUsd(r.outstanding)}
-                      </dd>
-                    </div>
-                  </dl>
-                </Link>
+                  </td>
+                  <td className={amountCellClass}>
+                    <NeoAmount>${fmtUsd(r.totalContracts)}</NeoAmount>
+                  </td>
+                  <td className={amountCellClass}>
+                    <NeoAmount>${fmtUsd(r.approved)}</NeoAmount>
+                  </td>
+                  <td className={amountCellClass}>
+                    <NeoAmount>${fmtUsd(r.paid)}</NeoAmount>
+                  </td>
+                  <td className={amountCellClass}>
+                    <NeoAmount tone={r.outstanding > 0 ? "expense" : "neutral"}>
+                      ${fmtUsd(r.outstanding)}
+                    </NeoAmount>
+                  </td>
+                </tr>
               ))}
-            </div>
-          )}
-          <div className="airtable-table-wrap airtable-table-wrap--ruled hidden md:block">
-            <div className="airtable-table-scroll overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm lg:min-w-0">
-                <thead>
-                  <tr>
-                    <th className={tableHeadClass}>Subcontractor</th>
-                    <th className={tableHeadClass}>Insurance</th>
-                    <th className={numericHeadClass}>Total Contracts</th>
-                    <th className={numericHeadClass}>Approved</th>
-                    <th className={numericHeadClass}>Paid</th>
-                    <th className={numericHeadClass}>Outstanding</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.id} className={listTableRowStaticClassName}>
-                      <td className="py-1.5 px-3">
-                        <Link
-                          href={`/subcontractors/${r.id}`}
-                          className="hover:text-foreground hover:underline"
-                        >
-                          {r.name}
-                        </Link>
-                      </td>
-                      <td className="py-1.5 px-3">
-                        {r.insurance_expiration_date ? (
-                          r.insurance_alert ? (
-                            <StatusBadge
-                              label={`Expires ${r.insurance_expiration_date}`}
-                              variant="warning"
-                            />
-                          ) : (
-                            <span className="text-muted-foreground text-xs">
-                              {r.insurance_expiration_date}
-                            </span>
-                          )
-                        ) : (
-                          <span className="text-muted-foreground text-xs">—</span>
-                        )}
-                      </td>
-                      <td className={amountCellClass}>${fmtUsd(r.totalContracts)}</td>
-                      <td className={amountCellClass}>${fmtUsd(r.approved)}</td>
-                      <td className={amountCellClass}>${fmtUsd(r.paid)}</td>
-                      <td className={amountCellClass}>${fmtUsd(r.outstanding)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+            </tbody>
+          </NeoTable>
         </>
       )}
     </>

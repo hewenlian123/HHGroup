@@ -4,14 +4,22 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { createBrowserClient } from "@/lib/supabase";
-import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { Input } from "@/components/ui/input";
-import { FilterBar } from "@/components/filter-bar";
-import { Select } from "@/components/ui/native-select";
-import { StatusBadge } from "@/components/status-badge";
-import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
+import {
+  EmptyState,
+  LoadingState,
+  NeoFieldLabel,
+  NeoInput,
+  NeoMobileCard,
+  NeoPanel,
+  NeoSelect,
+  NeoStatus,
+  NeoTable,
+  NeoToolbar,
+  PageHeader,
+  PageLayout,
+} from "@/components/base";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { Search, Store } from "lucide-react";
@@ -61,6 +69,14 @@ const toNullable = (value: string): string | null => {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
 };
+
+const vendorHeadClass =
+  "h-9 px-3 text-left align-middle text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]";
+const vendorCellClass = "border-b border-[var(--neo-border)] px-3 py-2 align-middle text-[13px]";
+
+function vendorStatusVariant(status: VendorRow["status"]) {
+  return status === "active" ? "success" : "muted";
+}
 
 export default function VendorsPage() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -238,50 +254,54 @@ export default function VendorsPage() {
   );
 
   return (
-    <div
-      className={cn("page-container page-stack py-6", mobileListPagePaddingClass, "max-md:!gap-3")}
-    >
-      <div className="hidden md:block">
-        <PageHeader
-          title="Vendors"
-          subtitle="Manage material and service vendors used by AP bills."
-          actions={
-            <div className="flex items-center gap-2">
-              <Button asChild variant="outline" size="sm" className="rounded-sm">
-                <Link href="/settings/lists?tab=vendors">Open Lists View</Link>
-              </Button>
-              <Button
-                size="sm"
-                className="rounded-sm"
-                onClick={openCreate}
-                disabled={submitting || !!deletingId}
-              >
-                + New Vendor
-              </Button>
-            </div>
-          }
-        />
-      </div>
-
-      <MobileListHeader
-        title="Vendors"
-        fab={
-          <MobileFabButton
-            ariaLabel="New vendor"
-            onClick={() => {
-              if (!submitting && !deletingId) openCreate();
-            }}
+    <PageLayout
+      divider={false}
+      className={cn("dark", mobileListPagePaddingClass, "max-md:!gap-3")}
+      header={
+        <>
+          <div className="hidden md:block">
+            <PageHeader
+              title="Vendors"
+              description="Manage material and service vendors used by AP bills."
+              actions={
+                <div className="flex items-center gap-2">
+                  <Button asChild variant="outline" size="sm" className="rounded-sm">
+                    <Link href="/settings/lists?tab=vendors">Open Lists View</Link>
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="rounded-sm"
+                    onClick={openCreate}
+                    disabled={submitting || !!deletingId}
+                  >
+                    + New Vendor
+                  </Button>
+                </div>
+              }
+            />
+          </div>
+          <MobileListHeader
+            title="Vendors"
+            fab={
+              <MobileFabButton
+                ariaLabel="New vendor"
+                onClick={() => {
+                  if (!submitting && !deletingId) openCreate();
+                }}
+              />
+            }
           />
-        }
-      />
+        </>
+      }
+    >
       <MobileSearchFiltersRow
         filterSheetOpen={mobileFiltersOpen}
         onOpenFilters={() => setMobileFiltersOpen(true)}
         activeFilterCount={activeMobileFilterCount}
         searchSlot={
           <div className="relative w-full">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+            <NeoInput
               placeholder="Search name, contact, phone…"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -297,16 +317,16 @@ export default function VendorsPage() {
         title="Filters"
       >
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Status</p>
-          <select
+          <NeoFieldLabel>Status</NeoFieldLabel>
+          <NeoSelect
             value={mobileStatus}
             onChange={(e) => setMobileStatus(e.target.value as "all" | "active" | "inactive")}
-            className="h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className="w-full"
           >
             <option value="all">All</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
-          </select>
+          </NeoSelect>
         </div>
         <Button asChild variant="outline" size="sm" className="h-9 w-full rounded-sm">
           <Link href="/settings/lists?tab=vendors">Lists view</Link>
@@ -320,35 +340,49 @@ export default function VendorsPage() {
         </Button>
       </MobileFilterSheet>
 
-      <FilterBar className="hidden md:block">
-        <Input
-          placeholder="Search name, contact, phone, email"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          className="w-full max-w-none md:max-w-[360px]"
-        />
-      </FilterBar>
+      <NeoToolbar className="hidden justify-between md:flex">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+          <NeoInput
+            placeholder="Search name, contact, phone, email"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="h-9 pl-8 text-sm"
+            aria-label="Search vendors"
+          />
+        </div>
+        <p className="shrink-0 text-xs text-[var(--neo-text-secondary)]">
+          Vendors: <span className="font-medium text-[var(--neo-text-primary)]">{rows.length}</span>
+        </p>
+      </NeoToolbar>
 
       {message ? (
-        <p className="border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-border">
+        <p
+          className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]"
+          role="status"
+        >
           {message}
         </p>
       ) : null}
 
       {editorOpen ? (
-        <section className="border-b border-gray-100 pb-4 dark:border-border">
+        <NeoPanel
+          title={editorMode === "create" ? "New vendor" : "Edit vendor"}
+          description="Keep vendor contact details ready for bills and purchasing."
+          bodyClassName="p-4"
+        >
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Name</p>
-              <Input
+              <NeoFieldLabel required>Name</NeoFieldLabel>
+              <NeoInput
                 value={form.name}
                 onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
                 placeholder="Required"
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Contact Name</p>
-              <Input
+              <NeoFieldLabel>Contact Name</NeoFieldLabel>
+              <NeoInput
                 value={form.contact_name}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, contact_name: event.target.value }))
@@ -356,36 +390,36 @@ export default function VendorsPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Phone</p>
-              <Input
+              <NeoFieldLabel>Phone</NeoFieldLabel>
+              <NeoInput
                 value={form.phone}
                 onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Email</p>
-              <Input
+              <NeoFieldLabel>Email</NeoFieldLabel>
+              <NeoInput
                 value={form.email}
                 onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
               />
             </div>
             <div className="space-y-1 md:col-span-2">
-              <p className="text-xs text-muted-foreground">Address</p>
-              <Input
+              <NeoFieldLabel>Address</NeoFieldLabel>
+              <NeoInput
                 value={form.address}
                 onChange={(event) => setForm((prev) => ({ ...prev, address: event.target.value }))}
               />
             </div>
             <div className="space-y-1 md:col-span-2">
-              <p className="text-xs text-muted-foreground">Notes</p>
-              <Input
+              <NeoFieldLabel>Notes</NeoFieldLabel>
+              <NeoInput
                 value={form.notes}
                 onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Status</p>
-              <Select
+              <NeoFieldLabel>Status</NeoFieldLabel>
+              <NeoSelect
                 value={form.status}
                 onChange={(event) =>
                   setForm((prev) => ({
@@ -396,10 +430,10 @@ export default function VendorsPage() {
               >
                 <option value="active">active</option>
                 <option value="inactive">inactive</option>
-              </Select>
+              </NeoSelect>
             </div>
           </div>
-          <div className="mt-4 flex flex-col-reverse justify-end gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-center dark:border-border">
+          <div className="-mx-4 mt-4 flex flex-col-reverse justify-end gap-2 border-t border-[var(--neo-border)] px-4 pt-4 sm:flex-row sm:items-center">
             <Button
               variant="outline"
               size="sm"
@@ -423,10 +457,10 @@ export default function VendorsPage() {
                   : "Save Changes"}
             </Button>
           </div>
-        </section>
+        </NeoPanel>
       ) : null}
 
-      <div className="md:hidden divide-y divide-gray-100 dark:divide-border/60">
+      <div className="space-y-2 md:hidden">
         {!loading && mobileRows.length === 0 ? (
           <MobileEmptyState
             icon={<Store className="h-5 w-5" />}
@@ -435,14 +469,21 @@ export default function VendorsPage() {
         ) : null}
         {!loading &&
           mobileRows.map((row) => (
-            <div key={row.id} className="flex min-h-[48px] flex-col justify-center gap-2 py-2">
+            <NeoMobileCard
+              key={row.id}
+              className="flex min-h-[84px] flex-col justify-center gap-3 p-3"
+            >
               <div className="min-w-0">
-                <p className="font-medium text-foreground">{row.name}</p>
-                <p className="text-xs text-muted-foreground">{row.contact_name || "—"}</p>
-                <p className="text-xs text-muted-foreground">{row.phone || "—"}</p>
-                <p className="truncate text-xs text-muted-foreground">{row.email || "—"}</p>
+                <p className="font-medium text-[var(--neo-text-primary)]">{row.name}</p>
+                <p className="text-xs text-[var(--neo-text-secondary)]">
+                  {row.contact_name || "—"}
+                </p>
+                <p className="text-xs text-[var(--neo-text-secondary)]">{row.phone || "—"}</p>
+                <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                  {row.email || "—"}
+                </p>
                 <div className="mt-1">
-                  <StatusBadge status={row.status} />
+                  <NeoStatus label={row.status} variant={vendorStatusVariant(row.status)} />
                 </div>
               </div>
               <div className="flex gap-2">
@@ -464,89 +505,82 @@ export default function VendorsPage() {
                   {deletingId === row.id ? "Deleting..." : "Delete"}
                 </Button>
               </div>
-            </div>
+            </NeoMobileCard>
           ))}
-        {loading ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">Loading vendors...</p>
-        ) : null}
+        {loading ? <LoadingState text="Loading vendors..." /> : null}
       </div>
 
-      <TableShell className="hidden md:block">
-        <div className="table-responsive overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-[13px] lg:min-w-0">
-            <thead>
-              <tr>
-                <th className={tableRawThClass}>Name</th>
-                <th className={tableRawThClass}>Contact</th>
-                <th className={tableRawThClass}>Phone</th>
-                <th className={tableRawThClass}>Email</th>
-                <th className={tableRawThClass}>Status</th>
-                <th className={cn(tableRawThClass, "text-right")}>Actions</th>
-              </tr>
-            </thead>
-            <tbody className="[&_tr:last-child>td]:border-b-0">
-              {loading ? (
-                <tr>
-                  <td
-                    className={cn(tableRawTdClass, "py-8 text-center text-muted-foreground")}
-                    colSpan={6}
+      <NeoTable className="hidden md:block" tableClassName="min-w-[760px] lg:min-w-0">
+        <thead>
+          <tr>
+            <th className={vendorHeadClass}>Name</th>
+            <th className={vendorHeadClass}>Contact</th>
+            <th className={vendorHeadClass}>Phone</th>
+            <th className={vendorHeadClass}>Email</th>
+            <th className={vendorHeadClass}>Status</th>
+            <th className={cn(vendorHeadClass, "text-right")}>Actions</th>
+          </tr>
+        </thead>
+        <tbody className="[&_tr:last-child>td]:border-b-0">
+          {loading ? (
+            <tr>
+              <td className="px-3 py-6" colSpan={6}>
+                <LoadingState text="Loading vendors..." />
+              </td>
+            </tr>
+          ) : null}
+          {filtered.map((row) => (
+            <tr key={row.id} className={listTableRowStaticClassName}>
+              <td className={cn(vendorCellClass, "font-medium text-[var(--neo-text-primary)]")}>
+                {row.name}
+              </td>
+              <td className={cn(vendorCellClass, "text-[var(--neo-text-secondary)]")}>
+                {row.contact_name || "—"}
+              </td>
+              <td className={cn(vendorCellClass, "text-[var(--neo-text-secondary)]")}>
+                {row.phone || "—"}
+              </td>
+              <td className={cn(vendorCellClass, "text-[var(--neo-text-secondary)]")}>
+                {row.email || "—"}
+              </td>
+              <td className={vendorCellClass}>
+                <NeoStatus label={row.status} variant={vendorStatusVariant(row.status)} />
+              </td>
+              <td className={vendorCellClass}>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-sm px-3"
+                    onClick={() => openEdit(row)}
                   >
-                    Loading vendors...
-                  </td>
-                </tr>
-              ) : null}
-              {filtered.map((row) => (
-                <tr key={row.id} className={listTableRowStaticClassName}>
-                  <td className={cn(tableRawTdClass, "font-medium text-foreground")}>{row.name}</td>
-                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
-                    {row.contact_name || "—"}
-                  </td>
-                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
-                    {row.phone || "—"}
-                  </td>
-                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
-                    {row.email || "—"}
-                  </td>
-                  <td className={tableRawTdClass}>
-                    <StatusBadge status={row.status} />
-                  </td>
-                  <td className={tableRawTdClass}>
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 rounded-sm px-3"
-                        onClick={() => openEdit(row)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 rounded-sm px-3"
-                        onClick={() => void handleDelete(row)}
-                        disabled={deletingId === row.id}
-                      >
-                        {deletingId === row.id ? "Deleting..." : "Delete"}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!loading && filtered.length === 0 ? (
-                <tr>
-                  <td
-                    className={cn(tableRawTdClass, "py-8 text-center text-muted-foreground")}
-                    colSpan={6}
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 rounded-sm px-3"
+                    onClick={() => void handleDelete(row)}
+                    disabled={deletingId === row.id}
                   >
-                    No vendors yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </TableShell>
-    </div>
+                    {deletingId === row.id ? "Deleting..." : "Delete"}
+                  </Button>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {!loading && filtered.length === 0 ? (
+            <tr>
+              <td className="px-3 py-6" colSpan={6}>
+                <EmptyState
+                  title="No vendors yet"
+                  description="Create a vendor profile to track AP sources."
+                />
+              </td>
+            </tr>
+          ) : null}
+        </tbody>
+      </NeoTable>
+    </PageLayout>
   );
 }
