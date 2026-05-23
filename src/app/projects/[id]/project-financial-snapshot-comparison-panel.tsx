@@ -6,6 +6,7 @@ import type {
   ProjectFinancialSnapshotDiagnostics,
   ProjectFinancialWarning,
 } from "@/lib/financial/project-financial-snapshot";
+import { OS, TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
 type OldCanonicalProfit = {
@@ -59,15 +60,13 @@ function ComparisonMetric({
   tone?: "default" | "positive" | "negative";
 }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-white px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        {label}
-      </p>
+    <div className={cn(OS.card, "px-3 py-2")}>
+      <p className={cn(TYPO.kpiLabel, "text-[10px]")}>{label}</p>
       <p
         className={cn(
-          "mt-1 font-mono text-[13px] font-semibold tabular-nums text-text-primary",
-          tone === "positive" && "text-hh-profit-positive",
-          tone === "negative" && "text-red-600"
+          "mt-1 font-mono text-[13px] font-semibold tabular-nums text-[var(--neo-text-primary)]",
+          tone === "positive" && "text-emerald-400",
+          tone === "negative" && "text-rose-400"
         )}
       >
         {value}
@@ -111,10 +110,10 @@ export function ProjectFinancialSnapshotComparisonPanel({ projectId }: { project
   let body: React.ReactNode;
 
   if (state.status === "loading") {
-    body = <p className="mt-3 text-sm text-muted-foreground">Loading comparison…</p>;
+    body = <p className="mt-3 text-sm text-[var(--neo-text-secondary)]">Loading comparison…</p>;
   } else if (state.status === "error") {
     body = (
-      <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+      <p className="mt-3 rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-sm font-medium text-[var(--neo-gold-soft)]">
         {state.message || "Financial snapshot comparison unavailable."}
       </p>
     );
@@ -195,7 +194,7 @@ export function ProjectFinancialSnapshotComparisonPanel({ projectId }: { project
         ) : null}
 
         {diagnostics ? (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-[var(--neo-text-secondary)]">
             Diagnostics: expense lines {diagnostics.expenseLinesLoaded}, header fallbacks{" "}
             {diagnostics.expenseHeaderFallbackCount}, approved change orders{" "}
             {diagnostics.approvedChangeOrdersCount}, reimbursement dedupes{" "}
@@ -205,17 +204,15 @@ export function ProjectFinancialSnapshotComparisonPanel({ projectId }: { project
         ) : null}
 
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-            Warnings
-          </p>
+          <p className={cn(TYPO.kpiLabel, "text-[10px]")}>Warnings</p>
           {warnings.length === 0 ? (
-            <p className="mt-1 text-sm text-muted-foreground">No comparison warnings.</p>
+            <p className="mt-1 text-sm text-[var(--neo-text-secondary)]">No comparison warnings.</p>
           ) : (
-            <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
+            <ul className="mt-1 space-y-1 text-sm text-[var(--neo-text-secondary)]">
               {warnings.slice(0, 6).map((warning, index) => (
                 <li key={`${warning.code}-${index}`}>
-                  <span className="font-medium text-foreground">{warning.code}</span>:{" "}
-                  {warning.message}
+                  <span className="font-medium text-[var(--neo-text-primary)]">{warning.code}</span>
+                  : {warning.message}
                 </li>
               ))}
               {warnings.length > 6 ? (
@@ -231,11 +228,13 @@ export function ProjectFinancialSnapshotComparisonPanel({ projectId }: { project
   return (
     <details
       open
-      className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-3 text-sm"
+      className="rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] p-3 text-sm text-[var(--neo-text-primary)]"
     >
       <summary className="cursor-pointer list-none">
-        <span className="font-medium text-text-primary">Financial Snapshot Comparison</span>
-        <span className="ml-2 rounded-full border border-border/60 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <span className="font-medium text-[var(--neo-text-primary)]">
+          Financial Snapshot Comparison
+        </span>
+        <span className="ml-2 rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)]">
           Internal comparison only
         </span>
       </summary>

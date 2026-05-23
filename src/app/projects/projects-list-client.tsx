@@ -98,11 +98,11 @@ type SnapshotBatchResponse =
     }
   | { ok: false; message?: string };
 
-const PAGE_BG = "neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]";
+const PAGE_BG = "dark neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]";
 const FIELD =
   "h-10 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] text-[var(--neo-text-primary)] shadow-none focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
 const MODAL =
-  "max-w-[480px] w-full gap-0 border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-8 shadow-[var(--neo-shadow-panel)] rounded-xl sm:max-w-[480px]";
+  "dark max-w-[480px] w-full gap-0 border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-8 shadow-[var(--neo-shadow-panel)] rounded-xl sm:max-w-[480px]";
 
 function fmtUsd0(n: number): string {
   const rounded = Math.round(Math.abs(n));
@@ -589,7 +589,9 @@ export function ProjectsListClient({
                       <span
                         className={cn(
                           "text-sm font-medium tabular-nums",
-                          r.profitReadinessWarning ? "text-amber-700" : profitClass(r.profit)
+                          r.profitReadinessWarning
+                            ? "text-[var(--neo-gold-soft)]"
+                            : profitClass(r.profit)
                         )}
                         data-testid={`project-list-profit-${r.id}`}
                       >
@@ -676,7 +678,9 @@ export function ProjectsListClient({
                     className={cn(
                       tableRawTdClass,
                       "text-right font-mono text-base font-semibold tabular-nums",
-                      r.profitReadinessWarning ? "text-amber-700" : profitClass(r.profit)
+                      r.profitReadinessWarning
+                        ? "text-[var(--neo-gold-soft)]"
+                        : profitClass(r.profit)
                     )}
                     data-testid={`project-list-profit-${r.id}`}
                   >
