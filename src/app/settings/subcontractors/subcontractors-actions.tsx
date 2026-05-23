@@ -3,6 +3,7 @@
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 import { AddSubcontractorModal } from "./add-subcontractor-modal";
 
 export function SubcontractorsActions() {
@@ -13,13 +14,9 @@ export function SubcontractorsActions() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setModalOpen(true)}
-        className="inline-flex h-9 items-center rounded-md border border-input bg-transparent px-3 text-sm hover:bg-accent hover:text-accent-foreground"
-      >
+      <Button type="button" onClick={() => setModalOpen(true)} size="sm" className="h-9 rounded-sm">
         Add Subcontractor
-      </button>
+      </Button>
       <AddSubcontractorModal
         open={modalOpen}
         onOpenChange={setModalOpen}

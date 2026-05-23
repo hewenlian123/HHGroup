@@ -27,9 +27,15 @@ function settingsChildLabel(seg: string): string {
 }
 
 const NAV_ITEMS = [
+  { href: "/settings/account", segment: "account", label: "Account" },
   { href: "/settings/company", segment: "company", label: "Company" },
   { href: "/settings/expenses", segment: "expenses", label: "Expenses" },
   { href: "/settings/security", segment: "security", label: "Security" },
+  { href: "/settings/users", segment: "users", label: "Users" },
+  { href: "/settings/permissions", segment: "permissions", label: "Permissions" },
+  { href: "/settings/categories", segment: "categories", label: "Categories" },
+  { href: "/settings/lists", segment: "lists", label: "Lists" },
+  { href: "/settings/subcontractors", segment: "subcontractors", label: "Subcontractors" },
   {
     href: "/settings/project-financial-review",
     segment: "project-financial-review",
@@ -45,12 +51,14 @@ export function SettingsSubNav() {
     parts[0] === "settings" && second ? `Settings › ${settingsChildLabel(second)}` : null;
 
   return (
-    <div className={cn("page-container border-b border-border/60 pb-3 pt-4 md:pb-3 md:pt-5")}>
+    <div className="page-container pt-4 md:pt-5">
       {mobileBreadcrumb ? (
-        <p className="mb-3 text-[13px] text-muted-foreground sm:hidden">{mobileBreadcrumb}</p>
+        <p className="mb-3 text-[13px] text-[var(--neo-canvas-text-secondary)] sm:hidden">
+          {mobileBreadcrumb}
+        </p>
       ) : null}
       <nav
-        className="flex flex-wrap gap-2"
+        className="flex flex-wrap gap-2 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-2 shadow-[var(--neo-shadow-panel)]"
         aria-label="Settings sections"
         data-testid="settings-subnav"
       >
@@ -60,9 +68,14 @@ export function SettingsSubNav() {
             <Button
               key={item.href}
               asChild
-              variant={active ? "default" : "outline"}
+              variant={active ? "default" : "ghost"}
               size="sm"
-              className="h-8 rounded-sm"
+              className={cn(
+                "h-8 rounded-md",
+                active
+                  ? "bg-[var(--neo-gold)] text-zinc-950 hover:bg-[var(--neo-gold-soft)]"
+                  : "text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+              )}
             >
               <Link href={item.href} aria-current={active ? "page" : undefined}>
                 {item.label}

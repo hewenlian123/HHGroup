@@ -3,12 +3,18 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { createBrowserClient } from "@/lib/supabase";
-import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
+import {
+  LoadingState,
+  NeoFieldLabel,
+  NeoPanel,
+  NeoSelect,
+  NeoToolbar,
+  PageHeader,
+  PageLayout,
+  neoFormNoticeClassName,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { FilterBar } from "@/components/filter-bar";
-import { Select } from "@/components/ui/native-select";
 import {
   DEFAULT_ROLE_PERMISSIONS,
   PERMISSION_GROUPS,
@@ -125,29 +131,28 @@ export default function SettingsPermissionsPage() {
   };
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title="Permissions"
-        subtitle="Owner-only permission matrix for admin and assistant roles."
-        actions={
-          <Button size="sm" onClick={() => void save()} disabled={saving || loading}>
-            <SubmitSpinner loading={saving} className="mr-2" />
-            {saving ? "Saving..." : "Save"}
-          </Button>
-        }
-      />
-      {message ? (
-        <div className="rounded-lg border border-gray-100 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
-          {message}
-        </div>
-      ) : null}
+    <PageLayout
+      className="py-6"
+      divider={false}
+      header={
+        <PageHeader
+          title="Permissions"
+          description="Owner-only permission matrix for admin and assistant roles."
+          actions={
+            <Button size="sm" onClick={() => void save()} disabled={saving || loading}>
+              <SubmitSpinner loading={saving} className="mr-2" />
+              {saving ? "Saving..." : "Save"}
+            </Button>
+          }
+        />
+      }
+    >
+      {message ? <div className={neoFormNoticeClassName}>{message}</div> : null}
 
-      <FilterBar className="flex-col items-stretch sm:items-stretch">
-        <div className="w-full max-w-xs space-y-1">
-          <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-            Role
-          </p>
-          <Select
+      <NeoToolbar className="flex-col items-stretch sm:items-stretch">
+        <div className="w-full max-w-xs space-y-1.5">
+          <NeoFieldLabel>Role</NeoFieldLabel>
+          <NeoSelect
             value={targetRole}
             onChange={(event) =>
               setTargetRole(event.target.value === "assistant" ? "assistant" : "admin")
@@ -155,23 +160,27 @@ export default function SettingsPermissionsPage() {
           >
             <option value="admin">admin</option>
             <option value="assistant">assistant</option>
-          </Select>
+          </NeoSelect>
         </div>
-      </FilterBar>
+      </NeoToolbar>
 
-      <Card className="border-gray-100 p-5 dark:border-border">
+      {loading ? <LoadingState text="Loading permissions..." /> : null}
+
+      <NeoPanel bodyClassName="p-5">
         <div className="space-y-4">
           {PERMISSION_GROUPS.map((group) => (
             <div
               key={group.title}
-              className="rounded-sm border border-gray-100 p-3 dark:border-border/60"
+              className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3"
             >
-              <p className="mb-2 text-sm font-semibold text-foreground">{group.title}</p>
+              <p className="mb-2 text-sm font-semibold text-[var(--neo-text-primary)]">
+                {group.title}
+              </p>
               <div className="grid gap-2 md:grid-cols-2">
                 {group.keys.map((key) => (
                   <label
                     key={key}
-                    className="inline-flex items-center gap-2 text-sm text-foreground"
+                    className="inline-flex min-h-10 items-center gap-2 rounded-md px-2 text-sm text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-raised)]"
                   >
                     <input
                       type="checkbox"
@@ -185,7 +194,7 @@ export default function SettingsPermissionsPage() {
             </div>
           ))}
         </div>
-      </Card>
-    </div>
+      </NeoPanel>
+    </PageLayout>
   );
 }

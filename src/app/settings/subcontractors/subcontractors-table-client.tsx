@@ -5,16 +5,22 @@ import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blockin
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import {
+  EmptyState,
+  NeoFieldLabel,
+  NeoFormGrid,
+  NeoInput,
+  NeoModal,
+  NeoMobileCard,
+  NeoPanel,
+  NeoStatus,
+  NeoTable,
+  neoFormNoticeClassName,
+} from "@/components/base";
+import { tableRawThClass } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/toast/toast-provider";
 import type { SubcontractorRow } from "@/lib/data";
 import {
@@ -133,165 +139,207 @@ export function SubcontractorsTableClient({
   return (
     <>
       {dataLoadWarning ? (
-        <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="status">
+        <p className={neoFormNoticeClassName} role="status">
           {dataLoadWarning}
         </p>
       ) : null}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Name
-              </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Phone
-              </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Email
-              </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Status
-              </th>
-              <th className="w-40 px-1" />
-            </tr>
-          </thead>
-          <tbody>
-            {localRows.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={5} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  {dataLoadWarning ? "Could not load subcontractors." : "No subcontractors yet."}
-                </td>
-              </tr>
-            ) : (
-              localRows.map((r) => (
-                <tr key={r.id} className="border-b border-border/40">
-                  <td className="py-1.5 px-3 font-medium">{r.name}</td>
-                  <td className="py-1.5 px-3 text-muted-foreground">{r.phone ?? "—"}</td>
-                  <td className="py-1.5 px-3 text-muted-foreground">{r.email ?? "—"}</td>
-                  <td className="py-1.5 px-3">
-                    <span
-                      className={
-                        r.active
-                          ? "text-hh-profit-positive dark:text-hh-profit-positive"
-                          : "text-muted-foreground"
-                      }
-                    >
-                      {r.active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="py-1.5 px-1">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="btn-outline-ghost h-7 text-xs"
-                        onClick={() => setEditFor(r)}
-                        disabled={busy}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="btn-outline-ghost h-7 text-xs text-red-600"
-                        onClick={() => void onDelete(r)}
-                        disabled={busy}
-                      >
-                        Delete
-                      </Button>
+      <NeoPanel bodyClassName="p-0">
+        {localRows.length === 0 ? (
+          <EmptyState
+            title={dataLoadWarning ? "Could not load subcontractors" : "No subcontractors yet"}
+            description={
+              dataLoadWarning
+                ? "Refresh or try again after the data connection recovers."
+                : "Add a subcontractor to make them available across project workflows."
+            }
+          />
+        ) : (
+          <>
+            <div className="hidden md:block">
+              <NeoTable tableClassName="min-w-[760px]">
+                <thead>
+                  <tr>
+                    <th className={tableRawThClass}>Name</th>
+                    <th className={tableRawThClass}>Phone</th>
+                    <th className={tableRawThClass}>Email</th>
+                    <th className={tableRawThClass}>Status</th>
+                    <th className="w-40 px-1" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {localRows.map((r) => (
+                    <tr key={r.id} className="table-row-compact">
+                      <td className="px-3 py-2 font-medium text-[var(--neo-text-primary)]">
+                        {r.name}
+                      </td>
+                      <td className="px-3 py-2 text-[var(--neo-text-secondary)]">
+                        {r.phone ?? "—"}
+                      </td>
+                      <td className="px-3 py-2 text-[var(--neo-text-secondary)]">
+                        {r.email ?? "—"}
+                      </td>
+                      <td className="px-3 py-2">
+                        <NeoStatus
+                          label={r.active ? "Active" : "Inactive"}
+                          variant={r.active ? "success" : "muted"}
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="btn-outline-ghost h-7 text-xs"
+                            onClick={() => setEditFor(r)}
+                            disabled={busy}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="btn-outline-ghost h-7 text-xs text-red-300"
+                            onClick={() => void onDelete(r)}
+                            disabled={busy}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </NeoTable>
+            </div>
+            <div className="grid gap-3 p-3 md:hidden">
+              {localRows.map((r) => (
+                <NeoMobileCard key={r.id} className="space-y-3 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-[14px] font-semibold text-[var(--neo-text-primary)]">
+                        {r.name}
+                      </p>
+                      <p className="text-[12px] text-[var(--neo-text-secondary)]">
+                        {r.email ?? r.phone ?? "No contact details"}
+                      </p>
                     </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                    <NeoStatus
+                      label={r.active ? "Active" : "Inactive"}
+                      variant={r.active ? "success" : "muted"}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[12px] text-[var(--neo-text-secondary)]">
+                    <span>{r.phone ?? "No phone"}</span>
+                    <span className="text-right">{r.email ?? "No email"}</span>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-sm text-xs"
+                      onClick={() => setEditFor(r)}
+                      disabled={busy}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-sm text-xs text-red-300"
+                      onClick={() => void onDelete(r)}
+                      disabled={busy}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </NeoMobileCard>
+              ))}
+            </div>
+          </>
+        )}
+      </NeoPanel>
 
       <Dialog open={!!editFor} onOpenChange={(open) => !open && setEditFor(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit subcontractor</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Name (required)</label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="h-9 text-sm"
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Phone</label>
-                <Input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-muted-foreground">Email</label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Address</label>
-              <Input
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Insurance expiration
-              </label>
-              <Input
-                type="date"
-                value={insuranceExpiration}
-                onChange={(e) => setInsuranceExpiration(e.target.value)}
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">Notes</label>
-              <Input
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="h-9 text-sm"
-              />
-            </div>
+        <NeoModal
+          title="Edit subcontractor"
+          className="max-w-md"
+          footer={
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-sm"
+                onClick={() => setEditFor(null)}
+                disabled={busy}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                className="h-8 rounded-sm"
+                onClick={() => void onSave()}
+                disabled={busy || !name.trim()}
+              >
+                <SubmitSpinner loading={busy} className="mr-2" />
+                {busy ? "Saving…" : "Save"}
+              </Button>
+            </>
+          }
+        >
+          <div className="space-y-1.5">
+            <NeoFieldLabel required>Name</NeoFieldLabel>
+            <NeoInput
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="h-9 text-sm"
+              required
+            />
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => setEditFor(null)}
-              disabled={busy}
-            >
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              className="h-8"
-              onClick={() => void onSave()}
-              disabled={busy || !name.trim()}
-            >
-              <SubmitSpinner loading={busy} className="mr-2" />
-              {busy ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+          <NeoFormGrid>
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Phone</NeoFieldLabel>
+              <NeoInput
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Email</NeoFieldLabel>
+              <NeoInput
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+          </NeoFormGrid>
+          <div className="space-y-1.5">
+            <NeoFieldLabel>Address</NeoFieldLabel>
+            <NeoInput
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <NeoFieldLabel>Insurance expiration</NeoFieldLabel>
+            <NeoInput
+              type="date"
+              value={insuranceExpiration}
+              onChange={(e) => setInsuranceExpiration(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <NeoFieldLabel>Notes</NeoFieldLabel>
+            <NeoInput
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="h-9 text-sm"
+            />
+          </div>
+        </NeoModal>
       </Dialog>
     </>
   );

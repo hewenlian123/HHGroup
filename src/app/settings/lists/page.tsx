@@ -1,10 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { PageHeader } from "@/components/page-header";
+import {
+  EmptyState,
+  NeoFieldLabel,
+  NeoInput,
+  NeoModal,
+  NeoPanel,
+  NeoStatus,
+  NeoTable,
+  NeoToolbar,
+  PageHeader,
+  PageLayout,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
+import { tableRawThClass } from "@/components/ui/table";
 import {
   getExpenseCategories,
   getVendors,
@@ -196,23 +207,27 @@ export default function SettingsListsPage() {
     tab === "categories" ? "Expense Categories" : tab === "vendors" ? "Vendors" : "Payment Methods";
 
   return (
-    <div className="mx-auto max-w-[900px] flex flex-col gap-6 p-6">
-      <PageHeader
-        title="Settings — Lists"
-        description="Manage your custom categories, vendors, and payment methods."
-      />
-
-      <div className="flex flex-wrap gap-2 border-b border-gray-100 pb-2 dark:border-border">
+    <PageLayout
+      className="max-w-[960px] py-6"
+      divider={false}
+      header={
+        <PageHeader
+          title="Settings — Lists"
+          description="Manage your custom categories, vendors, and payment methods."
+        />
+      }
+    >
+      <NeoToolbar className="flex-wrap">
         {(["categories", "vendors", "paymentMethods"] as const).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
             className={cn(
-              "rounded-sm border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
+              "min-h-9 rounded-md border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
               tab === t
-                ? "border-[#111827]/25 bg-[#F9FAFB] text-text-primary dark:border-border dark:bg-muted/40 dark:text-foreground"
-                : "border-gray-100 bg-background text-muted-foreground hover:bg-[#F9FAFB]/60 dark:border-border"
+                ? "border-[var(--neo-gold)] bg-[rgb(184_137_45_/_0.16)] text-[var(--neo-text-primary)]"
+                : "border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
             )}
           >
             {t === "categories"
@@ -222,57 +237,58 @@ export default function SettingsListsPage() {
                 : "Payment methods"}
           </button>
         ))}
-      </div>
+      </NeoToolbar>
 
-      <section className="border-b border-gray-100 pb-6 dark:border-border">
-        <h2 className="mb-4 text-base font-semibold text-foreground">{sectionTitle}</h2>
-        <div className="mb-4 flex flex-wrap gap-3">
-          <Input
-            placeholder={`Add ${sectionTitle.toLowerCase()}...`}
-            value={state.addValue}
-            onChange={(e) => state.setAddValue(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            className="max-w-[240px] rounded-sm"
-          />
-          <Button
-            size="sm"
-            className="rounded-sm"
-            onClick={handleAdd}
-            disabled={!state.addValue.trim()}
-          >
+      <NeoPanel
+        title={sectionTitle}
+        description="Disable values instead of deleting when existing records still reference them."
+        bodyClassName="space-y-4 p-4"
+      >
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(180px,220px)] md:items-end">
+          <div className="space-y-1.5">
+            <NeoFieldLabel>Add value</NeoFieldLabel>
+            <NeoInput
+              placeholder={`Add ${sectionTitle.toLowerCase()}...`}
+              value={state.addValue}
+              onChange={(e) => state.setAddValue(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            />
+          </div>
+          <Button size="sm" className="h-10" onClick={handleAdd} disabled={!state.addValue.trim()}>
             Add
           </Button>
-          <Input
-            placeholder="Search..."
-            value={state.search}
-            onChange={(e) => state.setSearch(e.target.value)}
-            className="ml-auto max-w-[200px] rounded-sm"
-          />
+          <div className="space-y-1.5">
+            <NeoFieldLabel>Search</NeoFieldLabel>
+            <NeoInput
+              placeholder="Search..."
+              value={state.search}
+              onChange={(e) => state.setSearch(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="overflow-hidden rounded-sm border border-gray-100 dark:border-border">
-          <table className="w-full text-sm">
+
+        {state.filtered.length === 0 ? (
+          <EmptyState
+            title="No list items"
+            description="Add a value to make it available in forms."
+          />
+        ) : (
+          <NeoTable tableClassName="min-w-[720px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-white dark:border-border dark:bg-muted/30">
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground">Name</th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground w-24">
-                  Used
-                </th>
-                <th className="text-left py-3 px-4 font-medium text-muted-foreground w-24">
-                  Status
-                </th>
-                <th className="text-right py-3 px-4 font-medium text-muted-foreground">Actions</th>
+              <tr>
+                <th className={tableRawThClass}>Name</th>
+                <th className={cn(tableRawThClass, "w-24 text-right")}>Used</th>
+                <th className={cn(tableRawThClass, "w-28")}>Status</th>
+                <th className={cn(tableRawThClass, "text-right")}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {state.filtered.map((row) => (
-                <tr
-                  key={row.name}
-                  className="border-b border-gray-100/80 transition-colors hover:bg-[#F9FAFB] dark:border-border/40 dark:hover:bg-muted/20"
-                >
+                <tr key={row.name} className="table-row-compact">
                   <td className="py-2.5 px-4">
                     {state.renameFor === row.name ? (
                       <div className="flex items-center gap-2">
-                        <Input
+                        <NeoInput
                           value={state.renameValue}
                           onChange={(e) => state.setRenameValue(e.target.value)}
                           className="h-8 max-w-[200px] rounded-md"
@@ -292,7 +308,7 @@ export default function SettingsListsPage() {
                           onClick={handleRenameSave}
                           aria-label="Save"
                         >
-                          <Check className="h-4 w-4 text-[#166534]" />
+                          <Check className="h-4 w-4 text-[var(--neo-emerald)]" />
                         </Button>
                         <Button
                           size="icon"
@@ -311,19 +327,14 @@ export default function SettingsListsPage() {
                       <span className="font-medium">{row.name}</span>
                     )}
                   </td>
-                  <td className="py-2.5 px-4 text-right tabular-nums text-muted-foreground">
+                  <td className="py-2.5 px-4 text-right tabular-nums text-[var(--neo-text-secondary)]">
                     {row.used}
                   </td>
                   <td className="px-4 py-2.5">
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground">
-                      <span
-                        className={cn(
-                          "h-1.5 w-1.5 shrink-0 rounded-full",
-                          row.disabled ? "bg-amber-500/90" : "bg-[#166534]/90"
-                        )}
-                      />
-                      {row.disabled ? "Disabled" : "Active"}
-                    </span>
+                    <NeoStatus
+                      label={row.disabled ? "Disabled" : "Active"}
+                      variant={row.disabled ? "warning" : "success"}
+                    />
                   </td>
                   <td className="py-2.5 px-4 text-right">
                     {state.renameFor === row.name ? null : (
@@ -367,19 +378,16 @@ export default function SettingsListsPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
-        </div>
-      </section>
+          </NeoTable>
+        )}
+      </NeoPanel>
 
       <Dialog
         open={!!state.deleteBlocked}
         onOpenChange={(open) => !open && state.setDeleteBlocked(null)}
       >
-        <DialogContent className="rounded-sm">
-          <DialogHeader>
-            <DialogTitle>Cannot delete</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
+        <NeoModal title="Cannot delete" className="max-w-sm">
+          <p className="text-sm text-[var(--neo-text-secondary)]">
             {state.deleteBlocked
               ? `"${state.deleteBlocked.name}" is used by ${state.deleteBlocked.count} record(s). Disable it instead to hide from dropdowns while keeping existing data.`
               : ""}
@@ -389,8 +397,8 @@ export default function SettingsListsPage() {
               OK
             </Button>
           </div>
-        </DialogContent>
+        </NeoModal>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }

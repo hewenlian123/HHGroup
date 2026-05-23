@@ -2,25 +2,25 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { PageHeader } from "@/components/page-header";
+import {
+  EmptyState,
+  LoadingState,
+  NeoFieldLabel,
+  NeoInput,
+  NeoModal,
+  NeoPanel,
+  NeoSelect,
+  NeoStatus,
+  NeoTable,
+  PageHeader,
+  PageLayout,
+  neoFormNoticeClassName,
+} from "@/components/base";
 import { SectionHeader } from "@/components/section-header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Dialog } from "@/components/ui/dialog";
+import { tableRawThClass } from "@/components/ui/table";
 import { useToast } from "@/components/toast/toast-provider";
 import {
   addExpenseCategory,
@@ -225,13 +225,18 @@ export default function SettingsExpensesPage() {
   };
 
   return (
-    <div className={cn("page-container page-stack py-6", mobileListPagePaddingClass)}>
-      <div className="hidden md:block">
-        <PageHeader
-          title="Expenses"
-          subtitle="Dropdown options for expenses, inbox approval, and quick expense."
-        />
-      </div>
+    <PageLayout
+      className={cn("py-6", mobileListPagePaddingClass)}
+      divider={false}
+      header={
+        <div className="hidden md:block">
+          <PageHeader
+            title="Expenses"
+            description="Dropdown options for expenses, inbox approval, and quick expense."
+          />
+        </div>
+      }
+    >
       <MobileListHeader
         title="Expenses"
         fab={<span className="inline-block h-10 w-10 shrink-0" />}
@@ -242,16 +247,13 @@ export default function SettingsExpensesPage() {
       </h1>
 
       {!configured ? (
-        <p className="text-sm text-muted-foreground">
+        <p className={neoFormNoticeClassName}>
           Supabase is not configured. Set environment keys to manage expense options.
         </p>
       ) : null}
 
       {configured && tableMissing ? (
-        <div
-          className="border-b border-border/60 pb-3 text-sm text-muted-foreground"
-          data-testid="settings-expenses-migration-required"
-        >
+        <div className={neoFormNoticeClassName} data-testid="settings-expenses-migration-required">
           The <code className="text-xs">expense_options</code> table was not found. Apply migrations
           to your Supabase database (for example run{" "}
           <code className="text-xs">npm run db:migrate</code> against local, or push{" "}
@@ -260,7 +262,7 @@ export default function SettingsExpensesPage() {
       ) : null}
 
       <div
-        className="flex flex-wrap gap-2 border-b border-border/60 pb-3"
+        className="flex flex-wrap gap-2 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-2 shadow-[var(--neo-shadow-panel)]"
         data-testid="settings-expenses-tabs"
       >
         {TABS.map((t) => (
@@ -269,7 +271,10 @@ export default function SettingsExpensesPage() {
             type="button"
             variant={tab === t.id ? "default" : "outline"}
             size="sm"
-            className="h-8 rounded-sm"
+            className={cn(
+              "h-8 rounded-md",
+              tab === t.id && "bg-[var(--neo-gold)] text-zinc-950 hover:bg-[var(--neo-gold-soft)]"
+            )}
             data-testid={`settings-expenses-tab-${t.id}`}
             onClick={() => setTab(t.id)}
           >
@@ -278,116 +283,112 @@ export default function SettingsExpensesPage() {
         ))}
       </div>
 
-      <section className="space-y-3" data-testid="settings-expenses-section">
-        <SectionHeader
-          title="Options"
-          subtitle="Archive hides an option from new entries; existing data keeps the value."
-        />
-        {tab === "payment_source" ? (
-          <p className="text-xs text-muted-foreground">
-            Sources map to how an expense was created. System sources cannot be archived.
-          </p>
-        ) : null}
+      <div data-testid="settings-expenses-section">
+        <NeoPanel bodyClassName="space-y-4 p-4">
+          <SectionHeader
+            title="Options"
+            subtitle="Archive hides an option from new entries; existing data keeps the value."
+          />
+          {tab === "payment_source" ? (
+            <p className="text-xs text-muted-foreground">
+              Sources map to how an expense was created. System sources cannot be archived.
+            </p>
+          ) : null}
 
-        {tab !== "payment_source" && !tableMissing ? (
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-            <div className="min-w-0 flex-1 space-y-1">
-              <label className="text-xs uppercase tracking-wide text-muted-foreground">
-                Add option
-              </label>
-              <Input
-                value={addName}
-                onChange={(e) => setAddName(e.target.value)}
-                placeholder="Name"
-                className="h-9 rounded-sm"
-                data-testid="settings-expenses-add-name"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void onAdd();
-                }}
-              />
-            </div>
-            {tab === "payment_account" ? (
-              <div className="w-full space-y-1 sm:w-40">
-                <label className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Type
-                </label>
-                <Select
-                  value={addPaType}
-                  onValueChange={(v) => setAddPaType(v as PaymentAccountType)}
-                >
-                  <SelectTrigger
-                    className="h-9 rounded-sm"
+          {tab !== "payment_source" && !tableMissing ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <NeoFieldLabel>Add option</NeoFieldLabel>
+                <NeoInput
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  placeholder="Name"
+                  className="h-9 rounded-sm"
+                  data-testid="settings-expenses-add-name"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void onAdd();
+                  }}
+                />
+              </div>
+              {tab === "payment_account" ? (
+                <div className="w-full space-y-1.5 sm:w-40">
+                  <NeoFieldLabel>Type</NeoFieldLabel>
+                  <NeoSelect
+                    value={addPaType}
+                    onChange={(event) => setAddPaType(event.target.value as PaymentAccountType)}
+                    className="h-9"
                     data-testid="settings-expenses-add-pa-type"
                   >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="card">Card</SelectItem>
-                    <SelectItem value="bank">Bank</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
-            <Button
-              type="button"
-              size="sm"
-              className="h-9 rounded-sm"
-              disabled={addBusy || !addName.trim()}
-              data-testid="settings-expenses-add-submit"
-              onClick={() => void onAdd()}
-            >
-              <SubmitSpinner loading={addBusy} className="mr-2" />
-              Add
-            </Button>
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground">New sources require a database migration.</p>
-        )}
+                    <option value="cash">Cash</option>
+                    <option value="card">Card</option>
+                    <option value="bank">Bank</option>
+                  </NeoSelect>
+                </div>
+              ) : null}
+              <Button
+                type="button"
+                size="sm"
+                className="h-9 rounded-sm"
+                disabled={addBusy || !addName.trim()}
+                data-testid="settings-expenses-add-submit"
+                onClick={() => void onAdd()}
+              >
+                <SubmitSpinner loading={addBusy} className="mr-2" />
+                Add
+              </Button>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              New sources require a database migration.
+            </p>
+          )}
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <th className="py-2 pr-3 font-medium">Name</th>
-                <th className="py-2 pr-3 font-medium">Status</th>
-                <th className="py-2 pr-3 font-medium">Default</th>
-                <th className="py-2 pr-3 font-medium">System</th>
-                <th className="py-2 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
+          {loading ? (
+            <LoadingState text="Loading…" />
+          ) : tableMissing ? (
+            <EmptyState
+              title="Expense options unavailable"
+              description="Cannot load options until expense_options exists."
+            />
+          ) : rows.length === 0 ? (
+            <EmptyState
+              title="No options yet"
+              description="Add an option to make it available in expense forms."
+            />
+          ) : (
+            <NeoTable tableClassName="min-w-[680px]">
+              <thead>
                 <tr>
-                  <td colSpan={5} className="py-6 text-muted-foreground">
-                    Loading…
-                  </td>
+                  <th className={tableRawThClass}>Name</th>
+                  <th className={tableRawThClass}>Status</th>
+                  <th className={tableRawThClass}>Default</th>
+                  <th className={tableRawThClass}>System</th>
+                  <th className={tableRawThClass}>Actions</th>
                 </tr>
-              ) : tableMissing ? (
-                <tr>
-                  <td colSpan={5} className="py-6 text-muted-foreground">
-                    Cannot load options until <code className="text-xs">expense_options</code>{" "}
-                    exists.
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-6 text-muted-foreground">
-                    No options yet.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((r) => (
+              </thead>
+              <tbody>
+                {rows.map((r) => (
                   <tr
                     key={r.id}
-                    className="border-b border-border/60 table-row-compact"
+                    className="table-row-compact"
                     data-testid={`settings-expenses-row-${r.id}`}
                   >
-                    <td className="py-2 pr-3 align-middle">{r.name}</td>
-                    <td className="py-2 pr-3 align-middle">{r.active ? "Active" : "Archived"}</td>
-                    <td className="py-2 pr-3 align-middle">{r.is_default ? "Yes" : "—"}</td>
-                    <td className="py-2 pr-3 align-middle">{r.is_system ? "Yes" : "—"}</td>
-                    <td className="py-2 align-middle">
+                    <td className="px-3 py-2 align-middle font-medium text-[var(--neo-text-primary)]">
+                      {r.name}
+                    </td>
+                    <td className="px-3 py-2 align-middle">
+                      <NeoStatus
+                        label={r.active ? "Active" : "Archived"}
+                        variant={r.active ? "success" : "warning"}
+                      />
+                    </td>
+                    <td className="px-3 py-2 align-middle text-[var(--neo-text-secondary)]">
+                      {r.is_default ? "Yes" : "—"}
+                    </td>
+                    <td className="px-3 py-2 align-middle text-[var(--neo-text-secondary)]">
+                      {r.is_system ? "Yes" : "—"}
+                    </td>
+                    <td className="px-3 py-2 align-middle">
                       <div className="flex flex-wrap gap-1">
                         <Button
                           type="button"
@@ -436,53 +437,55 @@ export default function SettingsExpensesPage() {
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                ))}
+              </tbody>
+            </NeoTable>
+          )}
 
-        <p className="text-xs text-muted-foreground">
-          <Link href="/settings/company" className="underline-offset-4 hover:underline">
-            ← Back to company settings
-          </Link>
-        </p>
-      </section>
+          <p className="text-xs text-muted-foreground">
+            <Link href="/settings/company" className="underline-offset-4 hover:underline">
+              ← Back to company settings
+            </Link>
+          </p>
+        </NeoPanel>
+      </div>
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="max-w-sm rounded-sm border-border/60">
-          <DialogHeader>
-            <DialogTitle className="text-base font-medium">Rename</DialogTitle>
-          </DialogHeader>
-          <Input
+        <NeoModal
+          title="Rename"
+          className="max-w-sm"
+          footer={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-sm"
+                onClick={() => setRenameOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 rounded-sm"
+                disabled={renameBusy}
+                data-testid="settings-expenses-rename-save"
+                onClick={() => void onRenameSave()}
+              >
+                {renameBusy ? "Saving…" : "Save"}
+              </Button>
+            </>
+          }
+        >
+          <NeoInput
             value={renameValue}
             onChange={(e) => setRenameValue(e.target.value)}
             className="h-9 rounded-sm"
             data-testid="settings-expenses-rename-input"
           />
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 rounded-sm"
-              onClick={() => setRenameOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="h-8 rounded-sm"
-              disabled={renameBusy}
-              data-testid="settings-expenses-rename-save"
-              onClick={() => void onRenameSave()}
-            >
-              {renameBusy ? "Saving…" : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
+        </NeoModal>
       </Dialog>
-    </div>
+    </PageLayout>
   );
 }

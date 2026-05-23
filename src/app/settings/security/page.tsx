@@ -1,14 +1,19 @@
-import { PageHeader } from "@/components/page-header";
+import { PageHeader, PageLayout } from "@/components/base";
 import { SecurityPinForm } from "./security-pin-form";
 
 export default function SettingsSecurityPage() {
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title="Security"
-        subtitle="Manage the 4-digit app unlock PIN for ordinary HH Group workspace access."
-      />
+    <PageLayout
+      className="py-6"
+      divider={false}
+      header={
+        <PageHeader
+          title="Security"
+          description="Manage the 4-digit app unlock PIN for ordinary HH Group workspace access."
+        />
+      }
+    >
       <SecurityPinForm />
-    </div>
+    </PageLayout>
   );
 }

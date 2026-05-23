@@ -3,12 +3,22 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { createBrowserClient } from "@/lib/supabase";
-import { PageHeader } from "@/components/page-header";
-import { Card } from "@/components/ui/card";
+import {
+  EmptyState,
+  LoadingState,
+  NeoFieldLabel,
+  NeoInput,
+  NeoMobileCard,
+  NeoPanel,
+  NeoSelect,
+  NeoTable,
+  PageHeader,
+  PageLayout,
+  neoFormNoticeClassName,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/native-select";
 import type { AppRole } from "@/lib/permissions";
+import { tableRawThClass } from "@/components/ui/table";
 
 type ProfileRow = {
   id: string;
@@ -80,66 +90,96 @@ export default function SettingsUsersPage() {
   };
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title="Users"
-        subtitle="Owner-only user role assignment and invitation notes."
-        actions={
-          <Button variant="outline" onClick={() => void refresh()}>
-            Refresh
-          </Button>
-        }
-      />
+    <PageLayout
+      className="py-6"
+      divider={false}
+      header={
+        <PageHeader
+          title="Users"
+          description="Owner-only user role assignment and invitation notes."
+          actions={
+            <Button variant="outline" onClick={() => void refresh()}>
+              Refresh
+            </Button>
+          }
+        />
+      }
+    >
+      {message ? <div className={neoFormNoticeClassName}>{message}</div> : null}
 
-      {message ? (
-        <div className="rounded-lg border border-gray-100 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
-          {message}
+      <NeoPanel bodyClassName="p-4">
+        <div className="space-y-1.5">
+          <NeoFieldLabel htmlFor="settings-users-invite-note">Invite note (optional)</NeoFieldLabel>
+          <NeoInput
+            id="settings-users-invite-note"
+            value={inviteNote}
+            onChange={(event) => setInviteNote(event.target.value)}
+            placeholder="Example: New assistants should only submit timesheets."
+          />
         </div>
+      </NeoPanel>
+
+      {loading ? <LoadingState text="Loading users..." /> : null}
+
+      {!loading && rows.length === 0 ? (
+        <EmptyState title="No users found" description="No user profiles are available." />
       ) : null}
 
-      <Card className="border-gray-100 p-4 dark:border-border">
-        <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground mb-2">
-          Invite note (optional)
-        </p>
-        <Input
-          value={inviteNote}
-          onChange={(event) => setInviteNote(event.target.value)}
-          placeholder="Example: New assistants should only submit timesheets."
-        />
-      </Card>
+      {!loading && rows.length > 0 ? (
+        <>
+          <div className="space-y-2 md:hidden">
+            {rows.map((row) => (
+              <NeoMobileCard key={row.id} className="space-y-3 p-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+                    {row.email || row.id}
+                  </p>
+                  <p className="text-xs text-[var(--neo-text-secondary)]">
+                    Created {new Date(row.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                {row.role === "owner" ? (
+                  <span className="text-sm font-medium text-[var(--neo-text-primary)]">owner</span>
+                ) : (
+                  <NeoSelect
+                    value={row.role}
+                    onChange={(event) =>
+                      void setUserRole(
+                        row.id,
+                        event.target.value === "admin" ? "admin" : "assistant"
+                      )
+                    }
+                    disabled={savingId === row.id}
+                  >
+                    <option value="admin">admin</option>
+                    <option value="assistant">assistant</option>
+                  </NeoSelect>
+                )}
+              </NeoMobileCard>
+            ))}
+          </div>
 
-      <Card className="overflow-hidden border-gray-100 p-0 dark:border-border">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <NeoTable className="hidden md:block" tableClassName="min-w-[680px]">
             <thead>
-              <tr className="border-b border-gray-100 bg-white dark:border-border/60 dark:bg-muted/30">
-                <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  Email
-                </th>
-                <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  Role
-                </th>
-                <th className="px-4 py-3 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  Created
-                </th>
+              <tr>
+                <th className={tableRawThClass}>Email</th>
+                <th className={tableRawThClass}>Role</th>
+                <th className={tableRawThClass}>Created</th>
               </tr>
             </thead>
             <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                    Loading users...
-                  </td>
-                </tr>
-              ) : null}
               {rows.map((row) => (
-                <tr key={row.id} className="border-b border-gray-100/80 dark:border-border/30">
-                  <td className="px-4 py-3 text-foreground">{row.email || row.id}</td>
+                <tr key={row.id}>
+                  <td className="px-3 py-2 text-[var(--neo-text-primary)]">
+                    {row.email || row.id}
+                  </td>
                   <td className="px-4 py-3">
                     {row.role === "owner" ? (
-                      <span className="text-sm font-medium text-foreground">owner</span>
+                      <span className="text-sm font-medium text-[var(--neo-text-primary)]">
+                        owner
+                      </span>
                     ) : (
-                      <Select
+                      <NeoSelect
                         value={row.role}
                         onChange={(event) =>
                           void setUserRole(
@@ -152,25 +192,18 @@ export default function SettingsUsersPage() {
                       >
                         <option value="admin">admin</option>
                         <option value="assistant">assistant</option>
-                      </Select>
+                      </NeoSelect>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-muted-foreground">
+                  <td className="px-3 py-2 text-[var(--neo-text-secondary)]">
                     {new Date(row.created_at).toLocaleDateString()}
                   </td>
                 </tr>
               ))}
-              {!loading && rows.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                    No users found.
-                  </td>
-                </tr>
-              ) : null}
             </tbody>
-          </table>
-        </div>
-      </Card>
-    </div>
+          </NeoTable>
+        </>
+      ) : null}
+    </PageLayout>
   );
 }
