@@ -66,6 +66,7 @@ type ScopeSectionHeaderProps = {
   onToggleCollapse: () => void;
   onDisplayNameChange: (name: string) => void;
   dragHandle?: React.ReactNode;
+  titleSlot?: React.ReactNode;
   disabled?: boolean;
 };
 
@@ -97,7 +98,7 @@ function ScopeSectionCollapseButton({
   );
 }
 
-function ScopeSectionHeader({
+export function ScopeSectionHeader({
   catalogName,
   displayName,
   itemCount,
@@ -106,6 +107,7 @@ function ScopeSectionHeader({
   onToggleCollapse,
   onDisplayNameChange,
   dragHandle,
+  titleSlot,
   disabled = false,
 }: ScopeSectionHeaderProps): React.ReactElement {
   return (
@@ -125,18 +127,20 @@ function ScopeSectionHeader({
         />
         <div className={EB.sectionHeaderChip}>
           <Layers className={cn("h-3.5 w-3.5", EB.sectionHeaderIcon)} aria-hidden />
-          <Input
-            value={displayName}
-            onChange={(e) => onDisplayNameChange(e.target.value)}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-            className={ebInput(
-              "h-7 min-h-7 w-full min-w-[8rem] max-w-full border-0 bg-transparent px-0 text-[15px] font-semibold tracking-tight text-zinc-50 shadow-none focus-visible:ring-0"
-            )}
-            placeholder={catalogName}
-            disabled={disabled}
-            aria-label={`Section name for ${catalogName}`}
-          />
+          {titleSlot ?? (
+            <Input
+              value={displayName}
+              onChange={(e) => onDisplayNameChange(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              className={ebInput(
+                "h-7 min-h-7 w-full min-w-[8rem] max-w-full border-0 bg-transparent px-0 text-[15px] font-semibold tracking-tight text-zinc-50 shadow-none focus-visible:ring-0"
+              )}
+              placeholder={catalogName}
+              disabled={disabled}
+              aria-label={`Section name for ${catalogName}`}
+            />
+          )}
         </div>
       </div>
       <div className={cn(collapsed ? EB.scopeSectionHeaderMeta : "shrink-0")}>
@@ -149,7 +153,7 @@ function ScopeSectionHeader({
   );
 }
 
-function ScopeSectionCollapsibleBody({
+export function ScopeSectionCollapsibleBody({
   collapsed,
   children,
 }: {
