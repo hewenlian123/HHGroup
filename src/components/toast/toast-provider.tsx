@@ -76,7 +76,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-[calc(8rem+env(safe-area-inset-bottom))] right-3 z-50 flex w-[min(320px,calc(100vw-1.5rem))] flex-col gap-2 sm:bottom-4 sm:right-4 sm:w-[340px]">
+      <div className="pointer-events-none fixed bottom-[calc(7.25rem+env(safe-area-inset-bottom))] right-3 z-50 flex w-[min(264px,calc(100vw-1.5rem))] flex-col gap-2 sm:bottom-4 sm:right-4 sm:w-[340px]">
         {toasts.map((t) => {
           const Wrapper = t.onClick ? "button" : "div";
           const variant = t.variant ?? "default";
@@ -88,15 +88,30 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               className={cn(
                 "pointer-events-auto w-full rounded-md border px-3 py-2 text-left shadow-[var(--shadow-1)] will-change-transform",
                 variantClasses(variant),
+                variant === "system" &&
+                  "max-sm:rounded-lg max-sm:bg-[rgb(18_22_27_/_0.92)] max-sm:px-2.5 max-sm:py-1.5 max-sm:shadow-[0_10px_30px_rgb(0_0_0_/_0.22)]",
                 t.onClick && !t.exiting && "cursor-pointer hover:opacity-90",
                 t.exiting ? "animate-toast-out" : "animate-toast-in"
               )}
               role="status"
               aria-live="polite"
             >
-              <div className="text-sm font-medium">{t.title}</div>
+              <div
+                className={cn(
+                  "text-sm font-medium",
+                  variant === "system" && "max-sm:text-[13px] max-sm:leading-4"
+                )}
+              >
+                {t.title}
+              </div>
               {t.description ? (
-                <div className={cn("mt-0.5 text-sm", variantDescriptionClasses(variant))}>
+                <div
+                  className={cn(
+                    "mt-0.5 text-sm",
+                    variantDescriptionClasses(variant),
+                    variant === "system" && "max-sm:mt-0 max-sm:text-xs max-sm:leading-4"
+                  )}
+                >
                   {t.description}
                 </div>
               ) : null}

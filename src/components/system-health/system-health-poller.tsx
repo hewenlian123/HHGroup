@@ -30,7 +30,7 @@ export function SystemHealthPoller() {
                 title: "System issue detected",
                 description: "Click to open System Health",
                 variant: "system",
-                durationMs: 8000,
+                durationMs: 5000,
                 onClick: () => router.push("/system-health"),
               });
             }
@@ -47,7 +47,7 @@ export function SystemHealthPoller() {
               title: "System issue detected",
               description: "Click to open System Health",
               variant: "system",
-              durationMs: 8000,
+              durationMs: 5000,
               onClick: () => router.push("/system-health"),
             });
           }

@@ -1879,10 +1879,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           <div className={cn("hidden md:block", inboxMode && "-mt-0.5")}>
             <PageHeader
               className={cn(
-                "border-b border-white/10",
-                inboxMode
-                  ? "gap-2 pb-2 lg:items-baseline lg:gap-x-4 lg:gap-y-2 [&_p]:mt-0 [&_p]:leading-snug"
-                  : "pb-5"
+                "border-b border-white/10 pb-3 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]",
+                inboxMode ? "gap-2 lg:items-baseline lg:gap-x-4 lg:gap-y-2" : "gap-3"
               )}
               title={pageTitle}
               description={pageDescription}
