@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { createBrowserClient } from "@/lib/supabase";
-import { PageHeader } from "@/components/page-header";
-import { StatusBadge } from "@/components/status-badge";
+import { NeoPanel, NeoStatus, PageHeader, PageLayout } from "@/components/base";
 
 type RoleLabel = "Owner" | "Admin" | "Assistant";
 
@@ -34,18 +33,28 @@ export default function SettingsAccountPage() {
   }, [supabase]);
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader title="Account" subtitle="View your current signed-in account and access role." />
-      <section className="border-b border-gray-100 dark:border-border">
-        <div className="flex items-center justify-between border-b border-gray-100 py-3 dark:border-border">
-          <p className="text-sm text-muted-foreground">Email</p>
-          <p className="text-sm font-medium text-foreground">{email || "—"}</p>
+    <PageLayout
+      className="py-6"
+      divider={false}
+      header={
+        <PageHeader
+          title="Account"
+          description="View your current signed-in account and access role."
+        />
+      }
+    >
+      <NeoPanel className="max-w-2xl" bodyClassName="divide-y divide-[var(--neo-border)]">
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+          <p className="text-sm text-[var(--neo-text-secondary)]">Email</p>
+          <p className="min-w-0 truncate text-sm font-medium text-[var(--neo-text-primary)]">
+            {email || "—"}
+          </p>
         </div>
-        <div className="flex items-center justify-between py-3">
-          <p className="text-sm text-muted-foreground">Role</p>
-          <StatusBadge status={roleLabel(null)} />
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+          <p className="text-sm text-[var(--neo-text-secondary)]">Role</p>
+          <NeoStatus label={roleLabel(null)} variant="default" />
         </div>
-      </section>
-    </div>
+      </NeoPanel>
+    </PageLayout>
   );
 }

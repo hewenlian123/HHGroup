@@ -7,10 +7,14 @@ import * as React from "react";
 import Link from "next/link";
 import { flushSync } from "react-dom";
 import { Building2, Search, Upload, Image as ImageIcon, Trash2 } from "lucide-react";
-import { PageHeader } from "@/components/page-header";
 import { SectionHeader } from "@/components/section-header";
-import { NeoTextarea } from "@/components/base";
-import { Input } from "@/components/ui/input";
+import {
+  NeoInput,
+  NeoPanel,
+  NeoTextarea,
+  PageHeader,
+  neoFormNoticeClassName,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { useToast } from "@/components/toast/toast-provider";
@@ -530,7 +534,7 @@ export default function SettingsCompanyPage() {
       <div className="hidden md:block">
         <PageHeader
           title="Company"
-          subtitle="Manage branding and profile details used across the app and generated documents."
+          description="Manage branding and profile details used across the app and generated documents."
         />
       </div>
 
@@ -545,7 +549,7 @@ export default function SettingsCompanyPage() {
         searchSlot={
           <div className="relative w-full">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <NeoInput
               type="search"
               value={sectionQuery}
               onChange={(e) => setSectionQuery(e.target.value)}
@@ -636,17 +640,15 @@ export default function SettingsCompanyPage() {
       ) : null}
 
       {!configured ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-700">
+        <div className={neoFormNoticeClassName}>
           Supabase is not configured. Set `NEXT_PUBLIC_SUPABASE_URL` and
           `NEXT_PUBLIC_SUPABASE_ANON_KEY` to enable save and upload.
         </div>
       ) : null}
 
-      <section
-        className={cn(
-          "border-b border-[var(--neo-border)] pb-8",
-          q && !brandHit && "max-md:hidden"
-        )}
+      <NeoPanel
+        className={cn("border-dashed", q && !brandHit && "max-md:hidden")}
+        bodyClassName="p-4"
       >
         <SectionHeader
           title="Branding"
@@ -710,166 +712,168 @@ export default function SettingsCompanyPage() {
             Remove Logo
           </Button>
         </div>
-      </section>
+      </NeoPanel>
 
-      <section
-        className={cn("pt-2", q && !profileHit && "max-md:hidden")}
+      <div
+        className={cn(q && !profileHit && "max-md:hidden")}
         data-testid="company-profile-section"
       >
-        <SectionHeader
-          title="Company Profile"
-          subtitle="This profile is shared globally across HH Unified."
-        />
-        <div className="mt-4 grid gap-3 md:grid-cols-2" data-testid="company-profile-fields">
-          <Input
-            className="rounded-sm"
-            placeholder="Company Name"
-            value={form.org_name}
-            onChange={(e) => updateField("org_name", e.target.value)}
-            data-testid="company-input-org_name"
-            aria-label="Company Name"
+        <NeoPanel bodyClassName="p-4">
+          <SectionHeader
+            title="Company Profile"
+            subtitle="This profile is shared globally across HH Unified."
           />
-          <Input
-            className="rounded-sm"
-            placeholder="Legal Name"
-            value={form.legal_name}
-            onChange={(e) => updateField("legal_name", e.target.value)}
-            data-testid="company-input-legal_name"
-            aria-label="Legal Name"
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="Phone"
-            value={form.phone}
-            onChange={(e) => updateField("phone", e.target.value)}
-            data-testid="company-input-phone"
-            aria-label="Phone"
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="Email"
-            value={form.email}
-            onChange={(e) => updateField("email", e.target.value)}
-            data-testid="company-input-email"
-            aria-label="Email"
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="Website"
-            value={form.website}
-            onChange={(e) => updateField("website", e.target.value)}
-            data-testid="company-input-website"
-            aria-label="Website"
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="License Number"
-            value={form.license_number}
-            onChange={(e) => updateField("license_number", e.target.value)}
-            data-testid="company-input-license_number"
-            aria-label="License Number"
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="Tax ID"
-            value={form.tax_id}
-            onChange={(e) => updateField("tax_id", e.target.value)}
-            data-testid="company-input-tax_id"
-            aria-label="Tax ID"
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="Default tax %"
-            inputMode="decimal"
-            value={form.default_tax_pct}
-            onChange={(e) => updateField("default_tax_pct", e.target.value)}
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="Address Line 1"
-            value={form.address1}
-            onChange={(e) => updateField("address1", e.target.value)}
-            data-testid="company-input-address1"
-            aria-label="Address Line 1"
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="Address Line 2"
-            value={form.address2}
-            onChange={(e) => updateField("address2", e.target.value)}
-            data-testid="company-input-address2"
-            aria-label="Address Line 2"
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="City"
-            value={form.city}
-            onChange={(e) => updateField("city", e.target.value)}
-            data-testid="company-input-city"
-            aria-label="City"
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="State"
-            value={form.state}
-            onChange={(e) => updateField("state", e.target.value)}
-            data-testid="company-input-state"
-            aria-label="State"
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="ZIP"
-            value={form.zip}
-            onChange={(e) => updateField("zip", e.target.value)}
-            data-testid="company-input-zip"
-            aria-label="ZIP"
-          />
-          <Input
-            className="rounded-sm"
-            placeholder="Country"
-            value={form.country}
-            onChange={(e) => updateField("country", e.target.value)}
-            data-testid="company-input-country"
-            aria-label="Country"
-          />
-        </div>
-        <div className="mt-3 grid gap-3">
-          <NeoTextarea
-            value={form.default_terms}
-            onChange={(e) => updateField("default_terms", e.target.value)}
-            placeholder="Default Terms"
-            className="min-h-20"
-          />
-          <NeoTextarea
-            value={form.invoice_footer}
-            onChange={(e) => updateField("invoice_footer", e.target.value)}
-            placeholder="Invoice Footer"
-            className="min-h-20"
-          />
-          <NeoTextarea
-            value={form.notes}
-            onChange={(e) => updateField("notes", e.target.value)}
-            placeholder="Notes"
-            data-testid="company-input-notes"
-            aria-label="Notes"
-            className="min-h-24"
-          />
-        </div>
-        <div className="mt-4 flex justify-end border-t border-[var(--neo-border)] pt-4">
-          <Button
-            type="button"
-            size="sm"
-            disabled={disabled}
-            onClick={onSave}
-            className="gap-2 rounded-sm"
-            data-testid="company-save-button"
-          >
-            <SubmitSpinner loading={saving} className="mr-2" />
-            <Upload className="h-4 w-4" />
-            {saving ? "Saving..." : "Save Profile"}
-          </Button>
-        </div>
-      </section>
+          <div className="mt-4 grid gap-3 md:grid-cols-2" data-testid="company-profile-fields">
+            <NeoInput
+              className="rounded-sm"
+              placeholder="Company Name"
+              value={form.org_name}
+              onChange={(e) => updateField("org_name", e.target.value)}
+              data-testid="company-input-org_name"
+              aria-label="Company Name"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="Legal Name"
+              value={form.legal_name}
+              onChange={(e) => updateField("legal_name", e.target.value)}
+              data-testid="company-input-legal_name"
+              aria-label="Legal Name"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="Phone"
+              value={form.phone}
+              onChange={(e) => updateField("phone", e.target.value)}
+              data-testid="company-input-phone"
+              aria-label="Phone"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="Email"
+              value={form.email}
+              onChange={(e) => updateField("email", e.target.value)}
+              data-testid="company-input-email"
+              aria-label="Email"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="Website"
+              value={form.website}
+              onChange={(e) => updateField("website", e.target.value)}
+              data-testid="company-input-website"
+              aria-label="Website"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="License Number"
+              value={form.license_number}
+              onChange={(e) => updateField("license_number", e.target.value)}
+              data-testid="company-input-license_number"
+              aria-label="License Number"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="Tax ID"
+              value={form.tax_id}
+              onChange={(e) => updateField("tax_id", e.target.value)}
+              data-testid="company-input-tax_id"
+              aria-label="Tax ID"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="Default tax %"
+              inputMode="decimal"
+              value={form.default_tax_pct}
+              onChange={(e) => updateField("default_tax_pct", e.target.value)}
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="Address Line 1"
+              value={form.address1}
+              onChange={(e) => updateField("address1", e.target.value)}
+              data-testid="company-input-address1"
+              aria-label="Address Line 1"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="Address Line 2"
+              value={form.address2}
+              onChange={(e) => updateField("address2", e.target.value)}
+              data-testid="company-input-address2"
+              aria-label="Address Line 2"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="City"
+              value={form.city}
+              onChange={(e) => updateField("city", e.target.value)}
+              data-testid="company-input-city"
+              aria-label="City"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="State"
+              value={form.state}
+              onChange={(e) => updateField("state", e.target.value)}
+              data-testid="company-input-state"
+              aria-label="State"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="ZIP"
+              value={form.zip}
+              onChange={(e) => updateField("zip", e.target.value)}
+              data-testid="company-input-zip"
+              aria-label="ZIP"
+            />
+            <NeoInput
+              className="rounded-sm"
+              placeholder="Country"
+              value={form.country}
+              onChange={(e) => updateField("country", e.target.value)}
+              data-testid="company-input-country"
+              aria-label="Country"
+            />
+          </div>
+          <div className="mt-3 grid gap-3">
+            <NeoTextarea
+              value={form.default_terms}
+              onChange={(e) => updateField("default_terms", e.target.value)}
+              placeholder="Default Terms"
+              className="min-h-20"
+            />
+            <NeoTextarea
+              value={form.invoice_footer}
+              onChange={(e) => updateField("invoice_footer", e.target.value)}
+              placeholder="Invoice Footer"
+              className="min-h-20"
+            />
+            <NeoTextarea
+              value={form.notes}
+              onChange={(e) => updateField("notes", e.target.value)}
+              placeholder="Notes"
+              data-testid="company-input-notes"
+              aria-label="Notes"
+              className="min-h-24"
+            />
+          </div>
+          <div className="mt-4 flex justify-end border-t border-[var(--neo-border)] pt-4">
+            <Button
+              type="button"
+              size="sm"
+              disabled={disabled}
+              onClick={onSave}
+              className="gap-2 rounded-sm"
+              data-testid="company-save-button"
+            >
+              <SubmitSpinner loading={saving} className="mr-2" />
+              <Upload className="h-4 w-4" />
+              {saving ? "Saving..." : "Save Profile"}
+            </Button>
+          </div>
+        </NeoPanel>
+      </div>
     </div>
   );
 }

@@ -1,8 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import {
+  NeoActionFooter,
+  NeoFieldLabel,
+  NeoFormGrid,
+  NeoInput,
+  NeoModal,
+  neoFormErrorClassName,
+} from "@/components/base";
+import { Dialog } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { addSubcontractorAction } from "./actions";
 
@@ -65,14 +73,11 @@ export function AddSubcontractorModal({ open, onOpenChange, onSuccess }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm border-border/60 p-5 rounded-md gap-4">
-        <DialogHeader>
-          <DialogTitle className="text-base font-semibold">Add Subcontractor</DialogTitle>
-        </DialogHeader>
+      <NeoModal title="Add subcontractor" className="max-w-md" bodyClassName="pb-0">
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Name (required)</label>
-            <Input
+          <div className="space-y-1.5">
+            <NeoFieldLabel required>Name</NeoFieldLabel>
+            <NeoInput
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Subcontractor name"
@@ -80,74 +85,72 @@ export function AddSubcontractorModal({ open, onOpenChange, onSuccess }: Props) 
               required
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Phone</label>
-            <Input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="Phone"
-              className="h-9 text-sm"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Email</label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              className="h-9 text-sm"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Address</label>
-            <Input
+          <NeoFormGrid>
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Phone</NeoFieldLabel>
+              <NeoInput
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Phone"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <NeoFieldLabel>Email</NeoFieldLabel>
+              <NeoInput
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                className="h-9 text-sm"
+              />
+            </div>
+          </NeoFormGrid>
+          <div className="space-y-1.5">
+            <NeoFieldLabel>Address</NeoFieldLabel>
+            <NeoInput
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Address"
               className="h-9 text-sm"
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">
-              Insurance expiration
-            </label>
-            <Input
+          <div className="space-y-1.5">
+            <NeoFieldLabel>Insurance expiration</NeoFieldLabel>
+            <NeoInput
               type="date"
               value={insuranceExpiration}
               onChange={(e) => setInsuranceExpiration(e.target.value)}
               className="h-9 text-sm"
             />
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Notes</label>
-            <Input
+          <div className="space-y-1.5">
+            <NeoFieldLabel>Notes</NeoFieldLabel>
+            <NeoInput
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Notes"
               className="h-9 text-sm"
             />
           </div>
-          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
-          <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
-            <button
+          {error ? <p className={neoFormErrorClassName}>{error}</p> : null}
+          <NeoActionFooter>
+            <Button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm hover:bg-accent hover:text-accent-foreground"
+              variant="outline"
+              size="sm"
+              className="h-8 rounded-sm"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="inline-flex h-9 items-center rounded-md border border-input bg-foreground px-3 text-sm text-background hover:bg-foreground/90 disabled:opacity-50"
-            >
+            </Button>
+            <Button type="submit" disabled={busy} size="sm" className="h-8 rounded-sm">
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving…" : "Add Subcontractor"}
-            </button>
-          </div>
+            </Button>
+          </NeoActionFooter>
         </form>
-      </DialogContent>
+      </NeoModal>
     </Dialog>
   );
 }

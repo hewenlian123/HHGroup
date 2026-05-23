@@ -1,16 +1,18 @@
 import Link from "next/link";
 import { AlertTriangle, ArrowUpRight, CheckCircle2 } from "lucide-react";
-import { PageHeader } from "@/components/page-header";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  KpiTile,
+  NeoAmount,
+  NeoPanel,
+  NeoStatus,
+  NeoTable,
+  PageHeader,
+  PageLayout,
+  neoFormErrorClassName,
+  neoFormNoticeClassName,
+} from "@/components/base";
+import { Button } from "@/components/ui/button";
+import { tableRawThClass } from "@/components/ui/table";
 import { getProjectFinancialReview } from "@/lib/financial/project-financial-review-db";
 import { cn } from "@/lib/utils";
 
@@ -47,22 +49,22 @@ export default async function ProjectFinancialReviewPage() {
   const rows = payload?.flaggedProjects ?? [];
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title="Project Financial Review"
-        subtitle="Internal contract-value cleanup list for projects where confirmed profit should stay guarded."
-        actions={
-          <Button asChild variant="outline" size="sm" className="h-9 rounded-sm">
-            <Link href="/projects">Back to projects</Link>
-          </Button>
-        }
-      />
-
-      {errorMessage ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {errorMessage}
-        </div>
-      ) : null}
+    <PageLayout
+      className="py-6"
+      divider={false}
+      header={
+        <PageHeader
+          title="Project Financial Review"
+          description="Internal contract-value cleanup list for projects where confirmed profit should stay guarded."
+          actions={
+            <Button asChild variant="outline" size="sm" className="h-9 rounded-sm">
+              <Link href="/projects">Back to projects</Link>
+            </Button>
+          }
+        />
+      }
+    >
+      {errorMessage ? <div className={neoFormErrorClassName}>{errorMessage}</div> : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="Review summary">
         {[
@@ -72,80 +74,71 @@ export default async function ProjectFinancialReviewPage() {
           ["Suspicious huge", payload?.summary.suspiciousHuge ?? 0],
           ["Mismatches", payload?.summary.mismatch ?? 0],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-md border border-border bg-card px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-              {label}
-            </p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{value}</p>
-          </div>
+          <KpiTile key={label} label={label} value={value} className="min-h-[92px]" />
         ))}
       </section>
 
-      <section className="space-y-3">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">Projects needing review</h2>
-            <p className="text-sm text-muted-foreground">
-              Read-only list. Use each project detail link to review context before editing values.
-            </p>
-          </div>
-          {payload ? (
-            <p className="text-sm text-muted-foreground">
+      <NeoPanel
+        title="Projects needing review"
+        description="Read-only list. Use each project detail link to review context before editing values."
+        action={
+          payload ? (
+            <p className="text-sm text-[var(--neo-text-secondary)]">
               {rows.length} of {payload.summary.totalProjects} projects flagged
             </p>
-          ) : null}
-        </div>
-
+          ) : null
+        }
+      >
         {rows.length === 0 && !errorMessage ? (
-          <div className="flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+          <div className={cn(neoFormNoticeClassName, "m-4 flex items-center gap-2")}>
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
             No contract value cleanup items found.
           </div>
         ) : null}
 
         {rows.length > 0 ? (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Project</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Contract / Budget</TableHead>
-                <TableHead className="text-right">Actual Cost</TableHead>
-                <TableHead>Profit Status</TableHead>
-                <TableHead>Issue Reason</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <NeoTable className="rounded-none border-0 shadow-none" tableClassName="min-w-[980px]">
+            <thead>
+              <tr>
+                <th className={tableRawThClass}>Project</th>
+                <th className={tableRawThClass}>Status</th>
+                <th className={cn(tableRawThClass, "text-right")}>Contract / Budget</th>
+                <th className={cn(tableRawThClass, "text-right")}>Actual Cost</th>
+                <th className={tableRawThClass}>Profit Status</th>
+                <th className={tableRawThClass}>Issue Reason</th>
+                <th className={cn(tableRawThClass, "text-right")}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
               {rows.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>
+                <tr key={row.id}>
+                  <td className="px-3 py-2">
                     <div className="min-w-[180px]">
                       <p className="font-medium text-foreground">{row.name}</p>
                       <p className="text-xs text-muted-foreground">Budget {money(row.budget)}</p>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="rounded-sm">
-                      {statusLabel(row.status)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    <div>{money(row.currentContractValue)}</div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <NeoStatus label={statusLabel(row.status)} variant="default" />
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    <NeoAmount>{money(row.currentContractValue)}</NeoAmount>
                     {row.contractAmount != null && row.budget != null ? (
                       <p className="text-xs text-muted-foreground">
                         Contract {money(row.contractAmount)}
                       </p>
                     ) : null}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">{money(row.actualCost)}</TableCell>
-                  <TableCell>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    <NeoAmount>{money(row.actualCost)}</NeoAmount>
+                  </td>
+                  <td className="px-3 py-2">
                     <span
                       className={cn(
                         "inline-flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium",
                         row.confirmedProfitStatus === "needs_review"
-                          ? "bg-amber-50 text-amber-800"
-                          : "bg-emerald-50 text-emerald-800"
+                          ? "border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold-soft)]"
+                          : "border border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)]"
                       )}
                     >
                       {row.confirmedProfitStatus === "needs_review" ? (
@@ -157,30 +150,33 @@ export default async function ProjectFinancialReviewPage() {
                         "Ready"
                       )}
                     </span>
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td className="px-3 py-2">
                     <div className="flex max-w-[280px] flex-wrap gap-1">
                       {row.issues.map((issue) => (
-                        <Badge key={issue.code} variant="secondary" className="rounded-sm">
+                        <span
+                          key={issue.code}
+                          className="rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 py-1 text-[11px] text-[var(--neo-text-secondary)]"
+                        >
                           {issue.label}
-                        </Badge>
+                        </span>
                       ))}
                     </div>
-                  </TableCell>
-                  <TableCell className="text-right">
+                  </td>
+                  <td className="px-3 py-2 text-right">
                     <Button asChild variant="ghost" size="sm" className="h-8 rounded-sm">
                       <Link href={row.detailHref} aria-label={`Open ${row.name}`}>
                         Open
                         <ArrowUpRight className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
                       </Link>
                     </Button>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
+            </tbody>
+          </NeoTable>
         ) : null}
-      </section>
-    </div>
+      </NeoPanel>
+    </PageLayout>
   );
 }
