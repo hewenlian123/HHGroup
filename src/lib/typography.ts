@@ -1,38 +1,37 @@
 export const TYPO = {
   /** 1. Page title */
   pageTitle:
-    "text-[34px] leading-tight font-semibold tracking-normal text-zinc-950 dark:text-zinc-50 md:text-[36px]",
+    "text-[34px] leading-tight font-semibold tracking-normal text-[var(--neo-text-primary)] md:text-[36px]",
 
   /** 2. Page subtitle */
-  pageSubtitle: "text-[15px] leading-relaxed text-zinc-500 dark:text-zinc-400",
+  pageSubtitle: "text-[15px] leading-relaxed text-[var(--neo-text-secondary)]",
 
   /** 3. Section label */
-  sectionLabel:
-    "text-[11px] font-medium uppercase tracking-normal text-zinc-400 dark:text-zinc-500",
+  sectionLabel: "text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]",
 
   /** 4. KPI value */
-  kpiValue: "tabular-nums tracking-normal font-semibold text-zinc-950 dark:text-zinc-50",
+  kpiValue: "tabular-nums tracking-normal font-semibold text-[var(--neo-text-primary)]",
 
   /** 5. KPI subtitle */
-  kpiSubtitle: "text-[13px] font-medium text-zinc-500 dark:text-zinc-400",
+  kpiSubtitle: "text-[13px] font-medium text-[var(--neo-text-secondary)]",
 
   /** 5a. KPI label */
-  kpiLabel: "text-[11px] font-medium uppercase tracking-normal text-zinc-500 dark:text-zinc-400",
+  kpiLabel: "text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]",
 
   /** 6. Table headers */
-  tableHeader: "text-[11px] font-medium uppercase tracking-normal text-zinc-400 dark:text-zinc-500",
+  tableHeader: "text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]",
 
   /** 7. Primary names */
-  primaryName: "text-[15px] font-medium tracking-normal text-zinc-900 dark:text-zinc-100",
+  primaryName: "text-[15px] font-medium tracking-normal text-[var(--neo-text-primary)]",
 
   /** 8. Secondary IDs */
-  secondaryId: "font-mono text-[11px] tabular-nums text-zinc-400 dark:text-zinc-500",
+  secondaryId: "font-mono text-[11px] tabular-nums text-[var(--neo-text-tertiary)]",
 
   /** 9. Financial amounts */
-  amount: "tabular-nums tracking-normal font-semibold text-zinc-950 dark:text-zinc-50",
+  amount: "tabular-nums tracking-normal font-semibold text-[var(--neo-text-primary)]",
 
   /** 10. Dates */
-  date: "font-mono text-[13px] tabular-nums tracking-normal text-zinc-500 dark:text-zinc-400",
+  date: "font-mono text-[13px] tabular-nums tracking-normal text-[var(--neo-text-secondary)]",
 
   /** 11. Status chips */
   chip: "text-[12px] font-medium tracking-normal",
@@ -41,7 +40,7 @@ export const TYPO = {
   button: "text-[14px] font-medium tracking-normal",
 
   /** 13. Muted body copy */
-  mutedText: "text-sm leading-relaxed text-zinc-500 dark:text-zinc-400",
+  mutedText: "text-sm leading-relaxed text-[var(--neo-text-secondary)]",
 } as const;
 
 export const NEO = {
@@ -78,14 +77,14 @@ export const OS = {
   workspace: NEO.workspace,
   card: NEO.surface,
   cardHover:
-    "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--neo-border-strong)] hover:shadow-[0_18px_44px_rgba(17,19,21,0.08)]",
+    "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--neo-border-strong)] hover:shadow-[var(--neo-shadow-panel-hover)]",
   iconWell:
     "rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-2 text-[var(--neo-text-secondary)]",
   tableShell: `relative w-full overflow-hidden ${NEO.surface}`,
   tableDivider: "border-[var(--neo-border)]",
   filterSurface: NEO.surface,
   emptyState:
-    "rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-5 py-12 text-center",
+    "rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-5 py-12 text-center shadow-[var(--neo-shadow-control)]",
   primaryButton: NEO.buttonPrimary,
   secondaryButton: NEO.buttonSecondary,
   emeraldAccent: "text-emerald-700 dark:text-emerald-400",

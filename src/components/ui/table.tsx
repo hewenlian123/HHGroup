@@ -90,7 +90,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
       className={cn(
         listTableRowStaticClassName,
         "border-l-2 border-l-transparent transition-colors",
-        "data-[state=selected]:border-l-[var(--neo-gold)] data-[state=selected]:bg-[rgb(184_137_45_/_0.08)]",
+        "data-[state=selected]:border-l-[var(--neo-gold)] data-[state=selected]:bg-[rgb(184_147_90_/_0.08)]",
         "[&>td:first-child]:font-medium",
         className
       )}

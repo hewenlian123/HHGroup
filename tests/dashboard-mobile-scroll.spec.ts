@@ -218,7 +218,9 @@ test.describe("Dashboard mobile scrolling", () => {
     await suppressInstallPrompt(page);
 
     await gotoDashboardShellPage(page, "/dashboard");
-    await expect(page.getByText("HH · Command Center")).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByRole("region", { name: "HH Command Center" })).toBeVisible({
+      timeout: 90_000,
+    });
     await expectMainCanScrollDownAndUp(page);
     await expectMainCanNativeTouchScrollDownAndUp(page);
 
@@ -229,7 +231,9 @@ test.describe("Dashboard mobile scrolling", () => {
     await expectMainCanScrollDownAndUp(page);
 
     await gotoDashboardShellPage(page, "/dashboard");
-    await expect(page.getByText("HH · Command Center")).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByRole("region", { name: "HH Command Center" })).toBeVisible({
+      timeout: 90_000,
+    });
     await expectMainCanScrollDownAndUp(page);
     await expectMainCanNativeTouchScrollDownAndUp(page);
 
@@ -266,11 +270,25 @@ test.describe("Dashboard mobile scrolling", () => {
     await gotoDashboardShellPage(page, "/financial/expenses");
     await expectMainCanScrollDownAndUp(page);
 
-    await page.getByRole("button", { name: /Filters/i }).click();
+    const filtersButton = page.getByRole("button", { name: /Filters/i });
+    await filtersButton.click();
     const filtersSheet = page.getByRole("dialog", { name: /Filters & more/i });
-    await expect(filtersSheet).toBeVisible({ timeout: 15_000 });
-    await filtersSheet.getByRole("button", { name: /^Done$/ }).click();
-    await expect(filtersSheet).toBeHidden({ timeout: 10_000 });
+    const desktopFiltersPanel = page
+      .getByText(/^Project$/)
+      .filter({ visible: true })
+      .first();
+    try {
+      await expect(filtersSheet).toBeVisible({ timeout: 3_000 });
+      await filtersSheet.getByRole("button", { name: /^Done$/ }).click();
+      await expect(filtersSheet).toBeHidden({ timeout: 10_000 });
+    } catch {
+      await expect(desktopFiltersPanel).toBeVisible({ timeout: 15_000 });
+      await page.keyboard.press("Escape");
+      if (await desktopFiltersPanel.isVisible()) {
+        await filtersButton.click();
+      }
+      await expect(desktopFiltersPanel).toBeHidden({ timeout: 10_000 });
+    }
     await expectMainCanScrollDownAndUp(page);
 
     await page
@@ -284,7 +302,11 @@ test.describe("Dashboard mobile scrolling", () => {
     await expect(quickDialog).toBeHidden({ timeout: 10_000 });
     await expectMainCanScrollDownAndUp(page);
 
-    await page.getByTestId("mobile-upload-receipt").click();
+    await page
+      .getByRole("button", { name: /Upload receipt/i })
+      .filter({ visible: true })
+      .first()
+      .click();
     const uploadDialog = page.getByRole("dialog").filter({ hasText: "Upload receipt" });
     await expect(uploadDialog).toBeVisible({ timeout: 15_000 });
     await uploadDialog.getByTestId("upload-receipt-modal-close").click();

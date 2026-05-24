@@ -11,7 +11,7 @@ export const motionTransition = "transition-all duration-150 ease-out";
 
 /** Hover on buttons, links, list tiles (not heavy cards). */
 export const motionInteractiveHover = cn(
-  "hover:-translate-y-px hover:bg-[var(--neo-surface-muted)]"
+  "hover:-translate-y-px hover:bg-[var(--neo-surface-hover)]"
 );
 
 /** Press feedback for clickable controls (desktop + mobile scale). */
@@ -20,7 +20,7 @@ export const motionClickableActive = cn(
 );
 
 /** Dense icon-only controls (toolbar, ghost icons). */
-export const motionIconButtonHover = "hover:bg-[var(--neo-surface-muted)]";
+export const motionIconButtonHover = "hover:bg-[var(--neo-surface-hover)]";
 
 export const motionIconButtonActive = "active:scale-[0.95] active:duration-100";
 
@@ -31,7 +31,7 @@ export const motionRowPress = "active:scale-[0.99] active:duration-100";
 export const motionListTableRow = cn(
   "group",
   motionTransition,
-  "hover:bg-[var(--neo-surface-muted)]",
+  "hover:bg-[var(--neo-surface-hover)]",
   motionRowPress
 );
 

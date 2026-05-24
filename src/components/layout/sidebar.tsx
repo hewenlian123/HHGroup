@@ -334,7 +334,7 @@ export function Sidebar({
       active
         ? cn(
             "font-medium text-white",
-            "bg-[rgb(184_137_45_/_0.12)] hover:bg-[rgb(184_137_45_/_0.17)]",
+            "bg-[rgb(184_147_90_/_0.12)] hover:bg-[rgb(184_147_90_/_0.17)]",
             "before:absolute before:inset-y-2 before:left-0 before:w-px before:rounded-full before:bg-[var(--neo-gold-soft)] before:content-['']"
           )
         : "font-normal text-zinc-300 hover:bg-white/[0.038] active:bg-white/[0.055]"

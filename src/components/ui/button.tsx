@@ -53,7 +53,7 @@ const buttonVariants = cva(
       {
         size: "icon",
         class: cn(
-          "hover:!-translate-y-px hover:!bg-slate-100 dark:hover:!bg-muted/50",
+          "hover:!-translate-y-px hover:!bg-[var(--neo-surface-hover)]",
           motionIconButtonActive,
           "max-md:active:!scale-[0.95]"
         ),
