@@ -14,6 +14,7 @@ import { BreadcrumbOverrideProvider } from "@/contexts/breadcrumb-override-conte
 import { LaborAddEntryProvider } from "@/contexts/labor-add-entry-context";
 import { AttachmentPreviewProvider } from "@/contexts/attachment-preview-context";
 import { SystemHealthPoller } from "@/components/system-health/system-health-poller";
+import { NeoCommandPalette } from "@/components/command/neo-command-palette";
 import { cn } from "@/lib/utils";
 import { useIsTabletNav } from "@/hooks/use-is-tablet-nav";
 import { ScrollLockRecovery } from "./scroll-lock-recovery";
@@ -33,6 +34,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     workerModeUrl;
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
+  const [commandOpen, setCommandOpen] = React.useState(false);
   /** When true on tablet, sidebar shows labels; when false, icon rail only. */
   const [tabletSidebarExpanded, setTabletSidebarExpanded] = React.useState(false);
 
@@ -118,6 +120,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <Topbar
                     onOpenSidebar={() => setMobileOpen(true)}
                     onToggleSidebar={handleToggleSidebar}
+                    onOpenCommandPalette={() => setCommandOpen(true)}
                   />
                   <main
                     data-app-scroll-root
@@ -130,6 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   </main>
                   <BottomNav className="fixed bottom-0 left-0 right-0 z-30 sm:hidden" />
                   <FloatingActionButton />
+                  <NeoCommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
                 </div>
               </div>
               <PWAInstallPrompt />
