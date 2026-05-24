@@ -86,34 +86,41 @@ async function postCommissionReceiptWithProgress(
   });
 }
 
-const COMMISSION_PAGE_BG = "bg-zinc-50 dark:bg-background";
+const COMMISSION_PAGE_BG = "dark neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]";
 const COMMISSION_MODAL =
-  "max-w-[480px] w-full gap-0 border-0 p-8 shadow-[0_8px_30px_rgba(0_0_0_0.08)] rounded-xl sm:rounded-xl sm:max-w-[480px]";
-const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-text-secondary";
+  "max-w-[480px] w-full gap-0 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:max-w-[480px] md:p-8";
+const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-[var(--neo-text-secondary)]";
 const COMMISSION_FIELD =
-  "h-10 rounded-lg border border-gray-100 bg-white text-[14px] focus-visible:border-black focus-visible:ring-1 focus-visible:ring-black";
+  "h-10 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] text-[var(--neo-text-primary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
 
 const commissionsShell =
-  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-2xl";
 
 const kpiTile =
-  "rounded-xl border border-zinc-200/40 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.028),0_1px_12px_rgba(0,0,0,0.028)] dark:border-border/35 dark:bg-card/80 dark:shadow-none";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
 
 const kpiIcon =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100/45 text-zinc-400 dark:bg-muted/45 dark:text-muted-foreground";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
 
 const RECEIPT_UPLOAD_MODAL =
-  "max-w-[480px] w-full gap-0 rounded-[14px] border-[0.5px] border-gray-100 bg-white p-8 shadow-[0_8px_30px_rgba(0_0_0_0.12)] sm:max-w-[480px]";
+  "max-w-[480px] w-full gap-0 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:max-w-[480px] md:p-8";
+const COMMISSION_DIALOG_FOOTER = "mt-6 border-t border-[var(--neo-border)] bg-transparent pt-4";
+const COMMISSION_SECONDARY_BUTTON =
+  "h-10 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] font-medium text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]";
+const COMMISSION_PRIMARY_BUTTON =
+  "h-10 rounded-lg bg-[var(--neo-gold)] text-[14px] font-medium text-zinc-950 hover:bg-[var(--neo-gold-soft)]";
+const COMMISSION_DANGER_BUTTON =
+  "h-10 rounded-lg bg-rose-600 text-[14px] font-medium text-white hover:bg-rose-700";
 function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
   const map = {
     unpaid: {
-      bg: "bg-zinc-100/80 ring-1 ring-zinc-200/70 dark:bg-muted/35 dark:ring-border/40",
-      text: "text-muted-foreground",
+      bg: "bg-[var(--neo-surface-muted)] ring-1 ring-[var(--neo-border)]",
+      text: "text-[var(--neo-text-secondary)]",
       label: "Outstanding",
     },
     partial: {
-      bg: "bg-amber-50 ring-1 ring-amber-200/60 dark:bg-amber-900/20 dark:ring-amber-900/30",
-      text: "text-amber-800 dark:text-amber-200",
+      bg: "bg-amber-500/10 ring-1 ring-amber-500/25",
+      text: "text-amber-200",
       label: "Partial",
     },
     paid: {
@@ -141,7 +148,7 @@ type Row = CommissionWithPaid & { project_name: string };
 function CommissionStatusChip({ row }: { row: Row }) {
   if ((Number(row.commission_amount) || 0) <= 0) {
     return (
-      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-zinc-100/80 text-muted-foreground ring-1 ring-zinc-200/70 dark:bg-muted/35 dark:ring-border/40">
+      <span className="inline-flex items-center rounded-full bg-[var(--neo-surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--neo-text-secondary)] ring-1 ring-[var(--neo-border)]">
         No commission
       </span>
     );
@@ -897,7 +904,7 @@ export function CommissionsClient({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] border-collapse text-[13px] lg:min-w-0">
               <thead>
-                <tr className="border-b border-[#D6D3CD] text-left text-[#9CA3AF]">
+                <tr className="border-b border-[var(--neo-border)] text-left text-[var(--neo-text-tertiary)]">
                   <th className="py-2 pr-4 text-[11px] font-semibold uppercase tracking-wide">
                     Date
                   </th>
@@ -919,7 +926,7 @@ export function CommissionsClient({
                 {(paymentsByCommission[r.id] ?? []).map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b border-[#D6D3CD]/80 last:border-b-0"
+                    className="border-b border-[var(--neo-border)] last:border-b-0"
                     data-testid={`financial-payment-row-${p.id}`}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -929,7 +936,9 @@ export function CommissionsClient({
                     <td className="py-2.5 pr-4 text-right font-mono tabular-nums text-text-primary">
                       {fmtUsd(p.amount)}
                     </td>
-                    <td className="py-2.5 pr-4 text-[#374151]">{p.payment_method}</td>
+                    <td className="py-2.5 pr-4 text-[var(--neo-text-secondary)]">
+                      {p.payment_method}
+                    </td>
                     <td className="max-w-[16rem] truncate py-2.5 pr-4 text-text-secondary">
                       {p.note || "—"}
                     </td>
@@ -954,7 +963,7 @@ export function CommissionsClient({
                             <button
                               type="button"
                               disabled={receiptDeletingPaymentId === p.id}
-                              className="rounded-md p-1.5 text-red-600 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-red-700 active:scale-[0.95] active:duration-100 disabled:opacity-50 dark:hover:bg-muted/50"
+                              className="rounded-md p-1.5 text-rose-500 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--neo-surface-muted)] hover:text-rose-400 active:scale-[0.95] active:duration-100 disabled:opacity-50"
                               data-testid={`financial-payment-receipt-remove-${p.id}`}
                               aria-label="Remove uploaded receipt"
                               onClick={(e) => void deleteCommissionPaymentReceipt(r, p, e)}
@@ -969,7 +978,7 @@ export function CommissionsClient({
                         ) : (
                           <button
                             type="button"
-                            className="rounded-md p-1.5 text-[#9CA3AF] transition-all duration-150 ease-out hover:-translate-y-px hover:bg-gray-100 hover:text-text-secondary active:scale-[0.95] active:duration-100 dark:hover:bg-muted/50"
+                            className="rounded-md p-1.5 text-[var(--neo-text-tertiary)] transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-secondary)] active:scale-[0.95] active:duration-100"
                             data-testid={`financial-payment-receipt-upload-${p.id}`}
                             aria-label="Upload receipt"
                             onClick={(e) => openReceiptUploadModal(r, p, e)}
@@ -979,7 +988,7 @@ export function CommissionsClient({
                         )}
                         <button
                           type="button"
-                          className="rounded-md p-1.5 text-text-secondary hover:bg-white hover:text-text-primary"
+                          className="rounded-md p-1.5 text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
                           data-testid={`financial-payment-view-pdf-${p.id}`}
                           aria-label="View payment receipt PDF"
                           onClick={(e) => {
@@ -991,7 +1000,7 @@ export function CommissionsClient({
                         </button>
                         <button
                           type="button"
-                          className="rounded-md p-1.5 text-text-secondary hover:bg-white hover:text-text-primary"
+                          className="rounded-md p-1.5 text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
                           data-testid={`financial-payment-edit-${p.id}`}
                           aria-label="Edit payment"
                           onClick={(e) => openPaymentRecordEdit(r, p, e)}
@@ -1000,7 +1009,7 @@ export function CommissionsClient({
                         </button>
                         <button
                           type="button"
-                          className="rounded-md p-1.5 text-red-600 hover:bg-white hover:text-red-700"
+                          className="rounded-md p-1.5 text-rose-500 hover:bg-[var(--neo-surface-muted)] hover:text-rose-400"
                           data-testid={`financial-payment-delete-${p.id}`}
                           aria-label="Delete payment"
                           onClick={(e) => openPaymentDelete(r, p, e)}
@@ -1035,7 +1044,7 @@ export function CommissionsClient({
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            className="gap-1 border-b border-white/10 pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--neo-canvas-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--neo-canvas-text-secondary)]"
             title="Commission Payments"
             subtitle="Commission tracking and payout history by project, person, and role."
           />
@@ -1050,7 +1059,7 @@ export function CommissionsClient({
           activeFilterCount={activeDrawerFilterCount}
           searchSlot={
             <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9CA3AF]" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
               <Input
                 value={filterSearch}
                 onChange={(e) => setFilterSearch(e.target.value)}
@@ -1098,7 +1107,10 @@ export function CommissionsClient({
         </MobileFilterSheet>
 
         {loadError ? (
-          <p className="border-b border-gray-100 pb-3 text-sm text-destructive" role="alert">
+          <p
+            className="border-b border-[var(--neo-border)] pb-3 text-sm text-destructive"
+            role="alert"
+          >
             {loadError}
           </p>
         ) : null}
@@ -1219,7 +1231,7 @@ export function CommissionsClient({
 
         {!loadError && rows.length === 0 ? (
           <div className={cn(commissionsShell, "px-4 py-10 text-center")}>
-            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200/70 bg-zinc-50/80 text-zinc-600 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-300">
+            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]">
               <FileText className="h-5 w-5" aria-hidden />
             </span>
             <p className="text-sm font-medium text-foreground">No commissions yet</p>
@@ -1238,13 +1250,13 @@ export function CommissionsClient({
 
         <div className="md:hidden">
           {!loadError && filteredRows.length > 0 ? (
-            <div className="divide-y divide-gray-100 dark:divide-border/60">
+            <div className="divide-y divide-[var(--neo-border)]">
               {filteredRows.map((r) => (
                 <div key={r.id} className="py-2.5">
                   <div className="flex min-h-[48px] items-start gap-2">
                     <button
                       type="button"
-                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-text-secondary hover:bg-[#F3F4F6]"
+                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
                       data-testid={`financial-commission-expand-${r.id}`}
                       aria-expanded={expandedIds.has(r.id)}
                       aria-label={expandedIds.has(r.id) ? "Collapse payments" : "Expand payments"}
@@ -1277,7 +1289,7 @@ export function CommissionsClient({
                     </div>
                   </div>
                   <div
-                    className="mt-2 flex flex-wrap justify-end gap-2 border-t border-gray-100/80 pt-2 dark:border-border/40"
+                    className="mt-2 flex flex-wrap justify-end gap-2 border-t border-[var(--neo-border)] pt-2"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <RowActionsMenu
@@ -1299,7 +1311,7 @@ export function CommissionsClient({
                     />
                   </div>
                   {expandedIds.has(r.id) ? (
-                    <div className="mt-2 border-t border-gray-100 bg-slate-50/80 px-2 py-3 dark:border-border/40">
+                    <div className="mt-2 border-t border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 py-3">
                       <CommissionPaymentDetailsPanel r={r} />
                     </div>
                   ) : null}
@@ -1417,8 +1429,8 @@ export function CommissionsClient({
                         </td>
                       </tr>
                       {expandedIds.has(r.id) ? (
-                        <tr className="border-b border-[#E8E4DD]">
-                          <td colSpan={9} className="bg-slate-50/90 p-0">
+                        <tr className="border-b border-[var(--neo-border)]">
+                          <td colSpan={9} className="bg-[var(--neo-surface-muted)] p-0">
                             <div className="px-6 py-4 pl-14">
                               <CommissionPaymentDetailsPanel r={r} />
                             </div>
@@ -1494,11 +1506,11 @@ export function CommissionsClient({
                 />
               </div>
               {editError && <p className="text-sm text-destructive">{editError}</p>}
-              <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+              <DialogFooter className={COMMISSION_DIALOG_FOOTER}>
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                  className={COMMISSION_SECONDARY_BUTTON}
                   data-testid="financial-commission-edit-cancel"
                   onClick={() => setEditModalOpen(false)}
                 >
@@ -1506,7 +1518,7 @@ export function CommissionsClient({
                 </Button>
                 <Button
                   type="submit"
-                  className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
+                  className={COMMISSION_PRIMARY_BUTTON}
                   disabled={editSubmitting}
                   data-testid="financial-commission-edit-save"
                 >
@@ -1594,11 +1606,11 @@ export function CommissionsClient({
                 />
               </div>
               {paymentEditError && <p className="text-sm text-destructive">{paymentEditError}</p>}
-              <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+              <DialogFooter className={COMMISSION_DIALOG_FOOTER}>
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                  className={COMMISSION_SECONDARY_BUTTON}
                   data-testid="financial-payment-edit-cancel"
                   onClick={() => setPaymentEditOpen(false)}
                 >
@@ -1606,7 +1618,7 @@ export function CommissionsClient({
                 </Button>
                 <Button
                   type="submit"
-                  className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
+                  className={COMMISSION_PRIMARY_BUTTON}
                   disabled={paymentEditSubmitting}
                   data-testid="financial-payment-edit-save"
                 >
@@ -1690,11 +1702,11 @@ export function CommissionsClient({
                 />
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+              <DialogFooter className={COMMISSION_DIALOG_FOOTER}>
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                  className={COMMISSION_SECONDARY_BUTTON}
                   data-testid="financial-record-payment-cancel"
                   onClick={() => setPaymentModalOpen(false)}
                 >
@@ -1702,7 +1714,7 @@ export function CommissionsClient({
                 </Button>
                 <Button
                   type="submit"
-                  className="h-10 rounded-lg bg-[#111827] text-[14px] font-medium text-white hover:bg-black/90"
+                  className={COMMISSION_PRIMARY_BUTTON}
                   disabled={submitting}
                   data-testid="financial-record-payment-save"
                 >
@@ -1729,11 +1741,11 @@ export function CommissionsClient({
             <p className="text-[13px] leading-relaxed text-text-secondary">
               Remove this payment record? This cannot be undone.
             </p>
-            <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+            <DialogFooter className={COMMISSION_DIALOG_FOOTER}>
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                className={COMMISSION_SECONDARY_BUTTON}
                 onClick={() => setPaymentDeleteTarget(null)}
                 disabled={paymentDeleteSubmitting}
               >
@@ -1741,7 +1753,7 @@ export function CommissionsClient({
               </Button>
               <Button
                 type="button"
-                className="h-10 rounded-lg bg-red-600 text-[14px] font-medium text-white hover:bg-red-700"
+                className={COMMISSION_DANGER_BUTTON}
                 disabled={paymentDeleteSubmitting}
                 onClick={() => void confirmDeletePaymentRecord()}
               >
@@ -1770,11 +1782,11 @@ export function CommissionsClient({
               </span>
               ? This cannot be undone.
             </p>
-            <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+            <DialogFooter className={COMMISSION_DIALOG_FOOTER}>
               <Button
                 type="button"
                 variant="outline"
-                className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                className={COMMISSION_SECONDARY_BUTTON}
                 onClick={() => setCommissionDeleteTarget(null)}
                 disabled={commissionDeleteSubmitting}
               >
@@ -1782,7 +1794,7 @@ export function CommissionsClient({
               </Button>
               <Button
                 type="button"
-                className="h-10 rounded-lg bg-red-600 text-[14px] font-medium text-white hover:bg-red-700"
+                className={COMMISSION_DANGER_BUTTON}
                 disabled={commissionDeleteSubmitting}
                 onClick={() => void confirmDeleteCommission()}
               >
@@ -1825,8 +1837,8 @@ export function CommissionsClient({
                   className={cn(
                     "mt-4 flex cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed px-6 py-10 transition-colors outline-none",
                     receiptUploadDragging
-                      ? "border-emerald-500 bg-emerald-50"
-                      : "border-[#D1D5DB] bg-[#F9FAFB]",
+                      ? "border-emerald-500/60 bg-emerald-500/10"
+                      : "border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)]",
                     receiptUploadSubmitting && "pointer-events-none opacity-70"
                   )}
                   onClick={() => !receiptUploadSubmitting && receiptUploadInputRef.current?.click()}
@@ -1861,15 +1873,17 @@ export function CommissionsClient({
                     if (f) void submitReceiptFile(f);
                   }}
                 >
-                  <Upload className="mb-3 h-8 w-8 text-[#9CA3AF]" aria-hidden />
-                  <p className="text-center text-[14px] font-medium text-[#374151]">
+                  <Upload className="mb-3 h-8 w-8 text-[var(--neo-text-tertiary)]" aria-hidden />
+                  <p className="text-center text-[14px] font-medium text-[var(--neo-text-primary)]">
                     Drag &amp; drop or click to upload
                   </p>
-                  <p className="mt-1 text-center text-[12px] text-[#9CA3AF]">JPG, PNG, or PDF</p>
+                  <p className="mt-1 text-center text-[12px] text-[var(--neo-text-tertiary)]">
+                    JPG, PNG, or PDF
+                  </p>
                 </div>
                 {receiptUploadSubmitting ? (
                   <div className="mt-4 space-y-2">
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-[#E5E7EB]">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--neo-surface-muted)]">
                       <div
                         className="h-full rounded-full bg-emerald-500 transition-[width] duration-150"
                         style={{ width: `${Math.max(0, Math.min(100, receiptUploadProgress))}%` }}
@@ -1883,11 +1897,11 @@ export function CommissionsClient({
                     {receiptUploadError}
                   </p>
                 ) : null}
-                <DialogFooter className="mt-6 border-t border-[#F0EDE8] bg-transparent pt-4">
+                <DialogFooter className={COMMISSION_DIALOG_FOOTER}>
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-10 rounded-lg border-gray-100 bg-white text-[14px] font-medium text-text-secondary hover:bg-[#F9FAFB]"
+                    className={COMMISSION_SECONDARY_BUTTON}
                     disabled={receiptUploadSubmitting}
                     onClick={() => resetReceiptUploadModal()}
                   >

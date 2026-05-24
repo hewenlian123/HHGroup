@@ -3,12 +3,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 const cardSkeleton =
-  "rounded-2xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80";
+  "rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
 
 export default function FinanceOwnerDashboardLoading() {
   return (
     <PageLayout
-      className="bg-slate-50 dark:bg-background"
+      className="dark neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]"
       divider={false}
       header={
         <PageHeader
@@ -44,7 +44,7 @@ export default function FinanceOwnerDashboardLoading() {
             <Skeleton className="mt-3 h-7 w-48 max-w-full" />
             <Skeleton className="mt-2 h-4 w-full max-w-md" />
             <Skeleton className="mt-10 min-h-[260px] w-full rounded-xl" />
-            <div className="mt-10 space-y-2 border-t border-zinc-100 pt-8 dark:border-border/50">
+            <div className="mt-10 space-y-2 border-t border-[var(--neo-border)] pt-8">
               {Array.from({ length: 4 }).map((_, j) => (
                 <Skeleton key={j} className="h-12 w-full rounded-xl" />
               ))}

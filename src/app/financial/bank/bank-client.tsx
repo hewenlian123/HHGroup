@@ -780,7 +780,7 @@ export default function BankReconcileClient() {
                       <TableRow
                         key={tx.id}
                         className={cn(
-                          "hh-row-interactive cursor-pointer border-b border-zinc-100/50 dark:border-border/30",
+                          "hh-row-interactive cursor-pointer border-b border-[var(--neo-border)]",
                           selectedIds.has(tx.id) &&
                             "border-l-[var(--neo-gold)] bg-[rgb(184_137_45_/_0.08)]"
                         )}

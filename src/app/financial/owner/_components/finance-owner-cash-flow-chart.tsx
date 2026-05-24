@@ -6,9 +6,9 @@ import { fmtUsdAxis, fmtUsdFull } from "../_lib/format-owner-currency";
 export function FinanceOwnerCashFlowChart({ points }: { points: FinanceOwnerCashFlowPoint[] }) {
   if (points.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200/90 bg-zinc-50/40 px-5 py-14 text-center transition-colors duration-200 ease-out dark:border-border/60 dark:bg-muted/15 max-md:px-4 max-md:py-16">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-muted">
-          <Activity className="h-6 w-6 text-zinc-400 dark:text-zinc-500" aria-hidden />
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-5 py-14 text-center transition-colors duration-200 ease-out max-md:px-4 max-md:py-16">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)]">
+          <Activity className="h-6 w-6 text-[var(--neo-text-tertiary)]" aria-hidden />
         </div>
         <p className="mt-4 text-sm font-semibold text-foreground">No cash movement yet</p>
         <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
@@ -139,7 +139,7 @@ export function FinanceOwnerCashFlowChart({ points }: { points: FinanceOwnerCash
           ))}
         </svg>
       </div>
-      <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-2 border-t border-zinc-100 pt-5 text-[11px] font-medium tracking-wide text-muted-foreground dark:border-border/40">
+      <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-2 border-t border-[var(--neo-border)] pt-5 text-[11px] font-medium tracking-wide text-muted-foreground">
         <span className="inline-flex items-center gap-2">
           <span className="h-[3px] w-6 rounded-full bg-[rgb(16_163_127)]" />
           Cash in

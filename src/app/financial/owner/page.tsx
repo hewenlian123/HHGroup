@@ -165,7 +165,7 @@ function ProfitMarginTrack({ row }: { row: FinanceOwnerProjectRow }) {
           {pctLabel}
         </span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-muted/50">
+      <div className="h-2 overflow-hidden rounded-full bg-[var(--neo-surface-muted)]">
         <div
           className={cn(
             "h-full max-w-full rounded-full transition-[width] duration-300 ease-out",
@@ -183,10 +183,7 @@ function ProfitMarginTrack({ row }: { row: FinanceOwnerProjectRow }) {
 const projectCols =
   "md:grid md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.72fr)_minmax(0,0.72fr)_minmax(0,0.78fr)_minmax(0,1fr)_minmax(0,0.85fr)] md:gap-x-4 md:gap-y-0";
 
-const projectHeaderGrid = cn(
-  projectCols,
-  "hidden border-b border-zinc-100 pb-3 dark:border-border/60"
-);
+const projectHeaderGrid = cn(projectCols, "hidden border-b border-[var(--neo-border)] pb-3");
 
 const projectRowGridMd = cn(projectCols, "md:items-center md:py-5");
 
@@ -204,8 +201,8 @@ function OwnerProjectList({
   if (rows.length === 0) {
     return (
       <div data-testid={testId} className="min-w-0">
-        <div className="flex flex-col items-center rounded-xl border border-dashed border-zinc-200/90 bg-zinc-50/40 px-5 py-12 text-center transition-colors duration-200 ease-out dark:border-border/60 dark:bg-muted/15 max-md:px-4 max-md:py-14">
-          <Layers className="h-10 w-10 text-zinc-300 dark:text-zinc-600" aria-hidden />
+        <div className="flex flex-col items-center rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-5 py-12 text-center transition-colors duration-200 ease-out max-md:px-4 max-md:py-14">
+          <Layers className="h-10 w-10 text-[var(--neo-text-tertiary)]" aria-hidden />
           <p className="mt-4 text-sm font-semibold text-foreground">{emptyTitle}</p>
           <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">{emptyBody}</p>
         </div>
@@ -229,14 +226,14 @@ function OwnerProjectList({
         <div className="text-right">Health</div>
       </div>
 
-      <div className="divide-y divide-zinc-100 dark:divide-border/50">
+      <div className="divide-y divide-[var(--neo-border)]">
         {rows.map((r) => (
           <div
             key={r.projectId}
             className={cn(
-              "flex flex-col gap-4 rounded-xl border border-zinc-100 bg-zinc-50/30 px-4 py-4 transition-colors duration-200 ease-out hover:bg-zinc-50/90 max-md:gap-3 md:border-0 md:bg-transparent md:px-0 dark:border-border/50 dark:bg-muted/10 md:dark:border-transparent md:dark:bg-transparent md:dark:hover:bg-muted/25",
+              "flex flex-col gap-4 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-4 py-4 transition-colors duration-200 ease-out hover:bg-[var(--neo-surface-raised)] max-md:gap-3 md:border-0 md:bg-transparent md:px-0 md:hover:bg-[var(--neo-surface-muted)]",
               projectRowGridMd,
-              "md:hover:bg-zinc-50/80"
+              "md:border-transparent"
             )}
           >
             <div className="min-w-0 md:contents">
@@ -357,7 +354,7 @@ export default async function FinanceOwnerDashboardPage() {
       label: "Invoiced",
       value: data.kpis.invoicedThisMonth,
       icon: FileText,
-      iconWrap: "bg-zinc-500/10 text-zinc-700 dark:text-zinc-300",
+      iconWrap: "bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]",
       accent: "neutral",
     },
     {
@@ -505,13 +502,13 @@ export default async function FinanceOwnerDashboardPage() {
     const map = {
       rose: active
         ? "bg-rose-500/15 text-rose-700 dark:text-rose-400"
-        : "bg-zinc-100 text-zinc-400 dark:bg-muted",
+        : "bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]",
       amber: active
         ? "bg-amber-500/15 text-amber-800 dark:text-amber-400"
-        : "bg-zinc-100 text-zinc-400 dark:bg-muted",
+        : "bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]",
       slate: active
         ? "bg-zinc-200/80 text-zinc-800 dark:text-zinc-300"
-        : "bg-zinc-100 text-zinc-400 dark:bg-muted",
+        : "bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]",
     };
     return cn(
       "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors duration-200 ease-out",
@@ -577,7 +574,7 @@ export default async function FinanceOwnerDashboardPage() {
                       ? "text-emerald-800 dark:text-emerald-400"
                       : k.accent === "warning"
                         ? "text-amber-900 dark:text-amber-300"
-                        : "text-zinc-900 dark:text-zinc-100";
+                        : "text-[var(--neo-text-primary)]";
 
               const pulse =
                 k.accent === "expense"
@@ -590,7 +587,10 @@ export default async function FinanceOwnerDashboardPage() {
                       ? { outer: "bg-emerald-400/35", inner: "bg-emerald-600/90" }
                       : k.accent === "warning"
                         ? { outer: "bg-amber-400/35", inner: "bg-amber-500/90" }
-                        : { outer: "bg-zinc-300/50", inner: "bg-zinc-500/80" };
+                        : {
+                            outer: "bg-[var(--neo-surface-muted)]",
+                            inner: "bg-[var(--neo-text-tertiary)]",
+                          };
 
               return (
                 <div
@@ -624,7 +624,7 @@ export default async function FinanceOwnerDashboardPage() {
                   >
                     {fmtUsdAdaptive(k.value)}
                   </span>
-                  <div className="mt-4 flex items-center gap-2 border-t border-zinc-100 pt-3 dark:border-border/60">
+                  <div className="mt-4 flex items-center gap-2 border-t border-[var(--neo-border)] pt-3">
                     <span className="relative flex h-2 w-2">
                       <span
                         className={cn(
@@ -662,14 +662,14 @@ export default async function FinanceOwnerDashboardPage() {
                 <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                   Liquidity
                 </p>
-                <h2 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-2xl">
+                <h2 className="text-xl font-semibold tracking-tight text-[var(--neo-text-primary)] sm:text-2xl">
                   Cash flow
                 </h2>
                 <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
                   Payments received vs. expense lines + labor — trailing six months.
                 </p>
               </div>
-              <span className="rounded-full border border-zinc-200/90 bg-zinc-50 px-3 py-1.5 text-[11px] font-semibold text-muted-foreground dark:border-border dark:bg-muted/40">
+              <span className="rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">
                 Last 6 months
               </span>
             </div>
@@ -679,7 +679,7 @@ export default async function FinanceOwnerDashboardPage() {
             </div>
 
             {data.cashFlow.length > 0 ? (
-              <div className="mt-10 border-t border-zinc-100 pt-8 dark:border-border/50">
+              <div className="mt-10 border-t border-[var(--neo-border)] pt-8">
                 <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   Period detail
                 </p>
@@ -687,7 +687,7 @@ export default async function FinanceOwnerDashboardPage() {
                   {data.cashFlow.map((row) => (
                     <div
                       key={row.label}
-                      className="flex flex-col gap-2 rounded-xl px-3 py-3 text-sm transition-colors duration-200 ease-out hover:bg-zinc-50 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6 dark:hover:bg-muted/20"
+                      className="flex flex-col gap-2 rounded-xl px-3 py-3 text-sm transition-colors duration-200 ease-out hover:bg-[var(--neo-surface-muted)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6"
                     >
                       <span className="shrink-0 font-semibold tabular-nums text-foreground">
                         {row.label}
@@ -726,7 +726,7 @@ export default async function FinanceOwnerDashboardPage() {
                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                     Attention
                   </p>
-                  <h2 className="mt-1 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+                  <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--neo-text-primary)]">
                     Alerts
                   </h2>
                 </div>
@@ -790,7 +790,7 @@ export default async function FinanceOwnerDashboardPage() {
                 "p-4 transition-[box-shadow,border-color] duration-200 ease-out sm:p-5"
               )}
             >
-              <div className="flex items-start justify-between gap-3 border-b border-zinc-100 pb-4 dark:border-border/60">
+              <div className="flex items-start justify-between gap-3 border-b border-[var(--neo-border)] pb-4">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     Outstanding

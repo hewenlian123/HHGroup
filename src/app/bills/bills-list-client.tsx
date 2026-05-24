@@ -438,19 +438,19 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               <table className="w-full min-w-[640px] text-[13px] lg:min-w-0">
                 <thead>
                   <tr>
-                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
                       Vendor
                     </th>
-                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
                       Project
                     </th>
-                    <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF] tabular-nums">
+                    <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)] tabular-nums">
                       Amount
                     </th>
-                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
                       Due Date
                     </th>
-                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
                       Status
                     </th>
                     <th className="h-8 w-10 px-1" />
