@@ -4,16 +4,35 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
 import { createBrowserClient } from "@/lib/supabase";
-import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/native-select";
-import { FilterBar } from "@/components/filter-bar";
-import { StatusBadge } from "@/components/status-badge";
-import { TableShell, tableRawTdClass, tableRawThClass } from "@/components/ui/table";
+import {
+  EmptyState,
+  LoadingState,
+  NeoActionFooter,
+  NeoFieldLabel,
+  NeoFormGrid,
+  NeoInput,
+  NeoMobileCard,
+  NeoPanel,
+  NeoSelect,
+  NeoStatus,
+  NeoTable,
+  NeoToolbar,
+  PageHeader,
+  PageLayout,
+} from "@/components/base";
+import {
+  MobileEmptyState,
+  MobileFabButton,
+  MobileFilterSheet,
+  MobileListHeader,
+  MobileSearchFiltersRow,
+  mobileListPagePaddingClass,
+} from "@/components/mobile/mobile-list-chrome";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import { Search, UsersRound } from "lucide-react";
 
 type SubcontractorRow = {
   id: string;
@@ -80,6 +99,31 @@ const toNullable = (value: string): string | null => {
   return trimmed ? trimmed : null;
 };
 
+const subcontractorHeadClass =
+  "h-9 px-3 text-left align-middle text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]";
+const subcontractorCellClass =
+  "border-b border-[var(--neo-border)] px-3 py-2 align-middle text-[13px]";
+
+function subcontractorDisplayName(
+  row: Pick<SubcontractorRow, "display_name" | "legal_name" | "contact_name" | "email">
+) {
+  return (
+    row.display_name?.trim() ||
+    row.legal_name?.trim() ||
+    row.contact_name?.trim() ||
+    row.email?.trim() ||
+    "Unnamed subcontractor"
+  );
+}
+
+function normalizedStatus(status: SubcontractorRow["status"] | null | undefined) {
+  return status === "inactive" ? "inactive" : "active";
+}
+
+function statusVariant(status: SubcontractorRow["status"] | null | undefined) {
+  return normalizedStatus(status) === "active" ? "success" : "muted";
+}
+
 export default function SubcontractorsPage() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -99,6 +143,7 @@ export default function SubcontractorsPage() {
   const [form, setForm] = React.useState<SubcontractorForm>(EMPTY_FORM);
   const [submitting, setSubmitting] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -139,13 +184,15 @@ export default function SubcontractorsPage() {
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((row) => {
-      if (statusFilter && row.status !== statusFilter) return false;
+      if (statusFilter && normalizedStatus(row.status) !== statusFilter) return false;
       if (!q) return true;
-      return [row.display_name, row.legal_name, row.contact_name, row.phone, row.email]
+      return [subcontractorDisplayName(row), row.legal_name, row.contact_name, row.phone, row.email]
         .map((v) => (v ?? "").toLowerCase())
         .some((v) => v.includes(q));
     });
   }, [rows, query, statusFilter]);
+
+  const activeMobileFilterCount = statusFilter ? 1 : 0;
 
   const openCreate = React.useCallback(() => {
     setEditorMode("create");
@@ -256,7 +303,7 @@ export default function SubcontractorsPage() {
         setMessage("Supabase is not configured.");
         return;
       }
-      if (!window.confirm(`Delete subcontractor "${row.display_name}"?`)) return;
+      if (!window.confirm(`Delete subcontractor "${subcontractorDisplayName(row)}"?`)) return;
       setDeletingId(row.id);
       setMessage(null);
       const prevRows = rows;
@@ -276,50 +323,135 @@ export default function SubcontractorsPage() {
   );
 
   return (
-    <div className="page-container page-stack py-6">
-      <PageHeader
-        title="Subcontractors"
-        subtitle="Master data: company info, compliance, and attachments. (Contracts & billing are under Subcontractors.)"
-        actions={
-          <Button className="rounded-lg" onClick={openCreate} disabled={submitting || !!deletingId}>
-            + New Subcontractor
-          </Button>
+    <PageLayout
+      divider={false}
+      className={cn("dark", mobileListPagePaddingClass, "max-md:!gap-3")}
+      header={
+        <>
+          <div className="hidden md:block">
+            <PageHeader
+              title="Subcontractors"
+              description="Master records for company info, compliance, attachments, and project links."
+              actions={
+                <Button
+                  size="sm"
+                  className="rounded-sm"
+                  onClick={openCreate}
+                  disabled={submitting || !!deletingId}
+                >
+                  + New Subcontractor
+                </Button>
+              }
+            />
+          </div>
+          <MobileListHeader
+            title="Subcontractors"
+            fab={
+              <MobileFabButton
+                ariaLabel="New subcontractor"
+                onClick={() => {
+                  if (!submitting && !deletingId) openCreate();
+                }}
+              />
+            }
+          />
+        </>
+      }
+    >
+      <MobileSearchFiltersRow
+        filterSheetOpen={mobileFiltersOpen}
+        onOpenFilters={() => setMobileFiltersOpen(true)}
+        activeFilterCount={activeMobileFilterCount}
+        searchSlot={
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+            <NeoInput
+              placeholder="Search subcontractors..."
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="h-10 pl-8 text-sm"
+              aria-label="Search subcontractors"
+            />
+          </div>
         }
       />
-
-      <FilterBar>
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            placeholder="Search name, contact, phone, email"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="max-w-[360px]"
-          />
-          <Select
+      <MobileFilterSheet
+        open={mobileFiltersOpen}
+        onOpenChange={setMobileFiltersOpen}
+        title="Filters"
+      >
+        <div className="space-y-2">
+          <NeoFieldLabel>Status</NeoFieldLabel>
+          <NeoSelect
             value={statusFilter}
             onChange={(event) =>
               setStatusFilter((event.target.value as "" | "active" | "inactive") ?? "")
             }
+            className="w-full"
           >
             <option value="">All statuses</option>
             <option value="active">active</option>
             <option value="inactive">inactive</option>
-          </Select>
+          </NeoSelect>
         </div>
-      </FilterBar>
+        <Button
+          type="button"
+          className="w-full rounded-sm"
+          onClick={() => setMobileFiltersOpen(false)}
+        >
+          Done
+        </Button>
+      </MobileFilterSheet>
+
+      <NeoToolbar className="hidden justify-between md:flex">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <div className="relative w-full max-w-md">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+            <NeoInput
+              placeholder="Search name, contact, phone, email"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              className="h-9 pl-8 text-sm"
+              aria-label="Search subcontractors"
+            />
+          </div>
+          <NeoSelect
+            value={statusFilter}
+            onChange={(event) =>
+              setStatusFilter((event.target.value as "" | "active" | "inactive") ?? "")
+            }
+            className="h-9 w-[160px] text-sm"
+          >
+            <option value="">All statuses</option>
+            <option value="active">active</option>
+            <option value="inactive">inactive</option>
+          </NeoSelect>
+        </div>
+        <p className="shrink-0 text-xs text-[var(--neo-text-secondary)]">
+          Subcontractors:{" "}
+          <span className="font-medium text-[var(--neo-text-primary)]">{rows.length}</span>
+        </p>
+      </NeoToolbar>
 
       {message ? (
-        <p className="border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-border">
+        <p
+          className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]"
+          role="status"
+        >
           {message}
         </p>
       ) : null}
 
       {editorOpen ? (
-        <section className="border-b border-gray-100 pb-4 dark:border-border">
-          <div className="grid gap-3 md:grid-cols-2">
+        <NeoPanel
+          title={editorMode === "create" ? "New subcontractor" : "Edit subcontractor"}
+          description="Keep compliance, tax, and contact details aligned before work starts."
+          bodyClassName="p-4"
+        >
+          <NeoFormGrid>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Display Name</p>
-              <Input
+              <NeoFieldLabel required>Display Name</NeoFieldLabel>
+              <NeoInput
                 value={form.display_name}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, display_name: event.target.value }))
@@ -329,8 +461,8 @@ export default function SubcontractorsPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Legal Name</p>
-              <Input
+              <NeoFieldLabel>Legal Name</NeoFieldLabel>
+              <NeoInput
                 value={form.legal_name}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, legal_name: event.target.value }))
@@ -340,8 +472,8 @@ export default function SubcontractorsPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Contact Name</p>
-              <Input
+              <NeoFieldLabel>Contact Name</NeoFieldLabel>
+              <NeoInput
                 value={form.contact_name}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, contact_name: event.target.value }))
@@ -351,8 +483,8 @@ export default function SubcontractorsPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Phone</p>
-              <Input
+              <NeoFieldLabel>Phone</NeoFieldLabel>
+              <NeoInput
                 value={form.phone}
                 onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
                 placeholder="Optional"
@@ -360,8 +492,8 @@ export default function SubcontractorsPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Email</p>
-              <Input
+              <NeoFieldLabel>Email</NeoFieldLabel>
+              <NeoInput
                 value={form.email}
                 onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
                 placeholder="Optional"
@@ -369,8 +501,8 @@ export default function SubcontractorsPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">W9 on file</p>
-              <label className="inline-flex items-center gap-2 rounded-[10px] border border-input bg-muted/20 px-3 py-2 text-sm">
+              <NeoFieldLabel>W9 on file</NeoFieldLabel>
+              <label className="inline-flex h-10 items-center gap-2 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 text-sm text-[var(--neo-text-primary)]">
                 <input
                   type="checkbox"
                   checked={form.w9_on_file}
@@ -383,8 +515,8 @@ export default function SubcontractorsPage() {
               </label>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Insurance Expiration</p>
-              <Input
+              <NeoFieldLabel>Insurance Expiration</NeoFieldLabel>
+              <NeoInput
                 type="date"
                 value={form.insurance_expiration}
                 onChange={(event) =>
@@ -394,8 +526,8 @@ export default function SubcontractorsPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">License Number</p>
-              <Input
+              <NeoFieldLabel>License Number</NeoFieldLabel>
+              <NeoInput
                 value={form.license_number}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, license_number: event.target.value }))
@@ -405,8 +537,8 @@ export default function SubcontractorsPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Tax ID Last 4</p>
-              <Input
+              <NeoFieldLabel>Tax ID Last 4</NeoFieldLabel>
+              <NeoInput
                 value={form.tax_id_last4}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, tax_id_last4: event.target.value }))
@@ -416,10 +548,8 @@ export default function SubcontractorsPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                Status
-              </p>
-              <Select
+              <NeoFieldLabel>Status</NeoFieldLabel>
+              <NeoSelect
                 value={form.status}
                 onChange={(event) =>
                   setForm((prev) => ({
@@ -431,11 +561,11 @@ export default function SubcontractorsPage() {
               >
                 <option value="active">active</option>
                 <option value="inactive">inactive</option>
-              </Select>
+              </NeoSelect>
             </div>
             <div className="space-y-1 md:col-span-2">
-              <p className="text-xs text-muted-foreground">Address Line 1</p>
-              <Input
+              <NeoFieldLabel>Address Line 1</NeoFieldLabel>
+              <NeoInput
                 value={form.address1}
                 onChange={(event) => setForm((prev) => ({ ...prev, address1: event.target.value }))}
                 placeholder="Optional"
@@ -443,8 +573,8 @@ export default function SubcontractorsPage() {
               />
             </div>
             <div className="space-y-1 md:col-span-2">
-              <p className="text-xs text-muted-foreground">Address Line 2</p>
-              <Input
+              <NeoFieldLabel>Address Line 2</NeoFieldLabel>
+              <NeoInput
                 value={form.address2}
                 onChange={(event) => setForm((prev) => ({ ...prev, address2: event.target.value }))}
                 placeholder="Optional"
@@ -452,36 +582,36 @@ export default function SubcontractorsPage() {
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">City</p>
-              <Input
+              <NeoFieldLabel>City</NeoFieldLabel>
+              <NeoInput
                 value={form.city}
                 onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))}
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">State</p>
-              <Input
+              <NeoFieldLabel>State</NeoFieldLabel>
+              <NeoInput
                 value={form.state}
                 onChange={(event) => setForm((prev) => ({ ...prev, state: event.target.value }))}
               />
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">ZIP</p>
-              <Input
+              <NeoFieldLabel>ZIP</NeoFieldLabel>
+              <NeoInput
                 value={form.zip}
                 onChange={(event) => setForm((prev) => ({ ...prev, zip: event.target.value }))}
               />
             </div>
             <div className="space-y-1 md:col-span-2">
-              <p className="text-xs text-muted-foreground">Notes</p>
-              <Input
+              <NeoFieldLabel>Notes</NeoFieldLabel>
+              <NeoInput
                 value={form.notes}
                 onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
                 placeholder="Optional"
               />
             </div>
-          </div>
-          <div className="mt-4 flex flex-col-reverse justify-end gap-2 border-t border-gray-100 pt-3 sm:flex-row sm:items-center dark:border-border">
+          </NeoFormGrid>
+          <NeoActionFooter className="-mx-4 mt-4 px-4 sm:mx-0 sm:px-0">
             <Button
               variant="outline"
               size="sm"
@@ -499,99 +629,184 @@ export default function SubcontractorsPage() {
                   ? "Create Subcontractor"
                   : "Save Changes"}
             </Button>
-          </div>
-        </section>
+          </NeoActionFooter>
+        </NeoPanel>
       ) : null}
 
-      <TableShell>
-        <div className="table-responsive">
-          <table className="w-full min-w-[640px] border-collapse text-[13px] md:min-w-0">
-            <thead>
-              <tr>
-                <th className={tableRawThClass}>Name</th>
-                <th className={tableRawThClass}>Contact</th>
-                <th className={tableRawThClass}>Phone</th>
-                <th className={tableRawThClass}>Email</th>
-                <th className={tableRawThClass}>W9</th>
-                <th className={tableRawThClass}>Insurance</th>
-                <th className={tableRawThClass}>Status</th>
-                <th className={cn(tableRawThClass, "text-right")}>Actions</th>
-              </tr>
-            </thead>
-            <tbody className="[&_tr:last-child>td]:border-b-0">
-              {loading ? (
-                <tr>
-                  <td
-                    className={cn(tableRawTdClass, "py-8 text-center text-muted-foreground")}
-                    colSpan={8}
-                  >
-                    Loading subcontractors...
-                  </td>
-                </tr>
-              ) : null}
-              {filtered.map((row) => (
-                <tr key={row.id} className={listTableRowStaticClassName}>
-                  <td className={cn(tableRawTdClass, "font-medium text-foreground")}>
-                    <Link href={`/labor/subcontractors/${row.id}`} className="hover:underline">
-                      {row.display_name}
+      <div className="space-y-2 md:hidden">
+        {loading ? <LoadingState text="Loading subcontractors..." /> : null}
+        {!loading && filtered.length === 0 ? (
+          <MobileEmptyState
+            icon={<UsersRound className="h-5 w-5" />}
+            message="No subcontractors match the current filters."
+          />
+        ) : null}
+        {!loading &&
+          filtered.map((row) => {
+            const displayName = subcontractorDisplayName(row);
+            const status = normalizedStatus(row.status);
+            return (
+              <NeoMobileCard key={row.id} className="p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <Link
+                      href={`/labor/subcontractors/${row.id}`}
+                      className="font-medium text-[var(--neo-text-primary)] underline-offset-2 hover:underline"
+                    >
+                      {displayName}
                     </Link>
-                  </td>
-                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
-                    {row.contact_name || "—"}
-                  </td>
-                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
-                    {row.phone || "—"}
-                  </td>
-                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
-                    {row.email || "—"}
-                  </td>
-                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
-                    {row.w9_on_file ? "On file" : "Missing"}
-                  </td>
-                  <td className={cn(tableRawTdClass, "text-muted-foreground")}>
-                    {row.insurance_expiration || "—"}
-                  </td>
-                  <td className={tableRawTdClass}>
-                    <StatusBadge status={row.status} />
-                  </td>
-                  <td className={tableRawTdClass}>
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 rounded-sm px-3"
-                        onClick={() => openEdit(row)}
-                        disabled={submitting || deletingId === row.id}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 rounded-sm px-3"
-                        onClick={() => void handleDelete(row)}
-                        disabled={submitting || deletingId === row.id}
-                      >
-                        {deletingId === row.id ? "Deleting..." : "Delete"}
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {!loading && filtered.length === 0 ? (
-                <tr>
-                  <td
-                    className={cn(tableRawTdClass, "py-8 text-center text-muted-foreground")}
-                    colSpan={8}
+                    <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">
+                      {row.contact_name || "No primary contact"}
+                    </p>
+                    <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                      {row.phone || row.email || "No phone or email"}
+                    </p>
+                  </div>
+                  <NeoStatus label={status} variant={statusVariant(status)} />
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-[var(--neo-text-secondary)]">
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                      W9
+                    </dt>
+                    <dd className="mt-1">
+                      <NeoStatus
+                        label={row.w9_on_file ? "On file" : "Missing"}
+                        variant={row.w9_on_file ? "success" : "warning"}
+                      />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                      Insurance
+                    </dt>
+                    <dd className="mt-1 text-[var(--neo-text-primary)]">
+                      {row.insurance_expiration || "—"}
+                    </dd>
+                  </div>
+                </dl>
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 flex-1 rounded-sm px-3"
+                    onClick={() => openEdit(row)}
+                    disabled={submitting || deletingId === row.id}
                   >
-                    No subcontractors yet.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
-      </TableShell>
-    </div>
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 flex-1 rounded-sm px-3"
+                    onClick={() => void handleDelete(row)}
+                    disabled={submitting || deletingId === row.id}
+                  >
+                    {deletingId === row.id ? "Deleting..." : "Delete"}
+                  </Button>
+                </div>
+              </NeoMobileCard>
+            );
+          })}
+      </div>
+
+      <NeoTable className="hidden md:block" tableClassName="min-w-[920px] lg:min-w-0">
+        <thead>
+          <tr>
+            <th className={subcontractorHeadClass}>Name</th>
+            <th className={subcontractorHeadClass}>Contact</th>
+            <th className={subcontractorHeadClass}>Phone</th>
+            <th className={subcontractorHeadClass}>Email</th>
+            <th className={subcontractorHeadClass}>W9</th>
+            <th className={subcontractorHeadClass}>Insurance</th>
+            <th className={subcontractorHeadClass}>Status</th>
+            <th className={cn(subcontractorHeadClass, "text-right")}>Actions</th>
+          </tr>
+        </thead>
+        <tbody className="[&_tr:last-child>td]:border-b-0">
+          {loading ? (
+            <tr>
+              <td className="px-3 py-6" colSpan={8}>
+                <LoadingState text="Loading subcontractors..." />
+              </td>
+            </tr>
+          ) : null}
+          {filtered.map((row) => {
+            const displayName = subcontractorDisplayName(row);
+            const status = normalizedStatus(row.status);
+            return (
+              <tr key={row.id} className={listTableRowStaticClassName}>
+                <td
+                  className={cn(
+                    subcontractorCellClass,
+                    "font-medium text-[var(--neo-text-primary)]"
+                  )}
+                >
+                  <Link
+                    href={`/labor/subcontractors/${row.id}`}
+                    className="underline-offset-2 hover:underline"
+                  >
+                    {displayName}
+                  </Link>
+                </td>
+                <td className={cn(subcontractorCellClass, "text-[var(--neo-text-secondary)]")}>
+                  {row.contact_name || "—"}
+                </td>
+                <td className={cn(subcontractorCellClass, "text-[var(--neo-text-secondary)]")}>
+                  {row.phone || "—"}
+                </td>
+                <td className={cn(subcontractorCellClass, "text-[var(--neo-text-secondary)]")}>
+                  {row.email || "—"}
+                </td>
+                <td className={subcontractorCellClass}>
+                  <NeoStatus
+                    label={row.w9_on_file ? "On file" : "Missing"}
+                    variant={row.w9_on_file ? "success" : "warning"}
+                  />
+                </td>
+                <td className={cn(subcontractorCellClass, "text-[var(--neo-text-secondary)]")}>
+                  {row.insurance_expiration || "—"}
+                </td>
+                <td className={subcontractorCellClass}>
+                  <NeoStatus label={status} variant={statusVariant(status)} />
+                </td>
+                <td className={subcontractorCellClass}>
+                  <div className="flex items-center justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-sm px-3"
+                      onClick={() => openEdit(row)}
+                      disabled={submitting || deletingId === row.id}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-sm px-3"
+                      onClick={() => void handleDelete(row)}
+                      disabled={submitting || deletingId === row.id}
+                    >
+                      {deletingId === row.id ? "Deleting..." : "Delete"}
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+          {!loading && filtered.length === 0 ? (
+            <tr>
+              <td className="px-3 py-6" colSpan={8}>
+                <EmptyState
+                  title="No subcontractors"
+                  description="Create a subcontractor profile to track compliance and project links."
+                />
+              </td>
+            </tr>
+          ) : null}
+        </tbody>
+      </NeoTable>
+    </PageLayout>
   );
 }
