@@ -54,5 +54,37 @@ export const motionPopoverLayer = cn(
   "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
 );
 
+/** HH Neo Focus Reveal: shared modal overlay. */
+export const hhNeoFocusRevealOverlay = cn(
+  "bg-neutral-950/45 backdrop-blur-[8px]",
+  "data-[state=open]:animate-hh-modal-fade-in data-[state=closed]:animate-hh-modal-fade-out",
+  "motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out",
+  "data-[state=closed]:pointer-events-none"
+);
+
+/** HH Neo Focus Reveal: centered desktop dialog content. */
+export const hhNeoFocusRevealDialog = cn(
+  "md:data-[state=open]:animate-hh-dialog-in md:data-[state=closed]:animate-hh-dialog-out",
+  "motion-reduce:md:data-[state=open]:animate-hh-modal-fade-in motion-reduce:md:data-[state=closed]:animate-hh-modal-fade-out"
+);
+
+/** HH Neo Focus Reveal: mobile near-full bottom sheet content. */
+export const hhNeoFocusRevealMobileSheet = cn(
+  "max-md:data-[state=open]:animate-hh-sheet-in max-md:data-[state=closed]:animate-hh-sheet-out",
+  "motion-reduce:max-md:data-[state=open]:animate-hh-modal-fade-in motion-reduce:max-md:data-[state=closed]:animate-hh-modal-fade-out"
+);
+
+/** HH Neo Focus Reveal: command palette surface. */
+export const hhNeoFocusRevealCommand = cn(
+  "sm:data-[state=open]:animate-hh-command-dialog-in sm:data-[state=closed]:animate-hh-command-dialog-out",
+  "max-sm:data-[state=open]:animate-hh-sheet-in max-sm:data-[state=closed]:animate-hh-sheet-out",
+  "motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out"
+);
+
+/** HH Neo Focus Reveal: manually mounted centered panel. */
+export const hhNeoFocusRevealPanel = cn(
+  "animate-hh-panel-dialog-in motion-reduce:animate-hh-modal-fade-in"
+);
+
 /** Base for data rows (group + hover + row press). */
 export const motionListRow = cn("group", motionTransition, motionInteractiveHover, motionRowPress);

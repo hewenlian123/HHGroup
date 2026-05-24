@@ -190,23 +190,71 @@ const config: Config = {
           "0%": { opacity: "1" },
           "100%": { opacity: "0" },
         },
-        /** Centered modal: opacity + scale 0.96 → 1 (desktop). */
+        /** HH Neo Focus Reveal: centered dialog, opacity + scale + small lift. */
         "hh-dialog-in": {
-          from: { opacity: "0", transform: "translate(-50%, -50%) scale(0.96)" },
+          from: { opacity: "0", transform: "translate(-50%, calc(-50% + 10px)) scale(0.96)" },
           to: { opacity: "1", transform: "translate(-50%, -50%) scale(1)" },
         },
         "hh-dialog-out": {
           from: { opacity: "1", transform: "translate(-50%, -50%) scale(1)" },
-          to: { opacity: "0", transform: "translate(-50%, -50%) scale(0.96)" },
+          to: { opacity: "0", transform: "translate(-50%, calc(-50% + 6px)) scale(0.98)" },
         },
-        /** Mobile bottom sheet (Quick Expense): slide + fade, ~200ms */
+        "hh-command-dialog-in": {
+          from: { opacity: "0", transform: "translate(-50%, 10px) scale(0.96)" },
+          to: { opacity: "1", transform: "translate(-50%, 0) scale(1)" },
+        },
+        "hh-command-dialog-out": {
+          from: { opacity: "1", transform: "translate(-50%, 0) scale(1)" },
+          to: { opacity: "0", transform: "translate(-50%, 6px) scale(0.98)" },
+        },
+        "hh-modal-fade-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "hh-modal-fade-out": {
+          from: { opacity: "1" },
+          to: { opacity: "0" },
+        },
+        "hh-panel-dialog-in": {
+          from: { opacity: "0", transform: "translateY(10px) scale(0.96)" },
+          to: { opacity: "1", transform: "translateY(0) scale(1)" },
+        },
+        "hh-panel-dialog-out": {
+          from: { opacity: "1", transform: "translateY(0) scale(1)" },
+          to: { opacity: "0", transform: "translateY(6px) scale(0.98)" },
+        },
+        /** Mobile bottom sheet: slide + fade. */
         "hh-sheet-in": {
-          from: { opacity: "0", transform: "translateY(18px)" },
+          from: { opacity: "0", transform: "translateY(24px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
         "hh-sheet-out": {
           from: { opacity: "1", transform: "translateY(0)" },
           to: { opacity: "0", transform: "translateY(18px)" },
+        },
+        "hh-sheet-right-in": {
+          from: { opacity: "0", transform: "translateX(24px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        "hh-sheet-right-out": {
+          from: { opacity: "1", transform: "translateX(0)" },
+          to: { opacity: "0", transform: "translateX(16px)" },
+        },
+        "hh-sheet-left-in": {
+          from: { opacity: "0", transform: "translateX(-24px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        "hh-sheet-left-out": {
+          from: { opacity: "1", transform: "translateX(0)" },
+          to: { opacity: "0", transform: "translateX(-16px)" },
+        },
+        "hh-sheet-top-in": {
+          from: { opacity: "0", transform: "translateY(-24px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        "hh-sheet-top-out": {
+          from: { opacity: "1", transform: "translateY(0)" },
+          to: { opacity: "0", transform: "translateY(-16px)" },
         },
       },
       animation: {
@@ -216,10 +264,22 @@ const config: Config = {
         "rq-confirm-shake": "rq-confirm-shake 340ms ease-in-out both",
         "toast-in": "toast-in 220ms cubic-bezier(0.34, 1.56, 0.64, 1) both",
         "toast-out": "toast-out 180ms ease both",
-        "hh-dialog-in": "hh-dialog-in 150ms cubic-bezier(0, 0, 0.2, 1) both",
-        "hh-dialog-out": "hh-dialog-out 120ms cubic-bezier(0, 0, 0.2, 1) both",
-        "hh-sheet-in": "hh-sheet-in 200ms cubic-bezier(0, 0, 0.2, 1) both",
-        "hh-sheet-out": "hh-sheet-out 200ms cubic-bezier(0.4, 0, 1, 1) both",
+        "hh-dialog-in": "hh-dialog-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "hh-dialog-out": "hh-dialog-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
+        "hh-command-dialog-in": "hh-command-dialog-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "hh-command-dialog-out": "hh-command-dialog-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
+        "hh-modal-fade-in": "hh-modal-fade-in 180ms ease-out both",
+        "hh-modal-fade-out": "hh-modal-fade-out 140ms ease-in both",
+        "hh-panel-dialog-in": "hh-panel-dialog-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "hh-panel-dialog-out": "hh-panel-dialog-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
+        "hh-sheet-in": "hh-sheet-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "hh-sheet-out": "hh-sheet-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
+        "hh-sheet-right-in": "hh-sheet-right-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "hh-sheet-right-out": "hh-sheet-right-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
+        "hh-sheet-left-in": "hh-sheet-left-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "hh-sheet-left-out": "hh-sheet-left-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
+        "hh-sheet-top-in": "hh-sheet-top-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both",
+        "hh-sheet-top-out": "hh-sheet-top-out 160ms cubic-bezier(0.4, 0, 1, 1) both",
       },
       transitionDuration: {
         micro: "200ms",
