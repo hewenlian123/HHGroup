@@ -10,7 +10,7 @@ type ApBillsSummaryKpi = {
 };
 
 const dashboardKpiTileClass =
-  "max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:min-h-[118px] max-md:snap-start max-md:snap-always md:min-h-[116px] ring-1 ring-transparent hover:ring-[var(--neo-gold-ring)]";
+  "dashboard-kpi-tile-premium max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:min-h-[118px] max-md:snap-start max-md:snap-always md:min-h-[116px] ring-1 ring-transparent hover:ring-[var(--neo-gold-ring)]";
 
 /** Command-center KPIs: collections, payables, labor, margin stress, risk flags, ledger pulse. */
 export function DashboardKpiStrip({
@@ -40,7 +40,7 @@ export function DashboardKpiStrip({
         "max-md:flex max-md:snap-x max-md:snap-mandatory max-md:gap-3 max-md:overflow-x-auto max-md:overflow-y-hidden max-md:pb-2 max-md:pt-1",
         "max-md:[-webkit-overflow-scrolling:touch] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden",
         "touch-auto overscroll-x-contain",
-        "md:grid md:grid-cols-2 md:gap-3 lg:grid-cols-3 xl:grid-cols-6"
+        "md:grid md:grid-cols-2 md:gap-3.5 lg:grid-cols-3 xl:grid-cols-6"
       )}
     >
       <KpiTile

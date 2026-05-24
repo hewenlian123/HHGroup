@@ -62,6 +62,98 @@
     background: rgb(18 22 27 / 0.88);
   }
 
+  [data-app-topbar].neo-command-bar {
+    border-color: rgb(255 255 255 / 0.11);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.026)),
+      rgb(11 14 18 / 0.9);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.075) inset,
+      0 18px 42px rgb(0 0 0 / 0.28),
+      0 1px 2px rgb(0 0 0 / 0.18);
+    color: var(--neo-canvas-text-secondary);
+  }
+
+  .neo-topbar-command-input {
+    border-color: rgb(255 255 255 / 0.11);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.058), rgb(255 255 255 / 0.022)),
+      rgb(15 19 24 / 0.86);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.055) inset,
+      0 10px 24px rgb(0 0 0 / 0.18);
+  }
+
+  .neo-topbar-command-input:hover {
+    border-color: rgb(198 165 106 / 0.26);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.072), rgb(255 255 255 / 0.03)),
+      rgb(18 23 29 / 0.92);
+  }
+
+  [data-app-topbar] .btn-outline-ghost {
+    border: 1px solid rgb(255 255 255 / 0.1) !important;
+    background: rgb(255 255 255 / 0.045) !important;
+    color: var(--neo-canvas-text-secondary);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.055) inset !important;
+  }
+
+  [data-app-topbar] .btn-outline-ghost:hover {
+    border-color: rgb(198 165 106 / 0.24) !important;
+    background: rgb(255 255 255 / 0.07) !important;
+    color: var(--neo-canvas-text-primary);
+  }
+
+  .dashboard-command-hero {
+    border-color: rgb(255 255 255 / 0.105);
+    background:
+      linear-gradient(135deg, rgb(255 255 255 / 0.075), rgb(255 255 255 / 0.028) 58%),
+      linear-gradient(180deg, rgb(198 165 106 / 0.052), transparent 52%), var(--neo-surface-raised);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.07) inset,
+      0 24px 58px rgb(0 0 0 / 0.24);
+  }
+
+  .dashboard-command-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(198 165 106 / 0.38), transparent);
+    pointer-events: none;
+  }
+
+  .dashboard-kpi-tile-premium {
+    border-color: rgb(255 255 255 / 0.1);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.064), rgb(255 255 255 / 0.025)),
+      var(--neo-surface-raised);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.055) inset,
+      0 16px 38px rgb(0 0 0 / 0.18);
+  }
+
+  .dashboard-kpi-tile-premium::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      rgb(255 255 255 / 0.16),
+      rgb(198 165 106 / 0.22),
+      transparent
+    );
+    opacity: 0.72;
+    pointer-events: none;
+  }
+
+  .dashboard-kpi-tile-premium:hover {
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.075) inset,
+      0 20px 46px rgb(0 0 0 / 0.24);
+  }
+
   .neo-workspace-canvas {
     background:
       radial-gradient(circle at top right, rgb(184 137 45 / 0.08), transparent 24rem),
