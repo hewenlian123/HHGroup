@@ -501,7 +501,7 @@ function PaymentsReceivedPageInner() {
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-zinc-100/80 pt-3 dark:border-border/60">
+          <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-[var(--neo-border)] pt-3">
             <div className="flex flex-1 flex-col gap-1 sm:flex-initial">
               <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
                 Date from

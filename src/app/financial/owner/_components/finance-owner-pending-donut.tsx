@@ -63,9 +63,9 @@ export function FinanceOwnerPendingDonut({
 
   if (zeroTotal) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200/90 bg-zinc-50/40 px-4 py-10 text-center transition-colors duration-200 ease-out dark:border-border/60 dark:bg-muted/15 max-md:py-12">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-zinc-100 dark:bg-muted">
-          <Wallet className="h-5 w-5 text-zinc-400 dark:text-zinc-500" aria-hidden />
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-10 text-center transition-colors duration-200 ease-out max-md:py-12">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)]">
+          <Wallet className="h-5 w-5 text-[var(--neo-text-tertiary)]" aria-hidden />
         </div>
         <p className="mt-3 text-sm font-semibold text-foreground">Nothing pending</p>
         <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
@@ -117,7 +117,7 @@ export function FinanceOwnerPendingDonut({
           return (
             <div
               key={p.key}
-              className="flex items-center justify-between gap-3 rounded-lg border border-zinc-100/90 bg-zinc-50/50 px-3 py-2 transition-colors duration-200 ease-out hover:bg-zinc-100/60 dark:border-border/40 dark:bg-muted/20 dark:hover:bg-muted/35"
+              className="flex items-center justify-between gap-3 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 transition-colors duration-200 ease-out hover:bg-[var(--neo-surface-raised)]"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span
