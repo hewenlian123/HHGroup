@@ -448,7 +448,7 @@ function DailyEntriesPageInner() {
 
   return (
     <PageLayout
-      className={cn(mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn("dark", mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <div className="hidden md:block">
           <PageHeader
