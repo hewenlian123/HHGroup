@@ -3,8 +3,11 @@
 import { revalidatePath } from "next/cache";
 import {
   deleteInvoice as deleteInvoiceData,
+  getInvoiceDeleteDependencies,
   getInvoiceById,
+  unlinkInvoiceFromPaymentScheduleItem,
   updateInvoice as updateInvoiceData,
+  type InvoiceDeleteDependenciesResult,
   type InvoiceLineItem,
 } from "@/lib/data";
 import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
@@ -148,18 +151,65 @@ export async function markInvoiceSentAction(
 
 export async function deleteInvoiceAction(
   invoiceId: string
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; dependencies?: InvoiceDeleteDependenciesResult }> {
   try {
+    const dependencies = await getInvoiceDeleteDependencies(invoiceId);
+    if (dependencies.blockers.length > 0) {
+      return {
+        ok: false,
+        error:
+          dependencies.blockers[0]?.type === "invoice_status"
+            ? "Only voided invoices can be permanently deleted."
+            : "This invoice cannot be deleted yet because it is linked to other records.",
+        dependencies,
+      };
+    }
+
     const deleted = await deleteInvoiceData(invoiceId);
     if (!deleted)
       return {
         ok: false,
-        error: "Cannot delete: void instead",
+        error: "This invoice could not be deleted. Refresh and try again.",
       };
     revalidatePath("/financial/invoices");
     revalidatePath(`/financial/invoices/${invoiceId}`);
+    if (dependencies.projectId) revalidatePath(`/projects/${dependencies.projectId}`);
+    revalidatePath("/financial/owner");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Failed to delete invoice." };
+  }
+}
+
+export async function checkInvoiceDeleteDependenciesAction(
+  invoiceId: string
+): Promise<{ ok: boolean; error?: string; dependencies?: InvoiceDeleteDependenciesResult }> {
+  try {
+    return { ok: true, dependencies: await getInvoiceDeleteDependencies(invoiceId) };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Failed to check invoice dependencies.",
+    };
+  }
+}
+
+export async function unlinkInvoiceScheduleItemAction(
+  invoiceId: string,
+  scheduleItemId: string
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const result = await unlinkInvoiceFromPaymentScheduleItem(invoiceId, scheduleItemId);
+    if (!result.ok) return { ok: false, error: result.error ?? "Failed to unlink schedule item." };
+    revalidatePath("/financial/invoices");
+    revalidatePath(`/financial/invoices/${invoiceId}`);
+    if (result.estimateId) revalidatePath(`/estimates/${result.estimateId}`);
+    revalidatePath("/financial/owner");
+    return { ok: true };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Failed to unlink schedule item.",
+    };
   }
 }
