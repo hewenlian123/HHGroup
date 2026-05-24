@@ -14,7 +14,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-9 items-center gap-1 rounded-md border border-border/60 bg-background p-1 text-muted-foreground",
+      "inline-flex h-9 items-center gap-1 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-1 text-[var(--neo-text-secondary)]",
       className
     )}
     {...props}
@@ -29,7 +29,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium touch-manipulation transition-all duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=inactive]:hover:-translate-y-px data-[state=inactive]:hover:bg-gray-50 dark:data-[state=inactive]:hover:bg-muted/40 active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96]",
+      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium touch-manipulation transition-all duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--neo-gold)] data-[state=active]:text-zinc-950 data-[state=inactive]:hover:-translate-y-px data-[state=inactive]:hover:bg-[var(--neo-surface-raised)] data-[state=inactive]:hover:text-[var(--neo-text-primary)] active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96]",
       motionInputFocus,
       className
     )}
@@ -45,7 +45,7 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-4 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40",
+      "mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
       className
     )}
     {...props}

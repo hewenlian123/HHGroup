@@ -64,10 +64,10 @@ const PriorityBadge = React.memo(function PriorityBadge({ priority }: { priority
   const p = (priority || "Medium").toLowerCase();
   const style =
     p === "low"
-      ? "bg-[#f3f4f6] text-text-secondary"
+      ? "border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]"
       : p === "medium"
-        ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300"
-        : "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300";
+        ? "border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold-soft)]"
+        : "border border-rose-500/25 bg-rose-500/15 text-rose-300";
   return (
     <span className={cn("inline-flex text-[11px] font-medium py-0.5 px-1.5 rounded-[6px]", style)}>
       {priority || "Medium"}
@@ -81,10 +81,10 @@ const StatusBadge = React.memo(function StatusBadge({ status }: { status: string
   const label = STATUS_LABEL[n] ?? status;
   const style =
     n === "completed"
-      ? "bg-[#DCFCE7] text-[#166534] dark:bg-emerald-950 dark:text-emerald-300"
+      ? "border border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)] dark:bg-emerald-500/15 dark:text-emerald-300"
       : n === "assigned"
-        ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
-        : "bg-[#f3f4f6] text-text-secondary";
+        ? "border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold-soft)]"
+        : "border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
   return (
     <span className={cn("inline-flex text-[11px] font-medium py-0.5 px-1.5 rounded-[6px]", style)}>
       {label}
@@ -105,15 +105,19 @@ const PunchListRow = React.memo(function PunchListRow({
       <button
         type="button"
         onClick={() => onOpenDrawer(item)}
-        className="w-full min-h-[48px] px-0 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-muted/40 md:px-3"
+        className="w-full min-h-[48px] px-0 py-2.5 text-left transition-colors hover:bg-[var(--neo-surface-muted)] md:px-3"
       >
-        <div className="text-sm font-medium text-foreground">{item.issue || "—"}</div>
-        <div className="mt-0.5 text-xs text-text-secondary dark:text-muted-foreground">
+        <div className="text-sm font-medium text-[var(--neo-text-primary)]">
+          {item.issue || "—"}
+        </div>
+        <div className="mt-0.5 text-xs text-[var(--neo-text-secondary)]">
           {[item.project_name, item.location].filter(Boolean).join(" · ") || "—"}
         </div>
         <div className="flex flex-wrap items-center gap-2 mt-1.5">
           <PriorityBadge priority={item.priority ?? "Medium"} />
-          <span className="text-xs text-muted-foreground">{item.worker_name ?? "Unassigned"}</span>
+          <span className="text-xs text-[var(--neo-text-secondary)]">
+            {item.worker_name ?? "Unassigned"}
+          </span>
           <StatusBadge status={item.status} />
         </div>
       </button>
@@ -141,10 +145,10 @@ const KanbanCard = React.memo(function KanbanCard({
       draggable
       onDragStart={onDragStart}
       onClick={() => onOpenDrawer(item)}
-      className="p-[10px] border border-[#eee] rounded-lg bg-white cursor-grab active:cursor-grabbing hover:border-[#ddd] transition-colors text-left"
+      className="p-[10px] border border-[var(--neo-border)] rounded-lg bg-[var(--neo-surface-raised)] cursor-grab active:cursor-grabbing hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)] transition-colors text-left"
     >
-      <div className="font-medium text-sm text-foreground">{item.issue || "—"}</div>
-      <div className="text-xs text-muted-foreground mt-0.5">
+      <div className="font-medium text-sm text-[var(--neo-text-primary)]">{item.issue || "—"}</div>
+      <div className="text-xs text-[var(--neo-text-secondary)] mt-0.5">
         {item.project_name ?? "—"}
         {item.location ? ` · ${item.location}` : ""}
       </div>
@@ -403,7 +407,7 @@ export default function PunchListPage() {
   const handleColumnDrop = React.useCallback(
     async (columnStatus: string, e: React.DragEvent) => {
       e.preventDefault();
-      e.currentTarget.classList.remove("ring-1", "ring-[#eee]");
+      e.currentTarget.classList.remove("ring-1", "ring-[var(--neo-gold-ring)]");
       const raw = e.dataTransfer.getData("application/json");
       if (!raw) return;
       try {
@@ -427,7 +431,11 @@ export default function PunchListPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn(
+        "dark md:max-w-5xl text-[var(--neo-canvas-text-secondary)]",
+        mobileListPagePaddingClass,
+        "max-md:!gap-3"
+      )}
       header={
         <>
           <div className="hidden md:block">
@@ -435,11 +443,7 @@ export default function PunchListPage() {
               title="Punch List"
               description="Track and resolve construction issues."
               actions={
-                <Button
-                  size="sm"
-                  className="h-9 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
-                  onClick={openModal}
-                >
+                <Button size="sm" className="h-9 rounded-sm" onClick={openModal}>
                   + Add Issue
                 </Button>
               }
@@ -457,25 +461,33 @@ export default function PunchListPage() {
       <div className="w-full space-y-3">
         {/* Issue overview — compact cards */}
         <section className="hidden md:block">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+          <p className="text-xs font-medium text-[var(--neo-canvas-text-tertiary)] uppercase tracking-normal mb-2">
             Issue Overview
           </p>
           <div className="grid grid-cols-3 gap-2">
-            <div className="p-3 border border-[#eee] rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">Open Issues</p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums">{summary.open}</p>
+            <div className="p-3 border border-[var(--neo-border)] rounded-lg bg-[var(--neo-surface-raised)] shadow-[var(--neo-shadow-panel)]">
+              <p className="text-xs text-[var(--neo-text-secondary)] uppercase tracking-normal">
+                Open Issues
+              </p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                {summary.open}
+              </p>
             </div>
-            <div className="p-3 border border-[#eee] rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+            <div className="p-3 border border-[var(--neo-border)] rounded-lg bg-[var(--neo-surface-raised)] shadow-[var(--neo-shadow-panel)]">
+              <p className="text-xs text-[var(--neo-text-secondary)] uppercase tracking-normal">
                 Assigned Issues
               </p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums">{summary.assigned}</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                {summary.assigned}
+              </p>
             </div>
-            <div className="p-3 border border-[#eee] rounded-lg">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide">
+            <div className="p-3 border border-[var(--neo-border)] rounded-lg bg-[var(--neo-surface-raised)] shadow-[var(--neo-shadow-panel)]">
+              <p className="text-xs text-[var(--neo-text-secondary)] uppercase tracking-normal">
                 Completed Issues
               </p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums">{summary.completed}</p>
+              <p className="mt-0.5 text-lg font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                {summary.completed}
+              </p>
             </div>
           </div>
         </section>
@@ -499,14 +511,16 @@ export default function PunchListPage() {
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
           <div className="space-y-3">
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">View</p>
-              <div className="flex gap-1 rounded-md border border-[#eee] bg-white p-0.5">
+              <p className="mb-1 text-xs font-medium text-[var(--neo-text-secondary)]">View</p>
+              <div className="flex gap-1 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-0.5">
                 <button
                   type="button"
                   onClick={() => setViewMode("list")}
                   className={cn(
                     "flex-1 rounded-[6px] px-2 py-1.5 text-sm font-medium",
-                    viewMode === "list" ? "bg-foreground text-background" : "text-muted-foreground"
+                    viewMode === "list"
+                      ? "bg-[var(--neo-gold)] text-zinc-950"
+                      : "text-[var(--neo-text-secondary)]"
                   )}
                 >
                   List
@@ -517,8 +531,8 @@ export default function PunchListPage() {
                   className={cn(
                     "flex-1 rounded-[6px] px-2 py-1.5 text-sm font-medium",
                     viewMode === "kanban"
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground"
+                      ? "bg-[var(--neo-gold)] text-zinc-950"
+                      : "text-[var(--neo-text-secondary)]"
                   )}
                 >
                   Kanban
@@ -526,11 +540,11 @@ export default function PunchListPage() {
               </div>
             </div>
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Project</p>
+              <p className="mb-1 text-xs font-medium text-[var(--neo-text-secondary)]">Project</p>
               <select
                 value={projectFilter}
                 onChange={(e) => setProjectFilter(e.target.value)}
-                className="h-10 w-full rounded-sm border border-[#eee] bg-background px-2.5 text-sm"
+                className="h-10 w-full rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 text-sm text-[var(--neo-text-primary)]"
               >
                 <option value="">All projects</option>
                 {projects.map((p) => (
@@ -541,11 +555,11 @@ export default function PunchListPage() {
               </select>
             </div>
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Status</p>
+              <p className="mb-1 text-xs font-medium text-[var(--neo-text-secondary)]">Status</p>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-                className="h-10 w-full rounded-sm border border-[#eee] bg-background px-2.5 text-sm"
+                className="h-10 w-full rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 text-sm text-[var(--neo-text-primary)]"
               >
                 <option value="">All</option>
                 <option value="open">Open</option>
@@ -554,11 +568,11 @@ export default function PunchListPage() {
               </select>
             </div>
             <div>
-              <p className="mb-1 text-xs font-medium text-muted-foreground">Priority</p>
+              <p className="mb-1 text-xs font-medium text-[var(--neo-text-secondary)]">Priority</p>
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="h-10 w-full rounded-sm border border-[#eee] bg-background px-2.5 text-sm"
+                className="h-10 w-full rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 text-sm text-[var(--neo-text-primary)]"
               >
                 <option value="">All</option>
                 {PRIORITIES.map((pr) => (
@@ -575,15 +589,15 @@ export default function PunchListPage() {
         </MobileFilterSheet>
 
         {/* View switch: List | Kanban */}
-        <div className="hidden w-fit items-center gap-0 rounded-md border border-[#eee] bg-white p-0.5 md:flex">
+        <div className="hidden w-fit items-center gap-0 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-0.5 md:flex">
           <button
             type="button"
             onClick={() => setViewMode("list")}
             className={cn(
               "px-3 py-1.5 text-sm font-medium rounded-[6px] transition-colors",
               viewMode === "list"
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground hover:bg-gray-50 dark:hover:bg-muted/40"
+                ? "bg-[var(--neo-gold)] text-zinc-950"
+                : "text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-raised)] hover:text-[var(--neo-text-primary)]"
             )}
           >
             List View
@@ -594,8 +608,8 @@ export default function PunchListPage() {
             className={cn(
               "px-3 py-1.5 text-sm font-medium rounded-[6px] transition-colors",
               viewMode === "kanban"
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground hover:bg-gray-50 dark:hover:bg-muted/40"
+                ? "bg-[var(--neo-gold)] text-zinc-950"
+                : "text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-raised)] hover:text-[var(--neo-text-primary)]"
             )}
           >
             Kanban Board
@@ -605,11 +619,13 @@ export default function PunchListPage() {
         {/* Filters: desktop */}
         <div className="hidden flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:gap-2 md:flex">
           <div className="w-full min-w-0 sm:w-auto">
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Project</label>
+            <label className="block text-xs font-medium text-[var(--neo-canvas-text-tertiary)] mb-1">
+              Project
+            </label>
             <select
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value)}
-              className="h-9 w-full min-w-0 rounded-sm border border-[#eee] bg-background px-2.5 text-sm sm:w-auto sm:min-w-[160px]"
+              className="h-9 w-full min-w-0 rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 text-sm text-[var(--neo-text-primary)] sm:w-auto sm:min-w-[160px]"
             >
               <option value="">All projects</option>
               {projects.map((p) => (
@@ -620,11 +636,13 @@ export default function PunchListPage() {
             </select>
           </div>
           <div className="w-full min-w-0 sm:w-auto">
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Status</label>
+            <label className="block text-xs font-medium text-[var(--neo-canvas-text-tertiary)] mb-1">
+              Status
+            </label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="h-9 w-full min-w-0 rounded-sm border border-[#eee] bg-background px-2.5 text-sm sm:w-auto sm:min-w-[120px]"
+              className="h-9 w-full min-w-0 rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 text-sm text-[var(--neo-text-primary)] sm:w-auto sm:min-w-[120px]"
             >
               <option value="">All</option>
               <option value="open">Open</option>
@@ -633,11 +651,13 @@ export default function PunchListPage() {
             </select>
           </div>
           <div className="w-full min-w-0 sm:w-auto">
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Priority</label>
+            <label className="block text-xs font-medium text-[var(--neo-canvas-text-tertiary)] mb-1">
+              Priority
+            </label>
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="h-9 w-full min-w-0 rounded-sm border border-[#eee] bg-background px-2.5 text-sm sm:w-auto sm:min-w-[100px]"
+              className="h-9 w-full min-w-0 rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 text-sm text-[var(--neo-text-primary)] sm:w-auto sm:min-w-[100px]"
             >
               <option value="">All</option>
               {PRIORITIES.map((pr) => (
@@ -648,14 +668,16 @@ export default function PunchListPage() {
             </select>
           </div>
           <div className="w-full min-w-0 flex-1 sm:min-w-[140px]">
-            <label className="block text-xs font-medium text-muted-foreground mb-1">Search</label>
+            <label className="block text-xs font-medium text-[var(--neo-canvas-text-tertiary)] mb-1">
+              Search
+            </label>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Issue, project, location…"
-                className="h-9 pl-8 rounded-sm border-[#eee] bg-background text-sm"
+                className="h-9 pl-8 rounded-sm border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-sm text-[var(--neo-text-primary)]"
               />
             </div>
           </div>
@@ -663,7 +685,7 @@ export default function PunchListPage() {
 
         {/* List view — compact issue list */}
         {viewMode === "list" && (
-          <div className="overflow-hidden rounded-lg border border-[#eee] bg-white max-md:rounded-none max-md:border-0 dark:bg-background">
+          <div className="overflow-hidden rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-[var(--neo-shadow-panel)] max-md:rounded-none max-md:border-0">
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
             ) : error && items.length === 0 ? (
@@ -676,7 +698,7 @@ export default function PunchListPage() {
                 </Button>
               </div>
             ) : (
-              <ul className="divide-y divide-gray-100 dark:divide-border/60">
+              <ul className="divide-y divide-[var(--neo-border)]">
                 {filteredItems.map((r) => (
                   <PunchListRow key={r.id} item={r} onOpenDrawer={openDrawer} />
                 ))}
@@ -687,7 +709,7 @@ export default function PunchListPage() {
 
         {/* Kanban board — 3 columns with drag and drop */}
         {viewMode === "kanban" && (
-          <div className="overflow-hidden rounded-lg border border-[#eee] bg-white max-md:rounded-none max-md:border-0 dark:bg-background">
+          <div className="overflow-hidden rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-[var(--neo-shadow-panel)] max-md:rounded-none max-md:border-0">
             {loading ? (
               <div className="py-8 text-center text-sm text-muted-foreground">Loading…</div>
             ) : error && items.length === 0 ? (
@@ -714,17 +736,17 @@ export default function PunchListPage() {
                     return (
                       <div
                         key={columnId}
-                        className="flex flex-col rounded-lg border border-[#eee] bg-[#fafafa]/50 min-h-[280px] w-[280px] min-w-[280px] sm:min-w-0 sm:w-auto"
+                        className="flex flex-col rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] min-h-[280px] w-[280px] min-w-[280px] sm:min-w-0 sm:w-auto"
                         onDragOver={(e) => {
                           e.preventDefault();
-                          e.currentTarget.classList.add("ring-1", "ring-[#eee]");
+                          e.currentTarget.classList.add("ring-1", "ring-[var(--neo-gold-ring)]");
                         }}
                         onDragLeave={(e) => {
-                          e.currentTarget.classList.remove("ring-1", "ring-[#eee]");
+                          e.currentTarget.classList.remove("ring-1", "ring-[var(--neo-gold-ring)]");
                         }}
                         onDrop={(e) => handleColumnDrop(columnStatus, e)}
                       >
-                        <div className="p-2.5 border-b border-[#eee] font-medium text-sm text-muted-foreground">
+                        <div className="p-2.5 border-b border-[var(--neo-border)] font-medium text-sm text-[var(--neo-text-secondary)]">
                           {label} ({columnItems.length})
                         </div>
                         <div className="flex-1 p-2 space-y-2 overflow-y-auto min-h-0">
@@ -868,7 +890,7 @@ export default function PunchListPage() {
               </Button>
               <Button
                 size="sm"
-                className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
+                className="rounded-sm"
                 onClick={handleSaveDrawer}
                 disabled={submitting}
               >
@@ -994,12 +1016,7 @@ export default function PunchListPage() {
             >
               Cancel
             </Button>
-            <Button
-              size="sm"
-              className="rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
-              onClick={handleSaveNew}
-              disabled={submitting}
-            >
+            <Button size="sm" className="rounded-sm" onClick={handleSaveNew} disabled={submitting}>
               Save
             </Button>
           </DialogFooter>

@@ -245,7 +245,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       </MobileFilterSheet>
 
       <Card className="hidden overflow-hidden p-0 md:block">
-        <div className="grid divide-y divide-[#E5E7EB] sm:grid-cols-2 sm:divide-y-0 md:grid-cols-4 md:divide-x dark:divide-border/60">
+        <div className="grid divide-y divide-[var(--neo-border)] sm:grid-cols-2 sm:divide-y-0 md:grid-cols-4 md:divide-x">
           <div className="p-4">
             <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
               Outstanding
@@ -386,18 +386,14 @@ export function BillsListClient({ bills, summary, projects }: Props) {
           />
           <div className="hidden md:flex min-h-[280px] flex-col items-center justify-center text-center">
             <p className="text-sm font-medium text-foreground">No bills yet</p>
-            <Button
-              asChild
-              size="touch"
-              className="mt-4 rounded-sm bg-[#111111] text-white hover:bg-[#111111]/90"
-            >
+            <Button asChild size="touch" className="mt-4 rounded-sm">
               <Link href="/bills/new">Create First Bill</Link>
             </Button>
           </div>
         </>
       ) : (
         <>
-          <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+          <div className="divide-y divide-[var(--neo-border)] md:hidden">
             {localBills.map((bill) => {
               const s = statusPill(bill);
               return (
