@@ -160,7 +160,7 @@ export function Topbar({
     <header
       data-app-topbar
       className={cn(
-        "neo-command-bar sticky top-0 z-40 flex h-12 min-h-12 shrink-0 items-center px-3 sm:min-h-0 sm:rounded-xl sm:px-4",
+        "neo-command-bar sticky top-0 z-40 flex h-[52px] min-h-[52px] shrink-0 items-center px-3 sm:min-h-0 sm:rounded-xl sm:px-4",
         "flex-row gap-3 sm:gap-4"
       )}
     >
@@ -192,7 +192,7 @@ export function Topbar({
           aria-label="Breadcrumb"
           title={breadcrumbs.join(" › ")}
         >
-          <span className="truncate text-text-primary dark:text-foreground">{breadcrumbLine}</span>
+          <span className="truncate text-[var(--neo-canvas-text-primary)]">{breadcrumbLine}</span>
         </nav>
       </div>
 
@@ -210,19 +210,19 @@ export function Topbar({
         </Button>
         <button
           type="button"
-          className="relative hidden h-[30px] min-w-0 items-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] sm:flex sm:w-[200px] md:w-[240px]"
+          className="group relative hidden h-8 min-w-0 items-center rounded-[10px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] sm:flex sm:w-[210px] md:w-[260px]"
           aria-label="Open command palette"
           onClick={onOpenCommandPalette}
         >
           <Search
-            className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[var(--neo-text-tertiary)]"
+            className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[var(--neo-canvas-text-tertiary)] transition-colors duration-150 group-hover:text-[var(--neo-gold-soft)]"
             strokeWidth={1.75}
             aria-hidden
           />
           <span
             className={cn(
-              "neo-input flex h-[30px] w-full min-w-0 items-center justify-between rounded-lg border-[0.5px] pl-8 pr-1.5 text-[13px] text-[var(--neo-text-tertiary)] shadow-none",
-              "transition-colors duration-150 hover:bg-[var(--neo-surface-muted)]"
+              "neo-topbar-command-input flex h-8 w-full min-w-0 items-center justify-between rounded-[10px] border-[0.5px] pl-8 pr-1.5 text-[13px] text-[var(--neo-canvas-text-tertiary)]",
+              "transition-[background,border-color,box-shadow] duration-150"
             )}
           >
             <span className="truncate">Search projects, workers, invoices...</span>
@@ -254,7 +254,7 @@ export function Topbar({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 min-h-[44px] rounded-md px-3.5 py-2.5 text-sm font-medium shadow-none transition-all duration-150 ease-out hover:-translate-y-px active:scale-[0.97] active:duration-100 sm:min-h-0"
+              className="h-9 min-h-[44px] rounded-[10px] border-[rgb(198_165_106_/_0.24)] bg-[rgb(198_165_106_/_0.1)] px-3.5 py-2.5 text-sm font-medium text-[var(--neo-canvas-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)_inset] transition-all duration-150 ease-out hover:-translate-y-px hover:border-[rgb(198_165_106_/_0.36)] hover:bg-[rgb(198_165_106_/_0.14)] active:scale-[0.97] active:duration-100 sm:min-h-0"
             >
               <Plus className="mr-2 h-4 w-4" />
               New
@@ -326,7 +326,7 @@ export function Topbar({
                 {logoUrl ? (
                   <AvatarImage src={logoUrl} alt={orgName} className="object-contain" />
                 ) : null}
-                <AvatarFallback className="bg-[#f5f5f5] text-[13px] font-medium text-[#111]">
+                <AvatarFallback className="border border-white/10 bg-[rgb(198_165_106_/_0.14)] text-[13px] font-medium text-[var(--neo-gold-soft)]">
                   {getCompanyInitials(orgName)}
                 </AvatarFallback>
               </Avatar>

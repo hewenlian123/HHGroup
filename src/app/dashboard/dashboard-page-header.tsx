@@ -9,7 +9,7 @@ export function DashboardPageHeader() {
   return (
     <header
       data-neo-page-header="true"
-      className="flex min-w-0 max-w-full shrink-0 flex-col gap-3 border-b border-white/10 pb-4 max-md:gap-3 md:flex-row md:items-end md:justify-between md:gap-4 md:pb-5"
+      className="dashboard-command-hero relative isolate flex min-w-0 max-w-full shrink-0 flex-col gap-3 overflow-hidden rounded-2xl border px-4 py-4 max-md:gap-3 md:flex-row md:items-end md:justify-between md:gap-4 md:px-5 md:py-5"
     >
       <div className="min-w-0">
         <p className={cn(TYPO.sectionLabel, "text-[var(--neo-canvas-text-tertiary)]")}>
@@ -18,7 +18,7 @@ export function DashboardPageHeader() {
         <h1
           className={cn(
             TYPO.pageTitle,
-            "text-[26px] leading-tight text-[var(--neo-canvas-text-primary)] md:text-[32px]"
+            "mt-1 text-[26px] leading-tight text-[var(--neo-canvas-text-primary)] md:text-[33px]"
           )}
         >
           Executive Command Center
@@ -26,7 +26,7 @@ export function DashboardPageHeader() {
         <p
           className={cn(
             TYPO.pageSubtitle,
-            "mt-1 line-clamp-4 text-pretty text-[var(--neo-canvas-text-secondary)] max-md:text-[14px]"
+            "mt-2 max-w-[760px] text-pretty text-[var(--neo-canvas-text-secondary)] max-md:text-[14px]"
           )}
         >
           Liquidity, margin, payables, risk, and next actions in one operating view.
@@ -35,7 +35,7 @@ export function DashboardPageHeader() {
       <span
         className={cn(
           TYPO.date,
-          "inline-flex h-11 min-h-[44px] shrink-0 items-center justify-center self-start rounded-full border border-white/10 bg-white/[0.06] px-4 text-[13px] font-medium tracking-normal text-[var(--neo-canvas-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.04)_inset] backdrop-blur-[12px] max-md:w-full max-md:self-stretch md:h-9 md:w-auto md:min-h-0"
+          "inline-flex h-11 min-h-[44px] shrink-0 items-center justify-center self-start rounded-full border border-white/[0.12] bg-white/[0.055] px-4 text-[13px] font-medium tracking-normal text-[var(--neo-canvas-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)_inset,0_12px_28px_rgba(0,0,0,0.18)] backdrop-blur-[14px] transition-[background,border-color,box-shadow] duration-150 hover:border-[rgb(198_165_106_/_0.28)] hover:bg-white/[0.075] max-md:w-full max-md:self-stretch md:h-9 md:w-auto md:min-h-0"
         )}
       >
         {chipDate}
