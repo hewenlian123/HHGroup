@@ -20,6 +20,7 @@ import { companyProfileQueryKey, fetchCompanyProfileForNav } from "@/lib/queries
 import { getCompanyInitials } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
 import { useBreadcrumbOverrides } from "@/contexts/breadcrumb-override-context";
+import { NeoKeyboardHint } from "@/components/command/neo-command-palette";
 import { cn } from "@/lib/utils";
 
 /** Map path segments to breadcrumb display labels (for last segment, or section names). */
@@ -120,9 +121,11 @@ function buildBreadcrumbs(pathname: string, overrides: Map<string, string>): str
 export function Topbar({
   onOpenSidebar,
   onToggleSidebar,
+  onOpenCommandPalette,
 }: {
   onOpenSidebar?: () => void;
   onToggleSidebar?: () => void;
+  onOpenCommandPalette?: () => void;
 }) {
   const pathname = usePathname();
   const brandingSupabase = React.useMemo(() => {
@@ -195,27 +198,37 @@ export function Topbar({
 
       {/* Global Search — 320px desktop, shrunk on tablet/mobile */}
       <div className="flex min-w-0 shrink items-center gap-2">
-        <label
-          className="relative hidden min-w-0 sm:block sm:w-[200px] md:w-[240px]"
-          htmlFor="topbar-search"
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md shadow-none transition-all duration-150 ease-out sm:hidden"
+          aria-label="Open command palette"
+          onClick={onOpenCommandPalette}
         >
-          <span className="sr-only">Search</span>
+          <Search className="h-4 w-4 text-[var(--neo-text-secondary)]" strokeWidth={1.75} />
+        </Button>
+        <button
+          type="button"
+          className="relative hidden h-[30px] min-w-0 items-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] sm:flex sm:w-[200px] md:w-[240px]"
+          aria-label="Open command palette"
+          onClick={onOpenCommandPalette}
+        >
           <Search
             className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[var(--neo-text-tertiary)]"
             strokeWidth={1.75}
             aria-hidden
           />
-          <input
-            id="topbar-search"
-            type="search"
-            placeholder="Search projects, workers, invoices..."
+          <span
             className={cn(
-              "neo-input h-[30px] w-full rounded-lg border-[0.5px] pl-8 pr-2.5 text-[13px] shadow-none placeholder:text-[var(--neo-text-tertiary)]",
-              "outline-none transition-colors duration-150 focus:border-[var(--neo-gold)] focus:ring-2 focus:ring-[var(--neo-gold-ring)]",
-              "min-w-0 max-sm:placeholder:opacity-0"
+              "neo-input flex h-[30px] w-full min-w-0 items-center justify-between rounded-lg border-[0.5px] pl-8 pr-1.5 text-[13px] text-[var(--neo-text-tertiary)] shadow-none",
+              "transition-colors duration-150 hover:bg-[var(--neo-surface-muted)]"
             )}
-          />
-        </label>
+          >
+            <span className="truncate">Search projects, workers, invoices...</span>
+            <NeoKeyboardHint className="ml-2 hidden shrink-0 md:inline-flex" />
+          </span>
+        </button>
         <div className="relative inline-flex shrink-0">
           <Button
             variant="outline"
