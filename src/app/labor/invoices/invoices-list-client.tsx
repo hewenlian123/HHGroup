@@ -217,7 +217,7 @@ export default function LaborInvoicesListClient() {
   );
 
   return (
-    <div className="page-container page-stack py-6">
+    <div className="dark neo-page-on-graphite page-container page-stack py-6 text-[var(--neo-canvas-text-secondary)]">
       <PageHeader
         title="Labor Invoices"
         subtitle="Worker invoices/receipts with attachment and project split review."

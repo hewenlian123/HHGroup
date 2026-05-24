@@ -422,12 +422,12 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   const fetchBusy = loading;
 
   const selectFieldClass =
-    "h-10 w-full min-w-0 rounded-md border border-zinc-200/65 bg-white px-3 text-sm text-zinc-800 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-colors hover:border-zinc-200 hover:bg-zinc-50/40 focus-visible:border-zinc-300/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400/18 dark:border-border/80 dark:bg-card dark:text-foreground dark:hover:bg-muted/25 dark:focus-visible:ring-zinc-500/25";
+    "h-10 w-full min-w-0 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)] shadow-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
 
   const dateInputClass = cn(
     selectFieldClass,
-    "font-mono text-[13px] tabular-nums text-zinc-600 [color-scheme:light] dark:text-zinc-400 dark:[color-scheme:dark]",
-    "bg-zinc-50/45 hover:bg-zinc-50/65 dark:bg-muted/15 dark:hover:bg-muted/25"
+    "font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)] [color-scheme:dark]",
+    "bg-[var(--neo-surface-muted)] hover:bg-[var(--neo-surface-muted)]"
   );
 
   const searchInput = (
@@ -437,7 +437,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
         placeholder="Search notes…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="h-11 min-h-[44px] border-zinc-200/65 bg-white pl-8 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:bg-white focus-visible:border-zinc-300/90 focus-visible:ring-zinc-400/18 md:h-10 md:min-h-10"
+        className="h-11 min-h-[44px] border-[var(--neo-border)] bg-[var(--neo-surface-raised)] pl-8 text-sm text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] md:h-10 md:min-h-10"
         aria-label="Search advances"
       />
     </div>
@@ -505,7 +505,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   return (
     <div
       className={cn(
-        "neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
+        "dark neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
         "flex flex-col"
       )}
     >
@@ -692,7 +692,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
             type="button"
             variant="outline"
             size="sm"
-            className="h-10 w-full shrink-0 gap-1.5 rounded-sm border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:bg-zinc-50/90 lg:ml-auto lg:w-auto dark:border-border dark:bg-transparent dark:hover:bg-muted/30"
+            className="h-10 w-full shrink-0 gap-1.5 rounded-sm border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] lg:ml-auto lg:w-auto"
             onClick={() => void load()}
             disabled={fetchBusy}
           >

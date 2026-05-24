@@ -106,7 +106,7 @@ export default function PayrollSummaryPage() {
   return (
     <div
       className={cn(
-        "neo-page-on-graphite page-container page-stack py-6 text-[var(--neo-canvas-text-secondary)]",
+        "dark neo-page-on-graphite page-container page-stack py-6 text-[var(--neo-canvas-text-secondary)]",
         mobileListPagePaddingClass,
         "max-md:!gap-3"
       )}
