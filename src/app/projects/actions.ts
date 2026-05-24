@@ -4,17 +4,19 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import {
-  deleteProject,
-  forceDeleteProject,
-  getProjectUsageCounts,
-  updateProject,
   createProjectTask,
   updateProjectTask,
   deleteProjectTask,
   deleteProjectTaskWithClient,
   insertActivityLog,
 } from "@/lib/data";
-import { createProjectWithClient, updateProjectWithClient } from "@/lib/projects-db";
+import {
+  deleteProjectWithClient,
+  forceDeleteProjectWithClient,
+  getProjectUsageCountsWithClient,
+  createProjectWithClient,
+  updateProjectWithClient,
+} from "@/lib/projects-db";
 import {
   getServerSupabase,
   getServerSupabaseAdmin,
@@ -54,7 +56,9 @@ export async function getProjectUsageAction(
 ): Promise<{ blocked: false } | { blocked: true; counts: ProjectUsageCounts }> {
   if (!projectId?.trim()) return { blocked: false };
   try {
-    const counts = await getProjectUsageCounts(projectId);
+    const server = getServerSupabaseInternalNoStore();
+    if (!server) return { blocked: false };
+    const counts = await getProjectUsageCountsWithClient(server, projectId);
     const hasAny =
       (counts.project_tasks ?? 0) > 0 ||
       (counts.labor_entries ?? 0) > 0 ||
@@ -131,7 +135,11 @@ export async function updateProjectStatusAction(
 ): Promise<{ error?: string }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
-    await updateProject(projectId, { status });
+    const server = getServerSupabaseInternalNoStore();
+    if (!server) return { error: "Server Supabase is not configured." };
+    const updated = await updateProjectWithClient(server, projectId, { status });
+    if (!updated) return { error: "Project was not found or could not be updated." };
+    if (updated.status !== status) return { error: "Project status was not updated." };
     revalidatePath("/projects");
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/dashboard");
@@ -146,7 +154,11 @@ export async function updateProjectStatusAction(
 export async function archiveProjectAction(projectId: string): Promise<{ error?: string }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
-    await updateProject(projectId, { status: "completed" });
+    const server = getServerSupabaseInternalNoStore();
+    if (!server) return { error: "Server Supabase is not configured." };
+    const updated = await updateProjectWithClient(server, projectId, { status: "completed" });
+    if (!updated) return { error: "Project was not found or could not be archived." };
+    if (updated.status !== "completed") return { error: "Project status was not archived." };
     revalidatePath("/projects");
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/dashboard");
@@ -162,7 +174,9 @@ export async function deleteProjectAction(
 ): Promise<{ error?: string; blocked?: boolean; counts?: Record<string, number> }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
-    const usage = await getProjectUsageCounts(projectId);
+    const server = getServerSupabaseInternalNoStore();
+    if (!server) return { error: "Server Supabase is not configured." };
+    const usage = await getProjectUsageCountsWithClient(server, projectId);
     const hasAny =
       (usage.project_tasks ?? 0) > 0 ||
       (usage.labor_entries ?? 0) > 0 ||
@@ -178,7 +192,7 @@ export async function deleteProjectAction(
     if (hasAny) {
       return { blocked: true, counts: usage };
     }
-    const ok = await deleteProject(projectId);
+    const ok = await deleteProjectWithClient(server, projectId);
     if (!ok) return { error: "Failed to delete project." };
     revalidatePath("/projects");
     revalidatePath("/dashboard");
@@ -197,7 +211,9 @@ export async function deleteProjectAction(
 export async function forceDeleteProjectAction(projectId: string): Promise<{ error?: string }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
-    await forceDeleteProject(projectId);
+    const server = getServerSupabaseInternalNoStore();
+    if (!server) return { error: "Server Supabase is not configured." };
+    await forceDeleteProjectWithClient(server, projectId);
     revalidatePath("/projects");
     revalidatePath("/dashboard");
     return {};

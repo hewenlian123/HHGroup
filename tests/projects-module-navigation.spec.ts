@@ -265,6 +265,19 @@ async function createChangeOrderFromList(
   return { url: page.url(), label };
 }
 
+async function openProjectActions(page: Page): Promise<void> {
+  const archiveProjectMenuItem = page.getByRole("menuitem", { name: "Archive project" });
+  if (await archiveProjectMenuItem.isVisible().catch(() => false)) {
+    return;
+  }
+  const actions = page.getByTestId("project-detail-actions");
+  await expect(actions).toBeVisible({ timeout: 10_000 });
+  await actions.click();
+  await expect(archiveProjectMenuItem).toBeVisible({
+    timeout: 10_000,
+  });
+}
+
 test.afterEach(async () => {
   await cleanupProjectsModuleData();
   customerNames.clear();
@@ -385,6 +398,41 @@ test("links customer, project, estimate, and change order flows together", async
     timeout: 30_000,
   });
   await expect(page.locator(`a[href="${changeOrderPath}"]`).first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.goto(projectUrl);
+  await page.waitForLoadState("domcontentloaded");
+  await openProjectActions(page);
+  await page.getByRole("menuitem", { name: "Archive project" }).click({ force: true });
+  const archiveDialog = page.getByRole("dialog", { name: "Archive project?" });
+  await expect(archiveDialog).toBeVisible({ timeout: 10_000 });
+  await archiveDialog.getByRole("button", { name: "Cancel" }).click();
+  await expect(archiveDialog).toBeHidden({ timeout: 10_000 });
+  await expect(page.locator("h1", { hasText: projectName }).first()).toBeVisible({
+    timeout: 10_000,
+  });
+
+  await openProjectActions(page);
+  await page.getByRole("menuitem", { name: "Archive project" }).click({ force: true });
+  await expect(archiveDialog).toBeVisible({ timeout: 10_000 });
+  await Promise.all([
+    page.waitForURL(/\/projects\?status=active(?:[&#]|$)/, { timeout: 30_000 }),
+    archiveDialog.getByRole("button", { name: "Archive" }).click({ force: true }),
+  ]);
+  const activeSearch = page.getByTestId("projects-list-search-desktop");
+  await expect(activeSearch).toBeVisible({ timeout: 30_000 });
+  await activeSearch.fill(projectName);
+  await expect(page.getByRole("link", { name: `Open project ${projectName}` })).toHaveCount(0, {
+    timeout: 30_000,
+  });
+
+  await page.goto("/projects?status=completed");
+  await page.waitForLoadState("domcontentloaded");
+  const completedSearch = page.getByTestId("projects-list-search-desktop");
+  await expect(completedSearch).toBeVisible({ timeout: 30_000 });
+  await completedSearch.fill(projectName);
+  await expect(page.getByRole("link", { name: `Open project ${projectName}` })).toBeVisible({
     timeout: 30_000,
   });
 });
