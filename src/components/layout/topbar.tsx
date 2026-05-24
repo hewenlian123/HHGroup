@@ -254,7 +254,7 @@ export function Topbar({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 min-h-[44px] rounded-[10px] border-[rgb(198_165_106_/_0.24)] bg-[rgb(198_165_106_/_0.1)] px-3.5 py-2.5 text-sm font-medium text-[var(--neo-canvas-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.06)_inset] transition-all duration-150 ease-out hover:-translate-y-px hover:border-[rgb(198_165_106_/_0.36)] hover:bg-[rgb(198_165_106_/_0.14)] active:scale-[0.97] active:duration-100 sm:min-h-0"
+              className="h-9 min-h-[44px] rounded-[10px] border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.09)] px-3.5 py-2.5 text-sm font-medium text-[var(--neo-canvas-text-primary)] shadow-[0_1px_0_rgba(255,255,255,0.045)_inset] transition-all duration-150 ease-out hover:-translate-y-px hover:border-[rgb(184_147_90_/_0.34)] hover:bg-[rgb(184_147_90_/_0.12)] active:scale-[0.97] active:duration-100 sm:min-h-0"
             >
               <Plus className="mr-2 h-4 w-4" />
               New
@@ -326,7 +326,7 @@ export function Topbar({
                 {logoUrl ? (
                   <AvatarImage src={logoUrl} alt={orgName} className="object-contain" />
                 ) : null}
-                <AvatarFallback className="border border-white/10 bg-[rgb(198_165_106_/_0.14)] text-[13px] font-medium text-[var(--neo-gold-soft)]">
+                <AvatarFallback className="border border-white/10 bg-[rgb(184_147_90_/_0.12)] text-[13px] font-medium text-[var(--neo-gold-soft)]">
                   {getCompanyInitials(orgName)}
                 </AvatarFallback>
               </Avatar>
