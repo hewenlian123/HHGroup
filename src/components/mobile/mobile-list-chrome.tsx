@@ -91,7 +91,7 @@ export function MobileFilterSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="max-h-[90vh] overflow-y-auto rounded-t-lg p-4 md:hidden"
+        className="max-h-[90vh] overflow-y-auto rounded-t-[1.5rem] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden"
       >
         <SheetHeader className="text-left">
           <SheetTitle className="text-base font-semibold">{title}</SheetTitle>

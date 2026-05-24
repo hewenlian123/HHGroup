@@ -6,6 +6,11 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Download, ExternalLink, Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WorkerPaymentReceiptDocument } from "@/components/labor/worker-payment-receipt-document";
+import {
+  hhNeoFocusRevealDialog,
+  hhNeoFocusRevealMobileSheet,
+  hhNeoFocusRevealOverlay,
+} from "@/lib/motion-system";
 import type { WorkerPaymentReceiptPreviewDto } from "@/lib/worker-payment-receipt-preview-dto";
 import { downloadWorkerPaymentReceiptPdf } from "@/lib/worker-payment-receipt-pdf";
 import { cn } from "@/lib/utils";
@@ -113,16 +118,16 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
-          className={cn(
-            "receipt-preview-overlay fixed inset-0 z-50 bg-black/40",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-          )}
+          className={cn("receipt-preview-overlay fixed inset-0 z-50", hhNeoFocusRevealOverlay)}
         />
         <DialogPrimitive.Content
+          onEscapeKeyDown={() => onOpenChange(false)}
+          onPointerDownOutside={() => onOpenChange(false)}
           className={cn(
-            "receipt-preview-dialog-root fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh_880px)] w-[min(720px_94vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-sm border border-border/60 bg-background shadow-none duration-100",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-            "max-md:inset-x-3 max-md:top-[max(0.75rem,env(safe-area-inset-top))] max-md:max-h-[calc(100dvh_-_1.5rem_-_env(safe-area-inset-top)_-_env(safe-area-inset-bottom))] max-md:w-auto max-md:max-w-[calc(100vw-1.5rem)] max-md:-translate-x-1/2 max-md:translate-y-0"
+            "receipt-preview-dialog-root fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh_880px)] w-[min(720px_94vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-[1.5rem] border border-white/10 bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] outline-none",
+            hhNeoFocusRevealDialog,
+            "max-md:inset-x-2 max-md:bottom-0 max-md:top-auto max-md:max-h-[calc(100dvh-0.75rem)] max-md:w-auto max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-[1.5rem] max-md:border-b-0",
+            hhNeoFocusRevealMobileSheet
           )}
         >
           <DialogPrimitive.Description className="sr-only">

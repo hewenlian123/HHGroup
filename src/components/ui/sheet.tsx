@@ -5,6 +5,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { cva, type VariantProps } from "class-variance-authority";
 import { X } from "lucide-react";
 
+import { hhNeoFocusRevealOverlay } from "@/lib/motion-system";
 import { cn } from "@/lib/utils";
 
 const Sheet = SheetPrimitive.Root;
@@ -20,10 +21,7 @@ const SheetOverlay = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
-    className={cn(
-      "fixed inset-0 z-50 bg-black/45 duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className
-    )}
+    className={cn("fixed inset-0 z-50", hhNeoFocusRevealOverlay, className)}
     {...props}
     ref={ref}
   />
@@ -31,16 +29,16 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "dark fixed z-50 gap-4 overflow-y-auto overscroll-y-contain border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] transition-all duration-150 ease-out [-webkit-overflow-scrolling:touch] data-[state=open]:animate-in data-[state=closed]:animate-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none max-md:rounded-none",
+  "dark fixed z-50 gap-4 overflow-y-auto overscroll-y-contain border-white/10 bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] outline-none [-webkit-overflow-scrolling:touch] motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none",
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+        top: "inset-x-0 top-0 border-b rounded-b-[1.5rem] data-[state=open]:animate-hh-sheet-top-in data-[state=closed]:animate-hh-sheet-top-out",
         bottom:
-          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        left: "inset-y-0 left-0 h-full w-full border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left md:w-3/4 md:max-w-sm",
+          "inset-x-2 bottom-0 border-t rounded-b-none rounded-t-[1.5rem] data-[state=open]:animate-hh-sheet-in data-[state=closed]:animate-hh-sheet-out md:inset-x-0",
+        left: "inset-y-0 left-0 h-full w-full border-r rounded-r-[1.5rem] data-[state=open]:animate-hh-sheet-left-in data-[state=closed]:animate-hh-sheet-left-out md:w-3/4 md:max-w-sm",
         right:
-          "inset-y-0 right-0 h-full w-full border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right md:w-3/4 md:max-w-sm",
+          "inset-y-0 right-0 h-full w-full border-l rounded-l-[1.5rem] data-[state=open]:animate-hh-sheet-right-in data-[state=closed]:animate-hh-sheet-right-out md:w-3/4 md:max-w-sm",
       },
     },
     defaultVariants: {

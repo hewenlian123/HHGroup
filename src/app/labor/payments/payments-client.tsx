@@ -15,6 +15,7 @@ import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import { DeleteRowAction } from "@/components/base";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { hhNeoFocusRevealOverlay, hhNeoFocusRevealPanel } from "@/lib/motion-system";
 import { amountClass, TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
@@ -470,8 +471,20 @@ export default function LaborPaymentsClient() {
       </div>
 
       {modalWorkerId ? (
-        <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm p-4 flex items-center justify-center">
-          <Card className="w-full max-w-[560px] p-6">
+        <div
+          className={cn(
+            "fixed inset-0 z-50 flex items-center justify-center p-4",
+            hhNeoFocusRevealOverlay,
+            "animate-hh-modal-fade-in motion-reduce:animate-hh-modal-fade-in"
+          )}
+        >
+          <Card
+            className={cn(
+              "w-full max-w-[560px] rounded-[1.5rem] border-white/10 bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)]",
+              "max-md:max-h-[calc(100dvh-0.75rem)] max-md:overflow-y-auto max-md:rounded-b-none max-md:rounded-t-[1.5rem] max-md:pb-[max(1.5rem,env(safe-area-inset-bottom))]",
+              hhNeoFocusRevealPanel
+            )}
+          >
             <h3 className="text-base font-semibold text-foreground">
               Record Payment — {modalWorker?.workerName ?? "Worker"}
             </h3>

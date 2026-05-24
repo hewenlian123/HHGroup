@@ -278,15 +278,13 @@ async function payLaborOnly(page: Page) {
   await expect((await paid).ok()).toBeTruthy();
   await expect(dialog).not.toBeVisible({ timeout: 30_000 });
 
-  const receiptDialog = page
-    .getByRole("dialog")
-    .filter({ hasText: /Receipt|Payment/i })
-    .first();
-  if (await receiptDialog.isVisible({ timeout: 10_000 }).catch(() => false)) {
-    await page.keyboard.press("Escape");
-    await expect(receiptDialog)
-      .not.toBeVisible({ timeout: 10_000 })
-      .catch(() => undefined);
+  const receiptDialog = page.getByRole("dialog", { name: /^Receipt preview$/i });
+  await expect(receiptDialog)
+    .toBeVisible({ timeout: 10_000 })
+    .catch(() => undefined);
+  if (await receiptDialog.isVisible().catch(() => false)) {
+    await receiptDialog.getByRole("button", { name: /^Close$/i }).click();
+    await expect(receiptDialog).not.toBeVisible({ timeout: 10_000 });
   }
 }
 

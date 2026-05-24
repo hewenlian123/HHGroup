@@ -76,7 +76,8 @@ export function ConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "max-w-sm rounded-xl border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-5 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+          "max-w-sm rounded-[1.5rem] border-white/10 bg-[var(--neo-surface-raised)] p-5 text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)]",
+          "max-md:rounded-b-none max-md:rounded-t-[1.5rem]",
           destructive && "border-rose-500/25",
           className
         )}

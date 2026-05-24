@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { hhNeoFocusRevealCommand, hhNeoFocusRevealOverlay } from "@/lib/motion-system";
 import { cn } from "@/lib/utils";
 
 type CommandGroup = "Navigate" | "Create";
@@ -263,7 +264,7 @@ function NeoCommandItem({
         "text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]",
         "focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
         active &&
-          "bg-[rgb(198_165_106_/_0.14)] text-[var(--neo-text-primary)] ring-1 ring-[rgb(198_165_106_/_0.24)]"
+          "bg-[rgb(184_147_90_/_0.12)] text-[var(--neo-text-primary)] ring-1 ring-[rgb(184_147_90_/_0.24)]"
       )}
       onPointerMove={onPointerMove}
       onClick={onSelect}
@@ -271,7 +272,7 @@ function NeoCommandItem({
       <span
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]",
-          active && "border-[rgb(198_165_106_/_0.34)] text-[var(--neo-gold-soft)]"
+          active && "border-[rgb(184_147_90_/_0.34)] text-[var(--neo-gold-soft)]"
         )}
       >
         <Icon className="h-4 w-4" aria-hidden />
@@ -402,17 +403,13 @@ export function NeoCommandPalette({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay
-          className={cn(
-            "fixed inset-0 z-[90] bg-black/35 backdrop-blur-[2px] duration-150 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
-          )}
-        />
+        <DialogPrimitive.Overlay className={cn("fixed inset-0 z-[90]", hhNeoFocusRevealOverlay)} />
         <DialogPrimitive.Content
           data-command-dialog
           className={cn(
-            "dark fixed top-[max(5rem,env(safe-area-inset-top))] z-[91] w-[min(640px,calc(100vw-2rem))] overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[0_24px_80px_rgb(0_0_0_/_0.42)] outline-none sm:left-1/2 sm:-translate-x-1/2",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2",
-            "max-sm:inset-x-2 max-sm:bottom-[calc(1rem+env(safe-area-inset-bottom))] max-sm:top-[max(0.75rem,env(safe-area-inset-top))] max-sm:w-auto max-sm:rounded-lg"
+            "dark fixed top-[max(5rem,env(safe-area-inset-top))] z-[91] w-[min(640px,calc(100vw-2rem))] overflow-hidden rounded-[1.5rem] border border-white/10 bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] outline-none sm:left-1/2 sm:-translate-x-1/2",
+            hhNeoFocusRevealCommand,
+            "max-sm:inset-x-2 max-sm:bottom-[calc(1rem+env(safe-area-inset-bottom))] max-sm:top-[max(0.75rem,env(safe-area-inset-top))] max-sm:w-auto max-sm:rounded-[1.5rem]"
           )}
         >
           <DialogPrimitive.Title className="sr-only">Command Palette</DialogPrimitive.Title>

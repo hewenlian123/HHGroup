@@ -12,6 +12,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  hhNeoFocusRevealDialog,
+  hhNeoFocusRevealMobileSheet,
+  hhNeoFocusRevealOverlay,
+} from "@/lib/motion-system";
 import { cn } from "@/lib/utils";
 import { createBrowserClient } from "@/lib/supabase";
 import { createInboxDraftFromReceiptFile } from "@/lib/expense-inbox-draft-upload-browser";
@@ -348,10 +353,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
         <DialogOverlay
           className={cn(
             "upload-receipt-mobile-overlay !z-[100] max-md:!z-[9998]",
-            "bg-[rgba(15,23,42,0.22)] backdrop-blur-[3px]",
-            "max-md:bg-black/35 max-md:!backdrop-blur-none",
-            "max-md:data-[state=open]:!animate-none max-md:data-[state=closed]:!animate-none max-md:!duration-0",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+            hhNeoFocusRevealOverlay
           )}
         />
         <DialogPrimitive.Content
@@ -374,18 +376,14 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
             if (Date.now() < suppressOutsideUntilRef.current) e.preventDefault();
           }}
           className={cn(
-            "upload-receipt-mobile-dialog fixed !z-[101] flex min-h-0 w-full flex-col overflow-hidden overflow-x-hidden border border-black/[0.06] bg-background shadow-[0_12px_40px_-8px_rgba(15,23,42,0.18)] outline-none dark:border-white/[0.08] dark:shadow-[0_12px_48px_-12px_rgba(0,0,0,0.55)]",
+            "upload-receipt-mobile-dialog fixed !z-[101] flex min-h-0 w-full flex-col overflow-hidden overflow-x-hidden border border-white/10 bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] outline-none",
             "p-0 md:rounded-[24px] md:p-6",
-            "max-md:fixed max-md:inset-0 max-md:!z-[9999] max-md:h-screen max-md:min-h-screen max-md:max-h-none max-md:w-screen max-md:max-w-none max-md:rounded-none max-md:border-0 max-md:shadow-none",
-            "max-md:h-[100dvh] max-md:min-h-[100svh] max-md:max-h-[100dvh]",
+            "max-md:fixed max-md:inset-x-2 max-md:bottom-0 max-md:top-auto max-md:!z-[9999] max-md:max-h-[calc(100dvh-0.75rem)] max-md:w-auto max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-[1.5rem] max-md:border-b-0",
             "max-md:pt-[max(1rem,env(safe-area-inset-top))] max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:pl-[max(1rem,env(safe-area-inset-left))] max-md:pr-[max(1rem,env(safe-area-inset-right))]",
-            /** iOS Safari: enter animations can leave sheet at opacity 0 (backdrop visible, body missing). Open state: opaque + no stray transform. */
-            "max-md:pointer-events-auto max-md:!opacity-100 max-md:!transform-none max-md:data-[state=open]:!opacity-100 max-md:data-[state=open]:!transform-none",
-            "max-md:data-[state=open]:!animate-none max-md:data-[state=closed]:!animate-none max-md:!transition-none max-md:!duration-0",
-            "duration-200 ease-out",
             "md:max-h-[min(92vh,900px)]",
-            "md:left-1/2 md:top-1/2 md:max-w-[460px] md:-translate-x-1/2 md:-translate-y-1/2 md:data-[state=closed]:animate-out md:data-[state=open]:animate-in md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95",
-            "max-md:data-[state=closed]:animate-out max-md:data-[state=closed]:fade-out-0"
+            "md:left-1/2 md:top-1/2 md:max-w-[460px] md:-translate-x-1/2 md:-translate-y-1/2",
+            hhNeoFocusRevealDialog,
+            hhNeoFocusRevealMobileSheet
           )}
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
