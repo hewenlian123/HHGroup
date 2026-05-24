@@ -507,16 +507,23 @@ export async function updateProject(
   return updateProjectWithClient(client(), id, patch);
 }
 
-export async function deleteProject(id: string): Promise<boolean> {
-  const c = client();
-  const { error } = await c.from("projects").delete().eq("id", id);
+export async function deleteProjectWithClient(
+  explicitClient: SupabaseClient,
+  id: string
+): Promise<boolean> {
+  const c = client(explicitClient);
+  const { data, error } = await c.from("projects").delete().eq("id", id).select("id").maybeSingle();
   if (error) {
     if (isMissingTable(error)) throw new Error(`Projects table not found. ${HINT}`);
     const blocked = await parseForeignKeyError(error, id, c);
     if (blocked) throw blocked;
     throw new Error(error.message ?? HINT);
   }
-  return true;
+  return Boolean((data as { id?: string } | null)?.id);
+}
+
+export async function deleteProject(id: string): Promise<boolean> {
+  return deleteProjectWithClient(client(), id);
 }
 
 /** Tables to clear for force delete (child/dependent first). Column is project_id unless noted. */
@@ -552,8 +559,11 @@ const FORCE_DELETE_ORDER: { table: string; column?: string; orColumns?: [string,
  * Force delete project and all related data. Deletes in dependency order then the project.
  * Use after user confirms in the "Cannot delete project" dialog.
  */
-export async function forceDeleteProject(id: string): Promise<void> {
-  const c = client();
+export async function forceDeleteProjectWithClient(
+  explicitClient: SupabaseClient,
+  id: string
+): Promise<void> {
+  const c = client(explicitClient);
   for (const { table, orColumns } of FORCE_DELETE_ORDER) {
     if (table === "labor_entries") {
       const r1 = await c.from("labor_entries").delete().eq("project_id", id);
@@ -575,8 +585,12 @@ export async function forceDeleteProject(id: string): Promise<void> {
       await c.from(table).delete().eq("project_id", id);
     }
   }
-  const ok = await deleteProject(id);
+  const ok = await deleteProjectWithClient(c, id);
   if (!ok) throw new Error("Failed to delete project after clearing related data.");
+}
+
+export async function forceDeleteProject(id: string): Promise<void> {
+  return forceDeleteProjectWithClient(client(), id);
 }
 
 export type ProjectUsageCounts = {
@@ -594,8 +608,11 @@ export type ProjectUsageCounts = {
 };
 
 /** Count records that reference the project. Used to block deletion when in use. */
-export async function getProjectUsageCounts(projectId: string): Promise<ProjectUsageCounts> {
-  const c = client();
+export async function getProjectUsageCountsWithClient(
+  explicitClient: SupabaseClient,
+  projectId: string
+): Promise<ProjectUsageCounts> {
+  const c = client(explicitClient);
   const pid = projectId;
 
   const safeCount = async (table: string, column: string, value: string): Promise<number> => {
@@ -662,4 +679,8 @@ export async function getProjectUsageCounts(projectId: string): Promise<ProjectU
     site_photos,
     materials,
   };
+}
+
+export async function getProjectUsageCounts(projectId: string): Promise<ProjectUsageCounts> {
+  return getProjectUsageCountsWithClient(client(), projectId);
 }
