@@ -288,42 +288,35 @@ function statusToneClasses(
     return {
       pill:
         variant === "calm"
-          ? "border-red-400/32 bg-red-500/[0.09] text-red-200"
-          : "border-red-400/45 bg-red-500/12 text-red-200",
-      dot:
-        variant === "calm" ? "bg-red-300" : "bg-red-400 shadow-[0_0_14px_rgba(248,113,113,0.55)]",
+          ? "border-red-400/28 bg-red-500/[0.08] text-red-200"
+          : "border-red-400/38 bg-red-500/[0.10] text-red-200",
+      dot: "bg-red-300",
       text: "text-red-200",
-      border: "border-red-400/35",
-      glow: "shadow-[0_0_34px_rgba(248,113,113,0.15)]",
+      border: "border-red-400/28",
+      glow: "shadow-[0_16px_34px_rgba(0,0,0,0.20)]",
     };
   }
   if (status === "warning") {
     return {
       pill:
         variant === "calm"
-          ? "border-amber-300/32 bg-amber-400/[0.09] text-amber-100"
-          : "border-amber-300/45 bg-amber-400/12 text-amber-100",
-      dot:
-        variant === "calm"
-          ? "bg-amber-300"
-          : "bg-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.45)]",
+          ? "border-[rgb(198_165_106_/_0.32)] bg-[rgb(198_165_106_/_0.08)] text-[#F4E6C5]"
+          : "border-[rgb(198_165_106_/_0.42)] bg-[rgb(198_165_106_/_0.11)] text-[#F4E6C5]",
+      dot: "bg-[#C6A56A]",
       text: "text-amber-100",
-      border: "border-amber-300/30",
-      glow: "shadow-[0_0_34px_rgba(251,191,36,0.12)]",
+      border: "border-[rgb(198_165_106_/_0.30)]",
+      glow: "shadow-[0_16px_34px_rgba(0,0,0,0.20)]",
     };
   }
   return {
     pill:
       variant === "calm"
-        ? "border-emerald-300/16 bg-emerald-300/[0.045] text-emerald-100/70"
-        : "border-emerald-300/35 bg-emerald-400/10 text-emerald-100",
-    dot:
-      variant === "calm"
-        ? "bg-emerald-300/60"
-        : "bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.45)]",
+        ? "border-emerald-300/16 bg-emerald-300/[0.045] text-emerald-100/72"
+        : "border-emerald-300/30 bg-emerald-400/[0.085] text-emerald-100",
+    dot: variant === "calm" ? "bg-emerald-300/60" : "bg-emerald-300",
     text: "text-emerald-100",
-    border: "border-emerald-300/25",
-    glow: "shadow-[0_0_34px_rgba(45,212,191,0.10)]",
+    border: "border-emerald-300/22",
+    glow: "shadow-[0_16px_34px_rgba(0,0,0,0.18)]",
   };
 }
 
@@ -944,7 +937,7 @@ function CodeBadge({ value, status = "info" }: { value: string; status?: DetailR
         ? "border-amber-300/25 bg-amber-300/[0.1] text-amber-100"
         : status === "ok"
           ? "border-emerald-300/14 bg-emerald-300/[0.045] text-emerald-100/70"
-          : "border-cyan-200/18 bg-cyan-200/[0.07] text-cyan-100/75";
+          : "border-[rgb(198_165_106_/_0.20)] bg-[rgb(198_165_106_/_0.07)] text-slate-200/78";
 
   return (
     <code
@@ -957,7 +950,7 @@ function CodeBadge({ value, status = "info" }: { value: string; status?: DetailR
 
 function CodePath({ value, href }: { value: string; href?: string }) {
   const className =
-    "inline-flex max-w-full items-center rounded-md border border-cyan-200/12 bg-cyan-100/[0.055] px-2 py-1 font-mono text-[11px] leading-4 text-cyan-50/78 no-underline transition hover:border-cyan-200/32 hover:bg-cyan-100/[0.085] hover:text-cyan-50";
+    "inline-flex max-w-full items-center rounded-md border border-[rgb(198_165_106_/_0.16)] bg-white/[0.045] px-2 py-1 font-mono text-[11px] leading-4 text-slate-200/78 no-underline transition hover:border-[rgb(198_165_106_/_0.34)] hover:bg-[rgb(198_165_106_/_0.08)] hover:text-slate-50";
   const content = <span className="break-all">{value}</span>;
 
   if (href) {
@@ -995,14 +988,14 @@ function detailRowTone(status: DetailRowStatus): {
   }
   if (status === "info") {
     return {
-      row: "border-cyan-200/10 hover:bg-cyan-200/[0.035]",
-      accent: "border-cyan-200/22",
-      title: "text-cyan-50/88",
+      row: "border-[rgb(198_165_106_/_0.10)] hover:bg-[rgb(198_165_106_/_0.045)]",
+      accent: "border-[rgb(198_165_106_/_0.26)]",
+      title: "text-slate-100/90",
       detail: "text-slate-300/82",
     };
   }
   return {
-    row: "border-white/[0.045] hover:bg-cyan-100/[0.025]",
+    row: "border-white/[0.045] hover:bg-white/[0.035]",
     accent: "border-transparent",
     title: "text-slate-200",
     detail: "text-slate-400",
@@ -1012,8 +1005,8 @@ function detailRowTone(status: DetailRowStatus): {
 function DetailStatusPill({ status }: { status: DetailRowStatus }) {
   if (status === "info") {
     return (
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-cyan-200/18 bg-cyan-300/[0.07] px-1.5 py-0.5 text-[10px] font-medium text-cyan-100/75">
-        <span className="h-1.5 w-1.5 rounded-full bg-cyan-200/70" />
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[rgb(198_165_106_/_0.20)] bg-[rgb(198_165_106_/_0.07)] px-1.5 py-0.5 text-[10px] font-medium text-slate-200/76">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#C6A56A]/70" />
         Info
       </span>
     );
@@ -1024,7 +1017,7 @@ function DetailStatusPill({ status }: { status: DetailRowStatus }) {
 function GuardianScanLine() {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 h-px overflow-hidden">
-      <span className="guardian-scan-line block h-px w-1/2 bg-gradient-to-r from-transparent via-cyan-200/80 to-transparent" />
+      <span className="guardian-scan-line block h-px w-1/2 bg-gradient-to-r from-transparent via-[#C6A56A]/55 to-transparent" />
     </div>
   );
 }
@@ -1034,8 +1027,8 @@ function GuardianRefreshLine({ status }: { status: HealthCheckStatus }) {
     status === "fail"
       ? "from-red-400 via-red-200 to-red-400"
       : status === "warning"
-        ? "from-amber-300 via-cyan-100 to-amber-300"
-        : "from-emerald-300 via-cyan-100 to-teal-300";
+        ? "from-[#C6A56A] via-[#F4E6C5] to-[#C6A56A]"
+        : "from-emerald-300 via-[#C6A56A] to-emerald-300";
 
   return (
     <div className="guardian-refresh-line absolute inset-x-5 bottom-4 h-px overflow-hidden rounded-full bg-white/10">
@@ -1050,18 +1043,18 @@ function StatusOrb({ status }: { status: HealthCheckStatus }) {
     status === "fail"
       ? "from-red-400 via-red-300 to-zinc-800"
       : status === "warning"
-        ? "from-amber-300 via-cyan-200 to-zinc-800"
-        : "from-emerald-300 via-cyan-200 to-zinc-800";
+        ? "from-[#C6A56A] via-[#F4E6C5] to-zinc-900"
+        : "from-emerald-300 via-[#C6A56A] to-zinc-900";
 
   return (
     <div
-      className={`relative grid h-28 w-28 shrink-0 place-items-center rounded-full bg-gradient-to-br ${ring} p-px shadow-[0_0_36px_rgba(45,212,191,0.18)] sm:h-32 sm:w-32`}
+      className={`relative grid h-28 w-28 shrink-0 place-items-center rounded-full bg-gradient-to-br ${ring} p-px shadow-[0_18px_40px_rgba(0,0,0,0.32)] sm:h-32 sm:w-32`}
       aria-hidden="true"
     >
-      <div className="grid h-full w-full place-items-center rounded-full border border-white/10 bg-[#071012]">
+      <div className="grid h-full w-full place-items-center rounded-full border border-white/10 bg-[#0B0D12]">
         <div className="text-center">
           <p className="text-3xl font-semibold tabular-nums text-slate-50">{score}</p>
-          <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-cyan-100/70">
+          <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-[#C6A56A]/75">
             health
           </p>
         </div>
@@ -1096,7 +1089,7 @@ function HealthHero({
       <div className="relative z-10 grid gap-5 p-4 pb-10 sm:p-5 sm:pb-10 lg:grid-cols-[1fr_auto] lg:items-center lg:p-6 lg:pb-11">
         <div className="min-w-0">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <span className="inline-flex min-h-[32px] items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 text-xs font-medium uppercase tracking-[0.08em] text-cyan-100">
+            <span className="inline-flex min-h-[32px] items-center gap-2 rounded-full border border-[rgb(198_165_106_/_0.24)] bg-[rgb(198_165_106_/_0.08)] px-3 text-xs font-medium uppercase tracking-[0.08em] text-[#F4E6C5]">
               <Activity className="h-3.5 w-3.5" />
               Command Center
             </span>
@@ -1105,7 +1098,7 @@ function HealthHero({
               label={healthStatusLabel(overallStatus, { executive: true })}
             />
           </div>
-          <h1 className="text-3xl font-semibold tracking-normal text-white sm:text-4xl">
+          <h1 className="text-3xl font-semibold tracking-normal text-slate-50 sm:text-4xl">
             System Guardian
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
@@ -1114,21 +1107,21 @@ function HealthHero({
 
           <div className="mt-5 grid gap-2 text-xs text-slate-300 sm:grid-cols-2 xl:grid-cols-4">
             <div className="guardian-hero-metric">
-              <span className="text-slate-500">Overall Status</span>
+              <span className="text-slate-400/85">Overall Status</span>
               <span className={tone.text}>
                 {healthStatusLabel(overallStatus, { executive: true })}
               </span>
             </div>
             <div className="guardian-hero-metric">
-              <span className="text-slate-500">Last Checked</span>
+              <span className="text-slate-400/85">Last Checked</span>
               <span>{formatCheckedAt(checkedAt)}</span>
             </div>
             <div className="guardian-hero-metric">
-              <span className="text-slate-500">Auto Refresh</span>
+              <span className="text-slate-400/85">Auto Refresh</span>
               <span>{cadenceSeconds}s cadence</span>
             </div>
             <div className="guardian-hero-metric">
-              <span className="text-slate-500">Environment</span>
+              <span className="text-slate-400/85">Environment</span>
               <span className="truncate">{environmentLabel}</span>
             </div>
           </div>
@@ -1138,18 +1131,18 @@ function HealthHero({
           <StatusOrb status={overallStatus} />
           <div className="grid min-w-[12rem] gap-2">
             <div className="guardian-hero-metric">
-              <span className="inline-flex items-center gap-1.5 text-slate-500">
+              <span className="inline-flex items-center gap-1.5 text-slate-400/85">
                 <GitCommit className="h-3.5 w-3.5" />
                 Commit
               </span>
-              <code className="font-mono text-xs text-cyan-100">
+              <code className="font-mono text-xs text-[#F4E6C5]">
                 {shortCommit(environment?.commit)}
               </code>
             </div>
             <Button
               size="sm"
               variant="outline"
-              className="min-h-[44px] border-cyan-200/25 bg-cyan-100/10 text-cyan-50 hover:border-cyan-100/50 hover:bg-cyan-100/15"
+              className="min-h-[44px] border-[rgb(198_165_106_/_0.28)] bg-[rgb(198_165_106_/_0.08)] text-slate-50 hover:border-[rgb(198_165_106_/_0.46)] hover:bg-[rgb(198_165_106_/_0.12)]"
               onClick={onRefresh}
               disabled={disabled}
             >
@@ -1180,10 +1173,10 @@ function HealthSummaryCard({
   const tone = statusToneClasses(status);
   return (
     <div
-      className={`group rounded-xl border border-white/10 bg-white/[0.035] p-4 transition duration-200 hover:-translate-y-0.5 hover:border-cyan-200/35 ${tone.glow}`}
+      className={`group rounded-xl border border-white/10 bg-white/[0.035] p-4 transition duration-200 hover:border-[rgb(198_165_106_/_0.26)] hover:bg-white/[0.045] ${tone.glow}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-cyan-200/15 bg-cyan-200/10 text-cyan-100">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[rgb(198_165_106_/_0.18)] bg-[rgb(198_165_106_/_0.08)] text-[#F4E6C5]">
           <Icon className="h-4 w-4" />
         </div>
         <StatusPill status={status} compact />
@@ -1191,7 +1184,7 @@ function HealthSummaryCard({
       <div className="mt-4 min-w-0">
         <h2 className="text-sm font-semibold text-slate-50">{title}</h2>
         <p className="mt-1 text-xs leading-5 text-slate-400">{summary}</p>
-        {count ? <p className="mt-3 font-mono text-xs text-cyan-100/80">{count}</p> : null}
+        {count ? <p className="mt-3 font-mono text-xs text-[#F4E6C5]/80">{count}</p> : null}
       </div>
     </div>
   );
@@ -1291,8 +1284,8 @@ function ActiveIssuesPanel({
       )}
 
       {optionalModules.length ? (
-        <div className="mt-4 rounded-xl border border-cyan-200/15 bg-cyan-200/8 p-3 text-xs leading-5 text-cyan-50/80">
-          <span className="font-medium text-cyan-50">Informational modules:</span>{" "}
+        <div className="mt-4 rounded-xl border border-[rgb(198_165_106_/_0.16)] bg-[rgb(198_165_106_/_0.07)] p-3 text-xs leading-5 text-slate-200/80">
+          <span className="font-medium text-slate-50">Informational modules:</span>{" "}
           {optionalModules.map((check) => check.name).join(", ")}
         </div>
       ) : null}
@@ -1457,12 +1450,12 @@ function HealthSection({
 
   return (
     <details
-      className={`guardian-panel group/section overflow-hidden transition duration-200 hover:border-cyan-200/22 ${tone.glow}`}
+      className={`guardian-panel group/section overflow-hidden transition duration-200 hover:border-[rgb(198_165_106_/_0.22)] ${tone.glow}`}
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
-      <summary className="flex min-h-[60px] cursor-pointer list-none items-center gap-3 px-4 py-3 transition hover:bg-cyan-100/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/60 sm:px-5">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-cyan-200/15 bg-cyan-200/10 text-cyan-100">
+      <summary className="flex min-h-[60px] cursor-pointer list-none items-center gap-3 px-4 py-3 transition hover:bg-[rgb(198_165_106_/_0.045)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(198_165_106_/_0.55)] sm:px-5">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[rgb(198_165_106_/_0.18)] bg-[rgb(198_165_106_/_0.08)] text-[#F4E6C5]">
           <Icon className="h-4 w-4" />
         </span>
         <span className="min-w-0 flex-1">
@@ -1475,7 +1468,7 @@ function HealthSection({
         </span>
         <span className="ml-auto hidden items-center gap-2 sm:flex">
           {count ? (
-            <span className="rounded-md border border-cyan-200/12 bg-cyan-100/[0.045] px-2 py-1 font-mono text-[11px] text-cyan-100/70">
+            <span className="rounded-md border border-[rgb(198_165_106_/_0.14)] bg-white/[0.045] px-2 py-1 font-mono text-[11px] text-slate-200/74">
               {count}
             </span>
           ) : null}
@@ -1485,7 +1478,7 @@ function HealthSection({
       </summary>
       <div className="flex flex-wrap items-center gap-2 px-4 pb-3 sm:hidden">
         {count ? (
-          <span className="rounded-md border border-cyan-200/12 bg-cyan-100/[0.045] px-2 py-1 font-mono text-[11px] text-cyan-100/70">
+          <span className="rounded-md border border-[rgb(198_165_106_/_0.14)] bg-white/[0.045] px-2 py-1 font-mono text-[11px] text-slate-200/74">
             {count}
           </span>
         ) : null}
@@ -1963,7 +1956,7 @@ export default function SystemHealthPage() {
       label: "Environment",
       value: (
         <span className="inline-flex min-w-0 items-center gap-2">
-          <Globe2 className="h-4 w-4 shrink-0 text-cyan-100/70" />
+          <Globe2 className="h-4 w-4 shrink-0 text-[#F4E6C5]/75" />
           <span className="truncate">
             {health?.environment?.vercelEnv ?? health?.environment?.nodeEnv ?? "local"}
           </span>
@@ -1973,7 +1966,7 @@ export default function SystemHealthPage() {
     {
       label: "Commit",
       value: (
-        <code className="font-mono text-cyan-100">
+        <code className="font-mono text-[#F4E6C5]">
           {health?.environment?.commit ? shortCommit(health.environment.commit) : "n/a"}
         </code>
       ),
@@ -2008,22 +2001,22 @@ export default function SystemHealthPage() {
         .system-health-command-center {
           color-scheme: dark;
           background:
-            radial-gradient(circle at 20% 0%, rgba(45, 212, 191, 0.16), transparent 30rem),
-            radial-gradient(circle at 82% 8%, rgba(16, 185, 129, 0.08), transparent 24rem),
-            linear-gradient(180deg, #030607 0%, #071011 42%, #050607 100%);
+            radial-gradient(circle at 20% 0%, rgba(198, 165, 106, 0.09), transparent 30rem),
+            radial-gradient(circle at 82% 8%, rgba(79, 175, 124, 0.055), transparent 24rem),
+            linear-gradient(180deg, #0b0d12 0%, #0f1218 42%, #0b0d12 100%);
         }
         .system-health-command-center .guardian-hero {
           background:
-            radial-gradient(circle at 22% 10%, rgba(45, 212, 191, 0.2), transparent 28rem),
-            linear-gradient(135deg, rgba(12, 18, 20, 0.96), rgba(4, 8, 10, 0.98));
+            radial-gradient(circle at 22% 10%, rgba(198, 165, 106, 0.11), transparent 28rem),
+            linear-gradient(135deg, rgba(17, 20, 27, 0.96), rgba(11, 13, 18, 0.98));
           box-shadow:
             inset 0 1px 0 rgba(255, 255, 255, 0.08),
-            0 24px 80px rgba(0, 0, 0, 0.36);
+            0 20px 60px rgba(0, 0, 0, 0.3);
         }
         .system-health-command-center .guardian-panel {
           border: 1px solid rgba(148, 163, 184, 0.14);
           border-radius: 1rem;
-          background: linear-gradient(180deg, rgba(15, 23, 26, 0.84), rgba(6, 10, 12, 0.88));
+          background: linear-gradient(180deg, rgba(17, 20, 27, 0.92), rgba(11, 13, 18, 0.94));
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
         }
         .system-health-command-center .guardian-hero-metric {
@@ -2044,7 +2037,8 @@ export default function SystemHealthPage() {
           display: none;
         }
         .system-health-command-center .guardian-scan-line {
-          animation: guardian-scan 5s ease-in-out infinite;
+          animation: none;
+          opacity: 0.46;
         }
         .system-health-command-center .guardian-refresh-line span {
           width: 42%;
@@ -2055,7 +2049,7 @@ export default function SystemHealthPage() {
           overflow: hidden;
           border-color: rgba(148, 163, 184, 0.12) !important;
           border-radius: 0.875rem;
-          background: rgba(5, 8, 10, 0.72) !important;
+          background: rgba(11, 13, 18, 0.78) !important;
         }
         .system-health-command-center .airtable-table-scroll {
           max-width: 100%;
@@ -2066,7 +2060,7 @@ export default function SystemHealthPage() {
           overflow: hidden;
           border: 1px solid rgba(148, 163, 184, 0.1);
           border-radius: 0.875rem;
-          background: rgba(5, 8, 10, 0.58);
+          background: rgba(11, 13, 18, 0.62);
         }
         .system-health-command-center .guardian-detail-table,
         .system-health-command-center .airtable-table-wrap table {
@@ -2077,8 +2071,8 @@ export default function SystemHealthPage() {
         .system-health-command-center .airtable-table-wrap thead tr {
           background: linear-gradient(
             180deg,
-            rgba(15, 23, 26, 0.92),
-            rgba(8, 13, 16, 0.92)
+            rgba(17, 20, 27, 0.94),
+            rgba(13, 16, 22, 0.94)
           ) !important;
         }
         .system-health-command-center .guardian-detail-table th,
