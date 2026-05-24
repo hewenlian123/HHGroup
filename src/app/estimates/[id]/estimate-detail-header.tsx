@@ -15,8 +15,26 @@ import {
   EstimateBuilderSaveStatus,
   type EstimateSaveStatus,
 } from "../_components/estimate-builder-save-status";
-import { EB } from "../_components/estimate-builder-ui";
+import { NeoStatus, type StatusBadgeVariant } from "@/components/base";
 import { cn } from "@/lib/utils";
+
+const DETAIL_HEADER =
+  "dark rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:px-4";
+const BACK_LINK =
+  "inline-flex min-h-10 items-center gap-2 text-[14px] leading-snug text-[var(--neo-text-secondary)] transition-colors duration-200 hover:text-[var(--neo-gold-soft)] md:min-h-8";
+const HEADER_BUTTON =
+  "rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+const HEADER_PRIMARY_BUTTON =
+  "rounded-md border border-[rgb(198_165_106_/_0.28)] bg-[var(--neo-gold)] text-zinc-950 shadow-sm hover:bg-[var(--neo-gold-soft)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+
+function estimateStatusMeta(status: string): { label: string; variant: StatusBadgeVariant } {
+  if (status === "Draft") return { label: "Draft", variant: "muted" };
+  if (status === "Sent") return { label: "Sent", variant: "warning" };
+  if (status === "Approved") return { label: "Approved", variant: "success" };
+  if (status === "Rejected") return { label: "Rejected", variant: "danger" };
+  if (status === "Converted") return { label: "Converted to Project", variant: "success" };
+  return { label: status || "Unknown", variant: "default" };
+}
 
 export function EstimateDetailHeader({
   estimateId,
@@ -62,6 +80,7 @@ export function EstimateDetailHeader({
 }): React.ReactElement {
   const canConvert = status === "Approved";
   const canSend = status === "Draft" && !editing;
+  const statusMeta = estimateStatusMeta(status);
   const statusActions =
     status === "Draft"
       ? [{ label: "Mark as Draft", action: onMarkDraft, destructive: false }]
@@ -76,23 +95,25 @@ export function EstimateDetailHeader({
           : [];
 
   return (
-    <header className={EB.glassHeader} data-testid="estimate-detail-header">
+    <header className={DETAIL_HEADER} data-testid="estimate-detail-header">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-        <div className="min-w-0 flex-1 space-y-2.5">
-          <Link href="/estimates" className={EB.backLink}>
+        <div className="min-w-0 flex-1 space-y-2">
+          <Link href="/estimates" className={BACK_LINK}>
             <ArrowLeft className="h-4 w-4" />
             Estimates
           </Link>
           <div className="min-w-0 space-y-1">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <h1 className="truncate text-xl font-semibold tracking-tight text-zinc-50 sm:text-2xl">
+              <h1 className="truncate text-xl font-semibold tracking-normal text-[var(--neo-text-primary)] sm:text-2xl">
                 {estimateNumber}
               </h1>
-              <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[11px] font-medium text-amber-100">
-                {status}
-              </span>
+              <NeoStatus
+                label={statusMeta.label}
+                variant={statusMeta.variant}
+                className="h-5 px-2 text-[11px]"
+              />
             </div>
-            <p className="truncate text-sm text-zinc-400">
+            <p className="truncate text-sm text-[var(--neo-text-secondary)]">
               {[clientName, projectName, siteAddress].filter(Boolean).join(" · ") || "Estimate"}
             </p>
           </div>
@@ -107,7 +128,10 @@ export function EstimateDetailHeader({
             type="button"
             variant="outline"
             size="sm"
-            className={cn("min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8", EB.btnGhost)}
+            className={cn(
+              "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
+              HEADER_BUTTON
+            )}
             disabled={pending}
             asChild
           >
@@ -122,7 +146,7 @@ export function EstimateDetailHeader({
                   size="sm"
                   className={cn(
                     "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
-                    EB.btnPrimary
+                    HEADER_PRIMARY_BUTTON
                   )}
                   disabled={pending}
                   onClick={onEdit}
@@ -136,7 +160,7 @@ export function EstimateDetailHeader({
                   size="sm"
                   className={cn(
                     "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
-                    EB.btnPrimary
+                    HEADER_PRIMARY_BUTTON
                   )}
                   disabled={pending}
                   onClick={onSend}
@@ -152,7 +176,7 @@ export function EstimateDetailHeader({
                 size="sm"
                 className={cn(
                   "min-h-11 whitespace-nowrap px-5 font-medium max-md:flex-1 md:min-h-8",
-                  EB.btnPrimary
+                  HEADER_PRIMARY_BUTTON
                 )}
                 disabled={pending}
                 onClick={onSave}
@@ -166,7 +190,7 @@ export function EstimateDetailHeader({
                 size="sm"
                 className={cn(
                   "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
-                  EB.btnGhost
+                  HEADER_BUTTON
                 )}
                 disabled={pending}
                 onClick={onCancel}
@@ -185,19 +209,25 @@ export function EstimateDetailHeader({
                   size="sm"
                   className={cn(
                     "min-h-11 whitespace-nowrap px-3 max-md:flex-1 md:min-h-8",
-                    EB.btnGhost
+                    HEADER_BUTTON
                   )}
                   disabled={pending}
                 >
                   Status <ChevronDown className="ml-2 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[220px]">
+              <DropdownMenuContent
+                align="end"
+                className="min-w-[220px] rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-1 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+              >
                 {statusActions.map((item) => (
                   <DropdownMenuItem
                     key={item.label}
                     onSelect={item.action}
-                    className={item.destructive ? "text-destructive focus:text-destructive" : ""}
+                    className={cn(
+                      "rounded-sm focus:bg-[var(--neo-surface-muted)] focus:text-[var(--neo-text-primary)]",
+                      item.destructive && "text-rose-300 focus:text-rose-300"
+                    )}
                   >
                     {item.label}
                   </DropdownMenuItem>
@@ -213,7 +243,7 @@ export function EstimateDetailHeader({
               size="sm"
               className={cn(
                 "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
-                EB.btnGhost
+                HEADER_BUTTON
               )}
               disabled={pending}
               onClick={onConvertClick}
@@ -229,8 +259,8 @@ export function EstimateDetailHeader({
               size="sm"
               className={cn(
                 "min-h-11 w-11 shrink-0 md:min-h-8 md:w-auto",
-                EB.btnGhost,
-                "hover:text-red-400"
+                HEADER_BUTTON,
+                "hover:border-rose-500/30 hover:text-rose-300"
               )}
               disabled={pending}
               onClick={onDeleteClick}
