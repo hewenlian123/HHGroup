@@ -35,6 +35,7 @@ import {
   type InvoiceWithDerived,
   type InvoicePayment,
   type PaymentReceivedAttachment,
+  type InvoiceDeleteDependenciesResult,
 } from "@/lib/data";
 import {
   ArrowLeft,
@@ -54,7 +55,14 @@ import {
   Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { deleteInvoiceAction, markInvoiceSentAction, updateInvoiceAction } from "../actions";
+import {
+  checkInvoiceDeleteDependenciesAction,
+  deleteInvoiceAction,
+  markInvoiceSentAction,
+  unlinkInvoiceScheduleItemAction,
+  updateInvoiceAction,
+} from "../actions";
+import { InvoiceDeleteDependenciesDialog } from "../invoice-delete-dependencies-dialog";
 import { InvoiceStatusBadge } from "@/components/invoice-status-badge";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -81,17 +89,6 @@ function recordPaymentPathForInvoice(invoice: InvoiceWithDerived): string {
   const amountDue = Math.max(0, Number(invoice.balanceDue) || 0);
   params.set("amountDue", Number.isInteger(amountDue) ? String(amountDue) : amountDue.toFixed(2));
   return `/financial/payments?${params.toString()}`;
-}
-
-function isTestInvoice(inv: InvoiceWithDerived): boolean {
-  const haystack = [inv.clientName, inv.invoiceNo, inv.notes ?? ""].join(" ").toLowerCase();
-  return (
-    haystack.includes("workflow test") ||
-    haystack.includes("[e2e]") ||
-    haystack.includes("playwright") ||
-    haystack.includes("body balance") ||
-    /\bpw[-\s_]/i.test(haystack)
-  );
 }
 
 function DetailMetric({
@@ -146,6 +143,11 @@ export default function InvoiceDetailPage() {
   >([]);
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
+  const [deleteDependenciesOpen, setDeleteDependenciesOpen] = React.useState(false);
+  const [deleteDependencies, setDeleteDependencies] =
+    React.useState<InvoiceDeleteDependenciesResult | null>(null);
+  const [deleteCheckBusy, setDeleteCheckBusy] = React.useState(false);
+  const [unlinkingScheduleItemId, setUnlinkingScheduleItemId] = React.useState<string | null>(null);
   const [voidConfirmOpen, setVoidConfirmOpen] = React.useState(false);
   const [actionBusy, setActionBusy] = React.useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = React.useState<string | null>(null);
@@ -434,6 +436,37 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  const runDeleteDependencyCheck = async ({ openWhenClear = false } = {}) => {
+    if (!id || actionBusy || deleteCheckBusy) return;
+    setDeleteCheckBusy(true);
+    try {
+      const result = await checkInvoiceDeleteDependenciesAction(id);
+      if (!result.ok || !result.dependencies) {
+        toast({
+          title: "Could not check invoice links",
+          description: result.error ?? "Please try again.",
+          variant: "error",
+        });
+        return;
+      }
+      setDeleteDependencies(result.dependencies);
+      if (result.dependencies.blockers.length > 0) {
+        setDeleteConfirmOpen(false);
+        setDeleteDependenciesOpen(true);
+        return;
+      }
+      setDeleteDependenciesOpen(false);
+      if (openWhenClear) setDeleteConfirmOpen(true);
+    } finally {
+      setDeleteCheckBusy(false);
+    }
+  };
+
+  const handleDeleteRequest = () => {
+    if (!id || actionBusy) return;
+    void runDeleteDependencyCheck({ openWhenClear: true });
+  };
+
   const handleDelete = async () => {
     if (!id || actionBusy) return;
     setActionBusy(true);
@@ -441,11 +474,38 @@ export default function InvoiceDetailPage() {
     setActionBusy(false);
     if (result.ok) router.push("/financial/invoices");
     else {
+      if (result.dependencies?.blockers.length) {
+        setDeleteDependencies(result.dependencies);
+        setDeleteConfirmOpen(false);
+        setDeleteDependenciesOpen(true);
+        return;
+      }
       toast({
         title: "Could not delete invoice",
-        description: result.error ?? "Only draft or void invoices can be deleted.",
+        description: result.error ?? "Only voided invoices can be permanently deleted.",
         variant: "error",
       });
+    }
+  };
+
+  const handleUnlinkScheduleItem = async (scheduleItemId: string) => {
+    if (!id || unlinkingScheduleItemId) return;
+    setUnlinkingScheduleItemId(scheduleItemId);
+    try {
+      const result = await unlinkInvoiceScheduleItemAction(id, scheduleItemId);
+      if (!result.ok) {
+        toast({
+          title: "Could not unlink schedule item",
+          description: result.error ?? "Please try again.",
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Schedule item unlinked", variant: "success" });
+      await runDeleteDependencyCheck();
+      void refresh();
+    } finally {
+      setUnlinkingScheduleItemId(null);
     }
   };
 
@@ -499,7 +559,6 @@ export default function InvoiceDetailPage() {
 
   const isDraft = invoice.status === "Draft";
   const isVoid = invoice.computedStatus === "Void";
-  const isTestDataInvoice = isTestInvoice(invoice);
   const canPay = !isVoid && invoice.computedStatus !== "Paid" && !isDraft && invoice.balanceDue > 0;
   const canBackToEdit = !isDraft && !isVoid && invoice.paidTotal <= 0;
   const primaryActionBusy = actionBusy || editSaving;
@@ -692,10 +751,10 @@ export default function InvoiceDetailPage() {
                       className="text-red-600 focus:text-red-700"
                       onSelect={(e) => {
                         e.preventDefault();
-                        if (isDraft || isVoid || isTestDataInvoice) setDeleteConfirmOpen(true);
+                        if (isVoid) handleDeleteRequest();
                         else setDeleteBlockedOpen(true);
                       }}
-                      disabled={primaryActionBusy}
+                      disabled={primaryActionBusy || deleteCheckBusy}
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Delete Invoice
@@ -1192,9 +1251,9 @@ export default function InvoiceDetailPage() {
       <ConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
-        title="Delete invoice?"
-        description={`Permanently delete ${invoice.invoiceNo}? This cannot be undone.`}
-        confirmLabel="Delete"
+        title="Delete voided invoice?"
+        description="This invoice is voided and has no active payment links. This will permanently delete the invoice record and its line items. This cannot be undone."
+        confirmLabel="Delete permanently"
         cancelLabel="Cancel"
         destructive
         loading={actionBusy}
@@ -1220,8 +1279,8 @@ export default function InvoiceDetailPage() {
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Cannot delete invoice</DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              Only draft, void, or recognized test invoices can be deleted. Issued or paid invoices
-              cannot be removed.
+              Only voided invoices can be permanently deleted. Void this invoice first, then run the
+              dependency check again.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="pt-3 border-t border-border/60">
@@ -1236,6 +1295,16 @@ export default function InvoiceDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <InvoiceDeleteDependenciesDialog
+        open={deleteDependenciesOpen}
+        onOpenChange={setDeleteDependenciesOpen}
+        dependencies={deleteDependencies}
+        checking={deleteCheckBusy}
+        onRefresh={() => void runDeleteDependencyCheck()}
+        onUnlinkScheduleItem={handleUnlinkScheduleItem}
+        unlinkingId={unlinkingScheduleItemId}
+      />
     </div>
   );
 }

@@ -14,6 +14,18 @@ function getInvoiceDetailUrl(currentUrl: string): string {
   return `/financial/invoices/${match[1]}`;
 }
 
+async function clickInvoiceDetailMenuItem(page: Page, name: string): Promise<void> {
+  const openItem = page.getByRole("menuitem", { name });
+  try {
+    await openItem.click({ timeout: 2_000 });
+    return;
+  } catch {
+    // The detail More menu can remain open after dialogs close.
+  }
+  await page.getByRole("button", { name: /More/i }).click();
+  await page.getByRole("menuitem", { name }).click();
+}
+
 async function cleanupInvoiceClientNames(clientNames: Iterable<string>): Promise<void> {
   const names = Array.from(clientNames);
   if (names.length === 0) return;
@@ -56,7 +68,7 @@ test.afterEach(async () => {
   createdClientNames.clear();
 });
 
-test("creates, edits, cancels, saves, and deletes a draft invoice", async ({ page }) => {
+test("creates, edits, cancels, saves, voids, and deletes an invoice", async ({ page }) => {
   test.setTimeout(120_000);
 
   const suffix = Date.now();
@@ -139,42 +151,43 @@ test("creates, edits, cancels, saves, and deletes a draft invoice", async ({ pag
   const invoiceNumber = (await page.getByRole("heading", { level: 1 }).textContent())?.trim();
   expect(invoiceNumber).toBeTruthy();
 
-  await page.goto("/financial/invoices");
-  await page.waitForLoadState("domcontentloaded");
-  await expect(listSearch).toBeVisible({ timeout: 30_000 });
-  await listSearch.fill(savedClientName);
-  const invoiceRow = page.getByTestId(`invoice-row-${invoiceNumber}`);
-  await expect(invoiceRow).toBeVisible({ timeout: 30_000 });
-  await invoiceRow.hover();
-  const rowActionsButton = invoiceRow.getByRole("button", { name: /Actions for / });
-  await expect(rowActionsButton).toBeVisible({ timeout: 30_000 });
-  await rowActionsButton.click();
-  let deleteDialog = page.getByRole("dialog", { name: "Delete invoice?" });
-  await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible({ timeout: 10_000 });
-  await page.getByRole("menuitem", { name: "Delete" }).click({ force: true });
+  await clickInvoiceDetailMenuItem(page, "Delete Invoice");
+  const blockedDeleteDialog = page.getByRole("dialog", { name: "Cannot delete invoice" });
+  await expect(blockedDeleteDialog).toBeVisible({ timeout: 10_000 });
+  await expect(blockedDeleteDialog).toContainText(
+    "Only voided invoices can be permanently deleted"
+  );
+  await blockedDeleteDialog.getByRole("button", { name: "OK" }).click();
+  await expect(blockedDeleteDialog).toBeHidden({ timeout: 10_000 });
+
+  await clickInvoiceDetailMenuItem(page, "Void Invoice");
+  const voidDialog = page.getByRole("dialog", { name: "Void invoice?" });
+  await expect(voidDialog).toBeVisible({ timeout: 10_000 });
+  await voidDialog.getByRole("button", { name: "Void" }).click();
+  await expect(page.getByTestId("invoice-detail-status")).toContainText(/void/i, {
+    timeout: 30_000,
+  });
+
+  const openDeleteItem = page.getByRole("menuitem", { name: "Delete Invoice" });
+  if (await openDeleteItem.isVisible().catch(() => false)) {
+    await openDeleteItem.click();
+  } else {
+    await clickInvoiceDetailMenuItem(page, "Delete Invoice");
+  }
+  let deleteDialog = page.getByRole("dialog", { name: "Delete voided invoice?" });
   await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
+  await expect(deleteDialog).toContainText("no active payment links");
   await deleteDialog.getByRole("button", { name: "Cancel" }).click();
   await expect(deleteDialog).toBeHidden({ timeout: 10_000 });
 
+  await clickInvoiceDetailMenuItem(page, "Delete Invoice");
+  deleteDialog = page.getByRole("dialog", { name: "Delete voided invoice?" });
+  await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
+  await deleteDialog.getByRole("button", { name: "Delete permanently" }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices(?:[?#]|$)/, { timeout: 30_000 });
+
   await page.goto("/financial/invoices");
   await page.waitForLoadState("domcontentloaded");
-  const listSearchAfterCancel = page.locator('input[placeholder*="Invoice #"]:visible').first();
-  await expect(listSearchAfterCancel).toBeVisible({ timeout: 30_000 });
-  await listSearchAfterCancel.fill(savedClientName);
-  const invoiceRowAfterCancel = page.getByTestId(`invoice-row-${invoiceNumber}`);
-  await expect(invoiceRowAfterCancel).toBeVisible({ timeout: 30_000 });
-  await invoiceRowAfterCancel.hover();
-  const rowActionsButtonAfterCancel = invoiceRowAfterCancel.getByRole("button", {
-    name: /Actions for /,
-  });
-  await rowActionsButtonAfterCancel.click();
-  await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible({ timeout: 10_000 });
-  await page.getByRole("menuitem", { name: "Delete" }).click({ force: true });
-  deleteDialog = page.getByRole("dialog", { name: "Delete invoice?" });
-  await expect(deleteDialog).toBeVisible({ timeout: 10_000 });
-  await deleteDialog.getByRole("button", { name: "Delete" }).click({ force: true });
-  await expect(page.locator("body")).not.toContainText("Something went wrong");
-
   await expect(listSearch).toBeVisible({ timeout: 30_000 });
   await listSearch.fill(savedClientName);
   await expect(page.getByText(savedClientName)).toHaveCount(0, { timeout: 30_000 });

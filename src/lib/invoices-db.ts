@@ -45,6 +45,50 @@ export type InvoicePayment = {
   status?: "Posted" | "Voided";
 };
 
+export type InvoiceDeleteDependencyType =
+  | "invoice_status"
+  | "invoice_payment"
+  | "payment_received"
+  | "deposit"
+  | "estimate_payment_schedule_item"
+  | "project_ar";
+
+export type InvoiceDeleteDependency = {
+  id: string;
+  type: InvoiceDeleteDependencyType;
+  label: string;
+  description?: string;
+  amount?: number | null;
+  date?: string | null;
+  status?: string | null;
+  href?: string | null;
+  estimateId?: string | null;
+  scheduleItemId?: string | null;
+};
+
+export type InvoiceDeleteSafeChildRecord = {
+  type: "invoice_items";
+  label: string;
+  count: number;
+};
+
+export type InvoiceDeleteWarning = {
+  type: string;
+  label: string;
+  description?: string;
+};
+
+export type InvoiceDeleteDependenciesResult = {
+  invoiceId: string;
+  invoiceNo?: string | null;
+  status?: string | null;
+  projectId?: string | null;
+  canDelete: boolean;
+  blockers: InvoiceDeleteDependency[];
+  warnings: InvoiceDeleteWarning[];
+  safeChildRecords: InvoiceDeleteSafeChildRecord[];
+};
+
 type InvoiceRow = {
   id: string;
   invoice_no?: string;
@@ -126,17 +170,6 @@ function isQuantityColumnUnsupported(err: { message?: string } | null): boolean 
   return /quantity/i.test(m) && /column|generated|schema cache|could not find/i.test(m);
 }
 
-function isTestInvoice(inv: Invoice): boolean {
-  const haystack = [inv.clientName, inv.invoiceNo, inv.notes ?? ""].join(" ").toLowerCase();
-  return (
-    haystack.includes("workflow test") ||
-    haystack.includes("[e2e]") ||
-    haystack.includes("playwright") ||
-    haystack.includes("body balance") ||
-    /\bpw[-\s_]/i.test(haystack)
-  );
-}
-
 function normalizeReceivableStatus(status: string | null | undefined): string {
   return String(status ?? "")
     .trim()
@@ -170,15 +203,15 @@ async function deleteRowsByInvoiceIds(
   }
 }
 
-async function hardDeleteInvoiceGraph(
-  c: ReturnType<typeof client>,
-  invoiceId: string
-): Promise<void> {
-  const invoiceIds = [invoiceId];
-  await deleteRowsByInvoiceIds(c, "deposits", "invoice_id", invoiceIds);
-  await deleteRowsByInvoiceIds(c, "payments_received", "invoice_id", invoiceIds);
-  await deleteRowsByInvoiceIds(c, "invoice_payments", "invoice_id", invoiceIds);
-  await deleteRowsByInvoiceIds(c, "invoice_items", "invoice_id", invoiceIds);
+function isVoidInvoiceStatus(status: string | null | undefined): boolean {
+  const normalized = normalizeReceivableStatus(status);
+  return normalized === "void" || normalized === "voided";
+}
+
+function isoDateLike(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  const text = String(value);
+  return text ? text.slice(0, 10) : null;
 }
 
 async function insertInvoiceItems(
@@ -688,30 +721,334 @@ export async function revertInvoiceToDraft(invoiceId: string): Promise<boolean> 
   return !error;
 }
 
-/** Permanently delete an invoice. Only allowed when status is Draft or Void (not Sent / Partially Paid / Paid). */
-export async function deleteInvoice(invoiceId: string): Promise<boolean> {
+export async function getInvoiceDeleteDependencies(
+  invoiceId: string
+): Promise<InvoiceDeleteDependenciesResult> {
+  const c = client();
+  const invoiceRes = await c
+    .from("invoices")
+    .select("id, invoice_no, project_id, status, total, balance_due")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (invoiceRes.error) throw new Error(invoiceRes.error.message ?? "Failed to load invoice.");
+
+  const invoice = invoiceRes.data as {
+    id: string;
+    invoice_no?: string | null;
+    project_id?: string | null;
+    status?: string | null;
+    total?: number | string | null;
+    balance_due?: number | string | null;
+  } | null;
+
+  if (!invoice) {
+    return {
+      invoiceId,
+      canDelete: true,
+      blockers: [],
+      warnings: [{ type: "not_found", label: "Invoice was already removed." }],
+      safeChildRecords: [],
+    };
+  }
+
+  const blockers: InvoiceDeleteDependency[] = [];
+  const warnings: InvoiceDeleteWarning[] = [];
+  const safeChildRecords: InvoiceDeleteSafeChildRecord[] = [];
+  const status = invoice.status ?? null;
+
+  if (!isVoidInvoiceStatus(status)) {
+    blockers.push({
+      id: `${invoiceId}:status`,
+      type: "invoice_status",
+      label: "Invoice is not voided",
+      description: "Only voided invoices can be permanently deleted.",
+      status,
+      href: `/financial/invoices/${invoiceId}`,
+    });
+  }
+
+  const itemCountRes = await c
+    .from("invoice_items")
+    .select("id", { count: "exact", head: true })
+    .eq("invoice_id", invoiceId);
+  if (itemCountRes.error) {
+    if (!isMissingTable(itemCountRes.error) && !isMissingColumn(itemCountRes.error)) {
+      throw new Error(itemCountRes.error.message ?? "Failed to check invoice line items.");
+    }
+  } else {
+    safeChildRecords.push({
+      type: "invoice_items",
+      label: "Invoice line items",
+      count: itemCountRes.count ?? 0,
+    });
+  }
+
+  const payRes = await c
+    .from("invoice_payments")
+    .select("id, amount, payment_date, paid_at, method, memo, status, payment_received_id")
+    .eq("invoice_id", invoiceId);
+  if (payRes.error) {
+    if (!isMissingTable(payRes.error) && !isMissingColumn(payRes.error)) {
+      throw new Error(payRes.error.message ?? "Failed to check invoice payments.");
+    }
+  }
+  const invoicePayments = (payRes.data ?? []) as Array<{
+    id: string;
+    amount?: number | string | null;
+    payment_date?: string | null;
+    paid_at?: string | null;
+    method?: string | null;
+    memo?: string | null;
+    status?: string | null;
+    payment_received_id?: string | null;
+  }>;
+  for (const payment of invoicePayments) {
+    blockers.push({
+      id: payment.id,
+      type: "invoice_payment",
+      label: "Payment record linked to this invoice",
+      description: payment.memo ?? payment.method ?? undefined,
+      amount: Number(payment.amount ?? 0) || 0,
+      date: isoDateLike(payment.payment_date ?? payment.paid_at),
+      status: payment.status ?? null,
+      href: `/financial/payments?invoiceId=${invoiceId}`,
+    });
+  }
+
+  const paymentReceivedById = new Map<string, InvoiceDeleteDependency>();
+  const addPaymentReceivedBlockers = (
+    rows: Array<{
+      id: string;
+      amount?: number | string | null;
+      payment_date?: string | null;
+      payment_method?: string | null;
+      status?: string | null;
+    }>
+  ) => {
+    for (const payment of rows) {
+      paymentReceivedById.set(payment.id, {
+        id: payment.id,
+        type: "payment_received",
+        label: "Payment Received linked to this invoice",
+        description: payment.payment_method ?? undefined,
+        amount: Number(payment.amount ?? 0) || 0,
+        date: isoDateLike(payment.payment_date),
+        status: payment.status ?? null,
+        href: `/financial/payments?invoiceId=${invoiceId}`,
+      });
+    }
+  };
+
+  const paymentReceivedDirectRes = await c
+    .from("payments_received")
+    .select("id, amount, payment_date, payment_method, status")
+    .eq("invoice_id", invoiceId);
+  if (paymentReceivedDirectRes.error) {
+    if (
+      !isMissingTable(paymentReceivedDirectRes.error) &&
+      !isMissingColumn(paymentReceivedDirectRes.error)
+    ) {
+      throw new Error(
+        paymentReceivedDirectRes.error.message ?? "Failed to check payments received."
+      );
+    }
+  } else {
+    addPaymentReceivedBlockers(
+      (paymentReceivedDirectRes.data ?? []) as Parameters<typeof addPaymentReceivedBlockers>[0]
+    );
+  }
+
+  const linkedPaymentReceivedIds = Array.from(
+    new Set(invoicePayments.map((p) => p.payment_received_id).filter(Boolean) as string[])
+  );
+  if (linkedPaymentReceivedIds.length > 0) {
+    const paymentReceivedLinkedRes = await c
+      .from("payments_received")
+      .select("id, amount, payment_date, payment_method, status")
+      .in("id", linkedPaymentReceivedIds);
+    if (paymentReceivedLinkedRes.error) {
+      if (
+        !isMissingTable(paymentReceivedLinkedRes.error) &&
+        !isMissingColumn(paymentReceivedLinkedRes.error)
+      ) {
+        throw new Error(
+          paymentReceivedLinkedRes.error.message ?? "Failed to check linked payments received."
+        );
+      }
+    } else {
+      addPaymentReceivedBlockers(
+        (paymentReceivedLinkedRes.data ?? []) as Parameters<typeof addPaymentReceivedBlockers>[0]
+      );
+    }
+  }
+  blockers.push(...paymentReceivedById.values());
+
+  const depositById = new Map<string, InvoiceDeleteDependency>();
+  const addDepositBlockers = (
+    rows: Array<{
+      id: string;
+      amount?: number | string | null;
+      deposit_date?: string | null;
+      payment_method?: string | null;
+      status?: string | null;
+      payment_id?: string | null;
+    }>
+  ) => {
+    for (const deposit of rows) {
+      depositById.set(deposit.id, {
+        id: deposit.id,
+        type: "deposit",
+        label: "Deposit linked to this invoice/payment",
+        description: deposit.payment_method ?? undefined,
+        amount: Number(deposit.amount ?? 0) || 0,
+        date: isoDateLike(deposit.deposit_date),
+        status: deposit.status ?? null,
+        href: `/financial/deposits?invoiceId=${invoiceId}`,
+      });
+    }
+  };
+
+  const depositsByInvoiceRes = await c
+    .from("deposits")
+    .select("id, amount, deposit_date, payment_method, status, payment_id")
+    .eq("invoice_id", invoiceId);
+  if (depositsByInvoiceRes.error) {
+    if (
+      !isMissingTable(depositsByInvoiceRes.error) &&
+      !isMissingColumn(depositsByInvoiceRes.error)
+    ) {
+      throw new Error(depositsByInvoiceRes.error.message ?? "Failed to check deposits.");
+    }
+  } else {
+    addDepositBlockers(
+      (depositsByInvoiceRes.data ?? []) as Parameters<typeof addDepositBlockers>[0]
+    );
+  }
+
+  const paymentReceivedIds = Array.from(paymentReceivedById.keys());
+  if (paymentReceivedIds.length > 0) {
+    const depositsByPaymentRes = await c
+      .from("deposits")
+      .select("id, amount, deposit_date, payment_method, status, payment_id")
+      .in("payment_id", paymentReceivedIds);
+    if (depositsByPaymentRes.error) {
+      if (
+        !isMissingTable(depositsByPaymentRes.error) &&
+        !isMissingColumn(depositsByPaymentRes.error)
+      ) {
+        throw new Error(depositsByPaymentRes.error.message ?? "Failed to check payment deposits.");
+      }
+    } else {
+      addDepositBlockers(
+        (depositsByPaymentRes.data ?? []) as Parameters<typeof addDepositBlockers>[0]
+      );
+    }
+  }
+  blockers.push(...depositById.values());
+
+  const scheduleRes = await c
+    .from("estimate_payment_schedule_items")
+    .select("id, estimate_id, title, amount, due_date, status")
+    .eq("invoice_id", invoiceId);
+  if (scheduleRes.error) {
+    if (!isMissingTable(scheduleRes.error) && !isMissingColumn(scheduleRes.error)) {
+      throw new Error(
+        scheduleRes.error.message ?? "Failed to check estimate payment schedule links."
+      );
+    }
+  } else {
+    for (const item of (scheduleRes.data ?? []) as Array<{
+      id: string;
+      estimate_id?: string | null;
+      title?: string | null;
+      amount?: number | string | null;
+      due_date?: string | null;
+      status?: string | null;
+    }>) {
+      blockers.push({
+        id: item.id,
+        type: "estimate_payment_schedule_item",
+        label: "Estimate payment schedule item linked to this invoice",
+        description: item.title ?? undefined,
+        amount: Number(item.amount ?? 0) || 0,
+        date: isoDateLike(item.due_date),
+        status: item.status ?? null,
+        href: item.estimate_id ? `/estimates/${item.estimate_id}` : null,
+        estimateId: item.estimate_id ?? null,
+        scheduleItemId: item.id,
+      });
+    }
+  }
+
+  if (isVoidInvoiceStatus(status) && invoiceCountsTowardReceivable(status)) {
+    blockers.push({
+      id: `${invoiceId}:project-ar`,
+      type: "project_ar",
+      label: "Project AR still includes this voided invoice",
+      description:
+        "Void invoices must not remain in Project AR. Review invoice status before delete.",
+      amount: Number(invoice.balance_due ?? invoice.total ?? 0) || 0,
+      href: invoice.project_id
+        ? `/projects/${invoice.project_id}`
+        : `/financial/invoices/${invoiceId}`,
+    });
+  }
+
+  return {
+    invoiceId,
+    invoiceNo: invoice.invoice_no ?? null,
+    status,
+    projectId: invoice.project_id ?? null,
+    canDelete: blockers.length === 0,
+    blockers,
+    warnings,
+    safeChildRecords,
+  };
+}
+
+export async function unlinkInvoiceFromPaymentScheduleItem(
+  invoiceId: string,
+  scheduleItemId: string
+): Promise<{ ok: boolean; estimateId?: string | null; error?: string }> {
   const c = client();
   const inv = await getInvoiceById(invoiceId);
-  if (!inv) return false;
-  const testInvoice = isTestInvoice(inv);
-  if (!testInvoice && inv.status !== "Draft" && inv.status !== "Void") return false;
+  if (!inv) return { ok: false, error: "Invoice not found." };
+  if (!isVoidInvoiceStatus(inv.status)) {
+    return { ok: false, error: "Only voided invoices can be unlinked from payment schedules." };
+  }
 
-  // Financial safety: if invoice has any non-void payments, it cannot be deleted (void instead).
-  const payCountRes = await c
-    .from("invoice_payments")
-    .select("id", { count: "exact", head: true })
+  const itemRes = await c
+    .from("estimate_payment_schedule_items")
+    .select("id, estimate_id, invoice_id")
+    .eq("id", scheduleItemId)
     .eq("invoice_id", invoiceId)
-    .neq("status", "Voided");
-  if (!testInvoice && !payCountRes.error && (payCountRes.count ?? 0) > 0) return false;
+    .maybeSingle();
+  if (itemRes.error) {
+    return { ok: false, error: itemRes.error.message ?? "Failed to load schedule item." };
+  }
+  const item = itemRes.data as {
+    id: string;
+    estimate_id?: string | null;
+    invoice_id?: string | null;
+  } | null;
+  if (!item) return { ok: false, error: "Schedule item is not linked to this invoice." };
 
-  const prCountRes = await c
-    .from("payments_received")
-    .select("id", { count: "exact", head: true })
-    .eq("invoice_id", invoiceId)
-    .neq("status", "void");
-  if (!testInvoice && !prCountRes.error && (prCountRes.count ?? 0) > 0) return false;
+  const { error } = await c
+    .from("estimate_payment_schedule_items")
+    .update({ invoice_id: null, status: "draft" })
+    .eq("id", scheduleItemId)
+    .eq("invoice_id", invoiceId);
+  if (error) return { ok: false, error: error.message ?? "Failed to unlink schedule item." };
+  return { ok: true, estimateId: item.estimate_id ?? null };
+}
 
-  if (testInvoice) await hardDeleteInvoiceGraph(c, invoiceId);
+/** Permanently delete an invoice. Only allowed when already voided and no financial dependencies remain. */
+export async function deleteInvoice(invoiceId: string): Promise<boolean> {
+  const c = client();
+  const check = await getInvoiceDeleteDependencies(invoiceId);
+  if (check.blockers.length > 0) return false;
+
+  await deleteRowsByInvoiceIds(c, "invoice_items", "invoice_id", [invoiceId]);
   const { error } = await c.from("invoices").delete().eq("id", invoiceId);
   return !error;
 }

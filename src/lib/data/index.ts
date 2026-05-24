@@ -2207,9 +2207,29 @@ export async function revertInvoiceToDraft(invoiceId: string): Promise<boolean> 
   return invoicesDb.revertInvoiceToDraft(invoiceId);
 }
 
+export async function getInvoiceDeleteDependencies(
+  invoiceId: string
+): Promise<invoicesDb.InvoiceDeleteDependenciesResult> {
+  return invoicesDb.getInvoiceDeleteDependencies(invoiceId);
+}
+
+export async function unlinkInvoiceFromPaymentScheduleItem(
+  invoiceId: string,
+  scheduleItemId: string
+): Promise<{ ok: boolean; estimateId?: string | null; error?: string }> {
+  return invoicesDb.unlinkInvoiceFromPaymentScheduleItem(invoiceId, scheduleItemId);
+}
+
 export async function deleteInvoice(invoiceId: string): Promise<boolean> {
   return invoicesDb.deleteInvoice(invoiceId);
 }
+
+export type {
+  InvoiceDeleteDependency,
+  InvoiceDeleteDependenciesResult,
+  InvoiceDeleteSafeChildRecord,
+  InvoiceDeleteWarning,
+} from "../invoices-db";
 
 export async function createInvoice(payload: {
   invoiceNo?: string;
