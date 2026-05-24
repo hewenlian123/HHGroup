@@ -247,7 +247,7 @@ export function NeoDrawer({
 
 export const neoFormFieldClassName = cn("space-y-1.5");
 export const neoFormNoticeClassName = cn(
-  "rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-[12px] leading-snug text-[var(--neo-text-primary)]"
+  "rounded-lg border border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.10)] px-3 py-2 text-[12px] leading-snug text-[var(--neo-text-primary)]"
 );
 export const neoFormErrorClassName = cn(
   "rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-[12px] font-medium text-rose-200"

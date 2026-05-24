@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { motionPopoverLayer } from "@/lib/motion-system";
 
 export interface SearchableSelectOption {
   id: string;
@@ -68,8 +69,8 @@ export function SearchableSelect({
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
         className={cn(
-          "flex h-10 w-full min-w-[140px] items-center justify-between rounded-lg border border-gray-100 bg-white px-3 text-left text-sm text-text-primary shadow-sm",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111827]/10 dark:border-border dark:bg-card dark:text-foreground dark:focus-visible:ring-ring/30"
+          "flex h-10 w-full min-w-[140px] items-center justify-between rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-left text-sm text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-control)] transition-all duration-150 ease-out",
+          "hover:bg-[var(--neo-surface-hover)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
         )}
       >
         <span className={!displayLabel ? "text-muted-foreground/70" : ""}>
@@ -87,21 +88,24 @@ export function SearchableSelect({
       {open && (
         <div
           role="listbox"
-          className="absolute z-[100] mt-1 w-full min-w-[200px] overflow-hidden rounded-md border border-border/60 bg-popover py-1 shadow-[var(--shadow-popover)]"
+          className={cn(
+            "dark absolute z-[100] mt-1 w-full min-w-[200px] origin-top overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] py-2 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+            motionPopoverLayer
+          )}
         >
-          <div className="border-b border-gray-100 px-2 pb-2 dark:border-border">
+          <div className="border-b border-[var(--neo-border)] px-2 pb-2">
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search…"
-              className="h-8 w-full rounded-lg border border-gray-100 bg-white px-2 text-sm text-text-primary shadow-sm focus:outline-none focus:ring-2 focus:ring-[#111827]/10 dark:border-border dark:bg-card dark:focus:ring-ring/30"
+              className="h-9 w-full rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 text-sm text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus:border-[var(--neo-gold)] focus:outline-none focus:ring-2 focus:ring-[var(--neo-gold-ring)]"
             />
           </div>
           <ul className="max-h-48 overflow-auto py-1">
             {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-muted-foreground">No options</li>
+              <li className="px-3 py-2 text-sm text-[var(--neo-text-secondary)]">No options</li>
             ) : (
               filtered.map((opt) => (
                 <li
@@ -109,8 +113,9 @@ export function SearchableSelect({
                   role="option"
                   aria-selected={opt.id === value}
                   className={cn(
-                    "cursor-pointer px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground",
-                    opt.id === value && "bg-accent/50 text-foreground font-medium"
+                    "cursor-pointer px-3 py-2 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-text-primary)]",
+                    opt.id === value &&
+                      "bg-[rgb(184_147_90_/_0.12)] font-medium text-[var(--neo-gold-soft)]"
                   )}
                   onMouseDown={(e) => {
                     e.preventDefault();

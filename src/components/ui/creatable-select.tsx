@@ -120,7 +120,7 @@ export function CreatableSelect({
               aria-selected={opt === value}
               className={cn(
                 "min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]",
-                opt === value && "bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold-soft)]"
+                opt === value && "bg-[rgb(184_147_90_/_0.12)] text-[var(--neo-gold-soft)]"
               )}
               onMouseDown={(e) => {
                 e.preventDefault();

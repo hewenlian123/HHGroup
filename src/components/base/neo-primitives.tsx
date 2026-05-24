@@ -192,8 +192,8 @@ export const NeoMobileCard = forwardRef<HTMLDivElement, NeoMobileCardProps>(func
       aria-selected={selected || undefined}
       className={cn(
         OS.card,
-        "group min-w-0 transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-muted)] active:scale-[0.99] active:duration-100",
-        selected && "border-[var(--neo-gold)] bg-[rgb(184_137_45_/_0.08)]",
+        "group min-w-0 transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-hover)] active:scale-[0.99] active:duration-100",
+        selected && "border-[var(--neo-gold)] bg-[rgb(184_147_90_/_0.08)]",
         className
       )}
       {...rest}
@@ -256,7 +256,7 @@ export function NeoBulkActions({
     <div
       data-neo-bulk-actions="true"
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+        "flex flex-col gap-3 rounded-xl border border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.10)] px-3 py-2 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
         "sm:flex-row sm:items-center sm:justify-between",
         className
       )}

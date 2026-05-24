@@ -37,8 +37,9 @@
 @layer components {
   .neo-app-shell {
     background:
-      radial-gradient(circle at top left, rgb(184 147 90 / 0.045), transparent 24rem),
-      linear-gradient(135deg, var(--neo-graphite-950), #080b10 48%, var(--neo-canvas));
+      radial-gradient(circle at top left, rgb(184 147 90 / 0.026), transparent 22rem),
+      radial-gradient(circle at 100% 0%, rgb(255 255 255 / 0.018), transparent 26rem),
+      linear-gradient(135deg, #05070b, var(--neo-graphite-950) 48%, var(--neo-canvas));
   }
 
   .neo-sidebar {
@@ -58,6 +59,7 @@
     -webkit-backdrop-filter: blur(18px) saturate(1.12);
   }
 
+  .dark.neo-command-bar,
   .dark .neo-command-bar {
     background: rgb(8 11 16 / 0.88);
   }
@@ -155,25 +157,25 @@
   }
 
   .dashboard-command-hud {
-    --hud-bg: #0b0d12;
-    --hud-surface: #11141b;
-    --hud-surface-muted: #171b24;
+    --hud-bg: #07090d;
+    --hud-surface: #10161f;
+    --hud-surface-muted: #161d27;
     --hud-line: rgb(255 255 255 / 0.1);
     --hud-text: #e5e7eb;
     --hud-muted: #9ca3af;
     --hud-muted-2: #6b7280;
-    --hud-gold: #c6a56a;
-    --hud-gold-soft: #d4b779;
-    --hud-copper: #c6a56a;
+    --hud-gold: #b8935a;
+    --hud-gold-soft: #d2b77f;
+    --hud-copper: #b8935a;
     --hud-emerald: #4faf7c;
     --hud-steel: #94a3b8;
     --hud-alert: #fb7185;
     --hud-track: rgb(255 255 255 / 0.075);
     border: 1px solid rgb(255 255 255 / 0.1);
     background:
-      radial-gradient(circle at 72% 0%, rgb(198 165 106 / 0.08), transparent 22rem),
-      linear-gradient(180deg, rgb(255 255 255 / 0.035), transparent 14rem),
-      linear-gradient(135deg, var(--hud-bg), #0d1118 52%, #11141b 100%);
+      radial-gradient(circle at 72% 0%, rgb(184 147 90 / 0.045), transparent 22rem),
+      linear-gradient(180deg, rgb(255 255 255 / 0.028), transparent 14rem),
+      linear-gradient(135deg, var(--hud-bg), #0b0f15 52%, #10161f 100%);
     box-shadow:
       0 1px 0 rgb(255 255 255 / 0.065) inset,
       0 18px 46px rgb(0 0 0 / 0.22);
@@ -295,7 +297,7 @@
   }
 
   .hh-orbital-svg__outer-hairline {
-    stroke: rgb(198 165 106 / 0.36);
+    stroke: rgb(184 147 90 / 0.36);
     stroke-width: 1.15;
   }
 
@@ -313,7 +315,7 @@
   }
 
   .hh-orbital-svg__outer-segment-ring {
-    stroke: rgb(198 165 106 / 0.18);
+    stroke: rgb(184 147 90 / 0.18);
     stroke-width: 0.85;
   }
 
@@ -331,7 +333,7 @@
   }
 
   .hh-orbital-svg__amber-arc {
-    stroke: rgb(198 165 106 / 0.92);
+    stroke: rgb(184 147 90 / 0.88);
     stroke-width: 2.7;
   }
 
@@ -348,7 +350,7 @@
   .hh-orbital-svg__highlight-sweep {
     stroke: rgb(255 244 218 / 0.82);
     stroke-width: 1.85;
-    filter: drop-shadow(0 0 1.5px rgb(198 165 106 / 0.18));
+    filter: drop-shadow(0 0 1.5px rgb(184 147 90 / 0.14));
   }
 
   .hh-orbital-svg__tick {
@@ -358,7 +360,7 @@
   }
 
   .hh-orbital-svg__tick--major {
-    stroke: rgb(198 165 106 / 0.46);
+    stroke: rgb(184 147 90 / 0.42);
     stroke-width: 1.08;
   }
 
@@ -424,11 +426,11 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    background: linear-gradient(180deg, #fff8ea 0%, var(--hud-text) 48%, #c6a56a 128%);
+    background: linear-gradient(180deg, #fff8ea 0%, var(--hud-text) 48%, #b8935a 128%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    filter: drop-shadow(0 8px 18px rgb(0 0 0 / 0.34)) drop-shadow(0 0 10px rgb(198 165 106 / 0.08));
+    filter: drop-shadow(0 8px 18px rgb(0 0 0 / 0.34)) drop-shadow(0 0 10px rgb(184 147 90 / 0.055));
     font-size: 2.125rem;
     font-weight: 700;
     line-height: 0.95;
@@ -709,7 +711,9 @@
   .neo-toolbar {
     border: 1px solid var(--neo-border);
     border-radius: var(--neo-radius-control);
-    background: var(--neo-surface-muted);
+    background:
+      linear-gradient(180deg, rgb(255 255 255 / 0.026), rgb(255 255 255 / 0.006)),
+      var(--neo-surface-muted);
   }
 
   .neo-input {
@@ -761,7 +765,8 @@
     @apply rounded-md transition-all duration-150 ease-out;
   }
   .hh-inline-tap:hover {
-    @apply -translate-y-px bg-slate-50 dark:hover:bg-muted/40;
+    @apply -translate-y-px;
+    background-color: var(--neo-surface-hover);
   }
   .hh-inline-tap:active {
     @apply scale-[0.97] duration-100;
@@ -814,7 +819,8 @@
     @apply flex flex-col gap-3;
   }
   .table-head-label {
-    @apply text-[11px] font-medium uppercase tracking-[0.12em] text-zinc-400;
+    @apply text-[11px] font-medium uppercase tracking-[0.12em];
+    color: var(--neo-text-tertiary);
   }
   .table-row-compact {
     @apply h-9;
@@ -850,17 +856,23 @@
       "zero" 0;
   }
   .date-text {
-    @apply font-mono text-[13px] tabular-nums tracking-normal text-zinc-500;
+    @apply font-mono text-[13px] tabular-nums tracking-normal;
+    color: var(--neo-text-secondary);
   }
   /* Summary / KPI — dense on mobile (muted tint), card on md+ */
   .kpi-metric {
-    @apply rounded-xl border border-slate-900/[0.06] bg-white/[0.92] px-3 py-2 shadow-[0_1px_2px_rgba(15,23,42,0.04)] md:px-4 md:py-3 dark:border-border/60 dark:bg-card/90 dark:shadow-none;
+    @apply rounded-xl border px-3 py-2 md:px-4 md:py-3;
+    border-color: var(--neo-border);
+    background: var(--neo-surface-raised);
+    box-shadow: var(--neo-shadow-panel);
   }
   .kpi-metric-label {
-    @apply text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400;
+    @apply text-[11px] font-medium uppercase tracking-[0.16em];
+    color: var(--neo-text-tertiary);
   }
   .kpi-metric-value {
-    @apply text-lg font-semibold tabular-nums tracking-normal text-zinc-950 md:text-xl dark:text-zinc-50;
+    @apply text-lg font-semibold tabular-nums tracking-normal md:text-xl;
+    color: var(--neo-text-primary);
   }
   /** Filter bar: native inputs / selects */
   .filter-field {
@@ -932,16 +944,19 @@
   }
   @media (hover: hover) and (pointer: fine) {
     .hh-row-interactive:hover {
-      background-color: hsl(var(--muted) / 0.4);
+      background-color: var(--neo-surface-hover);
     }
   }
   @media (max-width: 767px) {
     .hh-row-interactive:active {
-      background-color: hsl(var(--muted) / 0.6);
+      background-color: var(--neo-surface-hover);
     }
   }
   .hh-modal-shell {
-    @apply w-full max-w-[480px] rounded-xl border border-gray-100 bg-white p-6 shadow-sm;
+    @apply w-full max-w-[480px] rounded-xl border p-6;
+    border-color: var(--neo-border);
+    background: var(--neo-surface-raised);
+    box-shadow: var(--neo-shadow-panel);
   }
   /* Add-on: touch-friendly forms only when <1024px; desktop unchanged */
   .form-mobile-friendly input,
@@ -956,7 +971,11 @@
     @apply min-h-[44px] min-w-[44px];
   }
   .mobile-safe-action-bar {
-    @apply sticky bottom-0 border-t border-border/60 bg-background/95 px-4 py-3;
+    @apply sticky bottom-0 border-t px-4 py-3;
+    border-color: var(--neo-border);
+    background: color-mix(in srgb, var(--neo-surface-raised) 94%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
   }
   .mobile-native-scroll {
@@ -994,7 +1013,7 @@
     touch-action: pan-x;
   }
   .ui-divider {
-    @apply border-b border-slate-900/[0.06];
+    border-bottom: 1px solid var(--neo-border);
   }
   .ui-section {
     @apply py-2;
@@ -1075,6 +1094,7 @@
     --neo-surface-base: #f5f6f7;
     --neo-surface-raised: #ffffff;
     --neo-surface-muted: #eef0f2;
+    --neo-surface-hover: #e6e9ed;
     --neo-text-primary: #111315;
     --neo-text-secondary: #5f6872;
     --neo-text-tertiary: #8a939d;
@@ -1093,6 +1113,8 @@
     --neo-radius-control: 0.5rem;
     --neo-radius-panel: 0.75rem;
     --neo-shadow-panel: 0 1px 2px rgb(17 19 21 / 0.05), 0 18px 44px rgb(17 19 21 / 0.05);
+    --neo-shadow-panel-hover: 0 1px 2px rgb(17 19 21 / 0.06), 0 20px 48px rgb(17 19 21 / 0.08);
+    --neo-shadow-control: 0 1px 0 rgb(255 255 255 / 0.62) inset, 0 10px 24px rgb(17 19 21 / 0.06);
     --neo-shadow-command: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 14px 34px rgb(17 19 21 / 0.08);
     --neo-shadow-sidebar: 0 22px 68px rgb(0 0 0 / 0.34);
 
@@ -1158,19 +1180,22 @@
     --shadow-popover: var(--shadow-2);
   }
   .dark {
-    --neo-canvas: #07090d;
-    --neo-canvas-top: #080b10;
-    --neo-surface-base: #0b0f15;
-    --neo-surface-raised: #0f141c;
-    --neo-surface-muted: #151b24;
+    --neo-canvas: #05070b;
+    --neo-canvas-top: #070a0f;
+    --neo-surface-base: #090d13;
+    --neo-surface-raised: #10161f;
+    --neo-surface-muted: #161d27;
+    --neo-surface-hover: #1b2430;
     --neo-text-primary: #f3f4f5;
-    --neo-text-secondary: #b6bdc5;
-    --neo-text-tertiary: #7f8892;
-    --neo-border: rgb(255 255 255 / 0.085);
-    --neo-border-strong: rgb(255 255 255 / 0.13);
+    --neo-text-secondary: #bac2ca;
+    --neo-text-tertiary: #87919b;
+    --neo-border: rgb(255 255 255 / 0.09);
+    --neo-border-strong: rgb(255 255 255 / 0.145);
     --neo-command-border: rgb(255 255 255 / 0.095);
     --neo-gold-ring: rgb(184 147 90 / 0.26);
     --neo-shadow-panel: 0 1px 0 rgb(255 255 255 / 0.035) inset, 0 20px 54px rgb(0 0 0 / 0.3);
+    --neo-shadow-panel-hover: 0 1px 0 rgb(255 255 255 / 0.052) inset, 0 24px 62px rgb(0 0 0 / 0.38);
+    --neo-shadow-control: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 12px 30px rgb(0 0 0 / 0.22);
     --neo-shadow-command: 0 1px 0 rgb(255 255 255 / 0.048) inset, 0 18px 42px rgb(0 0 0 / 0.32);
 
     --background: 0 0% 3.9%;

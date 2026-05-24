@@ -34,7 +34,7 @@ function variantClasses(v: ToastVariant) {
     case "error":
       return "border-red-200 bg-red-50 text-red-950 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-50";
     case "system":
-      return "border-[rgb(184_137_45_/_0.3)] bg-[rgb(18_22_27_/_0.94)] text-[#f3f4f5] shadow-[0_18px_48px_rgb(0_0_0_/_0.28)] backdrop-blur-xl";
+      return "border-[rgb(184_147_90_/_0.28)] bg-[rgb(16_22_31_/_0.94)] text-[#f3f4f5] shadow-[0_18px_48px_rgb(0_0_0_/_0.28)] backdrop-blur-xl";
     default:
       return "border-zinc-200 bg-background text-foreground dark:border-border";
   }

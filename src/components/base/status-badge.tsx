@@ -11,7 +11,7 @@ const variantPillClass: Record<StatusBadgeVariant, string> = {
   success:
     "border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)] dark:bg-emerald-500/15 dark:text-emerald-300",
   warning:
-    "border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]",
+    "border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.12)] text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]",
   danger: "border-rose-500/20 bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
   muted: "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]",
 };
