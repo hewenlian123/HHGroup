@@ -56,20 +56,21 @@ import { amountClass, TYPO } from "@/lib/typography";
 const ACCOUNT_TYPES: AccountType[] = ["Credit Card", "Debit Card", "Bank", "Cash", "Other"];
 
 const accountsShell =
-  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-2xl";
 
 const kpiTile =
-  "rounded-xl border border-zinc-200/40 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.028),0_1px_12px_rgba(0,0,0,0.028)] dark:border-border/35 dark:bg-card/80 dark:shadow-none";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
 
 const kpiIcon =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100/45 text-zinc-400 dark:bg-muted/45 dark:text-muted-foreground";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
 
 function typeChipClass(t: AccountType): string {
-  if (t === "Bank") return "bg-slate-100 text-slate-700 ring-1 ring-slate-200/70";
-  if (t === "Cash") return "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/60";
+  if (t === "Bank")
+    return "border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
+  if (t === "Cash") return "border border-emerald-500/20 bg-emerald-500/15 text-emerald-300";
   if (t === "Credit Card" || t === "Debit Card")
-    return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/60";
-  return "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200/60";
+    return "border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] text-[var(--neo-gold-soft)]";
+  return "border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
 }
 
 function AccountTypeIcon({ type }: { type: AccountType }) {
@@ -399,27 +400,23 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
   return (
     <div
       className={cn(
-        "min-w-0 overflow-x-hidden bg-zinc-50 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] dark:bg-background",
+        "dark neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
         "flex flex-col"
       )}
     >
       <div
         className={cn(
-          "mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-3 px-4 py-2 pb-4 dark:bg-background sm:max-w-[460px] md:max-w-6xl md:gap-4 md:px-6 md:pb-6 md:pt-3",
+          "mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-3 px-4 py-2 pb-4 sm:max-w-[460px] md:max-w-6xl md:gap-4 md:px-6 md:pb-6 md:pt-3",
           mobileListPagePaddingClass
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            className="gap-1 border-b border-white/10 pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--neo-canvas-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--neo-canvas-text-secondary)]"
             title="Accounts"
             subtitle="Manage payment sources: credit cards, debit cards, bank accounts, cash."
             actions={
-              <Button
-                size="sm"
-                className="h-9 shrink-0 gap-1.5 shadow-none bg-[#0B1220] text-white hover:bg-[#0B1220]/92 dark:bg-emerald-500/90 dark:text-black dark:hover:bg-emerald-500"
-                onClick={openModal}
-              >
+              <Button size="sm" className="h-9 shrink-0 gap-1.5 shadow-none" onClick={openModal}>
                 <Plus className="h-3.5 w-3.5" aria-hidden />
                 Add Account
               </Button>
@@ -540,18 +537,14 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : accounts.length === 0 ? (
           <div className={cn(accountsShell, "px-4 py-10 text-center")}>
-            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200/70 bg-zinc-50/80 text-zinc-600 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-300">
+            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]">
               <CreditCard className="h-5 w-5" aria-hidden />
             </span>
             <p className="text-sm font-medium text-foreground">No payment accounts yet</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Add a bank account, card, or cash account to track company finances.
             </p>
-            <Button
-              size="sm"
-              className="mt-4 h-9 rounded-sm shadow-none bg-[#0B1220] text-white hover:bg-[#0B1220]/92 dark:bg-emerald-500/90 dark:text-black dark:hover:bg-emerald-500"
-              onClick={openModal}
-            >
+            <Button size="sm" className="mt-4 h-9 rounded-sm shadow-none" onClick={openModal}>
               <Plus className="mr-2 h-3.5 w-3.5" aria-hidden />
               Add first account
             </Button>
@@ -595,7 +588,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
                   {/* ACCOUNT */}
                   <button type="button" className="min-w-0 text-left" onClick={() => openEdit(row)}>
                     <div className="flex items-start gap-3">
-                      <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-zinc-200/70 bg-white text-zinc-600 dark:border-border/60 dark:bg-card dark:text-muted-foreground">
+                      <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]">
                         <AccountTypeIcon type={row.type} />
                       </span>
                       <div className="min-w-0">
@@ -634,7 +627,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
 
                   {/* STATUS (no backend field; all current rows are active) */}
                   <div>
-                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/60 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-900/30">
+                    <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
                       Active
                     </span>
                   </div>

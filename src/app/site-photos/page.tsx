@@ -432,7 +432,11 @@ export default function SitePhotosPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("md:max-w-5xl", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn(
+        "dark md:max-w-5xl text-[var(--neo-canvas-text-secondary)]",
+        mobileListPagePaddingClass,
+        "max-md:!gap-3"
+      )}
       header={
         <>
           <div className="hidden md:block">
@@ -632,7 +636,7 @@ export default function SitePhotosPage() {
           </p>
         ) : (
           <>
-            <div className="divide-y divide-gray-100 dark:divide-border/60 md:hidden">
+            <div className="divide-y divide-[var(--neo-border)] md:hidden">
               {filteredPhotos.map((p) => (
                 <div key={p.id} className="flex min-h-[48px] gap-3 py-2.5">
                   <button
@@ -649,9 +653,9 @@ export default function SitePhotosPage() {
                     }}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-sm border border-gray-100 bg-muted/30 dark:border-border/60">
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
                       {editMode && (
-                        <span className="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-background text-xs">
+                        <span className="absolute left-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs text-[var(--neo-gold-soft)]">
                           {selectedIds.has(p.id) ? "✓" : ""}
                         </span>
                       )}
@@ -672,7 +676,7 @@ export default function SitePhotosPage() {
                       <p className="truncate text-sm font-medium text-foreground">
                         {p.project_name ?? "—"}
                       </p>
-                      <p className="truncate text-xs text-text-secondary dark:text-muted-foreground">
+                      <p className="truncate text-xs text-[var(--neo-text-secondary)]">
                         {p.description || "—"}
                       </p>
                     </div>
@@ -686,7 +690,7 @@ export default function SitePhotosPage() {
                         appearance="list"
                         ariaLabel="Photo actions"
                         touchFriendly={false}
-                        className="h-8 w-8 rounded-sm bg-background/90 hover:bg-background"
+                        className="h-8 w-8 rounded-sm bg-[var(--neo-surface-raised)] hover:bg-[var(--neo-surface-muted)]"
                         actions={[
                           { label: "View", onClick: () => openViewer(p) },
                           { label: "Edit", onClick: () => openDetail(p) },
@@ -724,7 +728,7 @@ export default function SitePhotosPage() {
                   className={`group relative text-left rounded-sm border overflow-hidden transition-colors focus-within:ring-2 focus-within:ring-ring ${
                     editMode && selectedIds.has(p.id)
                       ? "border-foreground/80 ring-1 ring-foreground/20"
-                      : "border-gray-100 hover:bg-[#F9FAFB] dark:border-border/60 dark:hover:bg-muted/30"
+                      : "border-[var(--neo-border)] bg-[var(--neo-surface-raised)] hover:bg-[var(--neo-surface-muted)]"
                   }`}
                 >
                   <div
@@ -756,7 +760,7 @@ export default function SitePhotosPage() {
                     }}
                     className="block w-full text-left cursor-pointer focus:outline-none"
                   >
-                    <div className="aspect-square bg-[#F3F4F6] relative dark:bg-muted/30">
+                    <div className="aspect-square bg-[var(--neo-surface-muted)] relative">
                       {editMode && (
                         <div
                           role="button"
@@ -771,10 +775,12 @@ export default function SitePhotosPage() {
                               togglePhotoSelection(e as unknown as React.MouseEvent, p.id);
                             }
                           }}
-                          className="absolute top-1.5 left-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-border bg-background shadow-sm"
+                          className="absolute top-1.5 left-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-sm border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-sm"
                         >
                           {selectedIds.has(p.id) ? (
-                            <span className="text-xs font-medium text-[#111111]">✓</span>
+                            <span className="text-xs font-medium text-[var(--neo-gold-soft)]">
+                              ✓
+                            </span>
                           ) : null}
                         </div>
                       )}
@@ -787,7 +793,7 @@ export default function SitePhotosPage() {
                             appearance="list"
                             ariaLabel={`Actions for photo`}
                             touchFriendly={false}
-                            className="h-8 w-8 bg-background/90 hover:bg-background rounded-sm"
+                            className="h-8 w-8 bg-[var(--neo-surface-raised)] hover:bg-[var(--neo-surface-muted)] rounded-sm"
                             actions={[
                               { label: "View", onClick: () => openViewer(p) },
                               { label: "Edit", onClick: () => openDetail(p) },
@@ -1085,7 +1091,7 @@ export default function SitePhotosPage() {
       >
         {selectedPhoto && (
           <div className="space-y-4">
-            <div className="rounded-sm border border-gray-100 overflow-hidden bg-background min-h-[8rem] flex items-center justify-center dark:border-border/60">
+            <div className="rounded-sm border border-[var(--neo-border)] overflow-hidden bg-[var(--neo-surface-muted)] min-h-[8rem] flex items-center justify-center">
               {failedPhotoIds.has(selectedPhoto.id) ? (
                 <span className="text-sm text-muted-foreground">Photo unavailable</span>
               ) : (
@@ -1164,7 +1170,7 @@ export default function SitePhotosPage() {
           onClick={() => setUploadOpen(false)}
         >
           <div
-            className="bg-background border border-gray-100 rounded-sm p-4 w-full max-w-sm space-y-3 dark:border-border/60"
+            className="dark bg-[var(--neo-surface-raised)] border border-[var(--neo-border)] rounded-sm p-4 w-full max-w-sm space-y-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-sm font-medium">Upload Photo</p>

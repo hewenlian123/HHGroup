@@ -54,7 +54,7 @@ export default async function ARPage() {
   ];
 
   return (
-    <div className="page-container page-stack py-6">
+    <div className="dark neo-page-on-graphite page-container page-stack py-6 text-[var(--neo-canvas-text-secondary)]">
       <PageHeader
         title="Accounts Receivable"
         description="Outstanding invoices and aging. Record payments from invoice detail."
@@ -98,7 +98,7 @@ export default async function ARPage() {
           <div className="space-y-6">
             {sortedBuckets.map((bucket) => (
               <div key={bucket} className={OS.card}>
-                <h3 className="border-b border-slate-900/[0.06] bg-slate-50/80 px-4 py-3 text-sm font-semibold text-foreground dark:border-border dark:bg-muted/20">
+                <h3 className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-4 py-3 text-sm font-semibold text-[var(--neo-text-primary)]">
                   {bucket} days overdue
                 </h3>
                 <Table>

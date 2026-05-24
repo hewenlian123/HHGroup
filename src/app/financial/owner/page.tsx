@@ -57,13 +57,13 @@ const EMPTY_OWNER_DASHBOARD: Awaited<ReturnType<typeof getFinanceOwnerDashboard>
   },
 };
 
-const pageBg = "bg-slate-50 dark:bg-background";
+const pageBg = "dark neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]";
 
 const cardBase =
-  "rounded-2xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] transition-[transform,box-shadow,border-color] duration-200 ease-out dark:border-border/50 dark:bg-card/80 dark:shadow-none";
+  "rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] transition-[transform,box-shadow,border-color] duration-200 ease-out";
 
 const cardHover =
-  "hover:-translate-y-px hover:border-zinc-300/90 hover:shadow-[0_8px_32px_rgba(0,0,0,0.07)] dark:hover:border-border";
+  "hover:-translate-y-px hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)]";
 
 function fmtCount(n: number): string {
   return formatInteger(n);
@@ -747,7 +747,7 @@ export default async function FinanceOwnerDashboardPage() {
                         title={a.detailTitle}
                         className={cn(
                           "group flex min-h-[44px] items-center gap-3 rounded-2xl border border-transparent px-3 py-3 transition-all duration-200 ease-out",
-                          "hover:border-zinc-200 hover:bg-white hover:shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:hover:border-border dark:hover:bg-muted/30"
+                          "hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)]"
                         )}
                       >
                         <span className={alertIconCircle(a.tone, a.active)}>

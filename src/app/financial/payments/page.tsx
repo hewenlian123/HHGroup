@@ -49,13 +49,13 @@ import { TYPO } from "@/lib/typography";
 import type { PaymentReceiptPreviewDto } from "@/lib/payment-receipt-preview-dto";
 
 const paymentsShell =
-  "rounded-xl border border-zinc-200/70 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04),0_4px_24px_rgba(0,0,0,0.045)] dark:border-border/50 dark:bg-card/80 dark:shadow-none md:rounded-2xl";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-2xl";
 
 const kpiTile =
-  "rounded-xl border border-zinc-200/40 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.028),0_1px_12px_rgba(0,0,0,0.028)] dark:border-border/35 dark:bg-card/80 dark:shadow-none";
+  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
 
 const kpiIcon =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100/45 text-zinc-400 dark:bg-muted/45 dark:text-muted-foreground";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
 
 export default function PaymentsReceivedPage() {
   return (
@@ -336,7 +336,12 @@ function PaymentsReceivedPageInner() {
   );
 
   return (
-    <div className={cn("min-w-0 overflow-x-hidden bg-zinc-50 dark:bg-background", "flex flex-col")}>
+    <div
+      className={cn(
+        "dark neo-page-on-graphite min-w-0 overflow-x-hidden text-[var(--neo-canvas-text-secondary)]",
+        "flex flex-col"
+      )}
+    >
       <div
         className={cn(
           "mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-3 px-4 py-2 pb-4 sm:max-w-[460px] md:max-w-6xl md:gap-4 md:px-6 md:pb-6 md:pt-3",
@@ -345,13 +350,13 @@ function PaymentsReceivedPageInner() {
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-zinc-200/70 pb-2 dark:border-border/60 lg:items-baseline lg:gap-x-4 [&_p]:mt-0"
+            className="gap-1 border-b border-white/10 pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--neo-canvas-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--neo-canvas-text-secondary)]"
             title="Payments Received"
             subtitle="Cash collection and payment history across customers and invoices."
             actions={
               <Button
                 size="sm"
-                className="h-9 shrink-0 gap-1.5 shadow-none bg-[#0B1220] text-white hover:bg-[#0B1220]/92 dark:bg-emerald-500/90 dark:text-black dark:hover:bg-emerald-500"
+                className="h-9 shrink-0 gap-1.5 shadow-none"
                 onClick={openReceivePayment}
               >
                 <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -540,7 +545,7 @@ function PaymentsReceivedPageInner() {
           </div>
         ) : payments.length === 0 ? (
           <div className={cn(paymentsShell, "px-4 py-10 text-center")}>
-            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200/70 bg-zinc-50/80 text-zinc-600 dark:border-border/60 dark:bg-muted/25 dark:text-zinc-300">
+            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]">
               <Wallet className="h-5 w-5" aria-hidden />
             </span>
             <p className="text-sm font-medium text-foreground">No payments yet</p>
@@ -549,7 +554,7 @@ function PaymentsReceivedPageInner() {
             </p>
             <Button
               size="sm"
-              className="mt-4 h-9 rounded-sm shadow-none bg-[#0B1220] text-white hover:bg-[#0B1220]/92 dark:bg-emerald-500/90 dark:text-black dark:hover:bg-emerald-500"
+              className="mt-4 h-9 rounded-sm shadow-none"
               onClick={openReceivePayment}
             >
               <Plus className="mr-2 h-3.5 w-3.5" aria-hidden />

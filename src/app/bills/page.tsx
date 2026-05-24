@@ -38,6 +38,7 @@ export default async function BillsPage({ searchParams }: Props) {
 
   return (
     <PageLayout
+      className="dark"
       header={
         <div className="hidden md:block">
           <PageHeader

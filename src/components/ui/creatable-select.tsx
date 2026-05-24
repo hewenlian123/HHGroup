@@ -90,7 +90,7 @@ export function CreatableSelect({
   return (
     <div ref={containerRef} className="relative">
       {label ? (
-        <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+        <label className="text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
           {label}
         </label>
       ) : null}
@@ -103,7 +103,7 @@ export function CreatableSelect({
         onBlur={handleBlur}
         placeholder={value ? undefined : placeholder}
         className={cn(
-          "flex h-10 min-h-[44px] w-full rounded-lg border border-gray-100 bg-white px-3 py-2 text-sm text-text-primary shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111827]/10 dark:border-border dark:bg-card dark:text-foreground dark:focus-visible:ring-ring/30 lg:min-h-10",
+          "flex h-10 min-h-[44px] w-full rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-2 text-sm text-[var(--neo-text-primary)] shadow-none transition-all duration-150 ease-out placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] lg:min-h-10",
           label ? "mt-1" : ""
         )}
         aria-autocomplete="list"
@@ -111,7 +111,7 @@ export function CreatableSelect({
       {isOpen && (
         <ul
           role="listbox"
-          className="absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-gray-100 bg-white py-2 shadow-lg dark:border-border dark:bg-popover dark:shadow-md"
+          className="dark absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] py-2 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
         >
           {filtered.map((opt) => (
             <li
@@ -119,8 +119,8 @@ export function CreatableSelect({
               role="option"
               aria-selected={opt === value}
               className={cn(
-                "min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm hover:bg-accent hover:text-accent-foreground",
-                opt === value && "bg-accent/50"
+                "min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]",
+                opt === value && "bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold-soft)]"
               )}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -134,7 +134,7 @@ export function CreatableSelect({
             <li
               role="option"
               aria-selected={false}
-              className="min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+              className="min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleAdd();
@@ -144,7 +144,7 @@ export function CreatableSelect({
             </li>
           )}
           {filtered.length === 0 && !showAddOption && (
-            <li className="px-3 py-2.5 text-sm text-muted-foreground">No options</li>
+            <li className="px-3 py-2.5 text-sm text-[var(--neo-text-secondary)]">No options</li>
           )}
         </ul>
       )}
