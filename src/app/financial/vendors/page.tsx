@@ -74,8 +74,12 @@ const vendorHeadClass =
   "h-9 px-3 text-left align-middle text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]";
 const vendorCellClass = "border-b border-[var(--neo-border)] px-3 py-2 align-middle text-[13px]";
 
-function vendorStatusVariant(status: VendorRow["status"]) {
-  return status === "active" ? "success" : "muted";
+function vendorStatus(status: VendorRow["status"] | null | undefined) {
+  return status === "inactive" ? "inactive" : "active";
+}
+
+function vendorStatusVariant(status: VendorRow["status"] | null | undefined) {
+  return vendorStatus(status) === "active" ? "success" : "muted";
 }
 
 export default function VendorsPage() {
@@ -483,7 +487,10 @@ export default function VendorsPage() {
                   {row.email || "—"}
                 </p>
                 <div className="mt-1">
-                  <NeoStatus label={row.status} variant={vendorStatusVariant(row.status)} />
+                  <NeoStatus
+                    label={vendorStatus(row.status)}
+                    variant={vendorStatusVariant(row.status)}
+                  />
                 </div>
               </div>
               <div className="flex gap-2">
@@ -544,7 +551,10 @@ export default function VendorsPage() {
                 {row.email || "—"}
               </td>
               <td className={vendorCellClass}>
-                <NeoStatus label={row.status} variant={vendorStatusVariant(row.status)} />
+                <NeoStatus
+                  label={vendorStatus(row.status)}
+                  variant={vendorStatusVariant(row.status)}
+                />
               </td>
               <td className={vendorCellClass}>
                 <div className="flex items-center justify-end gap-2">
