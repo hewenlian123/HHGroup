@@ -72,6 +72,7 @@ import { EB, ebGlassPanel, ebInput } from "./estimate-builder-ui";
 import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { EstimateLineItemPersistedMobile } from "./estimate-line-item-persisted-mobile";
 import { ScopeSectionCollapsibleBody, ScopeSectionHeader } from "./estimate-line-items-local";
+import { EstimateScopeSortableSection } from "./estimate-scope-section-sortable";
 import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
 import { EstimateLineItemMoreMenu } from "./estimate-line-item-more-menu";
 import { EstimateLineItemStatusPill } from "./estimate-line-item-status-pill";
@@ -84,54 +85,6 @@ function cssEscapeAttrSelector(value: string): string {
       : undefined;
   if (winCss?.escape) return winCss.escape(value);
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-function SortableCategorySection({
-  id,
-  children,
-  highlightFlash = false,
-  isSelectedCategory = false,
-}: {
-  id: string;
-  children: (dragHandle: React.ReactNode) => React.ReactNode;
-  /** Brief background pulse after creating this category (UX). */
-  highlightFlash?: boolean;
-  /** Last category created / explicitly selected (cost code). */
-  isSelectedCategory?: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id,
-  });
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-  const dragHandle = (
-    <button
-      type="button"
-      className={EB.scopeSectionDragHandle}
-      aria-label="Reorder section"
-      {...attributes}
-      {...listeners}
-    >
-      <GripVertical className="h-4 w-4" aria-hidden />
-    </button>
-  );
-  return (
-    <div
-      ref={setNodeRef}
-      data-estimate-section-id={id}
-      aria-current={isSelectedCategory ? "true" : undefined}
-      style={style}
-      className={cn(
-        "border-b border-border/10 transition-all duration-300",
-        isDragging && "opacity-55 relative z-[2]",
-        highlightFlash && "bg-primary/10 dark:bg-primary/15"
-      )}
-    >
-      {children(dragHandle)}
-    </div>
-  );
 }
 
 export type EstimateEditorProps = {
@@ -329,9 +282,13 @@ export function EstimateEditor({
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
+  const [sectionDragging, setSectionDragging] = React.useState(false);
+  const [overSectionId, setOverSectionId] = React.useState<string | null>(null);
 
   const handleCategoryDragEnd = React.useCallback(
     async (event: DragEndEvent) => {
+      setSectionDragging(false);
+      setOverSectionId(null);
       const { active, over } = event;
       if (!over || active.id === over.id) return;
       const ids = costBreakdownSections.map((s) => s.categoryId);
@@ -456,9 +413,9 @@ export function EstimateEditor({
           />
 
           <section className={EB.section}>
-            <div className={ebGlassPanel()}>
-              <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-                <div>
+            <div className={ebGlassPanel("eb-scope-work-panel")}>
+              <div className="mb-3.5 flex flex-wrap items-end justify-between gap-3">
+                <div className="min-w-0">
                   <h2 className={EB.scopeHeading}>Scope of work</h2>
                   <p className={EB.scopeSubtitle}>Proposal sections and line totals</p>
                 </div>
@@ -473,6 +430,17 @@ export function EstimateEditor({
                   />
                 ) : null}
               </div>
+
+              {!isReadOnly ? (
+                <AddCategoryBlock
+                  estimateId={estimateId}
+                  allCategoryCodes={sectionDropdownOptions.map((o) => o.code)}
+                  getCategoryDisplayName={getCategoryDisplayNameHint}
+                  pendingSelectNewCategory={pendingSelectNewCategory}
+                  onPendingSelectNewCategoryConsumed={consumePendingSelectNewCategory}
+                  onPostCreateCategoryUx={handleNewCategoryCreated}
+                />
+              ) : null}
 
               <div className="mb-4 space-y-3 md:hidden">
                 {costBreakdownSections.map(({ categoryId, title, rows, sectionTotal }) => {
@@ -698,56 +666,57 @@ export function EstimateEditor({
                         <div
                           key={categoryId}
                           data-estimate-section-id={categoryId}
-                          className={cn(EB.categoryGroup, "mb-6 last:mb-0")}
+                          className={EB.categoryGroup}
                         >
                           {categorySectionBody(null)}
                         </div>
                       ) : (
-                        <SortableCategorySection
+                        <EstimateScopeSortableSection
                           key={categoryId}
                           id={categoryId}
-                          highlightFlash={flashHighlightCategoryId === categoryId}
-                          isSelectedCategory={selectedCategoryId === categoryId}
-                        >
-                          {(dh) => (
-                            <div
-                              data-estimate-section-id={categoryId}
-                              className={cn(EB.categoryGroup, "mb-6 last:mb-0")}
-                            >
-                              {categorySectionBody(dh)}
-                            </div>
+                          isDropTarget={overSectionId === categoryId}
+                          className={cn(
+                            "transition-all duration-300",
+                            selectedCategoryId === categoryId &&
+                              "aria-[current=true]:bg-primary/10",
+                            flashHighlightCategoryId === categoryId &&
+                              "bg-primary/10 dark:bg-primary/15"
                           )}
-                        </SortableCategorySection>
+                          ariaCurrent={selectedCategoryId === categoryId ? "true" : undefined}
+                        >
+                          {(dh) => categorySectionBody(dh)}
+                        </EstimateScopeSortableSection>
                       );
                     }
                   );
                   return isReadOnly ? (
-                    <>{categoryNodes}</>
+                    <div className="eb-scope-sections-list flex flex-col">{categoryNodes}</div>
                   ) : (
                     <DndContext
                       sensors={categorySensors}
                       collisionDetection={closestCenter}
+                      onDragStart={() => setSectionDragging(true)}
+                      onDragOver={(e) => setOverSectionId(e.over ? String(e.over.id) : null)}
+                      onDragCancel={() => {
+                        setSectionDragging(false);
+                        setOverSectionId(null);
+                      }}
                       onDragEnd={(e) => void handleCategoryDragEnd(e)}
                     >
                       <SortableContext
                         items={costBreakdownSections.map((s) => s.categoryId)}
                         strategy={verticalListSortingStrategy}
                       >
-                        {categoryNodes}
+                        <div
+                          className="eb-scope-sections-list flex flex-col"
+                          data-section-dragging={sectionDragging ? "true" : undefined}
+                        >
+                          {categoryNodes}
+                        </div>
                       </SortableContext>
                     </DndContext>
                   );
                 })()}
-                {!isReadOnly && (
-                  <AddCategoryBlock
-                    estimateId={estimateId}
-                    allCategoryCodes={sectionDropdownOptions.map((o) => o.code)}
-                    getCategoryDisplayName={getCategoryDisplayNameHint}
-                    pendingSelectNewCategory={pendingSelectNewCategory}
-                    onPendingSelectNewCategoryConsumed={consumePendingSelectNewCategory}
-                    onPostCreateCategoryUx={handleNewCategoryCreated}
-                  />
-                )}
               </div>
             </div>
           </section>
@@ -1019,7 +988,7 @@ function LineItemRow({
   );
 
   return (
-    <div className="px-1 py-1">
+    <div className={EB.lineItemCard}>
       {!isLocked ? (
         <form id={formId} action={updateLineItemAction} className="hidden" aria-hidden>
           <input type="hidden" name="estimateId" value={estimateId} />
@@ -1332,7 +1301,7 @@ function AddCategoryBlock({
   }, [customCategoryLabel, getCategoryDisplayName, search, selectedCode]);
 
   return (
-    <div id="estimate-add-section" ref={containerRef} className={EB.addSectionComposer}>
+    <div id="estimate-add-section" ref={containerRef} className={cn(EB.addSectionComposer, "mb-4")}>
       <p className="eb-composer-hint mb-2">New section</p>
       <div className="flex flex-wrap items-center gap-2.5">
         <div className="relative min-w-[200px] flex-1 max-w-md">

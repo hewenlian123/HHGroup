@@ -11,6 +11,8 @@ export type EstimateScopeSortableSectionProps = {
   id: string;
   disabled?: boolean;
   isDropTarget?: boolean;
+  className?: string;
+  ariaCurrent?: React.AriaAttributes["aria-current"];
   children: (dragHandle: React.ReactNode | null) => React.ReactNode;
 };
 
@@ -19,6 +21,8 @@ export function EstimateScopeSortableSection({
   id,
   disabled = false,
   isDropTarget = false,
+  className,
+  ariaCurrent,
   children,
 }: EstimateScopeSortableSectionProps): React.ReactElement {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -39,7 +43,6 @@ export function EstimateScopeSortableSection({
       {...attributes}
       {...listeners}
       onClick={(e) => e.stopPropagation()}
-      onPointerDown={(e) => e.stopPropagation()}
     >
       <GripVertical className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
     </button>
@@ -51,10 +54,12 @@ export function EstimateScopeSortableSection({
       style={style}
       data-estimate-section-id={id}
       data-sortable-over={isDropTarget ? "true" : undefined}
+      aria-current={ariaCurrent}
       className={cn(
         EB.categoryGroup,
         EB.scopeSectionSortable,
-        isDragging && EB.scopeSectionDragging
+        isDragging && EB.scopeSectionDragging,
+        className
       )}
     >
       {children(dragHandle)}

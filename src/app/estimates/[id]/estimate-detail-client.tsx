@@ -52,7 +52,7 @@ export function EstimateDetailClient({
   initialStatus: EstimateStatus | string;
   meta: EstimateMetaRecord;
   items: EstimateItemRow[];
-  estimateCategories: { costCode: string; displayName: string }[];
+  estimateCategories: { costCode: string; displayName: string; orderIndex?: number }[];
   categoryNames: Record<string, string>;
   costCodes: CostCode[];
   summary: EstimateSummaryResult | null;

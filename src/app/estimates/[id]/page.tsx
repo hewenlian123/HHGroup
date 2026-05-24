@@ -43,7 +43,10 @@ export default async function EstimateDetailPage({
     acc[c.costCode] = c.displayName;
     return acc;
   }, {});
-  const estimateCategories = [...categories].sort((a, b) => a.costCode.localeCompare(b.costCode));
+  const estimateCategories = [...categories].sort((a, b) => {
+    const orderDiff = (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
+    return orderDiff || a.costCode.localeCompare(b.costCode);
+  });
 
   return (
     <div className="estimate-builder-page page-stack py-3 md:py-4">
