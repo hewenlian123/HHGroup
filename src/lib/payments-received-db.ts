@@ -558,13 +558,14 @@ async function updatePaymentAttachments(
 }
 
 export async function getPaymentAttachmentPreviewUrl(
-  attachment: Pick<PaymentReceivedAttachment, "file_url">
+  attachment: Pick<PaymentReceivedAttachment, "file_url">,
+  explicitClient?: SupabaseClient
 ): Promise<string> {
   const url = attachment.file_url.trim();
   if (!url) throw new Error("Attachment URL is missing.");
   if (isDirectAttachmentUrl(url)) return url;
 
-  const c = client();
+  const c = client(explicitClient);
   const { data, error } = await c.storage
     .from("payment-attachments")
     .createSignedUrl(url, 60 * 60 * 6);
@@ -627,9 +628,10 @@ export async function getPaymentsReceived(): Promise<PaymentReceivedWithMeta[]> 
 }
 
 export async function getPaymentReceivedById(
-  paymentId: string
+  paymentId: string,
+  explicitClient?: SupabaseClient
 ): Promise<PaymentReceivedDetail | null> {
-  const c = client();
+  const c = client(explicitClient);
   const row = await fetchPaymentReceivedDbRow(c, paymentId);
   if (!row || String(row.status ?? "") === "void") return null;
 
@@ -929,9 +931,10 @@ export async function createPaymentReceived(
 }
 
 export async function updatePaymentReceived(
-  payload: UpdatePaymentReceivedPayload
+  payload: UpdatePaymentReceivedPayload,
+  explicitClient?: SupabaseClient
 ): Promise<PaymentReceivedDetail> {
-  const c = client();
+  const c = client(explicitClient);
   const paymentId = payload.id.trim();
   if (!paymentId) throw new Error("Payment id is required.");
 
@@ -1059,7 +1062,7 @@ export async function updatePaymentReceived(
 
   await updatePaymentAttachments(c, existing, payload.attachments);
 
-  const updated = await getPaymentReceivedById(paymentId);
+  const updated = await getPaymentReceivedById(paymentId, c);
   if (!updated) throw new Error("Payment updated, but could not be reloaded.");
   return updated;
 }

@@ -29,9 +29,6 @@ import {
   getPaymentsReceivedByInvoiceId,
   getDepositsByInvoiceId,
   getPaymentAttachmentPreviewUrl,
-  revertInvoiceToDraft,
-  deleteInvoicePayment,
-  duplicateInvoice,
   type InvoiceWithDerived,
   type InvoicePayment,
   type PaymentReceivedAttachment,
@@ -57,8 +54,11 @@ import {
 import { cn } from "@/lib/utils";
 import {
   checkInvoiceDeleteDependenciesAction,
+  deleteInvoicePaymentAction,
   deleteInvoiceAction,
+  duplicateInvoiceAction,
   markInvoiceSentAction,
+  revertInvoiceToDraftAction,
   unlinkInvoiceScheduleItemAction,
   updateInvoiceAction,
 } from "../actions";
@@ -368,11 +368,11 @@ export default function InvoiceDetailPage() {
     if (!id || actionBusy || editSaving) return;
     setActionBusy(true);
     try {
-      const ok = await revertInvoiceToDraft(id);
-      if (!ok) {
+      const result = await revertInvoiceToDraftAction(id);
+      if (!result.ok) {
         toast({
           title: "Cannot go back to edit",
-          description: "Only invoices without payments can be returned to draft.",
+          description: result.error ?? "Only invoices without payments can be returned to draft.",
           variant: "error",
         });
         return;
@@ -388,17 +388,17 @@ export default function InvoiceDetailPage() {
     if (!id || actionBusy || editSaving || isVoid) return;
     setActionBusy(true);
     try {
-      const duplicated = await duplicateInvoice(id);
-      if (!duplicated) {
+      const result = await duplicateInvoiceAction(id);
+      if (!result.ok) {
         toast({
           title: "Could not duplicate invoice",
-          description: "Void invoices cannot be duplicated.",
+          description: result.error ?? "Void invoices cannot be duplicated.",
           variant: "error",
         });
         return;
       }
       toast({ title: "Invoice duplicated", variant: "success" });
-      router.push(`/financial/invoices/${duplicated.id}`);
+      router.push(`/financial/invoices/${result.invoiceId}`);
     } catch (e) {
       toast({
         title: "Could not duplicate invoice",
@@ -510,22 +510,30 @@ export default function InvoiceDetailPage() {
   };
 
   const handleDeletePayment = async (paymentId: string) => {
-    setDeletingPaymentId(paymentId);
-    const prev = payments;
-    setPayments((list) => list.filter((p) => p.id !== paymentId));
-    if (invoice) {
-      const removed = payments.find((p) => p.id === paymentId);
-      if (removed) {
-        const nextPaid = Math.max(0, invoice.paidTotal - removed.amount);
-        const nextBalance = Math.max(0, invoice.total - nextPaid);
-        setInvoice({ ...invoice, paidTotal: nextPaid, balanceDue: nextBalance });
-      }
+    const target = payments.find((p) => p.id === paymentId);
+    if (!id || !target) return;
+    if (target.paymentReceivedId) {
+      toast({
+        title: "Linked payment",
+        description: "Void this payment from the Payments page to keep AR and deposits in sync.",
+        variant: "error",
+      });
+      return;
     }
+    if (!window.confirm("Delete this legacy invoice payment?")) return;
+    setDeletingPaymentId(paymentId);
     try {
-      await deleteInvoicePayment(paymentId);
-      void refresh();
-    } catch {
-      setPayments(prev);
+      const result = await deleteInvoicePaymentAction(id, paymentId);
+      if (!result.ok) {
+        toast({
+          title: "Could not delete payment",
+          description: result.error ?? "Refresh and try again.",
+          variant: "error",
+        });
+        return;
+      }
+      toast({ title: "Payment deleted", variant: "success" });
+      await refresh();
     } finally {
       setDeletingPaymentId(null);
     }
