@@ -255,6 +255,28 @@ test.describe("System Guardian command center", () => {
       await expect(page.getByText(section, { exact: true }).first()).toBeVisible();
     }
 
+    const scannerSection = page
+      .locator("details")
+      .filter({ hasText: "System Integrity Scanner" })
+      .first();
+    await scannerSection.locator("summary").click();
+    await expect(scannerSection.getByText("Status: OK")).toBeVisible();
+    await expect(scannerSection.getByText("Read-only scan")).toBeVisible();
+    await expect(scannerSection.getByText("Auto-fix disabled")).toBeVisible();
+    await expect(
+      scannerSection.getByText("No cleanup actions are available from this panel.")
+    ).toBeVisible();
+    await expect(scannerSection.getByText("Total issues", { exact: true })).toBeVisible();
+    await expect(scannerSection.getByText("Critical", { exact: true })).toBeVisible();
+    await expect(scannerSection.getByText("High", { exact: true })).toBeVisible();
+    await expect(scannerSection.getByText("Medium", { exact: true })).toBeVisible();
+    await expect(scannerSection.getByText("Low", { exact: true })).toBeVisible();
+    await expect(scannerSection.getByText("Generated", { exact: true })).toBeVisible();
+    await expect(scannerSection.getByText("Top 10 issues")).toBeVisible();
+    await expect(scannerSection.getByRole("button", { name: /delete|fix|cleanup/i })).toHaveCount(
+      0
+    );
+
     const destructiveSection = page
       .locator("details")
       .filter({ hasText: "Destructive Action Safety" })

@@ -207,15 +207,47 @@ test.describe("System integrity scanner", () => {
       });
 
       await page.goto("/system-health", { waitUntil: "domcontentloaded" });
-      await expect(page.getByText("System Integrity Scanner", { exact: true }).first()).toBeVisible(
-        { timeout: 30_000 }
-      );
-      await expect(page.getByText("1 issue(s)").filter({ visible: true }).first()).toBeVisible();
+      const scannerSection = page
+        .locator("details")
+        .filter({ hasText: "System Integrity Scanner" })
+        .first();
       await expect(
-        page.getByText("projects / project-marker").filter({ visible: true }).first()
+        scannerSection.getByText("System Integrity Scanner", { exact: true })
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(scannerSection.getByText("Status: Warning")).toBeVisible();
+      await expect(scannerSection.getByText("Read-only scan")).toBeVisible();
+      await expect(scannerSection.getByText("Auto-fix disabled")).toBeVisible();
+      await expect(
+        scannerSection.getByText("No cleanup actions are available from this panel.")
       ).toBeVisible();
-      await expect(page.getByText("Auto fix").filter({ visible: true }).first()).toBeVisible();
-      await expect(page.getByText("Disabled").filter({ visible: true }).first()).toBeVisible();
+      await expect(
+        scannerSection.getByText("1 issue(s)").filter({ visible: true }).first()
+      ).toBeVisible();
+      await expect(scannerSection.getByText("Total issues", { exact: true })).toBeVisible();
+      await expect(scannerSection.getByText("Critical", { exact: true })).toBeVisible();
+      await expect(scannerSection.getByText("High", { exact: true })).toBeVisible();
+      await expect(scannerSection.getByText("Medium", { exact: true })).toBeVisible();
+      await expect(scannerSection.getByText("Low", { exact: true })).toBeVisible();
+      await expect(scannerSection.getByText("Generated", { exact: true })).toBeVisible();
+      await expect(scannerSection.getByText("Top 10 issues")).toBeVisible();
+      await expect(
+        scannerSection.getByText("projects / project-marker").filter({ visible: true }).first()
+      ).toBeVisible();
+      await expect(
+        scannerSection
+          .getByText("MEDIUM · test_marker · projects", { exact: false })
+          .filter({ visible: true })
+          .first()
+      ).toBeVisible();
+      await expect(
+        scannerSection.getByText("Auto fix").filter({ visible: true }).first()
+      ).toBeVisible();
+      await expect(
+        scannerSection.getByText("Disabled").filter({ visible: true }).first()
+      ).toBeVisible();
+      await expect(scannerSection.getByRole("button", { name: /delete|fix|cleanup/i })).toHaveCount(
+        0
+      );
     } finally {
       await context.close().catch(() => undefined);
     }
