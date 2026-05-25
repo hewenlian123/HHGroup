@@ -1,2 +1,14 @@
 #!/usr/bin/env sh
-npx prettier --write . && git add -A
+set -eu
+
+STAGED_FILE_LIST="$(mktemp)"
+trap 'rm -f "$STAGED_FILE_LIST"' EXIT
+
+git diff --cached --name-only --diff-filter=ACMR -z > "$STAGED_FILE_LIST"
+
+if [ ! -s "$STAGED_FILE_LIST" ]; then
+  exit 0
+fi
+
+xargs -0 npx prettier --write --ignore-unknown < "$STAGED_FILE_LIST"
+xargs -0 git add -- < "$STAGED_FILE_LIST"
