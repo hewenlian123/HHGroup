@@ -82,11 +82,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const [expRes, linesRes, projectRes, vendorsRes, categoriesRes, pmRes, attachmentsRes] =
     await Promise.all([
       supabase.from("expenses").select("*").eq("id", id).maybeSingle(),
-      supabase
-        .from("expense_lines")
-        .select("*")
-        .eq("expense_id", id)
-        .order("created_at", { ascending: true }),
+      supabase.from("expense_lines").select("*").eq("expense_id", id),
       supabase
         .from("projects")
         .select("id,name")
