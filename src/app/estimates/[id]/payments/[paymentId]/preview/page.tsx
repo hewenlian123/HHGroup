@@ -10,6 +10,7 @@ import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { PaymentPreviewActions } from "./payment-preview-actions";
 import { ProposalScopePreview } from "@/app/estimates/_components/proposal-scope-preview";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -22,11 +23,12 @@ export default async function EstimatePaymentPreviewPage({
   params: Promise<{ id: string; paymentId: string }>;
 }) {
   const { id, paymentId } = await params;
+  const readClient = getServerSupabaseInternalNoStore();
 
   const [estimate, meta, paymentSchedule, company] = await Promise.all([
-    getEstimateById(id),
-    getEstimateMeta(id),
-    getPaymentSchedule(id),
+    getEstimateById(id, readClient),
+    getEstimateMeta(id, readClient),
+    getPaymentSchedule(id, readClient),
     fetchDocumentCompanyProfile(),
   ]);
 

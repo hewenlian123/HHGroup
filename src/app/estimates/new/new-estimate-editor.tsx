@@ -19,9 +19,6 @@ import { createEstimateWithItemsAction } from "./actions";
 import type { CostCode } from "@/lib/data";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
-import { useOnAppSync } from "@/hooks/use-on-app-sync";
-import { createBrowserClient } from "@/lib/supabase";
-import { getCompanyProfile } from "@/lib/company-profile";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
 import {
@@ -75,7 +72,13 @@ function lineTotal(li: LineItem): number {
   return li.qty * li.unitPrice;
 }
 
-export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
+export function NewEstimateEditor({
+  costCodes,
+  initialDefaultTaxPct = 0,
+}: {
+  costCodes: CostCode[];
+  initialDefaultTaxPct?: number;
+}) {
   const today = new Date().toISOString().slice(0, 10);
   const router = useRouter();
   const { toast } = useToast();
@@ -91,7 +94,9 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
   const [salesPerson, setSalesPerson] = React.useState("");
   const [tax, setTax] = React.useState(0);
   const [taxTouched, setTaxTouched] = React.useState(false);
-  const [defaultTaxPct, setDefaultTaxPct] = React.useState(0);
+  const [defaultTaxPct] = React.useState(() =>
+    Number.isFinite(initialDefaultTaxPct) && initialDefaultTaxPct >= 0 ? initialDefaultTaxPct : 0
+  );
   const [discount, setDiscount] = React.useState(0);
   const [categoryNames, setCategoryNames] = React.useState<Record<string, string>>({});
   const [sectionOrder, setSectionOrder] = React.useState<string[]>([]);
@@ -196,36 +201,6 @@ export function NewEstimateEditor({ costCodes }: { costCodes: CostCode[] }) {
     if (!hasValidLineItem) errors.push("At least one line item is required.");
     return errors;
   }, [clientName, hasValidLineItem, projectName]);
-
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
-
-  const loadCompanyTaxDefaults = React.useCallback(async () => {
-    if (!supabase) return;
-    try {
-      const profile = await getCompanyProfile(supabase);
-      const pct = Number(profile?.default_tax_pct ?? 0);
-      if (Number.isFinite(pct) && pct >= 0) setDefaultTaxPct(pct);
-    } catch {
-      // ignore
-    }
-  }, [supabase]);
-
-  React.useEffect(() => {
-    void loadCompanyTaxDefaults();
-  }, [loadCompanyTaxDefaults]);
-
-  useOnAppSync(
-    React.useCallback(() => {
-      void loadCompanyTaxDefaults();
-    }, [loadCompanyTaxDefaults]),
-    [loadCompanyTaxDefaults]
-  );
 
   React.useEffect(() => {
     if (taxTouched) return;

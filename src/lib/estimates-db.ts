@@ -638,6 +638,16 @@ function normalizeLineItemStatus(status: unknown): EstimateLineItemStatus {
   return "included";
 }
 
+async function touchEstimateUpdatedAt(c: SupabaseClient, estimateId: string): Promise<boolean> {
+  const { data, error } = await c
+    .from("estimates")
+    .update({ updated_at: new Date().toISOString().slice(0, 10) })
+    .eq("id", estimateId)
+    .select("id")
+    .maybeSingle();
+  return !error && Boolean(data?.id);
+}
+
 async function upsertEstimateCategoryWithOrderFallback(
   c: SupabaseClient,
   row: { estimate_id: string; cost_code: string; display_name: string; order_index: number }
@@ -1061,24 +1071,39 @@ export async function updateEstimateMetaWithClient(
   if (payload.salesPerson != null) updates.sales_person = payload.salesPerson;
 
   if (Object.keys(updates).length > 0) {
-    const { error: e1 } = await c
+    const { data: metaRow, error: e1 } = await c
       .from("estimate_meta")
       .update(updates)
-      .eq("estimate_id", estimateId);
+      .eq("estimate_id", estimateId)
+      .select("estimate_id")
+      .maybeSingle();
     if (e1) {
       if (updates.document_notes != null && isMissingColumnError(e1, "document_notes")) {
         delete updates.document_notes;
         if (Object.keys(updates).length === 0) return false;
-        const retry = await c.from("estimate_meta").update(updates).eq("estimate_id", estimateId);
-        if (retry.error) return false;
+        const retry = await c
+          .from("estimate_meta")
+          .update(updates)
+          .eq("estimate_id", estimateId)
+          .select("estimate_id")
+          .maybeSingle();
+        if (retry.error || !retry.data?.estimate_id) return false;
       } else {
         return false;
       }
+    } else if (!metaRow?.estimate_id) {
+      return false;
     }
     const estRow: Record<string, string> = { updated_at: new Date().toISOString().slice(0, 10) };
     if (payload.client?.name) estRow.client = payload.client.name;
     if (payload.project?.name) estRow.project = payload.project.name;
-    await c.from("estimates").update(estRow).eq("id", estimateId);
+    const { data: estimateRow, error: estimateErr } = await c
+      .from("estimates")
+      .update(estRow)
+      .eq("id", estimateId)
+      .select("id")
+      .maybeSingle();
+    if (estimateErr || !estimateRow?.id) return false;
   }
 
   if (payload.categoryNames && Object.keys(payload.categoryNames).length > 0) {
@@ -1101,10 +1126,7 @@ export async function updateEstimateMetaWithClient(
       });
       if (!up.ok) return false;
     }
-    await c
-      .from("estimates")
-      .update({ updated_at: new Date().toISOString().slice(0, 10) })
-      .eq("id", estimateId);
+    if (!(await touchEstimateUpdatedAt(c, estimateId))) return false;
   }
   return true;
 }
@@ -1162,11 +1184,7 @@ export async function reorderEstimateCategoriesWithClient(
     });
     if (!up.ok) return false;
   }
-  await c
-    .from("estimates")
-    .update({ updated_at: new Date().toISOString().slice(0, 10) })
-    .eq("id", estimateId);
-  return true;
+  return touchEstimateUpdatedAt(c, estimateId);
 }
 
 export async function reorderEstimateCategories(
@@ -1591,11 +1609,13 @@ export async function updateLineItemWithClient(
   if (payload.sortOrder != null && Number.isFinite(payload.sortOrder))
     up.sort_order = Number(payload.sortOrder);
   if (Object.keys(up).length === 0) return true;
-  const { error } = await c
+  const { data, error } = await c
     .from("estimate_items")
     .update(up)
     .eq("id", itemId)
-    .eq("estimate_id", estimateId);
+    .eq("estimate_id", estimateId)
+    .select("id")
+    .maybeSingle();
   if (error) {
     if (
       (up.status != null && isMissingColumnError(error, "status")) ||
@@ -1608,17 +1628,17 @@ export async function updateLineItemWithClient(
         .from("estimate_items")
         .update(up)
         .eq("id", itemId)
-        .eq("estimate_id", estimateId);
-      if (retry.error) return false;
+        .eq("estimate_id", estimateId)
+        .select("id")
+        .maybeSingle();
+      if (retry.error || !retry.data?.id) return false;
     } else {
       return false;
     }
+  } else if (!data?.id) {
+    return false;
   }
-  await c
-    .from("estimates")
-    .update({ updated_at: new Date().toISOString().slice(0, 10) })
-    .eq("id", estimateId);
-  return true;
+  return touchEstimateUpdatedAt(c, estimateId);
 }
 
 export async function updateLineItem(
@@ -1668,17 +1688,17 @@ export async function moveEstimateItemsToCostCodeWithClient(
     if (!up.ok) return false;
   }
 
-  const { error } = await c
+  const uniqueIds = Array.from(new Set(itemIds.map((id) => id.trim()).filter(Boolean)));
+  if (uniqueIds.length === 0) return true;
+  const { data: updatedRows, error } = await c
     .from("estimate_items")
     .update({ cost_code: newCostCode })
-    .in("id", itemIds)
-    .eq("estimate_id", estimateId);
+    .in("id", uniqueIds)
+    .eq("estimate_id", estimateId)
+    .select("id");
   if (error) return false;
-  await c
-    .from("estimates")
-    .update({ updated_at: new Date().toISOString().slice(0, 10) })
-    .eq("id", estimateId);
-  return true;
+  if ((updatedRows ?? []).length !== uniqueIds.length) return false;
+  return touchEstimateUpdatedAt(c, estimateId);
 }
 
 export async function moveEstimateItemsToCostCode(
@@ -1703,17 +1723,15 @@ export async function deleteLineItemWithClient(
 ): Promise<boolean> {
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
-  const { error } = await c
+  const { data, error } = await c
     .from("estimate_items")
     .delete()
     .eq("id", itemId)
-    .eq("estimate_id", estimateId);
-  if (error) return false;
-  await c
-    .from("estimates")
-    .update({ updated_at: new Date().toISOString().slice(0, 10) })
-    .eq("id", estimateId);
-  return true;
+    .eq("estimate_id", estimateId)
+    .select("id")
+    .maybeSingle();
+  if (error || !data?.id) return false;
+  return touchEstimateUpdatedAt(c, estimateId);
 }
 
 export async function deleteLineItem(estimateId: string, itemId: string): Promise<boolean> {
@@ -1873,12 +1891,14 @@ export async function updatePaymentMilestoneWithClient(
   if (payload.status != null) up.status = payload.status;
   if (payload.invoiceId !== undefined) up.invoice_id = payload.invoiceId ?? null;
   if (Object.keys(up).length === 0) return true;
-  const { error } = await c
+  const { data, error } = await c
     .from("estimate_payment_schedule_items")
     .update(up)
     .eq("id", itemId)
-    .eq("estimate_id", estimateId);
-  return !error;
+    .eq("estimate_id", estimateId)
+    .select("id")
+    .maybeSingle();
+  return !error && Boolean(data?.id);
 }
 
 export async function updatePaymentMilestone(
@@ -1897,12 +1917,14 @@ export async function reorderPaymentScheduleWithClient(
 ): Promise<boolean> {
   if (!(await canWritePaymentSchedule(c, estimateId))) return false;
   for (let i = 0; i < orderedItemIds.length; i++) {
-    const { error } = await c
+    const { data, error } = await c
       .from("estimate_payment_schedule_items")
       .update({ sort_order: i })
       .eq("id", orderedItemIds[i])
-      .eq("estimate_id", estimateId);
-    if (error) return false;
+      .eq("estimate_id", estimateId)
+      .select("id")
+      .maybeSingle();
+    if (error || !data?.id) return false;
   }
   return true;
 }
@@ -1920,12 +1942,14 @@ export async function deletePaymentMilestoneWithClient(
   itemId: string
 ): Promise<boolean> {
   if (!(await canWritePaymentSchedule(c, estimateId))) return false;
-  const { error } = await c
+  const { data, error } = await c
     .from("estimate_payment_schedule_items")
     .delete()
     .eq("id", itemId)
-    .eq("estimate_id", estimateId);
-  return !error;
+    .eq("estimate_id", estimateId)
+    .select("id")
+    .maybeSingle();
+  return !error && Boolean(data?.id);
 }
 
 export async function deletePaymentMilestone(estimateId: string, itemId: string): Promise<boolean> {
@@ -1937,12 +1961,14 @@ export async function markPaymentMilestonePaidWithClient(
   estimateId: string,
   itemId: string
 ): Promise<boolean> {
-  const { error } = await c
+  const { data, error } = await c
     .from("estimate_payment_schedule_items")
     .update({ status: "paid" })
     .eq("id", itemId)
-    .eq("estimate_id", estimateId);
-  return !error;
+    .eq("estimate_id", estimateId)
+    .select("id")
+    .maybeSingle();
+  return !error && Boolean(data?.id);
 }
 
 export async function markPaymentMilestonePaid(
@@ -2134,8 +2160,13 @@ async function applyEstimateStatusTransition(
   const updates: Record<string, unknown> = { status: nextStatus, updated_at: now };
   if (nextStatus === "Approved") updates.approved_at = now;
 
-  const { error: updateErr } = await c.from("estimates").update(updates).eq("id", estimateId);
-  return !updateErr;
+  const { data: updatedRow, error: updateErr } = await c
+    .from("estimates")
+    .update(updates)
+    .eq("id", estimateId)
+    .select("id")
+    .maybeSingle();
+  return !updateErr && Boolean(updatedRow?.id);
 }
 
 /** Allow changing status to any value (e.g. correct a misclick). Sets/clears approved_at when switching to/from Approved. */
@@ -2163,8 +2194,13 @@ export async function updateEstimateStatusWithClient(
   if (newStatus === "Approved") updates.approved_at = now;
   else if (est.status === "Approved") updates.approved_at = null;
 
-  const { error: updateErr } = await c.from("estimates").update(updates).eq("id", estimateId);
-  return !updateErr;
+  const { data: updatedRow, error: updateErr } = await c
+    .from("estimates")
+    .update(updates)
+    .eq("id", estimateId)
+    .select("id")
+    .maybeSingle();
+  return !updateErr && Boolean(updatedRow?.id);
 }
 
 // —— Delete ——
