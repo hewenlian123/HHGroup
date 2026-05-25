@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { insertWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
 
@@ -8,7 +9,10 @@ const BUCKET = "worker-receipts";
  * GET: Report storage vs DB — list objects in worker-receipts bucket and receipt_urls in worker_receipts.
  * POST: Sync — for each storage object that has no matching worker_receipts.receipt_url, insert a placeholder row.
  */
-export async function GET() {
+export async function GET(request: Request) {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   const supabase = getServerSupabase();
   if (!supabase) {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
@@ -50,7 +54,10 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
+  const blocked = guardDangerousMaintenanceRequest(request);
+  if (blocked) return blocked;
+
   const supabase = getServerSupabase();
   if (!supabase) {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
