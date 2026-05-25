@@ -1,5 +1,6 @@
 import type { RecentTransaction, ProjectRiskOverview } from "@/lib/data";
 import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { formatCompactCurrency, formatCurrency } from "@/lib/formatters";
 import type { OverdueInvoiceRow } from "@/lib/invoices-db";
@@ -135,6 +136,19 @@ export function DashboardCommandHud({
               {actionPressure} signals
             </StatusPill>
             <StatusPill tone="copper">Owner ready</StatusPill>
+            {contractReviewCount > 0 ? (
+              <>
+                <Link
+                  href="/settings/project-financial-review"
+                  className="inline-flex h-8 items-center rounded-full border border-rose-500/20 bg-rose-500/10 px-3 text-[10px] font-semibold uppercase tracking-normal text-rose-300 transition hover:border-rose-400/30 hover:bg-rose-500/15"
+                >
+                  Contract value review
+                </Link>
+                <span className="inline-flex min-h-8 items-center text-[10px] font-semibold uppercase tracking-normal text-rose-200/80">
+                  {contractReviewCount} contract checks · Projects need contract value review
+                </span>
+              </>
+            ) : null}
           </div>
           <DashboardQuickActions />
         </div>
