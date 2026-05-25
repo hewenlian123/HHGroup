@@ -464,9 +464,11 @@ function integrityScanRows(scan?: IntegrityScanResult | null): HealthDetailRowDa
         id: `${section.id}:${issue.table}:${issue.id}:${issue.category}`,
         name: `${issue.table} / ${issue.id}`,
         status: integrityScanSeverityToRowStatus(issue.severity),
-        message: `${issue.message} ${issue.recommendedAction}`,
+        message: `${issue.severity.toUpperCase()} · ${issue.category} · ${issue.table} · ${
+          issue.message
+        }`,
         code: issue.category,
-        meta: `${section.title} · ${formatEvidenceSummary(issue.evidence)}`,
+        meta: `${section.title} · ${formatEvidenceSummary(issue.evidence)} · ${issue.recommendedAction}`,
       }))
     )
     .slice(0, 10);
@@ -2473,12 +2475,39 @@ export default function SystemHealthPage() {
               <p className="px-4 pb-4 text-sm text-red-300">{integrityScanError}</p>
             ) : integrityScan ? (
               <>
+                <div className="px-4 pb-4">
+                  <div className="rounded-xl border border-[rgb(198_165_106_/_0.20)] bg-[rgb(198_165_106_/_0.055)] p-3 text-sm text-slate-200">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusPill
+                        status={integrityScanHealthStatus}
+                        label={`Status: ${healthStatusLabel(integrityScanHealthStatus)}`}
+                        compact
+                        variant="calm"
+                      />
+                      <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                        Read-only scan
+                      </span>
+                      <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                        Auto-fix disabled
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-slate-400">
+                      No cleanup actions are available from this panel. Use the scanner as a
+                      dependency inventory before any exact-ID cleanup review.
+                    </p>
+                  </div>
+                </div>
                 <MetadataGrid
                   rows={[
+                    { label: "Total issues", value: integrityScan.summary.totalIssues },
                     { label: "Critical", value: integrityScan.summary.critical },
                     { label: "High", value: integrityScan.summary.high },
                     { label: "Medium", value: integrityScan.summary.medium },
                     { label: "Low", value: integrityScan.summary.low },
+                    {
+                      label: "Generated",
+                      value: formatCheckedAt(integrityScan.generatedAt),
+                    },
                     {
                       label: "Sections",
                       value: integrityScan.sections.length,
@@ -2489,6 +2518,11 @@ export default function SystemHealthPage() {
                     },
                   ]}
                 />
+                <div className="px-4 pb-3">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                    Top 10 issues
+                  </p>
+                </div>
                 <HealthDetailTable
                   rows={integrityScanDetailRows}
                   loading={integrityScanLoading}
