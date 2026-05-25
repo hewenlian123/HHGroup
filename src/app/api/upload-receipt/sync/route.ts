@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { insertWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
 
 const BUCKET = "worker-receipts";
+
+function jsonError(message: string, status: number) {
+  return NextResponse.json({ ok: false, message }, { status });
+}
 
 /**
  * GET: Report storage vs DB — list objects in worker-receipts bucket and receipt_urls in worker_receipts.
@@ -13,19 +17,17 @@ export async function GET(request: Request) {
   const blocked = guardDangerousMaintenanceRequest(request);
   if (blocked) return blocked;
 
-  const supabase = getServerSupabase();
+  const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
   if (!supabase) {
-    return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
+    return jsonError("Receipt sync is temporarily unavailable.", 500);
   }
   try {
     const { data: files, error: listErr } = await supabase.storage
       .from(BUCKET)
       .list("uploads", { limit: 1000 });
     if (listErr) {
-      return NextResponse.json(
-        { message: listErr.message ?? "Failed to list storage." },
-        { status: 500 }
-      );
+      console.error("[upload-receipt/sync] storage list failed", { message: listErr.message });
+      return jsonError("Receipt sync report failed.", 500);
     }
     const objects = (files ?? []).filter((f) => f.name && f.id);
     const { data: rows } = await supabase
@@ -49,8 +51,10 @@ export async function GET(request: Request) {
       orphanPaths: orphanPaths.slice(0, 50),
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Sync report failed";
-    return NextResponse.json({ message }, { status: 500 });
+    console.error("[upload-receipt/sync] report failed", {
+      message: e instanceof Error ? e.message : String(e),
+    });
+    return jsonError("Receipt sync report failed.", 500);
   }
 }
 
@@ -58,19 +62,17 @@ export async function POST(request: Request) {
   const blocked = guardDangerousMaintenanceRequest(request);
   if (blocked) return blocked;
 
-  const supabase = getServerSupabase();
+  const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
   if (!supabase) {
-    return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
+    return jsonError("Receipt sync is temporarily unavailable.", 500);
   }
   try {
     const { data: files, error: listErr } = await supabase.storage
       .from(BUCKET)
       .list("uploads", { limit: 500 });
     if (listErr) {
-      return NextResponse.json(
-        { message: listErr.message ?? "Failed to list storage." },
-        { status: 500 }
-      );
+      console.error("[upload-receipt/sync] storage list failed", { message: listErr.message });
+      return jsonError("Receipt sync failed.", 500);
     }
     const objects = (files ?? []).filter((f) => f.name && f.id);
     const { data: rows } = await supabase
@@ -103,7 +105,9 @@ export async function POST(request: Request) {
       inserted: inserted.slice(0, 20),
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Sync failed";
-    return NextResponse.json({ message }, { status: 500 });
+    console.error("[upload-receipt/sync] sync failed", {
+      message: e instanceof Error ? e.message : String(e),
+    });
+    return jsonError("Receipt sync failed.", 500);
   }
 }

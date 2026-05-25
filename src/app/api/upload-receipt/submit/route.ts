@@ -2,6 +2,56 @@ import { NextResponse } from "next/server";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { insertWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
 
+const BUCKET = "worker-receipts";
+const MAX_WORKER_RECEIPT_AMOUNT = 100_000;
+const WORKER_RECEIPT_UPLOAD_PATH_RE =
+  /^uploads\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp|pdf)$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EXPENSE_TYPES = new Set([
+  "Building Materials",
+  "Tools",
+  "Food",
+  "Transportation",
+  "Supplies",
+  "Other",
+]);
+
+function jsonError(message: string, status: number) {
+  return NextResponse.json({ ok: false, message }, { status });
+}
+
+function trimText(value: unknown, maxLength: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, maxLength);
+}
+
+function isValidIsoDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function isWorkerReceiptPublicUrl(value: string): boolean {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "");
+  if (!supabaseUrl) return false;
+
+  try {
+    const parsed = new URL(value);
+    const expected = new URL(supabaseUrl);
+    if (parsed.origin !== expected.origin) return false;
+    if (parsed.search || parsed.hash) return false;
+
+    const prefix = `/storage/v1/object/public/${BUCKET}/`;
+    if (!parsed.pathname.startsWith(prefix)) return false;
+    const storagePath = decodeURIComponent(parsed.pathname.slice(prefix.length));
+    return WORKER_RECEIPT_UPLOAD_PATH_RE.test(storagePath);
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Save receipt metadata + receipt_url to worker_receipts. Uses server Supabase client
  * so insert runs with server env (no auth required).
@@ -11,47 +61,65 @@ export async function POST(req: Request) {
     // Prefer service role client so inserts are not blocked by RLS in production.
     const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
     if (!supabase) {
-      return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
+      return jsonError("Receipt submission is temporarily unavailable.", 500);
     }
-    const body = await req.json();
-    const workerId = typeof body.workerId === "string" ? body.workerId : null;
-    const workerName = typeof body.workerName === "string" ? body.workerName.trim() : "";
-    const projectId = typeof body.projectId === "string" && body.projectId ? body.projectId : null;
-    const expenseType = typeof body.expenseType === "string" ? body.expenseType : "Other";
-    const vendor = typeof body.vendor === "string" ? body.vendor.trim() : null;
+
+    let body: Record<string, unknown>;
+    try {
+      const parsed = await req.json();
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        return jsonError("Invalid receipt submission.", 400);
+      }
+      body = parsed as Record<string, unknown>;
+    } catch {
+      return jsonError("Invalid receipt submission.", 400);
+    }
+
+    const workerId = trimText(body.workerId, 64);
+    const workerName = trimText(body.workerName, 120) ?? "";
+    const projectIdRaw = trimText(body.projectId, 64);
+    const projectId = projectIdRaw && UUID_RE.test(projectIdRaw) ? projectIdRaw : null;
+    const expenseTypeRaw = trimText(body.expenseType, 60) ?? "Other";
+    const expenseType = EXPENSE_TYPES.has(expenseTypeRaw) ? expenseTypeRaw : "Other";
+    const vendor = trimText(body.vendor, 160);
     const amount = Number(body.amount);
-    const receiptUrl = typeof body.receiptUrl === "string" ? body.receiptUrl.trim() : null;
-    const description = typeof body.description === "string" ? body.description.trim() : null;
-    const notes = typeof body.notes === "string" ? body.notes.trim() : null;
-    const receiptDateRaw = typeof body.receiptDate === "string" ? body.receiptDate.trim() : "";
+    const receiptUrl = trimText(body.receiptUrl, 1000);
+    const description = trimText(body.description, 500);
+    const notes = trimText(body.notes, 1000);
+    const receiptDateRaw = trimText(body.receiptDate, 20) ?? "";
     const today = new Date();
     const todayIso = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()))
       .toISOString()
       .slice(0, 10);
-    const receiptDate =
-      receiptDateRaw && /^\d{4}-\d{2}-\d{2}$/.test(receiptDateRaw) ? receiptDateRaw : todayIso;
+    const receiptDate = receiptDateRaw ? receiptDateRaw : todayIso;
 
-    if (!workerName && !workerId) {
-      return NextResponse.json({ message: "Worker is required." }, { status: 400 });
+    if (!workerId || !UUID_RE.test(workerId)) {
+      return jsonError("Worker is required.", 400);
     }
-    if (!Number.isFinite(amount) || amount < 0) {
-      return NextResponse.json({ message: "Valid amount is required." }, { status: 400 });
+    if (projectIdRaw && !projectId) {
+      return jsonError("Selected project is invalid.", 400);
     }
-    if (!receiptUrl) {
-      return NextResponse.json({ message: "Receipt photo is required." }, { status: 400 });
+    if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_WORKER_RECEIPT_AMOUNT) {
+      return jsonError("Valid receipt amount is required.", 400);
+    }
+    if (receiptDateRaw && !isValidIsoDate(receiptDateRaw)) {
+      return jsonError("Receipt date is invalid.", 400);
+    }
+    if (!receiptUrl || !isWorkerReceiptPublicUrl(receiptUrl)) {
+      return jsonError("Receipt upload reference is invalid.", 400);
     }
 
     try {
       const receipt = await insertWorkerReceiptWithClient(supabase, {
         workerId,
-        workerName: workerName || "Unknown",
+        workerName: workerName || "Worker",
         projectId,
         expenseType,
-        vendor: vendor || null,
+        vendor,
         amount,
         receiptUrl,
-        description: description || null,
-        notes: notes || null,
+        description,
+        notes,
         receiptDate,
         status: "Pending",
       });
@@ -66,10 +134,12 @@ export async function POST(req: Request) {
         amount,
         expenseType,
       });
-      throw err;
+      return jsonError("Receipt submission failed. Please try again.", 500);
     }
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Submit failed";
-    return NextResponse.json({ message }, { status: 500 });
+    console.error("[upload-receipt/submit] unexpected failure", {
+      message: e instanceof Error ? e.message : String(e),
+    });
+    return jsonError("Receipt submission failed. Please try again.", 500);
   }
 }
