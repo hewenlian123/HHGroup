@@ -1255,9 +1255,10 @@ export async function createExpenseFromPaidReimbursement(
     amount?: number | null;
     description?: string | null;
   },
-  opts?: { paymentMethod?: string | null; note?: string | null }
+  opts?: { paymentMethod?: string | null; note?: string | null },
+  explicitClient?: SupabaseClient
 ): Promise<Expense | null> {
-  const c = client();
+  const c = client(explicitClient);
   const reimbursementId = reimb.id;
   const amount = Number(reimb.amount) ?? 0;
   const date = new Date().toISOString().slice(0, 10);
@@ -1295,7 +1296,7 @@ export async function createExpenseFromPaidReimbursement(
   }
   if (existingId) {
     try {
-      const exp = await getExpenseById(existingId);
+      const exp = await getExpenseById(existingId, explicitClient);
       if (exp) return exp;
     } catch {
       // Return minimal so caller has expense id
@@ -1494,7 +1495,7 @@ export async function createExpenseFromPaidReimbursement(
   if (lineErr) throw new Error(lineErr.message ?? "Failed to create expense line.");
 
   try {
-    const exp = await getExpenseById(expenseId);
+    const exp = await getExpenseById(expenseId, explicitClient);
     if (exp) return exp;
   } catch {
     // Schema may not match getExpenseById expectations

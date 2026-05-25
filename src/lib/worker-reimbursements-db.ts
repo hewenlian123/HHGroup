@@ -232,9 +232,10 @@ export async function getWorkerReimbursements(
 
 /** Get a single reimbursement by id. Returns null if not found. */
 export async function getReimbursementById(
-  reimbursementId: string
+  reimbursementId: string,
+  explicitClient?: SupabaseClient
 ): Promise<WorkerReimbursement | null> {
-  const c = client();
+  const c = client(explicitClient);
   let { data, error } = await c
     .from(TABLE_NAME)
     .select(COLS)
@@ -263,13 +264,14 @@ export async function getReimbursementById(
     throw new Error(error.message ?? "Failed to load reimbursement.");
   }
   if (!data) return null;
-  return (await enrichNames([fromRow(data as Record<string, unknown>)]))[0] ?? null;
+  return (await enrichNames([fromRow(data as Record<string, unknown>)], explicitClient))[0] ?? null;
 }
 
 export async function getWorkerReimbursementsByWorkerId(
-  workerId: string
+  workerId: string,
+  explicitClient?: SupabaseClient
 ): Promise<WorkerReimbursement[]> {
-  const c = client();
+  const c = client(explicitClient);
   let { data, error } = await c
     .from(TABLE_NAME)
     .select(COLS)
@@ -299,7 +301,7 @@ export async function getWorkerReimbursementsByWorkerId(
     throw new Error(error.message ?? "Failed to load reimbursements.");
   }
   const rows = ((data ?? []) as Record<string, unknown>[]).map(fromRow);
-  return enrichNames(rows);
+  return enrichNames(rows, explicitClient);
 }
 
 export async function insertWorkerReimbursement(
@@ -336,8 +338,10 @@ export async function insertWorkerReimbursement(
 
 export async function updateWorkerReimbursement(
   id: string,
-  draft: Partial<WorkerReimbursementDraft>
+  draft: Partial<WorkerReimbursementDraft>,
+  explicitClient?: SupabaseClient
 ): Promise<WorkerReimbursement> {
+  const c = client(explicitClient);
   const payload: Record<string, unknown> = {};
   if (draft.workerId != null) payload.worker_id = draft.workerId;
   if (draft.projectId !== undefined) payload.project_id = draft.projectId ?? null;
@@ -350,27 +354,17 @@ export async function updateWorkerReimbursement(
     const d = draft.reimbursementDate.trim().slice(0, 10);
     if (/^\d{4}-\d{2}-\d{2}$/.test(d)) payload.reimbursement_date = d;
   }
-  let res = await client().from(TABLE_NAME).update(payload).eq("id", id).select(COLS).single();
+  let res = await c.from(TABLE_NAME).update(payload).eq("id", id).select(COLS).single();
   if (res.error && isColumnMissingError(res.error)) {
-    res = await client().from(TABLE_NAME).update(payload).eq("id", id).select(COLS_LEGACY).single();
+    res = await c.from(TABLE_NAME).update(payload).eq("id", id).select(COLS_LEGACY).single();
   }
   if (res.error && isColumnMissingError(res.error)) {
-    res = await client()
-      .from(TABLE_NAME)
-      .update(payload)
-      .eq("id", id)
-      .select(COLS_LEGACY_NO_PAY)
-      .single();
+    res = await c.from(TABLE_NAME).update(payload).eq("id", id).select(COLS_LEGACY_NO_PAY).single();
   }
   if (res.error && isColumnMissingError(res.error) && payload.reimbursement_date !== undefined) {
     const { reimbursement_date, ...rest } = payload;
     void reimbursement_date;
-    res = await client()
-      .from(TABLE_NAME)
-      .update(rest)
-      .eq("id", id)
-      .select(COLS_LEGACY_NO_PAY)
-      .single();
+    res = await c.from(TABLE_NAME).update(rest).eq("id", id).select(COLS_LEGACY_NO_PAY).single();
   }
   if (res.error) {
     if (isTableMissingError(res.error)) throw new Error(TABLE_MISSING_MESSAGE);
@@ -469,8 +463,11 @@ export async function insertWorkerReimbursementPayment(params: {
  * Mark a reimbursement as paid: UPDATE worker_reimbursements SET status='paid', paid_at=now() WHERE id = reimbursementId.
  * Returns the updated row. Use after creating the expense so the workflow is: create expense → update status.
  */
-export async function markReimbursementPaid(reimbursementId: string): Promise<WorkerReimbursement> {
-  const c = client();
+export async function markReimbursementPaid(
+  reimbursementId: string,
+  explicitClient?: SupabaseClient
+): Promise<WorkerReimbursement> {
+  const c = client(explicitClient);
   const withPaidAt = { status: "paid" as const, paid_at: new Date().toISOString() };
   const statusOnly = { status: "paid" as const };
   let result = await c
@@ -505,7 +502,9 @@ export async function markReimbursementPaid(reimbursementId: string): Promise<Wo
   }
   if (result.error) throw new Error(result.error.message ?? "Failed to update reimbursement.");
   if (result.data) {
-    return (await enrichNames([fromRow(result.data as Record<string, unknown>)]))[0]!;
+    return (
+      await enrichNames([fromRow(result.data as Record<string, unknown>)], explicitClient)
+    )[0]!;
   }
   const { data: existing, error: fetchErr } = await c
     .from(TABLE_NAME)
@@ -514,7 +513,9 @@ export async function markReimbursementPaid(reimbursementId: string): Promise<Wo
     .maybeSingle();
   if (fetchErr) throw new Error(fetchErr.message ?? "Failed to load reimbursement.");
   if (existing) {
-    const row = (await enrichNames([fromRow(existing as Record<string, unknown>)]))[0]!;
+    const row = (
+      await enrichNames([fromRow(existing as Record<string, unknown>)], explicitClient)
+    )[0]!;
     if (row.status === "paid") return row;
   }
   throw new Error("Reimbursement not found.");
@@ -536,13 +537,16 @@ function workerPaymentFromRow(r: Record<string, unknown>): WorkerPayment {
 /**
  * Create a worker_payment row (batch payment). Does not update reimbursements.
  */
-export async function createWorkerPayment(params: {
-  workerId: string;
-  totalAmount: number;
-  paymentMethod?: string | null;
-  note?: string | null;
-}): Promise<WorkerPayment> {
-  const { data, error } = await client()
+export async function createWorkerPayment(
+  params: {
+    workerId: string;
+    totalAmount: number;
+    paymentMethod?: string | null;
+    note?: string | null;
+  },
+  explicitClient?: SupabaseClient
+): Promise<WorkerPayment> {
+  const { data, error } = await client(explicitClient)
     .from(WORKER_PAYMENTS_TABLE)
     .insert({
       worker_id: params.workerId,
@@ -562,14 +566,15 @@ export async function createWorkerPayment(params: {
  */
 export async function recordBatchReimbursementPayment(
   reimbursementIds: string[],
-  params: { paymentMethod?: string | null; note?: string | null }
+  params: { paymentMethod?: string | null; note?: string | null },
+  explicitClient?: SupabaseClient
 ): Promise<{
   payment: WorkerPayment;
   updatedCount: number;
   reimbursements: WorkerReimbursement[];
 }> {
   if (reimbursementIds.length === 0) throw new Error("No reimbursements selected.");
-  const c = client();
+  const c = client(explicitClient);
 
   const { data: rows, error: fetchErr } = await c
     .from(TABLE_NAME)
@@ -588,12 +593,15 @@ export async function recordBatchReimbursementPayment(
     throw new Error("All selected reimbursements must have status pending.");
 
   const totalAmount = list.reduce((s, r) => s + Number(r.amount) || 0, 0);
-  const payment = await createWorkerPayment({
-    workerId,
-    totalAmount,
-    paymentMethod: params.paymentMethod,
-    note: params.note,
-  });
+  const payment = await createWorkerPayment(
+    {
+      workerId,
+      totalAmount,
+      paymentMethod: params.paymentMethod,
+      note: params.note,
+    },
+    explicitClient
+  );
 
   const { data: updated, error: updateErr } = await c
     .from(TABLE_NAME)
@@ -606,9 +614,13 @@ export async function recordBatchReimbursementPayment(
     .select("id");
   if (updateErr) throw new Error(updateErr.message ?? "Failed to update reimbursements.");
   const updatedCount = Array.isArray(updated) ? updated.length : 0;
+  if (updatedCount !== reimbursementIds.length) {
+    throw new Error("One or more reimbursements were not updated.");
+  }
   const { data: reimbRows } = await c.from(TABLE_NAME).select(COLS).in("id", reimbursementIds);
   const reimbursements = await enrichNames(
-    ((reimbRows ?? []) as Record<string, unknown>[]).map(fromRow)
+    ((reimbRows ?? []) as Record<string, unknown>[]).map(fromRow),
+    explicitClient
   );
   return { payment, updatedCount, reimbursements };
 }
@@ -637,16 +649,20 @@ export type WorkerBalanceRow = {
   balance: number;
 };
 
-export async function getWorkerReimbursementBalances(): Promise<WorkerBalanceRow[]> {
+export async function getWorkerReimbursementBalances(
+  explicitClient?: SupabaseClient
+): Promise<WorkerBalanceRow[]> {
   const [reimbursements, payments, workers] = await Promise.all([
-    getWorkerReimbursements(),
+    getWorkerReimbursements(explicitClient),
     (async () => {
-      const { data, error } = await client().from(PAYMENTS_TABLE).select("worker_id, amount");
+      const { data, error } = await client(explicitClient)
+        .from(PAYMENTS_TABLE)
+        .select("worker_id, amount");
       if (error) return [] as { worker_id: string; amount: number }[];
       return (data ?? []) as { worker_id: string; amount: number }[];
     })(),
     (async () => {
-      const { data } = await client().from("workers").select("id, name");
+      const { data } = await client(explicitClient).from("workers").select("id, name");
       return new Map(((data ?? []) as { id: string; name: string }[]).map((w) => [w.id, w.name]));
     })(),
   ]);

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { recordBatchReimbursementPayment } from "@/lib/worker-reimbursements-db";
 import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
 
@@ -8,6 +10,14 @@ import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
  * Body: { reimbursementIds: string[], paymentMethod?: string, note?: string }
  */
 export async function POST(req: Request) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
+  const supabase = getServerSupabaseInternalNoStore();
+  if (!supabase) {
+    return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
+  }
+
   try {
     try {
       const { ensureExpensesSourceColumns } = await import("@/lib/ensure-expenses-source-columns");
@@ -32,7 +42,8 @@ export async function POST(req: Request) {
       {
         paymentMethod: body?.paymentMethod ?? null,
         note: body?.note ?? null,
-      }
+      },
+      supabase
     );
     const opts = { paymentMethod: body?.paymentMethod ?? null, note: body?.note ?? null };
     for (const r of reimbursements) {
@@ -47,7 +58,8 @@ export async function POST(req: Request) {
             amount: r.amount ?? 0,
             description: r.description,
           },
-          opts
+          opts,
+          supabase
         );
       } catch {
         // Skip expense creation for this item; batch still succeeds

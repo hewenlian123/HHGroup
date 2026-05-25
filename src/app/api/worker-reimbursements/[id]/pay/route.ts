@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { getReimbursementById, markReimbursementPaid } from "@/lib/worker-reimbursements-db";
 import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
   const { id: reimbursementId } = await params;
+  const supabase = getServerSupabaseInternalNoStore();
+  if (!supabase) {
+    return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
+  }
+
   try {
     try {
       const { ensureExpensesSourceColumns } = await import("@/lib/ensure-expenses-source-columns");
@@ -14,7 +24,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const body = await req.json().catch(() => ({}));
 
     // Step 1: Find reimbursement by id
-    const existing = await getReimbursementById(reimbursementId);
+    const existing = await getReimbursementById(reimbursementId, supabase);
     if (!existing) {
       return NextResponse.json({ message: "Reimbursement not found." }, { status: 404 });
     }
@@ -42,7 +52,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           amount: existing.amount ?? 0,
           description: existing.description,
         },
-        { paymentMethod: body?.method ?? null, note: body?.note ?? null }
+        { paymentMethod: body?.method ?? null, note: body?.note ?? null },
+        supabase
       );
       expenseId = expense?.id ?? null;
     } catch (expErr) {
@@ -54,7 +65,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     // Step 4: Update reimbursement status (SET status='paid', paid_at=now())
-    const reimbursement = await markReimbursementPaid(reimbursementId);
+    const reimbursement = await markReimbursementPaid(reimbursementId, supabase);
 
     // Step 5: Return updated reimbursement
     return NextResponse.json({

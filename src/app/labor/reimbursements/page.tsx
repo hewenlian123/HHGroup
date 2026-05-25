@@ -16,7 +16,6 @@ import {
 import {
   getLaborWorkersList,
   getProjects,
-  updateWorkerReimbursement,
   type WorkerReimbursement,
   type WorkerReimbursementStatus,
 } from "@/lib/data";
@@ -307,16 +306,24 @@ export default function WorkerReimbursementsPage() {
     setMessage(null);
     try {
       if (editingId) {
-        await updateWorkerReimbursement(editingId, {
-          workerId: form.workerId,
-          projectId: form.projectId || null,
-          vendor: form.vendor.trim() || null,
-          amount,
-          receiptUrl: form.receiptUrl.trim() || null,
-          description: form.description.trim() || null,
-          status: form.status,
-          reimbursementDate,
+        const res = await fetch(`/api/worker-reimbursements/${editingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workerId: form.workerId,
+            projectId: form.projectId || null,
+            vendor: form.vendor.trim() || null,
+            amount,
+            receiptUrl: form.receiptUrl.trim() || null,
+            description: form.description.trim() || null,
+            status: form.status,
+            reimbursementDate,
+          }),
         });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.message ?? "Failed to update reimbursement.");
+        }
       } else {
         const res = await fetch("/api/worker-reimbursements", {
           method: "POST",
