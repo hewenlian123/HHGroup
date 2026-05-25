@@ -4,8 +4,11 @@ import * as invoicesDb from "@/lib/invoices-db";
 import * as laborDb from "@/lib/labor-db";
 import * as projectsDb from "@/lib/projects-db";
 import * as workerReimbursementsDb from "@/lib/worker-reimbursements-db";
+import { getProjectFinancialSnapshot } from "@/lib/financial/project-financial-snapshot-db";
+import { getProjectFinancialSnapshotProfitReadinessWarning } from "@/lib/financial/project-financial-display";
 import { getProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
+import type { ProjectFinancialSnapshot } from "@/lib/financial/project-financial-snapshot";
 import { getCanonicalProjectProfitBatch, type CanonicalProjectProfit } from "@/lib/profit-engine";
 import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { fetchWorkerBalances } from "@/lib/worker-balances-list";
@@ -76,6 +79,49 @@ function monthRangeUtc(year: number, month1Based: number): { start: string; end:
 function shiftMonth(year: number, month1Based: number, delta: number): { y: number; m: number } {
   const d = new Date(year, month1Based - 1 + delta, 1);
   return { y: d.getFullYear(), m: d.getMonth() + 1 };
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    for (;;) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      if (currentIndex >= items.length) return;
+      results[currentIndex] = await mapper(items[currentIndex]);
+    }
+  }
+
+  const workerCount = Math.min(concurrency, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
+async function getProjectFinancialSnapshotMap(
+  projectIds: string[]
+): Promise<Map<string, ProjectFinancialSnapshot>> {
+  const snapshots = await mapWithConcurrency(projectIds, 4, async (projectId) => {
+    try {
+      return { projectId, snapshot: await getProjectFinancialSnapshot(projectId) };
+    } catch {
+      return { projectId, snapshot: null };
+    }
+  });
+
+  return new Map(
+    snapshots
+      .filter(
+        (row): row is { projectId: string; snapshot: ProjectFinancialSnapshot } =>
+          row.snapshot != null
+      )
+      .map((row) => [row.projectId, row.snapshot])
+  );
 }
 
 /**
@@ -186,14 +232,18 @@ export async function getFinanceOwnerDashboard(): Promise<FinanceOwnerDashboard>
   });
 
   const projectIds = projects.map((p) => p.id);
-  const profitMap = await getCanonicalProjectProfitBatch(projectIds).catch(
-    () => new Map<string, CanonicalProjectProfit>()
-  );
+  const [profitMap, snapshotMap] = await Promise.all([
+    getCanonicalProjectProfitBatch(projectIds).catch(
+      () => new Map<string, CanonicalProjectProfit>()
+    ),
+    getProjectFinancialSnapshotMap(projectIds),
+  ]);
   const contractReview = getProjectContractReviewSummary(
     projects.map((project) => ({
       id: project.id,
       name: project.name,
-      budget: profitMap.get(project.id)?.revenue ?? project.budget,
+      budget: snapshotMap.get(project.id)?.contractValue ?? project.budget,
+      contractAmount: project.contractAmount ?? null,
     }))
   );
   const readyProjectIds = new Set(contractReview.readyProjectIds);
@@ -202,13 +252,16 @@ export async function getFinanceOwnerDashboard(): Promise<FinanceOwnerDashboard>
   const projectRows: FinanceOwnerProjectRow[] = [];
   for (const p of projects) {
     if (!readyProjectIds.has(p.id)) continue;
+    const snapshot = snapshotMap.get(p.id);
+    if (snapshot && getProjectFinancialSnapshotProfitReadinessWarning(snapshot) != null) continue;
     const c = profitMap.get(p.id);
-    if (!c) continue;
-    const revenue = c.revenue;
-    const expense = c.actualCost;
-    const profit = c.profit;
+    if (!snapshot && !c) continue;
+    const revenue = snapshot?.revisedContractValue ?? c!.revenue;
+    const expense = snapshot?.actualCost ?? c!.actualCost;
+    const profit = snapshot?.grossProfit ?? c!.profit;
     if (profit < 0) projectsInLossCount += 1;
-    const profitPct = revenue > 0 ? (profit / revenue) * 100 : profit < 0 ? -100 : 0;
+    const profitPct =
+      revenue > 0 ? (snapshot?.grossMargin ?? profit / revenue) * 100 : profit < 0 ? -100 : 0;
     projectRows.push({
       projectId: p.id,
       name: (p.name ?? "").trim() || "Untitled project",

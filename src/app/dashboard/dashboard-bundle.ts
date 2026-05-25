@@ -41,7 +41,7 @@ export const loadDashboardProjectsBundle = cache(async () => {
     projects.map((project) => ({
       id: project.id,
       name: project.name,
-      budget: profitMap.get(project.id)?.revenue ?? project.budget,
+      budget: project.budget,
     }))
   );
   const readyProjectIds = new Set(contractReview.readyProjectIds);
