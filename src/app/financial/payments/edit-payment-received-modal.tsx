@@ -10,10 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { FinanceDatePicker } from "@/components/ui/date-picker";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import {
-  getPaymentAttachmentPreviewUrl,
-  getPaymentReceivedById,
   PAYMENT_METHODS,
-  updatePaymentReceived,
   type PaymentReceivedDetail,
   type UpdatePaymentReceivedAttachmentPayload,
 } from "@/lib/data";
@@ -26,6 +23,7 @@ import {
 import { useToast } from "@/components/toast/toast-provider";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { getPaymentReceivedForEditAction, updatePaymentReceivedAction } from "./actions";
 
 type EditPaymentReceivedModalProps = {
   open: boolean;
@@ -45,6 +43,10 @@ type PaymentAttachmentDraft = UpdatePaymentReceivedAttachmentPayload & {
   localPreviewUrl: string | null;
   error?: string;
   sourceFile?: File;
+};
+
+type PaymentAttachmentWithPreview = PaymentReceivedDetail["attachments"][number] & {
+  preview_url?: string | null;
 };
 
 function formatBytes(n: number | null | undefined): string {
@@ -228,16 +230,12 @@ export function EditPaymentReceivedModal({
 
     void (async () => {
       try {
-        const row = await getPaymentReceivedById(paymentId);
-        if (!row) throw new Error("Payment not found.");
+        const result = await getPaymentReceivedForEditAction(paymentId);
+        if (!result.ok) throw new Error(result.error);
+        const row = result.payment;
+        const attachments = (row.attachments ?? []) as PaymentAttachmentWithPreview[];
         const drafts = await Promise.all(
-          (row.attachments ?? []).map(async (att): Promise<PaymentAttachmentDraft> => {
-            let previewUrl: string | null = null;
-            try {
-              previewUrl = await getPaymentAttachmentPreviewUrl(att);
-            } catch {
-              previewUrl = null;
-            }
+          attachments.map(async (att): Promise<PaymentAttachmentDraft> => {
             return {
               draftId: att.id,
               attachmentId: att.id,
@@ -249,7 +247,7 @@ export function EditPaymentReceivedModal({
               size_bytes: att.size_bytes,
               file_type: att.file_type,
               status: "uploaded",
-              previewUrl,
+              previewUrl: att.preview_url ?? null,
               localPreviewUrl: null,
             };
           })
@@ -437,7 +435,7 @@ export function EditPaymentReceivedModal({
           size_bytes: draft.size_bytes ?? null,
           file_type: draft.file_type,
         }));
-      await updatePaymentReceived({
+      const result = await updatePaymentReceivedAction({
         id: payment.id,
         payment_date: paymentDate,
         amount: num,
@@ -446,6 +444,7 @@ export function EditPaymentReceivedModal({
         notes: notes.trim() || null,
         attachments,
       });
+      if (!result.ok) throw new Error(result.error);
       preserveUploadedAttachmentsRef.current = true;
       toast({ title: "Payment updated", variant: "success" });
       onSuccess();

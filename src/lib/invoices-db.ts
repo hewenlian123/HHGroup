@@ -43,6 +43,7 @@ export type InvoicePayment = {
   method: string;
   memo?: string;
   status?: "Posted" | "Voided";
+  paymentReceivedId?: string | null;
 };
 
 export type InvoiceDeleteDependencyType =
@@ -126,6 +127,7 @@ type InvoicePaymentRow = {
   memo?: string | null;
   reference?: string | null;
   status?: string;
+  payment_received_id?: string | null;
 };
 
 const noStoreFetch: typeof fetch = (input, init) =>
@@ -336,6 +338,7 @@ function toPayment(r: InvoicePaymentRow): InvoicePayment {
     method: r.method ?? "",
     memo: r.memo ?? r.reference ?? undefined,
     status: r.status === "Voided" ? "Voided" : "Posted",
+    paymentReceivedId: r.payment_received_id ?? null,
   };
 }
 
@@ -411,7 +414,9 @@ export async function getInvoicePayments(): Promise<InvoicePayment[]> {
   const c = client();
   const { data: rows, error } = await c
     .from("invoice_payments")
-    .select("id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status")
+    .select(
+      "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status, payment_received_id"
+    )
     .order("payment_date", { ascending: false });
   if (error) {
     if (isMissingTable(error)) throw new Error(`invoice_payments: table not found. ${HINT}`);
@@ -422,7 +427,8 @@ export async function getInvoicePayments(): Promise<InvoicePayment[]> {
 
 export async function getPaymentsByInvoiceId(invoiceId: string): Promise<InvoicePayment[]> {
   const c = client();
-  const fullCols = "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status";
+  const fullCols =
+    "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status, payment_received_id";
   let { data: rows, error } = await c
     .from("invoice_payments")
     .select(fullCols)
@@ -687,8 +693,13 @@ export async function recordInvoicePayment(
 
 export async function deleteInvoicePayment(paymentId: string): Promise<boolean> {
   const c = client();
-  const { error } = await c.from("invoice_payments").delete().eq("id", paymentId);
-  return !error;
+  const { data, error } = await c
+    .from("invoice_payments")
+    .delete()
+    .eq("id", paymentId)
+    .select("id")
+    .maybeSingle();
+  return !error && Boolean(data);
 }
 
 export async function voidInvoice(invoiceId: string): Promise<boolean> {
@@ -717,8 +728,13 @@ export async function revertInvoiceToDraft(invoiceId: string): Promise<boolean> 
   if (!inv) return false;
   if (inv.status === "Draft") return true;
   if (inv.computedStatus === "Void" || inv.paidTotal > 0) return false;
-  const { error } = await c.from("invoices").update({ status: "Draft" }).eq("id", invoiceId);
-  return !error;
+  const { data, error } = await c
+    .from("invoices")
+    .update({ status: "Draft" })
+    .eq("id", invoiceId)
+    .select("id, status")
+    .maybeSingle();
+  return !error && Boolean(data);
 }
 
 export async function getInvoiceDeleteDependencies(
@@ -1049,8 +1065,13 @@ export async function deleteInvoice(invoiceId: string): Promise<boolean> {
   if (check.blockers.length > 0) return false;
 
   await deleteRowsByInvoiceIds(c, "invoice_items", "invoice_id", [invoiceId]);
-  const { error } = await c.from("invoices").delete().eq("id", invoiceId);
-  return !error;
+  const { data, error } = await c
+    .from("invoices")
+    .delete()
+    .eq("id", invoiceId)
+    .select("id")
+    .maybeSingle();
+  return !error && Boolean(data);
 }
 
 export async function createInvoice(payload: {

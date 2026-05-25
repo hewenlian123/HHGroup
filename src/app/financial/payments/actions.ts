@@ -4,12 +4,48 @@ import { revalidatePath } from "next/cache";
 import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import {
   createPaymentReceived as createPaymentReceivedData,
+  getPaymentAttachmentPreviewUrl as getPaymentAttachmentPreviewUrlData,
+  getPaymentReceivedById as getPaymentReceivedByIdData,
+  updatePaymentReceived as updatePaymentReceivedData,
   type CreatePaymentReceivedPayload,
+  type PaymentReceivedDetail,
+  type UpdatePaymentReceivedPayload,
 } from "@/lib/payments-received-db";
 
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /column .* does not exist|could not find the .* column|schema cache/i.test(m);
+}
+
+type PaymentReceivedDetailWithPreviewUrls = PaymentReceivedDetail & {
+  attachments: Array<PaymentReceivedDetail["attachments"][number] & { preview_url: string | null }>;
+};
+
+function safePaymentActionError(error: unknown, fallback: string): string {
+  const message = error instanceof Error ? error.message : "";
+  if (!message) return fallback;
+  if (
+    /permission denied|row-level security|rls|schema cache|relation .* does not exist|column .* does not exist|violates|duplicate key|supabase|postgrest|jwt/i.test(
+      message
+    )
+  ) {
+    return fallback;
+  }
+  return message;
+}
+
+async function getPaymentActionClient() {
+  const admin = getServerSupabaseAdmin();
+  const c = admin ?? (await createServerSupabaseClient());
+  if (!c) return { ok: false as const, error: "Supabase is not configured." };
+  if (!admin) {
+    const {
+      data: { user },
+      error: authError,
+    } = await c.auth.getUser();
+    if (authError || !user) return { ok: false as const, error: "You must be signed in." };
+  }
+  return { ok: true as const, client: c };
 }
 
 function revalidatePaymentPaths(invoiceId?: string | null, projectId?: string | null) {
@@ -23,6 +59,40 @@ function revalidatePaymentPaths(invoiceId?: string | null, projectId?: string | 
   }
   if (projectId) revalidatePath(`/projects/${projectId}`);
   revalidatePath("/financial/owner");
+}
+
+export async function getPaymentReceivedForEditAction(
+  paymentId: string
+): Promise<
+  { ok: true; payment: PaymentReceivedDetailWithPreviewUrls } | { ok: false; error: string }
+> {
+  try {
+    const clientResult = await getPaymentActionClient();
+    if (!clientResult.ok) return clientResult;
+    const payment = await getPaymentReceivedByIdData(paymentId, clientResult.client);
+    if (!payment) return { ok: false, error: "Payment not found." };
+
+    const attachments = await Promise.all(
+      (payment.attachments ?? []).map(async (attachment) => {
+        try {
+          return {
+            ...attachment,
+            preview_url: await getPaymentAttachmentPreviewUrlData(attachment, clientResult.client),
+          };
+        } catch {
+          return { ...attachment, preview_url: null };
+        }
+      })
+    );
+
+    return { ok: true, payment: { ...payment, attachments } };
+  } catch (e) {
+    console.error("[payments/actions] failed to load payment for edit", e);
+    return {
+      ok: false,
+      error: safePaymentActionError(e, "Failed to load payment."),
+    };
+  }
 }
 
 export async function createPaymentReceivedAction(
@@ -44,7 +114,27 @@ export async function createPaymentReceivedAction(
     revalidatePaymentPaths(payment.invoice_id, payment.project_id ?? payload.project_id ?? null);
     return { ok: true, paymentId: payment.id };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Failed to record payment." };
+    console.error("[payments/actions] failed to record payment", e);
+    return { ok: false, error: safePaymentActionError(e, "Failed to record payment.") };
+  }
+}
+
+export async function updatePaymentReceivedAction(
+  payload: UpdatePaymentReceivedPayload
+): Promise<{ ok: true; payment: PaymentReceivedDetail } | { ok: false; error: string }> {
+  try {
+    const clientResult = await getPaymentActionClient();
+    if (!clientResult.ok) return clientResult;
+
+    const payment = await updatePaymentReceivedData(payload, clientResult.client);
+    revalidatePaymentPaths(payment.invoice_id, payment.project_id ?? null);
+    return { ok: true, payment };
+  } catch (e) {
+    console.error("[payments/actions] failed to update payment", e);
+    return {
+      ok: false,
+      error: safePaymentActionError(e, "Failed to update payment."),
+    };
   }
 }
 
@@ -132,6 +222,7 @@ export async function deletePaymentReceivedAction(
     );
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Failed to delete payment." };
+    console.error("[payments/actions] failed to delete payment", e);
+    return { ok: false, error: safePaymentActionError(e, "Failed to delete payment.") };
   }
 }

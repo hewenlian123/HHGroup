@@ -25,7 +25,6 @@ import { NEO, OS, TYPO } from "@/lib/typography";
 import {
   getInvoicesWithDerived,
   getProjects,
-  duplicateInvoice,
   type InvoiceWithDerived,
   type InvoiceComputedStatus,
   type InvoiceDeleteDependenciesResult,
@@ -57,6 +56,7 @@ import { formatCurrency, formatDate, formatInteger } from "@/lib/formatters";
 import {
   checkInvoiceDeleteDependenciesAction,
   deleteInvoiceAction,
+  duplicateInvoiceAction,
   unlinkInvoiceScheduleItemAction,
 } from "./actions";
 import { InvoiceDeleteDependenciesDialog } from "./invoice-delete-dependencies-dialog";
@@ -544,10 +544,18 @@ function InvoicesPageInner() {
 
   const handleDuplicate = React.useCallback(
     async (id: string) => {
-      const dup = await duplicateInvoice(id);
-      if (dup) startTransition(() => router.push(`/financial/invoices/${dup.id}`));
+      const result = await duplicateInvoiceAction(id);
+      if (!result.ok) {
+        toast({
+          title: "Could not duplicate invoice",
+          description: result.error ?? "Please try again.",
+          variant: "error",
+        });
+        return;
+      }
+      startTransition(() => router.push(`/financial/invoices/${result.invoiceId}`));
     },
-    [router]
+    [router, toast]
   );
 
   const activeDrawerFilterCount =

@@ -39,12 +39,21 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function logInvoiceApiError(context: string, error: unknown) {
+  console.error(`[api/invoices] ${context}`, error);
+}
+
+function safeInvoiceApiResponse(message: string, status = 500) {
+  return NextResponse.json({ ok: false, message }, { status });
+}
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAuthenticatedUser(_req);
+  if (!guard.ok) return guard.response;
+
   const { id } = await params;
   if (!id) return NextResponse.json({ ok: false, message: "Missing invoice id." }, { status: 400 });
   try {
-    // Prefer admin client when available; otherwise use server client (anon/service role),
-    // and only fall back to cookie-auth client if needed.
     const admin = getServerSupabaseAdmin();
     const server = getServerSupabase();
     const supabase = admin ?? server ?? (await createServerSupabaseClient());
@@ -53,16 +62,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         { ok: false, message: "Supabase is not configured." },
         { status: 500 }
       );
-    // If we're using cookie-auth client (not admin, not server client), require login.
-    if (!admin && !server) {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-      if (authError || !user)
-        return NextResponse.json({ ok: false, message: "You must be signed in." }, { status: 401 });
-    }
-
     const invRes = await supabase
       .from("invoices")
       .select(
@@ -70,11 +69,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       )
       .eq("id", id)
       .maybeSingle();
-    if (invRes.error)
-      return NextResponse.json(
-        { ok: false, message: invRes.error.message ?? "Failed to load invoice." },
-        { status: 500 }
-      );
+    if (invRes.error) {
+      logInvoiceApiError("failed to load invoice", invRes.error);
+      return safeInvoiceApiResponse("Failed to load invoice.");
+    }
     if (!invRes.data)
       return NextResponse.json({ ok: false, message: "Invoice not found." }, { status: 404 });
 
@@ -83,21 +81,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .select("id,invoice_id,description,quantity,qty,unit_price,amount")
       .eq("invoice_id", id)
       .order("created_at", { ascending: true });
-    if (itemsRes.error)
-      return NextResponse.json(
-        { ok: false, message: itemsRes.error.message ?? "Failed to load invoice items." },
-        { status: 500 }
-      );
+    if (itemsRes.error) {
+      logInvoiceApiError("failed to load invoice items", itemsRes.error);
+      return safeInvoiceApiResponse("Failed to load invoice items.");
+    }
 
     const paysRes = await supabase
       .from("invoice_payments")
-      .select("id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status")
+      .select(
+        "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status, payment_received_id"
+      )
       .eq("invoice_id", id);
-    if (paysRes.error)
-      return NextResponse.json(
-        { ok: false, message: paysRes.error.message ?? "Failed to load invoice payments." },
-        { status: 500 }
-      );
+    if (paysRes.error) {
+      logInvoiceApiError("failed to load invoice payments", paysRes.error);
+      return safeInvoiceApiResponse("Failed to load invoice payments.");
+    }
 
     const row = invRes.data as Record<string, unknown>;
     const statusRaw = String(row.status ?? "Draft");
@@ -189,8 +187,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
     return NextResponse.json({ ok: true, invoice });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to load invoice.";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+    logInvoiceApiError("unexpected invoice load error", e);
+    return safeInvoiceApiResponse("Failed to load invoice.");
   }
 }
 
@@ -239,10 +237,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const invRes = await supabase.from("invoices").select("id, status").eq("id", id).maybeSingle();
     if (invRes.error) {
-      return NextResponse.json(
-        { ok: false, message: invRes.error.message ?? "Failed to load invoice." },
-        { status: 500 }
-      );
+      logInvoiceApiError("failed to load invoice before void", invRes.error);
+      return safeInvoiceApiResponse("Failed to load invoice.");
     }
     if (!invRes.data) {
       return NextResponse.json({ ok: false, message: "Invoice not found." }, { status: 404 });
@@ -253,7 +249,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ ok: true, message: "Already void." });
     }
 
-    const { error: updErr } = await supabase
+    const { data: updated, error: updErr } = await supabase
       .from("invoices")
       .update({
         status: "Void",
@@ -263,18 +259,21 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         paid_total: 0,
         balance_due: 0,
       })
-      .eq("id", id);
+      .eq("id", id)
+      .select("id, status")
+      .maybeSingle();
 
     if (updErr) {
-      return NextResponse.json(
-        { ok: false, message: updErr.message ?? "Failed to void invoice." },
-        { status: 500 }
-      );
+      logInvoiceApiError("failed to void invoice", updErr);
+      return safeInvoiceApiResponse("Failed to void invoice.");
+    }
+    if (!updated) {
+      return safeInvoiceApiResponse("Invoice was not updated. Refresh and try again.", 409);
     }
 
     return NextResponse.json({ ok: true });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to void invoice.";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+    logInvoiceApiError("unexpected invoice void error", e);
+    return safeInvoiceApiResponse("Failed to void invoice.");
   }
 }
