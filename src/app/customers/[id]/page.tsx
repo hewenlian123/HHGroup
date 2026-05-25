@@ -5,7 +5,6 @@ import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { createBrowserClient } from "@/lib/supabase";
 import { runOptimisticPersist } from "@/lib/optimistic-save";
 import {
   EmptyState,
@@ -77,22 +76,29 @@ const toNullable = (value: string): string | null => {
   return trimmed ? trimmed : null;
 };
 
-const isMissingColumn = (message: string | undefined | null): boolean =>
-  /column.*does not exist|does not exist.*column|undefined column|could not find the.*column|schema cache.*column/i.test(
-    message ?? ""
-  );
+type CustomerDetailResponse = CustomerRow & {
+  projects_count?: number;
+  relatedWork?: RelatedWork;
+};
+
+async function readCustomerDetail(id: string): Promise<CustomerDetailResponse> {
+  const res = await fetch(`/api/customers/${encodeURIComponent(id)}`, {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  const body = (await res.json().catch(() => null)) as
+    | (Partial<CustomerDetailResponse> & { message?: string })
+    | null;
+  if (!res.ok || !body) {
+    throw new Error(body?.message || "Failed to load customer.");
+  }
+  return body as CustomerDetailResponse;
+}
 
 export default function CustomerDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string | undefined;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
 
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
@@ -121,26 +127,19 @@ export default function CustomerDetailPage() {
       setLoading(false);
       return;
     }
-    if (!supabase) {
-      setMessage("Supabase is not configured.");
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setMessage(null);
     setNotFound(false);
-    const { data, error } = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
-    if (error) {
-      setMessage(error.message || "Failed to load customer.");
+    let row: CustomerDetailResponse;
+    try {
+      row = await readCustomerDetail(id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load customer.";
+      if (/not found/i.test(message)) setNotFound(true);
+      setMessage(message);
       setLoading(false);
       return;
     }
-    if (!data) {
-      setNotFound(true);
-      setLoading(false);
-      return;
-    }
-    const row = data as CustomerRow;
     const next: CustomerForm = {
       name: row.name ?? "",
       contact_person: row.contact_person ?? "",
@@ -152,64 +151,9 @@ export default function CustomerDetailPage() {
     };
     setForm(next);
     serverFormRef.current = { ...next };
-    const customerName = (row.name ?? "").trim();
-    const projectRows = new Map<string, RelatedProject>();
-    const appendProjects = (rows: RelatedProject[] | null | undefined) => {
-      for (const project of rows ?? []) {
-        if (project.id) projectRows.set(project.id, project);
-      }
-    };
-    const byCustomerId = await supabase
-      .from("projects")
-      .select("id,name,status,client,customer_id")
-      .eq("customer_id", id);
-    if (!byCustomerId.error) appendProjects(byCustomerId.data as RelatedProject[]);
-    if (customerName) {
-      const byClient = await supabase
-        .from("projects")
-        .select("id,name,status,client,customer_id")
-        .eq("client", customerName);
-      if (!byClient.error) appendProjects(byClient.data as RelatedProject[]);
-    }
-
-    let estimates: RelatedEstimate[] = [];
-    if (customerName) {
-      const estimatesRes = await supabase
-        .from("estimates")
-        .select("id,number,client,project,status")
-        .eq("client", customerName)
-        .order("updated_at", { ascending: false });
-      if (!estimatesRes.error) estimates = (estimatesRes.data ?? []) as RelatedEstimate[];
-    }
-
-    let changeOrders: RelatedChangeOrder[] = [];
-    const projectIds = Array.from(projectRows.keys());
-    if (projectIds.length > 0) {
-      const changeOrdersRes = await supabase
-        .from("project_change_orders")
-        .select("id,project_id,number,title,status")
-        .in("project_id", projectIds)
-        .order("created_at", { ascending: false });
-      if (!changeOrdersRes.error) {
-        changeOrders = (changeOrdersRes.data ?? []) as RelatedChangeOrder[];
-      } else if (isMissingColumn(changeOrdersRes.error.message)) {
-        const legacyChangeOrdersRes = await supabase
-          .from("project_change_orders")
-          .select("id,project_id,number,status")
-          .in("project_id", projectIds)
-          .order("created_at", { ascending: false });
-        if (!legacyChangeOrdersRes.error) {
-          changeOrders = (legacyChangeOrdersRes.data ?? []) as RelatedChangeOrder[];
-        }
-      }
-    }
-    setRelatedWork({
-      projects: Array.from(projectRows.values()),
-      estimates,
-      changeOrders,
-    });
+    setRelatedWork(row.relatedWork ?? { projects: [], estimates: [], changeOrders: [] });
     setLoading(false);
-  }, [id, supabase]);
+  }, [id]);
 
   React.useEffect(() => {
     void refresh();
@@ -225,8 +169,8 @@ export default function CustomerDetailPage() {
   useBreadcrumbEntityLabel(!loading && !notFound && form.name.trim() ? form.name : null);
 
   const handleSave = React.useCallback(() => {
-    if (!id || !supabase) {
-      setMessage("Supabase is not configured.");
+    if (!id) {
+      setMessage("Customer is not available.");
       return;
     }
     const baseline = serverFormRef.current;
@@ -256,15 +200,25 @@ export default function CustomerDetailPage() {
       },
       onError: (msg) => setMessage(msg),
       persist: async () => {
-        const { error } = await supabase.from("customers").update(payload).eq("id", id);
-        if (error) return { error: error.message || "Failed to save customer." };
+        const res = await fetch(`/api/customers/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+        const body = (await res.json().catch(() => null)) as
+          | (Partial<CustomerRow> & { message?: string })
+          | null;
+        if (!res.ok || !body) return { error: body?.message || "Failed to save customer." };
         return undefined;
       },
       onSuccess: () => {
         serverFormRef.current = { ...formCommitted };
       },
     });
-  }, [form, id, supabase, message]);
+  }, [form, id, message]);
 
   if (loading) {
     return (
