@@ -13,7 +13,6 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { CreatableSelect } from "@/components/ui/creatable-select";
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
-import { createBrowserClient } from "@/lib/supabase";
 import { formatCurrency } from "@/lib/formatters";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -51,6 +50,43 @@ type AttachmentRow = {
   size_bytes: number | null;
 };
 
+type ExpenseDetailPayload = {
+  ok: true;
+  expense: ExpenseRow;
+  lines: ExpenseLineRow[];
+  projects: ProjectOption[];
+  vendors: NameRow[];
+  categories: NameRow[];
+  paymentMethods: NameRow[];
+  attachments: AttachmentRow[];
+};
+
+type ExpenseActionResponse = {
+  ok: boolean;
+  message?: string;
+  line?: ExpenseLineRow;
+  name?: string;
+};
+
+type AttachmentUploadResponse = {
+  ok: boolean;
+  message?: string;
+  attachment?: AttachmentRow;
+};
+
+type SignedAttachmentFile = {
+  id: string;
+  url: string;
+  fileName: string;
+  mimeType: string;
+};
+
+type SignedAttachmentsResponse = {
+  ok: boolean;
+  message?: string;
+  files?: SignedAttachmentFile[];
+};
+
 function safeNumber(n: number | null | undefined): number {
   return Number.isFinite(n as number) ? (n as number) : 0;
 }
@@ -58,6 +94,10 @@ function safeNumber(n: number | null | undefined): number {
 function toNullable(value: string): string | null {
   const t = value.trim();
   return t ? t : null;
+}
+
+async function readJson<T>(response: Response): Promise<T | null> {
+  return response.json().catch(() => null) as Promise<T | null>;
 }
 
 function asNameList(rows: Array<{ name: string; status?: string | null }>): {
@@ -76,13 +116,6 @@ function asNameList(rows: Array<{ name: string; status?: string | null }>): {
 
 export function ExpenseDetailClient({ id }: { id: string }) {
   const router = useRouter();
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
 
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
@@ -108,69 +141,28 @@ export function ExpenseDetailClient({ id }: { id: string }) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const refresh = React.useCallback(async () => {
-    if (!supabase) {
-      setError("Supabase is not configured.");
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setError(null);
     setMessage(null);
 
-    const [expRes, linesRes, projectRes, vendorsRes, categoriesRes, pmRes, attachmentsRes] =
-      await Promise.all([
-        supabase.from("expenses").select("*").eq("id", id).maybeSingle(),
-        supabase
-          .from("expense_lines")
-          .select("*")
-          .eq("expense_id", id)
-          .order("created_at", { ascending: true }),
-        supabase
-          .from("projects")
-          .select("id,name")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("vendors")
-          .select("id,name,status")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("categories")
-          .select("id,name,status")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("payment_methods")
-          .select("id,name,status")
-          .order("created_at", { ascending: false })
-          .limit(500),
-        supabase
-          .from("attachments")
-          .select("*")
-          .eq("entity_type", "expense")
-          .eq("entity_id", id)
-          .order("created_at", { ascending: false }),
-      ]);
-
-    if (expRes.error) {
-      setError(expRes.error.message || "Failed to load expense.");
-      setLoading(false);
-      return;
-    }
-    if (!expRes.data) {
-      setError("Expense not found.");
+    const response = await fetch(`/api/expenses/${encodeURIComponent(id)}`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    const body = await readJson<ExpenseDetailPayload & { message?: string }>(response);
+    if (!response.ok || !body?.ok) {
+      setError(body?.message || "Failed to load expense.");
       setLoading(false);
       return;
     }
 
-    setExpense(expRes.data as ExpenseRow);
-    setLines((linesRes.data ?? []) as ExpenseLineRow[]);
-    setProjects((projectRes.data ?? []) as ProjectOption[]);
+    setExpense(body.expense);
+    setLines(body.lines ?? []);
+    setProjects(body.projects ?? []);
 
     setVendors(
       asNameList(
-        ((vendorsRes.data ?? []) as unknown as NameRow[]).map((r) => ({
+        ((body.vendors ?? []) as NameRow[]).map((r) => ({
           name: r.name,
           status: r.status,
         }))
@@ -178,7 +170,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     );
     setCategories(
       asNameList(
-        ((categoriesRes.data ?? []) as unknown as NameRow[]).map((r) => ({
+        ((body.categories ?? []) as NameRow[]).map((r) => ({
           name: r.name,
           status: r.status,
         }))
@@ -186,16 +178,16 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     );
     setPaymentMethods(
       asNameList(
-        ((pmRes.data ?? []) as unknown as NameRow[]).map((r) => ({
+        ((body.paymentMethods ?? []) as NameRow[]).map((r) => ({
           name: r.name,
           status: r.status,
         }))
       )
     );
 
-    setAttachments((attachmentsRes.data ?? []) as AttachmentRow[]);
+    setAttachments(body.attachments ?? []);
     setLoading(false);
-  }, [id, supabase]);
+  }, [id]);
 
   React.useEffect(() => {
     void refresh();
@@ -236,22 +228,29 @@ export function ExpenseDetailClient({ id }: { id: string }) {
 
   const saveHeader = React.useCallback(
     async (patch: Partial<ExpenseRow>): Promise<boolean> => {
-      if (!supabase || !expense) return false;
+      if (!expense) return false;
       setSaving(true);
       setError(null);
       setMessage(null);
-      const { error: upError } = await supabase.from("expenses").update(patch).eq("id", expense.id);
-      if (upError) {
-        setError(upError.message || "Failed to save expense.");
+      const response = await fetch(`/api/expenses/${encodeURIComponent(expense.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const body = await readJson<{ ok: boolean; message?: string; expense?: ExpenseRow }>(
+        response
+      );
+      if (!response.ok || !body?.ok || !body.expense) {
+        setError(body?.message || "Failed to save expense.");
         setSaving(false);
         return false;
       }
-      setExpense((prev) => (prev ? { ...prev, ...patch } : prev));
+      setExpense(body.expense);
       setSaving(false);
       setMessage("Saved.");
       return true;
     },
-    [expense, supabase]
+    [expense]
   );
 
   const headerForSave = expense
@@ -268,7 +267,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
   const initialLoadDoneRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (!expense || !supabase || !debouncedHeader) return;
+    if (!expense || !debouncedHeader) return;
     if (!initialLoadDoneRef.current) {
       initialLoadDoneRef.current = true;
       lastSavedHeaderRef.current = debouncedHeader;
@@ -293,157 +292,149 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     }).then((ok) => {
       if (ok) lastSavedHeaderRef.current = debouncedHeader;
     });
-  }, [debouncedHeader, expense, saveHeader, supabase]);
+  }, [debouncedHeader, expense, saveHeader]);
+
+  const runExpenseAction = React.useCallback(
+    async (payload: Record<string, unknown>): Promise<ExpenseActionResponse | null> => {
+      const response = await fetch(`/api/expenses/${encodeURIComponent(id)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const body = await readJson<ExpenseActionResponse>(response);
+      if (!response.ok || !body?.ok) {
+        setError(body?.message || "Expense action failed.");
+        return null;
+      }
+      return body;
+    },
+    [id]
+  );
 
   const upsertLine = async (lineId: string, patch: Partial<SplitLineRow>) => {
-    if (!supabase) return;
     const existing = lines.find((l) => l.id === lineId);
     if (!existing) return;
-    const payload: Partial<ExpenseLineRow> = {
+    const payload = {
       project_id: patch.projectId !== undefined ? patch.projectId : existing.project_id,
       category: patch.category !== undefined ? patch.category : existing.category,
       cost_code: patch.costCode !== undefined ? (patch.costCode ?? null) : existing.cost_code,
       memo: patch.memo !== undefined ? (patch.memo ?? null) : existing.memo,
       amount: patch.amount !== undefined ? patch.amount : existing.amount,
     };
-    const { error: upError } = await supabase
-      .from("expense_lines")
-      .update(payload)
-      .eq("id", lineId);
-    if (upError) {
-      setError(upError.message || "Failed to update line.");
-      return;
+    const body = await runExpenseAction({
+      action: "update-line",
+      lineId,
+      patch: {
+        projectId: payload.project_id,
+        category: payload.category,
+        costCode: payload.cost_code,
+        memo: payload.memo,
+        amount: payload.amount,
+      },
+    });
+    if (body?.line) {
+      setLines((prev) => prev.map((l) => (l.id === lineId ? body.line! : l)));
     }
-    setLines((prev) => prev.map((l) => (l.id === lineId ? { ...l, ...payload } : l)));
   };
 
   const addLine = async () => {
-    if (!supabase) return;
-    const { data: inserted, error: insError } = await supabase
-      .from("expense_lines")
-      .insert([{ expense_id: id, project_id: null, category: "Other", amount: 0 }])
-      .select("id, expense_id, project_id, category, cost_code, memo, amount")
-      .single();
-    if (insError) {
-      setError(insError.message || "Failed to add line.");
-      return;
-    }
-    setLines((prev) => [...prev, inserted as ExpenseLineRow]);
+    const body = await runExpenseAction({ action: "add-line" });
+    if (body?.line) setLines((prev) => [...prev, body.line!]);
   };
 
   const deleteLine = async (lineId: string) => {
-    if (!supabase) return;
-    const { error: delError } = await supabase.from("expense_lines").delete().eq("id", lineId);
-    if (delError) {
-      setError(delError.message || "Failed to delete line.");
-      return;
-    }
-    setLines((prev) => prev.filter((l) => l.id !== lineId));
+    const body = await runExpenseAction({ action: "delete-line", lineId });
+    if (body?.ok) setLines((prev) => prev.filter((l) => l.id !== lineId));
   };
 
   const addVendor = async (name: string): Promise<string> => {
-    if (!supabase) return "";
     const v = name.trim();
     if (!v) return "";
-    const { error: insError } = await supabase
-      .from("vendors")
-      .insert([{ name: v, status: "active" }]);
-    if (insError) setError(insError.message || "Failed to add vendor.");
-    else
+    const body = await runExpenseAction({ action: "add-vendor", name: v });
+    if (body?.ok) {
       setVendors((prev) => ({
         ...prev,
         options: Array.from(new Set([...prev.options, v])).sort((a, b) => a.localeCompare(b)),
       }));
+    }
     return v;
   };
 
   const addCategory = async (name: string): Promise<string> => {
-    if (!supabase) return "";
     const v = name.trim();
     if (!v) return "";
-    const { error: insError } = await supabase
-      .from("categories")
-      .insert([{ name: v, type: "expense", status: "active" }]);
-    if (insError) setError(insError.message || "Failed to add category.");
-    else
+    const body = await runExpenseAction({ action: "add-category", name: v });
+    if (body?.ok) {
       setCategories((prev) => ({
         ...prev,
         options: Array.from(new Set([...prev.options, v])).sort((a, b) => a.localeCompare(b)),
       }));
+    }
     return v;
   };
 
   const addPaymentMethod = async (name: string): Promise<string> => {
-    if (!supabase) return "";
     const v = name.trim();
     if (!v) return "";
-    const { error: insError } = await supabase
-      .from("payment_methods")
-      .insert([{ name: v, status: "active" }]);
-    if (insError) setError(insError.message || "Failed to add payment method.");
-    else
+    const body = await runExpenseAction({ action: "add-payment-method", name: v });
+    if (body?.ok) {
       setPaymentMethods((prev) => ({
         ...prev,
         options: Array.from(new Set([...prev.options, v])).sort((a, b) => a.localeCompare(b)),
       }));
+    }
     return v;
   };
 
   const uploadAttachment = async (file: File) => {
-    if (!supabase) return;
     setSaving(true);
     setError(null);
     setMessage(null);
     try {
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const filePath = `attachments/expenses/${id}/${Date.now()}-${safeName}`;
-      const uploadRes = await supabase.storage.from("attachments").upload(filePath, file, {
-        contentType: file.type || undefined,
-        upsert: false,
+      const formData = new FormData();
+      formData.set("file", file);
+      const response = await fetch(`/api/expenses/${encodeURIComponent(id)}/attachments`, {
+        method: "POST",
+        body: formData,
       });
-      if (uploadRes.error) throw uploadRes.error;
-      const insertRes = await supabase.from("attachments").insert([
-        {
-          entity_type: "expense",
-          entity_id: id,
-          file_name: file.name,
-          file_path: filePath,
-          mime_type: file.type || null,
-          size_bytes: file.size,
-        },
-      ]);
-      if (insertRes.error) throw insertRes.error;
-      await refresh();
+      const body = await readJson<AttachmentUploadResponse>(response);
+      if (!response.ok || !body?.ok || !body.attachment) {
+        throw new Error(body?.message || "Upload failed.");
+      }
+      setAttachments((prev) => [body.attachment!, ...prev]);
       setMessage("Attachment uploaded.");
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg || "Upload failed.");
-      console.error("[ExpenseDetail] uploadAttachment error", e);
     } finally {
       setSaving(false);
     }
   };
 
   const openAttachment = async (row: AttachmentRow) => {
-    if (!supabase) return;
     const idx = attachments.findIndex((a) => a.id === row.id);
-    const signed = await Promise.all(
-      attachments.map((a) => supabase.storage.from("attachments").createSignedUrl(a.file_path, 60))
-    );
-    const files = attachments.map((a, i) => {
-      const url = signed[i].data?.signedUrl ?? "";
-      const mime = (a.mime_type ?? "").toLowerCase();
+    const response = await fetch(`/api/expenses/${encodeURIComponent(id)}/attachments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ attachmentIds: attachments.map((a) => a.id) }),
+    });
+    const body = await readJson<SignedAttachmentsResponse>(response);
+    const signedFiles = body?.files ?? [];
+    const files = attachments.map((a) => {
+      const signed = signedFiles.find((file) => file.id === a.id);
+      const url = signed?.url ?? "";
+      const mime = (signed?.mimeType || a.mime_type || "").toLowerCase();
       const isPdf = mime === "application/pdf";
       const isImage = mime.startsWith("image/");
       return {
         url,
-        fileName: a.file_name ?? "File",
+        fileName: signed?.fileName || a.file_name || "File",
         fileType: (isPdf ? "pdf" : "image") as "pdf" | "image",
         unsupported: Boolean(url) && !isPdf && !isImage,
       };
     });
     if (!files.some((f) => f.url)) {
-      setError(signed[0]?.error?.message || "Unable to open attachment.");
+      setError(body?.message || "Unable to open attachment.");
       return;
     }
     openPreview({
@@ -454,18 +445,20 @@ export function ExpenseDetailClient({ id }: { id: string }) {
   };
 
   const deleteAttachment = async (row: AttachmentRow) => {
-    if (!supabase) return;
     if (!window.confirm("Delete attachment?")) return;
     setSaving(true);
     setError(null);
     try {
-      const [storageRes, dbRes] = await Promise.all([
-        supabase.storage.from("attachments").remove([row.file_path]),
-        supabase.from("attachments").delete().eq("id", row.id),
-      ]);
-      if (storageRes.error) throw storageRes.error;
-      if (dbRes.error) throw dbRes.error;
-      await refresh();
+      const response = await fetch(
+        `/api/expenses/${encodeURIComponent(id)}/attachments?attachmentId=${encodeURIComponent(
+          row.id
+        )}`,
+        { method: "DELETE", headers: { Accept: "application/json" } }
+      );
+      const body = await readJson<{ ok: boolean; message?: string }>(response);
+      if (!response.ok || !body?.ok)
+        throw new Error(body?.message || "Failed to delete attachment.");
+      setAttachments((prev) => prev.filter((att) => att.id !== row.id));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg || "Failed to delete attachment.");
@@ -473,19 +466,6 @@ export function ExpenseDetailClient({ id }: { id: string }) {
       setSaving(false);
     }
   };
-
-  if (!configured) {
-    return (
-      <div className="page-container page-stack">
-        <Card className="p-5">
-          <p className="text-sm text-muted-foreground">
-            Supabase is not configured. Set <code>NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-            <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
-          </p>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="page-container page-stack">
