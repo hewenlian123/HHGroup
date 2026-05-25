@@ -145,7 +145,7 @@ describe("deleteEstimateAction", () => {
     const result = await deleteEstimateAction(formData);
 
     expect(result.ok).toBe(false);
-    expect(result.error).toMatch(/permission denied/i);
+    expect(result.error).toBe("Database operation failed.");
     expect(from).not.toHaveBeenCalledWith("estimates");
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
