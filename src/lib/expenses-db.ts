@@ -593,9 +593,10 @@ function applyExpenseOrderToQuery(q: any, sort: ExpenseListSort): any {
 }
 
 export async function getExpenses(
-  sort: ExpenseListSort = defaultExpenseListSort
+  sort: ExpenseListSort = defaultExpenseListSort,
+  explicitClient?: SupabaseClient
 ): Promise<Expense[]> {
-  const c = client();
+  const c = client(explicitClient);
   let rows: unknown[] = [];
   /** Flat select only: embedded `payment_accounts` can omit or skew columns in some PostgREST responses; names come from `fetchPaymentAccountNameMap`. */
   const res = await applyExpenseOrderToQuery(c.from("expenses").select("*"), sort);
@@ -680,7 +681,8 @@ export async function getExpenses(
   sortExpenseRowsInPlace(rowModels, sort);
 
   const paymentNameMap = await fetchPaymentAccountNameMap(
-    rowModels.map((r) => r.payment_account_id)
+    rowModels.map((r) => r.payment_account_id),
+    explicitClient
   );
   const linesByExpenseId = await fetchExpenseLinesGroupedByExpenseId(
     c,
@@ -694,7 +696,7 @@ export async function getExpenses(
   for (const row of rowModels) {
     const r = row;
     const lines = linesByExpenseId.get(r.id) ?? [];
-    const attachments = await getAttachments(r.id);
+    const attachments = await getAttachments(r.id, explicitClient);
     const linkedBankTxId = linkedBankTxIdByExpenseId.get(r.id) ?? null;
     result.push(await toExpense(r, lines, attachments, linkedBankTxId, paymentNameMap));
   }
