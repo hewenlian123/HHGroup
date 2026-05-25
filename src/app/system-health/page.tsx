@@ -179,6 +179,45 @@ type DataQualityResult = {
   issues: DataQualityIssue[];
 };
 
+type IntegrityScanStatus = "pass" | "warning" | "fail";
+type IntegrityScanSeverity = "info" | "low" | "medium" | "high" | "critical";
+
+type IntegrityScanIssue = {
+  severity: IntegrityScanSeverity;
+  category:
+    | "test_marker"
+    | "orphan_relation"
+    | "dependency_risk"
+    | "financial_mismatch"
+    | "production_safety";
+  table: string;
+  id: string;
+  message: string;
+  evidence: Record<string, unknown>;
+  recommendedAction: string;
+  autoFixAvailable: false;
+};
+
+type IntegrityScanSection = {
+  id: string;
+  title: string;
+  status: IntegrityScanStatus;
+  issues: IntegrityScanIssue[];
+};
+
+type IntegrityScanResult = {
+  status: IntegrityScanStatus;
+  generatedAt: string;
+  summary: {
+    totalIssues: number;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  sections: IntegrityScanSection[];
+};
+
 const DEFAULT_QA_SUMMARY: SystemQaResult["summary"] = {
   status: "pass",
   critical: 0,
@@ -390,6 +429,47 @@ function dataQualityPriority(status: DataQualityStatus | DataQualitySeverity): n
   if (status === "warning") return 1;
   if (status === "info") return 2;
   return 3;
+}
+
+function integrityScanStatusToHealthStatus(status?: IntegrityScanStatus): HealthCheckStatus {
+  if (status === "fail") return "fail";
+  if (status === "warning") return "warning";
+  return "ok";
+}
+
+function integrityScanSeverityToRowStatus(severity: IntegrityScanSeverity): DetailRowStatus {
+  if (severity === "critical" || severity === "high") return "fail";
+  if (severity === "medium" || severity === "low") return "warning";
+  return "info";
+}
+
+function formatEvidenceSummary(evidence: Record<string, unknown>): string {
+  const entries = Object.entries(evidence).slice(0, 3);
+  if (entries.length === 0) return "No evidence details.";
+  return entries
+    .map(([key, value]) => {
+      if (Array.isArray(value)) return `${key}: ${value.length} item(s)`;
+      if (value && typeof value === "object")
+        return `${key}: ${JSON.stringify(value).slice(0, 120)}`;
+      return `${key}: ${String(value)}`;
+    })
+    .join(" · ");
+}
+
+function integrityScanRows(scan?: IntegrityScanResult | null): HealthDetailRowData[] | undefined {
+  if (!scan) return undefined;
+  return scan.sections
+    .flatMap((section) =>
+      section.issues.map((issue) => ({
+        id: `${section.id}:${issue.table}:${issue.id}:${issue.category}`,
+        name: `${issue.table} / ${issue.id}`,
+        status: integrityScanSeverityToRowStatus(issue.severity),
+        message: `${issue.message} ${issue.recommendedAction}`,
+        code: issue.category,
+        meta: `${section.title} · ${formatEvidenceSummary(issue.evidence)}`,
+      }))
+    )
+    .slice(0, 10);
 }
 
 function DataQualityPanel({
@@ -1524,6 +1604,9 @@ export default function SystemHealthPage() {
   const [dataQuality, setDataQuality] = React.useState<DataQualityResult | null>(null);
   const [dataQualityLoading, setDataQualityLoading] = React.useState(false);
   const [dataQualityError, setDataQualityError] = React.useState<string | null>(null);
+  const [integrityScan, setIntegrityScan] = React.useState<IntegrityScanResult | null>(null);
+  const [integrityScanLoading, setIntegrityScanLoading] = React.useState(false);
+  const [integrityScanError, setIntegrityScanError] = React.useState<string | null>(null);
 
   const fetchSystemHealth = React.useCallback(async () => {
     setHealthLoading(true);
@@ -1608,6 +1691,26 @@ export default function SystemHealthPage() {
     }
   }, []);
 
+  const fetchIntegrityScan = React.useCallback(async () => {
+    setIntegrityScanLoading(true);
+    setIntegrityScanError(null);
+    try {
+      const res = await fetch("/api/system/integrity-scan", { cache: "no-store" });
+      const data = (await res.json()) as IntegrityScanResult | { message?: string };
+      if (!res.ok) {
+        throw new Error(
+          "message" in data && data.message ? data.message : "Integrity scanner failed."
+        );
+      }
+      setIntegrityScan(data as IntegrityScanResult);
+    } catch (e) {
+      setIntegrityScanError(e instanceof Error ? e.message : "Failed to run integrity scanner");
+      setIntegrityScan(null);
+    } finally {
+      setIntegrityScanLoading(false);
+    }
+  }, []);
+
   const runCleanup = React.useCallback(
     async (category: CleanupCategory) => {
       const confirmation = window.prompt("Type CLEAN UP to confirm this integrity cleanup.");
@@ -1634,12 +1737,17 @@ export default function SystemHealthPage() {
     async (isManual = false) => {
       if (isManual) setRefreshing(true);
       try {
-        await Promise.all([fetchSystemHealth(), fetchGuardian(), fetchIntegrity()]);
+        await Promise.all([
+          fetchSystemHealth(),
+          fetchGuardian(),
+          fetchIntegrity(),
+          fetchIntegrityScan(),
+        ]);
       } finally {
         if (isManual) setRefreshing(false);
       }
     },
-    [fetchGuardian, fetchIntegrity, fetchSystemHealth]
+    [fetchGuardian, fetchIntegrity, fetchIntegrityScan, fetchSystemHealth]
   );
 
   // Initial load
@@ -1897,6 +2005,8 @@ export default function SystemHealthPage() {
     : dataIntegrityRows?.some((row) => row.status === "warning")
       ? "warning"
       : "ok";
+  const integrityScanHealthStatus = integrityScanStatusToHealthStatus(integrityScan?.status);
+  const integrityScanDetailRows = integrityScanRows(integrityScan);
   const healthActiveIssues: ActiveIssue[] = [...criticalIssues, ...needsAttention].map(
     (check, index) => ({
       id: `health:${index}:${check.name}:${check.code ?? ""}`,
@@ -1945,11 +2055,28 @@ export default function SystemHealthPage() {
         href: issue.link,
         meta: issue.recommendedAction,
       })) ?? [];
+  const integrityScanActiveIssues: ActiveIssue[] =
+    integrityScan?.sections
+      ?.flatMap((section) =>
+        section.issues.map((issue) => ({
+          id: `integrity-scan:${section.id}:${issue.table}:${issue.id}:${issue.category}`,
+          title: `${issue.table} / ${issue.id}`,
+          status:
+            integrityScanSeverityToRowStatus(issue.severity) === "fail"
+              ? ("fail" as const)
+              : ("warning" as const),
+          message: issue.message,
+          meta: section.title,
+        }))
+      )
+      .filter((issue) => issue.status === "fail" || issue.status === "warning")
+      .slice(0, 8) ?? [];
   const activeIssues = [
     ...healthActiveIssues,
     ...guardianActiveIssues,
     ...qaActiveIssues,
     ...dataQualityActiveIssues,
+    ...integrityScanActiveIssues,
   ];
   const metadataRows = [
     {
@@ -1986,6 +2113,14 @@ export default function SystemHealthPage() {
           ? "Production safe"
           : "Local safe"
         : "Checking...",
+    },
+    {
+      label: "Integrity Scan",
+      value: integrityScan
+        ? `${integrityScan.summary.totalIssues} issue(s) · ${formatCheckedAt(integrityScan.generatedAt)}`
+        : integrityScanLoading
+          ? "Checking..."
+          : "Not available",
     },
     {
       label: "Schema Notes",
@@ -2314,6 +2449,55 @@ export default function SystemHealthPage() {
             defaultOpen={Boolean(dataIntegrityRows?.some((row) => row.status !== "ok"))}
           >
             <HealthDetailTable rows={dataIntegrityRows} loading={integrityLoading} />
+          </HealthSection>
+
+          <HealthSection
+            title="System Integrity Scanner"
+            icon={Database}
+            status={integrityScanHealthStatus}
+            count={
+              integrityScan
+                ? `${integrityScan.summary.totalIssues} issue(s)`
+                : integrityScanError
+                  ? "Scanner unavailable"
+                  : undefined
+            }
+            description={`Read-only marker and dependency scanner. ${
+              integrityScan
+                ? `Generated ${formatCheckedAt(integrityScan.generatedAt)}.`
+                : "No cleanup or fix actions are available here."
+            }`}
+            defaultOpen={Boolean(integrityScanDetailRows?.some((row) => row.status !== "ok"))}
+          >
+            {integrityScanError ? (
+              <p className="px-4 pb-4 text-sm text-red-300">{integrityScanError}</p>
+            ) : integrityScan ? (
+              <>
+                <MetadataGrid
+                  rows={[
+                    { label: "Critical", value: integrityScan.summary.critical },
+                    { label: "High", value: integrityScan.summary.high },
+                    { label: "Medium", value: integrityScan.summary.medium },
+                    { label: "Low", value: integrityScan.summary.low },
+                    {
+                      label: "Sections",
+                      value: integrityScan.sections.length,
+                    },
+                    {
+                      label: "Auto fix",
+                      value: "Disabled",
+                    },
+                  ]}
+                />
+                <HealthDetailTable
+                  rows={integrityScanDetailRows}
+                  loading={integrityScanLoading}
+                  emptyMessage="No marker or dependency integrity issues found."
+                />
+              </>
+            ) : (
+              <HealthDetailTable rows={undefined} loading={integrityScanLoading} />
+            )}
           </HealthSection>
         </div>
 

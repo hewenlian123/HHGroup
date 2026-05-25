@@ -106,6 +106,26 @@ test.describe("System Guardian command center", () => {
       });
     });
 
+    await page.route("**/api/system/integrity-scan", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "pass",
+          generatedAt: "2026-05-22T12:00:00.000Z",
+          summary: { totalIssues: 0, critical: 0, high: 0, medium: 0, low: 0 },
+          sections: [
+            {
+              id: "test-marker-data",
+              title: "Test Marker Data",
+              status: "pass",
+              issues: [],
+            },
+          ],
+        }),
+      });
+    });
+
     await page.route("**/api/system/qa-check", async (route) => {
       await route.fulfill({
         status: 200,
@@ -230,6 +250,7 @@ test.describe("System Guardian command center", () => {
       "Optional Modules",
       "Destructive Action Safety",
       "System Metadata",
+      "System Integrity Scanner",
     ]) {
       await expect(page.getByText(section, { exact: true }).first()).toBeVisible();
     }
@@ -334,6 +355,19 @@ test.describe("System Guardian command center", () => {
             tasks: { ok: true, count: 0 },
             projects: { ok: true, count: 0 },
           },
+        }),
+      });
+    });
+
+    await page.route("**/api/system/integrity-scan", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "pass",
+          generatedAt: "2026-05-22T12:00:00.000Z",
+          summary: { totalIssues: 0, critical: 0, high: 0, medium: 0, low: 0 },
+          sections: [],
         }),
       });
     });
