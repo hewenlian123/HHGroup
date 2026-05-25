@@ -67,6 +67,8 @@ test.describe("bank and labor server API boundary", () => {
       "/api/labor/payments",
       "/api/labor/worker-payments",
       "/api/labor/payroll-summary?fromDate=2026-05-01&toDate=2026-05-31",
+      "/api/worker-reimbursements",
+      "/api/worker-reimbursements/balances",
     ]) {
       const response = await request.get(path, { headers: LOCKED_HEADERS });
       expect(response.status(), `GET ${path}`).toBeLessThan(500);
@@ -99,6 +101,8 @@ test.describe("bank and labor server API boundary", () => {
       "/api/labor/payments",
       "/api/labor/worker-payments",
       "/api/labor/payroll-summary?fromDate=2026-05-01&toDate=2026-05-31",
+      "/api/worker-reimbursements",
+      "/api/worker-reimbursements/balances",
     ]) {
       const response = await context.request.get(path);
       expect(response.status(), `GET ${path}`).toBeLessThan(500);
@@ -177,6 +181,10 @@ test.describe("bank and labor server API boundary", () => {
     await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
     await expect(page.getByText("Total Earned")).toBeVisible();
     await expect(page.locator("table tbody tr").first()).toBeVisible({ timeout: 30_000 });
+
+    await page.goto("/labor/reimbursements");
+    await expect(page.getByRole("heading", { name: "Worker Reimbursements" })).toBeVisible();
+    await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
 
     await context.close();
   });
