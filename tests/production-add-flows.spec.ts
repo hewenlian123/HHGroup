@@ -112,56 +112,6 @@ async function tryDismissToasts(page: Page) {
   }
 }
 
-async function fillMinimalForm(page: Page, seed: string) {
-  // Fill text inputs
-  const textInputs = page.locator("input[type='text'], input:not([type]), input[type='email']");
-  const tiCount = await textInputs.count();
-  for (let i = 0; i < tiCount; i++) {
-    const el = textInputs.nth(i);
-    const disabled = await el.isDisabled().catch(() => true);
-    if (disabled) continue;
-    const value = await el.inputValue().catch(() => "");
-    if (value) continue;
-    await el.fill(`E2E ${seed}`).catch(() => {});
-  }
-
-  const textareas = page.locator("textarea");
-  const taCount = await textareas.count();
-  for (let i = 0; i < taCount; i++) {
-    const el = textareas.nth(i);
-    const disabled = await el.isDisabled().catch(() => true);
-    if (disabled) continue;
-    const value = await el.inputValue().catch(() => "");
-    if (value) continue;
-    await el.fill(`E2E ${seed}`).catch(() => {});
-  }
-
-  // Numbers
-  const nums = page.locator("input[type='number']");
-  const numCount = await nums.count();
-  for (let i = 0; i < numCount; i++) {
-    const el = nums.nth(i);
-    const disabled = await el.isDisabled().catch(() => true);
-    if (disabled) continue;
-    const value = await el.inputValue().catch(() => "");
-    if (value) continue;
-    await el.fill("1").catch(() => {});
-  }
-
-  // Dates
-  const dates = page.locator("input[type='date']");
-  const today = new Date().toISOString().slice(0, 10);
-  const dateCount = await dates.count();
-  for (let i = 0; i < dateCount; i++) {
-    const el = dates.nth(i);
-    const disabled = await el.isDisabled().catch(() => true);
-    if (disabled) continue;
-    const value = await el.inputValue().catch(() => "");
-    if (value) continue;
-    await el.fill(today).catch(() => {});
-  }
-}
-
 async function clickFirstAddButton(page: Page) {
   const candidates = [
     page.getByRole("button", { name: /new|add|create|record|upload/i }),
@@ -182,22 +132,7 @@ async function clickFirstAddButton(page: Page) {
   return false;
 }
 
-async function submit(page: Page, re?: RegExp) {
-  const locator = re
-    ? page.getByRole("button", { name: re })
-    : page.getByRole("button", { name: /create|save|add|submit|record|upload/i });
-  const n = await locator.count();
-  for (let i = 0; i < n; i++) {
-    const btn = locator.nth(i);
-    if (await btn.isVisible().catch(() => false)) {
-      await btn.click({ timeout: 5000 }).catch(() => {});
-      return true;
-    }
-  }
-  return false;
-}
-
-test.describe("Production add-data smoke", () => {
+test.describe("Production add surfaces smoke", () => {
   test.skip(!isProd, "Set E2E_BASE_URL=https://hhprojectgroup.com to run production smoke.");
 
   for (const flow of flows) {
@@ -218,8 +153,7 @@ test.describe("Production add-data smoke", () => {
 
       // Best-effort: open any create modal if we're on a list page.
       await clickFirstAddButton(page);
-      await fillMinimalForm(page, `${Date.now()}`);
-      await submit(page, flow.submitText);
+      // Production smoke is read-only by default. Do not type into or submit forms here.
 
       // Expect no immediate fatal errors on page
       expect(errors.join("\n")).not.toMatch(/pageerror:|console\.error:/i);

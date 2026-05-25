@@ -6,6 +6,8 @@
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
+import { assertScriptSupabaseTargetSafeForTestWrites } from "./test-write-guard";
+
 // Load .env.local before any app code that reads process.env
 function loadEnvLocal() {
   const path = join(process.cwd(), ".env.local");
@@ -27,6 +29,10 @@ function loadEnvLocal() {
 }
 
 loadEnvLocal();
+assertScriptSupabaseTargetSafeForTestWrites(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  "AR smoke invoice/payment writes"
+);
 
 async function main() {
   const projectId = "562f15b5-08ac-40eb-8efd-ab756a1730e5";

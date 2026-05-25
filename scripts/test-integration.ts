@@ -13,6 +13,8 @@ import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import postgres from "postgres";
 
+import { assertScriptSupabaseTargetSafeForTestWrites } from "./test-write-guard";
+
 type FlowResult = { name: string; ok: boolean; steps: string[] };
 
 function loadEnvLocal() {
@@ -46,6 +48,7 @@ async function main() {
     console.error("FAIL: Missing SUPABASE_DATABASE_URL or DATABASE_URL in .env.local");
     process.exit(1);
   }
+  assertScriptSupabaseTargetSafeForTestWrites(url, "manual integration DB writes");
 
   const sql = postgres(url, { max: 1, connect_timeout: 10 });
   const results: FlowResult[] = [];
