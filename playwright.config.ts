@@ -5,6 +5,7 @@ import { defineConfig, devices } from "@playwright/test";
 import { config as loadDotenv } from "dotenv";
 
 import { loadE2EProcessEnv } from "./tests/e2e-load-env";
+import { assertPlaywrightProductionRunSafeForWrites } from "./tests/e2e-supabase-url-guard";
 
 /**
  * Base chain: `.env` → `.env.local` → `.env.e2e` → `.env.test` (see tests/e2e-load-env.ts).
@@ -22,6 +23,7 @@ const resolvedBase = (process.env.E2E_BASE_URL || "http://localhost:3000").repla
 if (!process.env.E2E_BASE_URL) {
   process.env.E2E_BASE_URL = resolvedBase;
 }
+assertPlaywrightProductionRunSafeForWrites({ baseURL: resolvedBase, argv: process.argv });
 
 const isLocalE2eBase = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(resolvedBase);
 

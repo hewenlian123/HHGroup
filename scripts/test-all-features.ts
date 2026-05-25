@@ -9,6 +9,8 @@ import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { assertScriptSupabaseTargetSafeForTestWrites } from "./test-write-guard";
+
 function loadEnvFile(filename: string) {
   const p = join(process.cwd(), filename);
   if (!existsSync(p)) return;
@@ -35,6 +37,7 @@ async function run(): Promise<void> {
     console.error("Missing NEXT_PUBLIC_SUPABASE_URL or Supabase keys in .env.local");
     process.exit(1);
   }
+  assertScriptSupabaseTargetSafeForTestWrites(url, "all-features data-layer writes");
 
   // Use service role in Node so all modules can read/write (RLS bypass)
   if (serviceKey) {

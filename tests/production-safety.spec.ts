@@ -1,5 +1,11 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
+import {
+  assertE2EBaseUrlSafeForMutations,
+  assertPlaywrightProductionRunSafeForWrites,
+  isProductionAppUrl,
+} from "./e2e-supabase-url-guard";
+
 const LOCKED_HEADERS = {
   "x-hh-production-safety-lock": "1",
 };
@@ -25,6 +31,43 @@ async function expectProductionForbidden(
 
 test.describe("production safety guards", () => {
   test.describe.configure({ timeout: 60_000 });
+
+  test("blocks production-targeted Playwright write tests by default", () => {
+    const previous = process.env.ALLOW_PROD_TEST_WRITES;
+    delete process.env.ALLOW_PROD_TEST_WRITES;
+    try {
+      expect(isProductionAppUrl("https://hhprojectgroup.com")).toBe(true);
+      expect(isProductionAppUrl("https://hhgroup-production.vercel.app")).toBe(true);
+      expect(isProductionAppUrl("http://localhost:3000")).toBe(false);
+
+      expect(() =>
+        assertE2EBaseUrlSafeForMutations(
+          "https://hhprojectgroup.com",
+          "production safety regression"
+        )
+      ).toThrow(/Production URL is read-only by default|Refusing production safety regression/);
+
+      expect(() =>
+        assertPlaywrightProductionRunSafeForWrites({
+          baseURL: "https://hhprojectgroup.com",
+          argv: ["node", "playwright", "test", "tests/full-system-smoke-and-data-flow.spec.ts"],
+        })
+      ).toThrow(/Production URL is read-only by default/);
+
+      expect(() =>
+        assertPlaywrightProductionRunSafeForWrites({
+          baseURL: "https://hhprojectgroup.com",
+          argv: ["node", "playwright", "test", "tests/production-safety.spec.ts"],
+        })
+      ).not.toThrow();
+    } finally {
+      if (previous === undefined) {
+        delete process.env.ALLOW_PROD_TEST_WRITES;
+      } else {
+        process.env.ALLOW_PROD_TEST_WRITES = previous;
+      }
+    }
+  });
 
   test("blocks dangerous maintenance APIs when production safety lock is active", async ({
     request,
