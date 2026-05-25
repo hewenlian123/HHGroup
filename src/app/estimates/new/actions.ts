@@ -40,6 +40,19 @@ export type CreateEstimatePayload = {
   }>;
 };
 
+function safeCreateEstimateError(error: unknown): string {
+  const message = error instanceof Error ? error.message : "";
+  if (!message) return "Could not create estimate. Please try again.";
+  if (
+    /schema cache|relation|column|permission denied|row-level security|\brls\b|duplicate key|violates|PGRST|Supabase|database/i.test(
+      message
+    )
+  ) {
+    return "Could not create estimate. Please refresh and try again.";
+  }
+  return message;
+}
+
 export async function createEstimateWithItemsAction(
   payload: CreateEstimatePayload
 ): Promise<{ ok: boolean; estimateId?: string; error?: string }> {
@@ -105,6 +118,6 @@ export async function createEstimateWithItemsAction(
     revalidateEstimatePaths(id);
     return { ok: true, estimateId: id };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "操作失败" };
+    return { ok: false, error: safeCreateEstimateError(error) };
   }
 }

@@ -45,11 +45,13 @@ export type DeleteEstimateDiagnostic = {
 function serializeSupabaseError(error: unknown): SupabaseActionError | null {
   if (!error || typeof error !== "object") return null;
   const e = error as Partial<Record<keyof SupabaseActionError, unknown>>;
+  const message =
+    typeof e.message === "string" && e.message.trim()
+      ? "Database operation failed."
+      : "Estimate operation failed.";
   return {
     ...(typeof e.code === "string" ? { code: e.code } : {}),
-    ...(typeof e.message === "string" ? { message: e.message } : {}),
-    ...(typeof e.details === "string" ? { details: e.details } : {}),
-    ...(typeof e.hint === "string" ? { hint: e.hint } : {}),
+    message,
   };
 }
 
@@ -101,7 +103,7 @@ async function runTimedSupabaseQuery<T>(
       error: aborted
         ? timeoutError(`${label} timed out after ${DELETE_QUERY_TIMEOUT_MS}ms.`)
         : (serializeSupabaseError(error) ?? {
-            message: error instanceof Error ? error.message : `${label} failed.`,
+            message: `${label} failed.`,
           }),
       timedOut: aborted,
       durationMs: Date.now() - startedAt,

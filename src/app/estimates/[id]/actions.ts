@@ -106,6 +106,26 @@ function roundMoney(value: unknown): number {
   return Math.round(Math.max(0, n) * 100) / 100;
 }
 
+function safeEstimateActionError(error: unknown, fallback = "Could not save estimate."): string {
+  const message = error instanceof Error ? error.message : "";
+  if (!message) return fallback;
+  if (
+    /schema cache|relation|column|permission denied|row-level security|\brls\b|duplicate key|violates|PGRST|Supabase|database/i.test(
+      message
+    )
+  ) {
+    return fallback;
+  }
+  return message;
+}
+
+function safeSupabaseActionError(
+  error: { message?: string } | null | undefined,
+  fallback: string
+): string {
+  return safeEstimateActionError(error?.message ? new Error(error.message) : null, fallback);
+}
+
 function isUniqueInvoiceNoError(error: { code?: string; message?: string } | null): boolean {
   const message = error?.message ?? "";
   return error?.code === "23505" || /invoice_no|invoices_invoice_no_key/i.test(message);
@@ -382,7 +402,7 @@ export async function changeEstimateStatusInlineAction(
     }
     return { ok: Boolean(ok) };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "操作失败" };
+    return { ok: false, error: safeEstimateActionError(error, "操作失败") };
   }
 }
 
@@ -399,7 +419,7 @@ export async function sendEstimateInlineAction(
     }
     return { ok: Boolean(ok) };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "操作失败" };
+    return { ok: false, error: safeEstimateActionError(error, "操作失败") };
   }
 }
 
@@ -416,7 +436,7 @@ export async function approveEstimateInlineAction(
     }
     return { ok: Boolean(ok) };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "操作失败" };
+    return { ok: false, error: safeEstimateActionError(error, "操作失败") };
   }
 }
 
@@ -433,7 +453,7 @@ export async function rejectEstimateInlineAction(
     }
     return { ok: Boolean(ok) };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "操作失败" };
+    return { ok: false, error: safeEstimateActionError(error, "操作失败") };
   }
 }
 
@@ -450,7 +470,7 @@ export async function convertToProjectInlineAction(
     }
     return { ok: false, error: "已转换或报价未批准" };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "操作失败" };
+    return { ok: false, error: safeEstimateActionError(error, "操作失败") };
   }
 }
 
@@ -479,7 +499,7 @@ export async function convertToProjectWithSetupAction(
     }
     return { ok: false, error: "Already converted or estimate not approved" };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Conversion failed" };
+    return { ok: false, error: safeEstimateActionError(e, "Conversion failed") };
   }
 }
 
@@ -529,7 +549,7 @@ export async function saveEstimateMetaInlineAction(
     }
     return { ok: Boolean(ok) };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "操作失败" };
+    return { ok: false, error: safeEstimateActionError(error, "操作失败") };
   }
 }
 
@@ -645,9 +665,24 @@ export async function createInvoiceFromPaymentScheduleItemAction(
         .maybeSingle(),
     ]);
 
-    if (estimateRes.error) return { ok: false, error: estimateRes.error.message };
-    if (metaRes.error) return { ok: false, error: metaRes.error.message };
-    if (itemRes.error) return { ok: false, error: itemRes.error.message };
+    if (estimateRes.error) {
+      return {
+        ok: false,
+        error: safeSupabaseActionError(estimateRes.error, "Could not load estimate."),
+      };
+    }
+    if (metaRes.error) {
+      return {
+        ok: false,
+        error: safeSupabaseActionError(metaRes.error, "Could not load estimate details."),
+      };
+    }
+    if (itemRes.error) {
+      return {
+        ok: false,
+        error: safeSupabaseActionError(itemRes.error, "Could not load payment schedule item."),
+      };
+    }
     if (!estimateRes.data) return { ok: false, error: "Estimate not found." };
     if (!itemRes.data) return { ok: false, error: "Payment schedule item not found." };
 
@@ -737,7 +772,7 @@ export async function createInvoiceFromPaymentScheduleItemAction(
 
     return { ok: true, invoiceId };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : "操作失败" };
+    return { ok: false, error: safeEstimateActionError(error, "操作失败") };
   }
 }
 
@@ -866,7 +901,7 @@ export async function addLineItemCatalogInlineAction(
     revalidatePath("/estimates");
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not add line item." };
+    return { ok: false, error: safeEstimateActionError(e, "Could not add line item.") };
   }
 }
 
@@ -884,7 +919,7 @@ export async function createCustomEstimateCategoryAction(
     revalidatePath("/estimates");
     return { ok: true, costCode: out.costCode };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not create section." };
+    return { ok: false, error: safeEstimateActionError(e, "Could not create section.") };
   }
 }
 
@@ -908,7 +943,7 @@ export async function createEstimateCategoryWithCodeAction(
     revalidatePath("/estimates");
     return { ok: true, costCode: out.costCode };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not create section." };
+    return { ok: false, error: safeEstimateActionError(e, "Could not create section.") };
   }
 }
 
@@ -930,7 +965,7 @@ export async function toggleLineItemHideAmountOnPdfAction(
     revalidateEstimatePaths(estimateId);
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not update line item." };
+    return { ok: false, error: safeEstimateActionError(e, "Could not update line item.") };
   }
 }
 
@@ -955,7 +990,7 @@ export async function setLineItemStatusAction(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Could not update line item status.",
+      error: safeEstimateActionError(e, "Could not update line item status."),
     };
   }
 }
@@ -976,7 +1011,7 @@ export async function saveEstimateDocumentNotesInlineAction(
     revalidatePath("/estimates");
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not save notes." };
+    return { ok: false, error: safeEstimateActionError(e, "Could not save notes.") };
   }
 }
 
@@ -1032,7 +1067,7 @@ export async function updateLineItemInlineAction(
     }
     return { ok: false, error: "Could not update line item" };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Update failed" };
+    return { ok: false, error: safeEstimateActionError(e, "Update failed") };
   }
 }
 
@@ -1196,6 +1231,6 @@ export async function saveCostCategoryNameInlineAction(
     revalidateEstimatePaths(estimateId);
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Could not save section name." };
+    return { ok: false, error: safeEstimateActionError(e, "Could not save section name.") };
   }
 }
