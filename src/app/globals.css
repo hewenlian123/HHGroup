@@ -1253,10 +1253,106 @@
   }
 }
 
+.estimate-preview-shell {
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.82), transparent 34rem), #ebe8e1;
+}
+
+.estimate-preview-paper-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.75rem;
+}
+
+.estimate-a4-page {
+  position: relative;
+  box-sizing: border-box;
+  width: min(210mm, calc(100vw - 2rem));
+  min-height: 297mm;
+  padding: 15mm;
+  background: #fffdf8;
+  box-shadow:
+    0 28px 86px rgba(39, 33, 24, 0.14),
+    0 1px 3px rgba(39, 33, 24, 0.08);
+  color: #18181b;
+}
+
+.estimate-page-label {
+  position: absolute;
+  top: -1.75rem;
+  left: 0;
+  color: #6b6258;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.estimate-final-packet {
+  break-before: page;
+  page-break-before: always;
+  display: flex;
+  flex-direction: column;
+}
+
+.estimate-final-packet-section,
+.estimate-scope-section,
+.estimate-payment-row,
+.estimate-signature-block {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.estimate-signature-block {
+  margin-top: auto;
+}
+
+@media (max-width: 700px) {
+  .estimate-preview-shell {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  .estimate-preview-paper-stack {
+    gap: 2.25rem;
+  }
+
+  .estimate-a4-page {
+    width: calc(100vw - 1rem);
+    min-height: calc((100vw - 1rem) * 1.414);
+    padding: 1rem;
+    font-size: 0.78rem;
+  }
+
+  .estimate-a4-page table {
+    table-layout: fixed;
+    font-size: 0.68rem;
+  }
+
+  .estimate-a4-page th,
+  .estimate-a4-page td {
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
+  }
+
+  .estimate-a4-page th:nth-child(3),
+  .estimate-a4-page td:nth-child(3) {
+    display: none;
+  }
+
+  .estimate-a4-page th:nth-child(4),
+  .estimate-a4-page td:nth-child(4),
+  .estimate-a4-page th:nth-child(5),
+  .estimate-a4-page td:nth-child(5) {
+    width: 4.75rem !important;
+  }
+}
+
 @media print {
   @page {
-    size: letter;
-    margin: 0.5in;
+    size: A4;
+    margin: 0;
   }
   /* App shell uses h-screen + flex-1 main; in print that reserves a full viewport page
      and pushes real content (or portaled dialogs) to page 2. Collapse layout for print. */
@@ -1299,6 +1395,47 @@
   }
   body {
     background: #fff;
+  }
+  .estimate-preview-shell {
+    background: #fff !important;
+    padding: 0 !important;
+  }
+  .estimate-preview-paper-stack {
+    display: block;
+    gap: 0;
+  }
+  .estimate-a4-page {
+    width: 210mm !important;
+    min-height: 297mm;
+    margin: 0 !important;
+    padding: 15mm !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    break-after: page;
+    page-break-after: always;
+  }
+  .estimate-a4-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+  .estimate-page-label {
+    display: none !important;
+  }
+  .estimate-final-packet {
+    break-before: page;
+    page-break-before: always;
+    display: flex;
+    flex-direction: column;
+  }
+  .estimate-final-packet-section,
+  .estimate-scope-section,
+  .estimate-payment-row,
+  .estimate-signature-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .estimate-signature-block {
+    margin-top: auto;
   }
   .estimate-print-section {
     break-inside: avoid;

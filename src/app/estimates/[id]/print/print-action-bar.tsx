@@ -6,7 +6,7 @@ import { Printer, ArrowLeft } from "lucide-react";
 
 export function PrintActionBar({ estimateId }: { estimateId: string }) {
   return (
-    <div className="print:hidden sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-zinc-200 bg-white px-6 py-3 shadow-sm">
+    <div className="print:hidden relative z-10 flex items-center justify-between gap-4 border-b border-zinc-200 bg-white px-6 py-3 shadow-sm">
       <Button variant="outline" size="sm" className="btn-outline-ghost rounded-lg" asChild>
         <Link href={`/estimates/${estimateId}`}>
           <ArrowLeft className="h-4 w-4 mr-1" />
