@@ -35,7 +35,11 @@ import {
   type LineItemPresetInput,
   type RecentSectionEntry,
 } from "./estimate-builder-draft-storage";
-import { resolveBlankSection, resolveSectionForTemplate } from "./estimate-section-templates";
+import {
+  normalizeProposalSectionName,
+  resolveBlankSection,
+  resolveSectionForTemplate,
+} from "./estimate-section-templates";
 import {
   createEmptyLineItem,
   editorLineItemToPresetInput,
@@ -205,7 +209,6 @@ export function EstimateLineItemsLocal({
   }, [lineItems]);
 
   const codesWithItems = Object.keys(itemsByCode);
-  const codesWithoutItems = costCodes.filter((c) => !itemsByCode[c.code]);
 
   const orderedSectionCodes = React.useMemo(() => {
     if (sectionOrder.length === 0) return codesWithItems;
@@ -245,49 +248,104 @@ export function EstimateLineItemsLocal({
     refreshDraftStorage();
   }, [refreshDraftStorage]);
 
+  const catalogNameByCode = React.useMemo(
+    () => new Map(costCodes.map((code) => [code.code, code.name])),
+    [costCodes]
+  );
+
+  const sectionDisplayName = React.useCallback(
+    (code: string): string =>
+      categoryNames[code]?.trim() || catalogNameByCode.get(code) || "Section",
+    [catalogNameByCode, categoryNames]
+  );
+
   const usedCostCodes = React.useMemo(
     () => new Set(lineItems.map((li) => li.costCode)),
     [lineItems]
   );
 
-  const canAddSection = codesWithoutItems.length > 0;
+  const canAddSection = true;
+
+  const sectionNameExists = React.useCallback(
+    (name: string, exceptCode?: string): boolean => {
+      const normalizedName = normalizeProposalSectionName(name);
+      if (!normalizedName) return false;
+      return codesWithItems.some(
+        (code) =>
+          code !== exceptCode &&
+          normalizeProposalSectionName(sectionDisplayName(code)) === normalizedName
+      );
+    },
+    [codesWithItems, sectionDisplayName]
+  );
+
+  const nextBlankSectionName = React.useCallback((): string => {
+    let index = codesWithItems.length + 1;
+    let name = `Section ${index}`;
+    while (sectionNameExists(name)) {
+      index += 1;
+      name = `Section ${index}`;
+    }
+    return name;
+  }, [codesWithItems.length, sectionNameExists]);
+
+  const existingSectionNames = React.useMemo(
+    () => orderedSectionCodes.map((code) => sectionDisplayName(code)),
+    [orderedSectionCodes, sectionDisplayName]
+  );
 
   const addSectionWithMeta = React.useCallback(
-    (costCode: string, displayName: string): void => {
-      onCategoryNamesChange({ ...categoryNames, [costCode]: displayName });
+    (costCode: string, displayName: string): boolean => {
+      const trimmed = displayName.trim();
+      if (!trimmed || usedCostCodes.has(costCode) || sectionNameExists(trimmed)) return false;
+      onCategoryNamesChange({ ...categoryNames, [costCode]: trimmed });
       onLineItemsChange([...lineItems, createEmptyLineItem(costCode)]);
-      pushRecentSection({ displayName, costCode });
+      pushRecentSection({ displayName: trimmed, costCode });
       refreshDraftStorage();
+      return true;
     },
-    [categoryNames, lineItems, onCategoryNamesChange, onLineItemsChange, refreshDraftStorage]
+    [
+      categoryNames,
+      lineItems,
+      onCategoryNamesChange,
+      onLineItemsChange,
+      refreshDraftStorage,
+      sectionNameExists,
+      usedCostCodes,
+    ]
   );
 
   const addBlankSection = React.useCallback((): void => {
-    const resolved = resolveBlankSection(costCodes, usedCostCodes);
+    const resolved = resolveBlankSection(usedCostCodes, nextBlankSectionName());
     if (!resolved) return;
     addSectionWithMeta(resolved.costCode, resolved.displayName);
-  }, [addSectionWithMeta, costCodes, usedCostCodes]);
+  }, [addSectionWithMeta, nextBlankSectionName, usedCostCodes]);
+
+  const addCustomSection = React.useCallback(
+    (title: string): boolean => {
+      const resolved = resolveSectionForTemplate(title, usedCostCodes);
+      if (!resolved) return false;
+      return addSectionWithMeta(resolved.costCode, resolved.displayName);
+    },
+    [addSectionWithMeta, usedCostCodes]
+  );
 
   const addSectionFromTemplate = React.useCallback(
     (templateName: string): void => {
-      const resolved = resolveSectionForTemplate(templateName, costCodes, usedCostCodes);
+      const resolved = resolveSectionForTemplate(templateName, usedCostCodes);
       if (!resolved) return;
       addSectionWithMeta(resolved.costCode, resolved.displayName);
     },
-    [addSectionWithMeta, costCodes, usedCostCodes]
+    [addSectionWithMeta, usedCostCodes]
   );
 
   const addSectionFromRecent = React.useCallback(
     (entry: RecentSectionEntry): void => {
-      if (!usedCostCodes.has(entry.costCode)) {
-        addSectionWithMeta(entry.costCode, entry.displayName);
-        return;
-      }
-      const resolved = resolveSectionForTemplate(entry.displayName, costCodes, usedCostCodes);
+      const resolved = resolveSectionForTemplate(entry.displayName, usedCostCodes);
       if (!resolved) return;
       addSectionWithMeta(resolved.costCode, resolved.displayName);
     },
-    [addSectionWithMeta, costCodes, usedCostCodes]
+    [addSectionWithMeta, usedCostCodes]
   );
 
   const addLineFromPreset = React.useCallback(
@@ -393,6 +451,8 @@ export function EstimateLineItemsLocal({
             disabled={disabled}
             canAddSection={canAddSection}
             recentSections={recentSections}
+            existingSectionNames={existingSectionNames}
+            onAddCustom={addCustomSection}
             onAddBlank={addBlankSection}
             onAddTemplate={addSectionFromTemplate}
             onAddRecent={addSectionFromRecent}
@@ -410,8 +470,8 @@ export function EstimateLineItemsLocal({
             </div>
           ) : (
             orderedSectionCodes.map((code) => {
-              const cc = costCodes.find((c) => c.code === code)!;
-              const displayName = categoryNames[code] ?? cc.name;
+              const displayName = sectionDisplayName(code);
+              const catalogName = catalogNameByCode.get(code) ?? displayName;
               const rows = itemsByCode[code] ?? [];
               const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
               const collapsed = isSectionCollapsed(code);
@@ -419,7 +479,7 @@ export function EstimateLineItemsLocal({
                 <div key={code} className={EB.scopeSectionMobile}>
                   <ScopeSectionHeader
                     code={code}
-                    catalogName={cc.name}
+                    catalogName={catalogName}
                     displayName={displayName}
                     itemCount={rows.length}
                     sectionSubtotal={sectionSubtotal}
@@ -477,7 +537,7 @@ export function EstimateLineItemsLocal({
               size="sm"
               className={cn("!h-11 !min-h-11 w-full", EB.actionSecondary)}
               onClick={addBlankSection}
-              disabled={costCodes.length === 0 || !canAddSection}
+              disabled={!canAddSection}
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Section
@@ -507,8 +567,8 @@ export function EstimateLineItemsLocal({
               data-section-dragging={sectionDragging ? "true" : undefined}
             >
               {orderedSectionCodes.map((code) => {
-                const cc = costCodes.find((c) => c.code === code)!;
-                const displayName = categoryNames[code] ?? cc.name;
+                const displayName = sectionDisplayName(code);
+                const catalogName = catalogNameByCode.get(code) ?? displayName;
                 const rows = itemsByCode[code];
                 const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
                 const collapsed = isSectionCollapsed(code);
@@ -523,7 +583,7 @@ export function EstimateLineItemsLocal({
                       <>
                         <ScopeSectionHeader
                           code={code}
-                          catalogName={cc.name}
+                          catalogName={catalogName}
                           displayName={displayName}
                           itemCount={rows.length}
                           sectionSubtotal={sectionSubtotal}
