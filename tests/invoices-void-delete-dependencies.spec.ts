@@ -353,9 +353,7 @@ test("payment schedule linked invoice is blocked, can be unlinked, then deleted"
   await expect(page).toHaveURL(/\/financial\/invoices(?:[?#]|$)/, { timeout: 30_000 });
 
   await page.goto(`/estimates/${estimateId}`);
-  await expect(
-    page.getByRole("link", { name: /View invoice for Deposit \/ Start Work/i })
-  ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^View Invoice$/i })).toHaveCount(0);
 });
 
 test("non-void invoice cannot be hard deleted from detail actions", async ({ page }) => {
