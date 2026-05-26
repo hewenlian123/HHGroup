@@ -375,7 +375,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
 
   if (state.notFound) {
     return (
-      <div className="page-container page-stack">
+      <div className="page-container page-shell-wide page-stack">
         <PageHeader
           title="Project not found"
           subtitle="This project does not exist or you no longer have access."
@@ -391,7 +391,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
   const status = (state.project?.status ?? "—").toString();
 
   return (
-    <div className="page-container page-stack">
+    <div className="page-container page-shell-wide page-stack">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">

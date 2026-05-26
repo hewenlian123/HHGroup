@@ -301,7 +301,7 @@ export function InvoicesClient() {
   }, [busyId, router]);
 
   return (
-    <div className="page-container page-stack">
+    <div className="page-container page-shell-wide page-stack">
       <PageHeader
         title="Invoices"
         subtitle="Create and manage invoices. Receive payments and track AR."

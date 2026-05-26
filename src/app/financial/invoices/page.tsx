@@ -633,7 +633,7 @@ function InvoicesPageInner() {
     >
       <div
         className={cn(
-          "mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-3 px-4 py-2 pb-4 sm:max-w-[460px] md:max-w-6xl md:gap-3 md:px-6 md:pb-5 md:pt-2",
+          "page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-3 px-4 py-2 pb-4 sm:max-w-[460px] md:gap-3 md:px-6 md:pb-5 md:pt-2",
           mobileListPagePaddingClass
         )}
       >

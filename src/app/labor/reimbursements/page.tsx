@@ -588,7 +588,7 @@ export default function WorkerReimbursementsPage() {
   return (
     <div
       className={cn(
-        "dark neo-page-on-graphite mx-auto flex w-full max-w-[430px] flex-col gap-1 px-4 py-1 pb-2.5 text-[var(--neo-canvas-text-secondary)] sm:max-w-[460px] md:max-w-6xl md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
+        "dark neo-page-on-graphite page-shell-wide mx-auto flex w-full max-w-[430px] flex-col gap-1 px-4 py-1 pb-2.5 text-[var(--neo-canvas-text-secondary)] sm:max-w-[460px] md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
         mobileListPagePaddingClass,
         "max-md:!gap-1"
       )}

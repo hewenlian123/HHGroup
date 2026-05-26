@@ -360,7 +360,7 @@ export function ProjectsListClient({
   return (
     <div
       className={cn(
-        "page-container page-stack py-8 text-[14px] leading-normal",
+        "page-container page-shell-wide page-stack py-8 text-[14px] leading-normal",
         PAGE_BG,
         mobileListPagePaddingClass,
         "max-md:!gap-3 max-md:!pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))]"
