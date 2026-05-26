@@ -193,6 +193,10 @@ type IntegrityScanIssue = {
   table: string;
   id: string;
   message: string;
+  classification?:
+    | "intentionally_retained"
+    | "requires_reversal_policy"
+    | "dependency_review_needed";
   evidence: Record<string, unknown>;
   recommendedAction: string;
   autoFixAvailable: false;
@@ -456,20 +460,50 @@ function formatEvidenceSummary(evidence: Record<string, unknown>): string {
     .join(" · ");
 }
 
+const INTEGRITY_LABEL_COPY: Record<string, string> = {
+  allowlisted_retained_row: "Allowlisted retained row",
+  requires_reversal_policy: "Requires reversal policy",
+  linked_real_project: "Linked to real project",
+  paid_reimbursement: "Paid reimbursement",
+  generated_expense: "Generated expense",
+  linked_worker_receipt: "Linked worker receipt",
+  linked_worker_reimbursement: "Linked worker reimbursement",
+  affects_worker_balance: "Affects worker balance",
+  affects_project_actual_cost: "Affects project actual cost",
+};
+
+function integrityScanIssueHints(issue: IntegrityScanIssue): string[] {
+  const labels = Array.isArray(issue.evidence.labels)
+    ? issue.evidence.labels.filter((label): label is string => typeof label === "string")
+    : [];
+  const hints = labels.map((label) => INTEGRITY_LABEL_COPY[label] ?? label);
+  if (issue.classification === "intentionally_retained") {
+    hints.unshift("Allowlisted retained row");
+  }
+  if (issue.classification === "requires_reversal_policy") {
+    hints.unshift("Requires reversal policy");
+  }
+  return Array.from(new Set(hints)).slice(0, 4);
+}
+
 function integrityScanRows(scan?: IntegrityScanResult | null): HealthDetailRowData[] | undefined {
   if (!scan) return undefined;
   return scan.sections
     .flatMap((section) =>
-      section.issues.map((issue) => ({
-        id: `${section.id}:${issue.table}:${issue.id}:${issue.category}`,
-        name: `${issue.table} / ${issue.id}`,
-        status: integrityScanSeverityToRowStatus(issue.severity),
-        message: `${issue.severity.toUpperCase()} · ${issue.category} · ${issue.table} · ${
-          issue.message
-        }`,
-        code: issue.category,
-        meta: `${section.title} · ${formatEvidenceSummary(issue.evidence)} · ${issue.recommendedAction}`,
-      }))
+      section.issues.map((issue) => {
+        const hints = integrityScanIssueHints(issue);
+        const hintText = hints.length > 0 ? ` · ${hints.join(" · ")}` : "";
+        return {
+          id: `${section.id}:${issue.table}:${issue.id}:${issue.category}`,
+          name: `${issue.table} / ${issue.id}`,
+          status: integrityScanSeverityToRowStatus(issue.severity),
+          message: `${issue.severity.toUpperCase()} · ${issue.category} · ${issue.table} · ${
+            issue.message
+          }${hintText}`,
+          code: issue.category,
+          meta: `${section.title} · ${formatEvidenceSummary(issue.evidence)} · ${issue.recommendedAction}`,
+        };
+      })
     )
     .slice(0, 10);
 }

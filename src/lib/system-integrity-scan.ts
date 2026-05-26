@@ -8,6 +8,10 @@ export type SystemIntegrityCategory =
   | "dependency_risk"
   | "financial_mismatch"
   | "production_safety";
+export type SystemIntegrityClassification =
+  | "intentionally_retained"
+  | "requires_reversal_policy"
+  | "dependency_review_needed";
 
 export type SystemIntegrityIssue = {
   severity: SystemIntegritySeverity;
@@ -15,6 +19,7 @@ export type SystemIntegrityIssue = {
   table: string;
   id: string;
   message: string;
+  classification?: SystemIntegrityClassification;
   evidence: Record<string, unknown>;
   recommendedAction: string;
   autoFixAvailable: false;
@@ -81,6 +86,15 @@ type MarkerHit = {
 const SCAN_LIMIT = 1_000;
 const MAX_SECTION_ISSUES = 50;
 const MARKER_RE = /TEST|safe to delete|PROD-SMOKE|E2E|Playwright|Smoke Test/i;
+const EXACT_ALLOWLIST = [
+  {
+    table: "customers",
+    id: "e7b425ed-7ea0-4597-8eff-b006c33229b1",
+    reason:
+      "Intentionally retained Test Customer reference row; no linked work found during production triage.",
+    classification: "intentionally_retained" as const,
+  },
+] as const;
 
 const MARKER_TABLES = [
   "customers",
@@ -148,6 +162,10 @@ function rowId(row: UnknownRow): string {
   return typeof id === "string" && id.trim().length > 0 ? id.trim() : "unknown";
 }
 
+function allowlistEntry(table: string, id: string) {
+  return EXACT_ALLOWLIST.find((entry) => entry.table === table && entry.id === id);
+}
+
 function relationId(row: UnknownRow, field: string): string {
   const value = row[field];
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : "";
@@ -174,7 +192,9 @@ function reportStatus(issues: SystemIntegrityIssue[]): SystemIntegrityStatus {
   if (issues.some((issue) => issue.severity === "critical" || issue.severity === "high")) {
     return "fail";
   }
-  if (issues.length > 0) return "warning";
+  if (issues.some((issue) => issue.severity === "medium" || issue.severity === "low")) {
+    return "warning";
+  }
   return "pass";
 }
 
@@ -312,19 +332,48 @@ function scanMarkers(scans: Map<string, TableScan>): {
         return value && MARKER_RE.test(value) ? [{ field, value: truncate(value) }] : [];
       });
       if (fields.length === 0) continue;
+      const id = rowId(row);
+      const allowlist = allowlistEntry(table, id);
+      const markerContext = markerIssueContext(table, row, scans);
       hits.push({ table, row, fields });
+
+      if (allowlist) {
+        issues.push(
+          makeIssue({
+            severity: "info",
+            category: "test_marker",
+            table,
+            id,
+            classification: allowlist.classification,
+            message: `Exact allowlisted test marker retained in ${table}.`,
+            evidence: {
+              fields,
+              linkedIds: linkedIds(row),
+              classification: allowlist.classification,
+              labels: ["allowlisted_retained_row"],
+              allowlistReason: allowlist.reason,
+            },
+            recommendedAction: "Retained by exact-ID allowlist; review periodically.",
+          })
+        );
+        continue;
+      }
+
       issues.push(
         makeIssue({
           severity: "medium",
           category: "test_marker",
           table,
-          id: rowId(row),
-          message: `Strong test marker text found in ${table}.`,
+          id,
+          classification: markerContext.classification,
+          message: markerContext.message ?? `Strong test marker text found in ${table}.`,
           evidence: {
             fields,
             linkedIds: linkedIds(row),
+            labels: markerContext.labels,
           },
           recommendedAction:
+            markerContext.recommendedAction ??
             "Review this marker row and clean it only through an approved exact-ID cleanup path.",
         })
       );
@@ -546,6 +595,120 @@ function countBy(rows: UnknownRow[], field: string, id: string): number {
   return rows.filter((row) => relationId(row, field) === id).length;
 }
 
+function findRowById(scans: Map<string, TableScan>, table: string, id: string): UnknownRow | null {
+  if (!id) return null;
+  return scans.get(table)?.rows.find((row) => rowId(row) === id) ?? null;
+}
+
+function rowHasMarker(row: UnknownRow | null): boolean {
+  if (!row) return false;
+  return MARKER_FIELDS.some((field) => MARKER_RE.test(stringValue(row[field])));
+}
+
+function isLinkedToRealProject(scans: Map<string, TableScan>, row: UnknownRow): boolean {
+  const projectId = relationId(row, "project_id");
+  if (!projectId) return false;
+  const project = findRowById(scans, "projects", projectId);
+  return Boolean(project && !rowHasMarker(project));
+}
+
+function isPaidReimbursement(row: UnknownRow): boolean {
+  return (
+    stringValue(row.status).toLowerCase() === "paid" ||
+    stringValue(row.paid_at).length > 0 ||
+    stringValue(row.payment_id).length > 0
+  );
+}
+
+function isGeneratedExpense(row: UnknownRow): boolean {
+  const source = stringValue(row.source).toLowerCase();
+  const referenceNo = stringValue(row.reference_no);
+  return (
+    source === "worker_reimbursement" ||
+    relationId(row, "source_id").length > 0 ||
+    /^REIM-/i.test(referenceNo)
+  );
+}
+
+function uniqueLabels(labels: Array<string | false | null | undefined>): string[] {
+  return Array.from(new Set(labels.filter((label): label is string => Boolean(label))));
+}
+
+function markerIssueContext(
+  table: string,
+  row: UnknownRow,
+  scans: Map<string, TableScan>
+): {
+  classification?: SystemIntegrityClassification;
+  labels: string[];
+  recommendedAction?: string;
+  message?: string;
+} {
+  if (table === "worker_reimbursements") {
+    const id = rowId(row);
+    const linkedReceiptCount = countBy(
+      scans.get("worker_receipts")?.rows ?? [],
+      "reimbursement_id",
+      id
+    );
+    const labels = uniqueLabels([
+      "requires_reversal_policy",
+      "affects_worker_balance",
+      relationId(row, "project_id") && "affects_project_actual_cost",
+      isLinkedToRealProject(scans, row) && "linked_real_project",
+      isPaidReimbursement(row) && "paid_reimbursement",
+      linkedReceiptCount > 0 && "linked_worker_receipt",
+    ]);
+    return {
+      classification: "requires_reversal_policy",
+      labels,
+      message:
+        "Strong test marker text found in worker reimbursement; financial reversal policy required.",
+      recommendedAction:
+        "Do not hard-delete paid worker reimbursement data. Review a financial reversal policy before cleanup.",
+    };
+  }
+
+  if (table === "worker_receipts") {
+    const labels = uniqueLabels([
+      "requires_reversal_policy",
+      relationId(row, "reimbursement_id") && "linked_worker_reimbursement",
+      relationId(row, "reimbursement_id") && "affects_worker_balance",
+      relationId(row, "project_id") && "affects_project_actual_cost",
+      isLinkedToRealProject(scans, row) && "linked_real_project",
+    ]);
+    return {
+      classification: "requires_reversal_policy",
+      labels,
+      message:
+        "Strong test marker text found in worker receipt; reimbursement workflow review required.",
+      recommendedAction:
+        "Do not delete this receipt or storage object without a reimbursement reversal policy.",
+    };
+  }
+
+  if (table === "expenses") {
+    const labels = uniqueLabels([
+      "requires_reversal_policy",
+      isGeneratedExpense(row) && "generated_expense",
+      relationId(row, "source_id") && "linked_worker_reimbursement",
+      relationId(row, "project_id") && "affects_project_actual_cost",
+      isLinkedToRealProject(scans, row) && "linked_real_project",
+    ]);
+    if (labels.length === 0) return { labels };
+    return {
+      classification: "requires_reversal_policy",
+      labels,
+      message:
+        "Strong test marker text found in generated expense; financial reversal policy required.",
+      recommendedAction:
+        "Do not hard-delete this generated expense without reversing the linked reimbursement workflow.",
+    };
+  }
+
+  return { labels: [] };
+}
+
 function buildMarkerDependencyIssues(
   scans: Map<string, TableScan>,
   markerHits: MarkerHit[]
@@ -619,6 +782,7 @@ function buildMarkerDependencyIssues(
     };
     const total = Object.values(dependencyCounts).reduce((sum, value) => sum + value, 0);
     if (total === 0) continue;
+    const markerContext = markerIssueContext("expenses", hit.row, scans);
     issues.push(
       makeIssue({
         severity: "low",
@@ -626,8 +790,11 @@ function buildMarkerDependencyIssues(
         table: "expenses",
         id,
         message: "Marker expense has linked lines or attachments.",
-        evidence: { dependencyCounts, markerFields: hit.fields },
-        recommendedAction: "Review child rows before cleaning this marker expense.",
+        classification: markerContext.classification,
+        evidence: { dependencyCounts, markerFields: hit.fields, labels: markerContext.labels },
+        recommendedAction:
+          markerContext.recommendedAction ??
+          "Review child rows before cleaning this marker expense.",
       })
     );
   }
@@ -664,6 +831,7 @@ function buildMarkerDependencyIssues(
       ? countBy(scans.get("worker_reimbursements")?.rows ?? [], "id", reimbursementId)
       : 0;
     if (!reimbursementId && linkedReimbursements === 0) continue;
+    const markerContext = markerIssueContext("worker_receipts", hit.row, scans);
     issues.push(
       makeIssue({
         severity: "medium",
@@ -671,8 +839,15 @@ function buildMarkerDependencyIssues(
         table: "worker_receipts",
         id,
         message: "Marker worker receipt may be linked to reimbursement workflow data.",
-        evidence: { reimbursementId, linkedReimbursements, markerFields: hit.fields },
+        classification: markerContext.classification,
+        evidence: {
+          reimbursementId,
+          linkedReimbursements,
+          markerFields: hit.fields,
+          labels: markerContext.labels,
+        },
         recommendedAction:
+          markerContext.recommendedAction ??
           "Do not remove this receipt or storage object without checking reimbursement linkage.",
       })
     );
@@ -699,8 +874,9 @@ function tableReadIssues(scans: Map<string, TableScan>): SystemIntegrityIssue[] 
 }
 
 function summarize(issues: SystemIntegrityIssue[]): SystemIntegrityScanReport["summary"] {
+  const actionableIssues = issues.filter((issue) => issue.severity !== "info");
   return {
-    totalIssues: issues.length,
+    totalIssues: actionableIssues.length,
     critical: issues.filter((issue) => issue.severity === "critical").length,
     high: issues.filter((issue) => issue.severity === "high").length,
     medium: issues.filter((issue) => issue.severity === "medium").length,

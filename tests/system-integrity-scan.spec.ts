@@ -2,6 +2,11 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 import { pbkdf2Sync, randomBytes, randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import {
+  buildSystemIntegrityScanReport,
+  type SystemIntegrityReadClient,
+  type UnknownRow,
+} from "../src/lib/system-integrity-scan";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const LOCKED_HEADERS = {
@@ -14,6 +19,42 @@ const TEST_HEADERS = {
 };
 
 const OWNER_PIN = "1234";
+const ALLOWLISTED_TEST_CUSTOMER_ID = "e7b425ed-7ea0-4597-8eff-b006c33229b1";
+
+function memoryIntegrityReadClient(
+  rowsByTable: Record<string, UnknownRow[]>
+): SystemIntegrityReadClient {
+  return {
+    from(table: string) {
+      return {
+        select(_columns?: string, options?: { count?: "exact" | "planned" | "estimated" }) {
+          const rows = rowsByTable[table] ?? [];
+          const result = (data: UnknownRow[]) => ({
+            data,
+            error: null,
+            count: options?.count === "exact" ? data.length : null,
+          });
+          return {
+            limit(count: number) {
+              return Promise.resolve(result(rows.slice(0, count)));
+            },
+            in(column: string, values: string[]) {
+              return Promise.resolve(
+                result(rows.filter((row) => values.includes(String(row[column] ?? ""))))
+              );
+            },
+            then<TResult1 = unknown, TResult2 = never>(
+              onfulfilled?: ((value: unknown) => TResult1 | PromiseLike<TResult1>) | null,
+              onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
+            ) {
+              return Promise.resolve(result(rows)).then(onfulfilled, onrejected);
+            },
+          };
+        },
+      };
+    },
+  } as unknown as SystemIntegrityReadClient;
+}
 
 function serviceRoleClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -112,6 +153,160 @@ test.describe("System integrity scanner", () => {
     await seedTestLoginPin();
   });
 
+  test("keeps the exact retained Test Customer as info without contributing to warning status", async () => {
+    const report = await buildSystemIntegrityScanReport(
+      memoryIntegrityReadClient({
+        customers: [{ id: ALLOWLISTED_TEST_CUSTOMER_ID, name: "Test Customer" }],
+      })
+    );
+
+    expect(report.status).toBe("pass");
+    expect(report.summary.totalIssues).toBe(0);
+    const markerIssues =
+      report.sections.find((section) => section.id === "test-marker-data")?.issues ?? [];
+    expect(markerIssues).toEqual([
+      expect.objectContaining({
+        severity: "info",
+        table: "customers",
+        id: ALLOWLISTED_TEST_CUSTOMER_ID,
+        classification: "intentionally_retained",
+        autoFixAvailable: false,
+        recommendedAction: "Retained by exact-ID allowlist; review periodically.",
+      }),
+    ]);
+    expect(markerIssues[0]?.evidence).toEqual(
+      expect.objectContaining({
+        labels: ["allowlisted_retained_row"],
+      })
+    );
+  });
+
+  test("does not pattern-allowlist other Test Customer rows", async () => {
+    const customerId = randomUUID();
+    const report = await buildSystemIntegrityScanReport(
+      memoryIntegrityReadClient({
+        customers: [{ id: customerId, name: "Test Customer" }],
+      })
+    );
+
+    expect(report.status).toBe("warning");
+    expect(report.summary.totalIssues).toBe(1);
+    expect(report.summary.medium).toBe(1);
+    const markerIssues =
+      report.sections.find((section) => section.id === "test-marker-data")?.issues ?? [];
+    expect(markerIssues).toEqual([
+      expect.objectContaining({
+        severity: "medium",
+        table: "customers",
+        id: customerId,
+        category: "test_marker",
+        autoFixAvailable: false,
+      }),
+    ]);
+    expect(markerIssues[0]?.classification).toBeUndefined();
+  });
+
+  test("labels worker receipt, reimbursement, and generated expense markers as reversal-policy warnings", async () => {
+    const projectId = "project-real";
+    const workerId = "worker-real";
+    const reimbursementId = "reimbursement-marker";
+    const receiptId = "receipt-marker";
+    const expenseId = "expense-marker";
+    const report = await buildSystemIntegrityScanReport(
+      memoryIntegrityReadClient({
+        projects: [{ id: projectId, name: "99-403 Paihi St- Aiea" }],
+        worker_reimbursements: [
+          {
+            id: reimbursementId,
+            project_id: projectId,
+            worker_id: workerId,
+            vendor: "Test Vendor",
+            description: "Test Vendor · Other",
+            status: "paid",
+            paid_at: "2026-05-09T21:01:30.212Z",
+          },
+        ],
+        worker_receipts: [
+          {
+            id: receiptId,
+            project_id: projectId,
+            worker_id: workerId,
+            vendor: "Test Vendor",
+            reimbursement_id: reimbursementId,
+            status: "Approved",
+          },
+        ],
+        expenses: [
+          {
+            id: expenseId,
+            project_id: projectId,
+            worker_id: workerId,
+            vendor: "Test Vendor",
+            notes: "Test Vendor · Other",
+            source: "worker_reimbursement",
+            source_id: reimbursementId,
+            status: "paid",
+          },
+        ],
+        expense_lines: [{ id: "expense-line", expense_id: expenseId, project_id: projectId }],
+      })
+    );
+
+    const issues = report.sections.flatMap((section) => section.issues);
+    const reimbursementIssue = issues.find(
+      (issue) => issue.table === "worker_reimbursements" && issue.id === reimbursementId
+    );
+    expect(reimbursementIssue).toEqual(
+      expect.objectContaining({
+        severity: "medium",
+        classification: "requires_reversal_policy",
+        autoFixAvailable: false,
+      })
+    );
+    expect(reimbursementIssue?.evidence.labels).toEqual(
+      expect.arrayContaining([
+        "requires_reversal_policy",
+        "linked_real_project",
+        "paid_reimbursement",
+        "linked_worker_receipt",
+        "affects_worker_balance",
+        "affects_project_actual_cost",
+      ])
+    );
+
+    const receiptIssues = issues.filter(
+      (issue) => issue.table === "worker_receipts" && issue.id === receiptId
+    );
+    expect(receiptIssues.length).toBeGreaterThanOrEqual(2);
+    expect(receiptIssues[0]?.classification).toBe("requires_reversal_policy");
+    expect(receiptIssues[0]?.evidence.labels).toEqual(
+      expect.arrayContaining([
+        "requires_reversal_policy",
+        "linked_worker_reimbursement",
+        "linked_real_project",
+      ])
+    );
+
+    const expenseIssue = issues.find(
+      (issue) => issue.table === "expenses" && issue.id === expenseId
+    );
+    expect(expenseIssue).toEqual(
+      expect.objectContaining({
+        classification: "requires_reversal_policy",
+        autoFixAvailable: false,
+      })
+    );
+    expect(expenseIssue?.evidence.labels).toEqual(
+      expect.arrayContaining([
+        "requires_reversal_policy",
+        "generated_expense",
+        "linked_worker_reimbursement",
+        "linked_real_project",
+        "affects_project_actual_cost",
+      ])
+    );
+  });
+
   test("allows owner no-login read access under production safety lock", async ({ request }) => {
     const response = await request.get("/api/system/integrity-scan", {
       headers: LOCKED_HEADERS,
@@ -190,13 +385,37 @@ test.describe("System integrity scanner", () => {
                 status: "warning",
                 issues: [
                   {
+                    severity: "info",
+                    category: "test_marker",
+                    table: "customers",
+                    id: ALLOWLISTED_TEST_CUSTOMER_ID,
+                    classification: "intentionally_retained",
+                    message: "Exact allowlisted test marker retained in customers.",
+                    evidence: {
+                      fields: [{ field: "name", value: "Test Customer" }],
+                      labels: ["allowlisted_retained_row"],
+                    },
+                    recommendedAction: "Retained by exact-ID allowlist; review periodically.",
+                    autoFixAvailable: false,
+                  },
+                  {
                     severity: "medium",
                     category: "test_marker",
-                    table: "projects",
-                    id: "project-marker",
-                    message: "Strong test marker text found in projects.",
-                    evidence: { fields: [{ field: "name", value: "TEST safe to delete" }] },
-                    recommendedAction: "Review this marker row through exact-ID cleanup.",
+                    table: "worker_reimbursements",
+                    id: "reimbursement-marker",
+                    classification: "requires_reversal_policy",
+                    message:
+                      "Strong test marker text found in worker reimbursement; financial reversal policy required.",
+                    evidence: {
+                      fields: [{ field: "vendor", value: "Test Vendor" }],
+                      labels: [
+                        "requires_reversal_policy",
+                        "linked_real_project",
+                        "paid_reimbursement",
+                      ],
+                    },
+                    recommendedAction:
+                      "Do not hard-delete paid worker reimbursement data. Review a financial reversal policy before cleanup.",
                     autoFixAvailable: false,
                   },
                 ],
@@ -231,11 +450,38 @@ test.describe("System integrity scanner", () => {
       await expect(scannerSection.getByText("Generated", { exact: true })).toBeVisible();
       await expect(scannerSection.getByText("Top 10 issues")).toBeVisible();
       await expect(
-        scannerSection.getByText("projects / project-marker").filter({ visible: true }).first()
+        scannerSection
+          .getByText(`customers / ${ALLOWLISTED_TEST_CUSTOMER_ID}`)
+          .filter({ visible: true })
+          .first()
       ).toBeVisible();
       await expect(
         scannerSection
-          .getByText("MEDIUM · test_marker · projects", { exact: false })
+          .getByText("Allowlisted retained row", { exact: false })
+          .filter({ visible: true })
+          .first()
+      ).toBeVisible();
+      await expect(
+        scannerSection
+          .getByText("worker_reimbursements / reimbursement-marker")
+          .filter({ visible: true })
+          .first()
+      ).toBeVisible();
+      await expect(
+        scannerSection
+          .getByText("Requires reversal policy", { exact: false })
+          .filter({ visible: true })
+          .first()
+      ).toBeVisible();
+      await expect(
+        scannerSection
+          .getByText("Linked to real project", { exact: false })
+          .filter({ visible: true })
+          .first()
+      ).toBeVisible();
+      await expect(
+        scannerSection
+          .getByText("Paid reimbursement", { exact: false })
           .filter({ visible: true })
           .first()
       ).toBeVisible();
