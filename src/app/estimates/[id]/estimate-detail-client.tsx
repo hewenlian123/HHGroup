@@ -145,14 +145,14 @@ export function EstimateDetailClient({
     };
 
     const form = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
-    if (form) {
+    if (form?.dataset.estimateDetailsOpen === "true") {
       run(form);
       return;
     }
     // EstimateEditor expands Client/Project on edit in useEffect; one frame retry if Save is very fast.
     requestAnimationFrame(() => {
       const f = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
-      if (f) run(f);
+      if (f?.dataset.estimateDetailsOpen === "true") run(f);
       else finishWithoutMetaForm();
     });
   };
