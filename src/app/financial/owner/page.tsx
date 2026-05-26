@@ -518,7 +518,7 @@ export default async function FinanceOwnerDashboardPage() {
 
   return (
     <PageLayout
-      className={cn(pageBg, "print:bg-white")}
+      className={cn(pageBg, "page-shell-wide print:bg-white")}
       divider={false}
       header={
         <PageHeader

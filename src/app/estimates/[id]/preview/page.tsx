@@ -38,7 +38,7 @@ export default async function EstimatePreviewPage({ params }: { params: Promise<
   const catalogNameByCode = Object.fromEntries(costCodes.map((c) => [c.code, c.name]));
 
   return (
-    <div className="page-container py-6">
+    <div className="page-container page-shell-document py-6">
       <SetBreadcrumbEntityTitle label={estimate.number} />
       <EstimatePreviewShell estimateId={id} estimateNumber={estimate.number}>
         <EstimatePreviewContent

@@ -1800,7 +1800,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     <div className={financeOsPageWrap} data-expenses-query-status={expensesQueryStatus}>
       <div
         className={cn(
-          "expenses-ui-content mx-auto w-full min-w-0 max-w-[430px] px-3 py-3 sm:max-w-[460px] md:max-w-[1280px] md:px-8",
+          "expenses-ui-content page-shell-wide mx-auto w-full min-w-0 max-w-[430px] px-3 py-3 sm:max-w-[460px] md:px-8",
           inboxMode ? "md:pb-7 md:pt-3" : "md:py-8"
         )}
       >

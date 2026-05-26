@@ -805,9 +805,52 @@
   .text-balance {
     text-wrap: balance;
   }
-  /* Page shell — app column width; sm widens slightly before md full layout */
+  /* Page shell — mobile remains compact; desktop uses responsive Neo workspace widths. */
   .page-container {
-    @apply mx-auto w-full max-w-[430px] px-4 py-3 pb-5 sm:max-w-[460px] md:max-w-6xl md:px-6 md:py-4 md:pb-8 md:pt-4;
+    width: 100%;
+    max-width: 430px;
+    margin-inline: auto;
+    padding: 0.75rem 1rem 1.25rem;
+  }
+  @media (min-width: 640px) {
+    .page-container {
+      max-width: 460px;
+    }
+  }
+  @media (min-width: 768px) {
+    .page-container,
+    .page-shell-standard {
+      max-width: min(1536px, calc(100vw - 2rem));
+    }
+    .page-container {
+      padding: 1rem clamp(1.5rem, 2vw, 2.5rem) 2rem;
+    }
+  }
+  .page-shell-fluid,
+  .page-shell-wide,
+  .page-shell-standard,
+  .page-shell-narrow,
+  .page-shell-document {
+    width: 100%;
+    margin-inline: auto;
+  }
+  @media (min-width: 768px) {
+    .page-shell-fluid,
+    .page-shell-wide {
+      max-width: min(1680px, calc(100vw - 2rem)) !important;
+    }
+    .page-shell-narrow {
+      max-width: min(1120px, calc(100vw - 2rem)) !important;
+    }
+    .page-shell-document {
+      max-width: min(960px, calc(100vw - 2rem)) !important;
+    }
+  }
+  @media (min-width: 1536px) {
+    .page-shell-fluid,
+    .page-shell-wide {
+      max-width: min(1760px, calc(100vw - 2rem)) !important;
+    }
   }
   .section-padding {
     @apply px-4 py-3;

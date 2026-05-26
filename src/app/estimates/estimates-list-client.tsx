@@ -123,7 +123,7 @@ export function EstimatesListClient({
   return (
     <div
       className={cn(
-        "page-container page-stack py-6",
+        "page-container page-shell-wide page-stack py-6",
         mobileListPagePaddingClass,
         "max-md:!gap-3",
         PAGE_BG
