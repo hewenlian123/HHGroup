@@ -158,7 +158,7 @@ export const EB = {
     "px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[#7f899b]",
   lineItemStatusPill:
     "eb-line-item-status-pill inline-flex shrink-0 items-center rounded-sm border border-white/[0.08] bg-white/[0.04] px-1.5 py-0.5 text-[10.5px] font-medium leading-none tracking-[0.01em] text-[#929caf]",
-  noteBlock: "eb-note-block border-b border-white/[0.06] pb-3 last:border-0 last:pb-0",
+  noteBlock: "eb-note-block pb-3 last:pb-0",
   noteBlockTextarea: "eb-note-block-textarea",
   categorySectionTotal: "text-[13px] font-normal tabular-nums text-[#929CAF]",
   backLink:
