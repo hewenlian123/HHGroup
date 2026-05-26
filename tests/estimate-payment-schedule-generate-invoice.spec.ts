@@ -325,8 +325,20 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
     expectedAmount: 1200,
   });
 
-  await page.getByRole("button", { name: /Create invoice for Deposit \/ Start Work/i }).click();
-  await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+/, { timeout: 30_000 });
+  await page.getByRole("link", { name: /^Send Invoice$/i }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
+  await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
+  await expect(page.getByTestId("invoice-new-client-input")).toHaveValue(customerName);
+  await expect(page.getByTestId("invoice-new-due-date-input")).toBeVisible();
+  await expect(page.getByTestId("invoice-new-line-1-item-input")).toHaveValue(
+    "Deposit / Start Work"
+  );
+  await expect(page.getByTestId("invoice-new-line-1-description-input")).toHaveValue(
+    "30% deposit generated from payment schedule"
+  );
+  await expect(page.getByTestId("invoice-new-line-1-rate-input")).toHaveValue("1200");
+  await page.getByRole("button", { name: "Create draft invoice" }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+\/preview/, { timeout: 30_000 });
   const invoiceId = invoiceIdFromUrl(page.url());
 
   const { data: invoice } = await supabase
@@ -351,7 +363,10 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
     .select("description, qty, unit_price, amount")
     .eq("invoice_id", invoiceId);
   expect(invoiceItems ?? []).toHaveLength(1);
-  expect(String(invoiceItems![0].description)).toContain("Payment Schedule - Deposit / Start Work");
+  expect(String(invoiceItems![0].description)).toContain("Deposit / Start Work");
+  expect(String(invoiceItems![0].description)).toContain(
+    "30% deposit generated from payment schedule"
+  );
   expect(Number(invoiceItems![0].amount)).toBe(1200);
 
   const { data: scheduleItem } = await supabase
@@ -363,13 +378,11 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
   expect(await projectOutstandingForInvoice(supabase, invoiceId)).toBe(0);
 
   await page.goto(estimateUrl, { waitUntil: "domcontentloaded" });
-  await expect(
-    page.getByRole("link", { name: /View invoice for Deposit \/ Start Work/i })
-  ).toBeVisible({ timeout: 30_000 });
-  await expect(
-    page.getByRole("button", { name: /Create invoice for Deposit \/ Start Work/i })
-  ).toHaveCount(0);
-  await page.getByRole("link", { name: /View invoice for Deposit \/ Start Work/i }).click();
+  await expect(page.getByRole("link", { name: /^View Invoice$/i })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByRole("link", { name: /^Send Invoice$/i })).toHaveCount(0);
+  await page.getByRole("link", { name: /^View Invoice$/i }).click();
   await expect(page).toHaveURL(new RegExp(`/financial/invoices/${invoiceId}`), {
     timeout: 30_000,
   });
@@ -444,8 +457,13 @@ test("creates one draft invoice for a fixed amount payment schedule item", async
     expectedAmount: 1000,
   });
 
-  await page.getByRole("button", { name: /Create invoice for Progress Payment/i }).click();
-  await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+/, { timeout: 30_000 });
+  await page.getByRole("link", { name: /^Send Invoice$/i }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
+  await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
+  await expect(page.getByTestId("invoice-new-line-1-item-input")).toHaveValue("Progress Payment");
+  await expect(page.getByTestId("invoice-new-line-1-rate-input")).toHaveValue("1000");
+  await page.getByRole("button", { name: "Create draft invoice" }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+\/preview/, { timeout: 30_000 });
   const invoiceId = invoiceIdFromUrl(page.url());
 
   const { data: invoice } = await supabase
@@ -471,17 +489,18 @@ test("creates one draft invoice for a fixed amount payment schedule item", async
     .select("description, qty, unit_price, amount")
     .eq("invoice_id", invoiceId);
   expect(invoiceItems ?? []).toHaveLength(1);
-  expect(String(invoiceItems![0].description)).toContain("Payment Schedule - Progress Payment");
+  expect(String(invoiceItems![0].description)).toContain("Progress Payment");
+  expect(String(invoiceItems![0].description)).toContain(
+    "Fixed progress payment generated from payment schedule"
+  );
   expect(Number(invoiceItems![0].amount)).toBe(1000);
 
   await page.goto(estimateUrl, { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("link", { name: /View invoice for Progress Payment/i })).toBeVisible({
+  await expect(page.getByRole("link", { name: /^View Invoice$/i })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(
-    page.getByRole("button", { name: /Create invoice for Progress Payment/i })
-  ).toHaveCount(0);
-  await page.getByRole("link", { name: /View invoice for Progress Payment/i }).click();
+  await expect(page.getByRole("link", { name: /^Send Invoice$/i })).toHaveCount(0);
+  await page.getByRole("link", { name: /^View Invoice$/i }).click();
   await expect(page).toHaveURL(new RegExp(`/financial/invoices/${invoiceId}`), {
     timeout: 30_000,
   });
