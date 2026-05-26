@@ -6,13 +6,9 @@ import {
   type PaymentScheduleItem,
 } from "@/lib/estimates-db";
 import { splitLineItemDesc } from "@/lib/sanitize-line-item-html";
-import {
-  LineItemOrScopeBodyPreview,
-  ProposalScopePreview,
-} from "@/app/estimates/_components/proposal-scope-preview";
-import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
+import { LineItemOrScopeBodyPreview } from "@/app/estimates/_components/proposal-scope-preview";
+import { parseProposalScopeLines } from "@/app/estimates/_components/proposal-scope-model";
 import type { DocumentCompanyProfileDTO } from "@/lib/document-company-profile";
-import { cn } from "@/lib/utils";
 import {
   formatPdfLineTotal,
   formatPdfLineUnitPrice,
@@ -23,9 +19,8 @@ import {
   DEFAULT_LINE_ITEM_STATUS,
   LINE_ITEM_STATUS_LABELS,
 } from "@/app/estimates/_components/estimate-line-item-status";
-import type { ReactNode } from "react";
 
-type EstimatePreviewProps = {
+export type EstimatePreviewProps = {
   company: DocumentCompanyProfileDTO;
   estimate: { number: string; status: string; updatedAt: string };
   meta: EstimateMetaRecord | null;
@@ -48,86 +43,297 @@ function cleanText(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-function DocumentInfoBlock({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="min-w-0 border-t border-zinc-200 pt-3">
-      <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
-        {title}
-      </h3>
-      <div className="mt-2 space-y-1 text-sm leading-relaxed text-zinc-800">{children}</div>
-    </div>
-  );
-}
-
-function ClientEstimateField({
-  label,
-  children,
-  valueMode = "break-words",
+function MinimalProposalHeader({
+  company,
+  estimateNumber,
+  estimateDate,
+  validUntil,
+  statusLabel,
+  projectName,
+  clientName,
+  location,
 }: {
-  label: string;
-  children: ReactNode;
-  valueMode?: "break-all" | "break-words";
+  company: DocumentCompanyProfileDTO;
+  estimateNumber: string;
+  estimateDate: string;
+  validUntil: string | null | undefined;
+  statusLabel: string;
+  projectName: string | null;
+  clientName: string | null;
+  location: string | null;
 }) {
   return (
-    <div className="grid min-w-0 grid-cols-[5.5rem_1fr] gap-2">
-      <span className="shrink-0 text-[11px] uppercase tracking-wide text-zinc-500">{label}</span>
-      <div
-        className={cn(
-          "min-w-0 text-sm font-medium text-zinc-900",
-          valueMode === "break-all" && "break-all",
-          valueMode === "break-words" && "break-words"
-        )}
-      >
-        {children}
+    <header className="estimate-minimal-header mb-9 text-zinc-900 print:break-after-avoid">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-10">
+        <div className="min-w-0 sm:max-w-[54%]">
+          <div className="flex min-w-0 items-start gap-3">
+            {company.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- document/PDF-safe logo rendering
+              <img
+                src={company.logoUrl}
+                alt=""
+                width={38}
+                height={38}
+                className="h-9 w-9 shrink-0 object-contain"
+              />
+            ) : null}
+            <div className="min-w-0">
+              <p className="text-[15px] font-semibold leading-tight tracking-[-0.01em] text-zinc-950">
+                {company.companyName}
+              </p>
+              <div className="mt-2 space-y-0.5 text-[11.5px] leading-snug text-zinc-600">
+                {company.addressLines.map((line, index) => (
+                  <p key={`${line}-${index}`}>{line}</p>
+                ))}
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                  {company.phone ? <span className="tabular-nums">{company.phone}</span> : null}
+                  {company.email ? <span className="break-all">{company.email}</span> : null}
+                  {company.website ? <span className="break-all">{company.website}</span> : null}
+                </div>
+                {company.licenseNumber ? <p>License: {company.licenseNumber}</p> : null}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="shrink-0 text-left sm:text-right">
+          <p className="text-[24px] font-semibold leading-none tracking-[-0.04em] text-zinc-950">
+            Project Proposal
+          </p>
+          <div className="mt-4 space-y-1.5 text-[12px] leading-tight">
+            <p className="tabular-nums">
+              <span className="text-zinc-500">No.</span>{" "}
+              <span className="font-semibold text-zinc-950">{estimateNumber}</span>
+            </p>
+            <p className="tabular-nums">
+              <span className="text-zinc-500">Date</span>{" "}
+              <span className="font-medium text-zinc-900">{estimateDate}</span>
+            </p>
+            {validUntil ? (
+              <p className="tabular-nums">
+                <span className="text-zinc-500">Valid until</span>{" "}
+                <span className="font-medium text-zinc-900">{validUntil}</span>
+              </p>
+            ) : null}
+          </div>
+          <span className="mt-3 inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-medium tracking-[0.04em] text-zinc-600">
+            {statusLabel}
+          </span>
+        </div>
       </div>
+
+      <div className="mt-10 max-w-[34rem]">
+        <p className="mb-2 text-[11px] font-medium tracking-[0.08em] text-zinc-500">
+          Luxury Design-Build Proposal
+        </p>
+        <h1 className="text-[30px] font-semibold leading-[1.08] tracking-[-0.045em] text-zinc-950">
+          {projectName ?? "Project Proposal"}
+        </h1>
+      </div>
+
+      <div className="mt-7 grid gap-x-9 gap-y-3 border-y border-zinc-200/55 py-3 sm:grid-cols-4">
+        <ProposalFact label="Prepared for">{clientName ?? "—"}</ProposalFact>
+        <ProposalFact label="Project">{projectName ?? "—"}</ProposalFact>
+        <ProposalFact label="Location">{location ?? "—"}</ProposalFact>
+        <ProposalFact label="Date">{estimateDate}</ProposalFact>
+      </div>
+    </header>
+  );
+}
+
+function ProposalFact({ label, children }: { label: string; children: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] font-medium tracking-[0.06em] text-zinc-500">{label}</p>
+      <p className="mt-1 break-words text-[12.5px] font-medium leading-snug text-zinc-900">
+        {children}
+      </p>
     </div>
   );
 }
 
-function LineItemsTable({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: number) => string }) {
+function ScopeLineItems({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: number) => string }) {
   return (
-    <table className="w-full border-collapse text-sm">
-      <thead>
-        <tr className="border-y border-zinc-300 bg-zinc-50/70 text-[11px] uppercase tracking-wide text-zinc-500">
-          <th className="py-2.5 pr-3 text-left font-semibold">Description</th>
-          <th className="w-14 px-2 py-2.5 text-right font-semibold tabular-nums">Qty</th>
-          <th className="w-16 px-2 py-2.5 text-left font-semibold">Unit</th>
-          <th className="w-28 px-2 py-2.5 text-right font-semibold tabular-nums">Unit Price</th>
-          <th className="w-28 py-2.5 pl-3 text-right font-semibold tabular-nums">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => {
-          const { title: itemTitle, body } = splitLineItemDesc(row.desc ?? "");
-          return (
-            <tr key={row.id} className="break-inside-avoid border-b border-zinc-100">
-              <td className="py-3 pr-3 align-top">
-                <p className="font-medium text-zinc-900">{itemTitle || row.desc}</p>
-                {row.status && row.status !== DEFAULT_LINE_ITEM_STATUS ? (
-                  <span className="mt-1.5 inline-flex rounded-full border border-zinc-300 bg-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-600">
-                    {LINE_ITEM_STATUS_LABELS[row.status] ?? row.status}
-                  </span>
-                ) : null}
+    <div className="space-y-5">
+      {rows.map((row) => {
+        const { title: itemTitle, body } = splitLineItemDesc(row.desc ?? "");
+        const unitPrice = formatPdfLineUnitPrice(row, (n) => `$${fmt(n)}`);
+        const lineTotal = formatPdfLineTotal(row, (n) => `$${fmt(n)}`);
+        return (
+          <article
+            key={row.id}
+            data-testid="estimate-line-item-output"
+            className="break-inside-avoid"
+          >
+            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_9.25rem] sm:gap-8">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-zinc-950">
+                    {itemTitle || row.desc}
+                  </h4>
+                  {row.status && row.status !== DEFAULT_LINE_ITEM_STATUS ? (
+                    <span className="inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-[9px] font-medium tracking-[0.05em] text-zinc-600">
+                      {LINE_ITEM_STATUS_LABELS[row.status] ?? row.status}
+                    </span>
+                  ) : null}
+                </div>
                 {body.trim() ? (
-                  <div className="mt-1.5 text-sm text-zinc-600">
+                  <div className="mt-2 max-w-[34rem] text-[13px] leading-[1.62] text-zinc-600">
                     <LineItemOrScopeBodyPreview body={body} variant="default" />
                   </div>
                 ) : null}
-              </td>
-              <td className="px-2 py-3 text-right tabular-nums text-zinc-900">{row.qty}</td>
-              <td className="px-2 py-3 text-zinc-800">{row.unit}</td>
-              <td className="px-2 py-3 text-right tabular-nums text-zinc-900">
-                {formatPdfLineUnitPrice(row, (n) => `$${fmt(n)}`)}
-              </td>
-              <td className="py-3 pl-3 text-right tabular-nums font-medium text-zinc-900">
-                {formatPdfLineTotal(row, (n) => `$${fmt(n)}`)}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+              </div>
+              <div className="min-w-0 text-left sm:text-right">
+                <p
+                  data-testid="estimate-line-item-total"
+                  className="tabular-nums text-[15px] font-semibold leading-none text-zinc-950"
+                >
+                  {lineTotal}
+                </p>
+                <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+                  <span className="tabular-nums">Qty {row.qty}</span>
+                  {row.unit ? <span> · {row.unit}</span> : null}
+                </p>
+                <p
+                  data-testid="estimate-line-item-unit-price"
+                  className="text-[11px] leading-relaxed text-zinc-500"
+                >
+                  Unit {unitPrice}
+                </p>
+              </div>
+            </div>
+          </article>
+        );
+      })}
+    </div>
   );
+}
+
+function PaymentMilestoneDescription({ text }: { text: string | null | undefined }) {
+  const rows = parseProposalScopeLines(text);
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="mt-1.5 space-y-0.5 text-[13px] leading-[1.58] text-zinc-600">
+      {rows.map((row, index) => (
+        <p
+          key={`${row.text}-${index}`}
+          className="whitespace-pre-wrap break-words"
+          style={{ marginLeft: row.indent ? `${row.indent * 0.75}rem` : undefined }}
+        >
+          {row.text}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function PaymentMilestoneRow({
+  item,
+  amount,
+  index,
+  fmt,
+}: {
+  item: PaymentScheduleItem;
+  amount: number;
+  index: number;
+  fmt: (n: number) => string;
+}) {
+  return (
+    <article className="estimate-payment-row relative py-2.5">
+      <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-4">
+        <p className="pt-0.5 text-[12px] font-semibold tabular-nums tracking-[-0.01em] text-zinc-400">
+          {String(index + 1).padStart(2, "0")}
+        </p>
+        <div className="min-w-0">
+          <p className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-zinc-950">
+            {item.title}
+          </p>
+          {item.description ? <PaymentMilestoneDescription text={item.description} /> : null}
+          {formatEstimatePaymentDueDate(item.dueDate) ? (
+            <p className="mt-1.5 text-[11px] tabular-nums text-zinc-500">
+              Due: {formatEstimatePaymentDueDate(item.dueDate)}
+            </p>
+          ) : null}
+        </div>
+        <p className="shrink-0 pt-0.5 text-right tabular-nums text-[16px] font-semibold tracking-[-0.01em] text-zinc-950">
+          ${fmt(amount)}
+        </p>
+      </div>
+    </article>
+  );
+}
+
+type ScopeSection = ReturnType<typeof groupEstimateItemsByCategoryId>[number];
+type PaginatedScopeSection = ScopeSection & { isContinuation?: boolean };
+
+function estimateLineItemPageWeight(row: EstimateItemRow): number {
+  const { title, body } = splitLineItemDesc(row.desc ?? "");
+  const titleWeight = title.trim().length > 64 ? 1 : 0;
+  const bodyLines = body.trim() ? Math.ceil(body.trim().length / 105) : 0;
+  return 3 + titleWeight + Math.min(bodyLines, 7);
+}
+
+function paginateScopeSections(sections: ScopeSection[]): PaginatedScopeSection[][] {
+  if (sections.length === 0) return [[]];
+
+  const pages: PaginatedScopeSection[][] = [];
+  let currentPage: PaginatedScopeSection[] = [];
+  let remaining = 22;
+
+  const nextPage = () => {
+    if (currentPage.length > 0) pages.push(currentPage);
+    currentPage = [];
+    remaining = 23;
+  };
+
+  for (const section of sections) {
+    let rowIndex = 0;
+    let isContinuation = false;
+
+    if (section.rows.length === 0) {
+      if (remaining < 4) nextPage();
+      currentPage.push({ ...section, isContinuation });
+      remaining -= 4;
+      continue;
+    }
+
+    while (rowIndex < section.rows.length) {
+      const headerWeight = 3;
+      if (remaining < headerWeight + 3 && currentPage.length > 0) {
+        nextPage();
+      }
+
+      const pageRows: EstimateItemRow[] = [];
+      let used = headerWeight;
+
+      while (rowIndex < section.rows.length) {
+        const row = section.rows[rowIndex];
+        const rowWeight = estimateLineItemPageWeight(row);
+        const wouldOverflow = used + rowWeight > remaining;
+
+        if (wouldOverflow && pageRows.length > 0) break;
+        if (wouldOverflow && currentPage.length > 0) {
+          nextPage();
+          used = headerWeight;
+          continue;
+        }
+
+        pageRows.push(row);
+        used += rowWeight;
+        rowIndex += 1;
+      }
+
+      currentPage.push({ ...section, rows: pageRows, isContinuation });
+      remaining -= Math.max(used, headerWeight + 3);
+      isContinuation = true;
+
+      if (rowIndex < section.rows.length) nextPage();
+    }
+  }
+
+  if (currentPage.length > 0) pages.push(currentPage);
+  return pages.length ? pages : [[]];
 }
 
 export function EstimatePreviewContent({
@@ -148,206 +354,238 @@ export function EstimatePreviewContent({
   const statusLabel = estimate.status === "Converted" ? "Converted to Project" : estimate.status;
 
   const costSections = groupEstimateItemsByCategoryId(items, categories, catalogNameByCode);
+  const scopePages = paginateScopeSections(costSections);
   const clientName = cleanText(meta?.client.name);
-  const clientPhone = cleanText(meta?.client.phone);
-  const clientEmail = cleanText(meta?.client.email);
   const clientAddress = cleanText(meta?.client.address);
   const projectName = cleanText(meta?.project.name);
   const projectAddress = cleanText(meta?.project.siteAddress);
   const jobAddress = clientAddress ?? projectAddress;
+  const finalPageNumber = scopePages.length + 1;
 
   return (
     <article
       data-testid="estimate-document"
-      className="bg-[#fffdf8] text-zinc-900 shadow-sm ring-1 ring-zinc-200/80 print:bg-white print:shadow-none print:ring-0"
+      className="estimate-preview-paper-stack text-zinc-900 print:block"
     >
-      <div className="px-8 py-8 print:px-0 print:py-4">
-        <DocumentCompanyHeader
-          company={company}
-          documentTitle="Estimate"
-          documentNo={estimate.number}
-          documentDate={estimateDateStr}
-          documentNoLabel="Estimate No"
-          className="border-zinc-900/80 pb-5"
-          extraRight={
-            <>
-              <span className="inline-block rounded-full border border-zinc-300 bg-white px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-600">
-                {statusLabel}
-              </span>
-              {meta?.validUntil ? (
-                <p className="text-xs text-zinc-500 tabular-nums">Valid until: {meta.validUntil}</p>
-              ) : null}
-            </>
-          }
-        />
+      {scopePages.map((pageSections, pageIndex) => {
+        const isFirstPage = pageIndex === 0;
+        const isLastScopePage = pageIndex === scopePages.length - 1;
 
-        {/* Client / Project — formal proposal blocks */}
-        {meta && (
-          <section className="print:break-inside-avoid">
-            <div className="grid gap-6 sm:grid-cols-3">
-              <DocumentInfoBlock title="Bill To">
-                <p className="font-semibold text-zinc-950">{clientName ?? "—"}</p>
-                {clientPhone ? <p className="tabular-nums text-zinc-700">{clientPhone}</p> : null}
-                {clientEmail ? <p className="break-all text-zinc-700">{clientEmail}</p> : null}
-                {clientAddress ? (
-                  <p className="break-words text-zinc-700">{clientAddress}</p>
-                ) : null}
-              </DocumentInfoBlock>
-              <DocumentInfoBlock title="Project / Job">
-                <p className="font-semibold text-zinc-950">{projectName ?? "—"}</p>
-                <ClientEstimateField label="Date">{estimateDateStr}</ClientEstimateField>
-                <ClientEstimateField label="Valid">{meta.validUntil ?? "—"}</ClientEstimateField>
-              </DocumentInfoBlock>
-              <DocumentInfoBlock title="Job Address">
-                <p className="break-words font-medium text-zinc-900">{jobAddress ?? "—"}</p>
-                <ClientEstimateField label="Status">{statusLabel}</ClientEstimateField>
-              </DocumentInfoBlock>
+        return (
+          <section
+            key={`scope-page-${pageIndex}`}
+            data-testid="estimate-preview-page"
+            className="estimate-a4-page estimate-scope-page"
+            aria-label={`Estimate preview page ${pageIndex + 1}`}
+          >
+            <div className="estimate-page-label" data-html2canvas-ignore="true">
+              Page {pageIndex + 1}
             </div>
-          </section>
-        )}
 
-        <div className="my-7 border-b border-zinc-300" />
+            {isFirstPage ? (
+              <>
+                <MinimalProposalHeader
+                  company={company}
+                  estimateNumber={estimate.number}
+                  estimateDate={estimateDateStr}
+                  validUntil={meta?.validUntil}
+                  statusLabel={statusLabel}
+                  projectName={projectName}
+                  clientName={clientName}
+                  location={jobAddress}
+                />
+              </>
+            ) : null}
 
-        {/* Scope sections */}
-        <section className="print:break-inside-auto">
-          <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-            Scope of work
-          </h2>
-          {costSections.length === 0 ? (
-            <p className="text-sm text-zinc-500 py-2">No line items.</p>
-          ) : (
-            <>
-              {costSections.map(({ categoryId, title, rows, sectionTotal }) => (
-                <div key={categoryId} className="mb-7 break-inside-avoid last:mb-0">
-                  <div className="mb-2 flex items-end justify-between gap-4">
-                    <p className="text-[15px] font-semibold text-zinc-950">{title}</p>
-                    <p className="text-xs tabular-nums text-zinc-500">
-                      Section total:{" "}
-                      <span className="font-semibold text-zinc-900">${fmt(sectionTotal)}</span>
-                    </p>
-                  </div>
-                  <LineItemsTable rows={rows} fmt={fmt} />
+            <section className="print:break-inside-auto">
+              <div className="mb-6 flex items-end justify-between gap-6">
+                <div>
+                  <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
+                    Scope of Work{isFirstPage ? "" : " / Continued"}
+                  </p>
+                  <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-zinc-600">
+                    A clear outline of the included work, organized by proposal section.
+                  </p>
                 </div>
-              ))}
-            </>
-          )}
-        </section>
-
-        {meta?.documentNotes.length ? (
-          <>
-            <div className="my-7 border-b border-zinc-300" />
-            <EstimateNotesPreview notes={meta.documentNotes} className="mb-6" />
-          </>
-        ) : null}
-
-        {/* Payment schedule */}
-        {paymentSchedule.length > 0 ? (
-          <>
-            <div className="my-7 border-b border-zinc-300" />
-            <section className="mb-7 print:break-inside-avoid">
-              <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                Payment Schedule
-              </h2>
-              <div className="divide-y divide-zinc-200 border-y border-zinc-200 text-sm">
-                {paymentSchedule.map((item) => {
-                  const amount = paymentMilestoneAmount(item, estimateTotal);
-                  return (
-                    <div key={item.id} className="break-inside-avoid py-3">
-                      <div className="flex items-baseline justify-between gap-6">
-                        <p className="font-semibold text-zinc-900">{item.title}</p>
-                        <p className="shrink-0 tabular-nums font-semibold text-zinc-900">
-                          ${fmt(amount)}
+              </div>
+              {costSections.length === 0 ? (
+                <p className="text-sm text-zinc-500 py-2">No line items.</p>
+              ) : (
+                <>
+                  {pageSections.map(({ categoryId, title, rows, sectionTotal, isContinuation }) => (
+                    <div
+                      key={`${categoryId}-${isContinuation ? "continued" : "start"}-${rows
+                        .map((row) => row.id)
+                        .join("-")}`}
+                      className="estimate-scope-section mb-7 last:mb-0"
+                    >
+                      <div className="mb-4 flex items-baseline justify-between gap-4">
+                        <h3 className="text-[17px] font-semibold leading-tight tracking-[-0.025em] text-zinc-950">
+                          {title}
+                          {isContinuation ? (
+                            <span className="ml-1 text-xs font-medium text-zinc-500">
+                              continued
+                            </span>
+                          ) : null}
+                        </h3>
+                        <p className="shrink-0 text-[12px] tabular-nums text-zinc-500">
+                          <span className="font-semibold text-zinc-900">${fmt(sectionTotal)}</span>
                         </p>
                       </div>
-                      {item.description ? (
-                        <div className="mt-1">
-                          <ProposalScopePreview
-                            text={item.description}
-                            variant="default"
-                            maxBullets={3}
-                          />
-                        </div>
-                      ) : null}
-                      {formatEstimatePaymentDueDate(item.dueDate) ? (
-                        <p className="mt-1 text-xs tabular-nums text-zinc-500">
-                          Due: {formatEstimatePaymentDueDate(item.dueDate)}
-                        </p>
-                      ) : null}
+                      <ScopeLineItems rows={rows} fmt={fmt} />
                     </div>
-                  );
-                })}
-              </div>
+                  ))}
+                </>
+              )}
             </section>
-          </>
-        ) : null}
 
-        {/* Totals — invoice style, no card */}
-        {summary && (
-          <section className="border-t border-zinc-900 pt-5 print:break-inside-avoid">
-            <div className="ml-auto max-w-sm space-y-2 text-sm">
-              <div className="flex justify-between gap-6">
-                <span className="text-zinc-600">Subtotal</span>
-                <span className="tabular-nums text-zinc-900">${fmt(summary.subtotal)}</span>
+            {summary && isLastScopePage ? (
+              <section className="mt-10 print:break-inside-avoid">
+                <div className="ml-auto max-w-[21rem] space-y-2.5 text-sm">
+                  <div className="flex justify-between gap-6">
+                    <span className="text-zinc-600">Subtotal</span>
+                    <span className="tabular-nums text-zinc-900">${fmt(summary.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between gap-6">
+                    <span className="text-zinc-600">Tax</span>
+                    <span className="tabular-nums text-zinc-900">${fmt(summary.tax)}</span>
+                  </div>
+                  <div className="flex justify-between gap-6">
+                    <span className="text-zinc-600">Discount</span>
+                    <span className="tabular-nums text-zinc-900">−${fmt(summary.discount)}</span>
+                  </div>
+                  <div className="mt-4 flex justify-between gap-6 border-t border-zinc-200/80 pt-4 text-[18px] font-semibold tracking-[-0.025em] text-zinc-950">
+                    <span>Grand Total</span>
+                    <span className="tabular-nums">${fmt(summary.grandTotal)}</span>
+                  </div>
+                </div>
+              </section>
+            ) : null}
+          </section>
+        );
+      })}
+
+      <section
+        data-testid="estimate-preview-page"
+        className="estimate-a4-page estimate-final-packet"
+        aria-label={`Estimate preview page ${finalPageNumber}`}
+      >
+        <div className="estimate-page-label" data-html2canvas-ignore="true">
+          Page {finalPageNumber}
+        </div>
+
+        {paymentSchedule.length > 0 ? (
+          <section className="estimate-final-packet-section">
+            <div className="mb-5 flex items-end justify-between gap-6 pb-2">
+              <div>
+                <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
+                  Payment Schedule
+                </p>
+                <h2 className="mt-1 text-[20px] font-semibold tracking-[-0.035em] text-zinc-950">
+                  Milestone agreement
+                </h2>
+                <p className="mt-1 text-[13px] leading-relaxed text-zinc-600">
+                  Customer payment milestones tied to this proposal.
+                </p>
               </div>
-              <div className="flex justify-between gap-6">
-                <span className="text-zinc-600">Tax</span>
-                <span className="tabular-nums text-zinc-900">${fmt(summary.tax)}</span>
+              <div className="text-right text-[11px] text-zinc-500">
+                <p>
+                  Total scheduled:{" "}
+                  <span className="font-semibold tabular-nums text-zinc-900">
+                    $
+                    {fmt(
+                      paymentSchedule.reduce(
+                        (total, item) => total + paymentMilestoneAmount(item, estimateTotal),
+                        0
+                      )
+                    )}
+                  </span>
+                </p>
+                <p>
+                  Remaining balance:{" "}
+                  <span className="font-semibold tabular-nums text-zinc-900">
+                    $
+                    {fmt(
+                      Math.max(
+                        0,
+                        estimateTotal -
+                          paymentSchedule.reduce(
+                            (total, item) => total + paymentMilestoneAmount(item, estimateTotal),
+                            0
+                          )
+                      )
+                    )}
+                  </span>
+                </p>
               </div>
-              <div className="flex justify-between gap-6">
-                <span className="text-zinc-600">Discount</span>
-                <span className="tabular-nums text-zinc-900">−${fmt(summary.discount)}</span>
-              </div>
-              <div className="mt-3 flex justify-between gap-6 border-t border-zinc-300 pt-3 text-base font-semibold text-zinc-950">
-                <span>Grand Total</span>
-                <span className="tabular-nums">${fmt(summary.grandTotal)}</span>
-              </div>
+            </div>
+            <div className="space-y-3 text-sm">
+              {paymentSchedule.map((item, index) => {
+                const amount = paymentMilestoneAmount(item, estimateTotal);
+                return (
+                  <PaymentMilestoneRow
+                    key={item.id}
+                    item={item}
+                    amount={amount}
+                    index={index}
+                    fmt={fmt}
+                  />
+                );
+              })}
             </div>
           </section>
-        )}
-
-        {company.defaultTerms ? (
-          <>
-            <div className="my-7 border-b border-zinc-300" />
-            <section className="print:break-inside-avoid">
-              <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                Terms
-              </h2>
-              <p className="whitespace-pre-wrap break-words border-b border-zinc-200 pb-3 text-sm leading-relaxed text-zinc-800">
-                {company.defaultTerms}
-              </p>
-            </section>
-          </>
         ) : null}
 
-        <div className="my-7 border-t border-zinc-300" />
+        {meta?.documentNotes.length ? (
+          <EstimateNotesPreview notes={meta.documentNotes} className="mt-6" />
+        ) : null}
+
+        {company.defaultTerms ? (
+          <section className="estimate-final-packet-section mt-6">
+            <h2 className="mb-2 text-[11px] font-medium tracking-[0.08em] text-zinc-500">Terms</h2>
+            <p className="whitespace-pre-wrap break-words py-2 text-sm leading-relaxed text-zinc-700">
+              {company.defaultTerms}
+            </p>
+          </section>
+        ) : null}
 
         <section
-          className="mt-16 text-left print:break-inside-avoid w-full"
-          aria-label="Signatures"
+          className="estimate-signature-block mt-10 w-full text-left"
+          aria-label="Client acceptance"
         >
-          <h2 className="mb-6 text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-            Signature
+          <h2 className="mb-2 text-[20px] font-semibold tracking-[-0.035em] text-zinc-950">
+            Client Acceptance
           </h2>
-          <div className="grid grid-cols-2 gap-12">
-            <div className="min-w-0 flex flex-col gap-2">
-              <div className="w-full border-b-2 border-zinc-900 min-h-[2.75rem]" aria-hidden />
-              <p className="text-sm font-medium text-zinc-900">Client Signature</p>
-              <div className="mt-5 w-full border-b border-zinc-900 min-h-[1.35rem]" aria-hidden />
-              <p className="text-xs text-zinc-500">Date</p>
+          <p className="mb-8 max-w-2xl text-sm leading-relaxed text-zinc-600">
+            By signing below, the client acknowledges review and acceptance of this estimate,
+            payment schedule, and listed notes or clarifications.
+          </p>
+          <div className="grid gap-x-10 gap-y-8 text-sm text-zinc-900 sm:grid-cols-2">
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Client Name</p>
+              <div className="mt-6 border-b border-zinc-400" aria-hidden />
             </div>
-            <div className="min-w-0 flex flex-col gap-2">
-              <div className="w-full border-b-2 border-zinc-900 min-h-[2.75rem]" aria-hidden />
-              <p className="text-sm font-medium text-zinc-900">Company Signature</p>
-              <div className="mt-5 w-full border-b border-zinc-900 min-h-[1.35rem]" aria-hidden />
-              <p className="text-xs text-zinc-500">Date</p>
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Date</p>
+              <div className="mt-6 border-b border-zinc-400" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Signature</p>
+              <div className="mt-7 border-b border-zinc-400" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
+                Company Representative
+              </p>
+              <div className="mt-7 border-b border-zinc-400" aria-hidden />
             </div>
           </div>
         </section>
 
-        <footer className="mt-10 whitespace-pre-wrap border-t border-zinc-200 pt-3 text-[11px] text-zinc-400">
+        <footer className="mt-4 whitespace-pre-wrap border-t border-zinc-100 pt-2 text-[11px] text-zinc-400">
           {company.invoiceFooter || `${company.companyName} · Estimate ${estimate.number}`}
         </footer>
-      </div>
+      </section>
     </article>
   );
 }

@@ -153,9 +153,10 @@ test("customer estimate preview and print use polished proposal output", async (
 
   await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
   const previewMain = page.locator("main");
-  await expect(previewMain).toContainText("Bill To");
-  await expect(previewMain).toContainText("Project / Job");
-  await expect(previewMain).toContainText("Job Address");
+  await expect(previewMain).toContainText("Project Proposal");
+  await expect(previewMain).toContainText("Luxury Design-Build Proposal");
+  await expect(previewMain).toContainText("Prepared for");
+  await expect(previewMain).toContainText("Location");
   await expect(previewMain).toContainText(clientName);
   await expect(previewMain).toContainText(projectName);
   await expect(previewMain).toContainText("Optional");
@@ -163,14 +164,74 @@ test("customer estimate preview and print use polished proposal output", async (
   await expect(previewMain).toContainText(noteText);
   await expect(previewMain).toContainText("Payment Schedule");
   await expect(previewMain).toContainText("Deposit");
+  const previewPages = page.getByTestId("estimate-preview-page");
+  await expect(previewPages.first()).toContainText("Page 1");
+  await expect(previewPages.nth(1)).toContainText("Page 2");
+  await expect
+    .poll(async () => previewPages.count(), { timeout: 10_000 })
+    .toBeGreaterThanOrEqual(2);
+  const previewPageCount = await previewPages.count();
+  await expect(previewPages.nth(previewPageCount - 2)).toContainText("Grand Total");
+  await expect(previewPages.nth(previewPageCount - 1)).not.toContainText("Grand Total");
+  await expect
+    .poll(async () =>
+      previewPages.first().evaluate((node) => {
+        const style = window.getComputedStyle(node);
+        return {
+          width: Number.parseFloat(style.width),
+          minHeight: Number.parseFloat(style.minHeight),
+        };
+      })
+    )
+    .toMatchObject({
+      width: expect.any(Number),
+      minHeight: expect.any(Number),
+    });
+  const previewPageSize = await previewPages.first().evaluate((node) => {
+    const style = window.getComputedStyle(node);
+    return {
+      width: Number.parseFloat(style.width),
+      minHeight: Number.parseFloat(style.minHeight),
+    };
+  });
+  expect(previewPageSize.width).toBeGreaterThan(700);
+  expect(previewPageSize.minHeight).toBeGreaterThan(1050);
+  const previewPacket = page.locator(".estimate-final-packet").first();
+  await expect(previewPacket).toContainText("Payment Schedule");
+  await expect(previewPacket).toContainText("Total scheduled");
+  await expect(previewPacket).toContainText("Remaining balance");
+  await expect(previewPacket).toContainText("Notes & Clarifications");
+  await expect(previewPacket).toContainText("Client Acceptance");
+  await expect(previewPacket).toContainText("Client Name");
+  await expect(previewPacket).toContainText("Company Representative");
+  await expect
+    .poll(async () =>
+      previewPacket.evaluate((node) => {
+        const text = node.textContent ?? "";
+        return {
+          paymentBeforeNotes:
+            text.indexOf("Payment Schedule") < text.indexOf("Notes & Clarifications"),
+          notesBeforeSignature:
+            text.indexOf("Notes & Clarifications") < text.indexOf("Client Acceptance"),
+          breakBefore: window.getComputedStyle(node).breakBefore,
+          pageBreakBefore: window.getComputedStyle(node).pageBreakBefore,
+        };
+      })
+    )
+    .toMatchObject({
+      paymentBeforeNotes: true,
+      notesBeforeSignature: true,
+      breakBefore: "page",
+      pageBreakBefore: "always",
+    });
   await expect(previewMain).toContainText("Grand Total");
   await expect(previewMain).not.toContainText(/undefined|null/i);
   await expect(previewMain).not.toContainText(/markup|overhead|profit/i);
 
-  const previewRow = page.locator("tbody tr").filter({ hasText: lineTitle });
+  const previewRow = page.getByTestId("estimate-line-item-output").filter({ hasText: lineTitle });
   await expect(previewRow).toBeVisible({ timeout: 30_000 });
-  await expect(previewRow.locator("td").nth(3)).toHaveText("—");
-  await expect(previewRow.locator("td").nth(4)).toHaveText("—");
+  await expect(previewRow.getByTestId("estimate-line-item-unit-price")).toHaveText("Unit —");
+  await expect(previewRow.getByTestId("estimate-line-item-total")).toHaveText("—");
   await prepareCustomerDocumentScreenshot(page);
   await page.getByTestId("estimate-document").screenshot({
     path: "test-results/estimate-preview-polished.png",
@@ -181,20 +242,64 @@ test("customer estimate preview and print use polished proposal output", async (
 
   await page.goto(`/estimates/${estimateId}/print`, { waitUntil: "domcontentloaded" });
   const printDocument = page.getByRole("document", { name: "Estimate print view" });
-  await expect(printDocument).toContainText("Bill To");
-  await expect(printDocument).toContainText("Project / Job");
-  await expect(printDocument).toContainText("Job Address");
+  const printPages = page.getByTestId("estimate-preview-page");
+  await expect.poll(async () => printPages.count(), { timeout: 10_000 }).toBe(previewPageCount);
+  await expect(printPages.first()).toContainText("Page 1");
+  await expect(printPages.nth(1)).toContainText("Page 2");
+  const printPageSize = await printPages.first().evaluate((node) => {
+    const style = window.getComputedStyle(node);
+    return {
+      width: Number.parseFloat(style.width),
+      minHeight: Number.parseFloat(style.minHeight),
+    };
+  });
+  expect(printPageSize.width).toBeGreaterThan(700);
+  expect(printPageSize.minHeight).toBeGreaterThan(1050);
+  await expect(printPages.nth(previewPageCount - 2)).toContainText("Grand Total");
+  await expect(printPages.nth(previewPageCount - 1)).not.toContainText("Grand Total");
+  await expect(printDocument).toContainText("Project Proposal");
+  await expect(printDocument).toContainText("Luxury Design-Build Proposal");
+  await expect(printDocument).toContainText("Prepared for");
+  await expect(printDocument).toContainText("Location");
   await expect(printDocument).toContainText("Optional");
   await expect(printDocument).toContainText("Notes & Clarifications");
   await expect(printDocument).toContainText(noteText);
   await expect(printDocument).toContainText("Payment Schedule");
+  const printPacket = page.locator(".estimate-final-packet").first();
+  await expect(printPacket).toContainText("Payment Schedule");
+  await expect(printPacket).toContainText("Total scheduled");
+  await expect(printPacket).toContainText("Remaining balance");
+  await expect(printPacket).toContainText("Notes & Clarifications");
+  await expect(printPacket).toContainText("Client Acceptance");
+  await expect(printPacket).toContainText("Client Name");
+  await expect(printPacket).toContainText("Company Representative");
+  await expect
+    .poll(async () =>
+      printPacket.evaluate((node) => {
+        const text = node.textContent ?? "";
+        return {
+          paymentBeforeNotes:
+            text.indexOf("Payment Schedule") < text.indexOf("Notes & Clarifications"),
+          notesBeforeSignature:
+            text.indexOf("Notes & Clarifications") < text.indexOf("Client Acceptance"),
+          breakBefore: window.getComputedStyle(node).breakBefore,
+          pageBreakBefore: window.getComputedStyle(node).pageBreakBefore,
+        };
+      })
+    )
+    .toMatchObject({
+      paymentBeforeNotes: true,
+      notesBeforeSignature: true,
+      breakBefore: "page",
+      pageBreakBefore: "always",
+    });
   await expect(printDocument).toContainText("Grand Total");
   await expect(printDocument).not.toContainText(/undefined|null/i);
   await expect(printDocument).not.toContainText(/markup|overhead|profit/i);
-  const printRow = page.locator("tbody tr").filter({ hasText: lineTitle });
+  const printRow = page.getByTestId("estimate-line-item-output").filter({ hasText: lineTitle });
   await expect(printRow).toBeVisible({ timeout: 30_000 });
-  await expect(printRow.locator("td").nth(3)).toHaveText("—");
-  await expect(printRow.locator("td").nth(4)).toHaveText("—");
+  await expect(printRow.getByTestId("estimate-line-item-unit-price")).toHaveText("Unit —");
+  await expect(printRow.getByTestId("estimate-line-item-total")).toHaveText("—");
   await prepareCustomerDocumentScreenshot(page);
   await page.getByTestId("estimate-document").screenshot({
     path: "test-results/estimate-print-polished.png",

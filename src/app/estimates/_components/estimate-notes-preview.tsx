@@ -16,28 +16,25 @@ export function EstimateNotesPreview({
 
   return (
     <section className={cn("print:break-inside-avoid", className)}>
-      <h2
-        className={cn(
-          "font-semibold uppercase tracking-wide text-zinc-500",
-          variant === "print" ? "mb-4 text-xs tracking-wider" : "mb-3 text-[11px]"
-        )}
-      >
+      <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
         Notes &amp; Clarifications
+      </p>
+      <h2 className="mt-1 text-[20px] font-semibold tracking-[-0.035em] text-zinc-950">
+        Important notes
       </h2>
-      <div className={variant === "print" ? "space-y-3 text-sm" : "space-y-3 text-sm"}>
+      <div
+        className={cn("mt-4 px-0", variant === "print" ? "space-y-3 text-sm" : "space-y-3 text-sm")}
+      >
         {visibleNotes.map((note) => (
           <div
             key={note.id}
-            className={cn(
-              "break-inside-avoid border-l-2 border-zinc-300 pl-3",
-              variant === "print" ? "py-0.5" : "py-1"
-            )}
+            className={cn("break-inside-avoid", variant === "print" ? "py-0.5" : "py-1")}
           >
-            <p className="text-[13px] font-semibold uppercase tracking-wide text-zinc-800">
+            <p className="text-[12.5px] font-semibold tracking-[-0.005em] text-zinc-950">
               {note.title || "Note"}
             </p>
             {note.body.trim() ? (
-              <p className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-zinc-700">
+              <p className="mt-1.5 whitespace-pre-wrap break-words leading-[1.58] text-zinc-700">
                 {note.body.trim()}
               </p>
             ) : null}

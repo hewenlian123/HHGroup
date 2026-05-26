@@ -59,7 +59,7 @@ export default async function EstimatePrintPage({
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
-              @page { size: letter; margin: 0.5in; }
+              @page { size: A4; margin: 0; }
               body { background: #fff !important; }
             }
           `,

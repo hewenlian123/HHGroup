@@ -25,21 +25,23 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
     setPdfBusy(true);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
-      await html2pdf()
-        .set({
-          margin: [12, 12, 12, 12],
-          filename: safePdfFilename(estimateNumber),
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            letterRendering: true,
-          },
-          jsPDF: { unit: "mm", format: "letter", orientation: "portrait" },
-        })
-        .from(el)
-        .save();
+      const pdfOptions = {
+        margin: [12, 12, 12, 12],
+        filename: safePdfFilename(estimateNumber),
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          letterRendering: true,
+        },
+        pagebreak: {
+          mode: ["css", "legacy"],
+          avoid: [".estimate-payment-row", ".estimate-signature-block"],
+        },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      } as Record<string, unknown>;
+      await html2pdf().set(pdfOptions).from(el).save();
     } catch (e) {
       console.error(e);
     } finally {
@@ -48,8 +50,8 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
   };
 
   return (
-    <div className="mx-auto max-w-[8.5in] px-4 py-4 print:px-0 print:py-0">
-      <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
+    <div className="estimate-preview-shell mx-auto w-full px-3 py-5 print:px-0 print:py-0">
+      <div className="mx-auto mb-5 flex max-w-[210mm] flex-wrap items-center gap-2 print:hidden">
         <Button variant="outline" size="sm" className="btn-outline-ghost rounded-sm h-8" asChild>
           <Link href={`/estimates/${estimateId}`}>
             <ArrowLeft className="h-4 w-4 mr-1" />
@@ -73,11 +75,11 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
           {pdfBusy ? "Generating…" : "Download PDF"}
         </Button>
         <span className="text-xs text-muted-foreground">
-          PDF matches the preview below (Letter). Or use Print → Save as PDF.
+          A4 preview below. Use Print → Save as PDF for the closest browser output.
         </span>
       </div>
 
-      <div ref={exportRef} data-testid="estimate-pdf-export" className="bg-white">
+      <div ref={exportRef} data-testid="estimate-pdf-export" className="estimate-pdf-export">
         {children}
       </div>
     </div>
