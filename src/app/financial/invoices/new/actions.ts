@@ -22,6 +22,8 @@ export async function createInvoiceDraftAction(payload: {
   dueDate: string;
   taxPct?: number;
   notes?: string;
+  sourceEstimateId?: string;
+  paymentScheduleItemId?: string;
   lineItems: Array<{ description: string; qty: number; unitPrice: number }>;
   allowIncomplete?: boolean;
 }): Promise<{ ok: boolean; invoiceId?: string; error?: string }> {
@@ -60,6 +62,8 @@ export async function createInvoiceDraftAction(payload: {
     const safeIssueDate = String(payload.issueDate ?? "").slice(0, 10);
     const safeDueDate = String(payload.dueDate ?? "").slice(0, 10);
     const customerId = payload.customerId?.trim() || null;
+    const sourceEstimateId = payload.sourceEstimateId?.trim() || "";
+    const paymentScheduleItemId = payload.paymentScheduleItemId?.trim() || "";
     const subtotal = items.reduce((s, l) => s + Math.max(0, l.qty) * Math.max(0, l.unitPrice), 0);
     const taxPct = toNum(payload.taxPct ?? 0);
     const taxAmount = Math.round(subtotal * (taxPct / 100) * 100) / 100;
@@ -126,6 +130,41 @@ export async function createInvoiceDraftAction(payload: {
       }
     }
 
+    if (sourceEstimateId && paymentScheduleItemId) {
+      const { data: linked, error: linkErr } = await supabase
+        .from("estimate_payment_schedule_items")
+        .update({ invoice_id: invoiceId, status: "invoiced" })
+        .eq("id", paymentScheduleItemId)
+        .eq("estimate_id", sourceEstimateId)
+        .is("invoice_id", null)
+        .select("id, invoice_id")
+        .maybeSingle();
+      if (linkErr) {
+        await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
+        await supabase.from("invoices").delete().eq("id", invoiceId);
+        return { ok: false, error: linkErr.message ?? "Failed to link estimate milestone." };
+      }
+      if (!linked?.invoice_id) {
+        const { data: current } = await supabase
+          .from("estimate_payment_schedule_items")
+          .select("invoice_id")
+          .eq("id", paymentScheduleItemId)
+          .eq("estimate_id", sourceEstimateId)
+          .maybeSingle();
+        await supabase.from("invoice_items").delete().eq("invoice_id", invoiceId);
+        await supabase.from("invoices").delete().eq("id", invoiceId);
+        const existingInvoiceId = String(
+          (current as { invoice_id?: string | null } | null)?.invoice_id ?? ""
+        ).trim();
+        if (existingInvoiceId) {
+          revalidatePath(`/estimates/${sourceEstimateId}`);
+          revalidatePath(`/financial/invoices/${existingInvoiceId}`);
+          return { ok: true, invoiceId: existingInvoiceId };
+        }
+        return { ok: false, error: "Could not link invoice to estimate milestone." };
+      }
+    }
+
     await supabase
       .from("invoices")
       .update({
@@ -139,6 +178,7 @@ export async function createInvoiceDraftAction(payload: {
     revalidatePath("/financial/invoices");
     revalidatePath(`/financial/invoices/${invoiceId}`);
     if (projectId) revalidatePath(`/projects/${projectId}`);
+    if (sourceEstimateId) revalidatePath(`/estimates/${sourceEstimateId}`);
     revalidatePath("/financial/owner");
 
     return { ok: true, invoiceId };

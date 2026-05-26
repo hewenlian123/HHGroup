@@ -29,6 +29,7 @@ import type { EstimateSaveStatus } from "../_components/estimate-builder-save-st
 import { ConvertToProjectDrawer } from "./convert-to-project-drawer";
 import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
 import { EstimateEditor } from "../_components/estimate-editor";
+import type { EstimatePaymentScheduleInvoiceSummary } from "../_components/estimate-payment-schedule";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
 export function EstimateDetailClient({
@@ -45,6 +46,7 @@ export function EstimateDetailClient({
   paymentSchedule,
   paymentTemplates,
   invoiceProjectLink,
+  paymentInvoiceSummaries,
 }: {
   estimateId: string;
   estimateNumber: string;
@@ -63,6 +65,7 @@ export function EstimateDetailClient({
     canCreateInvoice: boolean;
     message?: string;
   };
+  paymentInvoiceSummaries?: Record<string, EstimatePaymentScheduleInvoiceSummary>;
 }) {
   const { toast } = useToast();
   const router = useRouter();
@@ -274,6 +277,7 @@ export function EstimateDetailClient({
         paymentSchedule={paymentSchedule}
         paymentTemplates={paymentTemplates}
         invoiceProjectLink={invoiceProjectLink}
+        paymentInvoiceSummaries={paymentInvoiceSummaries}
         editing={editing && !isLocked}
         onSaveDetails={onSave}
       />

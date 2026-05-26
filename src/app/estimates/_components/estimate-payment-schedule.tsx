@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import type { PaymentScheduleItem, PaymentScheduleTemplate } from "@/lib/data";
 import { paymentMilestoneAmount } from "@/lib/data";
-import { FileCheck2, FilePlus2, FileText, Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
 import { EB, ebSheetGlassNarrow, ebSheetInput } from "./estimate-builder-ui";
@@ -30,7 +30,6 @@ import {
   ProposalPaymentMilestoneList,
   type ProposalPaymentMilestoneRow,
 } from "./proposal-payment-milestone-list";
-import { createInvoiceFromPaymentScheduleItemFormAction } from "../[id]/actions";
 
 type AddAction = (formData: FormData) => Promise<void>;
 type UpdateAction = (formData: FormData) => Promise<void>;
@@ -43,6 +42,17 @@ type CreateTemplateAction = (formData: FormData) => Promise<void>;
 const fmt = formatEstimateCurrency;
 const PAYMENT_MILESTONE_FORM_ID = "estimate-payment-milestone-form";
 
+function invoiceDisplayLabel(invoiceNo?: string | null): string {
+  const trimmed = invoiceNo?.trim();
+  if (!trimmed) return "Invoice";
+  return trimmed.startsWith("#") ? `Invoice ${trimmed}` : `Invoice #${trimmed}`;
+}
+
+export type EstimatePaymentScheduleInvoiceSummary = {
+  invoiceNo?: string | null;
+  status?: string | null;
+};
+
 export function EstimatePaymentSchedule(props: {
   estimateId: string;
   paymentSchedule: PaymentScheduleItem[];
@@ -52,6 +62,7 @@ export function EstimatePaymentSchedule(props: {
     canCreateInvoice: boolean;
     message?: string;
   };
+  invoiceSummaries?: Record<string, EstimatePaymentScheduleInvoiceSummary>;
   nested?: boolean;
   paymentTemplates?: PaymentScheduleTemplate[];
   addPaymentMilestoneAction: AddAction;
@@ -68,6 +79,7 @@ export function EstimatePaymentSchedule(props: {
     estimateTotal,
     isLocked,
     invoiceProjectLink,
+    invoiceSummaries = {},
     nested = false,
     addPaymentMilestoneAction,
     updatePaymentMilestoneAction,
@@ -93,7 +105,7 @@ export function EstimatePaymentSchedule(props: {
     const invoiceError = searchParams.get("invoiceError");
     if (!invoiceError) return;
     toast({
-      title: "Create invoice failed",
+      title: "Send invoice failed",
       description: invoiceError,
       variant: "error",
     });
@@ -145,6 +157,7 @@ export function EstimatePaymentSchedule(props: {
     amount: paymentMilestoneAmount(item, estimateTotal),
     description: item.description,
     dueDate: item.dueDate,
+    status: item.status,
   }));
 
   return (
@@ -187,105 +200,85 @@ export function EstimatePaymentSchedule(props: {
           actions={(m) => {
             const item = paymentSchedule.find((x) => x.id === m.id);
             if (!item) return null;
+            if (isLocked) {
+              if (item.invoiceId) {
+                const invoice = invoiceSummaries[item.invoiceId];
+                const invoiceNo = invoiceDisplayLabel(invoice?.invoiceNo);
+                return (
+                  <div className="flex min-w-[9rem] flex-col items-end gap-1 text-right">
+                    <span className="text-[11.5px] font-medium leading-none text-[#929CAF]">
+                      {invoiceNo}
+                      {invoice?.status ? ` · ${invoice.status}` : ""}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      asChild
+                      className={cn("min-h-9 px-3 text-[12.5px]", EB.actionSecondary)}
+                    >
+                      <Link href={`/financial/invoices/${item.invoiceId}`}>View Invoice</Link>
+                    </Button>
+                  </div>
+                );
+              }
+
+              const canCreate = invoiceProjectLink?.canCreateInvoice !== false;
+              return (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  asChild={canCreate}
+                  disabled={!canCreate}
+                  title={!canCreate ? invoiceProjectLink?.message : undefined}
+                  className={cn("min-h-9 px-3 text-[12.5px]", EB.actionSecondary)}
+                >
+                  {canCreate ? (
+                    <Link
+                      href={`/financial/invoices/new?estimateId=${encodeURIComponent(
+                        estimateId
+                      )}&paymentScheduleItemId=${encodeURIComponent(item.id)}`}
+                    >
+                      Send Invoice
+                    </Link>
+                  ) : (
+                    "Send Invoice"
+                  )}
+                </Button>
+              );
+            }
             return (
               <div className="flex gap-1">
-                {item.invoiceId ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    asChild
-                    className={cn(
-                      "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                      EB.btnGhost
-                    )}
-                    aria-label={`View invoice for ${item.title}`}
-                  >
-                    <Link href={`/financial/invoices/${item.invoiceId}`}>
-                      <FileCheck2 className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                ) : invoiceProjectLink && !invoiceProjectLink.canCreateInvoice ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    disabled
-                    title={invoiceProjectLink.message}
-                    className={cn(
-                      "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                      EB.btnGhost
-                    )}
-                    aria-label={`Create invoice for ${item.title} requires a linked project`}
-                  >
-                    <FilePlus2 className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <form action={createInvoiceFromPaymentScheduleItemFormAction} className="inline">
-                    <input type="hidden" name="estimateId" value={estimateId} />
-                    <input type="hidden" name="itemId" value={item.id} />
-                    <Button
-                      type="submit"
-                      variant="outline"
-                      size="icon"
-                      className={cn(
-                        "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                        EB.btnGhost
-                      )}
-                      aria-label={`Create invoice for ${item.title}`}
-                    >
-                      <FilePlus2 className="h-4 w-4" />
-                    </Button>
-                  </form>
-                )}
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  asChild
                   className={cn(
                     "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
                     EB.btnGhost
                   )}
-                  aria-label={`Preview ${item.title}`}
+                  aria-label={`Edit ${item.title}`}
+                  onClick={() => openScheduleDrawer(item)}
                 >
-                  <Link href={`/estimates/${estimateId}/payments/${item.id}/preview`}>
-                    <FileText className="h-4 w-4" />
-                  </Link>
+                  <Pencil className="h-4 w-4" />
                 </Button>
-                {!isLocked ? (
+                <form action={deletePaymentMilestoneAction} className="inline">
+                  <input type="hidden" name="estimateId" value={estimateId} />
+                  <input type="hidden" name="itemId" value={item.id} />
                   <Button
-                    type="button"
+                    type="submit"
                     variant="outline"
                     size="icon"
                     className={cn(
-                      "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                      "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
                       EB.btnGhost
                     )}
-                    aria-label={`Edit ${item.title}`}
-                    onClick={() => openScheduleDrawer(item)}
+                    aria-label={`Delete ${item.title}`}
                   >
-                    <Pencil className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
-                ) : null}
-                {!isLocked ? (
-                  <form action={deletePaymentMilestoneAction} className="inline">
-                    <input type="hidden" name="estimateId" value={estimateId} />
-                    <input type="hidden" name="itemId" value={item.id} />
-                    <Button
-                      type="submit"
-                      variant="outline"
-                      size="icon"
-                      className={cn(
-                        "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
-                        EB.btnGhost
-                      )}
-                      aria-label={`Delete ${item.title}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </form>
-                ) : null}
+                </form>
               </div>
             );
           }}

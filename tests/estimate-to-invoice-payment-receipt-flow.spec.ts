@@ -332,8 +332,19 @@ test("estimate deposit invoice can be paid and shown on a receipt", async ({ pag
   await expect(previewMain).toContainText("Due: Jun 1, 2026");
 
   await page.goto(estimateUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /^Create invoice for Deposit$/i }).click();
-  await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+/, { timeout: 30_000 });
+  await page.getByRole("link", { name: /^Send Invoice$/i }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
+  await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
+  await expect(page.getByTestId("invoice-new-client-input")).toHaveValue(customerName);
+  await expect(page.getByTestId("invoice-new-due-date-input")).toHaveValue("2026-06-01");
+  await expect(page.getByTestId("invoice-new-line-1-item-input")).toHaveValue("Deposit");
+  await expect(page.getByTestId("invoice-new-line-1-description-input")).toHaveValue(
+    "Deposit before work starts"
+  );
+  await expect(page.getByTestId("invoice-new-line-1-qty-input")).toHaveValue("1");
+  await expect(page.getByTestId("invoice-new-line-1-rate-input")).toHaveValue("500");
+  await page.getByRole("button", { name: "Create draft invoice" }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+\/preview/, { timeout: 30_000 });
   const invoiceId = idFromUrl(page.url(), "invoices");
   await expect(page.locator("body")).toContainText(customerName);
   await expect(page.locator("body")).toContainText(projectName);
@@ -362,7 +373,8 @@ test("estimate deposit invoice can be paid and shown on a receipt", async ({ pag
     .select("description, amount")
     .eq("invoice_id", invoiceId);
   expect(invoiceItems ?? []).toHaveLength(1);
-  expect(String(invoiceItems![0].description)).toContain("Payment Schedule - Deposit");
+  expect(String(invoiceItems![0].description)).toContain("Deposit");
+  expect(String(invoiceItems![0].description)).toContain("Deposit before work starts");
   expect(Number(invoiceItems![0].amount)).toBe(DEPOSIT_AMOUNT);
 
   const { data: linkedSchedule } = await supabase
@@ -379,8 +391,10 @@ test("estimate deposit invoice can be paid and shown on a receipt", async ({ pag
     DEPOSIT_AMOUNT
   );
 
-  await page.getByTestId("invoice-detail-preview-link").click();
-  await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+\/preview/, { timeout: 30_000 });
+  if (!/\/financial\/invoices\/[^/?#]+\/preview/.test(page.url())) {
+    await page.getByTestId("invoice-detail-preview-link").click();
+    await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+\/preview/, { timeout: 30_000 });
+  }
   await expect(page.locator("body")).toContainText("$500.00");
 
   await markInvoiceSent(page, invoiceId);
@@ -467,7 +481,7 @@ test("estimate deposit invoice can be paid and shown on a receipt", async ({ pag
   });
 
   await page.goto(estimateUrl, { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("link", { name: /View invoice for Deposit/i })).toBeVisible({
+  await expect(page.getByRole("link", { name: /^View Invoice$/i })).toBeVisible({
     timeout: 30_000,
   });
 });

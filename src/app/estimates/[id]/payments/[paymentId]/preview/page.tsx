@@ -47,7 +47,7 @@ export default async function EstimatePaymentPreviewPage({
     <div
       className="min-h-screen bg-white text-zinc-900 print:min-h-0"
       role="document"
-      aria-label="Payment request preview"
+      aria-label="Payment milestone preview"
     >
       <SetBreadcrumbEntityTitle label={`${estimate.number} payment`} />
       <PaymentPreviewActions estimateId={id} />
@@ -64,7 +64,7 @@ export default async function EstimatePaymentPreviewPage({
       <article className="mx-auto max-w-[8.5in] px-6 py-8 print:max-w-none print:px-0 print:py-0">
         <DocumentCompanyHeader
           company={company}
-          documentTitle="Payment Request"
+          documentTitle="Payment Milestone"
           documentNo={estimate.number}
           documentDate={estimateDate}
           documentNoLabel="Related Estimate"
@@ -125,7 +125,7 @@ export default async function EstimatePaymentPreviewPage({
 
         <section className="mb-10 text-sm text-zinc-700 print:break-inside-avoid">
           <p>
-            This payment request is tied to estimate{" "}
+            This payment milestone is tied to estimate{" "}
             <span className="font-semibold text-zinc-900">{estimate.number}</span> for{" "}
             <span className="font-semibold text-zinc-900">
               {meta.project.name || "this project"}
@@ -135,7 +135,7 @@ export default async function EstimatePaymentPreviewPage({
         </section>
 
         <footer className="border-t border-zinc-200 pt-6 text-xs text-zinc-400 whitespace-pre-wrap">
-          {company.invoiceFooter || `Payment Request — ${company.companyName}`}
+          {company.invoiceFooter || `Payment Milestone — ${company.companyName}`}
         </footer>
       </article>
     </div>

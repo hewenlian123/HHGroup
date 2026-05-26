@@ -230,27 +230,8 @@ test("estimate payment schedule persists and has customer-facing payment preview
   expect(printText).not.toContain("\u2028");
 
   await page.goto(detailUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("link", { name: /Preview 1st Payment/i }).click();
-  await expect(page).toHaveURL(/\/estimates\/[^/]+\/payments\/[^/]+\/preview/, {
-    timeout: 30_000,
-  });
-  await expect(page.getByRole("document", { name: "Payment request preview" })).toContainText(
-    client
-  );
-  await expect(page.getByRole("document", { name: "Payment request preview" })).toContainText(
-    project
-  );
-  await expect(page.getByRole("document", { name: "Payment request preview" })).toContainText(
-    "$5,000.00"
-  );
-  await expect(page.getByRole("document", { name: "Payment request preview" })).toContainText(
-    "Due: Jun 1, 2026"
-  );
-  const paymentPreviewText = await page
-    .getByRole("document", { name: "Payment request preview" })
-    .evaluate((el) => el.textContent ?? "");
-  expect(paymentPreviewText).not.toContain("\t");
-  expect(paymentPreviewText).not.toContain("\u2028");
+  await expect(page.locator("body")).not.toContainText("Payment Request");
+  await expect(page.getByRole("button", { name: /^Send Invoice$/i }).first()).toBeDisabled();
 
   await page.goto(detailUrl, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Edit", exact: true }).click();

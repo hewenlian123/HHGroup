@@ -57,6 +57,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, Plus, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EstimatePaymentSchedule } from "./estimate-payment-schedule";
+import type { EstimatePaymentScheduleInvoiceSummary } from "./estimate-payment-schedule";
 import {
   EstimateSectionTitleMenu,
   type EstimateSectionOption,
@@ -104,6 +105,7 @@ export type EstimateEditorProps = {
     canCreateInvoice: boolean;
     message?: string;
   };
+  paymentInvoiceSummaries?: Record<string, EstimatePaymentScheduleInvoiceSummary>;
   /** When true, enable editing in the editor UI. */
   editing?: boolean;
   /** Persist the detail drawer through the parent edit flow when available. */
@@ -123,6 +125,7 @@ export function EstimateEditor({
   paymentSchedule = [],
   paymentTemplates = [],
   invoiceProjectLink,
+  paymentInvoiceSummaries = {},
   editing = false,
   onSaveDetails,
 }: EstimateEditorProps) {
@@ -744,6 +747,7 @@ export function EstimateEditor({
               estimateTotal={summary?.grandTotal ?? 0}
               isLocked={isReadOnly}
               invoiceProjectLink={invoiceProjectLink}
+              invoiceSummaries={paymentInvoiceSummaries}
               nested
               paymentTemplates={paymentTemplates}
               addPaymentMilestoneAction={addPaymentMilestoneAction}

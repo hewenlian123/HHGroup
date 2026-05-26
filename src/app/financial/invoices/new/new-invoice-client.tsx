@@ -22,6 +22,7 @@ import { createInvoiceDraftAction } from "./actions";
 import { getCompanyProfile } from "@/lib/company-profile";
 import { formatCurrency } from "@/lib/formatters";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import type { EstimateInvoicePrefillResult } from "./estimate-prefill";
 
 type ProjectOption = { id: string; name: string };
 type CustomerOption = { id: string; name: string | null };
@@ -43,8 +44,17 @@ function isMissingTableError(error: unknown): boolean {
   return code === "42P01";
 }
 
-function newLineDraft(): LineDraft {
-  return { itemName: "", description: "", qty: 1, unitPrice: 0 };
+function newLineDraft(prefill?: {
+  itemName?: string;
+  description?: string;
+  unitPrice?: number;
+}): LineDraft {
+  return {
+    itemName: prefill?.itemName ?? "",
+    description: prefill?.description ?? "",
+    qty: 1,
+    unitPrice: prefill?.unitPrice ?? 0,
+  };
 }
 
 function lineHasContent(line: LineDraft): boolean {
@@ -111,30 +121,47 @@ const SECONDARY_BUTTON_CLASS =
 const PRIMARY_BUTTON_CLASS =
   "rounded-md border-transparent bg-[var(--neo-gold)] text-zinc-950 hover:bg-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)]";
 
-export default function NewInvoiceClient() {
+export default function NewInvoiceClient({
+  estimatePrefill,
+}: {
+  estimatePrefill?: EstimateInvoicePrefillResult | null;
+}) {
+  const prefill = estimatePrefill?.ok ? estimatePrefill.prefill : null;
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [error, setError] = React.useState<string | null>(
+    estimatePrefill && !estimatePrefill.ok ? estimatePrefill.error : null
+  );
   const [submitAttempted, setSubmitAttempted] = React.useState(false);
 
   const [projects, setProjects] = React.useState<ProjectOption[]>([]);
   const [customers, setCustomers] = React.useState<CustomerOption[]>([]);
 
-  const [projectId, setProjectId] = React.useState<string>("");
-  const [customerId, setCustomerId] = React.useState<string>("");
+  const [projectId, setProjectId] = React.useState<string>(prefill?.projectId ?? "");
+  const [customerId, setCustomerId] = React.useState<string>(prefill?.customerId ?? "");
   const [invoiceNo, setInvoiceNo] = React.useState<string>("");
-  const [clientName, setClientName] = React.useState<string>("");
+  const [clientName, setClientName] = React.useState<string>(prefill?.customerName ?? "");
 
   const today = new Date().toISOString().slice(0, 10);
   const [issueDate, setIssueDate] = React.useState<string>(today);
-  const [dueDate, setDueDate] = React.useState<string>(today);
+  const [dueDate, setDueDate] = React.useState<string>(prefill?.dueDate || today);
   const [taxPct, setTaxPct] = React.useState<number>(0);
-  const [taxTouched, setTaxTouched] = React.useState(false);
-  const [notes, setNotes] = React.useState<string>("");
+  const [taxTouched, setTaxTouched] = React.useState(Boolean(prefill));
+  const [notes, setNotes] = React.useState<string>(prefill?.notes ?? "");
 
-  const [lines, setLines] = React.useState<LineDraft[]>([newLineDraft()]);
+  const [lines, setLines] = React.useState<LineDraft[]>([
+    newLineDraft(
+      prefill
+        ? {
+            itemName: prefill.milestoneTitle,
+            description: prefill.milestoneDescription,
+            unitPrice: prefill.amount,
+          }
+        : undefined
+    ),
+  ]);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -167,13 +194,29 @@ export default function NewInvoiceClient() {
     ]);
 
     if (projErr) setError(projErr.message);
-    setProjects(((proj ?? []) as ProjectOption[]).filter((p) => p.id && p.name));
+    const projectOptions = ((proj ?? []) as ProjectOption[]).filter((p) => p.id && p.name);
+    if (
+      prefill?.projectId &&
+      prefill.projectName &&
+      !projectOptions.some((p) => p.id === prefill.projectId)
+    ) {
+      projectOptions.unshift({ id: prefill.projectId, name: prefill.projectName });
+    }
+    setProjects(projectOptions);
 
     if (custErr) {
       if (!isMissingTableError(custErr)) setError((p) => p ?? custErr.message);
       setCustomers([]);
     } else {
-      setCustomers((cust ?? []) as CustomerOption[]);
+      const customerOptions = (cust ?? []) as CustomerOption[];
+      if (
+        prefill?.customerId &&
+        prefill.customerName &&
+        !customerOptions.some((c) => c.id === prefill.customerId)
+      ) {
+        customerOptions.unshift({ id: prefill.customerId, name: prefill.customerName });
+      }
+      setCustomers(customerOptions);
     }
 
     try {
@@ -185,7 +228,7 @@ export default function NewInvoiceClient() {
     }
 
     setLoading(false);
-  }, [supabase, configured, taxTouched]);
+  }, [supabase, configured, taxTouched, prefill]);
 
   React.useEffect(() => {
     void load();
@@ -251,6 +294,8 @@ export default function NewInvoiceClient() {
         dueDate,
         taxPct: Math.max(0, safeNumber(taxPct)),
         notes,
+        sourceEstimateId: prefill?.sourceEstimateId,
+        paymentScheduleItemId: prefill?.paymentScheduleItemId,
         lineItems: lines.map((l) => ({
           description: composeLineDescription(l),
           qty: Math.max(0, safeNumber(l.qty) || 0),
@@ -292,6 +337,8 @@ export default function NewInvoiceClient() {
         dueDate,
         taxPct: Math.max(0, safeNumber(taxPct)),
         notes,
+        sourceEstimateId: prefill?.sourceEstimateId,
+        paymentScheduleItemId: prefill?.paymentScheduleItemId,
         allowIncomplete: true,
         lineItems: lines.map((l) => ({
           description: composeLineDescription(l),
@@ -336,7 +383,11 @@ export default function NewInvoiceClient() {
     <div className={PAGE_CLASS}>
       <PageHeader
         title="New Invoice"
-        description="Create a draft invoice for a project and client."
+        description={
+          prefill
+            ? `Invoice for ${prefill.milestoneTitle} from Estimate ${prefill.estimateNumber}.`
+            : "Create a draft invoice for a project and client."
+        }
       />
 
       {error ? (

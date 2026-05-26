@@ -232,8 +232,14 @@ test("linked project payment milestone generates an invoice for the milestone am
   });
 
   await createEstimateWithDeposit(page, { customerName, projectName });
-  await page.getByRole("button", { name: /Create invoice for Deposit/i }).click();
-  await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+/, { timeout: 30_000 });
+  await page.getByRole("link", { name: /^Send Invoice$/i }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
+  await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
+  await expect(page.getByTestId("invoice-new-client-input")).toHaveValue(customerName);
+  await expect(page.getByTestId("invoice-new-line-1-item-input")).toHaveValue("Deposit");
+  await expect(page.getByTestId("invoice-new-line-1-rate-input")).toHaveValue("500");
+  await page.getByRole("button", { name: "Create draft invoice" }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+\/preview/, { timeout: 30_000 });
   const invoiceId = invoiceIdFromUrl(page.url());
 
   const { data: invoice } = await supabase
@@ -271,9 +277,7 @@ test("missing linked project shows a clear blocker and does not create an invoic
   await expect(page.getByText(/Invoice generation requires a linked project/i)).toBeVisible({
     timeout: 30_000,
   });
-  await expect(
-    page.getByRole("button", { name: /Create invoice for Deposit requires a linked project/i })
-  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: /^Send Invoice$/i })).toBeDisabled();
 
   const { data: invoices } = await supabase
     .from("invoices")

@@ -20,6 +20,11 @@ type InvoiceProjectLinkStatus = {
   message?: string;
 };
 
+type PaymentInvoiceSummary = {
+  invoiceNo?: string | null;
+  status?: string | null;
+};
+
 const PROJECT_LINK_REQUIRED_MESSAGE =
   "Invoice generation requires a linked project. Convert this estimate to a project, or edit details so the project name matches one existing project before creating milestone invoices.";
 
@@ -75,6 +80,26 @@ async function getInvoiceProjectLinkStatus(
   return { canCreateInvoice: false, message: PROJECT_LINK_REQUIRED_MESSAGE };
 }
 
+async function getPaymentInvoiceSummaries(
+  invoiceIds: string[]
+): Promise<Record<string, PaymentInvoiceSummary>> {
+  const ids = Array.from(new Set(invoiceIds.map((id) => id.trim()).filter(Boolean)));
+  if (ids.length === 0) return {};
+  const db = getServerSupabaseAdmin();
+  if (!db) return {};
+  const { data, error } = await db.from("invoices").select("id, invoice_no, status").in("id", ids);
+  if (error) return {};
+  return Object.fromEntries(
+    (data ?? []).map((row) => [
+      String(row.id),
+      {
+        invoiceNo: row.invoice_no ?? null,
+        status: row.status ?? null,
+      },
+    ])
+  );
+}
+
 export default async function EstimateDetailPage({
   params,
   searchParams,
@@ -112,6 +137,9 @@ export default async function EstimateDetailPage({
     paymentSchedule.length > 0
       ? await getInvoiceProjectLinkStatus(id, meta.project.name)
       : undefined;
+  const paymentInvoiceSummaries = await getPaymentInvoiceSummaries(
+    paymentSchedule.map((item) => item.invoiceId ?? "")
+  );
 
   return (
     <div className="estimate-builder-page page-stack py-3 md:py-4">
@@ -129,6 +157,7 @@ export default async function EstimateDetailPage({
         paymentSchedule={paymentSchedule}
         paymentTemplates={paymentTemplates}
         invoiceProjectLink={invoiceProjectLink}
+        paymentInvoiceSummaries={paymentInvoiceSummaries}
       />
       <EstimateSuccessBanner created={created} saved={saved} />
     </div>
