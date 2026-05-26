@@ -140,6 +140,145 @@ async function addBlankEstimateLine(page: Page): Promise<void> {
   }
 }
 
+async function addPaymentMilestoneToNewEstimate(
+  page: Page,
+  params: { title: string; amount: string }
+): Promise<void> {
+  const scheduleSection = page
+    .locator("details")
+    .filter({ has: page.locator("summary").filter({ hasText: "Payment schedule" }) })
+    .first();
+  await scheduleSection.evaluate((node) => {
+    if (node instanceof HTMLDetailsElement) node.open = true;
+  });
+  await scheduleSection.getByRole("button", { name: "Schedule Payment" }).click();
+  const dialog = page.getByRole("dialog", { name: "Schedule Payment" });
+  await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await dialog.getByLabel("Payment Name").fill(params.title);
+  await dialog.getByLabel("Amount").fill(params.amount);
+  await dialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(dialog).toBeHidden({ timeout: 10_000 });
+  await expect(page.getByText(params.title, { exact: true })).toBeVisible({ timeout: 10_000 });
+}
+
+async function createEstimateForSavedDetailsRegression(
+  page: Page,
+  params: {
+    clientName: string;
+    projectName: string;
+    lineTitleA: string;
+    lineTitleB: string;
+    taxAmount: string;
+    paymentTitle: string;
+    paymentAmount: string;
+  }
+): Promise<string> {
+  createdClientNames.add(params.clientName);
+  createdProjectNames.add(params.projectName);
+
+  await page.goto("/estimates/new");
+  await page.waitForLoadState("domcontentloaded");
+  await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await fillNewEstimateCustomerFields(page, {
+    clientName: params.clientName,
+    projectName: params.projectName,
+  });
+
+  await addBlankEstimateSection(page);
+  await page.getByLabel("Line item 1 title").locator("visible=true").fill(params.lineTitleA);
+  await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("1");
+  await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("200000");
+
+  await addBlankEstimateSection(page);
+  await page.getByLabel("Line item 2 title").locator("visible=true").fill(params.lineTitleB);
+  await page.getByLabel("Line item 2 quantity").locator("visible=true").fill("1");
+  await page.getByLabel("Line item 2 unit price").locator("visible=true").fill("180000");
+
+  await page.getByRole("button", { name: /Edit details/i }).click();
+  const detailsDialog = page.getByRole("dialog", {
+    name: /Customer \/ project \/ pricing details/i,
+  });
+  await expect(detailsDialog).toBeVisible({ timeout: 10_000 });
+  await expect(detailsDialog.getByLabel("Tax amount")).toBeVisible();
+  await detailsDialog.getByLabel("Tax amount").fill(params.taxAmount);
+  await detailsDialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(detailsDialog).toBeHidden({ timeout: 10_000 });
+
+  await addPaymentMilestoneToNewEstimate(page, {
+    title: params.paymentTitle,
+    amount: params.paymentAmount,
+  });
+
+  const saveEstimate = page.getByRole("button", { name: "Save Estimate" });
+  await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
+  await saveEstimate.click();
+  await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
+  await expect(page.getByText(params.clientName, { exact: true }).first()).toBeVisible({
+    timeout: 30_000,
+  });
+  return page.url().replace(/\?.*$/, "");
+}
+
+async function expectEstimateFinancialsAndProject(
+  page: Page,
+  params: {
+    projectName: string;
+    taxText: string;
+    totalText: string;
+    paymentTitle: string;
+    paymentAmount: string;
+  }
+): Promise<void> {
+  const overview = page.getByLabel("Estimate overview");
+  await expect(overview).toContainText(params.taxText, { timeout: 30_000 });
+  await expect(overview).toContainText(params.totalText);
+  await expect(page.locator("body")).toContainText(params.projectName);
+  await expect(page.locator("body")).toContainText(params.paymentTitle);
+  await expect(page.locator("body")).toContainText(params.paymentAmount);
+}
+
+async function poisonClosedEstimateDetailsForm(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const form = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
+    if (!form) return;
+    const project = form.elements.namedItem("projectName") as HTMLInputElement | null;
+    const tax = form.elements.namedItem("tax") as HTMLInputElement | null;
+    if (project) project.value = "STALE PROJECT SHOULD NOT SAVE";
+    if (tax) tax.value = "17905.60";
+  });
+}
+
+async function dragFirstSavedSectionBelowSecond(page: Page): Promise<void> {
+  const sections = page.locator("[data-estimate-section-id]");
+  await expect(sections.nth(1)).toBeVisible({ timeout: 10_000 });
+  const firstHandle = page.getByRole("button", { name: "Reorder section" }).first();
+  await expect(firstHandle).toBeVisible({ timeout: 10_000 });
+  const firstHandleBox = await firstHandle.boundingBox();
+  const secondSectionBox = await sections.nth(1).boundingBox();
+  if (!firstHandleBox || !secondSectionBox) {
+    throw new Error("Could not measure saved estimate sections for reorder.");
+  }
+  await page.mouse.move(
+    firstHandleBox.x + firstHandleBox.width / 2,
+    firstHandleBox.y + firstHandleBox.height / 2
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    secondSectionBox.x + secondSectionBox.width / 2,
+    secondSectionBox.y + secondSectionBox.height / 2,
+    { steps: 8 }
+  );
+  await page.mouse.move(
+    secondSectionBox.x + secondSectionBox.width / 2,
+    secondSectionBox.y + secondSectionBox.height - 8,
+    { steps: 8 }
+  );
+  await page.mouse.up();
+}
+
 /** Wait until no estimate list row links mention this client (post-delete). */
 async function expectNoEstimateListRowForClient(page: Page, clientName: string): Promise<void> {
   await expect(page).toHaveURL(isEstimatesListUrl, { timeout: 30_000 });
@@ -383,6 +522,122 @@ test("creates, edits, cancels, saves, and deletes a draft estimate", async ({ pa
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("body")).not.toContainText("Something went wrong");
   await expectNoEstimateListRowForClient(page, savedClientName);
+});
+
+test("saved estimate details and section reorder preserve tax, project title, and payments", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+
+  const suffix = Date.now();
+  const clientName = `PW Estimate Details Safe ${suffix}`;
+  const projectName = `PW Estimate Details Long Project ${suffix} New 2 story with ADU full title`;
+  const paymentTitle = `PW Details Payment ${suffix}`;
+  const detailUrl = await createEstimateForSavedDetailsRegression(page, {
+    clientName,
+    projectName,
+    lineTitleA: `PW details safe line A ${suffix}`,
+    lineTitleB: `PW details safe line B ${suffix}`,
+    taxAmount: "17860",
+    paymentTitle,
+    paymentAmount: "397860",
+  });
+
+  await expectEstimateFinancialsAndProject(page, {
+    projectName,
+    taxText: "$17,860.00",
+    totalText: "$397,860.00",
+    paymentTitle,
+    paymentAmount: "$397,860.00",
+  });
+
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: /Edit details/i }).click();
+  const detailsDialog = page.getByRole("dialog", {
+    name: /Customer \/ project \/ pricing details/i,
+  });
+  await expect(detailsDialog).toBeVisible({ timeout: 10_000 });
+  await expect(detailsDialog.getByLabel("Tax amount")).toHaveValue("17860");
+  await detailsDialog.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expectEstimateFinancialsAndProject(page, {
+    projectName,
+    taxText: "$17,860.00",
+    totalText: "$397,860.00",
+    paymentTitle,
+    paymentAmount: "$397,860.00",
+  });
+
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: /Edit details/i }).click();
+  const canceledDetailsDialog = page.getByRole("dialog", {
+    name: /Customer \/ project \/ pricing details/i,
+  });
+  await expect(canceledDetailsDialog).toBeVisible({ timeout: 10_000 });
+  await canceledDetailsDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(canceledDetailsDialog).toBeHidden({ timeout: 10_000 });
+  await poisonClosedEstimateDetailsForm(page);
+  await page
+    .getByTestId("estimate-detail-header-actions")
+    .getByRole("button", { name: "Save", exact: true })
+    .click();
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expectEstimateFinancialsAndProject(page, {
+    projectName,
+    taxText: "$17,860.00",
+    totalText: "$397,860.00",
+    paymentTitle,
+    paymentAmount: "$397,860.00",
+  });
+  await expect(page.locator("body")).not.toContainText("STALE PROJECT SHOULD NOT SAVE");
+  await expect(page.locator("body")).not.toContainText("$17,905.60");
+
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const beforeOrder = await page
+    .locator("[data-estimate-section-id]")
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-estimate-section-id")));
+  expect(beforeOrder.length).toBeGreaterThanOrEqual(2);
+  await dragFirstSavedSectionBelowSecond(page);
+  await expect
+    .poll(
+      async () =>
+        page
+          .locator("[data-estimate-section-id]")
+          .evaluateAll((nodes) =>
+            nodes.map((node) => node.getAttribute("data-estimate-section-id"))
+          ),
+      { timeout: 15_000 }
+    )
+    .not.toEqual(beforeOrder);
+  await expect(page.locator("body")).not.toContainText("Could not save section order");
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expectEstimateFinancialsAndProject(page, {
+    projectName,
+    taxText: "$17,860.00",
+    totalText: "$397,860.00",
+    paymentTitle,
+    paymentAmount: "$397,860.00",
+  });
+
+  await page.goto(`${detailUrl}/preview`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("main")).toContainText(projectName, { timeout: 30_000 });
+  await expect(page.locator("main")).toContainText("$17,860.00");
+  await expect(page.locator("main")).toContainText("$397,860.00");
+  await expect(page.locator("main")).toContainText(paymentTitle);
+
+  await page.goto(`${detailUrl}/print`, { waitUntil: "domcontentloaded" });
+  const printDocument = page.getByRole("document", { name: "Estimate print view" });
+  await expect(printDocument).toContainText(projectName, { timeout: 30_000 });
+  await expect(printDocument).toContainText("$17,860.00");
+  await expect(printDocument).toContainText("$397,860.00");
+  await expect(printDocument).toContainText(paymentTitle);
 });
 
 test("keeps saved estimate detail header actions compact on desktop and mobile", async ({

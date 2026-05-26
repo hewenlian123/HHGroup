@@ -59,7 +59,7 @@ function ReadOnlyMetaRows({
       </div>
       <div className="min-w-0">
         <dt className={metaLabel}>Project</dt>
-        <dd className="truncate text-[14px] font-medium leading-snug text-[#F6F7FA]">
+        <dd className="break-words text-[14px] font-medium leading-snug text-[#F6F7FA]">
           {project.trim() || "—"}
         </dd>
       </div>
@@ -176,16 +176,7 @@ export function EstimateEditCustomerSection({
 
       {!isReadOnly ? (
         <Sheet open={detailsOpen} onOpenChange={handleDetailsOpenChange}>
-          <SheetContent
-            forceMount
-            side="right"
-            aria-hidden={!detailsOpen}
-            className={cn(
-              ebSheetGlassWide(),
-              !detailsOpen &&
-                "invisible pointer-events-none fixed right-0 top-0 z-0 h-px min-h-0 w-px min-w-0 overflow-hidden border-0 p-0 opacity-0 shadow-none [&>button]:hidden"
-            )}
-          >
+          <SheetContent side="right" className={ebSheetGlassWide()}>
             <div className="flex max-h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
               <SheetHeader className={EB.sheetHeader}>
                 <SheetTitle className={EB.sheetTitle}>
@@ -201,6 +192,7 @@ export function EstimateEditCustomerSection({
                   ref={formRef}
                   key={formResetKey}
                   id="estimate-meta-form"
+                  data-estimate-details-open={detailsOpen ? "true" : "false"}
                   action={saveEstimateMetaAction}
                   className={EB.sheetContentInner}
                 >
