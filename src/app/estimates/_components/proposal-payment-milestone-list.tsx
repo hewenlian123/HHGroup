@@ -6,6 +6,7 @@ import { formatEstimateCurrency } from "./estimate-currency";
 import { Wallet } from "lucide-react";
 import { ProposalScopePreview } from "./proposal-scope-preview";
 import { EB } from "./estimate-builder-ui";
+import { formatEstimatePaymentDueDate } from "./estimate-payment-date";
 
 export type ProposalPaymentMilestoneRow = {
   id: string;
@@ -14,17 +15,6 @@ export type ProposalPaymentMilestoneRow = {
   description?: string | null;
   dueDate?: string | null;
 };
-
-function formatScheduleDate(value?: string | null): string | null {
-  const raw = value?.trim();
-  if (!raw) return null;
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);
-  const date = match
-    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
-    : new Date(raw);
-  if (Number.isNaN(date.getTime())) return raw;
-  return date.toLocaleDateString(undefined, { dateStyle: "short" });
-}
 
 export function ProposalPaymentMilestoneList({
   milestones,
@@ -49,8 +39,8 @@ export function ProposalPaymentMilestoneList({
   return (
     <ul className={cn("divide-y divide-white/[0.06]", className)}>
       {milestones.map((m) => {
-        const due = formatScheduleDate(m.dueDate);
-        const dueLabel = due ? `Due ${due}` : null;
+        const due = formatEstimatePaymentDueDate(m.dueDate);
+        const dueLabel = due ? `Due: ${due}` : null;
         return (
           <li
             key={m.id}

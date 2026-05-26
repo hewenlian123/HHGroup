@@ -145,8 +145,8 @@ async function addPaymentMilestone(
   await expect(dialog).toBeHidden({ timeout: 10_000 });
   await expect(page.getByText(milestone.title, { exact: true })).toBeVisible({ timeout: 10_000 });
   if (milestone.dueDate === "2026-06-01") {
-    await expect(page.getByText("Due 6/1/26")).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator("body")).not.toContainText("Due 5/31/26");
+    await expect(page.getByText("Due: Jun 1, 2026")).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("body")).not.toContainText("Due: May 31, 2026");
   }
 }
 
@@ -201,14 +201,15 @@ test("estimate payment schedule persists and has customer-facing payment preview
   await expect(page.getByText("1st Payment", { exact: true })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("$5,000.00").first()).toBeVisible();
   await expect(page.getByText("Deposit before work starts")).toBeVisible();
-  await expect(page.getByText("Due 6/1/26")).toBeVisible();
-  await expect(page.locator("body")).not.toContainText("Due 5/31/26");
+  await expect(page.getByText("Due: Jun 1, 2026")).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("Due: May 31, 2026");
 
   await page.getByRole("link", { name: "Preview", exact: true }).click();
   await expect(page).toHaveURL(/\/preview/, { timeout: 30_000 });
   await expect(page.locator("main")).toContainText("Payment schedule");
   await expect(page.locator("main")).toContainText("1st Payment");
   await expect(page.locator("main")).toContainText("Deposit before work starts");
+  await expect(page.locator("main")).toContainText("Due: Jun 1, 2026");
   const previewMainText = await page.locator("main").evaluate((el) => el.textContent ?? "");
   expect(previewMainText).not.toContain("\t");
   expect(previewMainText).not.toContain("\u2028");
@@ -241,6 +242,9 @@ test("estimate payment schedule persists and has customer-facing payment preview
   );
   await expect(page.getByRole("document", { name: "Payment request preview" })).toContainText(
     "$5,000.00"
+  );
+  await expect(page.getByRole("document", { name: "Payment request preview" })).toContainText(
+    "Due: Jun 1, 2026"
   );
   const paymentPreviewText = await page
     .getByRole("document", { name: "Payment request preview" })

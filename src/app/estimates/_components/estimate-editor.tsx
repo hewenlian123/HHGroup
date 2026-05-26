@@ -100,6 +100,10 @@ export type EstimateEditorProps = {
   summary: EstimateSummaryResult | null;
   paymentSchedule: PaymentScheduleItem[];
   paymentTemplates?: PaymentScheduleTemplate[];
+  invoiceProjectLink?: {
+    canCreateInvoice: boolean;
+    message?: string;
+  };
   /** When true, enable editing in the editor UI. */
   editing?: boolean;
   /** Persist the detail drawer through the parent edit flow when available. */
@@ -118,6 +122,7 @@ export function EstimateEditor({
   summary,
   paymentSchedule = [],
   paymentTemplates = [],
+  invoiceProjectLink,
   editing = false,
   onSaveDetails,
 }: EstimateEditorProps) {
@@ -738,6 +743,7 @@ export function EstimateEditor({
               paymentSchedule={paymentSchedule}
               estimateTotal={summary?.grandTotal ?? 0}
               isLocked={isReadOnly}
+              invoiceProjectLink={invoiceProjectLink}
               nested
               paymentTemplates={paymentTemplates}
               addPaymentMilestoneAction={addPaymentMilestoneAction}

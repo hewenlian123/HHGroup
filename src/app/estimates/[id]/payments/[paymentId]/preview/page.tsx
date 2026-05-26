@@ -10,6 +10,7 @@ import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { PaymentPreviewActions } from "./payment-preview-actions";
 import { ProposalScopePreview } from "@/app/estimates/_components/proposal-scope-preview";
+import { formatEstimatePaymentDueDate } from "@/app/estimates/_components/estimate-payment-date";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,7 @@ export default async function EstimatePaymentPreviewPage({
 
   const payment = paymentSchedule.find((item) => item.id === paymentId);
   if (!payment) notFound();
+  const formattedDueDate = formatEstimatePaymentDueDate(payment.dueDate);
 
   const amountDue = paymentMilestoneAmount(payment, estimate.total);
   const estimateDate =
@@ -67,8 +69,8 @@ export default async function EstimatePaymentPreviewPage({
           documentDate={estimateDate}
           documentNoLabel="Related Estimate"
           extraRight={
-            payment.dueDate ? (
-              <p className="text-xs text-zinc-500 tabular-nums">Due date: {payment.dueDate}</p>
+            formattedDueDate ? (
+              <p className="text-xs text-zinc-500 tabular-nums">Due: {formattedDueDate}</p>
             ) : null
           }
         />
@@ -106,10 +108,8 @@ export default async function EstimatePaymentPreviewPage({
                   <ProposalScopePreview text={payment.description} variant="print" />
                 </div>
               ) : null}
-              {payment.dueDate ? (
-                <p className="mt-3 text-sm tabular-nums text-zinc-600">
-                  Due date: {payment.dueDate}
-                </p>
+              {formattedDueDate ? (
+                <p className="mt-3 text-sm tabular-nums text-zinc-600">Due: {formattedDueDate}</p>
               ) : null}
             </div>
             <div className="text-right">

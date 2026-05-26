@@ -213,7 +213,7 @@ export function EstimateEditCustomerSection({
                     </div>
                     <div className={cn(EB.sheetField, "min-w-0")}>
                       <Label htmlFor="projectName" className={EB.sheetLabel}>
-                        Project
+                        Project / reference
                       </Label>
                       <Input
                         id="projectName"
@@ -222,6 +222,10 @@ export function EstimateEditCustomerSection({
                         placeholder="Project name"
                         className={metaInput}
                       />
+                      <p className="text-xs leading-snug text-[#9EA8B8]">
+                        Milestone invoices require this to match one existing HH project or be
+                        converted to a project after approval.
+                      </p>
                     </div>
                     <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
                       <Label htmlFor="address" className={EB.sheetLabel}>

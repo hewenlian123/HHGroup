@@ -48,6 +48,10 @@ export function EstimatePaymentSchedule(props: {
   paymentSchedule: PaymentScheduleItem[];
   estimateTotal: number;
   isLocked: boolean;
+  invoiceProjectLink?: {
+    canCreateInvoice: boolean;
+    message?: string;
+  };
   nested?: boolean;
   paymentTemplates?: PaymentScheduleTemplate[];
   addPaymentMilestoneAction: AddAction;
@@ -63,6 +67,7 @@ export function EstimatePaymentSchedule(props: {
     paymentSchedule,
     estimateTotal,
     isLocked,
+    invoiceProjectLink,
     nested = false,
     addPaymentMilestoneAction,
     updatePaymentMilestoneAction,
@@ -200,6 +205,21 @@ export function EstimatePaymentSchedule(props: {
                       <FileCheck2 className="h-4 w-4" />
                     </Link>
                   </Button>
+                ) : invoiceProjectLink && !invoiceProjectLink.canCreateInvoice ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    disabled
+                    title={invoiceProjectLink.message}
+                    className={cn(
+                      "min-h-11 min-w-11 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                      EB.btnGhost
+                    )}
+                    aria-label={`Create invoice for ${item.title} requires a linked project`}
+                  >
+                    <FilePlus2 className="h-4 w-4" />
+                  </Button>
                 ) : (
                   <form action={createInvoiceFromPaymentScheduleItemFormAction} className="inline">
                     <input type="hidden" name="estimateId" value={estimateId} />
@@ -270,6 +290,17 @@ export function EstimatePaymentSchedule(props: {
             );
           }}
         />
+        {paymentSchedule.length > 0 &&
+        invoiceProjectLink &&
+        !invoiceProjectLink.canCreateInvoice ? (
+          <div
+            className="mt-3 rounded-md border border-amber-300/20 bg-amber-300/[0.07] px-3 py-2 text-[13px] leading-snug text-amber-100"
+            role="note"
+          >
+            {invoiceProjectLink.message ??
+              "Invoice generation requires a linked project before creating invoices from payment milestones."}
+          </div>
+        ) : null}
 
         {/* Drawer: Schedule Payment */}
         <Sheet
@@ -321,7 +352,7 @@ export function EstimatePaymentSchedule(props: {
                         type="number"
                         step="0.01"
                         min={0}
-                        placeholder="2500"
+                        placeholder="0.00"
                         value={amountDraft}
                         onChange={(e) => handleAmountChange(e.target.value)}
                         className={ebSheetInput(
@@ -340,7 +371,7 @@ export function EstimatePaymentSchedule(props: {
                         step="0.01"
                         min={0}
                         max={100}
-                        placeholder="20"
+                        placeholder="Optional"
                         value={percentDraft}
                         onChange={(e) => handlePercentChange(e.target.value)}
                         className={ebSheetInput(

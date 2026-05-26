@@ -18,6 +18,7 @@ import {
   formatPdfLineUnitPrice,
 } from "@/app/estimates/_components/estimate-pdf-line-amounts";
 import { EstimateNotesPreview } from "@/app/estimates/_components/estimate-notes-preview";
+import { formatEstimatePaymentDueDate } from "@/app/estimates/_components/estimate-payment-date";
 import {
   DEFAULT_LINE_ITEM_STATUS,
   LINE_ITEM_STATUS_LABELS,
@@ -267,9 +268,9 @@ export function EstimatePreviewContent({
                           />
                         </div>
                       ) : null}
-                      {item.dueDate ? (
+                      {formatEstimatePaymentDueDate(item.dueDate) ? (
                         <p className="mt-1 text-xs tabular-nums text-zinc-500">
-                          Due date: {item.dueDate}
+                          Due: {formatEstimatePaymentDueDate(item.dueDate)}
                         </p>
                       ) : null}
                     </div>
