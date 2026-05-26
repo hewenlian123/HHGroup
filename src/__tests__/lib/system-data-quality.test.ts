@@ -122,4 +122,41 @@ describe("buildDataQualityReport", () => {
     expect(codes).toContain("project_pending_cost_review");
     expect(codes).not.toContain("project_actual_cost_component_mismatch");
   });
+
+  it("uses worker payment total_amount before legacy amount for zero-payment warnings", () => {
+    const report = buildDataQualityReport({
+      workerPayments: [
+        {
+          id: "payment-with-canonical-total",
+          amount: 0,
+          total_amount: 50,
+        },
+      ],
+    });
+
+    const codes = report.issues.map((issue) => issue.issueCode);
+    expect(codes).not.toContain("worker_payment_zero_amount");
+    expect(codes).not.toContain("worker_payment_negative_amount");
+  });
+
+  it("warns when worker payment canonical and legacy amount fields are zero", () => {
+    const report = buildDataQualityReport({
+      workerPayments: [
+        {
+          id: "payment-with-zero-totals",
+          amount: 0,
+          total_amount: 0,
+        },
+      ],
+    });
+
+    const issue = report.issues.find((entry) => entry.issueCode === "worker_payment_zero_amount");
+    expect(issue).toMatchObject({
+      severity: "warning",
+      entityType: "worker_payment",
+      entityId: "payment-with-zero-totals",
+      currentValue: "total_amount=0, amount=0",
+    });
+    expect(issue?.message).toContain("canonical amount");
+  });
 });

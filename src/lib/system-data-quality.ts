@@ -156,6 +156,40 @@ function firstNumber(row: UnknownRow, fields: string[]): number | null {
   return null;
 }
 
+type WorkerPaymentAmountSource = {
+  amount: number | null;
+  source: "total_amount" | "amount" | "total" | null;
+};
+
+function workerPaymentAmountSource(row: UnknownRow): WorkerPaymentAmountSource {
+  const totalAmount = hasOwn(row, "total_amount") ? toNumber(row.total_amount) : null;
+  if (totalAmount != null && totalAmount !== 0) {
+    return { amount: totalAmount, source: "total_amount" };
+  }
+
+  const amount = hasOwn(row, "amount") ? toNumber(row.amount) : null;
+  if (amount != null && amount !== 0) {
+    return { amount, source: "amount" };
+  }
+
+  const total = hasOwn(row, "total") ? toNumber(row.total) : null;
+  if (total != null && total !== 0) {
+    return { amount: total, source: "total" };
+  }
+
+  if (totalAmount != null) return { amount: totalAmount, source: "total_amount" };
+  if (amount != null) return { amount, source: "amount" };
+  if (total != null) return { amount: total, source: "total" };
+  return { amount: null, source: null };
+}
+
+function workerPaymentAmountEvidence(row: UnknownRow): string {
+  const parts = ["total_amount", "amount", "total"]
+    .filter((field) => hasOwn(row, field))
+    .map((field) => `${field}=${String(row[field] ?? "null")}`);
+  return parts.length > 0 ? parts.join(", ") : "no amount field";
+}
+
 function hasFractionalCents(value: unknown): boolean {
   const number = toNumber(value);
   if (number == null) return false;
@@ -960,7 +994,7 @@ function checkLaborAndWorkers(
 
   for (const payment of workerPayments) {
     const id = rowId(payment);
-    const amount = firstNumber(payment, ["amount", "total", "total_amount"]);
+    const { amount, source } = workerPaymentAmountSource(payment);
     if (amount === 0) {
       pushIssue(issues, {
         severity: "warning",
@@ -968,9 +1002,12 @@ function checkLaborAndWorkers(
         entityType: "worker_payment",
         entityId: id,
         issueCode: "worker_payment_zero_amount",
-        message: "Worker payment amount is zero.",
-        currentValue: amount,
-        recommendedAction: "Confirm this payment record is intentional.",
+        message: `Worker payment canonical amount is zero using ${
+          source ?? "no available amount source"
+        }.`,
+        currentValue: workerPaymentAmountEvidence(payment),
+        recommendedAction:
+          "Confirm this payment record is intentional. The checker uses worker_payments.total_amount first, then falls back to amount.",
         link: "/labor/payments",
       });
     } else if (amount != null && amount < 0) {
@@ -980,7 +1017,9 @@ function checkLaborAndWorkers(
         entityType: "worker_payment",
         entityId: id,
         issueCode: "worker_payment_negative_amount",
-        message: "Worker payment amount is negative.",
+        message: `Worker payment amount is negative using ${
+          source ?? "no available amount source"
+        }.`,
         currentValue: amount,
         recommendedAction: "Review worker payment data.",
         link: "/labor/payments",
