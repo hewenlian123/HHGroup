@@ -85,7 +85,7 @@ export type ProposalScopeWorkCardProps = {
 
 /**
  * Compact proposal scope block: title row with optional inline pricing,
- * description ~100px floor growing to ~140px then scroll; light format toolbar.
+ * content-driven description editor, and light format toolbar.
  */
 export function ProposalScopeWorkCard({
   title,
@@ -120,10 +120,8 @@ export function ProposalScopeWorkCard({
     const el = editorRef.current;
     if (!el) return;
     el.style.height = "auto";
-    const isDesktop =
-      typeof window !== "undefined" && window.matchMedia("(min-width: 768px)").matches;
-    const minPx = isDesktop ? 90 : 88;
-    const maxPx = 112;
+    const minPx = 52;
+    const maxPx = 360;
     const sh = el.scrollHeight;
     const next = Math.min(Math.max(sh, minPx), maxPx);
     el.style.height = `${next}px`;
@@ -279,7 +277,7 @@ export function ProposalScopeWorkCard({
             onBlur={handleDescriptionBlur}
             onInput={handleDescriptionInput}
             className={cn(
-              "proposal-scope-inline-editor max-h-[7rem] w-full px-2 py-1.5 text-[14px] leading-[1.4] text-[#D8DEE8] outline-none break-words",
+              "proposal-scope-inline-editor w-full px-2 py-1.5 text-[14px] leading-[1.4] text-[#D8DEE8] outline-none break-words",
               "[&_ul]:my-0 [&_ul]:list-disc [&_ul]:pl-3 [&_ol]:my-0 [&_ol]:list-decimal [&_ol]:pl-3",
               "[&_p]:my-0 [&_p]:min-h-[1.05em]",
               "[&_strong]:font-semibold [&_b]:font-semibold",

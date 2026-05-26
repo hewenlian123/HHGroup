@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { EstimateAutoResizeTextarea } from "./estimate-auto-resize-textarea";
 import { EB, ebGlassPanel, ebInput } from "./estimate-builder-ui";
 import {
   ESTIMATE_NOTE_TYPES,
@@ -131,13 +132,15 @@ export function EstimateNotesClarifications({
               notes.map((note) => (
                 <div key={note.id} className={EB.noteBlock}>
                   <div className="mb-2 flex items-start justify-between gap-2">
-                    <input
-                      type="text"
+                    <EstimateAutoResizeTextarea
                       value={note.title}
                       onChange={(e) => updateNote(note.id, { title: e.target.value })}
                       disabled={disabled}
+                      rows={1}
+                      minHeight={32}
+                      maxHeight={112}
                       className={ebInput(
-                        "h-8 min-h-8 w-full min-w-0 border-0 bg-transparent px-0 text-[14px] font-semibold text-[#F6F7FA] shadow-none focus-visible:ring-0"
+                        "eb-note-title-textarea min-h-8 w-full min-w-0 border-0 bg-transparent px-0 py-1 text-[14px] font-semibold leading-[1.35] text-[#F6F7FA] shadow-none focus-visible:ring-0"
                       )}
                       aria-label="Note title"
                     />
@@ -177,14 +180,16 @@ export function EstimateNotesClarifications({
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
-                  <textarea
+                  <EstimateAutoResizeTextarea
                     value={note.body}
                     onChange={(e) => updateNote(note.id, { body: e.target.value })}
                     disabled={disabled}
-                    rows={3}
+                    rows={2}
+                    minHeight={54}
+                    maxHeight={360}
                     className={cn(
                       EB.noteBlockTextarea,
-                      ebInput("min-h-[4.5rem] w-full resize-y text-[13px]")
+                      ebInput("w-full text-[13px] leading-[1.45]")
                     )}
                     placeholder={`${NOTE_TYPE_LABELS[note.type]} details…`}
                     aria-label={`${note.title} body`}

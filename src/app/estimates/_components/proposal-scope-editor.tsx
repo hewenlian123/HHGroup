@@ -29,10 +29,16 @@ export type ProposalScopeEditorProps = {
   className?: string;
 };
 
+const ROW_MIN_HEIGHT = 44;
+const ROW_MAX_HEIGHT = 360;
+
 function resizeTextarea(el: HTMLTextAreaElement | null): void {
   if (!el) return;
-  el.style.height = "0";
-  el.style.height = `${Math.max(el.scrollHeight, 44)}px`;
+  el.style.height = "auto";
+  const scrollHeight = el.scrollHeight;
+  const nextHeight = Math.min(Math.max(scrollHeight, ROW_MIN_HEIGHT), ROW_MAX_HEIGHT);
+  el.style.height = `${nextHeight}px`;
+  el.style.overflowY = scrollHeight > ROW_MAX_HEIGHT ? "auto" : "hidden";
 }
 
 export function ProposalScopeEditor({
@@ -233,7 +239,7 @@ export function ProposalScopeEditor({
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={cn(
                 "eb-proposal-scope-field min-h-11 w-full flex-1 resize-none border-0 bg-transparent",
-                "py-1.5 placeholder:text-zinc-600/80",
+                "overflow-hidden py-1.5 placeholder:text-zinc-600/80",
                 "focus:outline-none focus-visible:ring-0",
                 textClass
               )}
