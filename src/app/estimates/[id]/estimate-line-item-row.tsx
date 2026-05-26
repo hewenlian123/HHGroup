@@ -9,44 +9,12 @@ import {
   formatEstimateCurrency,
   roundEstimateCurrencyValue,
 } from "../_components/estimate-currency";
+import { EstimateAutoResizeTextarea } from "../_components/estimate-auto-resize-textarea";
 
 function parseDesc(desc: string): { title: string; description: string } {
   const idx = desc.indexOf("\n");
   if (idx < 0) return { title: desc, description: "" };
   return { title: desc.slice(0, idx), description: desc.slice(idx + 1) };
-}
-
-function AutoExpandTextarea({
-  value,
-  onChange,
-  onBlur,
-  placeholder,
-  className,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  onBlur?: () => void;
-  placeholder?: string;
-  className?: string;
-}) {
-  const ref = React.useRef<HTMLTextAreaElement>(null);
-  React.useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = "0";
-    el.style.height = `${Math.max(52, el.scrollHeight)}px`;
-  }, [value]);
-  return (
-    <textarea
-      ref={ref}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      onBlur={onBlur}
-      placeholder={placeholder}
-      className={className}
-      rows={2}
-    />
-  );
 }
 
 export function EstimateLineItemRow({
@@ -212,11 +180,14 @@ export function EstimateLineItemRow({
                 <input type="hidden" name="unit" value={unit} />
                 <input type="hidden" name="unitCost" value={unitCost} />
               </form>
-              <AutoExpandTextarea
+              <EstimateAutoResizeTextarea
                 value={description}
-                onChange={setDescription}
+                onChange={(e) => setDescription(e.target.value)}
                 onBlur={submitForm}
                 placeholder="Description (optional)"
+                rows={2}
+                minHeight={52}
+                maxHeight={360}
                 className="min-h-[52px] w-full resize-none rounded-md border-0 bg-transparent py-1.5 px-0 text-sm text-muted-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:ring-0"
               />
             </>
