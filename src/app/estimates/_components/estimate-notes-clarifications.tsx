@@ -123,7 +123,7 @@ export function EstimateNotesClarifications({
               </DropdownMenuContent>
             </DropdownMenu>
           </summary>
-          <div className="mt-3 space-y-3 border-t border-white/[0.06] pt-3">
+          <div className="mt-3 space-y-3 border-t border-white/[0.035] pt-3">
             {notes.length === 0 ? (
               <p className={EB.scopeEmptyMessage}>
                 No notes yet. Add a client-facing clarification when needed.

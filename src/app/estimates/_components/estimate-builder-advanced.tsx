@@ -24,7 +24,7 @@ export function EstimateBuilderAdvanced({
         <ChevronDown className="h-3 w-3 shrink-0 text-[#929CAF] transition-transform group-open:rotate-180" />
         {title}
       </summary>
-      <div className="space-y-3 border-l border-white/[0.06] pb-1 pl-3 pt-1">{children}</div>
+      <div className="space-y-3 pb-1 pt-1">{children}</div>
     </details>
   );
 }

@@ -736,7 +736,7 @@ export function EstimateEditor({
           <EstimateBuilderAdvanced
             title="Payment schedule"
             defaultOpen={paymentSchedule.length > 0}
-            className={cn(ebGlassPanel(), "mt-4")}
+            className="mt-4"
           >
             <EstimatePaymentSchedule
               estimateId={estimateId}
