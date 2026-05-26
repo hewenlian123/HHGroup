@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { computeSummary, lineTotal, type EstimateItemRow } from "@/lib/estimates-db";
+import {
+  computeSummary,
+  lineTotal,
+  orderedCategoryEntriesForEstimateSave,
+  type EstimateItemRow,
+} from "@/lib/estimates-db";
 
 function estimateItem(overrides: Partial<EstimateItemRow>): EstimateItemRow {
   return {
@@ -35,5 +40,62 @@ describe("estimate line item calculations", () => {
     expect(summary.subtotal).toBe(110);
     expect(summary.markup).toBe(0);
     expect(summary.total).toBe(115);
+  });
+});
+
+describe("estimate category persistence ordering", () => {
+  it("keeps item order for six-digit cost codes that JavaScript objects reorder", () => {
+    const categoryNames = {
+      "010000": "Site Preparation",
+      "020000": "Demolition",
+      "030000": "Foundation",
+      "060000": "Framing",
+      "070000": "Roofing",
+      "080000": "Window",
+      "090000": "Drywall",
+      "100000": "Insulation",
+      "120000": "Rough In",
+      "150000": "Paint",
+      "160000": "Door",
+      "170000": "Flooring",
+      "180000": "Cabinet",
+    };
+
+    expect(Object.keys(categoryNames).slice(0, 2)).toEqual(["100000", "120000"]);
+
+    const entries = orderedCategoryEntriesForEstimateSave(
+      categoryNames,
+      [
+        "010000",
+        "020000",
+        "030000",
+        "060000",
+        "070000",
+        "080000",
+        "090000",
+        "100000",
+        "120000",
+        "150000",
+        "160000",
+        "170000",
+        "180000",
+      ].map((costCode) => ({ costCode }))
+    );
+
+    expect(entries.map(([costCode]) => costCode)).toEqual([
+      "010000",
+      "020000",
+      "030000",
+      "060000",
+      "070000",
+      "080000",
+      "090000",
+      "100000",
+      "120000",
+      "150000",
+      "160000",
+      "170000",
+      "180000",
+    ]);
   });
 });

@@ -294,7 +294,7 @@ export function EstimateEditCustomerSection({
                       <div className={cn(EB.sheetField, "min-w-0")}>
                         <div className={EB.sheetLabelRow}>
                           <Label htmlFor="tax" className={EB.sheetLabel}>
-                            Tax
+                            Tax amount
                           </Label>
                           <EstimateTaxPresetMenu
                             estimateSubtotal={estimateSubtotal}
