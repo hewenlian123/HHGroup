@@ -198,6 +198,28 @@ export function groupEstimateItemsByCategoryId(
   return sections;
 }
 
+export function orderedCategoryEntriesForEstimateSave(
+  categoryNames: Record<string, string> | undefined,
+  items: ReadonlyArray<{ costCode: string }>
+): Array<[costCode: string, displayName: string]> {
+  if (!categoryNames || Object.keys(categoryNames).length === 0) return [];
+
+  const seen = new Set<string>();
+  const orderedCodes: string[] = [];
+  for (const item of items) {
+    const code = item.costCode.trim();
+    if (!code || seen.has(code) || categoryNames[code] == null) continue;
+    seen.add(code);
+    orderedCodes.push(code);
+  }
+
+  for (const code of Object.keys(categoryNames)) {
+    if (!seen.has(code)) orderedCodes.push(code);
+  }
+
+  return orderedCodes.map((code) => [code, categoryNames[code] ?? code]);
+}
+
 /** Compute summary from items and meta. Pass codeToType map (code -> 'material'|'labor'|'subcontractor') for breakdown. */
 export function computeSummary(
   items: EstimateItemRow[],
@@ -404,9 +426,13 @@ export async function createEstimateWithItemsWithClient(
     profitPct: payload.profitPct,
   });
   try {
-    if (payload.categoryNames && Object.keys(payload.categoryNames).length > 0) {
+    const categoryEntries = orderedCategoryEntriesForEstimateSave(
+      payload.categoryNames,
+      payload.items
+    );
+    if (categoryEntries.length > 0) {
       let orderIdx = 0;
-      for (const [cost_code, display_name] of Object.entries(payload.categoryNames)) {
+      for (const [cost_code, display_name] of categoryEntries) {
         const result = await upsertEstimateCategoryWithOrderFallback(c, {
           estimate_id: id,
           cost_code,
@@ -991,7 +1017,7 @@ export async function createNewVersionFromSnapshot(estimateId: string): Promise<
 
   // Restore categories (stable order from meta keys)
   const categoryNames = (m as { categoryNames?: Record<string, string> }).categoryNames ?? {};
-  const catEntries = Object.entries(categoryNames);
+  const catEntries = orderedCategoryEntriesForEstimateSave(categoryNames, latest.items);
   for (let i = 0; i < catEntries.length; i++) {
     const [cost_code, display_name] = catEntries[i];
     const result = await upsertEstimateCategoryWithOrderFallback(c, {

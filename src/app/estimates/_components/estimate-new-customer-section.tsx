@@ -370,7 +370,7 @@ export function EstimateNewCustomerSection({
                   <div className={cn(EB.sheetField, "min-w-0")}>
                     <div className={EB.sheetLabelRow}>
                       <Label htmlFor="new-builder-tax" className={EB.sheetLabel}>
-                        Tax
+                        Tax amount
                       </Label>
                       <EstimateTaxPresetMenu
                         estimateSubtotal={estimateSubtotal}

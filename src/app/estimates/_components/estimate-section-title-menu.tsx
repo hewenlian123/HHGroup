@@ -12,6 +12,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -107,9 +108,9 @@ function AddSectionModal({
       <DialogContent className="gap-0 sm:max-w-md rounded-sm border-border/60 p-4 shadow-[var(--shadow-popover)]">
         <DialogHeader className="space-y-1 pb-3">
           <DialogTitle className="text-base">Add section</DialogTitle>
-          <p className="text-xs text-muted-foreground">
+          <DialogDescription className="text-xs text-muted-foreground">
             Creates a scope section and first line on this estimate.
-          </p>
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-1.5 pb-4">
           <Label htmlFor={`section-add-name-${estimateId}`} className="text-xs">
@@ -318,6 +319,7 @@ export function EstimateSectionTitleMenu({
         <DialogContent className="gap-0 sm:max-w-md rounded-sm border-border/60 p-4 shadow-[var(--shadow-popover)]">
           <DialogHeader className="space-y-1 pb-3">
             <DialogTitle className="text-base">Rename section</DialogTitle>
+            <DialogDescription className="sr-only">Rename this estimate section.</DialogDescription>
           </DialogHeader>
           <div className="space-y-1.5 pb-4">
             <Label htmlFor={`section-rename-${currentCostCode}`} className="text-xs">
