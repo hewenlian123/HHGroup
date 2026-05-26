@@ -359,7 +359,10 @@ export function NewEstimateEditor({
 
   const handlePmPercentChange = (raw: string): void => {
     setPmPercent(raw);
-    if (raw.trim() === "") return;
+    if (raw.trim() === "") {
+      setPmAmount("");
+      return;
+    }
     const parsed = parsePaymentPercentInput(raw);
     if (parsed === null) return;
     setPmPercent(String(parsed));
@@ -628,7 +631,7 @@ export function NewEstimateEditor({
                               type="number"
                               step="0.01"
                               min={0}
-                              placeholder="2500"
+                              placeholder="0.00"
                               className={ebSheetInput(
                                 cn("text-sm text-right text-[#F4F7FB]", EB.inputNumeric)
                               )}
@@ -646,7 +649,7 @@ export function NewEstimateEditor({
                               step="0.01"
                               min={0}
                               max={100}
-                              placeholder="20"
+                              placeholder="Optional"
                               className={ebSheetInput(
                                 cn("text-sm text-right text-[#F4F7FB]", EB.inputNumeric)
                               )}

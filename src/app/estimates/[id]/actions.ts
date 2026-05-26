@@ -76,7 +76,7 @@ type ProjectInvoiceSourceRow = {
 };
 
 const PROJECT_LINK_ERROR =
-  "Cannot create invoice because project link could not be resolved. Please link a project first.";
+  "Invoice generation requires a linked project. Convert this estimate to a project, or edit details so the project name matches one existing project before creating milestone invoices.";
 const CUSTOMER_LINK_ERROR =
   "Cannot create invoice because customer link could not be resolved. Please link a customer first.";
 

@@ -280,7 +280,7 @@ export function EstimateNewCustomerSection({
                 </div>
                 <div className={cn(EB.sheetField, "min-w-0")}>
                   <Label htmlFor="new-projectName" className={EB.sheetLabel}>
-                    Project
+                    Project / reference
                   </Label>
                   <Input
                     id="new-projectName"
@@ -291,6 +291,10 @@ export function EstimateNewCustomerSection({
                     aria-invalid={submitAttempted && !projectName.trim()}
                     required
                   />
+                  <p className="text-xs leading-snug text-[#9EA8B8]">
+                    Milestone invoices require this to match one existing HH project or be converted
+                    to a project after approval.
+                  </p>
                   {submitAttempted && !projectName.trim() ? (
                     <p className="text-xs text-rose-400">Project name is required.</p>
                   ) : null}

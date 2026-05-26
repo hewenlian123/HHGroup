@@ -44,6 +44,7 @@ export function EstimateDetailClient({
   summary,
   paymentSchedule,
   paymentTemplates,
+  invoiceProjectLink,
 }: {
   estimateId: string;
   estimateNumber: string;
@@ -58,6 +59,10 @@ export function EstimateDetailClient({
   summary: EstimateSummaryResult | null;
   paymentSchedule: PaymentScheduleItem[];
   paymentTemplates: PaymentScheduleTemplate[];
+  invoiceProjectLink?: {
+    canCreateInvoice: boolean;
+    message?: string;
+  };
 }) {
   const { toast } = useToast();
   const router = useRouter();
@@ -195,9 +200,12 @@ export function EstimateDetailClient({
         return;
       }
       setDeleteConfirmOpen(false);
-      toast({ title: "Estimate deleted", variant: "success" });
       router.replace("/estimates");
-      window.setTimeout(() => syncRouterNonBlocking(router, "estimate-delete"), 0);
+      toast({
+        title: "Estimate deleted",
+        description: "Returning to estimates.",
+        variant: "success",
+      });
     } catch (error) {
       toast({
         title: "Could not delete estimate",
@@ -265,6 +273,7 @@ export function EstimateDetailClient({
         summary={summary}
         paymentSchedule={paymentSchedule}
         paymentTemplates={paymentTemplates}
+        invoiceProjectLink={invoiceProjectLink}
         editing={editing && !isLocked}
         onSaveDetails={onSave}
       />
