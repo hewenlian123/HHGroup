@@ -1384,7 +1384,12 @@ function InvoicesPageInner() {
                           financeToolbarButtonTextClass
                         )}
                       >
-                        <Link href={secondaryAction.href}>{secondaryAction.label}</Link>
+                        <Link
+                          href={secondaryAction.href}
+                          prefetch={secondaryAction.href.includes("/preview") ? false : undefined}
+                        >
+                          {secondaryAction.label}
+                        </Link>
                       </Button>
                     </div>
                   </NeoMobileCard>

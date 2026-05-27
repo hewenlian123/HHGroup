@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
 import { getInvoiceById, getProjectById } from "@/lib/data";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
@@ -9,9 +10,12 @@ import { InvoiceDocument } from "../invoice-document";
 
 /** Company block must reflect latest `company_profile` after Settings saves (no stale RSC cache). */
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default async function InvoicePrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  noStore();
   let invoice: Awaited<ReturnType<typeof getInvoiceById>> | null = null;
   try {
     invoice = await getInvoiceById(id);
@@ -47,8 +51,8 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
 
   return (
     <div
-      className="min-h-screen bg-white p-8 text-black mx-auto print:p-0"
-      style={{ maxWidth: "8.5in" }}
+      className="invoice-a4-shell min-h-screen bg-white px-3 py-5 text-black sm:px-6 print:p-0"
+      style={{ maxWidth: "210mm", margin: "0 auto" }}
     >
       <SetBreadcrumbEntityTitle label={invoice.invoiceNo} />
       <InvoiceDocument

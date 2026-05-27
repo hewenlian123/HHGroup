@@ -674,6 +674,7 @@ export default function InvoiceDetailPage() {
                   <Button asChild variant="ghost" size="sm" className={toolbarButtonClass}>
                     <Link
                       href={`/financial/invoices/${id}/preview`}
+                      prefetch={false}
                       data-testid="invoice-detail-preview-link"
                     >
                       <Eye className="h-4 w-4" />
@@ -681,7 +682,7 @@ export default function InvoiceDetailPage() {
                     </Link>
                   </Button>
                   <Button asChild variant="ghost" size="sm" className={toolbarButtonClass}>
-                    <Link href={`/financial/invoices/${id}/print`}>
+                    <Link href={`/financial/invoices/${id}/print`} prefetch={false}>
                       <FileText className="h-4 w-4" />
                       Print
                     </Link>
@@ -740,7 +741,7 @@ export default function InvoiceDetailPage() {
                       Duplicate invoice
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href={`/financial/invoices/${id}/preview?download=1`}>
+                      <Link href={`/financial/invoices/${id}/preview?download=1`} prefetch={false}>
                         <Download className="h-4 w-4 mr-2" />
                         Download PDF
                       </Link>
