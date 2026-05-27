@@ -827,7 +827,9 @@ export async function getInvoiceDeleteDependencies(
       amount: Number(payment.amount ?? 0) || 0,
       date: isoDateLike(payment.payment_date ?? payment.paid_at),
       status: payment.status ?? null,
-      href: `/financial/payments?invoiceId=${invoiceId}`,
+      href: payment.payment_received_id
+        ? `/financial/payments?paymentId=${payment.payment_received_id}&invoiceId=${invoiceId}`
+        : `/financial/payments?invoiceId=${invoiceId}`,
     });
   }
 
@@ -850,7 +852,7 @@ export async function getInvoiceDeleteDependencies(
         amount: Number(payment.amount ?? 0) || 0,
         date: isoDateLike(payment.payment_date),
         status: payment.status ?? null,
-        href: `/financial/payments?invoiceId=${invoiceId}`,
+        href: `/financial/payments?paymentId=${payment.id}&invoiceId=${invoiceId}`,
       });
     }
   };

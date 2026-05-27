@@ -2271,6 +2271,10 @@ export type {
   PaymentReceivedWithMeta,
   PaymentReceivedAttachment,
   PaymentReceivedDetail,
+  PaymentReceivedDeleteDependency,
+  PaymentReceivedDeleteDependenciesResult,
+  PaymentReceivedDeleteSafeChildRecord,
+  PaymentReceivedDeleteWarning,
   CreatePaymentReceivedPayload,
   CreatePaymentReceivedAttachmentPayload,
   UpdatePaymentReceivedPayload,
@@ -2278,8 +2282,8 @@ export type {
   PaymentMethod,
 } from "../payments-received-db";
 export { PAYMENT_METHODS } from "../payments-received-db";
-export async function getPaymentsReceived() {
-  return paymentsReceivedDb.getPaymentsReceived();
+export async function getPaymentsReceived(options?: { includeVoided?: boolean }) {
+  return paymentsReceivedDb.getPaymentsReceived(options);
 }
 export async function getPaymentReceivedById(paymentId: string) {
   return paymentsReceivedDb.getPaymentReceivedById(paymentId);
