@@ -547,6 +547,19 @@ export function ProjectDetailTabsClient({
         openAR: snapshotComparison.newSnapshot.openAR,
       }
     : fallbackCostSummary;
+  const commissionSummary = React.useMemo(
+    () =>
+      commissions.reduce(
+        (acc, row) => {
+          acc.total += Number(row.commission_amount) || 0;
+          acc.paid += Number(row.paid_amount) || 0;
+          acc.outstanding += Number(row.outstanding_amount) || 0;
+          return acc;
+        },
+        { total: 0, paid: 0, outstanding: 0 }
+      ),
+    [commissions]
+  );
   const profitReadinessWarning = snapshotComparison
     ? getProjectFinancialSnapshotProfitReadinessWarning(
         snapshotComparison.newSnapshot,
@@ -1384,6 +1397,102 @@ export function ProjectDetailTabsClient({
                     </p>
                   ) : null}
                 </div>
+              </div>
+
+              <div>
+                <SectionHeader
+                  label="Commission commitments"
+                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
+                />
+                <Divider />
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <SnapshotMetricCard
+                    label="Commission total"
+                    value={commissionSummary.total}
+                    testId="project-cost-commission-total"
+                  />
+                  <SnapshotMetricCard
+                    label="Commission paid"
+                    value={commissionSummary.paid}
+                    testId="project-cost-commission-paid"
+                  />
+                  <SnapshotMetricCard
+                    label="Commission outstanding"
+                    value={commissionSummary.outstanding}
+                    testId="project-cost-commission-outstanding"
+                  />
+                </div>
+                <p className="mt-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 text-[12px] text-[var(--neo-text-secondary)]">
+                  Commission records are shown for project review only. The current actual cost and
+                  profit formulas do not include commission amounts.
+                </p>
+                {commissions.length > 0 ? (
+                  <div className="mt-3 overflow-x-auto">
+                    <table className="w-full min-w-[520px] border-collapse text-[13px]">
+                      <thead>
+                        <tr className="border-b border-[var(--neo-border)] text-[var(--neo-text-tertiary)]">
+                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-wide">
+                            Person
+                          </th>
+                          <th className="py-2 pr-3 text-left text-[11px] font-medium uppercase tracking-wide">
+                            Role
+                          </th>
+                          <th className="py-2 pr-3 text-right text-[11px] font-medium uppercase tracking-wide">
+                            Commission
+                          </th>
+                          <th className="py-2 pr-3 text-right text-[11px] font-medium uppercase tracking-wide">
+                            Paid
+                          </th>
+                          <th className="py-2 text-left text-[11px] font-medium uppercase tracking-wide">
+                            Status
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {commissions.slice(0, 5).map((row) => (
+                          <tr
+                            key={row.id}
+                            className="border-b border-[var(--neo-border)] last:border-b-0"
+                            data-testid={`project-cost-commission-row-${row.id}`}
+                          >
+                            <td className="py-2.5 pr-3 font-medium text-[var(--neo-text-primary)]">
+                              {row.person_name || "—"}
+                            </td>
+                            <td className="py-2.5 pr-3 text-[var(--neo-text-secondary)]">
+                              {row.role || "—"}
+                            </td>
+                            <td className="py-2.5 pr-3 text-right tabular-nums text-[var(--neo-text-primary)]">
+                              {fmtExactMoney(row.commission_amount)}
+                            </td>
+                            <td className="py-2.5 pr-3 text-right tabular-nums text-[var(--neo-text-secondary)]">
+                              {fmtExactMoney(row.paid_amount)}
+                            </td>
+                            <td className="py-2.5 text-[var(--neo-text-secondary)]">
+                              {row.payment_status === "paid"
+                                ? "Paid"
+                                : row.payment_status === "partial"
+                                  ? "Partial"
+                                  : "Outstanding"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {commissions.length > 5 ? (
+                      <button
+                        type="button"
+                        className="mt-2 text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                        onClick={() => setTab("commission")}
+                      >
+                        View all commissions
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-3 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 text-[13px] text-[var(--neo-text-secondary)]">
+                    No commissions are linked to this project yet.
+                  </p>
+                )}
               </div>
 
               {snapshotComparison ? (

@@ -112,7 +112,11 @@ export async function POST(
       );
     }
 
-    const record = await updatePaymentRecord(paymentId, { receipt_url: signed.signedUrl });
+    const record = await updatePaymentRecord(
+      paymentId,
+      { receipt_url: signed.signedUrl },
+      supabase
+    );
     if (!record)
       return NextResponse.json(
         { ok: false, message: "Failed to save receipt URL." },
@@ -176,7 +180,7 @@ export async function DELETE(
       }
     }
 
-    const record = await updatePaymentRecord(paymentId, { receipt_url: null });
+    const record = await updatePaymentRecord(paymentId, { receipt_url: null }, supabase);
     if (!record)
       return NextResponse.json({ ok: false, message: "Failed to clear receipt." }, { status: 500 });
 

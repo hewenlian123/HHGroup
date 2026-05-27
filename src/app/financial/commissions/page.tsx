@@ -43,5 +43,17 @@ export default async function CommissionPaymentsPage() {
     ...c,
     project_name: projectNameById.get(c.project_id) ?? "",
   }));
-  return <CommissionsClient summary={summary} rows={rows} loadError={loadError} />;
+  const projectOptions = projects.map((p) => ({
+    id: p.id,
+    name: p.name ?? "Untitled project",
+  }));
+
+  return (
+    <CommissionsClient
+      summary={summary}
+      rows={rows}
+      projectOptions={projectOptions}
+      loadError={loadError}
+    />
+  );
 }

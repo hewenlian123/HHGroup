@@ -5,6 +5,7 @@ import {
   createPaymentRecord,
   getPaymentRecordsByCommissionId,
 } from "@/lib/data";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 
 const PAYMENT_METHODS = ["Check", "Bank Transfer", "Cash", "Zelle", "Other"];
@@ -83,13 +84,16 @@ export async function POST(
         : body.notes != null
           ? String(body.notes).trim() || null
           : null;
-    const record = await createPaymentRecord({
-      commission_id: commissionId,
-      amount,
-      payment_date,
-      payment_method,
-      note,
-    });
+    const record = await createPaymentRecord(
+      {
+        commission_id: commissionId,
+        amount,
+        payment_date,
+        payment_method,
+        note,
+      },
+      getServerSupabaseInternalNoStore() ?? undefined
+    );
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
     return NextResponse.json({ ok: true, record });

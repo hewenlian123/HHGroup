@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { updateCommission, deleteCommission, getCommissionById } from "@/lib/data";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 
 const ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"];
@@ -47,7 +48,8 @@ export async function PATCH(
       updates.notes = body.notes != null ? String(body.notes).trim() || null : null;
     const commission = await updateCommission(
       commissionId,
-      updates as Parameters<typeof updateCommission>[1]
+      updates as Parameters<typeof updateCommission>[1],
+      getServerSupabaseInternalNoStore() ?? undefined
     );
     if (!commission)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
@@ -84,7 +86,7 @@ export async function DELETE(
         { ok: false, message: "Commission does not belong to this project" },
         { status: 400 }
       );
-    await deleteCommission(commissionId);
+    await deleteCommission(commissionId, getServerSupabaseInternalNoStore() ?? undefined);
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
     return NextResponse.json({ ok: true });

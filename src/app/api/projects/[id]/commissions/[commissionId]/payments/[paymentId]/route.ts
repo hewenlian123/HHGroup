@@ -7,6 +7,7 @@ import {
   updatePaymentRecord,
   deletePaymentRecord,
 } from "@/lib/data";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 
 const PAYMENT_METHODS = ["Check", "Bank Transfer", "Cash", "Zelle", "Other"];
@@ -62,7 +63,8 @@ export async function PATCH(
             : null
           : undefined;
     const amountFinal = amount !== undefined ? amount : existing.amount;
-    const paidTotal = await getSumPaidForCommission(commissionId);
+    const internalClient = getServerSupabaseInternalNoStore() ?? undefined;
+    const paidTotal = await getSumPaidForCommission(commissionId, internalClient);
     const nextTotal = paidTotal - existing.amount + amountFinal;
     if (nextTotal > commission.commission_amount + 1e-6) {
       return NextResponse.json(
@@ -71,12 +73,16 @@ export async function PATCH(
       );
     }
 
-    const record = await updatePaymentRecord(paymentId, {
-      ...(amount !== undefined ? { amount } : {}),
-      ...(payment_date !== undefined ? { payment_date } : {}),
-      ...(payment_method !== undefined ? { payment_method } : {}),
-      ...(note !== undefined ? { note } : {}),
-    });
+    const record = await updatePaymentRecord(
+      paymentId,
+      {
+        ...(amount !== undefined ? { amount } : {}),
+        ...(payment_date !== undefined ? { payment_date } : {}),
+        ...(payment_method !== undefined ? { payment_method } : {}),
+        ...(note !== undefined ? { note } : {}),
+      },
+      internalClient
+    );
     if (!record)
       return NextResponse.json({ ok: false, message: "Failed to update payment" }, { status: 500 });
     revalidatePath(`/projects/${projectId}`);
@@ -115,7 +121,7 @@ export async function DELETE(
         { ok: false, message: "Payment does not match commission" },
         { status: 400 }
       );
-    await deletePaymentRecord(paymentId);
+    await deletePaymentRecord(paymentId, getServerSupabaseInternalNoStore() ?? undefined);
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
     return NextResponse.json({ ok: true });
