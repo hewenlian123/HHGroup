@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { unstable_noStore as noStore } from "next/cache";
 import { getInvoiceById, getProjectById } from "@/lib/data";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
@@ -8,9 +9,12 @@ import { InvoiceDocument } from "../invoice-document";
 import { InvoicePreviewShell } from "./invoice-preview-shell";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default async function InvoicePreviewPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  noStore();
   let invoice: Awaited<ReturnType<typeof getInvoiceById>> | null = null;
   try {
     invoice = await getInvoiceById(id);
@@ -33,7 +37,7 @@ export default async function InvoicePreviewPage({ params }: { params: Promise<{
     ]);
 
     return (
-      <InvoicePreviewShell invoiceId={id} invoiceNo={invoice.invoiceNo}>
+      <InvoicePreviewShell key={invoice.id} invoiceId={id} invoiceNo={invoice.invoiceNo}>
         <SetBreadcrumbEntityTitle label={`${invoice.invoiceNo} Preview`} />
         <InvoiceDocument
           invoice={invoice}

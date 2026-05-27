@@ -25,12 +25,13 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
   const handleDownloadPdf = React.useCallback(async () => {
     const el = exportRef.current;
     if (!el) return;
+    el.classList.add("invoice-exporting-pdf");
     setPdfBusy(true);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
       await html2pdf()
         .set({
-          margin: [0.45, 0.45, 0.45, 0.45],
+          margin: 0,
           filename: safePdfFilename(invoiceNo),
           image: { type: "jpeg", quality: 0.98 },
           html2canvas: {
@@ -38,12 +39,14 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
             useCORS: true,
             logging: false,
             letterRendering: true,
+            windowWidth: 1123,
           },
-          jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         })
         .from(el)
         .save();
     } finally {
+      el.classList.remove("invoice-exporting-pdf");
       setPdfBusy(false);
     }
   }, [invoiceNo]);
@@ -58,7 +61,7 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
   }, [handleDownloadPdf, searchParams]);
 
   return (
-    <div className="financial-nums mx-auto max-w-[8.5in] px-4 py-4 print:px-0 print:py-0">
+    <div className="invoice-a4-shell financial-nums mx-auto w-full max-w-[210mm] px-3 py-5 sm:px-6 print:px-0 print:py-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" className="btn-outline-ghost rounded-sm h-8" asChild>
@@ -90,7 +93,7 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
             {pdfBusy ? "Generating..." : "Download PDF"}
           </Button>
         </div>
-        <span className="text-xs text-muted-foreground">Letter PDF preview</span>
+        <span className="text-xs text-muted-foreground">A4 PDF preview</span>
       </div>
 
       <div className="shadow-[0_18px_55px_rgba(15,23,42,0.08)] print:shadow-none">

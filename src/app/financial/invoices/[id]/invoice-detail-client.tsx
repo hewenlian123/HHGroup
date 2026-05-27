@@ -497,7 +497,7 @@ export default function InvoiceDetailClient() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm" disabled={busy}>
-            <Link href={`/financial/invoices/${id}/print`}>
+            <Link href={`/financial/invoices/${id}/print`} prefetch={false}>
               <FileText className="h-4 w-4 mr-2" />
               Print
             </Link>
