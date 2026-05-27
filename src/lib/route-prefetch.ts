@@ -39,14 +39,26 @@ export const OWNER_NAV_PREFETCH_ROUTES = [
 
 export type AppRouterLike = { prefetch: (href: string) => void };
 
-export function prefetchRoutes(router: AppRouterLike, hrefs: readonly string[]): void {
-  for (const href of hrefs) {
+const PREFETCH_BATCH_SIZE = 4;
+const PREFETCH_BATCH_IDLE_TIMEOUT_MS = 600;
+
+function prefetchRouteBatch(router: AppRouterLike, hrefs: readonly string[], startIndex: number) {
+  const endIndex = Math.min(startIndex + PREFETCH_BATCH_SIZE, hrefs.length);
+  for (let index = startIndex; index < endIndex; index += 1) {
+    const href = hrefs[index];
     try {
       router.prefetch(href);
     } catch {
       /* ignore */
     }
   }
+  if (endIndex < hrefs.length) {
+    runWhenIdle(() => prefetchRouteBatch(router, hrefs, endIndex), PREFETCH_BATCH_IDLE_TIMEOUT_MS);
+  }
+}
+
+export function prefetchRoutes(router: AppRouterLike, hrefs: readonly string[]): void {
+  prefetchRouteBatch(router, hrefs, 0);
 }
 
 /** Schedule work when the main thread is idle (fallback: short timeout). */
