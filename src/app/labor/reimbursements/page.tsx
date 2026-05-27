@@ -36,11 +36,11 @@ import {
   DollarSign,
   MoreHorizontal,
   Paperclip,
+  Plus,
   Search,
   Wallet,
 } from "lucide-react";
 import {
-  MobileEmptyState,
   MobileFabButton,
   MobileFilterSheet,
   MobileListHeader,
@@ -67,21 +67,66 @@ function todayLocalISODate(): string {
 
 const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "paid"];
 
+const rbPageVars = {
+  "--rb-page": "#08090C",
+  "--rb-main": "#0D0F14",
+  "--rb-panel": "#111318",
+  "--rb-elevated": "#151820",
+  "--rb-input": "#0F1218",
+  "--rb-row": "#10141B",
+  "--rb-row-hover": "#171B24",
+  "--rb-border": "rgba(190,198,210,0.13)",
+  "--rb-border-soft": "rgba(190,198,210,0.09)",
+  "--rb-border-strong": "rgba(205,213,225,0.20)",
+  "--rb-text": "#F6F7FA",
+  "--rb-secondary": "#B5BECC",
+  "--rb-muted": "#929CAF",
+  "--rb-faint": "#737C8C",
+  "--rb-amber": "#D8B46A",
+  "--rb-green": "#8BD7B1",
+} as React.CSSProperties;
+
 const rbShell =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-xl";
+  "rounded-[18px] border border-[color:var(--rb-border)] bg-[var(--rb-elevated)] text-[color:var(--rb-text)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset,0_16px_34px_rgb(0_0_0_/_0.24)] transition-[border-color,background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[color:var(--rb-border-strong)] hover:bg-[#171B24] hover:shadow-[0_1px_0_rgb(255_255_255_/_0.045)_inset,0_18px_40px_rgb(0_0_0_/_0.30)]";
 
 const rbKpiIcon =
-  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--rb-border)] bg-[var(--rb-panel)] text-[color:var(--rb-amber)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset] md:h-9 md:w-9";
+
+const rbKpiCardClass =
+  "flex min-h-[72px] items-center gap-2.5 px-3 py-3 md:h-[86px] md:gap-3 md:px-4 md:py-3";
+
+const rbKpiLabelClass =
+  "text-[10px] font-semibold uppercase leading-none tracking-[0.06em] text-[color:var(--rb-muted)]";
+
+const rbKpiValueClass =
+  "mt-1 text-[20px] font-semibold tabular-nums leading-none tracking-normal text-[color:var(--rb-text)] md:text-[24px]";
+
+const rbKpiMetaClass = "mt-1 text-[11px] leading-none text-[color:var(--rb-faint)]";
+
+const rbSegmentedNav =
+  "inline-flex min-h-9 items-center rounded-full border border-[color:var(--rb-border-soft)] bg-[var(--rb-panel)] p-1 shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset]";
+
+const rbSegmentedNavLink =
+  "inline-flex h-7 items-center rounded-full px-3 text-[12px] font-medium text-[color:var(--rb-secondary)] transition-colors duration-150 hover:bg-[var(--rb-row-hover)] hover:text-[color:var(--rb-text)]";
+
+const rbHeaderActionButton =
+  "h-9 rounded-full border-[color:rgb(216_180_106_/_0.30)] bg-[rgb(216_180_106_/_0.10)] px-3 text-[13px] font-semibold text-[color:var(--rb-amber)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset] transition-colors duration-150 hover:border-[color:rgb(216_180_106_/_0.42)] hover:bg-[rgb(216_180_106_/_0.15)] hover:text-[#F0D59A]";
+
+const rbStatusChip =
+  "inline-flex h-6 items-center gap-1.5 rounded-full border bg-[var(--rb-panel)] px-2.5 text-[11px] font-semibold leading-none tracking-normal shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset]";
+
+const rbChipBase =
+  "inline-flex min-h-9 items-center gap-1.5 rounded-full border bg-[var(--rb-panel)] px-3 py-1.5 text-[11px] font-medium shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset] transition-colors duration-150";
 
 function hasReceiptUrl(r: WorkerReimbursement): boolean {
   return Boolean((r.receiptUrl ?? "").trim());
 }
 
 const receiptPillAttachedInteractive =
-  "inline-flex max-w-full shrink-0 items-center gap-1 rounded-full border border-emerald-500/12 bg-emerald-500/[0.04] px-2 py-0.5 text-[10px] font-medium tabular-nums text-emerald-950 shadow-none transition-colors hover:bg-emerald-500/[0.08] dark:border-emerald-500/14 dark:bg-emerald-500/[0.06] dark:text-emerald-100/88";
+  "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[color:rgb(139_215_177_/_0.24)] bg-[var(--rb-panel)] px-2.5 py-1 text-[11px] font-semibold tabular-nums text-[color:var(--rb-green)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset] transition-colors duration-150 hover:border-[color:rgb(139_215_177_/_0.36)] hover:bg-[var(--rb-row-hover)] hover:text-[#B8F1D2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(216_180_106_/_0.35)]";
 
 const receiptPillMissing =
-  "inline-flex max-w-full shrink-0 items-center gap-1 rounded-full border border-amber-500/10 bg-amber-500/[0.03] px-2 py-0.5 text-[10px] font-normal tabular-nums text-amber-900/65 dark:border-amber-500/10 dark:bg-amber-500/[0.04] dark:text-amber-100/60";
+  "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[color:rgb(216_180_106_/_0.22)] bg-[var(--rb-panel)] px-2.5 py-1 text-[11px] font-medium tabular-nums text-[color:var(--rb-amber)]";
 
 function ReimbursementStatusChip({
   status,
@@ -94,9 +139,29 @@ function ReimbursementStatusChip({
     return <NeoStatus label="Paid" variant="success" />;
   }
   if (hasReceipt) {
-    return <NeoStatus label="Ready to pay" variant="warning" />;
+    return (
+      <span
+        className={cn(
+          rbStatusChip,
+          "border-[color:rgb(139_215_177_/_0.26)] text-[color:var(--rb-green)]"
+        )}
+      >
+        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--rb-green)]" aria-hidden />
+        Ready to pay
+      </span>
+    );
   }
-  return <NeoStatus label="Pending" variant="warning" />;
+  return (
+    <span
+      className={cn(
+        rbStatusChip,
+        "border-[color:rgb(216_180_106_/_0.26)] text-[color:var(--rb-amber)]"
+      )}
+    >
+      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--rb-amber)]" aria-hidden />
+      Pending
+    </span>
+  );
 }
 
 export default function WorkerReimbursementsPage() {
@@ -525,10 +590,10 @@ export default function WorkerReimbursementsPage() {
   function ActionsDropdown({ r }: { r: WorkerReimbursement }) {
     const isBusy = busyId === r.id;
     return (
-      <div className="flex items-center justify-end gap-0.5 opacity-100 transition-opacity duration-200 md:gap-1 md:opacity-[0.28] md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+      <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity duration-200 md:opacity-[0.48] md:group-hover:opacity-100 md:group-focus-within:opacity-100">
         <DeleteRowAction
           disabled={isBusy}
-          className="h-11 w-11 text-muted-foreground/45 hover:bg-zinc-100/90 hover:text-red-600 dark:hover:bg-muted/45 md:h-8 md:w-8 md:text-muted-foreground/35 md:hover:text-red-600"
+          className="h-11 w-11 rounded-full text-[color:var(--rb-faint)] hover:bg-rose-400/[0.10] hover:text-rose-300 md:h-8 md:w-8"
           onDelete={() => handleDelete(r.id)}
         />
         <DropdownMenu>
@@ -536,13 +601,16 @@ export default function WorkerReimbursementsPage() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-sm text-muted-foreground/55 touch-manipulation hover:bg-zinc-100/70 hover:text-foreground dark:hover:bg-muted/40 md:h-8 md:w-8 md:min-h-8 md:min-w-8 md:text-muted-foreground/35 md:hover:text-foreground"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-full border border-transparent text-[color:var(--rb-faint)] touch-manipulation transition-colors duration-150 hover:border-[color:var(--rb-border)] hover:bg-[var(--rb-row-hover)] hover:text-[color:var(--rb-text)] data-[state=open]:border-[color:var(--rb-border-strong)] data-[state=open]:bg-[var(--rb-row-hover)] md:h-8 md:w-8 md:min-h-8 md:min-w-8"
               aria-label="Actions"
             >
-              <MoreHorizontal className="h-4 w-4 opacity-55 md:opacity-50" />
+              <MoreHorizontal className="h-4 w-4 opacity-80" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[10rem]">
+          <DropdownMenuContent
+            align="end"
+            className="min-w-[10rem] border-[color:var(--rb-border)] bg-[var(--rb-elevated)] text-[color:var(--rb-text)] shadow-[0_20px_44px_rgb(0_0_0_/_0.36)]"
+          >
             {r.status === "pending" && (
               <>
                 <DropdownMenuItem disabled={isBusy} onSelect={() => openPayModal(r)}>
@@ -587,44 +655,40 @@ export default function WorkerReimbursementsPage() {
 
   return (
     <div
+      style={rbPageVars}
       className={cn(
-        "dark neo-page-on-graphite page-shell-wide mx-auto flex w-full max-w-[430px] flex-col gap-1 px-4 py-1 pb-2.5 text-[var(--neo-canvas-text-secondary)] sm:max-w-[460px] md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
+        "dark neo-page-on-graphite page-shell-wide mx-auto flex min-h-[calc(100dvh-1rem)] w-full max-w-[430px] flex-col gap-1 bg-[var(--rb-page)] px-4 py-1 pb-2.5 text-[color:var(--rb-secondary)] sm:max-w-[460px] md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
         mobileListPagePaddingClass,
         "max-md:!gap-1"
       )}
     >
       <div className="hidden md:block">
         <PageHeader
-          className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
+          className="gap-2 border-b border-[color:var(--rb-border-soft)] pb-4 lg:items-end lg:gap-x-5 [&_h1]:!text-[25px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[color:var(--rb-text)] [&_p]:!mt-1.5 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[color:var(--rb-secondary)]"
           title="Worker Reimbursements"
           subtitle="Review pending reimbursements, receipts, and payouts before marking paid."
           actions={
             <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:justify-end">
-              <Link
-                href="/financial/workers"
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2 md:text-[13px] md:text-muted-foreground/85 md:hover:text-foreground"
-              >
-                Worker Balances
-              </Link>
-              <Link
-                href="/labor/receipts"
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2 md:text-[13px] md:text-muted-foreground/85 md:hover:text-foreground"
-              >
-                Receipt Uploads
-              </Link>
-              <Link
-                href="/labor"
-                className="text-sm text-muted-foreground transition-colors hover:text-foreground max-md:min-h-11 max-md:inline-flex max-md:items-center sm:mr-2 md:text-[13px] md:text-muted-foreground/85 md:hover:text-foreground"
-              >
-                Labor
-              </Link>
+              <nav className={rbSegmentedNav} aria-label="Labor navigation">
+                <Link href="/financial/workers" className={rbSegmentedNavLink}>
+                  Worker Balances
+                </Link>
+                <Link href="/labor/receipts" className={rbSegmentedNavLink}>
+                  Receipt Uploads
+                </Link>
+                <Link href="/labor" className={rbSegmentedNavLink}>
+                  Labor
+                </Link>
+              </nav>
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full max-md:min-h-11 sm:w-auto md:shadow-none"
+                className={cn("w-full max-md:min-h-11 sm:w-auto", rbHeaderActionButton)}
                 onClick={openNewReimbursementForm}
+                aria-label="+ New Reimbursement"
               >
-                + New Reimbursement
+                <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                New Reimbursement
               </Button>
             </div>
           }
@@ -642,100 +706,87 @@ export default function WorkerReimbursementsPage() {
       />
 
       <div
-        className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-zinc-100/90 pb-0.5 dark:border-border/50 md:pb-0.5"
+        className="flex flex-wrap items-center gap-2 border-b border-[color:var(--rb-border-soft)] pb-2 pt-1"
         aria-label="Reimbursement queue summary"
       >
-        <span className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-zinc-200/85 bg-white px-2.5 py-1.5 text-[11px] text-muted-foreground shadow-[0_1px_0_rgba(0,0,0,0.03)] dark:border-border/55 dark:bg-card md:min-h-9">
-          <span className="font-semibold tabular-nums text-foreground">
+        <span
+          className={cn(
+            rbChipBase,
+            "border-[color:var(--rb-border)] text-[color:var(--rb-secondary)]"
+          )}
+        >
+          <span className="font-semibold tabular-nums text-[color:var(--rb-text)]">
             {reimbursementStats.pendingCount}
           </span>
           Pending
         </span>
-        <span className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-amber-500/15 bg-amber-500/[0.05] px-2.5 py-1.5 text-[11px] text-amber-950/75 dark:border-amber-500/12 dark:bg-amber-500/[0.07] dark:text-amber-100/80 md:min-h-9">
-          <span className="font-semibold tabular-nums text-amber-950 dark:text-amber-50">
+        <span
+          className={cn(
+            rbChipBase,
+            "border-[color:rgb(216_180_106_/_0.26)] text-[color:var(--rb-amber)]"
+          )}
+        >
+          <span className="font-semibold tabular-nums text-[#F0D59A]">
             {reimbursementStats.missingReceipt}
           </span>
           Missing receipt
         </span>
-        <span className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-emerald-500/18 bg-emerald-500/[0.06] px-2.5 py-1.5 text-[11px] text-emerald-950/80 dark:border-emerald-500/22 dark:bg-emerald-500/10 dark:text-emerald-100/85 md:min-h-9">
-          <span className="font-semibold tabular-nums text-emerald-950 dark:text-emerald-50">
+        <span
+          className={cn(
+            rbChipBase,
+            "border-[color:rgb(139_215_177_/_0.28)] text-[color:var(--rb-green)]"
+          )}
+        >
+          <span className="font-semibold tabular-nums text-[#B8F1D2]">
             {reimbursementStats.readyToPay}
           </span>
           Ready to pay
         </span>
       </div>
 
-      <div className="-mt-px grid grid-cols-2 gap-1.5 md:grid-cols-4 md:gap-1.5">
-        <div
-          className={cn(
-            rbShell,
-            "flex min-h-[48px] items-center gap-1.5 px-2 py-1.5 md:h-[62px] md:gap-2 md:px-3 md:py-1.5"
-          )}
-        >
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+        <div className={cn(rbShell, rbKpiCardClass)}>
           <span className={rbKpiIcon}>
-            <AlertCircle className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
+            <AlertCircle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
-              In queue
-            </p>
-            <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-              {reimbursementStats.pendingCount}
-            </p>
+            <p className={rbKpiLabelClass}>In queue</p>
+            <p className={rbKpiValueClass}>{reimbursementStats.pendingCount}</p>
+            <p className={rbKpiMetaClass}>Pending review</p>
           </div>
         </div>
-        <div
-          className={cn(
-            rbShell,
-            "flex min-h-[48px] items-center gap-1.5 px-2 py-1.5 md:h-[62px] md:gap-2 md:px-3 md:py-1.5"
-          )}
-        >
+        <div className={cn(rbShell, rbKpiCardClass)}>
           <span className={rbKpiIcon}>
-            <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
+            <DollarSign className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
-              Owed (pending)
-            </p>
-            <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+            <p className={rbKpiLabelClass}>Owed pending</p>
+            <p className={cn(rbKpiValueClass, "truncate")}>
               {formatCurrency(reimbursementStats.pendingTotal)}
             </p>
+            <p className={rbKpiMetaClass}>Before payout</p>
           </div>
         </div>
-        <div
-          className={cn(
-            rbShell,
-            "flex min-h-[48px] items-center gap-1.5 px-2 py-1.5 md:h-[62px] md:gap-2 md:px-3 md:py-1.5"
-          )}
-        >
+        <div className={cn(rbShell, rbKpiCardClass)}>
           <span className={rbKpiIcon}>
-            <CheckCircle2 className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
+            <CheckCircle2 className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
-              Paid items
-            </p>
-            <p className="mt-0.5 text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
-              {reimbursementStats.paidCount}
-            </p>
+            <p className={rbKpiLabelClass}>Paid items</p>
+            <p className={rbKpiValueClass}>{reimbursementStats.paidCount}</p>
+            <p className={rbKpiMetaClass}>Settled records</p>
           </div>
         </div>
-        <div
-          className={cn(
-            rbShell,
-            "flex min-h-[48px] items-center gap-1.5 px-2 py-1.5 md:h-[62px] md:gap-2 md:px-3 md:py-1.5"
-          )}
-        >
+        <div className={cn(rbShell, rbKpiCardClass)}>
           <span className={rbKpiIcon}>
-            <Wallet className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
+            <Wallet className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
           </span>
           <div className="min-w-0">
-            <p className="text-[8px] font-medium uppercase leading-none tracking-wide text-muted-foreground md:text-[9px] md:normal-case md:tracking-normal">
-              Paid out
-            </p>
-            <p className="mt-0.5 truncate text-base font-semibold tabular-nums leading-none text-zinc-900 md:text-xl dark:text-foreground">
+            <p className={rbKpiLabelClass}>Paid out</p>
+            <p className={cn(rbKpiValueClass, "truncate")}>
               {formatCurrency(reimbursementStats.paidTotal)}
             </p>
+            <p className={rbKpiMetaClass}>Cash settled</p>
           </div>
         </div>
       </div>
@@ -746,12 +797,12 @@ export default function WorkerReimbursementsPage() {
         activeFilterCount={sortFilterActive}
         searchSlot={
           <div className="relative w-full">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--rb-muted)]" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Worker, project, vendor…"
-              className="h-11 min-h-[44px] pl-8 text-sm md:h-10 md:min-h-0"
+              className="h-11 min-h-[44px] rounded-full border-[color:var(--rb-border)] bg-[var(--rb-input)] pl-9 text-sm text-[color:var(--rb-text)] placeholder:text-[color:var(--rb-faint)] focus-visible:border-[color:rgb(216_180_106_/_0.38)] focus-visible:ring-[rgb(216_180_106_/_0.18)] md:h-10 md:min-h-0"
               aria-label="Search reimbursements"
             />
           </div>
@@ -806,27 +857,34 @@ export default function WorkerReimbursementsPage() {
         </Button>
       </MobileFilterSheet>
       {schemaWarning ? (
-        <div className="rounded-lg border border-amber-200/80 bg-background px-3 py-2 text-sm text-amber-700 dark:border-amber-900/40 dark:text-amber-500">
+        <div className="rounded-lg border border-[color:rgb(216_180_106_/_0.24)] bg-[var(--rb-panel)] px-3 py-2 text-sm text-[color:var(--rb-amber)]">
           {schemaWarning} Run Labor schema migration (e.g. ensure labor tables) or check Supabase
           Project Settings → API → Reload schema.
         </div>
       ) : null}
-      <NeoToolbar className="hidden md:block md:pb-0 md:pt-0">
+      <NeoToolbar className="hidden border-[color:var(--rb-border)] bg-[var(--rb-panel)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset,0_12px_30px_rgb(0_0_0_/_0.22)] md:block md:p-2.5">
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-          <div className="space-y-1 min-w-[200px] flex-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+          <div className="min-w-[260px] flex-1 space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
               Search
             </p>
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Worker, project, vendor…"
-            />
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--rb-muted)]"
+                aria-hidden
+              />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Worker, project, vendor…"
+                className="h-10 rounded-full border-[color:var(--rb-border)] bg-[var(--rb-input)] pl-9 text-[color:var(--rb-text)] placeholder:text-[color:var(--rb-faint)] focus-visible:border-[color:rgb(216_180_106_/_0.38)] focus-visible:ring-[rgb(216_180_106_/_0.18)]"
+              />
+            </div>
           </div>
           <Button
             size="sm"
             variant="outline"
-            className="w-full max-md:min-h-11 sm:w-auto"
+            className="h-10 w-full rounded-full border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset] transition-colors duration-150 hover:border-[color:rgb(216_180_106_/_0.36)] hover:bg-[#171B24] hover:text-[color:var(--rb-amber)] disabled:border-[color:var(--rb-border-soft)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] sm:w-[210px]"
             disabled={selectedIds.size === 0 || !selectedSameWorker || selectedRows.length === 0}
             onClick={openCreateWorkerPayment}
           >
@@ -836,14 +894,14 @@ export default function WorkerReimbursementsPage() {
         </div>
       </NeoToolbar>
       {message ? (
-        <div className="rounded-lg border border-gray-100 bg-background px-3 py-2 text-sm text-muted-foreground dark:border-border">
+        <div className="rounded-lg border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-3 py-2 text-sm text-[color:var(--rb-secondary)]">
           {message}
         </div>
       ) : null}
 
       {showForm && (
-        <div className="border-b border-gray-100 pb-4 dark:border-border/60">
-          <h2 className="text-sm font-semibold text-foreground mb-3">
+        <div className="border-b border-[color:var(--rb-border-soft)] pb-4">
+          <h2 className="mb-3 text-sm font-semibold text-[color:var(--rb-text)]">
             {editingId ? "Edit Reimbursement" : "New Reimbursement"}
           </h2>
           <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-end">
@@ -975,25 +1033,35 @@ export default function WorkerReimbursementsPage() {
 
       <div className="md:hidden">
         {loading ? (
-          <p className="py-6 text-center text-xs text-muted-foreground">Loading…</p>
+          <div className="rounded-[18px] border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-4 py-8 text-center text-xs text-[color:var(--rb-muted)]">
+            Loading…
+          </div>
         ) : paged.length === 0 ? (
-          <MobileEmptyState
-            icon={<Search className="h-8 w-8 opacity-80" aria-hidden />}
-            message="No reimbursements yet."
-          />
+          <div className="flex flex-col items-center rounded-[18px] border border-dashed border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-4 py-10 text-center md:hidden">
+            <Search className="h-8 w-8 text-[color:var(--rb-muted)]" aria-hidden />
+            <p className="mt-3 text-sm font-medium text-[color:var(--rb-secondary)]">
+              No reimbursements yet.
+            </p>
+            <p className="mt-1 max-w-[240px] text-xs leading-snug text-[color:var(--rb-muted)]">
+              New worker reimbursements will appear here for review and payout.
+            </p>
+          </div>
         ) : (
           <div className="flex flex-col gap-1.5">
             {paged.map((r) => (
               <NeoMobileCard
                 key={r.id}
                 className={cn(
-                  "flex flex-col gap-2 px-3 py-2.5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_2px_12px_rgba(0,0,0,0.04)]",
+                  "flex flex-col gap-2.5 rounded-[18px] border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-3 py-3 shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset,0_12px_30px_rgb(0_0_0_/_0.22)]",
+                  selectedIds.has(r.id) && "border-[color:rgb(216_180_106_/_0.42)] bg-[#171B24]",
                   r.status === "pending" &&
                     hasReceiptUrl(r) &&
-                    "border-l-[3px] border-l-emerald-500/35 pl-[calc(0.75rem-3px)]",
+                    !selectedIds.has(r.id) &&
+                    "border-l-[3px] border-l-[rgb(139_215_177_/_0.34)] pl-[calc(0.75rem-3px)]",
                   r.status === "pending" &&
                     !hasReceiptUrl(r) &&
-                    "border-l-[3px] border-l-amber-500/30 pl-[calc(0.75rem-3px)]"
+                    !selectedIds.has(r.id) &&
+                    "border-l-[3px] border-l-[rgb(216_180_106_/_0.32)] pl-[calc(0.75rem-3px)]"
                 )}
               >
                 <div className="flex items-start gap-2">
@@ -1008,27 +1076,27 @@ export default function WorkerReimbursementsPage() {
                       />
                     </label>
                   ) : null}
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="truncate text-[14px] font-semibold leading-snug tracking-normal text-[var(--neo-text-primary)]">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="truncate text-[15px] font-semibold leading-snug tracking-normal text-[color:var(--rb-text)]">
                       {workerName(r)}
                     </p>
                     {r.paidAt ? (
-                      <p className="text-[10px] tabular-nums text-muted-foreground/70">
+                      <p className="text-[11px] text-[color:var(--rb-faint)] tabular-nums">
                         Paid {formatDate(r.paidAt)}
                       </p>
                     ) : null}
-                    <p className="truncate text-[11px] leading-snug text-muted-foreground">
+                    <p className="truncate text-[12px] leading-snug text-[color:var(--rb-secondary)]">
                       {r.projectId && projectName(r) !== "—" ? projectName(r) : "No project"}
                     </p>
-                    <p className="truncate text-[12px] font-medium leading-snug text-zinc-800 dark:text-zinc-100">
+                    <p className="truncate text-[13px] font-semibold leading-snug text-[color:var(--rb-text)]">
                       {r.vendor?.trim() ? r.vendor : "No vendor"}
                     </p>
                     {r.description?.trim() ? (
-                      <p className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+                      <p className="line-clamp-2 text-[12px] leading-snug text-[color:var(--rb-secondary)]">
                         {r.description.trim()}
                       </p>
                     ) : null}
-                    <p className="text-[10px] tabular-nums text-muted-foreground">
+                    <p className="text-[11px] text-[color:var(--rb-faint)] tabular-nums">
                       {formatDate(r.reimbursementDate || r.createdAt)}
                     </p>
                   </div>
@@ -1074,19 +1142,19 @@ export default function WorkerReimbursementsPage() {
                       ) : (
                         <span
                           className={cn(receiptPillMissing, "min-h-[44px] md:min-h-0")}
-                          aria-label="No receipt"
+                          aria-label="Missing receipt"
                         >
                           <span
-                            className="h-1 w-1 shrink-0 rounded-full bg-amber-400/55 dark:bg-amber-400/45"
+                            className="h-1 w-1 shrink-0 rounded-full bg-[var(--rb-amber)]"
                             aria-hidden
                           />
-                          No receipt
+                          Missing
                         </span>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="flex justify-end border-t border-zinc-100/80 pt-1.5 dark:border-border/45">
+                <div className="flex justify-end border-t border-[color:var(--rb-border-soft)] pt-2">
                   <ActionsDropdown r={r} />
                 </div>
               </NeoMobileCard>
@@ -1096,10 +1164,13 @@ export default function WorkerReimbursementsPage() {
       </div>
 
       {/* Desktop: table */}
-      <div className="hidden md:block">
-        <NeoTable tableClassName="min-w-[900px] lg:min-w-0">
+      <div className="hidden md:-mt-1 md:block">
+        <NeoTable
+          className="border-[color:var(--rb-border)] bg-[var(--rb-panel)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset,0_18px_42px_rgb(0_0_0_/_0.24)]"
+          tableClassName="min-w-[900px] lg:min-w-0"
+        >
           <thead>
-            <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+            <tr className="border-b border-[color:var(--rb-border)] bg-[var(--rb-elevated)]">
               <th className="w-12 px-2 py-1.5 text-center">
                 <div className="flex min-h-10 min-w-10 items-center justify-center">
                   <input
@@ -1114,51 +1185,64 @@ export default function WorkerReimbursementsPage() {
                 </div>
               </th>
               <th
-                className="w-[88px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] cursor-pointer select-none tabular-nums"
+                className="w-[88px] cursor-pointer select-none whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)] tabular-nums transition-colors hover:text-[color:var(--rb-text)]"
                 onClick={() => toggleSort("reimbursementDate")}
               >
                 Date
               </th>
-              <th className="min-w-[128px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+              <th className="min-w-[128px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
                 Worker
               </th>
-              <th className="max-w-[140px] min-w-[100px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+              <th className="max-w-[140px] min-w-[100px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
                 Project
               </th>
-              <th className="min-w-[160px] px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+              <th className="min-w-[160px] px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
                 Review item
               </th>
               <th
-                className="w-[92px] whitespace-nowrap px-3 py-1.5 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] cursor-pointer select-none tabular-nums"
+                className="w-[92px] cursor-pointer select-none whitespace-nowrap px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)] tabular-nums transition-colors hover:text-[color:var(--rb-text)]"
                 onClick={() => toggleSort("amount")}
               >
                 Amount
               </th>
               <th
-                className="w-[108px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)] cursor-pointer select-none"
+                className="w-[108px] cursor-pointer select-none whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)] transition-colors hover:text-[color:var(--rb-text)]"
                 onClick={() => toggleSort("status")}
               >
                 Status
               </th>
-              <th className="w-[88px] whitespace-nowrap px-3 py-1.5 text-left text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+              <th className="w-[88px] whitespace-nowrap px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
                 Receipt
               </th>
-              <th className="w-24 px-3 py-1.5 text-right text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+              <th className="w-24 px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground text-xs">
+              <tr className="border-b border-[color:var(--rb-border-soft)] bg-[var(--rb-input)]">
+                <td
+                  colSpan={9}
+                  className="px-3 py-8 text-center text-xs text-[color:var(--rb-muted)]"
+                >
                   Loading…
                 </td>
               </tr>
             ) : paged.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={9} className="px-3 py-8 text-center text-muted-foreground text-xs">
-                  No reimbursements yet.
+              <tr className="border-b border-[color:var(--rb-border-soft)] bg-[var(--rb-input)]">
+                <td colSpan={9} className="px-3 py-9 text-center">
+                  <div className="mx-auto flex max-w-[360px] flex-col items-center">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--rb-border)] bg-[var(--rb-panel)] text-[color:var(--rb-muted)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset]">
+                      <Search className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                    </div>
+                    <p className="mt-3 text-[13px] font-medium text-[color:var(--rb-secondary)]">
+                      No reimbursements yet.
+                    </p>
+                    <p className="mt-1 text-[12px] leading-snug text-[color:var(--rb-muted)]">
+                      New worker reimbursements will appear here for review and payout.
+                    </p>
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -1167,13 +1251,17 @@ export default function WorkerReimbursementsPage() {
                   key={r.id}
                   className={cn(
                     listTableRowClassName,
-                    "group border-b border-zinc-100/80 transition-colors hover:bg-zinc-50/70 dark:border-border/40 dark:hover:bg-muted/15",
+                    "group border-b border-[color:var(--rb-border-soft)] bg-[var(--rb-row)] transition-[background-color,box-shadow,transform] duration-150 hover:bg-[var(--rb-row-hover)]",
+                    selectedIds.has(r.id) &&
+                      "bg-[#171B24] shadow-[inset_2px_0_0_0_rgb(216_180_106_/_0.52)]",
                     r.status === "pending" &&
                       hasReceiptUrl(r) &&
-                      "bg-emerald-500/[0.03] shadow-[inset_3px_0_0_0_rgba(16,185,129,0.28)] hover:bg-emerald-500/[0.05] dark:bg-emerald-500/[0.04] dark:hover:bg-emerald-500/[0.06] dark:shadow-[inset_3px_0_0_0_rgba(52,211,153,0.22)]",
+                      !selectedIds.has(r.id) &&
+                      "shadow-[inset_2px_0_0_0_rgb(139_215_177_/_0.30)]",
                     r.status === "pending" &&
                       !hasReceiptUrl(r) &&
-                      "bg-amber-500/[0.03] shadow-[inset_3px_0_0_0_rgba(245,158,11,0.26)] hover:bg-amber-500/[0.045] dark:bg-amber-500/[0.05] dark:hover:bg-amber-500/[0.07] dark:shadow-[inset_3px_0_0_0_rgba(251,191,36,0.2)]"
+                      !selectedIds.has(r.id) &&
+                      "shadow-[inset_2px_0_0_0_rgb(216_180_106_/_0.28)]"
                   )}
                   onClick={() => handleEdit(r)}
                 >
@@ -1195,43 +1283,43 @@ export default function WorkerReimbursementsPage() {
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 align-middle text-[11px] text-muted-foreground tabular-nums leading-snug">
+                  <td className="px-3 py-2.5 align-middle text-[12px] leading-snug text-[color:var(--rb-secondary)] tabular-nums">
                     {formatDate(r.reimbursementDate || r.createdAt)}
                   </td>
                   <td
                     className={cn(
-                      "min-w-0 px-3 py-2 align-middle leading-snug",
+                      "min-w-0 px-3 py-2.5 align-middle leading-snug",
                       listTablePrimaryCellClassName,
-                      "text-zinc-900 dark:text-foreground"
+                      "text-[color:var(--rb-text)]"
                     )}
                   >
                     <div className="min-w-0 space-y-0.5">
-                      <span className="line-clamp-2 text-[13px] font-semibold tracking-normal text-[var(--neo-text-primary)]">
+                      <span className="line-clamp-2 text-[14px] font-semibold tracking-normal text-[color:var(--rb-text)]">
                         {workerName(r)}
                       </span>
                       {r.paidAt ? (
-                        <span className="block text-[10px] tabular-nums leading-none text-muted-foreground/70">
+                        <span className="block text-[11px] leading-none text-[color:var(--rb-faint)] tabular-nums">
                           Paid {formatDate(r.paidAt)}
                         </span>
                       ) : null}
                     </div>
                   </td>
-                  <td className="max-w-[160px] px-3 py-2 align-middle">
+                  <td className="max-w-[160px] px-3 py-2.5 align-middle">
                     {r.projectId && projectName(r) !== "—" ? (
-                      <span className="line-clamp-2 text-[12px] leading-snug text-muted-foreground">
+                      <span className="line-clamp-2 text-[13px] leading-snug text-[color:var(--rb-secondary)]">
                         {projectName(r)}
                       </span>
                     ) : (
-                      <span className="text-[12px] text-muted-foreground/45">No project</span>
+                      <span className="text-[13px] text-[color:var(--rb-faint)]">No project</span>
                     )}
                   </td>
-                  <td className="min-w-0 px-3 py-2 align-middle leading-snug">
+                  <td className="min-w-0 px-3 py-2.5 align-middle leading-snug">
                     <div className="min-w-0 space-y-0.5">
-                      <span className="line-clamp-2 text-[12px] font-medium leading-snug text-zinc-800 dark:text-zinc-100">
+                      <span className="line-clamp-2 text-[13px] font-semibold leading-snug text-[color:var(--rb-text)]">
                         {r.vendor?.trim() ? r.vendor : "No vendor"}
                       </span>
                       {r.description?.trim() ? (
-                        <span className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+                        <span className="line-clamp-2 text-[12px] leading-snug text-[color:var(--rb-secondary)]">
                           {r.description.trim()}
                         </span>
                       ) : null}
@@ -1239,17 +1327,17 @@ export default function WorkerReimbursementsPage() {
                   </td>
                   <td
                     className={cn(
-                      "whitespace-nowrap px-3 py-2 text-right align-middle",
+                      "whitespace-nowrap px-3 py-2.5 text-right align-middle",
                       listTableAmountCellClassName
                     )}
                   >
-                    <NeoAmount className="text-base">{formatCurrency(r.amount)}</NeoAmount>
+                    <NeoAmount className="text-[15px]">{formatCurrency(r.amount)}</NeoAmount>
                   </td>
-                  <td className="px-3 py-2 align-middle whitespace-nowrap">
+                  <td className="whitespace-nowrap px-3 py-2.5 align-middle">
                     <ReimbursementStatusChip status={r.status} hasReceipt={hasReceiptUrl(r)} />
                   </td>
                   <td
-                    className="px-3 py-2 align-middle whitespace-nowrap"
+                    className="whitespace-nowrap px-3 py-2.5 align-middle"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {r.receiptUrl ? (
@@ -1285,10 +1373,10 @@ export default function WorkerReimbursementsPage() {
                     ) : (
                       <span className={receiptPillMissing}>
                         <span
-                          className="h-1 w-1 shrink-0 rounded-full bg-amber-400/55 dark:bg-amber-400/45"
+                          className="h-1 w-1 shrink-0 rounded-full bg-[var(--rb-amber)]"
                           aria-hidden
                         />
-                        No receipt
+                        Missing
                       </span>
                     )}
                   </td>
@@ -1305,8 +1393,8 @@ export default function WorkerReimbursementsPage() {
         </NeoTable>
       </div>
 
-      <div className="flex items-center justify-between pt-3 text-sm text-muted-foreground">
-        <span className="tabular-nums">
+      <div className="flex items-center justify-between rounded-[16px] border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-3 py-2 text-sm text-[color:var(--rb-secondary)] shadow-[0_1px_0_rgb(255_255_255_/_0.025)_inset] md:-mt-1">
+        <span className="text-[13px] font-medium tabular-nums">
           {filtered.length === 0
             ? "0"
             : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, filtered.length)} of ${filtered.length}`}
@@ -1315,7 +1403,7 @@ export default function WorkerReimbursementsPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-11 min-h-[44px] rounded-sm px-4 md:h-8 md:min-h-8"
+            className="h-11 min-h-[44px] rounded-full border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] md:h-8 md:min-h-8"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
@@ -1324,7 +1412,7 @@ export default function WorkerReimbursementsPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-11 min-h-[44px] rounded-sm px-4 md:h-8 md:min-h-8"
+            className="h-11 min-h-[44px] rounded-full border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] md:h-8 md:min-h-8"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
