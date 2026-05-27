@@ -67,39 +67,43 @@ const kpiTile =
   "rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-primary)]";
 
 const financePageTitleClass =
-  "text-[24px] font-semibold leading-none tracking-normal text-[var(--neo-canvas-text-primary)]";
+  "text-[26px] font-semibold leading-[1.05] tracking-normal text-[var(--neo-canvas-text-primary)]";
 
 const financeSubtitleClass =
-  "mt-1 text-[13px] leading-snug tracking-normal text-[var(--neo-canvas-text-secondary)]";
+  "mt-1.5 text-[13px] leading-snug tracking-normal text-[var(--neo-canvas-text-secondary)]";
 
 const financeSectionLabelClass = cn(
   TYPO.sectionLabel,
-  "text-[10px] text-[var(--neo-text-tertiary)]"
+  "text-[10.5px] font-semibold text-[var(--neo-text-tertiary)]"
 );
 
 const financeControlLabelClass = cn(
   TYPO.sectionLabel,
-  "text-[10px] text-[var(--neo-text-tertiary)]"
+  "text-[10.5px] font-semibold text-[var(--neo-text-tertiary)]"
 );
 
 const financePrimaryTextClass = cn(
   TYPO.primaryName,
-  "text-[14px] font-semibold leading-[1.2] text-[var(--neo-text-primary)]"
+  "text-[14.5px] font-semibold leading-[1.18] text-[var(--neo-text-primary)]"
 );
 
 const financeMetadataClass =
-  "text-[11px] leading-[1.35] tracking-normal text-[var(--neo-text-secondary)]";
+  "text-[11.5px] leading-[1.35] tracking-normal text-[var(--neo-text-secondary)]";
 
 const financeMetadataStrongClass =
-  "text-[11px] font-medium tabular-nums tracking-normal text-[var(--neo-text-primary)]";
+  "text-[11.5px] font-medium tabular-nums tracking-normal text-[var(--neo-text-primary)]";
 
 const financeAmountClass =
-  "min-w-[104px] text-right text-[16px] font-semibold leading-none tracking-normal tabular-nums";
+  "min-w-[112px] text-right text-[16px] font-semibold leading-none tracking-normal tabular-nums";
 
 const financeSecondaryAmountClass =
-  "text-[10.5px] tabular-nums tracking-normal text-[var(--neo-text-secondary)]";
+  "text-[11.5px] font-medium tabular-nums tracking-normal text-[var(--neo-text-secondary)]";
 
 const financeToolbarButtonTextClass = "text-[12px] font-medium tracking-normal";
+
+const invoiceTableThClass = cn(tableRawThClass, "h-10 px-4 text-[10.5px] font-semibold");
+const invoiceTableTdClass = cn(tableRawTdClass, "h-11 px-4");
+const invoiceTableNumericThClass = cn(invoiceTableThClass, "text-right tabular-nums");
 
 const invoiceActionsMenuContentClassName =
   "z-[1000] min-w-[160px] overflow-hidden rounded-xl border border-stone-200 bg-popover p-1 py-2 text-popover-foreground !opacity-100 shadow-xl backdrop-blur-none data-[state=open]:!animate-none data-[state=closed]:!animate-none dark:border-border dark:bg-popover dark:text-popover-foreground";
@@ -655,7 +659,7 @@ function InvoicesPageInner() {
               size="sm"
               className={cn(
                 OS.primaryButton,
-                "h-8 shrink-0 gap-1.5 rounded-md px-3 shadow-none",
+                "h-[34px] shrink-0 gap-1.5 rounded-md px-3.5 shadow-none",
                 financeToolbarButtonTextClass
               )}
             >
@@ -748,7 +752,7 @@ function InvoicesPageInner() {
           <section className={cn(invoicesShell, "overflow-hidden p-0")}>
             <button
               type="button"
-              className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors duration-150 hover:bg-[var(--neo-surface-muted)]"
+              className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-[var(--neo-surface-muted)]"
               aria-expanded={summaryOpen}
               onClick={() => setSummaryOpen((open) => !open)}
             >
@@ -761,12 +765,12 @@ function InvoicesPageInner() {
                     <Skeleton className="h-4 w-24" />
                   </div>
                 ) : (
-                  <div className="mt-1 flex flex-wrap items-center gap-x-5 gap-y-1">
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-6 gap-y-1.5">
                     <span className="inline-flex items-baseline gap-1">
                       <span className="text-[11px] leading-none text-[var(--neo-text-secondary)]">
                         Open
                       </span>
-                      <span className="text-[13.5px] font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
+                      <span className="text-[14px] font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
                         {formatInteger(summary.openCount)}
                       </span>
                     </span>
@@ -774,7 +778,7 @@ function InvoicesPageInner() {
                       <span className="text-[11px] leading-none text-[var(--neo-text-secondary)]">
                         Outstanding
                       </span>
-                      <NeoAmount className="text-[13.5px] font-semibold leading-none">
+                      <NeoAmount className="text-[14px] font-semibold leading-none">
                         {formatCurrency(summary.outstanding)}
                       </NeoAmount>
                     </span>
@@ -782,7 +786,7 @@ function InvoicesPageInner() {
                       <span className="text-[11px] leading-none text-[var(--neo-text-secondary)]">
                         Overdue
                       </span>
-                      <NeoAmount tone="danger" className="text-[13.5px] font-semibold leading-none">
+                      <NeoAmount tone="danger" className="text-[14px] font-semibold leading-none">
                         {formatCurrency(summary.overdue)}
                       </NeoAmount>
                     </span>
@@ -838,15 +842,15 @@ function InvoicesPageInner() {
           </section>
         ) : null}
 
-        <NeoToolbar className="hidden gap-2 p-2 md:flex md:flex-col md:items-stretch">
-          <div className="flex items-center gap-1.5 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-1">
+        <NeoToolbar className="hidden gap-2 p-2.5 md:flex md:flex-col md:items-stretch">
+          <div className="flex items-center gap-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-1">
             <div className="relative min-w-0 flex-1">
               <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
               <Input
                 placeholder="Invoice #, client, project…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 border-transparent bg-[var(--neo-surface-raised)] pl-8 text-[13.5px] tracking-normal text-[var(--neo-text-primary)] placeholder:text-[var(--neo-text-tertiary)] shadow-none transition-colors focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)]"
+                className="h-9 border-transparent bg-[var(--neo-surface-raised)] pl-8 text-[13px] tracking-normal text-[var(--neo-text-primary)] placeholder:text-[var(--neo-text-tertiary)] shadow-none transition-colors focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)]"
               />
             </div>
             <Button
@@ -855,7 +859,7 @@ function InvoicesPageInner() {
               variant="outline"
               className={cn(
                 OS.secondaryButton,
-                "h-8 shrink-0 gap-1.5 rounded-md border-transparent shadow-none",
+                "h-9 shrink-0 gap-1.5 rounded-md border-transparent px-3.5 shadow-none",
                 financeToolbarButtonTextClass
               )}
               aria-expanded={desktopFiltersOpen}
@@ -875,7 +879,7 @@ function InvoicesPageInner() {
               variant="outline"
               className={cn(
                 NEO.buttonGhost,
-                "h-8 shrink-0 rounded-md shadow-none",
+                "h-9 shrink-0 rounded-md px-3.5 shadow-none",
                 financeToolbarButtonTextClass
               )}
               onClick={() => void refresh()}
@@ -1068,14 +1072,14 @@ function InvoicesPageInner() {
               </colgroup>
               <thead>
                 <tr>
-                  <th className={tableRawThClass}>Invoice</th>
-                  <th className={tableRawThClass}>Project</th>
-                  <th className={tableRawThClass}>Status</th>
-                  <th className={tableRawThClass}>Due</th>
-                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Balance</th>
-                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Paid</th>
-                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Total</th>
-                  <th className={cn(tableRawThClass, "text-right")}>Actions</th>
+                  <th className={invoiceTableThClass}>Invoice</th>
+                  <th className={invoiceTableThClass}>Project</th>
+                  <th className={invoiceTableThClass}>Status</th>
+                  <th className={invoiceTableThClass}>Due</th>
+                  <th className={invoiceTableNumericThClass}>Balance</th>
+                  <th className={invoiceTableNumericThClass}>Paid</th>
+                  <th className={invoiceTableNumericThClass}>Total</th>
+                  <th className={cn(invoiceTableThClass, "px-2 text-right")}>Actions</th>
                 </tr>
               </thead>
               <tbody className="[&_tr:last-child>td]:border-b-0">
@@ -1156,7 +1160,7 @@ function InvoicesPageInner() {
                       role="link"
                       aria-label={`Open invoice ${inv.invoiceNo} for ${inv.clientName}`}
                     >
-                      <td className={cn(tableRawTdClass, "max-w-[280px]")}>
+                      <td className={cn(invoiceTableTdClass, "max-w-[280px]")}>
                         <button
                           type="button"
                           className="block w-full min-w-0 text-left"
@@ -1169,44 +1173,44 @@ function InvoicesPageInner() {
                           <span className={cn(financePrimaryTextClass, "block truncate")}>
                             {inv.clientName}
                           </span>
-                          <span className={cn(financeMetadataStrongClass, "mt-0.5 block")}>
+                          <span className={cn(financeMetadataStrongClass, "mt-1 block")}>
                             {inv.invoiceNo}
                           </span>
                         </button>
                       </td>
-                      <td className={cn(tableRawTdClass, "max-w-[220px]")}>
-                        <span className="block truncate text-[var(--neo-text-secondary)]">
+                      <td className={cn(invoiceTableTdClass, "max-w-[220px]")}>
+                        <span className="block truncate text-[13px] font-medium text-[var(--neo-text-secondary)]">
                           {projectLabel}
                         </span>
                       </td>
-                      <td className={tableRawTdClass}>
+                      <td className={invoiceTableTdClass}>
                         <InvoiceStatusText status={inv.computedStatus} />
                       </td>
-                      <td className={tableRawTdClass}>
-                        <span className="inline-flex items-center gap-1 whitespace-nowrap text-[12px]">
+                      <td className={invoiceTableTdClass}>
+                        <span className="inline-flex items-center gap-1 whitespace-nowrap text-[12.5px]">
                           <span className="text-[var(--neo-text-tertiary)]">Due</span>
-                          <span className={cn("tabular-nums", dueTone)}>
+                          <span className={cn("font-medium tabular-nums", dueTone)}>
                             {formatDate(inv.dueDate)}
                           </span>
                         </span>
                       </td>
-                      <td className={cn(tableRawTdClass, "text-right")}>
+                      <td className={cn(invoiceTableTdClass, "text-right")}>
                         <NeoAmount tone={balanceTone} className={financeAmountClass}>
                           {formatCurrency(inv.balanceDue)}
                         </NeoAmount>
                       </td>
-                      <td className={cn(tableRawTdClass, "text-right")}>
+                      <td className={cn(invoiceTableTdClass, "text-right")}>
                         <NeoAmount tone="muted" className={financeSecondaryAmountClass}>
                           {formatCurrency(inv.paidTotal)}
                         </NeoAmount>
                       </td>
-                      <td className={cn(tableRawTdClass, "text-right")}>
+                      <td className={cn(invoiceTableTdClass, "text-right")}>
                         <NeoAmount className={financeSecondaryAmountClass}>
                           {formatCurrency(inv.total)}
                         </NeoAmount>
                       </td>
                       <td
-                        className={cn(tableRawTdClass, "text-right")}
+                        className={cn(invoiceTableTdClass, "px-2 text-right")}
                         onClick={(e) => e.stopPropagation()}
                       >
                         <RowActionsMenu
