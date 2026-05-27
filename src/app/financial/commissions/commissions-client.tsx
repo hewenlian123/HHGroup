@@ -9,6 +9,7 @@ import {
   FileText,
   Paperclip,
   Pencil,
+  Plus,
   Search,
   Trash2,
   Upload,
@@ -144,6 +145,7 @@ function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
 }
 
 type Row = CommissionWithPaid & { project_name: string };
+type ProjectOption = { id: string; name: string };
 
 function CommissionStatusChip({ row }: { row: Row }) {
   if ((Number(row.commission_amount) || 0) <= 0) {
@@ -159,6 +161,7 @@ function CommissionStatusChip({ row }: { row: Row }) {
 export function CommissionsClient({
   summary,
   rows,
+  projectOptions,
   loadError,
 }: {
   summary: {
@@ -168,9 +171,20 @@ export function CommissionsClient({
     thisMonthPaid: number;
   };
   rows: Row[];
+  projectOptions: ProjectOption[];
   loadError?: string | null;
 }) {
   const router = useRouter();
+  const [createModalOpen, setCreateModalOpen] = React.useState(false);
+  const [createSubmitting, setCreateSubmitting] = React.useState(false);
+  const [createError, setCreateError] = React.useState<string | null>(null);
+  const [createForm, setCreateForm] = React.useState({
+    project_id: "",
+    person_name: "",
+    role: "Other" as string,
+    commission_amount: "",
+    notes: "",
+  });
   const [paymentModalOpen, setPaymentModalOpen] = React.useState(false);
   const [selectedCommission, setSelectedCommission] = React.useState<Row | null>(null);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
@@ -267,6 +281,16 @@ export function CommissionsClient({
     return Array.from(names).sort((a, b) => a.localeCompare(b));
   }, [rows]);
 
+  const sortedProjectOptions = React.useMemo(
+    () =>
+      [...projectOptions].sort((a, b) =>
+        (a.name || "Untitled project").localeCompare(b.name || "Untitled project")
+      ),
+    [projectOptions]
+  );
+
+  const createProjectSelected = createForm.project_id.trim() !== "";
+
   const filteredRows = React.useMemo(() => {
     const q = filterSearch.trim().toLowerCase();
     return rows.filter((r) => {
@@ -293,6 +317,88 @@ export function CommissionsClient({
     }, [router]),
     [router]
   );
+
+  const openCreateModal = React.useCallback(() => {
+    setCreateForm({
+      project_id: "",
+      person_name: "",
+      role: "Other",
+      commission_amount: "",
+      notes: "",
+    });
+    setCreateError(null);
+    setCreateModalOpen(true);
+    setPaymentModalOpen(false);
+    setSelectedCommission(null);
+    setEditModalOpen(false);
+    setEditRow(null);
+  }, []);
+
+  const handleCreateCommission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateError(null);
+
+    const projectId = createForm.project_id.trim();
+    if (!projectId) {
+      setCreateError("Select a project before creating a commission.");
+      return;
+    }
+
+    const personName = createForm.person_name.trim();
+    if (!personName) {
+      setCreateError("Person is required.");
+      return;
+    }
+
+    if (!COMMISSION_ROLES.includes(createForm.role as (typeof COMMISSION_ROLES)[number])) {
+      setCreateError("Select a role.");
+      return;
+    }
+
+    const commissionAmount = Number(createForm.commission_amount);
+    if (!Number.isFinite(commissionAmount) || commissionAmount <= 0) {
+      setCreateError("Enter a commission amount greater than zero.");
+      return;
+    }
+
+    setCreateSubmitting(true);
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/commissions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          person_name: personName,
+          role: createForm.role,
+          calculation_mode: "Manual",
+          rate: 0,
+          base_amount: 0,
+          commission_amount: commissionAmount,
+          notes: createForm.notes.trim() || null,
+        }),
+      });
+      const data = (await res.json()) as { ok?: boolean; message?: string };
+      if (!res.ok) throw new Error(data.message ?? "Failed to create commission");
+      if (data.ok === false) throw new Error(data.message ?? "Failed to create commission");
+      setCreateModalOpen(false);
+      setCreateForm({
+        project_id: "",
+        person_name: "",
+        role: "Other",
+        commission_amount: "",
+        notes: "",
+      });
+      toast({
+        title: "Commission created",
+        description: "The commission is linked to the selected project.",
+        variant: "success",
+      });
+      syncRouterNonBlocking(router, "commission-created");
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Failed to save");
+    } finally {
+      setCreateSubmitting(false);
+    }
+  };
 
   const loadPaymentsForCommission = React.useCallback(
     async (projectId: string, commissionId: string) => {
@@ -1047,11 +1153,32 @@ export function CommissionsClient({
             className="gap-1 border-b border-white/10 pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--neo-canvas-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--neo-canvas-text-secondary)]"
             title="Commission Payments"
             subtitle="Commission tracking and payout history by project, person, and role."
+            actions={
+              <Button
+                type="button"
+                className={cn(COMMISSION_PRIMARY_BUTTON, "gap-2 px-4")}
+                data-testid="financial-commission-add"
+                onClick={openCreateModal}
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                Add Commission
+              </Button>
+            }
           />
         </div>
         <MobileListHeader
           title="Commissions"
-          fab={<span className="inline-block h-10 w-10 shrink-0" aria-hidden />}
+          fab={
+            <button
+              type="button"
+              className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/[0.08] bg-[var(--neo-graphite-900)] text-white shadow-[0_10px_26px_rgba(0,0,0,0.22)] ring-1 ring-black/10"
+              data-testid="financial-commission-add-mobile"
+              aria-label="Add Commission"
+              onClick={openCreateModal}
+            >
+              <Plus className="h-5 w-5" strokeWidth={2} aria-hidden />
+            </button>
+          }
         />
         <MobileSearchFiltersRow
           filterSheetOpen={filtersOpen}
@@ -1128,7 +1255,10 @@ export function CommissionsClient({
                 <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   Total commission
                 </div>
-                <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
+                <div
+                  className="mt-0.5 text-xl font-medium tabular-nums text-foreground"
+                  data-testid="financial-commission-summary-total"
+                >
                   {fmtUsd(summary.totalCommission)}
                 </div>
               </div>
@@ -1141,7 +1271,10 @@ export function CommissionsClient({
                 <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   Paid commission
                 </div>
-                <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
+                <div
+                  className="mt-0.5 text-xl font-medium tabular-nums text-foreground"
+                  data-testid="financial-commission-summary-paid"
+                >
                   {fmtUsd(summary.paidCommission)}
                 </div>
               </div>
@@ -1154,7 +1287,10 @@ export function CommissionsClient({
                 <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   Outstanding
                 </div>
-                <div className="mt-0.5 text-xl font-semibold tabular-nums text-foreground">
+                <div
+                  className="mt-0.5 text-xl font-semibold tabular-nums text-foreground"
+                  data-testid="financial-commission-summary-outstanding"
+                >
                   {fmtUsd(summary.outstandingCommission)}
                 </div>
               </div>
@@ -1167,7 +1303,10 @@ export function CommissionsClient({
                 <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   This month paid
                 </div>
-                <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
+                <div
+                  className="mt-0.5 text-xl font-medium tabular-nums text-foreground"
+                  data-testid="financial-commission-summary-this-month"
+                >
                   {fmtUsd(summary.thisMonthPaid)}
                 </div>
               </div>
@@ -1238,6 +1377,15 @@ export function CommissionsClient({
             <p className="mt-1 text-xs text-muted-foreground">
               Commission records will appear here when project commissions are created.
             </p>
+            <Button
+              type="button"
+              className={cn(COMMISSION_PRIMARY_BUTTON, "mt-4 gap-2 px-4")}
+              data-testid="financial-commission-create-first"
+              onClick={openCreateModal}
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Create first commission
+            </Button>
           </div>
         ) : null}
         {!loadError && rows.length > 0 && filteredRows.length === 0 ? (
@@ -1444,6 +1592,129 @@ export function CommissionsClient({
             </table>
           </div>
         </div>
+
+        <Dialog
+          open={createModalOpen}
+          onOpenChange={(open) => {
+            setCreateModalOpen(open);
+            if (!open) setCreateError(null);
+          }}
+        >
+          <DialogContent className={COMMISSION_MODAL}>
+            <DialogHeader className="space-y-1 text-left">
+              <DialogTitle className="text-xl font-bold text-text-primary">
+                Add Commission
+              </DialogTitle>
+              <DialogDescription className="text-[13px] leading-snug text-text-secondary">
+                Select the project first. Commissions are always created against a project.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateCommission} className="mt-4 flex flex-col gap-4">
+              <div>
+                <label className={COMMISSION_LABEL}>Project</label>
+                <Select
+                  value={createForm.project_id}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, project_id: e.target.value }))}
+                  className={cn("w-full", COMMISSION_FIELD)}
+                  aria-required="true"
+                  data-testid="financial-commission-create-project"
+                  aria-label="Project"
+                >
+                  <option value="">Select a project</option>
+                  {sortedProjectOptions.map((project) => (
+                    <option key={project.id} value={project.id}>
+                      {project.name || "Untitled project"}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Person</label>
+                <Input
+                  value={createForm.person_name}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, person_name: e.target.value }))}
+                  placeholder={createProjectSelected ? "Name" : "Select a project first"}
+                  className={COMMISSION_FIELD}
+                  aria-required="true"
+                  autoComplete="off"
+                  disabled={!createProjectSelected}
+                  data-testid="financial-commission-create-person"
+                />
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Role</label>
+                <Select
+                  value={createForm.role}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, role: e.target.value }))}
+                  className={cn("w-full", COMMISSION_FIELD)}
+                  aria-required="true"
+                  disabled={!createProjectSelected}
+                  data-testid="financial-commission-create-role"
+                >
+                  {COMMISSION_ROLES.map((role) => (
+                    <option key={role} value={role}>
+                      {role}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Commission Amount</label>
+                <Input
+                  type="number"
+                  min={0.01}
+                  step={0.01}
+                  value={createForm.commission_amount}
+                  onChange={(e) =>
+                    setCreateForm((p) => ({ ...p, commission_amount: e.target.value }))
+                  }
+                  placeholder="0.00"
+                  className={COMMISSION_FIELD}
+                  aria-required="true"
+                  disabled={!createProjectSelected}
+                  data-testid="financial-commission-create-amount"
+                />
+              </div>
+              <div>
+                <label className={COMMISSION_LABEL}>Notes</label>
+                <Input
+                  value={createForm.notes}
+                  onChange={(e) => setCreateForm((p) => ({ ...p, notes: e.target.value }))}
+                  placeholder="Optional"
+                  className={COMMISSION_FIELD}
+                  disabled={!createProjectSelected}
+                  data-testid="financial-commission-create-notes"
+                />
+              </div>
+              {createError ? (
+                <p className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                  {createError}
+                </p>
+              ) : null}
+              <DialogFooter className={COMMISSION_DIALOG_FOOTER}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={COMMISSION_SECONDARY_BUTTON}
+                  data-testid="financial-commission-create-cancel"
+                  onClick={() => setCreateModalOpen(false)}
+                  disabled={createSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className={COMMISSION_PRIMARY_BUTTON}
+                  disabled={createSubmitting}
+                  data-testid="financial-commission-create-save"
+                >
+                  <SubmitSpinner loading={createSubmitting} className="mr-2" />
+                  {createSubmitting ? "Saving…" : "Save"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         <Dialog
           open={editModalOpen}

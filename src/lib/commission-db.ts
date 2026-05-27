@@ -82,8 +82,8 @@ export function summarizeCommissions(commissions: CommissionWithPaid[]): {
   };
 }
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -176,8 +176,11 @@ async function loadCommissionsMerged(projectId?: string): Promise<{ merged: Proj
   return { merged };
 }
 
-export async function getSumPaidForCommission(commissionId: string): Promise<number> {
-  const c = client();
+export async function getSumPaidForCommission(
+  commissionId: string,
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from(TABLE_PAYMENTS)
     .select("amount")
@@ -277,9 +280,10 @@ export async function createCommission(
     base_amount: number;
     commission_amount: number;
     notes?: string | null;
-  }
+  },
+  explicitClient?: SupabaseClient
 ): Promise<ProjectCommission> {
-  const c = client();
+  const c = client(explicitClient);
   const commissionAmount =
     data.calculation_mode === "Auto"
       ? Math.round(data.base_amount * data.rate * 100) / 100
@@ -314,10 +318,11 @@ export async function updateCommission(
     base_amount: number;
     commission_amount: number;
     notes: string | null;
-  }>
+  }>,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectCommission | null> {
-  const c = client();
-  const existing = await getCommissionById(id);
+  const c = client(explicitClient);
+  const existing = await getCommissionById(id, c);
   if (!existing) return null;
 
   const updates: Record<string, unknown> = {};
@@ -339,7 +344,7 @@ export async function updateCommission(
   }
 
   if ("commission_amount" in updates) {
-    const paid = await getSumPaidForCommission(id);
+    const paid = await getSumPaidForCommission(id, c);
     if (Number(updates.commission_amount) + 1e-6 < paid) {
       throw new Error("Commission amount cannot be less than total payments already recorded.");
     }
@@ -356,8 +361,11 @@ export async function updateCommission(
   return toCommission(row as Record<string, unknown>);
 }
 
-export async function getCommissionById(id: string): Promise<ProjectCommission | null> {
-  const c = client();
+export async function getCommissionById(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<ProjectCommission | null> {
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from(TABLE_COMMISSIONS)
     .select(COMMISSION_COLS)
@@ -374,8 +382,8 @@ export async function getCommissionById(id: string): Promise<ProjectCommission |
   return toCommission(leg as Record<string, unknown>);
 }
 
-export async function deleteCommission(id: string): Promise<void> {
-  const c = client();
+export async function deleteCommission(id: string, explicitClient?: SupabaseClient): Promise<void> {
+  const c = client(explicitClient);
   const { error } = await c.from(TABLE_COMMISSIONS).delete().eq("id", id);
   if (error) throw new Error(humanizeSupabaseRequestError(error));
 }
@@ -401,8 +409,11 @@ export async function getPaymentRecordsByCommissionId(
   return (leg ?? []).map((r) => toPaymentRowFromLegacyRecord(r as Record<string, unknown>));
 }
 
-export async function getPaymentRecordById(id: string): Promise<CommissionPayment | null> {
-  const c = client();
+export async function getPaymentRecordById(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<CommissionPayment | null> {
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from(TABLE_PAYMENTS)
     .select(PAYMENT_SELECT)
@@ -427,9 +438,10 @@ export async function updatePaymentRecord(
     payment_method: string;
     note: string | null;
     receipt_url: string | null;
-  }>
+  }>,
+  explicitClient?: SupabaseClient
 ): Promise<CommissionPayment | null> {
-  const c = client();
+  const c = client(explicitClient);
   const updates: Record<string, unknown> = {};
   if (data.amount !== undefined) updates.amount = Math.max(0, data.amount);
   if (data.payment_date !== undefined) updates.payment_date = data.payment_date.slice(0, 10);
@@ -440,7 +452,7 @@ export async function updatePaymentRecord(
       data.receipt_url != null && String(data.receipt_url).trim() !== ""
         ? String(data.receipt_url).trim()
         : null;
-  if (Object.keys(updates).length === 0) return getPaymentRecordById(id);
+  if (Object.keys(updates).length === 0) return getPaymentRecordById(id, c);
   const { data: row, error } = await c
     .from(TABLE_PAYMENTS)
     .update(updates)
@@ -451,26 +463,32 @@ export async function updatePaymentRecord(
   return toPaymentRow(row as Record<string, unknown>);
 }
 
-export async function deletePaymentRecord(id: string): Promise<void> {
-  const c = client();
+export async function deletePaymentRecord(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<void> {
+  const c = client(explicitClient);
   const { error } = await c.from(TABLE_PAYMENTS).delete().eq("id", id);
   if (error) throw new Error(humanizeSupabaseRequestError(error));
 }
 
-export async function createPaymentRecord(data: {
-  commission_id: string;
-  amount: number;
-  payment_date: string;
-  payment_method: string;
-  note?: string | null;
-}): Promise<CommissionPayment> {
-  const com = await getCommissionById(data.commission_id);
+export async function createPaymentRecord(
+  data: {
+    commission_id: string;
+    amount: number;
+    payment_date: string;
+    payment_method: string;
+    note?: string | null;
+  },
+  explicitClient?: SupabaseClient
+): Promise<CommissionPayment> {
+  const c = client(explicitClient);
+  const com = await getCommissionById(data.commission_id, c);
   if (!com) throw new Error("Commission not found.");
-  const paid = await getSumPaidForCommission(data.commission_id);
+  const paid = await getSumPaidForCommission(data.commission_id, c);
   if (paid + data.amount > com.commission_amount + 1e-6) {
     throw new Error("Total payments cannot exceed the commission amount.");
   }
-  const c = client();
   const { data: row, error } = await c
     .from(TABLE_PAYMENTS)
     .insert({
