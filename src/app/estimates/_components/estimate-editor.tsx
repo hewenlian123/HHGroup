@@ -280,6 +280,10 @@ export function EstimateEditor({
     setPendingSelectNewCategory({ code, displayName });
     setCategoryScrollTargetCode(code);
   }, []);
+  const focusExistingCategory = React.useCallback((code: string) => {
+    setSelectedCategoryId(code);
+    setCategoryScrollTargetCode(code);
+  }, []);
 
   const lineItemSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -443,9 +447,11 @@ export function EstimateEditor({
                 <AddCategoryBlock
                   estimateId={estimateId}
                   allCategoryCodes={sectionDropdownOptions.map((o) => o.code)}
+                  existingCategoryCodes={costBreakdownSections.map((s) => s.categoryId)}
                   getCategoryDisplayName={getCategoryDisplayNameHint}
                   pendingSelectNewCategory={pendingSelectNewCategory}
                   onPendingSelectNewCategoryConsumed={consumePendingSelectNewCategory}
+                  onFocusExistingCategory={focusExistingCategory}
                   onPostCreateCategoryUx={handleNewCategoryCreated}
                 />
               ) : null}
@@ -1045,16 +1051,21 @@ function LineItemRow({
 function AddCategoryBlock({
   estimateId,
   allCategoryCodes,
+  existingCategoryCodes,
   getCategoryDisplayName,
   pendingSelectNewCategory,
   onPendingSelectNewCategoryConsumed,
+  onFocusExistingCategory,
   onPostCreateCategoryUx,
 }: {
   estimateId: string;
   allCategoryCodes: string[];
+  existingCategoryCodes: string[];
   getCategoryDisplayName: (code: string) => string;
   pendingSelectNewCategory?: { code: string; displayName: string } | null;
   onPendingSelectNewCategoryConsumed?: () => void;
+  /** Focus an already-added section instead of adding another blank line item to it. */
+  onFocusExistingCategory?: (code: string, displayName: string) => void;
   /** Scroll + highlight + bottom-bar selection after creating a category from this block. */
   onPostCreateCategoryUx?: (code: string, displayName: string) => void;
 }) {
@@ -1063,6 +1074,10 @@ function AddCategoryBlock({
   const allCodesWithLabels = React.useMemo(
     () => allCategoryCodes.map((code) => ({ code, name: getCategoryDisplayName(code) })),
     [allCategoryCodes, getCategoryDisplayName]
+  );
+  const existingCategorySet = React.useMemo(
+    () => new Set(existingCategoryCodes),
+    [existingCategoryCodes]
   );
   const [search, setSearch] = React.useState("");
   const deferredSearch = React.useDeferredValue(search);
@@ -1204,6 +1219,17 @@ function AddCategoryBlock({
     void createWithName(search);
   };
 
+  const focusExistingSection = React.useCallback(
+    (code: string, displayName: string) => {
+      onFocusExistingCategory?.(code, displayName);
+      setSelectedCode(null);
+      setCustomCategoryLabel(null);
+      setSearch("");
+      setOpen(false);
+    },
+    [onFocusExistingCategory]
+  );
+
   const runAdd = React.useCallback(async () => {
     if (busy) return;
     const typedName = search.trim();
@@ -1290,6 +1316,10 @@ function AddCategoryBlock({
       }
       const cc = visibleOptions[highlightIndex];
       if (cc) {
+        if (existingCategorySet.has(cc.code)) {
+          focusExistingSection(cc.code, cc.name);
+          return;
+        }
         setSelectedCode(cc.code);
         setCustomCategoryLabel(null);
         setSearch("");
@@ -1299,6 +1329,11 @@ function AddCategoryBlock({
   };
 
   const handleSelect = (code: string) => {
+    const displayName = getCategoryDisplayName(code);
+    if (existingCategorySet.has(code)) {
+      focusExistingSection(code, displayName);
+      return;
+    }
     setSelectedCode(code);
     setCustomCategoryLabel(null);
     setSearch("");
@@ -1380,12 +1415,19 @@ function AddCategoryBlock({
                             aria-selected={highlightIndex === i}
                             className={cn(
                               EB.commandMenuItem,
-                              highlightIndex === i && EB.commandMenuItemActive
+                              "flex items-center gap-2",
+                              highlightIndex === i && EB.commandMenuItemActive,
+                              existingCategorySet.has(cc.code) && "opacity-55"
                             )}
                             onMouseEnter={() => setHighlightIndex(i)}
                             onClick={() => handleSelect(cc.code)}
                           >
-                            {cc.name}
+                            <span>{cc.name}</span>
+                            {existingCategorySet.has(cc.code) ? (
+                              <span className="ml-auto text-[11px] text-zinc-500">
+                                Already added
+                              </span>
+                            ) : null}
                           </li>
                         ))}
                         {canInstantCreate ? (
