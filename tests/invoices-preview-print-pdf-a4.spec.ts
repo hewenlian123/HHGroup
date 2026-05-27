@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { readFile } from "node:fs/promises";
 
 import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
@@ -95,6 +96,34 @@ async function fillInvoice(page: Page, invoiceNo: string, clientName: string): P
   return projectLabel;
 }
 
+async function fillSingleLineInvoice(
+  page: Page,
+  invoiceNo: string,
+  clientName: string,
+  lineDescription: string,
+  rate: string
+): Promise<string> {
+  await page.goto("/financial/invoices/new", { waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { name: "New Invoice" })).toBeVisible({
+    timeout: 30_000,
+  });
+  const projectLabel = await selectE2EProject(page);
+
+  await page.getByTestId("invoice-new-number-input").fill(invoiceNo);
+  await page.getByTestId("invoice-new-client-input").fill(clientName);
+  await page.getByTestId("invoice-new-due-date-input").fill("2026-06-30");
+  await page.getByTestId("invoice-new-line-1-item-input").fill(lineDescription);
+  await page.getByTestId("invoice-new-line-1-qty-input").fill("1");
+  await page.getByTestId("invoice-new-line-1-rate-input").fill(rate);
+
+  return projectLabel;
+}
+
+function countPdfPages(buffer: Buffer): number {
+  const text = buffer.toString("latin1");
+  return text.match(/\/Type\s*\/Page\b/g)?.length ?? 0;
+}
+
 async function expectInvoiceDocument(
   page: Page,
   expected: {
@@ -102,6 +131,7 @@ async function expectInvoiceDocument(
     clientName: string;
     projectLabel: string;
     total: string;
+    lineItems?: string[];
   }
 ): Promise<void> {
   const document = page.getByTestId("invoice-preview-document");
@@ -109,9 +139,13 @@ async function expectInvoiceDocument(
   await expect(page.getByTestId("invoice-preview-number")).toContainText(expected.invoiceNo);
   await expect(page.getByTestId("invoice-preview-client")).toContainText(expected.clientName);
   await expect(page.getByTestId("invoice-preview-project")).toContainText(expected.projectLabel);
-  await expect(document).toContainText("Start Work / Mobilization");
-  await expect(document).toContainText("Demolition / Grading");
-  await expect(document).toContainText("Foundation Preparation");
+  for (const lineItem of expected.lineItems ?? [
+    "Start Work / Mobilization",
+    "Demolition / Grading",
+    "Foundation Preparation",
+  ]) {
+    await expect(document).toContainText(lineItem);
+  }
   await expect(page.getByTestId("invoice-preview-total")).toContainText(expected.total);
   await expect(page.getByTestId("invoice-preview-balance")).toContainText(expected.total);
 }
@@ -129,7 +163,9 @@ test("invoice preview, print, and PDF use fresh A4 invoice document output", asy
   const staleInvoiceNo = `A4-OLD-${suffix}`;
   const staleClient = `TEST Invoice Preview A4 Old Customer - safe to delete ${suffix}`;
   const invoiceNo = `A4-INV-${suffix}`;
-  const clientName = `TEST Invoice Preview A4 Customer - safe to delete ${suffix}`;
+  const clientName = `TEST Invoice Preview A4 Customer - safe to delete ${suffix} / Body Balance Hawaii Accounts Payable / Long billing contact line that must wrap cleanly`;
+  const lineDescription =
+    "Body Balance Hawaii buildout progress billing - customer facing A4 invoice line";
   createdInvoiceNos.add(staleInvoiceNo);
   createdInvoiceNos.add(invoiceNo);
   createdClientNames.add(staleClient);
@@ -147,7 +183,13 @@ test("invoice preview, print, and PDF use fresh A4 invoice document output", asy
     total: "$4,000.00",
   });
 
-  const projectLabel = await fillInvoice(page, invoiceNo, clientName);
+  const projectLabel = await fillSingleLineInvoice(
+    page,
+    invoiceNo,
+    clientName,
+    lineDescription,
+    "170556.30"
+  );
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   await expect(page.getByTestId("invoice-detail")).toBeVisible({ timeout: 30_000 });
   const invoiceId = invoiceIdFromUrl(page.url());
@@ -165,7 +207,8 @@ test("invoice preview, print, and PDF use fresh A4 invoice document output", asy
     invoiceNo,
     clientName,
     projectLabel,
-    total: "$4,000.00",
+    total: "$170,556.30",
+    lineItems: [lineDescription],
   });
   expect(
     samples.some((sample) => sample.url.includes("/preview") && sample.text.includes(staleClient))
@@ -193,31 +236,70 @@ test("invoice preview, print, and PDF use fresh A4 invoice document output", asy
   expect(previewPaper.background).toBe("rgb(255, 255, 255)");
   expect(previewPaper.bodyBackground).not.toBe("rgb(0, 0, 0)");
   expect(previewPaper.styleText).toContain("size: A4");
-  expect(previewPaper.styleText).toContain("margin: 14mm");
+  expect(previewPaper.styleText).toContain("margin: 0");
 
   await page.goto(`/financial/invoices/${invoiceId}/print`, { waitUntil: "domcontentloaded" });
   await expectInvoiceDocument(page, {
     invoiceNo,
     clientName,
     projectLabel,
-    total: "$4,000.00",
+    total: "$170,556.30",
+    lineItems: [lineDescription],
   });
   const printPaper = await page.getByTestId("invoice-preview-document").evaluate((node) => {
+    const bodyText = document.body.textContent ?? "";
     const rect = node.getBoundingClientRect();
     return {
       width: rect.width,
       text: node.textContent ?? "",
+      bodyText,
+      background: window.getComputedStyle(node).backgroundColor,
     };
   });
   expect(printPaper.width).toBeGreaterThan(760);
   expect(printPaper.width).toBeLessThan(820);
   expect(printPaper.text).toContain("Balance due");
+  expect(printPaper.bodyText).not.toContain("Dashboard\nPROJECTS");
+  expect(printPaper.background).toBe("rgb(255, 255, 255)");
 
   await page.goto(`/financial/invoices/${invoiceId}/preview`, { waitUntil: "domcontentloaded" });
   const downloadPromise = page.waitForEvent("download", { timeout: 90_000 });
   await page.getByRole("button", { name: "Download PDF" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/^Invoice-.*\.pdf$/);
+  const downloadedPath = await download.path();
+  expect(downloadedPath).toBeTruthy();
+  const pdfBuffer = await readFile(downloadedPath!);
+  expect(pdfBuffer.subarray(0, 4).toString("latin1")).toBe("%PDF");
+  expect(countPdfPages(pdfBuffer)).toBe(1);
+
+  await page.goto(`/financial/invoices/${invoiceId}`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Line item 1 rate").fill("170557.30");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("$170,557.30").first()).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId("invoice-detail-preview-link").click({ noWaitAfter: true });
+  const editSamples: Array<{ url: string; text: string }> = [];
+  for (let i = 0; i < 24; i += 1) {
+    await page.waitForTimeout(25);
+    editSamples.push({ url: page.url(), text: await page.locator("body").innerText() });
+  }
+  await expect(page).toHaveURL(new RegExp(`/financial/invoices/${invoiceId}/preview`), {
+    timeout: 30_000,
+  });
+  await expectInvoiceDocument(page, {
+    invoiceNo,
+    clientName,
+    projectLabel,
+    total: "$170,557.30",
+    lineItems: [lineDescription],
+  });
+  await expect(page.getByTestId("invoice-preview-document")).not.toContainText("$170,556.30");
+  expect(
+    editSamples.some(
+      (sample) => sample.url.includes("/preview") && sample.text.includes("$170,556.30")
+    )
+  ).toBe(false);
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/financial/invoices/${invoiceId}/preview`, { waitUntil: "domcontentloaded" });
@@ -225,7 +307,8 @@ test("invoice preview, print, and PDF use fresh A4 invoice document output", asy
     invoiceNo,
     clientName,
     projectLabel,
-    total: "$4,000.00",
+    total: "$170,557.30",
+    lineItems: [lineDescription],
   });
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > window.innerWidth + 4

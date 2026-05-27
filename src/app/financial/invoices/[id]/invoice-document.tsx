@@ -102,7 +102,12 @@ function InvoiceDocumentA4Styles() {
         margin: 0 auto;
         padding: clamp(16px, 6.6667vw, 14mm);
         background: #fff;
-        color: #09090b;
+        color: #111827;
+        overflow: visible;
+      }
+
+      .invoice-a4-page * {
+        box-sizing: border-box;
       }
 
       @media (min-width: 860px) {
@@ -117,37 +122,46 @@ function InvoiceDocumentA4Styles() {
         width: 210mm !important;
         min-height: 297mm !important;
         padding: 14mm !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        border: none !important;
+        overflow: visible !important;
       }
 
       @media print {
-        @page invoice-a4 {
-          size: A4;
-          margin: 14mm;
-        }
-
         @page {
           size: A4;
-          margin: 14mm;
+          margin: 0;
         }
 
         html,
         body {
+          margin: 0 !important;
+          padding: 0 !important;
           background: #fff !important;
         }
 
         .invoice-a4-shell {
+          width: 210mm !important;
+          min-height: 297mm !important;
           max-width: none !important;
+          margin: 0 auto !important;
           padding: 0 !important;
           background: #fff !important;
         }
 
         .invoice-a4-page {
-          page: invoice-a4;
-          width: auto !important;
-          min-height: auto !important;
-          margin: 0 !important;
-          padding: 0 !important;
+          width: 210mm !important;
+          min-height: 297mm !important;
+          margin: 0 auto !important;
+          padding: 14mm !important;
           box-shadow: none !important;
+          border: none !important;
+          overflow: visible !important;
+        }
+
+        .no-print {
+          display: none !important;
         }
 
         .invoice-a4-page table {
@@ -204,7 +218,7 @@ export function InvoiceDocument({ invoice, projectName, company }: InvoiceDocume
               <div className="min-w-0">
                 <p
                   data-testid="document-company-name"
-                  className="truncate text-[17px] font-semibold leading-tight text-zinc-950"
+                  className="break-words text-[17px] font-semibold leading-tight text-zinc-950"
                 >
                   {company.companyName}
                 </p>
@@ -254,13 +268,13 @@ export function InvoiceDocument({ invoice, projectName, company }: InvoiceDocume
             </p>
             <p
               data-testid="invoice-preview-client"
-              className="mt-2 font-semibold leading-snug text-zinc-950"
+              className="mt-2 break-words font-semibold leading-snug text-zinc-950"
             >
               {invoice.clientName}
             </p>
             <p
               data-testid="invoice-preview-project"
-              className="mt-1 break-words text-[13px] leading-5 text-zinc-600 sm:truncate"
+              className="mt-1 break-words text-[13px] leading-5 text-zinc-600"
             >
               {projectName}
             </p>

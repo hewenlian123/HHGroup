@@ -12,39 +12,93 @@ type InvoicePreviewShellProps = {
   children: React.ReactNode;
 };
 
+const A4_WIDTH_MM = 210;
+const A4_HEIGHT_MM = 297;
+const A4_ROUNDING_OVERFLOW_MM = 2;
+const A4_EXPORT_WINDOW_WIDTH_PX = 1123;
+
 function safePdfFilename(invoiceNo: string): string {
   return `Invoice-${invoiceNo.replace(/[^\w.-]+/g, "_")}.pdf`;
 }
 
 export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoicePreviewShellProps) {
   const searchParams = useSearchParams();
-  const exportRef = React.useRef<HTMLDivElement>(null);
+  const invoiceDocumentRef = React.useRef<HTMLDivElement>(null);
   const autoDownloadStarted = React.useRef(false);
   const [pdfBusy, setPdfBusy] = React.useState(false);
 
   const handleDownloadPdf = React.useCallback(async () => {
-    const el = exportRef.current;
+    const el = invoiceDocumentRef.current;
     if (!el) return;
     el.classList.add("invoice-exporting-pdf");
     setPdfBusy(true);
     try {
-      const html2pdf = (await import("html2pdf.js")).default;
-      await html2pdf()
-        .set({
-          margin: 0,
-          filename: safePdfFilename(invoiceNo),
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            letterRendering: true,
-            windowWidth: 1123,
-          },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        })
-        .from(el)
-        .save();
+      await new Promise((resolve) => window.requestAnimationFrame(resolve));
+      const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+        windowWidth: Math.max(A4_EXPORT_WINDOW_WIDTH_PX, el.scrollWidth),
+      });
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+      const imageHeightMm = (canvas.height * A4_WIDTH_MM) / canvas.width;
+
+      if (imageHeightMm <= A4_HEIGHT_MM + A4_ROUNDING_OVERFLOW_MM) {
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.98), "JPEG", 0, 0, A4_WIDTH_MM, A4_HEIGHT_MM);
+      } else {
+        const pageCanvasHeight = Math.floor((A4_HEIGHT_MM / A4_WIDTH_MM) * canvas.width);
+        let renderedHeight = 0;
+        let pageIndex = 0;
+
+        while (renderedHeight < canvas.height) {
+          const remainingHeight = canvas.height - renderedHeight;
+          const remainingHeightMm = (remainingHeight * A4_WIDTH_MM) / canvas.width;
+          if (pageIndex > 0 && remainingHeightMm <= A4_ROUNDING_OVERFLOW_MM) break;
+
+          const sliceHeight = Math.min(pageCanvasHeight, remainingHeight);
+          const slice = document.createElement("canvas");
+          slice.width = canvas.width;
+          slice.height = sliceHeight;
+          const context = slice.getContext("2d");
+          if (!context) throw new Error("Unable to prepare invoice PDF page.");
+          context.drawImage(
+            canvas,
+            0,
+            renderedHeight,
+            canvas.width,
+            sliceHeight,
+            0,
+            0,
+            canvas.width,
+            sliceHeight
+          );
+
+          if (pageIndex > 0) pdf.addPage("a4", "portrait");
+          pdf.addImage(
+            slice.toDataURL("image/jpeg", 0.98),
+            "JPEG",
+            0,
+            0,
+            A4_WIDTH_MM,
+            Math.min(A4_HEIGHT_MM, (sliceHeight * A4_WIDTH_MM) / canvas.width)
+          );
+          renderedHeight += sliceHeight;
+          pageIndex += 1;
+        }
+      }
+
+      pdf.save(safePdfFilename(invoiceNo));
     } finally {
       el.classList.remove("invoice-exporting-pdf");
       setPdfBusy(false);
@@ -61,8 +115,8 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
   }, [handleDownloadPdf, searchParams]);
 
   return (
-    <div className="invoice-a4-shell financial-nums mx-auto w-full max-w-[210mm] px-3 py-5 sm:px-6 print:px-0 print:py-0">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
+    <div className="invoice-a4-shell financial-nums mx-auto w-full max-w-[calc(210mm+3rem)] px-3 py-5 sm:px-6 print:px-0 print:py-0">
+      <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" className="btn-outline-ghost rounded-sm h-8" asChild>
             <Link href={`/financial/invoices/${invoiceId}`} data-testid="invoice-preview-back-link">
@@ -96,8 +150,8 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
         <span className="text-xs text-muted-foreground">A4 PDF preview</span>
       </div>
 
-      <div className="shadow-[0_18px_55px_rgba(15,23,42,0.08)] print:shadow-none">
-        <div ref={exportRef} className="bg-white">
+      <div className="flex justify-center shadow-[0_18px_55px_rgba(15,23,42,0.08)] print:shadow-none">
+        <div ref={invoiceDocumentRef} data-invoice-document-root className="inline-block bg-white">
           {children}
         </div>
       </div>
