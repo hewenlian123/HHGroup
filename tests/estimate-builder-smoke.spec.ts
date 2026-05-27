@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
@@ -63,6 +63,51 @@ async function addBlankEstimateSection(page: import("@playwright/test").Page): P
   if (await blankSection.isVisible({ timeout: 2_000 }).catch(() => false)) {
     await blankSection.click();
   }
+}
+
+function captureUnexpectedBrowserErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => {
+    errors.push(`pageerror: ${error.message}`);
+  });
+  page.on("console", (message) => {
+    if (message.type() !== "error") return;
+    const text = message.text();
+    if (/favicon|ResizeObserver loop/i.test(text)) return;
+    errors.push(`console: ${text}`);
+  });
+  return errors;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function expectVisibleSectionName(page: Page, name: string): Promise<void> {
+  const input = page
+    .getByLabel(new RegExp(`^Section name for ${escapeRegExp(name)}$`, "i"))
+    .locator("visible=true")
+    .first();
+  if (await input.isVisible({ timeout: 1_000 }).catch(() => false)) {
+    await expect(input).toHaveValue(name, { timeout: 15_000 });
+    return;
+  }
+  await expect(
+    page
+      .getByRole("button", {
+        name: new RegExp(`^Section: ${escapeRegExp(name)}\\. Open menu`, "i"),
+      })
+      .first()
+  ).toBeVisible({ timeout: 15_000 });
+}
+
+async function addTemplateSectionFromNewComposer(page: Page, name: string): Promise<void> {
+  await page
+    .getByRole("button", { name: /^Add Section$/i })
+    .first()
+    .click();
+  await page.getByRole("menuitem", { name: new RegExp(`^${name}$`, "i") }).click();
+  await expectVisibleSectionName(page, name);
 }
 
 test("estimate builder smoke: create, edit totals, preview, open existing edit", async ({
@@ -189,4 +234,76 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.locator("main")).toContainText(secondLineTitle, { timeout: 30_000 });
   await expect(page.locator("main")).toContainText(sectionName, { timeout: 30_000 });
+});
+
+test("estimate section dropdowns add templates without crashing in new and edit mode", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const browserErrors = captureUnexpectedBrowserErrors(page);
+  const suffix = Date.now();
+  const clientName = `PW Estimate Section Dropdown ${suffix}`;
+  const projectName = `PW Estimate Section Dropdown Project ${suffix}`;
+  createdClientNames.add(clientName);
+  createdProjectNames.add(projectName);
+
+  await page.goto("/estimates/new");
+  await page.waitForLoadState("domcontentloaded");
+  await expect(page.getByRole("heading", { name: "New Estimate" })).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.getByRole("button", { name: /Edit details/i }).click();
+  await page.getByPlaceholder("Client or company name").fill(clientName);
+  await page.getByPlaceholder("Project name").fill(projectName);
+  await page.getByRole("dialog").getByRole("button", { name: "Save", exact: true }).click();
+
+  await addTemplateSectionFromNewComposer(page, "Demolition");
+  await addTemplateSectionFromNewComposer(page, "Concrete");
+
+  await page
+    .getByRole("button", { name: /^Add Section$/i })
+    .first()
+    .click();
+  const duplicateDemolition = page.getByRole("menuitem", { name: /^Demolition$/i }).first();
+  await expect(duplicateDemolition).toBeVisible({ timeout: 10_000 });
+  if ((await duplicateDemolition.getAttribute("data-disabled")) === "") {
+    await page.keyboard.press("Escape");
+  } else {
+    await duplicateDemolition.click();
+  }
+  await expectVisibleSectionName(page, "Demolition");
+
+  const customSection = `PW Custom Section ${suffix}`;
+  await page
+    .getByRole("button", { name: /^Add Section$/i })
+    .first()
+    .click();
+  await page.getByLabel("Custom section title").fill(customSection);
+  await page.getByRole("button", { name: /^Add custom section$/i }).click();
+  await expectVisibleSectionName(page, customSection);
+
+  await page.getByLabel("Line item 1 title").locator("visible=true").fill("Dropdown QA line");
+  await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("1");
+  await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("100");
+  await page.getByRole("button", { name: "Save Estimate" }).click();
+  await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
+
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const addSectionBlock = page.locator("#estimate-add-section");
+  await expect(addSectionBlock).toBeVisible({ timeout: 15_000 });
+  const search = addSectionBlock.getByRole("textbox", { name: "Search or add section" });
+  await search.scrollIntoViewIfNeeded();
+  await search.click();
+  await page.getByRole("option", { name: /^Electrical$/i }).click();
+  await expect(search).toHaveValue("Electrical");
+  await addSectionBlock.getByRole("button", { name: /^Add Section$/i }).click();
+  await expectVisibleSectionName(page, "Electrical");
+
+  await search.click();
+  await page.getByRole("option", { name: /^Electrical\s+Already added$/i }).click();
+  await expectVisibleSectionName(page, "Electrical");
+  await expect(addSectionBlock.getByRole("button", { name: /^Add Section$/i })).toBeDisabled();
+
+  expect(browserErrors).toEqual([]);
 });
