@@ -13,6 +13,7 @@ import {
   getPaymentAttachmentPreviewUrl,
   getPaymentsReceived,
   type PaymentReceivedAttachment,
+  type PaymentReceivedDeleteDependenciesResult,
   type PaymentReceivedWithMeta,
 } from "@/lib/data";
 import {
@@ -34,7 +35,12 @@ import { ReceivePaymentModal } from "./receive-payment-modal";
 import { EditPaymentReceivedModal } from "./edit-payment-received-modal";
 import { useToast } from "@/components/toast/toast-provider";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
-import { deletePaymentReceivedAction } from "./actions";
+import {
+  checkPaymentReceivedDeleteDependenciesAction,
+  deletePaymentReceivedAction,
+  voidPaymentReceivedAction,
+} from "./actions";
+import { PaymentDeleteDependenciesDialog } from "./payment-delete-dependencies-dialog";
 import { PaymentReceiptPreviewModal } from "@/components/financial/payment-receipt-preview-modal";
 import { SendPaymentReceiptModal } from "@/components/financial/send-payment-receipt-modal";
 import {
@@ -56,6 +62,14 @@ const kpiTile =
 
 const kpiIcon =
   "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
+
+function isVoidedPaymentStatus(status: string | null | undefined): boolean {
+  return ["void", "voided", "cancelled", "canceled"].includes(
+    String(status ?? "")
+      .trim()
+      .toLowerCase()
+  );
+}
 
 export default function PaymentsReceivedPage() {
   return (
@@ -80,7 +94,12 @@ function PaymentsReceivedPageInner() {
   const [accountFilter, setAccountFilter] = React.useState("");
   const [dateFrom, setDateFrom] = React.useState("");
   const [dateTo, setDateTo] = React.useState("");
+  const [voidTarget, setVoidTarget] = React.useState<PaymentReceivedWithMeta | null>(null);
   const [deleteTarget, setDeleteTarget] = React.useState<PaymentReceivedWithMeta | null>(null);
+  const [deleteDependencies, setDeleteDependencies] =
+    React.useState<PaymentReceivedDeleteDependenciesResult | null>(null);
+  const [checkingDelete, setCheckingDelete] = React.useState(false);
+  const [highlightPaymentId, setHighlightPaymentId] = React.useState<string | null>(null);
   const [openingPaymentAttachmentsId, setOpeningPaymentAttachmentsId] = React.useState<
     string | null
   >(null);
@@ -116,7 +135,7 @@ function PaymentsReceivedPageInner() {
   );
 
   const load = React.useCallback(async () => {
-    const list = await getPaymentsReceived();
+    const list = await getPaymentsReceived({ includeVoided: true });
     setPayments(list);
   }, []);
 
@@ -223,11 +242,17 @@ function PaymentsReceivedPageInner() {
     handledQueryRef.current = query;
 
     const editPayment = searchParams.get("editPayment");
+    const paymentId = searchParams.get("paymentId");
     const invoiceId = searchParams.get("invoiceId");
     const receipt = searchParams.get("receipt");
     const receiptAction = searchParams.get("receiptAction");
     const sendReceipt = searchParams.get("sendReceipt");
 
+    if (paymentId) {
+      setHighlightPaymentId(paymentId);
+      setSearchQuery(paymentId);
+      return;
+    }
     if (invoiceId) {
       setPrefillInvoiceId(invoiceId);
       setModalOpen(true);
@@ -286,6 +311,8 @@ function PaymentsReceivedPageInner() {
         row.payment_method,
         row.deposit_account,
         row.notes,
+        row.status,
+        row.id,
         String(row.amount),
       ]
         .filter(Boolean)
@@ -296,14 +323,15 @@ function PaymentsReceivedPageInner() {
   }, [payments, searchQuery, methodFilter, accountFilter, dateFrom, dateTo]);
 
   const summary = React.useMemo(() => {
-    const totalReceived = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    const paymentsCount = payments.length;
+    const activePayments = payments.filter((p) => !isVoidedPaymentStatus(p.status));
+    const totalReceived = activePayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const paymentsCount = activePayments.length;
     const ym = new Date().toISOString().slice(0, 7);
-    const thisMonthTotal = payments
+    const thisMonthTotal = activePayments
       .filter((p) => String(p.payment_date ?? "").startsWith(ym))
       .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    const linkedInvoices = payments.filter((p) => Boolean(p.invoice_no)).length;
-    const unknownOrUnapplied = payments.filter(
+    const linkedInvoices = activePayments.filter((p) => Boolean(p.invoice_no)).length;
+    const unknownOrUnapplied = activePayments.filter(
       (p) => !p.invoice_no || !(p.customer_name ?? "").trim()
     ).length;
     return { totalReceived, paymentsCount, thisMonthTotal, linkedInvoices, unknownOrUnapplied };
@@ -315,15 +343,13 @@ function PaymentsReceivedPageInner() {
       let snapshot: PaymentReceivedWithMeta[] | undefined;
       setPayments((prev) => {
         snapshot = prev;
-        return prev.filter((p) => p.id !== id);
+        return prev.map((p) => (p.id === id ? { ...p, status: "void" } : p));
       });
-      const res = await deletePaymentReceivedAction(id);
+      const res = await voidPaymentReceivedAction(id);
       if (!res.ok) {
         if (snapshot) setPayments(snapshot);
         toast({
-          title: (res.error ?? "").includes("Cannot delete: void instead")
-            ? "Cannot delete"
-            : "Delete failed",
+          title: "Void failed",
           description: res.error ?? "Could not delete payment.",
           variant: "error",
         });
@@ -334,6 +360,56 @@ function PaymentsReceivedPageInner() {
     },
     [load, toast]
   );
+
+  const checkDeletePayment = React.useCallback(
+    async (row: PaymentReceivedWithMeta) => {
+      setDeleteTarget(row);
+      setCheckingDelete(true);
+      try {
+        const res = await checkPaymentReceivedDeleteDependenciesAction(row.id);
+        if (!res.ok) {
+          setDeleteTarget(null);
+          toast({
+            title: "Could not check payment",
+            description: res.error ?? "Could not check payment dependencies.",
+            variant: "error",
+          });
+          return;
+        }
+        setDeleteDependencies(res.dependencies);
+      } catch (err) {
+        setDeleteTarget(null);
+        toast({
+          title: "Could not check payment",
+          description: err instanceof Error ? err.message : "Could not check payment dependencies.",
+          variant: "error",
+        });
+      } finally {
+        setCheckingDelete(false);
+      }
+    },
+    [toast]
+  );
+
+  const deleteVoidedPayment = React.useCallback(async () => {
+    const row = deleteTarget;
+    if (!row) return;
+    const res = await deletePaymentReceivedAction(row.id);
+    if (!res.ok) {
+      if (res.dependencies) setDeleteDependencies(res.dependencies);
+      toast({
+        title: "Delete failed",
+        description: res.error ?? "Could not delete payment.",
+        variant: "error",
+      });
+      return;
+    }
+    setDeleteTarget(null);
+    setDeleteDependencies(null);
+    setPayments((prev) => prev.filter((p) => p.id !== row.id));
+    toast({ title: "Voided payment deleted.", variant: "success" });
+    void load();
+  }, [deleteTarget, load, toast]);
 
   return (
     <div
@@ -598,72 +674,61 @@ function PaymentsReceivedPageInner() {
             </div>
 
             <div className="flex flex-col divide-y divide-border/60">
-              {filteredPayments.map((row) => (
-                <div
-                  key={row.id}
-                  className="group px-3 py-3 transition-colors hover:bg-muted/25 md:grid md:grid-cols-[minmax(170px,1.1fr)_minmax(150px,1fr)_minmax(72px,0.45fr)_minmax(110px,0.55fr)_minmax(90px,0.45fr)_minmax(110px,0.55fr)_minmax(102px,0.5fr)_minmax(184px,0.75fr)] md:items-center md:gap-3"
-                >
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-foreground">
-                      {row.customer_name || "—"}
-                    </div>
-                    <div className="mt-0.5 truncate text-xs text-muted-foreground md:hidden">
-                      {row.project_name ?? "—"} · Inv {row.invoice_no ?? "—"}
-                    </div>
-                  </div>
-
-                  <div className="hidden min-w-0 md:block">
-                    <div className="truncate text-sm text-foreground">
-                      {row.project_name ?? "—"}
-                    </div>
-                  </div>
-
-                  <div className="hidden md:block text-sm text-muted-foreground font-mono tabular-nums">
-                    {row.invoice_no ?? "—"}
-                  </div>
-
-                  <div className="mt-2 flex items-center justify-between gap-3 md:mt-0 md:block md:text-right">
-                    <div className="md:hidden text-xs text-muted-foreground">
-                      {formatDate(row.payment_date)}
-                    </div>
-                    <div
-                      className={cn(TYPO.amount, "text-sm text-emerald-700 dark:text-emerald-400")}
-                    >
-                      {formatCurrency(row.amount)}
-                    </div>
-                  </div>
-
-                  <div className="hidden min-w-0 md:block">
-                    <div className="text-sm text-muted-foreground">{row.payment_method ?? "—"}</div>
-                    {(row.attachments ?? []).length > 0 ? (
-                      <button
-                        type="button"
-                        disabled={openingPaymentAttachmentsId === row.id}
-                        onClick={() => void openPaymentAttachments(row.id, row.attachments)}
-                        className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-                      >
-                        <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
-                        <span className="truncate">
-                          {openingPaymentAttachmentsId === row.id
-                            ? "Opening..."
-                            : `${row.attachments.length} file${row.attachments.length === 1 ? "" : "s"}`}
+              {filteredPayments.map((row) => {
+                const paymentVoided = isVoidedPaymentStatus(row.status);
+                const highlighted = highlightPaymentId === row.id;
+                return (
+                  <div
+                    key={row.id}
+                    className={cn(
+                      "group px-3 py-3 transition-colors hover:bg-muted/25 md:grid md:grid-cols-[minmax(170px,1.1fr)_minmax(150px,1fr)_minmax(72px,0.45fr)_minmax(110px,0.55fr)_minmax(90px,0.45fr)_minmax(110px,0.55fr)_minmax(102px,0.5fr)_minmax(184px,0.75fr)] md:items-center md:gap-3",
+                      paymentVoided && "bg-muted/20 opacity-80",
+                      highlighted && "ring-2 ring-[var(--neo-gold-ring)] ring-inset"
+                    )}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-sm font-semibold text-foreground">
+                          {row.customer_name || "—"}
                         </span>
-                      </button>
-                    ) : null}
-                  </div>
+                        {paymentVoided ? (
+                          <span className="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            Voided
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="mt-0.5 truncate text-xs text-muted-foreground md:hidden">
+                        {row.project_name ?? "—"} · Inv {row.invoice_no ?? "—"}
+                      </div>
+                    </div>
 
-                  <div className="hidden md:block min-w-0 text-sm text-muted-foreground truncate">
-                    {row.deposit_account ?? "—"}
-                  </div>
+                    <div className="hidden min-w-0 md:block">
+                      <div className="truncate text-sm text-foreground">
+                        {row.project_name ?? "—"}
+                      </div>
+                    </div>
 
-                  <div className="hidden md:block text-sm font-mono tabular-nums text-muted-foreground">
-                    {formatDate(row.payment_date)}
-                  </div>
+                    <div className="hidden md:block text-sm text-muted-foreground font-mono tabular-nums">
+                      {row.invoice_no ?? "—"}
+                    </div>
 
-                  <div className="mt-2 flex items-center justify-between gap-2 md:mt-0 md:flex md:justify-end">
-                    <div className="md:hidden text-xs text-muted-foreground">
-                      <div>
-                        {(row.payment_method ?? "—") + " · " + (row.deposit_account ?? "—")}
+                    <div className="mt-2 flex items-center justify-between gap-3 md:mt-0 md:block md:text-right">
+                      <div className="md:hidden text-xs text-muted-foreground">
+                        {formatDate(row.payment_date)}
+                      </div>
+                      <div
+                        className={cn(
+                          TYPO.amount,
+                          "text-sm text-emerald-700 dark:text-emerald-400"
+                        )}
+                      >
+                        {formatCurrency(row.amount)}
+                      </div>
+                    </div>
+
+                    <div className="hidden min-w-0 md:block">
+                      <div className="text-sm text-muted-foreground">
+                        {row.payment_method ?? "—"}
                       </div>
                       {(row.attachments ?? []).length > 0 ? (
                         <button
@@ -676,115 +741,162 @@ function PaymentsReceivedPageInner() {
                           <span className="truncate">
                             {openingPaymentAttachmentsId === row.id
                               ? "Opening..."
-                              : `${row.attachments.length} file${
-                                  row.attachments.length === 1 ? "" : "s"
-                                }`}
+                              : `${row.attachments.length} file${row.attachments.length === 1 ? "" : "s"}`}
                           </span>
                         </button>
                       ) : null}
                     </div>
-                    <div className="flex flex-wrap items-center justify-end gap-1.5">
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="outline"
-                        className="h-8 rounded-md px-2 text-xs shadow-none"
-                      >
-                        <Link
-                          href={`/financial/payments?editPayment=${encodeURIComponent(row.id)}`}
-                        >
-                          <Pencil className="mr-1 h-3.5 w-3.5" />
-                          Edit
-                        </Link>
-                      </Button>
-                      <Button
-                        asChild
-                        size="sm"
-                        variant="outline"
-                        className="h-8 rounded-md px-2 text-xs shadow-none"
-                      >
-                        <Link href={`/financial/payments?receipt=${encodeURIComponent(row.id)}`}>
-                          <ReceiptText className="mr-1 h-3.5 w-3.5" />
-                          Receipt
-                        </Link>
-                      </Button>
-                      {receiptActionBusyId === row.id ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-8 rounded-md px-2 text-xs shadow-none"
-                          disabled
-                        >
-                          <Mail className="mr-1 h-3.5 w-3.5" />
-                          Send
-                        </Button>
-                      ) : (
-                        <Button
-                          asChild
-                          size="sm"
-                          variant="outline"
-                          className="h-8 rounded-md px-2 text-xs shadow-none"
-                        >
-                          <Link
-                            href={`/financial/payments?sendReceipt=${encodeURIComponent(row.id)}`}
-                          >
-                            <Mail className="mr-1 h-3.5 w-3.5" />
-                            Send
-                          </Link>
-                        </Button>
-                      )}
-                      <RowActionsMenu
-                        appearance="list"
-                        ariaLabel={`Actions for payment ${row.invoice_no ?? ""}`}
-                        actions={[
-                          {
-                            label: (
-                              <span className="inline-flex items-center gap-2">
-                                <Download className="h-3.5 w-3.5" />
-                                Download PDF
-                              </span>
-                            ),
-                            onClick: () => openReceiptPreview(row.id, "download"),
-                          },
-                          {
-                            label: (
-                              <span className="inline-flex items-center gap-2">
-                                <Printer className="h-3.5 w-3.5" />
-                                Print receipt
-                              </span>
-                            ),
-                            onClick: () => openReceiptPreview(row.id, "print"),
-                          },
-                          {
-                            label: "Void payment",
-                            destructive: true,
-                            onClick: () => setDeleteTarget(row),
-                          },
-                        ]}
-                      />
-                    </div>
-                  </div>
 
-                  {row.notes ? (
-                    <div className="mt-2 text-xs text-muted-foreground line-clamp-2 md:hidden">
-                      {row.notes}
+                    <div className="hidden md:block min-w-0 text-sm text-muted-foreground truncate">
+                      {row.deposit_account ?? "—"}
                     </div>
-                  ) : null}
-                </div>
-              ))}
+
+                    <div className="hidden md:block text-sm font-mono tabular-nums text-muted-foreground">
+                      {formatDate(row.payment_date)}
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between gap-2 md:mt-0 md:flex md:justify-end">
+                      <div className="md:hidden text-xs text-muted-foreground">
+                        <div>
+                          {(row.payment_method ?? "—") + " · " + (row.deposit_account ?? "—")}
+                        </div>
+                        {(row.attachments ?? []).length > 0 ? (
+                          <button
+                            type="button"
+                            disabled={openingPaymentAttachmentsId === row.id}
+                            onClick={() => void openPaymentAttachments(row.id, row.attachments)}
+                            className="mt-1 inline-flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-foreground/20 hover:bg-muted/40 hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+                          >
+                            <Paperclip className="h-3 w-3 shrink-0" strokeWidth={1.7} />
+                            <span className="truncate">
+                              {openingPaymentAttachmentsId === row.id
+                                ? "Opening..."
+                                : `${row.attachments.length} file${
+                                    row.attachments.length === 1 ? "" : "s"
+                                  }`}
+                            </span>
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        {!paymentVoided ? (
+                          <>
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="h-8 rounded-md px-2 text-xs shadow-none"
+                            >
+                              <Link
+                                href={`/financial/payments?editPayment=${encodeURIComponent(row.id)}`}
+                              >
+                                <Pencil className="mr-1 h-3.5 w-3.5" />
+                                Edit
+                              </Link>
+                            </Button>
+                            <Button
+                              asChild
+                              size="sm"
+                              variant="outline"
+                              className="h-8 rounded-md px-2 text-xs shadow-none"
+                            >
+                              <Link
+                                href={`/financial/payments?receipt=${encodeURIComponent(row.id)}`}
+                              >
+                                <ReceiptText className="mr-1 h-3.5 w-3.5" />
+                                Receipt
+                              </Link>
+                            </Button>
+                            {receiptActionBusyId === row.id ? (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="h-8 rounded-md px-2 text-xs shadow-none"
+                                disabled
+                              >
+                                <Mail className="mr-1 h-3.5 w-3.5" />
+                                Send
+                              </Button>
+                            ) : (
+                              <Button
+                                asChild
+                                size="sm"
+                                variant="outline"
+                                className="h-8 rounded-md px-2 text-xs shadow-none"
+                              >
+                                <Link
+                                  href={`/financial/payments?sendReceipt=${encodeURIComponent(row.id)}`}
+                                >
+                                  <Mail className="mr-1 h-3.5 w-3.5" />
+                                  Send
+                                </Link>
+                              </Button>
+                            )}
+                          </>
+                        ) : null}
+                        <RowActionsMenu
+                          appearance="list"
+                          ariaLabel={`Actions for payment ${row.invoice_no ?? ""}`}
+                          actions={[
+                            ...(!paymentVoided
+                              ? [
+                                  {
+                                    label: (
+                                      <span className="inline-flex items-center gap-2">
+                                        <Download className="h-3.5 w-3.5" />
+                                        Download PDF
+                                      </span>
+                                    ),
+                                    onClick: () => openReceiptPreview(row.id, "download"),
+                                  },
+                                  {
+                                    label: (
+                                      <span className="inline-flex items-center gap-2">
+                                        <Printer className="h-3.5 w-3.5" />
+                                        Print receipt
+                                      </span>
+                                    ),
+                                    onClick: () => openReceiptPreview(row.id, "print"),
+                                  },
+                                  {
+                                    label: "Void payment",
+                                    destructive: true,
+                                    onClick: () => setVoidTarget(row),
+                                  },
+                                ]
+                              : [
+                                  {
+                                    label: "Delete payment",
+                                    destructive: true,
+                                    onClick: () => void checkDeletePayment(row),
+                                  },
+                                ]),
+                          ]}
+                        />
+                      </div>
+                    </div>
+
+                    {row.notes ? (
+                      <div className="mt-2 text-xs text-muted-foreground line-clamp-2 md:hidden">
+                        {row.notes}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
 
         <ConfirmDialog
-          open={!!deleteTarget}
-          onOpenChange={(open) => !open && setDeleteTarget(null)}
+          open={!!voidTarget}
+          onOpenChange={(open) => !open && setVoidTarget(null)}
           title="Void payment?"
           description={
-            deleteTarget
-              ? `This will void the payment for ${deleteTarget.customer_name || "customer"} on ${formatDate(
-                  deleteTarget.payment_date
+            voidTarget
+              ? `This will void the payment for ${voidTarget.customer_name || "customer"} on ${formatDate(
+                  voidTarget.payment_date
                 )}. This cannot be undone.`
               : undefined
           }
@@ -792,11 +904,46 @@ function PaymentsReceivedPageInner() {
           cancelLabel="Cancel"
           destructive
           onConfirm={async () => {
-            const row = deleteTarget;
+            const row = voidTarget;
             if (!row) return;
-            setDeleteTarget(null);
+            setVoidTarget(null);
             await voidPayment(row);
           }}
+        />
+
+        <PaymentDeleteDependenciesDialog
+          open={!!deleteTarget && !!deleteDependencies && deleteDependencies.blockers.length > 0}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteTarget(null);
+              setDeleteDependencies(null);
+            }
+          }}
+          dependencies={deleteDependencies}
+          checking={checkingDelete}
+          onRefresh={() => {
+            if (deleteTarget) void checkDeletePayment(deleteTarget);
+          }}
+        />
+
+        <ConfirmDialog
+          open={!!deleteTarget && !!deleteDependencies && deleteDependencies.blockers.length === 0}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteTarget(null);
+              setDeleteDependencies(null);
+            }
+          }}
+          title="Delete voided payment?"
+          description={
+            deleteTarget
+              ? "This payment is voided and has no blocking links. This will permanently remove the payment record and related payment allocation rows. This cannot be undone."
+              : undefined
+          }
+          confirmLabel="Delete permanently"
+          cancelLabel="Cancel"
+          destructive
+          onConfirm={deleteVoidedPayment}
         />
 
         <ReceivePaymentModal

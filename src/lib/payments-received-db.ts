@@ -91,6 +91,46 @@ export type CreatePaymentReceivedAttachmentPayload = {
   file_type: PaymentAttachmentFileType;
 };
 
+export type PaymentReceivedDeleteDependencyType =
+  | "payment_status"
+  | "payment_invoice"
+  | "invoice_payment"
+  | "deposit";
+
+export type PaymentReceivedDeleteDependency = {
+  id: string;
+  type: PaymentReceivedDeleteDependencyType;
+  label: string;
+  description?: string;
+  amount?: number | null;
+  date?: string | null;
+  status?: string | null;
+  href?: string | null;
+};
+
+export type PaymentReceivedDeleteSafeChildRecord = {
+  type: "invoice_payments" | "deposits" | "payment_received_attachments" | "payments_received";
+  label: string;
+  count: number;
+};
+
+export type PaymentReceivedDeleteWarning = {
+  type: string;
+  label: string;
+  description?: string;
+};
+
+export type PaymentReceivedDeleteDependenciesResult = {
+  paymentId: string;
+  invoiceId?: string | null;
+  projectId?: string | null;
+  status?: string | null;
+  canDelete: boolean;
+  blockers: PaymentReceivedDeleteDependency[];
+  warnings: PaymentReceivedDeleteWarning[];
+  safeChildRecords: PaymentReceivedDeleteSafeChildRecord[];
+};
+
 function client(explicitClient?: SupabaseClient) {
   const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
@@ -190,6 +230,27 @@ function normalizeDate(raw: string | null | undefined): string {
 
 function normalizeMemo(raw: string | null | undefined): string {
   return (raw ?? "").trim();
+}
+
+function isoDateLike(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value.slice(0, 10);
+}
+
+function isVoidPaymentStatus(status: string | null | undefined): boolean {
+  return ["void", "voided", "cancelled", "canceled"].includes(
+    String(status ?? "")
+      .trim()
+      .toLowerCase()
+  );
+}
+
+function isVoidInvoiceStatus(status: string | null | undefined): boolean {
+  return ["void", "voided", "cancelled", "canceled"].includes(
+    String(status ?? "")
+      .trim()
+      .toLowerCase()
+  );
 }
 
 function memoForPayment(row: Pick<PaymentReceivedDbRow, "notes" | "deposit_account">): string {
@@ -574,7 +635,9 @@ export async function getPaymentAttachmentPreviewUrl(
 }
 
 /** List all payments received with invoice_no and project name. */
-export async function getPaymentsReceived(): Promise<PaymentReceivedWithMeta[]> {
+export async function getPaymentsReceived(
+  options: { includeVoided?: boolean } = {}
+): Promise<PaymentReceivedWithMeta[]> {
   const c = client();
   const schema = await getPaymentOptionalSchema();
   let rows: unknown[] | null = null;
@@ -583,7 +646,6 @@ export async function getPaymentsReceived(): Promise<PaymentReceivedWithMeta[]> 
     const r = await c
       .from("payments_received")
       .select(PAYMENT_RECEIVED_SELECT_WITH_STATUS)
-      .neq("status", "void")
       .order("payment_date", { ascending: false });
     rows = r.data as unknown[] | null;
     error = r.error as { message?: string } | null;
@@ -600,7 +662,9 @@ export async function getPaymentsReceived(): Promise<PaymentReceivedWithMeta[]> 
     if (isMissingTable(error)) return [];
     throw new Error(error.message ?? "Failed to load payments received.");
   }
-  const list = (rows ?? []) as PaymentReceivedDbRow[];
+  const list = ((rows ?? []) as PaymentReceivedDbRow[]).filter(
+    (row) => options.includeVoided || !isVoidPaymentStatus(row.status)
+  );
   if (list.length === 0) return [];
   const invoiceIds = Array.from(new Set(list.map((r) => r.invoice_id)));
   const projectIds = Array.from(new Set(list.map((r) => r.project_id).filter(Boolean))) as string[];
@@ -680,6 +744,322 @@ export async function getPaymentReceivedById(
     ledger_link_status: link.status,
     can_edit_financial: Boolean(invoice && link.row),
   };
+}
+
+export async function voidPaymentReceived(
+  paymentId: string,
+  explicitClient?: SupabaseClient
+): Promise<PaymentReceivedDbRow | null> {
+  const c = client(explicitClient);
+  const payment = await fetchPaymentReceivedDbRow(c, paymentId);
+  if (!payment) return null;
+
+  const depRes = await c.from("deposits").select("id, status").eq("payment_id", paymentId);
+  if (depRes.error && !isMissingTable(depRes.error) && !isMissingColumn(depRes.error)) {
+    throw new Error(depRes.error.message ?? "Failed to load deposit.");
+  }
+  const hasDeposits = !depRes.error && (depRes.data ?? []).length > 0;
+  if (hasDeposits) {
+    const { error: depVoidErr } = await c
+      .from("deposits")
+      .update({ status: "void" })
+      .eq("payment_id", paymentId);
+    if (depVoidErr && !isMissingTable(depVoidErr) && !isMissingColumn(depVoidErr)) {
+      throw new Error(depVoidErr.message ?? "Failed to void deposit.");
+    }
+  }
+
+  if (payment.invoice_id) {
+    try {
+      const direct = await c
+        .from("invoice_payments")
+        .update({ status: "Voided" })
+        .eq("payment_received_id", paymentId);
+      if (!direct.error || !isMissingColumn(direct.error)) {
+        if (direct.error) throw direct.error;
+      }
+    } catch {
+      // Missing link or older schema: fall back to legacy matching below.
+    }
+    try {
+      const paidAt = normalizeDate(payment.payment_date);
+      const amount = Number(payment.amount ?? 0);
+      let q = c
+        .from("invoice_payments")
+        .update({ status: "Voided" })
+        .eq("invoice_id", payment.invoice_id)
+        .eq("amount", amount);
+      if (paidAt) q = q.eq("paid_at", paidAt);
+      const memo = memoForPayment(payment);
+      if (memo) q = q.eq("memo", memo);
+      await q;
+    } catch {
+      // schema or match may differ; continue
+    }
+  }
+
+  const { error: updErr } = await c
+    .from("payments_received")
+    .update({ status: "void" })
+    .eq("id", paymentId);
+  if (updErr) throw new Error(updErr.message ?? "Failed to void payment.");
+  return { ...payment, status: "void" };
+}
+
+export async function getPaymentReceivedDeleteDependencies(
+  paymentId: string,
+  explicitClient?: SupabaseClient
+): Promise<PaymentReceivedDeleteDependenciesResult> {
+  const c = client(explicitClient);
+  const payment = await fetchPaymentReceivedDbRow(c, paymentId);
+  if (!payment) {
+    return {
+      paymentId,
+      canDelete: true,
+      blockers: [],
+      warnings: [{ type: "not_found", label: "Payment was already removed." }],
+      safeChildRecords: [],
+    };
+  }
+
+  const blockers: PaymentReceivedDeleteDependency[] = [];
+  const warnings: PaymentReceivedDeleteWarning[] = [];
+  const safeChildRecords: PaymentReceivedDeleteSafeChildRecord[] = [];
+  const status = payment.status ?? null;
+
+  if (!isVoidPaymentStatus(status)) {
+    blockers.push({
+      id: `${paymentId}:status`,
+      type: "payment_status",
+      label: "Payment must be voided before it can be deleted",
+      description: "Only voided payments can be permanently deleted.",
+      amount: Number(payment.amount ?? 0) || 0,
+      date: isoDateLike(payment.payment_date),
+      status,
+      href: `/financial/payments?paymentId=${paymentId}`,
+    });
+  }
+
+  const invoicePaymentRes = await c
+    .from("invoice_payments")
+    .select(INVOICE_PAYMENT_SELECT_WITH_LINK)
+    .eq("payment_received_id", paymentId);
+  if (invoicePaymentRes.error) {
+    if (isMissingColumn(invoicePaymentRes.error)) {
+      blockers.push({
+        id: `${paymentId}:invoice-payment-link`,
+        type: "invoice_payment",
+        label: "Payment allocation link could not be resolved safely",
+        description:
+          "This environment does not expose the payment allocation link needed for safe deletion.",
+        href: payment.invoice_id ? `/financial/invoices/${payment.invoice_id}` : null,
+      });
+    } else if (!isMissingTable(invoicePaymentRes.error)) {
+      throw new Error(invoicePaymentRes.error.message ?? "Failed to check invoice payments.");
+    }
+  }
+  const invoicePayments = (invoicePaymentRes.data ?? []) as InvoicePaymentSyncRow[];
+  safeChildRecords.push({
+    type: "invoice_payments",
+    label: "Linked invoice payment allocations",
+    count: invoicePayments.length,
+  });
+  for (const invoicePayment of invoicePayments) {
+    if (!isVoidPaymentStatus(invoicePayment.status)) {
+      blockers.push({
+        id: invoicePayment.id,
+        type: "invoice_payment",
+        label: "Payment allocation must be voided before delete",
+        description:
+          "This payment allocation still appears active and cannot be deleted automatically.",
+        amount: Number(invoicePayment.amount ?? 0) || 0,
+        date: isoDateLike(invoicePayment.paid_at ?? invoicePayment.payment_date ?? null),
+        status: invoicePayment.status ?? null,
+        href: invoicePayment.invoice_id ? `/financial/invoices/${invoicePayment.invoice_id}` : null,
+      });
+    }
+  }
+
+  if (invoicePayments.length === 0 && payment.invoice_id) {
+    const legacy = await resolvePaymentLedgerLink(c, payment);
+    if (legacy.row) {
+      blockers.push({
+        id: legacy.row.id,
+        type: "invoice_payment",
+        label: "Legacy invoice payment allocation is not directly linked",
+        description:
+          "This payment allocation predates direct Payment Received links and cannot be safely deleted automatically.",
+        amount: Number(legacy.row.amount ?? 0) || 0,
+        date: isoDateLike(legacy.row.paid_at ?? legacy.row.payment_date ?? null),
+        status: legacy.row.status ?? null,
+        href: `/financial/invoices/${payment.invoice_id}`,
+      });
+    }
+  }
+
+  const invoiceIds = Array.from(
+    new Set(
+      [payment.invoice_id, ...invoicePayments.map((row) => row.invoice_id).filter(Boolean)].filter(
+        Boolean
+      ) as string[]
+    )
+  );
+  if (invoiceIds.length > 1) {
+    blockers.push({
+      id: `${paymentId}:multiple-invoices`,
+      type: "payment_invoice",
+      label: "Payment is linked to multiple invoices",
+      description: "Payment is linked to multiple invoices and cannot be automatically deleted.",
+      href: `/financial/payments?paymentId=${paymentId}`,
+    });
+  }
+
+  if (invoiceIds.length > 0) {
+    const invoiceRes = await c
+      .from("invoices")
+      .select("id, invoice_no, status")
+      .in("id", invoiceIds);
+    if (invoiceRes.error) throw new Error(invoiceRes.error.message ?? "Failed to check invoice.");
+    for (const invoice of (invoiceRes.data ?? []) as Array<{
+      id: string;
+      invoice_no?: string | null;
+      status?: string | null;
+    }>) {
+      if (!isVoidInvoiceStatus(invoice.status)) {
+        blockers.push({
+          id: invoice.id,
+          type: "payment_invoice",
+          label: "Payment is linked to an active invoice",
+          description: "Void the invoice first or keep the payment record.",
+          status: invoice.status ?? null,
+          href: `/financial/invoices/${invoice.id}`,
+        });
+      }
+    }
+  }
+
+  const depositRes = await c
+    .from("deposits")
+    .select("id, amount, deposit_date, payment_method, status, payment_id, invoice_id")
+    .eq("payment_id", paymentId);
+  if (depositRes.error) {
+    if (!isMissingTable(depositRes.error) && !isMissingColumn(depositRes.error)) {
+      throw new Error(depositRes.error.message ?? "Failed to check deposits.");
+    }
+  } else {
+    const deposits = (depositRes.data ?? []) as Array<{
+      id: string;
+      amount?: number | string | null;
+      deposit_date?: string | null;
+      payment_method?: string | null;
+      status?: string | null;
+      payment_id?: string | null;
+      invoice_id?: string | null;
+    }>;
+    safeChildRecords.push({
+      type: "deposits",
+      label: "Linked deposit record",
+      count: deposits.length,
+    });
+    const linkedInvoiceSet = new Set(invoiceIds);
+    const unsafeDeposit =
+      deposits.length > 1 ||
+      deposits.some((deposit) => {
+        if (deposit.payment_id !== paymentId) return true;
+        if (!isVoidPaymentStatus(deposit.status)) return true;
+        const invoiceId = String(deposit.invoice_id ?? "").trim();
+        return Boolean(invoiceId && linkedInvoiceSet.size > 0 && !linkedInvoiceSet.has(invoiceId));
+      });
+    if (unsafeDeposit) {
+      blockers.push({
+        id: `${paymentId}:deposit`,
+        type: "deposit",
+        label: "Deposit link cannot be safely removed automatically",
+        description: "Open the related payment or deposit record and resolve the link first.",
+        href: payment.invoice_id ? `/financial/deposits?invoiceId=${payment.invoice_id}` : null,
+      });
+    }
+  }
+
+  const attachmentRes = await c
+    .from("payment_received_attachments")
+    .select("id", { count: "exact", head: true })
+    .eq("payment_id", paymentId);
+  if (attachmentRes.error) {
+    if (!isMissingTable(attachmentRes.error) && !isMissingColumn(attachmentRes.error)) {
+      throw new Error(attachmentRes.error.message ?? "Failed to check payment attachments.");
+    }
+  } else {
+    safeChildRecords.push({
+      type: "payment_received_attachments",
+      label: "Payment attachment metadata",
+      count: attachmentRes.count ?? 0,
+    });
+  }
+  safeChildRecords.push({ type: "payments_received", label: "Payment received record", count: 1 });
+
+  return {
+    paymentId,
+    invoiceId: payment.invoice_id ?? null,
+    projectId: payment.project_id ?? null,
+    status,
+    canDelete: blockers.length === 0,
+    blockers,
+    warnings,
+    safeChildRecords,
+  };
+}
+
+export async function deletePaymentReceived(
+  paymentId: string,
+  explicitClient?: SupabaseClient
+): Promise<boolean> {
+  const c = client(explicitClient);
+  const check = await getPaymentReceivedDeleteDependencies(paymentId, c);
+  if (check.blockers.length > 0) return false;
+  if (check.warnings.some((warning) => warning.type === "not_found")) return true;
+
+  const attachmentDelete = await c
+    .from("payment_received_attachments")
+    .delete()
+    .eq("payment_id", paymentId);
+  if (
+    attachmentDelete.error &&
+    !isMissingTable(attachmentDelete.error) &&
+    !isMissingColumn(attachmentDelete.error)
+  ) {
+    throw new Error(attachmentDelete.error.message ?? "Failed to delete payment attachments.");
+  }
+
+  const depositDelete = await c.from("deposits").delete().eq("payment_id", paymentId);
+  if (
+    depositDelete.error &&
+    !isMissingTable(depositDelete.error) &&
+    !isMissingColumn(depositDelete.error)
+  ) {
+    throw new Error(depositDelete.error.message ?? "Failed to delete linked deposit.");
+  }
+
+  const invoicePaymentDelete = await c
+    .from("invoice_payments")
+    .delete()
+    .eq("payment_received_id", paymentId);
+  if (
+    invoicePaymentDelete.error &&
+    !isMissingTable(invoicePaymentDelete.error) &&
+    !isMissingColumn(invoicePaymentDelete.error)
+  ) {
+    throw new Error(invoicePaymentDelete.error.message ?? "Failed to delete payment allocations.");
+  }
+
+  const { data, error } = await c
+    .from("payments_received")
+    .delete()
+    .eq("id", paymentId)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(error.message ?? "Failed to delete payment.");
+  return Boolean(data);
 }
 
 /** Get payments for a single invoice. */
