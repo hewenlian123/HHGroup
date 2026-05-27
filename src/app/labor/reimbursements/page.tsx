@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   AlertCircle,
+  Check,
   CheckCircle2,
   DollarSign,
   MoreHorizontal,
@@ -127,6 +128,52 @@ const receiptPillAttachedInteractive =
 
 const receiptPillMissing =
   "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[color:rgb(216_180_106_/_0.22)] bg-[var(--rb-panel)] px-2.5 py-1 text-[11px] font-medium tabular-nums text-[color:var(--rb-amber)]";
+
+function ReimbursementCheckbox({
+  ariaLabel,
+  checked,
+  onChange,
+  disabled,
+  className,
+}: {
+  ariaLabel: string;
+  checked: boolean;
+  onChange: React.ChangeEventHandler<HTMLInputElement>;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <label
+      className={cn(
+        "group/reimbursement-checkbox flex min-h-10 min-w-10 shrink-0 cursor-pointer items-center justify-center rounded-full touch-manipulation",
+        disabled && "cursor-not-allowed opacity-45",
+        className
+      )}
+    >
+      <input
+        type="checkbox"
+        aria-label={ariaLabel}
+        checked={checked}
+        onChange={onChange}
+        disabled={disabled}
+        className="peer sr-only"
+      />
+      <span
+        aria-hidden
+        className={cn(
+          "flex h-4 w-4 items-center justify-center rounded-[5px] border border-[color:rgb(190_198_210_/_0.28)] bg-[#0F1218]",
+          "shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset] transition-[background-color,border-color,box-shadow,transform] duration-150",
+          "group-hover/reimbursement-checkbox:border-[color:rgb(190_198_210_/_0.44)] group-hover/reimbursement-checkbox:bg-[#111318]",
+          "peer-focus-visible:border-[color:rgb(216_180_106_/_0.58)] peer-focus-visible:ring-2 peer-focus-visible:ring-[rgb(216_180_106_/_0.24)]",
+          "peer-checked:border-[color:rgb(216_180_106_/_0.72)] peer-checked:bg-[var(--rb-amber)] peer-checked:shadow-[0_0_0_1px_rgb(216_180_106_/_0.18),0_1px_0_rgb(255_255_255_/_0.16)_inset]",
+          "peer-disabled:border-[color:rgb(190_198_210_/_0.18)] peer-disabled:bg-[#0F1218]"
+        )}
+      >
+        {checked ? <Check className="h-3 w-3 text-[#08090C]" strokeWidth={3} /> : null}
+      </span>
+    </label>
+  );
+}
 
 function ReimbursementStatusChip({
   status,
@@ -1066,15 +1113,12 @@ export default function WorkerReimbursementsPage() {
               >
                 <div className="flex items-start gap-2">
                   {r.status === "pending" ? (
-                    <label className="flex min-h-[44px] min-w-[44px] shrink-0 cursor-pointer items-center justify-center rounded-sm touch-manipulation">
-                      <input
-                        type="checkbox"
-                        aria-label={`Select ${workerName(r)}`}
-                        checked={selectedIds.has(r.id)}
-                        onChange={() => toggleSelection(r.id, r.status)}
-                        className="h-4 w-4 shrink-0 rounded border-input"
-                      />
-                    </label>
+                    <ReimbursementCheckbox
+                      ariaLabel={`Select ${workerName(r)}`}
+                      checked={selectedIds.has(r.id)}
+                      onChange={() => toggleSelection(r.id, r.status)}
+                      className="min-h-[44px] min-w-[44px]"
+                    />
                   ) : null}
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="truncate text-[15px] font-semibold leading-snug tracking-normal text-[color:var(--rb-text)]">
@@ -1173,14 +1217,12 @@ export default function WorkerReimbursementsPage() {
             <tr className="border-b border-[color:var(--rb-border)] bg-[var(--rb-elevated)]">
               <th className="w-12 px-2 py-1.5 text-center">
                 <div className="flex min-h-10 min-w-10 items-center justify-center">
-                  <input
-                    type="checkbox"
-                    aria-label="Select all pending on page"
+                  <ReimbursementCheckbox
+                    ariaLabel="Select all pending on page"
                     checked={
                       pendingOnPage.length > 0 && pendingOnPage.every((r) => selectedIds.has(r.id))
                     }
                     onChange={selectAllPendingOnPage}
-                    className="h-4 w-4 rounded border-input"
                   />
                 </div>
               </th>
@@ -1271,12 +1313,10 @@ export default function WorkerReimbursementsPage() {
                   >
                     {r.status === "pending" ? (
                       <div className="flex min-h-10 min-w-10 items-center justify-center">
-                        <input
-                          type="checkbox"
-                          aria-label={`Select ${workerName(r)} ${formatCurrency(r.amount)}`}
+                        <ReimbursementCheckbox
+                          ariaLabel={`Select ${workerName(r)} ${formatCurrency(r.amount)}`}
                           checked={selectedIds.has(r.id)}
                           onChange={() => toggleSelection(r.id, r.status)}
-                          className="h-4 w-4 rounded border-input"
                         />
                       </div>
                     ) : (
