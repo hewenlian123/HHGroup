@@ -154,7 +154,7 @@ function ProposalFact({ label, children }: { label: string; children: string }) 
 
 function ScopeLineItems({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: number) => string }) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {rows.map((row) => {
         const { title: itemTitle, body } = splitLineItemDesc(row.desc ?? "");
         const unitPrice = formatPdfLineUnitPrice(row, (n) => `$${fmt(n)}`);
@@ -240,7 +240,7 @@ function PaymentMilestoneRow({
   fmt: (n: number) => string;
 }) {
   return (
-    <article className="estimate-payment-row relative py-2.5">
+    <article className="estimate-payment-row relative py-2">
       <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-4">
         <p className="pt-0.5 text-[12px] font-semibold tabular-nums tracking-[-0.01em] text-zinc-400">
           {String(index + 1).padStart(2, "0")}
@@ -279,12 +279,12 @@ function paginateScopeSections(sections: ScopeSection[]): PaginatedScopeSection[
 
   const pages: PaginatedScopeSection[][] = [];
   let currentPage: PaginatedScopeSection[] = [];
-  let remaining = 22;
+  let remaining = 24;
 
   const nextPage = () => {
     if (currentPage.length > 0) pages.push(currentPage);
     currentPage = [];
-    remaining = 23;
+    remaining = 36;
   };
 
   for (const section of sections) {
@@ -398,14 +398,16 @@ export function EstimatePreviewContent({
             ) : null}
 
             <section className="print:break-inside-auto">
-              <div className="mb-6 flex items-end justify-between gap-6">
+              <div className="mb-5 flex items-end justify-between gap-6">
                 <div>
                   <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
                     Scope of Work{isFirstPage ? "" : " / Continued"}
                   </p>
-                  <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-zinc-600">
-                    A clear outline of the included work, organized by proposal section.
-                  </p>
+                  {isFirstPage ? (
+                    <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-zinc-600">
+                      A clear outline of the included work, organized by proposal section.
+                    </p>
+                  ) : null}
                 </div>
               </div>
               {costSections.length === 0 ? (
@@ -417,9 +419,9 @@ export function EstimatePreviewContent({
                       key={`${categoryId}-${isContinuation ? "continued" : "start"}-${rows
                         .map((row) => row.id)
                         .join("-")}`}
-                      className="estimate-scope-section mb-7 last:mb-0"
+                      className="estimate-scope-section mb-6 last:mb-0"
                     >
-                      <div className="mb-4 flex items-baseline justify-between gap-4">
+                      <div className="mb-3 flex items-baseline justify-between gap-4">
                         <h3 className="text-[17px] font-semibold leading-tight tracking-[-0.025em] text-zinc-950">
                           {title}
                           {isContinuation ? (
@@ -519,7 +521,7 @@ export function EstimatePreviewContent({
                 </p>
               </div>
             </div>
-            <div className="space-y-3 text-sm">
+            <div className="space-y-2 text-sm">
               {paymentSchedule.map((item, index) => {
                 const amount = paymentMilestoneAmount(item, estimateTotal);
                 return (
@@ -537,11 +539,11 @@ export function EstimatePreviewContent({
         ) : null}
 
         {meta?.documentNotes.length ? (
-          <EstimateNotesPreview notes={meta.documentNotes} className="mt-6" />
+          <EstimateNotesPreview notes={meta.documentNotes} className="mt-4" />
         ) : null}
 
         {company.defaultTerms ? (
-          <section className="estimate-final-packet-section mt-6">
+          <section className="estimate-final-packet-section mt-5">
             <h2 className="mb-2 text-[11px] font-medium tracking-[0.08em] text-zinc-500">Terms</h2>
             <p className="whitespace-pre-wrap break-words py-2 text-sm leading-relaxed text-zinc-700">
               {company.defaultTerms}
@@ -550,41 +552,37 @@ export function EstimatePreviewContent({
         ) : null}
 
         <section
-          className="estimate-signature-block mt-10 w-full text-left"
+          className="estimate-signature-block mt-6 w-full text-left"
           aria-label="Client acceptance"
         >
           <h2 className="mb-2 text-[20px] font-semibold tracking-[-0.035em] text-zinc-950">
             Client Acceptance
           </h2>
-          <p className="mb-8 max-w-2xl text-sm leading-relaxed text-zinc-600">
+          <p className="mb-6 max-w-2xl text-sm leading-relaxed text-zinc-600">
             By signing below, the client acknowledges review and acceptance of this estimate,
             payment schedule, and listed notes or clarifications.
           </p>
-          <div className="grid gap-x-10 gap-y-8 text-sm text-zinc-900 sm:grid-cols-2">
+          <div className="grid gap-x-10 gap-y-6 text-sm text-zinc-900 sm:grid-cols-2">
             <div className="min-w-0">
               <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Client Name</p>
-              <div className="mt-6 border-b border-zinc-400" aria-hidden />
+              <div className="mt-5 border-b border-zinc-400" aria-hidden />
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Date</p>
-              <div className="mt-6 border-b border-zinc-400" aria-hidden />
+              <div className="mt-5 border-b border-zinc-400" aria-hidden />
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Signature</p>
-              <div className="mt-7 border-b border-zinc-400" aria-hidden />
+              <div className="mt-6 border-b border-zinc-400" aria-hidden />
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
                 Company Representative
               </p>
-              <div className="mt-7 border-b border-zinc-400" aria-hidden />
+              <div className="mt-6 border-b border-zinc-400" aria-hidden />
             </div>
           </div>
         </section>
-
-        <footer className="mt-4 whitespace-pre-wrap border-t border-zinc-100 pt-2 text-[11px] text-zinc-400">
-          {company.invoiceFooter || `${company.companyName} · Estimate ${estimate.number}`}
-        </footer>
       </section>
     </article>
   );

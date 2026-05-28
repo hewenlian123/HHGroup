@@ -1313,7 +1313,7 @@
   box-sizing: border-box;
   width: min(210mm, calc(100vw - 2rem));
   min-height: 297mm;
-  padding: 15mm;
+  padding: 12mm;
   background: #fffdf8;
   box-shadow:
     0 28px 86px rgba(39, 33, 24, 0.14),
@@ -1348,7 +1348,38 @@
 }
 
 .estimate-signature-block {
-  margin-top: auto;
+  margin-top: 2rem;
+}
+
+.estimate-pdf-exporting .estimate-preview-paper-stack {
+  display: block;
+  gap: 0;
+}
+
+.estimate-pdf-exporting .estimate-a4-page {
+  width: 210mm !important;
+  height: 296mm;
+  min-height: 0;
+  overflow: hidden;
+  margin: 0 !important;
+  background: #fff !important;
+  box-shadow: none !important;
+  break-after: page;
+  page-break-after: always;
+}
+
+.estimate-pdf-exporting .estimate-a4-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.estimate-pdf-exporting .estimate-final-packet {
+  break-before: auto;
+  page-break-before: auto;
+}
+
+.estimate-pdf-exporting .estimate-page-label {
+  display: none !important;
 }
 
 @media (max-width: 700px) {
@@ -1451,7 +1482,7 @@
     width: 210mm !important;
     min-height: 297mm;
     margin: 0 !important;
-    padding: 15mm !important;
+    padding: 12mm !important;
     background: #fff !important;
     box-shadow: none !important;
     break-after: page;
@@ -1478,7 +1509,7 @@
     page-break-inside: avoid;
   }
   .estimate-signature-block {
-    margin-top: auto;
+    margin-top: 2rem;
   }
   .estimate-print-section {
     break-inside: avoid;
