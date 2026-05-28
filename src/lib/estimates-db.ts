@@ -430,50 +430,65 @@ export async function createEstimateWithItemsWithClient(
       payload.categoryNames,
       payload.items
     );
+    const writeOperations: Promise<void>[] = [];
     if (categoryEntries.length > 0) {
-      let orderIdx = 0;
-      for (const [cost_code, display_name] of categoryEntries) {
-        const result = await upsertEstimateCategoryWithOrderFallback(c, {
-          estimate_id: id,
-          cost_code,
-          display_name,
-          order_index: orderIdx++,
-        });
-        if (!result.ok) throw new Error(result.error);
-      }
+      writeOperations.push(
+        (async () => {
+          const result = await upsertEstimateCategoriesWithOrderFallback(
+            c,
+            categoryEntries.map(([cost_code, display_name], order_index) => ({
+              estimate_id: id,
+              cost_code,
+              display_name,
+              order_index,
+            }))
+          );
+          if (!result.ok) throw new Error(result.error);
+        })()
+      );
     }
-    for (let idx = 0; idx < payload.items.length; idx++) {
-      const it = payload.items[idx];
-      const { error } = await insertEstimateItemRowWithAdvancedFallback(c, {
-        estimate_id: id,
-        cost_code: it.costCode,
-        desc: it.desc,
-        qty: it.qty,
-        unit: it.unit,
-        unit_cost: it.unitCost,
-        markup_pct: 0,
-        hide_amount_on_pdf: Boolean(it.hideAmountOnPdf),
-        status: normalizeLineItemStatus(it.status),
-        sort_order: Number.isFinite(it.sortOrder) ? Number(it.sortOrder) : idx,
-      });
-      if (error) throw new Error(error.message ?? "Failed to create estimate item.");
+    const itemRows = payload.items.map((it, idx) => ({
+      estimate_id: id,
+      cost_code: it.costCode,
+      desc: it.desc,
+      qty: it.qty,
+      unit: it.unit,
+      unit_cost: it.unitCost,
+      markup_pct: 0,
+      hide_amount_on_pdf: Boolean(it.hideAmountOnPdf),
+      status: normalizeLineItemStatus(it.status),
+      sort_order: Number.isFinite(it.sortOrder) ? Number(it.sortOrder) : idx,
+    }));
+    if (itemRows.length > 0) {
+      writeOperations.push(
+        (async () => {
+          const itemsResult = await insertEstimateItemRowsWithAdvancedFallback(c, itemRows);
+          if (!itemsResult.ok) {
+            throw new Error(itemsResult.error ?? "Failed to create estimate items.");
+          }
+        })()
+      );
     }
     if (payload.paymentSchedule && payload.paymentSchedule.length > 0) {
-      for (let idx = 0; idx < payload.paymentSchedule.length; idx++) {
-        const ps = payload.paymentSchedule[idx];
-        const amount = normalizePaymentAmount(ps.amount);
-        const { error } = await c.from("estimate_payment_schedule_items").insert({
-          estimate_id: id,
-          sort_order: idx,
-          title: ps.title,
-          description: ps.description ?? null,
-          amount,
-          due_date: ps.dueDate ?? null,
-          status: "draft",
-        });
-        if (error) throw new Error(error.message ?? "Failed to create payment schedule.");
-      }
+      const paymentRows = payload.paymentSchedule.map((ps, idx) => ({
+        estimate_id: id,
+        sort_order: idx,
+        title: ps.title,
+        description: ps.description ?? null,
+        amount: normalizePaymentAmount(ps.amount),
+        due_date: ps.dueDate ?? null,
+        status: "draft",
+      }));
+      writeOperations.push(
+        (async () => {
+          const { error } = await c.from("estimate_payment_schedule_items").insert(paymentRows);
+          if (error) {
+            throw new Error(error.message ?? "Failed to create payment schedule.");
+          }
+        })()
+      );
     }
+    await Promise.all(writeOperations);
   } catch (error) {
     await c.from("estimates").delete().eq("id", id);
     throw error;
@@ -693,6 +708,34 @@ async function upsertEstimateCategoryWithOrderFallback(
     return { ok: false, error: fallbackErr.message || "Could not save category." };
   }
   return { ok: false, error: error.message || "Could not save category." };
+}
+
+async function upsertEstimateCategoriesWithOrderFallback(
+  c: SupabaseClient,
+  rows: Array<{
+    estimate_id: string;
+    cost_code: string;
+    display_name: string;
+    order_index: number;
+  }>
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (rows.length === 0) return { ok: true };
+  const { error } = await c
+    .from("estimate_categories")
+    .upsert(rows, { onConflict: "estimate_id,cost_code" });
+  if (!error) return { ok: true };
+  if (isMissingOrderIndexColumnError(error)) {
+    const fallbackRows = rows.map(({ order_index: _orderIndex, ...rest }) => {
+      void _orderIndex;
+      return rest;
+    });
+    const { error: fallbackErr } = await c
+      .from("estimate_categories")
+      .upsert(fallbackRows, { onConflict: "estimate_id,cost_code" });
+    if (!fallbackErr) return { ok: true };
+    return { ok: false, error: fallbackErr.message || "Could not save categories." };
+  }
+  return { ok: false, error: error.message || "Could not save categories." };
 }
 
 function mapEstimateCategoryRecord(
@@ -1283,6 +1326,39 @@ async function insertEstimateItemRowWithAdvancedFallback(
     };
   }
   return { data: null, error: { message: error.message } };
+}
+
+async function insertEstimateItemRowsWithAdvancedFallback(
+  c: SupabaseClient,
+  rows: Record<string, unknown>[]
+): Promise<{ ok: boolean; error?: string }> {
+  if (rows.length === 0) return { ok: true };
+  const { error } = await c.from("estimate_items").insert(rows);
+  if (!error) return { ok: true };
+  if (
+    isMissingColumnError(error, "sort_order") ||
+    isMissingColumnError(error, "status") ||
+    isMissingColumnError(error, "hide_amount_on_pdf")
+  ) {
+    const fallbackRows = rows.map(
+      ({
+        sort_order: _sortOrder,
+        status: _status,
+        hide_amount_on_pdf: _hideAmountOnPdf,
+        ...rest
+      }) => {
+        void _sortOrder;
+        void _status;
+        void _hideAmountOnPdf;
+        return rest;
+      }
+    );
+    const retry = await c.from("estimate_items").insert(fallbackRows);
+    return retry.error
+      ? { ok: false, error: retry.error.message || "Could not save estimate items." }
+      : { ok: true };
+  }
+  return { ok: false, error: error.message || "Could not save estimate items." };
 }
 
 export async function addLineItemWithClient(
