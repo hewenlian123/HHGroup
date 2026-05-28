@@ -11,6 +11,7 @@ import type { PaymentReceiptPreviewDto } from "@/lib/payment-receipt-preview-dto
 import { downloadPaymentReceiptPdf } from "@/lib/payment-receipt-pdf";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import "@/styles/worker-payment-receipt-print.css";
+import "@/styles/payment-receipt-a4.css";
 
 type Props = {
   open: boolean;
@@ -157,8 +158,8 @@ export function SendPaymentReceiptModal({ open, data, onOpenChange }: Props) {
               </Button>
             </div>
 
-            <div className="pointer-events-none fixed -left-[9999px] top-0 w-[8.5in] bg-white">
-              <div ref={receiptExportRef}>
+            <div className="pointer-events-none fixed -left-[9999px] top-0 w-[210mm] bg-white">
+              <div ref={receiptExportRef} className="payment-receipt-export-root">
                 <PaymentReceiptDocument data={data} />
               </div>
             </div>

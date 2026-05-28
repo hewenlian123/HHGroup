@@ -1,0 +1,195 @@
+/* Finance / Payments Received receipt only. Keep separate from worker receipt Letter rules. */
+
+.payment-receipt-export-root {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+.receipt.payment-receipt-paper {
+  width: min(100%, 794px);
+  max-width: 794px;
+  aspect-ratio: 210 / 297;
+  min-height: auto;
+  margin: 0 auto;
+  padding: clamp(28px, 5.7vw, 12mm);
+  overflow: visible;
+  background: #fff;
+  color: #111;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 0;
+  box-shadow: 0 24px 64px rgb(15 23 42 / 0.18);
+  letter-spacing: 0;
+}
+
+.payment-receipt-paper *,
+.payment-receipt-paper *::before,
+.payment-receipt-paper *::after {
+  box-sizing: border-box;
+}
+
+.payment-receipt-paper .receipt-table {
+  max-width: 100%;
+}
+
+.payment-receipt-paper .receipt-table th,
+.payment-receipt-paper .receipt-table td,
+.payment-receipt-paper .receipt-value,
+.payment-receipt-paper .receipt-notes,
+.payment-receipt-paper .receipt-footer {
+  overflow-wrap: anywhere;
+}
+
+.payment-receipt-paper .receipt-summary {
+  margin-top: 12px;
+}
+
+.payment-receipt-pdf-render-host {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  z-index: -1;
+  width: 190mm;
+  background: #fff;
+  pointer-events: none;
+}
+
+@media screen and (max-width: 560px) {
+  .receipt.payment-receipt-paper {
+    width: 100%;
+    max-width: 100%;
+    padding: clamp(14px, 4.6vw, 22px);
+    box-shadow: 0 18px 48px rgb(15 23 42 / 0.16);
+    font-size: 10px;
+    line-height: 1.24;
+  }
+
+  .payment-receipt-paper .receipt-doc-header {
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-bottom: 8px !important;
+    padding-bottom: 8px !important;
+  }
+
+  .payment-receipt-paper .receipt-doc-header > div:first-child {
+    max-width: 58%;
+  }
+
+  .payment-receipt-paper .receipt-doc-header > div:last-child {
+    max-width: 40%;
+  }
+
+  .payment-receipt-paper .receipt-meta-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(112px, 36%);
+    gap: 6px 12px;
+    margin-bottom: 7px;
+  }
+
+  .payment-receipt-paper .receipt-meta-right {
+    text-align: right;
+  }
+
+  .payment-receipt-paper .receipt-field {
+    margin-bottom: 4px;
+  }
+
+  .payment-receipt-paper .receipt-field--inline-end {
+    align-items: flex-end;
+  }
+
+  .payment-receipt-paper .receipt-field--inline-end .receipt-label-text {
+    text-align: right;
+  }
+
+  .payment-receipt-paper .receipt-meta-left .receipt-notes {
+    margin-top: 4px;
+    font-size: 9px;
+    line-height: 1.25;
+  }
+
+  .payment-receipt-paper .receipt-total-block {
+    align-items: flex-end;
+    margin-top: 5px;
+  }
+
+  .payment-receipt-paper .receipt-total-amount {
+    font-size: 19px;
+  }
+
+  .payment-receipt-paper .receipt-table {
+    font-size: 9px;
+    line-height: 1.18;
+  }
+
+  .payment-receipt-paper .receipt-table thead th {
+    padding-bottom: 3px;
+    font-size: 7px;
+  }
+
+  .payment-receipt-paper .receipt-table tbody td {
+    padding-top: 3px;
+    padding-bottom: 3px;
+    font-size: 9px;
+    line-height: 1.18;
+  }
+
+  .payment-receipt-paper .receipt-summary {
+    align-items: flex-end;
+    max-width: 190px;
+    margin-top: 6px;
+    margin-bottom: 6px;
+  }
+
+  .payment-receipt-paper .receipt-summary-row {
+    justify-content: flex-end;
+    gap: 12px;
+  }
+
+  .payment-receipt-paper .receipt-footer {
+    margin-top: 5px;
+    font-size: 7px;
+    line-height: 1.25;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .payment-receipt-export-root {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .receipt.payment-receipt-paper {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: auto !important;
+    aspect-ratio: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .payment-receipt-paper .receipt-doc-header,
+  .payment-receipt-paper .receipt-meta-grid,
+  .payment-receipt-paper .receipt-table-wrap,
+  .payment-receipt-paper .receipt-summary,
+  .payment-receipt-paper .receipt-footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
