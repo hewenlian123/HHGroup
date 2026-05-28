@@ -8,24 +8,68 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
-import {
-  getWorkerById,
-  updateWorker,
-  getWorkerUsage,
-  disableWorker,
-  deleteWorker,
-} from "@/lib/data";
+import { updateWorker, getWorkerUsage, disableWorker, deleteWorker } from "@/lib/data";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
+
+type WorkerProfile = {
+  id: string;
+  name: string;
+  phone?: string | null;
+  trade?: string | null;
+  status: "active" | "inactive";
+  halfDayRate: number;
+  dailyRate: number;
+  notes?: string | null;
+  createdAt: string;
+};
+
+type WorkerUsage = { used: boolean; reason?: "entries" | "invoices" };
+
+function normalizeWorker(raw: Record<string, unknown>): WorkerProfile {
+  const status = String(raw.status ?? "").toLowerCase() === "inactive" ? "inactive" : "active";
+  const dailyRate = Number(raw.dailyRate ?? raw.daily_rate ?? raw.halfDayRate ?? 0) || 0;
+  return {
+    id: String(raw.id ?? ""),
+    name: String(raw.name ?? ""),
+    phone: (raw.phone as string | null | undefined) ?? null,
+    trade: ((raw.trade ?? raw.role) as string | null | undefined) ?? null,
+    status,
+    halfDayRate: Number(raw.halfDayRate ?? raw.half_day_rate ?? dailyRate) || 0,
+    dailyRate,
+    notes: (raw.notes as string | null | undefined) ?? null,
+    createdAt: String(raw.createdAt ?? raw.created_at ?? "").slice(0, 10),
+  };
+}
+
+async function fetchWorkerProfile(id: string): Promise<{
+  worker: WorkerProfile | null;
+  usage: WorkerUsage;
+}> {
+  const res = await fetch(`/api/labor/workers/${encodeURIComponent(id)}`, {
+    cache: "no-store",
+  });
+  if (res.status === 404) return { worker: null, usage: { used: false } };
+  const json = (await res.json().catch(() => ({}))) as {
+    worker?: Record<string, unknown>;
+    usage?: WorkerUsage;
+    message?: string;
+  };
+  if (!res.ok) {
+    throw new Error(json.message ?? "Failed to load worker.");
+  }
+  return {
+    worker: json.worker ? normalizeWorker(json.worker) : null,
+    usage: json.usage ?? { used: false },
+  };
+}
 
 export default function WorkerProfileEditPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string | undefined;
   const [message, setMessage] = React.useState<string | null>(null);
-  const [worker, setWorker] = React.useState<Awaited<ReturnType<typeof getWorkerById>> | undefined>(
-    undefined
-  );
-  const [usage, setUsage] = React.useState<Awaited<ReturnType<typeof getWorkerUsage>> | null>(null);
+  const [worker, setWorker] = React.useState<WorkerProfile | null | undefined>(undefined);
+  const [usage, setUsage] = React.useState<WorkerUsage | null>(null);
 
   const [name, setName] = React.useState("");
   const [phone, setPhone] = React.useState("");
@@ -35,15 +79,21 @@ export default function WorkerProfileEditPage() {
 
   const refreshAll = React.useCallback(async () => {
     if (!id) return;
-    const [w, u] = await Promise.all([getWorkerById(id), getWorkerUsage(id)]);
-    setWorker(w);
-    setUsage(u);
-    if (w) {
-      setName(w.name);
-      setPhone(w.phone ?? "");
-      setTrade(w.trade ?? "");
-      setStatus(w.status);
-      setNotes(w.notes ?? "");
+    try {
+      const next = await fetchWorkerProfile(id);
+      setWorker(next.worker);
+      setUsage(next.usage);
+      if (next.worker) {
+        setName(next.worker.name);
+        setPhone(next.worker.phone ?? "");
+        setTrade(next.worker.trade ?? "");
+        setStatus(next.worker.status);
+        setNotes(next.worker.notes ?? "");
+      }
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Failed to load worker.");
+      setWorker(null);
+      setUsage({ used: false });
     }
   }, [id]);
 
