@@ -130,6 +130,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     let laborRes: RawResult = { data: null, error: null };
     let laborColsApplied = "";
     for (const cols of [
+      "id, worker_id, project_id, work_date, labor_cost_snapshot, amount_snapshot, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
       // Sparse daily labor (no project_* / total / AM-PM ids) — try first for local & trimmed remotes.
       "id, worker_id, work_date, cost_amount, cost_code, status, worker_payment_id, morning, afternoon, hours, notes",
       "id, worker_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
@@ -218,6 +219,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       project_am_id?: string | null;
       project_pm_id?: string | null;
       work_date?: string;
+      amount_snapshot?: number | null;
+      labor_cost_snapshot?: number | null;
       cost_amount?: number | null;
       total?: number | null;
       status?: string | null;
@@ -262,7 +265,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         date: (r.work_date ?? "").slice(0, 10),
         projectId: projectKey,
         projectName: projectKey ? (projectNameById.get(projectKey) ?? null) : null,
-        amount: Number(r.cost_amount ?? r.total) || 0,
+        amount: Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.total) || 0,
         status: String(r.status ?? "").trim() || "—",
         workerPaymentId,
         payrollSettled,
@@ -310,7 +313,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           laborSettlementMode
         )
       )
-      .reduce((s, r) => s + (Number(r.cost_amount ?? r.total) || 0), 0);
+      .reduce(
+        (s, r) =>
+          s + (Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.total) || 0),
+        0
+      );
     const reimbUnpaid = reimbRaw
       .filter((r) => String(r.status ?? "").toLowerCase() !== "paid")
       .reduce((s, r) => s + (Number(r.amount) || 0), 0);

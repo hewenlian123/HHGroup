@@ -118,13 +118,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           error: { message?: string } | null;
         } = await admin
           .from("labor_entries")
-          .select("id, worker_id, cost_amount, total, status, worker_payment_id")
+          .select(
+            "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, total, status, worker_payment_id"
+          )
           .eq("worker_id", workerId)
           .in("id", laborIds);
         if (laborQ.error && /column|schema cache|total/i.test(laborQ.error.message ?? "")) {
           laborQ = await admin
             .from("labor_entries")
-            .select("id, worker_id, cost_amount, status, worker_payment_id")
+            .select(
+              "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, status, worker_payment_id"
+            )
             .eq("worker_id", workerId)
             .in("id", laborIds);
         }
@@ -135,13 +139,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           laborSettlementMode = "status_fallback";
           laborQ = await admin
             .from("labor_entries")
-            .select("id, worker_id, cost_amount, total, status")
+            .select(
+              "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, total, status"
+            )
             .eq("worker_id", workerId)
             .in("id", laborIds);
           if (laborQ.error && /column|schema cache|total/i.test(laborQ.error.message ?? "")) {
             laborQ = await admin
               .from("labor_entries")
-              .select("id, worker_id, cost_amount, status")
+              .select("id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, status")
               .eq("worker_id", workerId)
               .in("id", laborIds);
           }
@@ -151,6 +157,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         const rows = (laborRows ?? []) as {
           id: string;
           worker_id: string;
+          amount_snapshot?: number | null;
+          labor_cost_snapshot?: number | null;
           cost_amount?: number | null;
           total?: number | null;
           status?: string | null;
@@ -189,7 +197,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
               { status: 400 }
             );
           }
-          expectedTotal += Number(r.cost_amount ?? r.total) || 0;
+          expectedTotal +=
+            Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.total) || 0;
         }
       }
 

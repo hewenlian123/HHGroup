@@ -52,6 +52,8 @@ type LaborRowRaw = {
   project_id?: string | null;
   project_am_id?: string | null;
   project_pm_id?: string | null;
+  amount_snapshot?: number | null;
+  labor_cost_snapshot?: number | null;
   cost_amount?: number | null;
   total?: number | null;
   morning?: boolean | null;
@@ -72,6 +74,7 @@ function mergeLaborRowsById(rows: LaborRowRaw[]): LaborRowRaw[] {
 
 /** Try sparse columns first (no project_* / total / AM-PM ids), then richer shapes. */
 const LABOR_RECEIPT_SELECT_VARIANTS = [
+  "id, work_date, project_id, labor_cost_snapshot, amount_snapshot, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
   "id, work_date, cost_amount, cost_code, status, worker_payment_id, morning, afternoon, hours, notes",
   "id, work_date, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
   "id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",
@@ -183,7 +186,7 @@ export async function getWorkerPaymentReceiptPayload(
       workDate: (r.work_date ?? "").slice(0, 10),
       projectName: pid ? (projectNameById.get(pid) ?? null) : null,
       session,
-      amount: Number(r.cost_amount ?? r.total) || 0,
+      amount: Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.total) || 0,
     };
   });
 
@@ -229,10 +232,12 @@ async function computeWorkerBalanceSnapshot(
 ): Promise<WorkerBalanceSnapshot> {
   const laborFull = await c
     .from("labor_entries")
-    .select("id, cost_amount, status, worker_payment_id")
+    .select("id, labor_cost_snapshot, amount_snapshot, cost_amount, status, worker_payment_id")
     .eq("worker_id", workerId);
   let laborRows: {
     id?: string | null;
+    amount_snapshot?: number | null;
+    labor_cost_snapshot?: number | null;
     cost_amount?: number | null;
     status?: string | null;
     worker_payment_id?: string | null;
@@ -244,11 +249,13 @@ async function computeWorkerBalanceSnapshot(
     laborSettlementMode = "status_fallback";
     const fb = await c
       .from("labor_entries")
-      .select("id, cost_amount, status")
+      .select("id, labor_cost_snapshot, amount_snapshot, cost_amount, status")
       .eq("worker_id", workerId);
     laborRows = (
       (fb.data ?? []) as {
         id?: string | null;
+        amount_snapshot?: number | null;
+        labor_cost_snapshot?: number | null;
         cost_amount?: number | null;
         status?: string | null;
       }[]
@@ -313,7 +320,7 @@ async function computeWorkerBalanceSnapshot(
       null;
     if (!isLaborUnpaidForWorkerPayroll(r.status, effectiveWorkerPaymentId, laborSettlementMode))
       continue;
-    laborOwed += Number(r.cost_amount) || 0;
+    laborOwed += Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount) || 0;
   }
 
   const reimbRes = await c

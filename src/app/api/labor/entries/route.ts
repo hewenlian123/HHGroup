@@ -6,6 +6,10 @@ import {
 } from "@/lib/supabase-server";
 import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
 import { insertDailyLaborEntriesWithClient } from "@/lib/labor-db";
+import {
+  buildLaborEntryRateSnapshotWithClient,
+  resolveWorkerDailyRateForDateWithClient,
+} from "@/lib/worker-rate-history-db";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,6 +38,7 @@ type LaborEntryPayload = {
   cost_amount?: unknown;
   session?: unknown;
   rows?: unknown;
+  recalculateWithEffectiveRate?: unknown;
 };
 
 type DailyLaborInput = {
@@ -131,24 +136,6 @@ async function ensureNotDuplicateSession(
   }
 }
 
-async function resolveHourlyRate(
-  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
-  workerId: string
-): Promise<number> {
-  const { data, error } = await supabase
-    .from("workers")
-    .select("id, half_day_rate, daily_rate")
-    .eq("id", workerId)
-    .maybeSingle();
-  if (error) throw new Error(error.message ?? "Failed to load worker rate.");
-  const row = (data ?? {}) as { half_day_rate?: number | null; daily_rate?: number | null };
-  const dailyRate =
-    row.daily_rate != null && Number(row.daily_rate) > 0
-      ? Number(row.daily_rate)
-      : Number(row.half_day_rate) || 0;
-  return dailyRate > 0 ? dailyRate / 8 : 0;
-}
-
 async function updateSessionEntry(
   supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
   body: LaborEntryPayload
@@ -158,7 +145,7 @@ async function updateSessionEntry(
 
   const { data: current, error: curErr } = await supabase
     .from("labor_entries")
-    .select("id, worker_id, work_date, morning, afternoon, status")
+    .select("id, worker_id, work_date, morning, afternoon, status, daily_rate_snapshot")
     .eq("id", id)
     .maybeSingle();
   if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
@@ -170,6 +157,7 @@ async function updateSessionEntry(
     morning?: boolean | null;
     afternoon?: boolean | null;
     status?: string | null;
+    daily_rate_snapshot?: number | null;
   };
   if (row.status === "Locked") throw new Error("Cannot edit a locked labor entry.");
 
@@ -184,14 +172,29 @@ async function updateSessionEntry(
   });
 
   const flags = toSessionFlags(session);
+  const hours = safeNumber(body.hours);
+  const amount = safeNumber(body.costAmount ?? body.cost_amount);
+  const snapshot = await buildLaborEntryRateSnapshotWithClient(supabase, {
+    workerId: row.worker_id,
+    workDate: row.work_date,
+    hours,
+    morning: flags.morning,
+    afternoon: flags.afternoon,
+    existingDailyRateSnapshot: row.daily_rate_snapshot,
+  });
   const payload: Record<string, unknown> = {
     project_id: safeString(body.projectId ?? body.project_id) || null,
-    hours: safeNumber(body.hours),
-    cost_amount: safeNumber(body.costAmount ?? body.cost_amount),
+    hours,
+    cost_amount: amount,
     notes: safeString(body.notes) || null,
     morning: flags.morning,
     afternoon: flags.afternoon,
+    days_worked: snapshot.days_worked,
+    daily_rate_snapshot: snapshot.daily_rate_snapshot,
+    amount_snapshot: amount,
+    labor_cost_snapshot: amount,
   };
+  if (snapshot.rate_history_id) payload.rate_history_id = snapshot.rate_history_id;
 
   const { error } = await supabase.from("labor_entries").update(payload).eq("id", id);
   if (error) throw new Error(error.message ?? "Failed to update labor entry.");
@@ -206,26 +209,44 @@ async function updateDailyEntry(
 
   const { data: current, error: curErr } = await supabase
     .from("labor_entries")
-    .select("id, status")
+    .select("id, worker_id, work_date, status, daily_rate_snapshot")
     .eq("id", id)
     .maybeSingle();
   if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
   if (!current) throw new Error("Labor entry not found.");
-  if ((current as { status?: string | null }).status === "Locked") {
+  const row = current as {
+    worker_id?: string | null;
+    work_date?: string | null;
+    status?: string | null;
+    daily_rate_snapshot?: number | null;
+  };
+  if (row.status === "Locked") {
     throw new Error("Cannot edit a locked labor entry.");
   }
 
-  const workerId = safeString(body.workerId ?? body.worker_id);
+  const workerId = safeString(body.workerId ?? body.worker_id) || safeString(row.worker_id);
   if (!workerId) throw new Error("Worker is required.");
+  const workDate = safeDate(body.workDate ?? body.work_date) || safeString(row.work_date);
   const hours = safeNumber(body.hours);
-  const hourlyRate = await resolveHourlyRate(supabase, workerId);
+  const workerChanged = workerId !== safeString(row.worker_id);
+  const dateChanged = workDate !== safeString(row.work_date).slice(0, 10);
+  const snapshot = await buildLaborEntryRateSnapshotWithClient(supabase, {
+    workerId,
+    workDate,
+    hours,
+    existingDailyRateSnapshot:
+      workerChanged || dateChanged || body.recalculateWithEffectiveRate === true
+        ? undefined
+        : row.daily_rate_snapshot,
+  });
   const payload = {
     worker_id: workerId,
     project_id: safeString(body.projectId ?? body.project_id) || null,
+    work_date: workDate,
     hours,
     cost_code: safeString(body.costCode ?? body.cost_code) || null,
     notes: safeString(body.notes) || null,
-    cost_amount: hours * hourlyRate,
+    ...snapshot,
   };
 
   const { error } = await supabase.from("labor_entries").update(payload).eq("id", id);
@@ -338,25 +359,37 @@ export async function GET(request: Request) {
     if (projectsRes.error && !isMissingTableError(projectsRes.error))
       throw new Error(projectsRes.error.message);
 
+    const workerRows = (workersRes.data ?? []) as Array<{
+      id: string;
+      name: string;
+      half_day_rate?: number | null;
+      daily_rate?: number | null;
+      status?: string | null;
+    }>;
+    const effectiveRateByWorkerId = new Map<string, number>();
+    if (date) {
+      await Promise.all(
+        workerRows.map(async (row) => {
+          const effective = await resolveWorkerDailyRateForDateWithClient(supabase, row.id, date);
+          effectiveRateByWorkerId.set(row.id, effective.dailyRate);
+        })
+      );
+    }
+
     return NextResponse.json(
       {
         ok: true,
         missingLaborTable,
         entries: entriesRes.error ? [] : (entriesRes.data ?? []),
-        workers: (workersRes.data ?? [])
-          .map((w) => {
-            const row = w as {
-              id: string;
-              name: string;
-              half_day_rate?: number | null;
-              daily_rate?: number | null;
-              status?: string | null;
-            };
+        workers: workerRows
+          .map((row) => {
+            const effectiveDailyRate = effectiveRateByWorkerId.get(row.id);
             return {
               id: row.id,
               name: row.name ?? "",
-              halfDayRate: safeNumber(row.half_day_rate),
-              dailyRate: safeNumber(row.daily_rate) || safeNumber(row.half_day_rate),
+              halfDayRate: effectiveDailyRate ?? safeNumber(row.half_day_rate),
+              dailyRate:
+                effectiveDailyRate ?? (safeNumber(row.daily_rate) || safeNumber(row.half_day_rate)),
               status: row.status ?? "active",
             };
           })
@@ -405,9 +438,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true, entries }, { headers: NO_CACHE_HEADERS });
     }
     const payload = toPayload(body);
+    const snapshot = await buildLaborEntryRateSnapshotWithClient(supabase, {
+      workerId: payload.worker_id,
+      workDate: payload.work_date,
+      hours: payload.hours,
+    });
     const { data, error } = await supabase
       .from("labor_entries")
-      .insert(payload)
+      .insert({ ...payload, ...snapshot })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
@@ -443,7 +481,15 @@ export async function PATCH(request: Request) {
       const id = safeString(body.id);
       if (!id) return apiError(400, "Labor entry id is required.");
       const payload = toPayload(body);
-      const { error } = await supabase.from("labor_entries").update(payload).eq("id", id);
+      const snapshot = await buildLaborEntryRateSnapshotWithClient(supabase, {
+        workerId: payload.worker_id,
+        workDate: payload.work_date,
+        hours: payload.hours,
+      });
+      const { error } = await supabase
+        .from("labor_entries")
+        .update({ ...payload, ...snapshot })
+        .eq("id", id);
       if (error) throw new Error(error.message);
     }
     return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });

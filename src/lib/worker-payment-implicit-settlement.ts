@@ -52,24 +52,32 @@ async function loadUnpaidPayItems(
     error: { message?: string } | null;
   } = await admin
     .from("labor_entries")
-    .select("id, worker_id, cost_amount, total, status, worker_payment_id, project_id")
+    .select(
+      "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, total, status, worker_payment_id, project_id"
+    )
     .eq("worker_id", workerId);
   if (laborQ.error && /column|schema cache|total/i.test(laborQ.error.message ?? "")) {
     laborQ = await admin
       .from("labor_entries")
-      .select("id, worker_id, cost_amount, status, worker_payment_id, project_id")
+      .select(
+        "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, status, worker_payment_id, project_id"
+      )
       .eq("worker_id", workerId);
   }
   if (laborQ.error && /column|schema cache|worker_payment_id/i.test(laborQ.error.message ?? "")) {
     laborSettlementMode = "status_fallback";
     laborQ = await admin
       .from("labor_entries")
-      .select("id, worker_id, cost_amount, total, status, project_id")
+      .select(
+        "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, total, status, project_id"
+      )
       .eq("worker_id", workerId);
     if (laborQ.error && /column|schema cache|total/i.test(laborQ.error.message ?? "")) {
       laborQ = await admin
         .from("labor_entries")
-        .select("id, worker_id, cost_amount, status, project_id")
+        .select(
+          "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, status, project_id"
+        )
         .eq("worker_id", workerId);
     }
   }
@@ -77,6 +85,8 @@ async function loadUnpaidPayItems(
 
   const laborRaw = (laborQ.data ?? []) as {
     id: string;
+    amount_snapshot?: number | null;
+    labor_cost_snapshot?: number | null;
     cost_amount?: number | null;
     total?: number | null;
     status?: string | null;
@@ -107,7 +117,9 @@ async function loadUnpaidPayItems(
       String(r.worker_payment_id ?? "").trim() || paymentIdByLaborEntryId.get(r.id) || null;
     if (!isLaborUnpaidForWorkerPayroll(r.status, effectiveWorkerPaymentId, laborSettlementMode))
       continue;
-    const cents = toCents(Number(r.cost_amount ?? r.total) || 0);
+    const cents = toCents(
+      Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.total) || 0
+    );
     if (cents <= 0) continue;
     items.push({ kind: "labor", id: r.id, cents });
   }

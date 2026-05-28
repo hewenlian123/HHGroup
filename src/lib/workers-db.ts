@@ -7,6 +7,10 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import {
+  changeWorkerDailyRateWithClient,
+  ensureInitialWorkerRateHistoryWithClient,
+} from "@/lib/worker-rate-history-db";
 
 export type WorkerStatus = "Active" | "Inactive";
 
@@ -194,10 +198,20 @@ export async function insertWorker(draft: WorkerDraft): Promise<WorkerRow> {
         .select(COLS_BASE)
         .single();
       if (err2) throw new Error(err2.message ?? "Failed to add worker.");
+      await ensureInitialWorkerRateHistoryWithClient(c, {
+        workerId: (row2 as { id: string }).id,
+        dailyRate: draft.daily_rate,
+        effectiveFrom: ((row2 as { created_at?: string | null }).created_at ?? "").slice(0, 10),
+      });
       return mapBaseRow(row2 as Record<string, unknown>);
     }
     throw new Error(error.message ?? "Failed to add worker.");
   }
+  await ensureInitialWorkerRateHistoryWithClient(c, {
+    workerId: (row as { id: string }).id,
+    dailyRate: draft.daily_rate,
+    effectiveFrom: ((row as { created_at?: string | null }).created_at ?? "").slice(0, 10),
+  });
   return mapExtRow(row as Record<string, unknown>);
 }
 
@@ -214,18 +228,27 @@ export async function updateWorker(
   patch: UpdateWorkerPatch
 ): Promise<WorkerRow | null> {
   const c = client();
+  const dailyRatePatch = patch.daily_rate;
   const extPayload: Record<string, unknown> = {};
   if (patch.name !== undefined) extPayload.name = patch.name.trim();
   if (patch.phone !== undefined) extPayload.phone = patch.phone?.trim() || null;
   if (patch.trade !== undefined) extPayload.trade = patch.trade?.trim() || null;
-  if (patch.daily_rate !== undefined) extPayload.daily_rate = Number(patch.daily_rate) || 0;
   if (patch.default_ot_rate !== undefined)
     extPayload.default_ot_rate = Number(patch.default_ot_rate) || 0;
   if (patch.status !== undefined)
     extPayload.status = patch.status === "Inactive" ? "Inactive" : "Active";
   if (patch.notes !== undefined) extPayload.notes = patch.notes?.trim() || null;
 
-  if (Object.keys(extPayload).length === 0) return getWorkerById(id);
+  if (Object.keys(extPayload).length === 0) {
+    if (dailyRatePatch !== undefined) {
+      await changeWorkerDailyRateWithClient(c, id, {
+        dailyRate: dailyRatePatch,
+        effectiveFrom: new Date().toISOString().slice(0, 10),
+        notes: "Updated from Workers list",
+      });
+    }
+    return getWorkerById(id);
+  }
 
   const { data: row, error } = await c
     .from("workers")
@@ -240,12 +263,20 @@ export async function updateWorker(
       if (patch.name !== undefined) basePayload.name = patch.name.trim();
       if (patch.phone !== undefined) basePayload.phone = patch.phone?.trim() || null;
       if (patch.trade !== undefined) basePayload.role = patch.trade?.trim() || null;
-      if (patch.daily_rate !== undefined) basePayload.half_day_rate = Number(patch.daily_rate) || 0;
       if (patch.status !== undefined)
         basePayload.status = patch.status === "Inactive" ? "inactive" : "active";
       if (patch.notes !== undefined) basePayload.notes = patch.notes?.trim() || null;
 
-      if (Object.keys(basePayload).length === 0) return getWorkerById(id);
+      if (Object.keys(basePayload).length === 0) {
+        if (dailyRatePatch !== undefined) {
+          await changeWorkerDailyRateWithClient(c, id, {
+            dailyRate: dailyRatePatch,
+            effectiveFrom: new Date().toISOString().slice(0, 10),
+            notes: "Updated from Workers list",
+          });
+        }
+        return getWorkerById(id);
+      }
       const { data: row2, error: err2 } = await c
         .from("workers")
         .update(basePayload)
@@ -253,9 +284,24 @@ export async function updateWorker(
         .select(COLS_BASE)
         .single();
       if (err2) throw new Error(err2.message ?? "Failed to update worker.");
+      if (dailyRatePatch !== undefined) {
+        await changeWorkerDailyRateWithClient(c, id, {
+          dailyRate: dailyRatePatch,
+          effectiveFrom: new Date().toISOString().slice(0, 10),
+          notes: "Updated from Workers list",
+        });
+      }
       return row2 ? mapBaseRow(row2 as Record<string, unknown>) : null;
     }
     throw new Error(error.message ?? "Failed to update worker.");
+  }
+  if (dailyRatePatch !== undefined) {
+    await changeWorkerDailyRateWithClient(c, id, {
+      dailyRate: dailyRatePatch,
+      effectiveFrom: new Date().toISOString().slice(0, 10),
+      notes: "Updated from Workers list",
+    });
+    return getWorkerById(id);
   }
   return row ? mapExtRow(row as Record<string, unknown>) : null;
 }

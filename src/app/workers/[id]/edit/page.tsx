@@ -31,7 +31,6 @@ export default function WorkerProfileEditPage() {
   const [phone, setPhone] = React.useState("");
   const [trade, setTrade] = React.useState("");
   const [status, setStatus] = React.useState<"active" | "inactive">("active");
-  const [halfDayRate, setHalfDayRate] = React.useState(0);
   const [notes, setNotes] = React.useState("");
 
   const refreshAll = React.useCallback(async () => {
@@ -44,7 +43,6 @@ export default function WorkerProfileEditPage() {
       setPhone(w.phone ?? "");
       setTrade(w.trade ?? "");
       setStatus(w.status);
-      setHalfDayRate(w.halfDayRate);
       setNotes(w.notes ?? "");
     }
   }, [id]);
@@ -69,7 +67,6 @@ export default function WorkerProfileEditPage() {
       phone,
       trade,
       status,
-      halfDayRate: Number.isFinite(halfDayRate) ? Math.max(0, halfDayRate) : 0,
       notes,
     });
     if (!updated) {
@@ -182,19 +179,6 @@ export default function WorkerProfileEditPage() {
             <Input
               value={trade}
               onChange={(e) => setTrade(e.target.value)}
-              className="rounded-sm"
-            />
-          </div>
-          <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-              Half-day Rate
-            </label>
-            <Input
-              type="number"
-              min="0"
-              step="0.01"
-              value={halfDayRate}
-              onChange={(e) => setHalfDayRate(Number(e.target.value) || 0)}
               className="rounded-sm"
             />
           </div>

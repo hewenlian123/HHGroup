@@ -16,7 +16,8 @@ import {
   companyProfileToDocumentDto,
   type DocumentCompanyProfileDTO,
 } from "@/lib/document-company-profile";
-import { getServerSupabase } from "@/lib/supabase-server";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { daysWorkedFromLaborInput } from "@/lib/worker-rate-history-db";
 
 export type WorkerMonthlyReportRowType =
   | "Labor"
@@ -240,7 +241,14 @@ type LaborEntryRowNormalized = {
   id: string;
   project_id: string | null;
   work_date: string;
+  hours?: unknown;
+  morning?: unknown;
+  afternoon?: unknown;
+  days_worked?: unknown;
+  labor_cost_snapshot?: unknown;
+  amount_snapshot?: unknown;
   cost_amount: unknown;
+  total?: unknown;
 };
 
 async function loadLaborEntriesForMonth(
@@ -248,50 +256,60 @@ async function loadLaborEntriesForMonth(
   wid: string,
   range: { start: string; nextStart: string }
 ): Promise<{ rows: LaborEntryRowNormalized[]; error: string | null }> {
-  const full = await admin
-    .from("labor_entries")
-    .select("id, project_id, work_date, cost_amount")
-    .eq("worker_id", wid)
-    .gte("work_date", range.start)
-    .lt("work_date", range.nextStart);
+  const selectVariants = [
+    "id, project_id, work_date, hours, morning, afternoon, days_worked, labor_cost_snapshot, amount_snapshot, cost_amount",
+    "id, project_id, work_date, hours, morning, afternoon, days_worked, amount_snapshot, cost_amount",
+    "id, project_id, work_date, hours, morning, afternoon, cost_amount",
+    "id, work_date, hours, morning, afternoon, days_worked, labor_cost_snapshot, amount_snapshot, cost_amount",
+    "id, work_date, hours, morning, afternoon, cost_amount",
+    "id, work_date, cost_amount",
+    "id, work_date, total",
+  ] as const;
 
-  if (!full.error) {
-    return {
-      rows: ((full.data ?? []) as LaborEntryRowNormalized[]).map((r) => ({
-        ...r,
-        project_id: r.project_id != null ? String(r.project_id) : null,
-        work_date: String(r.work_date ?? "").slice(0, 10),
-      })),
-      error: null,
-    };
+  let lastError: { message?: string } | null = null;
+  for (const cols of selectVariants) {
+    const res = await admin
+      .from("labor_entries")
+      .select(cols)
+      .eq("worker_id", wid)
+      .gte("work_date", range.start)
+      .lt("work_date", range.nextStart);
+
+    if (!res.error) {
+      return {
+        rows: ((res.data ?? []) as unknown as LaborEntryRowNormalized[]).map((r) => ({
+          ...r,
+          project_id: r.project_id != null ? String(r.project_id) : null,
+          work_date: String(r.work_date ?? "").slice(0, 10),
+          cost_amount: r.cost_amount,
+        })),
+        error: null,
+      };
+    }
+    lastError = res.error;
+    if (!isRetryableSelectError(res.error)) {
+      return { rows: [], error: res.error?.message ?? "Failed to load labor entries." };
+    }
   }
 
-  if (!isRetryableSelectError(full.error)) {
-    return { rows: [], error: full.error?.message ?? "Failed to load labor entries." };
-  }
+  return { rows: [], error: lastError?.message ?? "Failed to load labor entries." };
+}
 
-  const slim = await admin
-    .from("labor_entries")
-    .select("id, work_date, cost_amount")
-    .eq("worker_id", wid)
-    .gte("work_date", range.start)
-    .lt("work_date", range.nextStart);
+function laborEntryAmountForMonthlyReport(row: LaborEntryRowNormalized): number {
+  return Math.abs(
+    Number(row.labor_cost_snapshot ?? row.amount_snapshot ?? row.cost_amount ?? row.total) || 0
+  );
+}
 
-  if (slim.error) {
-    return { rows: [], error: slim.error.message ?? "Failed to load labor entries." };
-  }
-
-  return {
-    rows: ((slim.data ?? []) as { id: string; work_date: string; cost_amount: unknown }[]).map(
-      (r) => ({
-        id: r.id,
-        project_id: null,
-        work_date: String(r.work_date ?? "").slice(0, 10),
-        cost_amount: r.cost_amount,
-      })
-    ),
-    error: null,
-  };
+function laborEntryDaysForMonthlyReport(row: LaborEntryRowNormalized): number {
+  const snapDays = Number(row.days_worked);
+  if (Number.isFinite(snapDays) && snapDays > 0) return snapDays;
+  const inferred = daysWorkedFromLaborInput({
+    hours: row.hours,
+    morning: row.morning,
+    afternoon: row.afternoon,
+  });
+  return inferred > 0 ? inferred : 1;
 }
 
 async function loadProjectNames(
@@ -313,7 +331,7 @@ export async function getWorkerMonthlyReport(
   workerId: string,
   monthYm: string
 ): Promise<WorkerMonthlyReportResult> {
-  const admin = getServerSupabase();
+  const admin = getServerSupabaseInternalNoStore();
   if (!admin) {
     return {
       workerName: "",
@@ -456,7 +474,7 @@ export async function getWorkerMonthlyReport(
   const merged: WorkerMonthlyReportRow[] = [];
 
   for (const r of laborRows) {
-    const amt = Math.abs(Number(r.cost_amount) || 0);
+    const amt = laborEntryAmountForMonthlyReport(r);
     const d = String(r.work_date ?? "").slice(0, 10);
     const pid = r.project_id ? String(r.project_id) : null;
     merged.push({
@@ -549,7 +567,7 @@ export async function getWorkerMonthlyReport(
   merged.sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0));
 
   let laborSum = 0;
-  for (const r of laborRows) laborSum += Math.abs(Number(r.cost_amount) || 0);
+  for (const r of laborRows) laborSum += laborEntryAmountForMonthlyReport(r);
 
   let wiSum = 0;
   for (const r of wiRows) wiSum += Math.abs(Number(r.amount) || 0);
@@ -576,7 +594,7 @@ export async function getWorkerMonthlyReport(
   const paid = paySum + advSum;
   const balance = totalOwed - paid;
 
-  const totalDays = laborRows.length;
+  const totalDays = laborRows.reduce((sum, r) => sum + laborEntryDaysForMonthlyReport(r), 0);
   const halfDay = Number(workerRes.data?.half_day_rate) || 0;
   const dailyExplicitRaw = workerRes.data?.daily_rate;
   const dailyExplicit =

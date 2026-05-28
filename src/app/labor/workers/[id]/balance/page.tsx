@@ -494,14 +494,12 @@ export default function WorkerBalanceDetailPage() {
       if (!res.ok) throw new Error(data.message ?? "Payment failed.");
       const pid = typeof data.payment?.id === "string" ? data.payment.id : null;
       setPayModalOpen(false);
+      if (pid) {
+        setReceiptPaymentId(pid);
+        setReceiptOpen(true);
+      }
       await load();
       dispatchClientDataSync({ reason: "worker-pay" });
-      if (pid) {
-        queueMicrotask(() => {
-          setReceiptPaymentId(pid);
-          setReceiptOpen(true);
-        });
-      }
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "Payment failed.");
     } finally {

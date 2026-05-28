@@ -8,6 +8,7 @@
 
 import { getSupabaseClient } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { buildLaborEntryRateSnapshotWithClient } from "@/lib/worker-rate-history-db";
 
 export type LaborEntryStatus = "Draft" | "Submitted" | "Approved" | "Locked";
 
@@ -21,6 +22,12 @@ const LABOR_ENTRIES_COLS_WITH_STATUS =
   "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, submitted_by, approved_at, approved_by, locked_at, locked_by, morning, afternoon" as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT =
   `${LABOR_ENTRIES_COLS_WITH_STATUS}, worker_payment_id` as const;
+const LABOR_ENTRY_SNAPSHOT_COLS =
+  "days_worked, daily_rate_snapshot, amount_snapshot, labor_cost_snapshot, rate_history_id" as const;
+const LABOR_ENTRIES_COLS_WITH_STATUS_SNAPSHOTS =
+  `${LABOR_ENTRIES_COLS_WITH_STATUS}, ${LABOR_ENTRY_SNAPSHOT_COLS}` as const;
+const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT_SNAPSHOTS =
+  `${LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT}, ${LABOR_ENTRY_SNAPSHOT_COLS}` as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS_NO_PROJECT =
   "id, worker_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, submitted_by, approved_at, approved_by, locked_at, locked_by, morning, afternoon" as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT_NO_PROJECT =
@@ -46,6 +53,11 @@ export type DailyLaborEntryRow = {
   cost_code: string | null;
   notes: string | null;
   cost_amount?: number | null;
+  days_worked?: number | null;
+  daily_rate_snapshot?: number | null;
+  amount_snapshot?: number | null;
+  labor_cost_snapshot?: number | null;
+  rate_history_id?: string | null;
   status?: LaborEntryStatus;
   submitted_at?: string | null;
   submitted_by?: string | null;
@@ -69,20 +81,6 @@ function client(explicitClient?: SupabaseClient) {
   return c;
 }
 
-type WorkerRateRow = {
-  id: string;
-  half_day_rate?: number | null;
-  daily_rate?: number | null;
-};
-
-function resolveDailyRateFromWorkerRow(row: WorkerRateRow | null | undefined): number {
-  const daily = Number(row?.daily_rate) || 0;
-  if (daily > 0) return daily;
-  // Legacy schemas sometimes stored full-day amount in half_day_rate.
-  const halfOrLegacyDaily = Number(row?.half_day_rate) || 0;
-  return Math.max(0, halfOrLegacyDaily);
-}
-
 export type LaborEntryWithJoins = {
   id: string;
   worker_id: string;
@@ -92,6 +90,11 @@ export type LaborEntryWithJoins = {
   cost_code: string | null;
   notes: string | null;
   cost_amount?: number | null;
+  days_worked?: number | null;
+  daily_rate_snapshot?: number | null;
+  amount_snapshot?: number | null;
+  labor_cost_snapshot?: number | null;
+  rate_history_id?: string | null;
   status: LaborEntryStatus;
   submitted_at: string | null;
   submitted_by: string | null;
@@ -340,13 +343,39 @@ export async function getLaborEntriesWithJoins(
   let error: { message?: string } | null = null;
   let usedStatusCols = true;
   let hasCostAmount = true;
+  let hasSnapshots = true;
 
-  let first = await buildQuery(LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT);
+  let first = await buildQuery(LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT_SNAPSHOTS);
   error = first.error;
+  if (
+    error &&
+    isMissingColumn(error) &&
+    /days_worked|daily_rate_snapshot|amount_snapshot|labor_cost_snapshot|rate_history_id/i.test(
+      error.message ?? ""
+    )
+  ) {
+    hasSnapshots = false;
+    first = await buildQuery(LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT);
+    error = first.error;
+  }
   if (error && isMissingColumn(error) && /worker_payment_id/i.test(error.message ?? "")) {
     hasWorkerPaymentIdCol = false;
-    first = await buildQuery(LABOR_ENTRIES_COLS_WITH_STATUS);
+    first = await buildQuery(
+      hasSnapshots ? LABOR_ENTRIES_COLS_WITH_STATUS_SNAPSHOTS : LABOR_ENTRIES_COLS_WITH_STATUS
+    );
     error = first.error;
+    if (
+      error &&
+      hasSnapshots &&
+      isMissingColumn(error) &&
+      /days_worked|daily_rate_snapshot|amount_snapshot|labor_cost_snapshot|rate_history_id/i.test(
+        error.message ?? ""
+      )
+    ) {
+      hasSnapshots = false;
+      first = await buildQuery(LABOR_ENTRIES_COLS_WITH_STATUS);
+      error = first.error;
+    }
   }
 
   if (error && isAmbiguousRelationship(error)) {
@@ -371,6 +400,7 @@ export async function getLaborEntriesWithJoins(
   if (error && isMissingColumn(error)) {
     usedStatusCols = false;
     hasWorkerPaymentIdCol = false;
+    hasSnapshots = false;
     if (/project_id/i.test(error.message ?? "")) {
       const noProject = await queryNoProjectColumns();
       rows = noProject.data as Array<Record<string, unknown>>;
@@ -381,6 +411,7 @@ export async function getLaborEntriesWithJoins(
   if (error && isMissingColumn(error)) {
     usedStatusCols = false;
     hasWorkerPaymentIdCol = false;
+    hasSnapshots = false;
     let qFallback = c
       .from("labor_entries")
       .select(LABOR_ENTRIES_COLS)
@@ -481,6 +512,15 @@ export async function getLaborEntriesWithJoins(
         cost_code: (r.cost_code ?? null) as string | null,
         notes: (r.notes ?? null) as string | null,
         cost_amount: hasCostAmount && row.cost_amount != null ? Number(row.cost_amount) : null,
+        days_worked: hasSnapshots && row.days_worked != null ? Number(row.days_worked) : null,
+        daily_rate_snapshot:
+          hasSnapshots && row.daily_rate_snapshot != null ? Number(row.daily_rate_snapshot) : null,
+        amount_snapshot:
+          hasSnapshots && row.amount_snapshot != null ? Number(row.amount_snapshot) : null,
+        labor_cost_snapshot:
+          hasSnapshots && row.labor_cost_snapshot != null ? Number(row.labor_cost_snapshot) : null,
+        rate_history_id:
+          hasSnapshots && row.rate_history_id != null ? String(row.rate_history_id) : null,
         status,
         submitted_at: (row.submitted_at ?? null) as string | null,
         submitted_by: (row.submitted_by ?? null) as string | null,
@@ -674,35 +714,25 @@ export async function insertDailyLaborEntries(
   }
 
   const rowsToInsert = filtered;
-  const workerIds2 = Array.from(new Set(rowsToInsert.map((r) => r.worker_id).filter(Boolean)));
-  const workerRows2: WorkerRateRow[] = [];
-  if (workerIds2.length) {
-    const withDaily = await c.from("workers").select("*").in("id", workerIds2);
-    if (withDaily.error && !isMissingColumn(withDaily.error)) {
-      throw new Error(withDaily.error.message ?? "Failed to load worker rates.");
-    }
-    if (withDaily.error && isMissingColumn(withDaily.error)) {
-      const fallback = await c.from("workers").select("id, half_day_rate").in("id", workerIds2);
-      if (fallback.error) throw new Error(fallback.error.message ?? "Failed to load worker rates.");
-      workerRows2.push(...((fallback.data ?? []) as WorkerRateRow[]));
-    } else {
-      workerRows2.push(...((withDaily.data ?? []) as WorkerRateRow[]));
-    }
+  const payloads: Array<Record<string, unknown>> = [];
+  for (const r of rowsToInsert) {
+    const hours = Number(r.hours) || 0;
+    const snapshot = await buildLaborEntryRateSnapshotWithClient(c, {
+      workerId: r.worker_id,
+      workDate: date,
+      hours,
+    });
+    payloads.push({
+      worker_id: r.worker_id,
+      project_id: r.project_id || null,
+      work_date: date,
+      hours,
+      cost_code: r.cost_code?.trim() || null,
+      notes: r.notes?.trim() || null,
+      ...snapshot,
+      status: "Draft",
+    });
   }
-  const hourlyRateByWorkerId2 = new Map(
-    workerRows2.map((row) => [row.id, resolveDailyRateFromWorkerRow(row) / 8])
-  );
-
-  const payloads = rowsToInsert.map((r) => ({
-    worker_id: r.worker_id,
-    project_id: r.project_id || null,
-    work_date: date,
-    hours: Number(r.hours) || 0,
-    cost_code: r.cost_code?.trim() || null,
-    notes: r.notes?.trim() || null,
-    cost_amount: (Number(r.hours) || 0) * (hourlyRateByWorkerId2.get(r.worker_id) ?? 0),
-    status: "Draft",
-  }));
   if (payloads.length === 0) return [];
   const colsForSelect = LABOR_ENTRIES_COLS_WITH_STATUS;
   const { data: inserted, error } = await c
@@ -714,6 +744,11 @@ export async function insertDailyLaborEntries(
       const payloadsWithoutStatus = payloads.map((p) => {
         const copy = { ...p } as Record<string, unknown>;
         delete copy.status;
+        delete copy.days_worked;
+        delete copy.daily_rate_snapshot;
+        delete copy.amount_snapshot;
+        delete copy.labor_cost_snapshot;
+        delete copy.rate_history_id;
         return copy;
       });
       const { data: insertedFallback, error: err2 } = await c
@@ -758,38 +793,44 @@ export async function updateDailyLaborEntry(
   draft: DailyLaborEntryDraft
 ): Promise<DailyLaborEntryRow> {
   const c = client();
-  const { data: currentRow } = await c
+  let currentRes = await c
     .from("labor_entries")
-    .select("status")
+    .select("status, worker_id, work_date, daily_rate_snapshot")
     .eq("id", entryId)
     .maybeSingle();
-  const status = (currentRow as { status?: string } | null)?.status;
+  if (currentRes.error && isMissingColumn(currentRes.error)) {
+    currentRes = await c
+      .from("labor_entries")
+      .select("status, worker_id, work_date")
+      .eq("id", entryId)
+      .maybeSingle();
+  }
+  if (currentRes.error) throw new Error(currentRes.error.message ?? "Failed to load labor entry.");
+  const currentRow = currentRes.data as {
+    status?: string | null;
+    worker_id?: string | null;
+    work_date?: string | null;
+    daily_rate_snapshot?: number | null;
+  } | null;
+  const status = currentRow?.status;
   if (status === "Locked") throw new Error("Cannot edit a locked labor entry.");
 
-  let workerRow: WorkerRateRow | null = null;
-  const withDaily = await c.from("workers").select("*").eq("id", draft.worker_id).maybeSingle();
-  if (withDaily.error && !isMissingColumn(withDaily.error)) {
-    throw new Error(withDaily.error.message ?? "Failed to load worker rate.");
-  }
-  if (withDaily.error && isMissingColumn(withDaily.error)) {
-    const fallback = await c
-      .from("workers")
-      .select("id, half_day_rate")
-      .eq("id", draft.worker_id)
-      .maybeSingle();
-    if (fallback.error) throw new Error(fallback.error.message ?? "Failed to load worker rate.");
-    workerRow = (fallback.data as WorkerRateRow | null) ?? null;
-  } else {
-    workerRow = (withDaily.data as WorkerRateRow | null) ?? null;
-  }
-  const hourlyRate = resolveDailyRateFromWorkerRow(workerRow) / 8;
+  const workDate = (currentRow?.work_date ?? "").slice(0, 10);
+  const workerChanged = draft.worker_id !== currentRow?.worker_id;
+  const hours = Number(draft.hours) || 0;
+  const snapshot = await buildLaborEntryRateSnapshotWithClient(c, {
+    workerId: draft.worker_id,
+    workDate,
+    hours,
+    existingDailyRateSnapshot: workerChanged ? undefined : currentRow?.daily_rate_snapshot,
+  });
   const payload = {
     worker_id: draft.worker_id,
     project_id: draft.project_id || null,
-    hours: Number(draft.hours) || 0,
+    hours,
     cost_code: draft.cost_code?.trim() || null,
     notes: draft.notes?.trim() || null,
-    cost_amount: (Number(draft.hours) || 0) * hourlyRate,
+    ...snapshot,
   };
   const { data: updated, error } = await c
     .from("labor_entries")

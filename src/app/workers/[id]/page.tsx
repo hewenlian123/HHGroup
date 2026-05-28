@@ -14,6 +14,14 @@ import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
+type WorkerRateHistoryView = {
+  id: string;
+  dailyRate: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  notes: string | null;
+};
+
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -34,8 +42,18 @@ function monthLabelEn(key: string): string {
   return new Date(y, m - 1, 1).toLocaleString("en-US", { month: "short", year: "numeric" });
 }
 
-function entryEarned(e: Pick<LaborEntryWithJoins, "cost_amount">): number {
-  return Number(e.cost_amount ?? 0) || 0;
+function todayYmd(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function fmtRateRange(row: WorkerRateHistoryView): string {
+  return `${row.effectiveFrom} → ${row.effectiveTo ?? "Current"}`;
+}
+
+function entryEarned(
+  e: Pick<LaborEntryWithJoins, "cost_amount" | "amount_snapshot" | "labor_cost_snapshot">
+): number {
+  return Number(e.labor_cost_snapshot ?? e.amount_snapshot ?? e.cost_amount ?? 0) || 0;
 }
 
 function buildMonthlyTotals(entries: LaborEntryWithJoins[]) {
@@ -116,6 +134,12 @@ export default function WorkerDashboardPage() {
     null
   );
   const [expandedMonthKey, setExpandedMonthKey] = React.useState<string | null>(null);
+  const [rateHistory, setRateHistory] = React.useState<WorkerRateHistoryView[]>([]);
+  const [rateDaily, setRateDaily] = React.useState("");
+  const [rateEffectiveFrom, setRateEffectiveFrom] = React.useState(() => todayYmd());
+  const [rateNotes, setRateNotes] = React.useState("");
+  const [rateMessage, setRateMessage] = React.useState<string | null>(null);
+  const [rateBusy, setRateBusy] = React.useState(false);
 
   const [financialSummary, setFinancialSummary] = React.useState<{
     totalLabor: number;
@@ -140,13 +164,25 @@ export default function WorkerDashboardPage() {
     );
     const workerJson = workerResponse?.ok
       ? ((await workerResponse.json().catch(() => null)) as {
-          worker?: Worker;
+          worker?: Worker & {
+            currentDailyRateEffectiveFrom?: string | null;
+            rateHistory?: WorkerRateHistoryView[];
+          };
           usage?: { used: boolean; reason?: "entries" | "invoices" };
+          rateHistory?: WorkerRateHistoryView[];
         } | null)
       : null;
     const w = workerJson?.worker ?? null;
     setWorker(w);
     setUsage(workerJson?.usage ?? { used: false });
+    const history = workerJson?.rateHistory ?? w?.rateHistory ?? [];
+    setRateHistory(history);
+    if (w) {
+      setRateDaily(String(Number(w.dailyRate ?? w.halfDayRate ?? 0) || ""));
+      setRateEffectiveFrom(todayYmd());
+      setRateNotes("");
+      setRateMessage(null);
+    }
     if (w) {
       const ledgerResponse = await fetch(
         `/api/labor/entries?view=joined&workerId=${encodeURIComponent(id)}`,
@@ -211,6 +247,7 @@ export default function WorkerDashboardPage() {
       setFinancialSummary(null);
       setMonthly(null);
       setLaborLedgerEntries(null);
+      setRateHistory([]);
     }
   }, [id]);
 
@@ -247,6 +284,40 @@ export default function WorkerDashboardPage() {
 
   const toggleMonth = (key: string) => {
     setExpandedMonthKey((prev) => (prev === key ? null : key));
+  };
+
+  const handleChangeDailyRate = async () => {
+    if (!id) return;
+    const nextRate = Number(rateDaily);
+    if (!Number.isFinite(nextRate) || nextRate < 0) {
+      setRateMessage("Enter a valid daily rate.");
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rateEffectiveFrom)) {
+      setRateMessage("Choose an effective date.");
+      return;
+    }
+    setRateBusy(true);
+    setRateMessage(null);
+    try {
+      const response = await fetch(`/api/labor/workers/${id}/rate-history`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dailyRate: nextRate,
+          effectiveFrom: rateEffectiveFrom,
+          notes: rateNotes.trim() || null,
+        }),
+      });
+      const body = (await response.json().catch(() => null)) as { message?: string } | null;
+      if (!response.ok) throw new Error(body?.message ?? "Failed to change daily rate.");
+      setRateMessage("Daily rate changed.");
+      await refreshAll();
+    } catch (e) {
+      setRateMessage(e instanceof Error ? e.message : "Failed to change daily rate.");
+    } finally {
+      setRateBusy(false);
+    }
   };
 
   if (!id) {
@@ -330,8 +401,17 @@ export default function WorkerDashboardPage() {
             <dd className="font-medium">{worker.trade?.trim() ? worker.trade : "—"}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Half-day rate</dt>
-            <dd className="font-medium tabular-nums">{fmtUsd(worker.halfDayRate)}</dd>
+            <dt className="text-muted-foreground">Current daily rate</dt>
+            <dd className="font-medium tabular-nums">{fmtUsd(worker.dailyRate)}</dd>
+          </div>
+          <div>
+            <dt className="text-muted-foreground">Effective since</dt>
+            <dd className="font-medium tabular-nums">
+              {(worker as Worker & { currentDailyRateEffectiveFrom?: string | null })
+                .currentDailyRateEffectiveFrom ||
+                rateHistory[0]?.effectiveFrom ||
+                "—"}
+            </dd>
           </div>
           <div>
             <dt className="text-muted-foreground">Status</dt>
@@ -348,6 +428,110 @@ export default function WorkerDashboardPage() {
             {usageRes.used ? " · Used in labor records" : " · Not used yet"}
           </div>
         </dl>
+      </section>
+
+      <section className="border-b border-border/60 pb-4">
+        <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Daily rate
+        </h2>
+        <div className="grid gap-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+          <div className="rounded-md border border-border/70 bg-card/30 p-4">
+            <p className="text-xs text-muted-foreground">Current Daily Rate</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">{fmtUsd(worker.dailyRate)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Effective since{" "}
+              {(worker as Worker & { currentDailyRateEffectiveFrom?: string | null })
+                .currentDailyRateEffectiveFrom ||
+                rateHistory[0]?.effectiveFrom ||
+                "—"}
+            </p>
+          </div>
+          <div className="rounded-md border border-border/70 bg-card/30 p-4">
+            <p className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Change Daily Rate
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1.5 text-xs text-muted-foreground">
+                New daily rate
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={rateDaily}
+                  onChange={(e) => setRateDaily(e.target.value)}
+                  className="h-9 rounded-sm border border-input bg-transparent px-3 text-sm text-foreground tabular-nums"
+                />
+              </label>
+              <label className="grid gap-1.5 text-xs text-muted-foreground">
+                Effective date
+                <input
+                  type="date"
+                  value={rateEffectiveFrom}
+                  onChange={(e) => setRateEffectiveFrom(e.target.value)}
+                  className="h-9 rounded-sm border border-input bg-transparent px-3 text-sm text-foreground tabular-nums"
+                />
+              </label>
+              <label className="grid gap-1.5 text-xs text-muted-foreground sm:col-span-2">
+                Note optional
+                <input
+                  value={rateNotes}
+                  onChange={(e) => setRateNotes(e.target.value)}
+                  className="h-9 rounded-sm border border-input bg-transparent px-3 text-sm text-foreground"
+                />
+              </label>
+            </div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">{rateMessage ?? " "}</p>
+              <Button
+                size="sm"
+                className="rounded-sm"
+                onClick={handleChangeDailyRate}
+                disabled={rateBusy}
+              >
+                {rateBusy ? "Saving…" : "Change Daily Rate"}
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="mt-4">
+          <h3 className="mb-2 text-sm font-medium text-foreground">Rate history</h3>
+          {rateHistory.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No daily rate history yet.</p>
+          ) : (
+            <div className="table-responsive -mx-1">
+              <table className="w-full min-w-[360px] border-collapse text-sm table-row-compact md:min-w-0">
+                <thead>
+                  <tr className="border-b border-border/60">
+                    <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Rate
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Effective
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Note
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rateHistory.map((row) => (
+                    <tr key={row.id} className="border-b border-border/40 hover:bg-muted/10">
+                      <td className="px-2 py-1.5 font-medium tabular-nums">
+                        {fmtUsd(row.dailyRate)} / day
+                      </td>
+                      <td className="px-2 py-1.5 tabular-nums text-muted-foreground">
+                        {fmtRateRange(row)}
+                      </td>
+                      <td className="px-2 py-1.5 text-muted-foreground">
+                        {row.notes?.trim() ? row.notes : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="border-b border-border/60 pb-4">
@@ -463,8 +647,12 @@ export default function WorkerDashboardPage() {
                                                 <td className="py-1 pr-3">
                                                   {formatLaborEntrySessionLabel(e.notes, e.hours, {
                                                     costAmount: entryEarned(e),
-                                                    dailyRate: worker.dailyRate,
-                                                    halfDayRate: worker.halfDayRate,
+                                                    dailyRate:
+                                                      e.daily_rate_snapshot ?? worker.dailyRate,
+                                                    halfDayRate:
+                                                      e.daily_rate_snapshot != null
+                                                        ? e.daily_rate_snapshot / 2
+                                                        : worker.halfDayRate,
                                                     morning: e.morning,
                                                     afternoon: e.afternoon,
                                                   })}
