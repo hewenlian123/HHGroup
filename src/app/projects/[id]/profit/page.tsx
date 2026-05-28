@@ -62,7 +62,7 @@ export default async function ProjectProfitPage({ params }: Props) {
 
   if (!project) notFound();
 
-  // Canonical formula: revenue = projects.budget + approved change orders; actual cost = labor + expense + approved subcontract bills.
+  // Canonical formula: revenue = projects.budget + approved change orders; actual cost = labor + expense + approved subcontract bills + accrued commission.
   const revenue = canonical.revenue;
   const totalCost = canonical.actualCost;
   const profit = canonical.profit;
@@ -171,6 +171,13 @@ export default async function ProjectProfitPage({ params }: Props) {
       actual: expenseTotal,
       variance: expenseBudget != null ? expenseTotal - expenseBudget : null,
       impactOnProfit: -expenseTotal,
+    },
+    {
+      category: "Commission / Selling Cost",
+      budget: null,
+      actual: canonical.commissionCost,
+      variance: null,
+      impactOnProfit: -canonical.commissionCost,
     },
   ];
 

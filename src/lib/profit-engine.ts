@@ -1,4 +1,5 @@
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
+import { getCommissionCostByProject, getCommissionCostByProjectBatch } from "@/lib/commission-db";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type CanonicalProjectProfit = {
@@ -13,6 +14,7 @@ export type CanonicalProjectProfit = {
   laborCost: number;
   expenseCost: number;
   subcontractCost: number;
+  commissionCost: number;
 };
 
 function client() {
@@ -53,12 +55,13 @@ function isMissingColumn(err: { message?: string } | null): boolean {
  *   - Base contract = projects.budget (canonical contract value; set on create/convert).
  *   - Approved change orders = project_change_orders where status = 'Approved' (amount or total/total_amount).
  *
- * Actual cost = labor cost + expense cost + subcontract cost
+ * Actual cost = labor cost + expense cost + subcontract cost + commission cost
  *   - Labor cost = sum(labor_entries.cost_amount or total) allocated to this project via project_am_id / project_pm_id
  *     (or legacy project_id when present). Split-day rows share cost 50/50 across two projects when AM ≠ PM.
  *   - Expense cost = sum(expense_lines.amount) for this project (expense_lines.project_id),
  *     plus lines with null project_id on expenses whose header project_id matches (legacy rows).
  *   - Subcontract cost = sum(subcontract_bills.amount) for this project where status = 'Approved'.
+ *   - Commission cost = sum(commissions.commission_amount) for this project.
  *
  * Legacy note: labor_cost_allocation trigger/RPC (migrations 202603082200/2300/2400) updates projects.spent,
  * but canonical does NOT read projects.spent and therefore those legacy mechanisms do NOT affect canonical cost.
@@ -69,8 +72,9 @@ function isMissingColumn(err: { message?: string } | null): boolean {
  * - subcontract_bills = obligations to subcontractors (subcontract work).
  * - ap_bills (Bills/AP) are NOT included in project canonical cost.
  *   Bills/AP are for accounts payable + payment tracking, not the canonical project cost model.
- *   Canonical cost sources: labor_entries + expense_lines + subcontract_bills (Approved).
+ *   Canonical cost sources: labor_entries + expense_lines + subcontract_bills (Approved) + commissions.
  * Do not enter the same cost in both; if a cost is paid to a subcontractor, use subcontract_bills only.
+ * Commission payments are payment/cash tracking only and do not change accrued project profit.
  *
  * Profit = revenue - actualCost
  * Margin = revenue > 0 ? profit / revenue : 0
@@ -398,6 +402,11 @@ export async function getCanonicalProjectProfit(
   // Expense cost via schema-aware helper (caches detection)
   const expenseCost = await getExpenseCostForProject(projectId);
 
+  const commissionCost = await getCommissionCostByProject(projectId).catch((err) => {
+    devLogFail("commissions", err);
+    return 0;
+  });
+
   // Subcontract cost
   let subcontractCost = 0;
   if (!subcontractBillsRes.error && Array.isArray(subcontractBillsRes.data)) {
@@ -410,7 +419,7 @@ export async function getCanonicalProjectProfit(
   }
 
   const revenue = baseContract + approvedCO;
-  const actualCost = laborCost + expenseCost + subcontractCost;
+  const actualCost = laborCost + expenseCost + subcontractCost + commissionCost;
   const profit = revenue - actualCost;
   const margin = revenue > 0 ? profit / revenue : 0;
 
@@ -424,6 +433,7 @@ export async function getCanonicalProjectProfit(
     laborCost,
     expenseCost,
     subcontractCost,
+    commissionCost,
   };
 }
 
@@ -440,21 +450,26 @@ export async function getCanonicalProjectProfitBatch(
   const c = client();
 
   // 1. Budgets + non-labor cost sources
-  const [projectsRes, cosRes, subBillsRes, expenseByProject, laborByProject] = await Promise.all([
-    c.from("projects").select("id, budget").in("id", projectIds),
-    c
-      .from("project_change_orders")
-      .select("project_id, amount, total, total_amount")
-      .in("project_id", projectIds)
-      .eq("status", "Approved"),
-    c
-      .from("subcontract_bills")
-      .select("project_id, amount")
-      .in("project_id", projectIds)
-      .eq("status", "Approved"),
-    getExpenseCostBatch(projectIds),
-    fetchLaborCostBatch(projectIds),
-  ]);
+  const [projectsRes, cosRes, subBillsRes, expenseByProject, laborByProject, commissionByProject] =
+    await Promise.all([
+      c.from("projects").select("id, budget").in("id", projectIds),
+      c
+        .from("project_change_orders")
+        .select("project_id, amount, total, total_amount")
+        .in("project_id", projectIds)
+        .eq("status", "Approved"),
+      c
+        .from("subcontract_bills")
+        .select("project_id, amount")
+        .in("project_id", projectIds)
+        .eq("status", "Approved"),
+      getExpenseCostBatch(projectIds),
+      fetchLaborCostBatch(projectIds),
+      getCommissionCostByProjectBatch(projectIds).catch((err) => {
+        devLogFail("commissions batch", err);
+        return new Map<string, number>();
+      }),
+    ]);
 
   // Aggregate subcontract cost by project
   const subByProject = new Map<string, number>();
@@ -496,8 +511,9 @@ export async function getCanonicalProjectProfitBatch(
     const laborCost = laborByProject.get(pid) ?? 0;
     const expenseCost = expenseByProject.get(pid) ?? 0;
     const subcontractCost = subByProject.get(pid) ?? 0;
+    const commissionCost = commissionByProject.get(pid) ?? 0;
     const revenue = budget + approvedChangeOrders;
-    const actualCost = laborCost + expenseCost + subcontractCost;
+    const actualCost = laborCost + expenseCost + subcontractCost + commissionCost;
     const profit = revenue - actualCost;
     const margin = revenue > 0 ? profit / revenue : 0;
     result.set(pid, {
@@ -510,6 +526,7 @@ export async function getCanonicalProjectProfitBatch(
       laborCost,
       expenseCost,
       subcontractCost,
+      commissionCost,
     });
   }
 

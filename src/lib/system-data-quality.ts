@@ -339,7 +339,8 @@ function checkProjects(
       snapshot.expenseCost +
         snapshot.laborCost +
         snapshot.reimbursementCost +
-        snapshot.subcontractCost
+        snapshot.subcontractCost +
+        snapshot.commissionCost
     );
     if (!Number.isFinite(snapshot.actualCost)) {
       pushIssue(issues, {
@@ -365,7 +366,8 @@ function checkProjects(
         message: "Project snapshot actual cost is negative.",
         currentValue: snapshot.actualCost,
         expectedValue: ">= 0",
-        recommendedAction: "Review expense, labor, reimbursement, and subcontract source rows.",
+        recommendedAction:
+          "Review expense, labor, reimbursement, subcontract, and commission source rows.",
         link: issueLink("projects", id),
       });
     } else if (!nearlyEqual(snapshot.actualCost, componentCost)) {

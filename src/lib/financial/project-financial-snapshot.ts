@@ -75,6 +75,7 @@ export type ProjectFinancialSnapshotInput = {
   laborEntries?: ProjectFinancialLaborEntryInput[];
   workerReimbursements?: ProjectFinancialReimbursementInput[];
   subcontractCosts?: ProjectFinancialAmountRow[];
+  commissionCosts?: ProjectFinancialAmountRow[];
   apCosts?: ProjectFinancialAmountRow[];
   cashOutPayments?: ProjectFinancialAmountRow[];
 };
@@ -99,6 +100,7 @@ export type ProjectFinancialSnapshot = {
   laborCost: number;
   reimbursementCost: number;
   subcontractCost: number;
+  commissionCost: number;
   apCost: number;
   grossProfit: number;
   grossMargin: number;
@@ -480,15 +482,18 @@ export function calculateProjectFinancialSnapshot(
   } = calculateReimbursementCost(input.workerReimbursements, reimbursementExpenseIds, warnings);
   const laborCost = calculateLaborCost(input.laborEntries);
   const subcontractCost = sumNonVoidRows(input.subcontractCosts);
+  const commissionCost = sumNonVoidRows(input.commissionCosts);
   const apCost = sumNonVoidRows(input.apCosts);
-  const actualCost = toMoney(expenseCost + laborCost + reimbursementCost + subcontractCost);
+  const actualCost = toMoney(
+    expenseCost + laborCost + reimbursementCost + subcontractCost + commissionCost
+  );
   const grossProfit = toMoney(revisedContractValue - actualCost);
   const grossMargin = revisedContractValue > 0 ? grossProfit / revisedContractValue : 0;
   const cashCollected = paidAmount;
   const cashOut =
     input.cashOutPayments !== undefined
       ? sumNonVoidRows(input.cashOutPayments)
-      : toMoney(expenseCost + reimbursementCost + laborCost + subcontractCost);
+      : toMoney(expenseCost + reimbursementCost + laborCost + subcontractCost + commissionCost);
 
   if (apCost > 0) {
     warnings.push(
@@ -535,6 +540,7 @@ export function calculateProjectFinancialSnapshot(
     laborCost,
     reimbursementCost,
     subcontractCost,
+    commissionCost,
     apCost,
     grossProfit,
     grossMargin,

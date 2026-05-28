@@ -5,7 +5,11 @@ import { E2E_PRESERVED_PROJECT_ID, E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cle
 const PROJECT_ID = E2E_PRESERVED_PROJECT_ID;
 
 function money(value: number) {
-  return `$${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const sign = value < 0 ? "-" : "";
+  return `${sign}$${Math.abs(value).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 function displayDate(value: string) {
@@ -18,7 +22,12 @@ function displayDate(value: string) {
 }
 
 function parseMoney(value: string | null | undefined) {
-  return Number(String(value ?? "").replace(/[^0-9.-]/g, "")) || 0;
+  const normalized = String(value ?? "")
+    .replace(/−/g, "-")
+    .trim();
+  const isParenNegative = /^\(.*\)$/.test(normalized);
+  const parsed = Number(normalized.replace(/[^0-9.-]/g, "")) || 0;
+  return isParenNegative ? -Math.abs(parsed) : parsed;
 }
 
 async function readMoneyByTestId(page: Page, testId: string) {
@@ -162,6 +171,22 @@ test.describe("Commission full E2E flow", () => {
     });
 
     try {
+      await page.goto(`/projects/${PROJECT_ID}?tab=cost`, { waitUntil: "domcontentloaded" });
+      await assertNoAuthRedirect(page);
+      const baselineActualCost = await readMoneyByTestId(page, "snapshot-cost-actual");
+      const baselineProfit = await readMoneyByTestId(page, "snapshot-profit-gross");
+      const baselineExpenseCost = await readMoneyByTestId(page, "snapshot-cost-expense");
+      const baselineLaborCost = await readMoneyByTestId(page, "snapshot-cost-labor");
+      const baselineReimbursementCost = await readMoneyByTestId(
+        page,
+        "snapshot-cost-reimbursement"
+      );
+      const baselineSubcontractCost = await readMoneyByTestId(page, "snapshot-cost-subcontracts");
+      const baselineCommissionCost = await readMoneyByTestId(page, "snapshot-cost-commission");
+      const baselineBilled = await readMoneyByTestId(page, "snapshot-ar-billed");
+      const baselinePaid = await readMoneyByTestId(page, "snapshot-ar-paid");
+      const baselineOpenAr = await readMoneyByTestId(page, "snapshot-ar-open");
+
       await page.goto("/financial/commissions", { waitUntil: "domcontentloaded" });
       await assertNoAuthRedirect(page);
 
@@ -207,6 +232,31 @@ test.describe("Commission full E2E flow", () => {
         page,
         "financial-commission-summary-this-month"
       );
+
+      await page.goto(`/projects/${PROJECT_ID}?tab=cost`, { waitUntil: "domcontentloaded" });
+      await assertNoAuthRedirect(page);
+      await expectMoneyByTestId(
+        page,
+        "snapshot-cost-commission",
+        baselineCommissionCost + commissionAmount
+      );
+      await expectMoneyByTestId(
+        page,
+        "snapshot-cost-actual",
+        baselineActualCost + commissionAmount
+      );
+      await expectMoneyByTestId(page, "snapshot-profit-gross", baselineProfit - commissionAmount);
+      await expectMoneyByTestId(page, "snapshot-cost-expense", baselineExpenseCost);
+      await expectMoneyByTestId(page, "snapshot-cost-labor", baselineLaborCost);
+      await expectMoneyByTestId(page, "snapshot-cost-reimbursement", baselineReimbursementCost);
+      await expectMoneyByTestId(page, "snapshot-cost-subcontracts", baselineSubcontractCost);
+      await expectMoneyByTestId(page, "snapshot-ar-billed", baselineBilled);
+      await expectMoneyByTestId(page, "snapshot-ar-paid", baselinePaid);
+      await expectMoneyByTestId(page, "snapshot-ar-open", baselineOpenAr);
+
+      await page.goto("/financial/commissions", { waitUntil: "domcontentloaded" });
+      await assertNoAuthRedirect(page);
+      await expect(financialRow).toBeVisible({ timeout: 20_000 });
 
       await runCommissionRowAction(page, financialRow, "Pay");
       await page.getByTestId("financial-record-payment-amount").fill(String(paymentAmount));
@@ -274,6 +324,24 @@ test.describe("Commission full E2E flow", () => {
 
       await page.goto(`/projects/${PROJECT_ID}?tab=cost`, { waitUntil: "domcontentloaded" });
       await assertNoAuthRedirect(page);
+      await expectMoneyByTestId(
+        page,
+        "snapshot-cost-commission",
+        baselineCommissionCost + commissionAmount
+      );
+      await expectMoneyByTestId(
+        page,
+        "snapshot-cost-actual",
+        baselineActualCost + commissionAmount
+      );
+      await expectMoneyByTestId(page, "snapshot-profit-gross", baselineProfit - commissionAmount);
+      await expectMoneyByTestId(page, "snapshot-cost-expense", baselineExpenseCost);
+      await expectMoneyByTestId(page, "snapshot-cost-labor", baselineLaborCost);
+      await expectMoneyByTestId(page, "snapshot-cost-reimbursement", baselineReimbursementCost);
+      await expectMoneyByTestId(page, "snapshot-cost-subcontracts", baselineSubcontractCost);
+      await expectMoneyByTestId(page, "snapshot-ar-billed", baselineBilled);
+      await expectMoneyByTestId(page, "snapshot-ar-paid", baselinePaid);
+      await expectMoneyByTestId(page, "snapshot-ar-open", baselineOpenAr);
 
       const projectCostRow = page.getByTestId(`project-cost-commission-row-${commissionId}`);
       await expect(projectCostRow).toBeVisible({ timeout: 20_000 });
@@ -321,6 +389,27 @@ test.describe("Commission full E2E flow", () => {
         page,
         "financial-commission-summary-this-month",
         postCreateThisMonth
+      );
+
+      await page.goto(`/projects/${PROJECT_ID}?tab=cost`, { waitUntil: "domcontentloaded" });
+      await assertNoAuthRedirect(page);
+      await expectMoneyByTestId(
+        page,
+        "snapshot-cost-commission",
+        baselineCommissionCost + commissionAmount
+      );
+      await expectMoneyByTestId(
+        page,
+        "snapshot-cost-actual",
+        baselineActualCost + commissionAmount
+      );
+      await expectMoneyByTestId(page, "snapshot-profit-gross", baselineProfit - commissionAmount);
+      await expect(page.getByTestId("project-cost-commission-paid")).toContainText(money(0), {
+        timeout: 20_000,
+      });
+      await expect(page.getByTestId("project-cost-commission-outstanding")).toContainText(
+        money(commissionAmount),
+        { timeout: 20_000 }
       );
 
       await page.goto("/financial/commissions", { waitUntil: "domcontentloaded" });

@@ -43,8 +43,9 @@ export default async function ProjectsPage({
     const laborCost = c?.laborCost ?? 0;
     const expenseCost = c?.expenseCost ?? 0;
     const subcontractCost = c?.subcontractCost ?? 0;
-    const totalCost = c?.actualCost ?? laborCost + expenseCost + subcontractCost;
-    /** Canonical profit (revenue − labor − expenses − subcontract); same as profit-engine. */
+    const commissionCost = c?.commissionCost ?? 0;
+    const totalCost = c?.actualCost ?? laborCost + expenseCost + subcontractCost + commissionCost;
+    /** Canonical profit (revenue − labor − expenses − subcontract − commission); same as profit-engine. */
     const profit = c?.profit ?? revenue - totalCost;
     const updatedRaw = p.updated ?? p.updated_at ?? "";
     const updatedAt =

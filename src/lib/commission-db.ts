@@ -82,10 +82,90 @@ export function summarizeCommissions(commissions: CommissionWithPaid[]): {
   };
 }
 
+type CommissionCostRow = {
+  id?: string | null;
+  project_id?: string | null;
+  commission_amount?: unknown;
+  status?: unknown;
+};
+
+const EXCLUDED_COMMISSION_COST_STATUSES = new Set([
+  "void",
+  "voided",
+  "cancelled",
+  "canceled",
+  "deleted",
+]);
+
 function client(explicitClient?: SupabaseClient) {
   const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
+}
+
+function normalizeStatus(value: unknown): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/-/g, "_");
+}
+
+function commissionCostFromRow(row: CommissionCostRow): number {
+  if (EXCLUDED_COMMISSION_COST_STATUSES.has(normalizeStatus(row.status))) return 0;
+  const n = Number(row.commission_amount ?? 0);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, n);
+}
+
+export async function getCommissionCostByProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const byProject = await getCommissionCostByProjectBatch([projectId], explicitClient);
+  return byProject.get(projectId) ?? 0;
+}
+
+export async function getCommissionCostByProjectBatch(
+  projectIds: string[],
+  explicitClient?: SupabaseClient
+): Promise<Map<string, number>> {
+  const ids = [...new Set(projectIds.map((id) => String(id ?? "").trim()).filter(Boolean))];
+  const byProject = new Map<string, number>();
+  for (const id of ids) byProject.set(id, 0);
+  if (ids.length === 0) return byProject;
+
+  const c = client(explicitClient);
+  const { data: canonicalRows, error } = await c
+    .from(TABLE_COMMISSIONS)
+    .select("id, project_id, commission_amount")
+    .in("project_id", ids);
+  if (error) throw new Error(humanizeSupabaseRequestError(error));
+
+  const canonicalIds = new Set<string>();
+  for (const row of (canonicalRows ?? []) as CommissionCostRow[]) {
+    const projectId = String(row.project_id ?? "").trim();
+    if (!projectId) continue;
+    const id = String(row.id ?? "").trim();
+    if (id) canonicalIds.add(id);
+    byProject.set(projectId, (byProject.get(projectId) ?? 0) + commissionCostFromRow(row));
+  }
+
+  const { data: legacyRows, error: legacyError } = await c
+    .from(LEGACY_COMMISSIONS)
+    .select("id, project_id, commission_amount, status")
+    .in("project_id", ids);
+  if (!legacyError) {
+    for (const row of (legacyRows ?? []) as CommissionCostRow[]) {
+      const id = String(row.id ?? "").trim();
+      if (id && canonicalIds.has(id)) continue;
+      const projectId = String(row.project_id ?? "").trim();
+      if (!projectId) continue;
+      byProject.set(projectId, (byProject.get(projectId) ?? 0) + commissionCostFromRow(row));
+    }
+  }
+
+  return byProject;
 }
 
 function toCommission(r: Record<string, unknown>): ProjectCommission {

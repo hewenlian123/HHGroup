@@ -106,9 +106,10 @@ function snapshotComparisonBody(projectId: string, override: SnapshotComparisonO
         laborCost: 0,
         expenseCost: 0,
         subcontractCost: 0,
+        commissionCost: 0,
       },
       oldProjectCostDashboard: {
-        breakdown: { totalCost: 0, materials: 0, labor: 0, bills: 0, other: 0 },
+        breakdown: { totalCost: 0, materials: 0, labor: 0, bills: 0, commission: 0, other: 0 },
         spentTotal: 0,
         profit: 1000,
         margin: 1,
@@ -127,6 +128,7 @@ function snapshotComparisonBody(projectId: string, override: SnapshotComparisonO
         laborCost: 4890,
         reimbursementCost: 400.25,
         subcontractCost: 0,
+        commissionCost: 0,
         apCost: 0,
         grossProfit,
         grossMargin,
@@ -319,6 +321,7 @@ test.describe("project financial snapshot API", () => {
       await expect(page.getByTestId("snapshot-cost-expense")).toContainText("$2,031.25");
       await expect(page.getByTestId("snapshot-cost-labor")).toContainText("$4,890");
       await expect(page.getByTestId("snapshot-cost-reimbursement")).toContainText("$400.25");
+      await expect(page.getByTestId("snapshot-cost-commission")).toContainText("$0");
       await expect(page.getByTestId("snapshot-ar-billed")).toContainText("$975");
       await expect(page.getByTestId("snapshot-ar-paid")).toContainText("$400");
       await expect(page.getByTestId("snapshot-ar-open")).toContainText("$575");

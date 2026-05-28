@@ -303,6 +303,7 @@ export async function POST(req: Request) {
         const profitBefore = await getCanonicalProjectProfit(projectId).catch(() => ({
           expenseCost: 0,
           actualCost: 0,
+          commissionCost: 0,
         }));
         const expense = await createExpense({
           date: new Date().toISOString().slice(0, 10),
@@ -315,6 +316,7 @@ export async function POST(req: Request) {
         const profitAfter = await getCanonicalProjectProfit(projectId).catch(() => ({
           expenseCost: 0,
           actualCost: 0,
+          commissionCost: 0,
         }));
         const { data: directLineRows } = await server
           .from("expense_lines")
@@ -368,6 +370,7 @@ export async function POST(req: Request) {
         const profitBefore = await getCanonicalProjectProfit(projectId).catch(() => ({
           actualCost: 0,
           profit: 0,
+          commissionCost: 0,
         }));
         const expense = await createExpense({
           date: new Date().toISOString().slice(0, 10),
@@ -380,6 +383,7 @@ export async function POST(req: Request) {
         const profitAfter = await getCanonicalProjectProfit(projectId).catch(() => ({
           actualCost: 0,
           profit: 0,
+          commissionCost: 0,
         }));
         const spentIncreased =
           (profitAfter?.actualCost ?? 0) >= (profitBefore?.actualCost ?? 0) + 74;

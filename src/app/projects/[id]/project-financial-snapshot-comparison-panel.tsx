@@ -149,7 +149,7 @@ export function ProjectFinancialSnapshotComparisonPanel({ projectId }: { project
           />
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           <ComparisonMetric
             label="New snapshot laborCost"
             value={formatMoney(snapshot.laborCost)}
@@ -161,6 +161,10 @@ export function ProjectFinancialSnapshotComparisonPanel({ projectId }: { project
           <ComparisonMetric
             label="New snapshot reimbursementCost"
             value={formatMoney(snapshot.reimbursementCost)}
+          />
+          <ComparisonMetric
+            label="New snapshot commissionCost"
+            value={formatMoney(snapshot.commissionCost)}
           />
           <ComparisonMetric
             label="New snapshot billedAmount"

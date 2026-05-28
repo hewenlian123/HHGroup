@@ -10,6 +10,7 @@ import * as subcontractsDb from "../subcontracts-db";
 import * as subcontractPaymentsDb from "../subcontract-payments-db";
 import * as commitmentsDb from "../commitments-db";
 import * as coDb from "../change-orders-db";
+import { getCommissionCostByProject } from "../commission-db";
 
 export type ProjectForecastSummaryResult = {
   revenue: number;
@@ -22,7 +23,7 @@ export type ProjectForecastSummaryResult = {
 /**
  * Computes project forecast summary:
  * - Revenue: sum(invoices.total) excluding void
- * - Actual Cost: expenses + labor cost + subcontract payments (paid)
+ * - Actual Cost: expenses + labor cost + subcontract payments (paid) + accrued commission cost
  * - Remaining Commitments: commitments where status = Open (paid < amount)
  * - Remaining Subcontract Balance: sum over subcontracts of max(0, contract_amount - paid)
  * - Forecast Final Cost = Actual Cost + Remaining Commitments + Remaining Subcontract Balance
@@ -32,13 +33,15 @@ export type ProjectForecastSummaryResult = {
 export async function getProjectForecastSummary(
   projectId: string
 ): Promise<ProjectForecastSummaryResult> {
-  const [revenueCollected, expenseTotal, laborCost, subcontracts, commitments] = await Promise.all([
-    invoicesDb.getProjectRevenueAndCollected(projectId),
-    expensesDb.getExpenseTotalsByProject(projectId),
-    laborDb.getLaborAllocatedByProject(projectId),
-    subcontractsDb.getSubcontractsByProject(projectId),
-    commitmentsDb.getCommitments(projectId),
-  ]);
+  const [revenueCollected, expenseTotal, laborCost, subcontracts, commitments, commissionCost] =
+    await Promise.all([
+      invoicesDb.getProjectRevenueAndCollected(projectId),
+      expensesDb.getExpenseTotalsByProject(projectId),
+      laborDb.getLaborAllocatedByProject(projectId),
+      subcontractsDb.getSubcontractsByProject(projectId),
+      commitmentsDb.getCommitments(projectId),
+      getCommissionCostByProject(projectId),
+    ]);
 
   const revenue = revenueCollected.revenue;
 
@@ -56,7 +59,7 @@ export async function getProjectForecastSummary(
   }
   const subcontractPaid = payments.reduce((s, p) => s + p.amount, 0);
 
-  const actualCost = expenseTotal + laborCost + subcontractPaid;
+  const actualCost = expenseTotal + laborCost + subcontractPaid + commissionCost;
 
   const remainingCommitments = commitments
     .filter((c) => c.status === "Open")

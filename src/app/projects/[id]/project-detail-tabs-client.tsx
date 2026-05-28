@@ -112,7 +112,7 @@ function fmtPercentRatio(n: number | null | undefined) {
   return percentFormatter.format(n);
 }
 
-type CostBucketFilter = null | "expenses" | "labor" | "reimbursements" | "bills";
+type CostBucketFilter = null | "expenses" | "labor" | "reimbursements" | "bills" | "commission";
 
 type ProjectFinancialSnapshotComparisonView = {
   newSnapshot: ProjectFinancialSnapshot;
@@ -135,6 +135,7 @@ type SnapshotCostSummary = {
   laborCost: number;
   reimbursementCost: number;
   subcontractCost: number;
+  commissionCost: number;
   billedAmount: number;
   paidAmount: number;
   openAR: number;
@@ -529,6 +530,7 @@ export function ProjectDetailTabsClient({
       laborCost: projectCost.breakdown.labor,
       reimbursementCost: 0,
       subcontractCost: projectCost.breakdown.bills,
+      commissionCost: projectCost.breakdown.commission,
       billedAmount: billingSummary.invoicedTotal,
       paidAmount: billingSummary.paidTotal,
       openAR: billingSummary.arBalance,
@@ -542,6 +544,7 @@ export function ProjectDetailTabsClient({
         laborCost: snapshotComparison.newSnapshot.laborCost,
         reimbursementCost: snapshotComparison.newSnapshot.reimbursementCost,
         subcontractCost: snapshotComparison.newSnapshot.subcontractCost,
+        commissionCost: snapshotComparison.newSnapshot.commissionCost,
         billedAmount: snapshotComparison.newSnapshot.billedAmount,
         paidAmount: snapshotComparison.newSnapshot.paidAmount,
         openAR: snapshotComparison.newSnapshot.openAR,
@@ -622,13 +625,20 @@ export function ProjectDetailTabsClient({
         "AP / subcontract mapping is not final yet. Use More → Subcontracts or Bills for source records."
       );
     }
+    if (costBucketFilter === "commission") {
+      parts.push(
+        "Commission / Selling Cost is accrued from project commission records. Paid and outstanding amounts are payment tracking below."
+      );
+    }
     return parts.length ? parts.join(" ") : null;
   }, [costBucketFilter]);
 
   const costTableEmptyMessage =
-    projectCost.doneCostRows.length === 0
-      ? "No project costs yet"
-      : "No expense lines match this filter.";
+    costBucketFilter === "commission"
+      ? "Commission records are shown in the Commission commitments section."
+      : projectCost.doneCostRows.length === 0
+        ? "No project costs yet"
+        : "No expense lines match this filter.";
 
   const pickBreakdown = React.useCallback((key: "total" | Exclude<CostBucketFilter, null>) => {
     if (key === "total") {
@@ -1310,7 +1320,7 @@ export function ProjectDetailTabsClient({
                   className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                 />
                 <Divider />
-                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                   {(
                     [
                       {
@@ -1343,6 +1353,12 @@ export function ProjectDetailTabsClient({
                         value: snapshotCostSummary.subcontractCost,
                         testId: "snapshot-cost-subcontracts",
                       },
+                      {
+                        key: "commission" as const,
+                        label: "Commission / Selling Cost",
+                        value: snapshotCostSummary.commissionCost,
+                        testId: "snapshot-cost-commission",
+                      },
                     ] as const
                   ).map((cell) => {
                     const active =
@@ -1374,9 +1390,9 @@ export function ProjectDetailTabsClient({
                     <p>Loading project financial snapshot…</p>
                   ) : null}
                   <p>
-                    Actual cost = snapshot expense + labor + reimbursements. Confirmed profit uses
-                    snapshot cost when the contract value is ready; pending review costs and generic
-                    AP stay separate.
+                    Actual cost = snapshot expense + labor + reimbursements + subcontracts + accrued
+                    commission. Confirmed profit uses snapshot cost when the contract value is
+                    ready; pending review costs and generic AP stay separate.
                   </p>
                   {snapshotNotes.length > 0 ? (
                     <ul className="flex flex-wrap gap-2">
@@ -1423,8 +1439,8 @@ export function ProjectDetailTabsClient({
                   />
                 </div>
                 <p className="mt-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 text-[12px] text-[var(--neo-text-secondary)]">
-                  Commission records are shown for project review only. The current actual cost and
-                  profit formulas do not include commission amounts.
+                  Commission / Selling Cost is accrued from commission records and included in
+                  actual cost and profit. Paid and outstanding amounts are payment tracking only.
                 </p>
                 {commissions.length > 0 ? (
                   <div className="mt-3 overflow-x-auto">
@@ -1522,9 +1538,9 @@ export function ProjectDetailTabsClient({
                         />
                       </div>
                       <p className="mt-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 text-[12px] text-[var(--neo-text-secondary)]">
-                        Profit is based on confirmed costs only. Pending review costs, unpaid
-                        reimbursements, and generic AP are shown separately and are not included
-                        yet.
+                        Profit is based on confirmed costs and accrued commission. Pending review
+                        costs, unpaid reimbursements, and generic AP are shown separately and are
+                        not included yet.
                       </p>
                     </>
                   ) : (

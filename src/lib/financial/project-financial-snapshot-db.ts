@@ -85,6 +85,16 @@ type ProjectFinancialSubcontractPaymentRow = ProjectFinancialAmountRow & {
   bill_id?: string | null;
 };
 
+type ProjectFinancialCommissionRow = ProjectFinancialAmountRow & {
+  project_id?: string | null;
+  commission_amount?: number | string | null;
+};
+
+type ProjectFinancialCommissionPaymentRow = ProjectFinancialAmountRow & {
+  commission_id?: string | null;
+  payment_date?: string | null;
+};
+
 type ProjectFinancialApBillRow = ProjectFinancialAmountRow & {
   project_id?: string | null;
   bill_type?: string | null;
@@ -104,6 +114,8 @@ export type ProjectFinancialSnapshotDbRows = {
   workerReimbursements: ProjectFinancialWorkerReimbursementRow[];
   subcontractBills: ProjectFinancialSubcontractBillRow[];
   subcontractPayments?: ProjectFinancialSubcontractPaymentRow[];
+  commissions?: ProjectFinancialCommissionRow[];
+  commissionPayments?: ProjectFinancialCommissionPaymentRow[];
   apBills: ProjectFinancialApBillRow[];
 };
 
@@ -456,6 +468,9 @@ function buildCashOutPayments(
       cashRows.push({ id: bill.id, amount: amountFromRow(bill), status: bill.status });
     }
   }
+  for (const payment of rows.commissionPayments ?? []) {
+    cashRows.push({ id: payment.id, amount: amountFromRow(payment), status: payment.status });
+  }
 
   return cashRows;
 }
@@ -549,6 +564,14 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
     (rows.subcontractPayments ?? []).reduce((sum, payment) => sum + amountFromRow(payment), 0)
   );
 
+  const commissionCosts: ProjectFinancialAmountRow[] = (rows.commissions ?? [])
+    .filter((commission) => !isVoidLikeStatus(commission.status))
+    .map((commission) => ({
+      id: commission.id,
+      amount: toMoney(commission.commission_amount ?? amountFromRow(commission)),
+      status: commission.status ?? null,
+    }));
+
   const activeApBills = rows.apBills.filter(isActiveApBillForDiagnostics);
   const apCosts: ProjectFinancialAmountRow[] = activeApBills.map((bill) => ({
     id: bill.id,
@@ -591,6 +614,7 @@ export function buildProjectFinancialSnapshotInput(rows: ProjectFinancialSnapsho
       laborEntries,
       workerReimbursements,
       subcontractCosts,
+      commissionCosts,
       apCosts,
       cashOutPayments: buildCashOutPayments(rows, expenseLines),
     },
@@ -704,6 +728,13 @@ export function buildProjectFinancialSnapshotComparison(
       "Canonical subcontract cost vs snapshot subcontract cost",
       input.oldCanonicalProfit.subcontractCost,
       newSnapshot.subcontractCost
+    );
+    addDifference(
+      differences,
+      "canonical.commissionCost",
+      "Canonical commission cost vs snapshot commission cost",
+      input.oldCanonicalProfit.commissionCost,
+      newSnapshot.commissionCost
     );
     addDifference(
       differences,
@@ -1021,6 +1052,7 @@ async function fetchProjectFinancialSnapshotRows(
     laborRes,
     reimbursementRes,
     subcontractRes,
+    commissionRes,
     apBillsRes,
   ] = await Promise.all([
     supabase.from("projects").select("id,budget,contract_amount").eq("id", projectId).maybeSingle(),
@@ -1053,6 +1085,13 @@ async function fetchProjectFinancialSnapshotRows(
       supabase
         .from("subcontract_bills")
         .select("id,project_id,amount,status")
+        .eq("project_id", projectId)
+    ),
+    safeSelect<ProjectFinancialCommissionRow>(
+      "commissions",
+      supabase
+        .from("commissions")
+        .select("id,project_id,commission_amount")
         .eq("project_id", projectId)
     ),
     selectApBillsByProject(supabase, projectId),
@@ -1112,6 +1151,19 @@ async function fetchProjectFinancialSnapshotRows(
     supabase,
     subcontractBillIds
   );
+  const commissionIds = commissionRes.data
+    .map((commission) => String(commission.id ?? "").trim())
+    .filter(Boolean);
+  const commissionPaymentsRes =
+    commissionIds.length > 0
+      ? await safeSelect<ProjectFinancialCommissionPaymentRow>(
+          "commission_payments",
+          supabase
+            .from("commission_payments")
+            .select("id,commission_id,amount,payment_date")
+            .in("commission_id", commissionIds)
+        )
+      : { data: [], warnings: [] };
   const apUnavailable = apBillsRes.warnings.length > 0;
 
   return {
@@ -1127,6 +1179,8 @@ async function fetchProjectFinancialSnapshotRows(
       workerReimbursements: reimbursementRes.data,
       subcontractBills: subcontractRes.data,
       subcontractPayments: subcontractPaymentsRes.data,
+      commissions: commissionRes.data,
+      commissionPayments: commissionPaymentsRes.data,
       apBills: apBillsRes.data,
     },
     warnings: [
@@ -1138,6 +1192,8 @@ async function fetchProjectFinancialSnapshotRows(
       ...laborRes.warnings,
       ...reimbursementRes.warnings,
       ...subcontractRes.warnings,
+      ...commissionRes.warnings,
+      ...commissionPaymentsRes.warnings,
       ...subcontractPaymentsRes.warnings,
       ...apBillsRes.warnings,
       ...invoicePaymentsRes.warnings,
