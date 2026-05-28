@@ -1,4 +1,14 @@
 @media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
   .modal-header {
     display: none !important;
   }
@@ -16,13 +26,16 @@
     max-height: none !important;
     width: 100% !important;
     max-width: none !important;
+    background: #fff !important;
     border: none !important;
     border-radius: 0 !important;
+    box-shadow: none !important;
   }
 
   .receipt-preview-scroll {
     overflow: visible !important;
     background: white !important;
+    padding: 0 !important;
   }
 
   html.print-payment-receipt-preview

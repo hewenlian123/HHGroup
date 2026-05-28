@@ -28,7 +28,10 @@ export function PaymentReceiptBody({ data }: { data: PaymentReceiptPreviewDto })
   const notes = data.payment.notes?.trim();
 
   return (
-    <div className="receipt receipt-container">
+    <div
+      className="receipt receipt-container payment-receipt-paper"
+      data-testid="payment-receipt-paper"
+    >
       <DocumentCompanyHeader
         className="receipt-doc-header border-zinc-200 !mb-3 !pb-3"
         company={data.company}

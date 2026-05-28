@@ -14,6 +14,7 @@ import type { PaymentReceiptPreviewDto } from "@/lib/payment-receipt-preview-dto
 import { downloadPaymentReceiptPdf } from "@/lib/payment-receipt-pdf";
 import { cn } from "@/lib/utils";
 import "@/styles/worker-payment-receipt-print.css";
+import "@/styles/payment-receipt-a4.css";
 import "./payment-receipt-preview-modal.css";
 
 type Props = {
@@ -140,7 +141,7 @@ export function PaymentReceiptPreviewModal({
           onEscapeKeyDown={() => onOpenChange(false)}
           onPointerDownOutside={() => onOpenChange(false)}
           className={cn(
-            "receipt-preview-dialog-root fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh_880px)] w-[min(720px_94vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-[1.5rem] border border-white/10 bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] outline-none",
+            "receipt-preview-dialog-root fixed left-1/2 top-1/2 z-50 flex max-h-[min(88vh,880px)] w-[min(900px,96vw)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-[1.5rem] border border-white/10 bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] outline-none",
             hhNeoFocusRevealDialog,
             "max-md:inset-x-2 max-md:bottom-0 max-md:top-auto max-md:max-h-[calc(100dvh-0.75rem)] max-md:w-auto max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-b-none max-md:rounded-t-[1.5rem] max-md:border-b-0",
             hhNeoFocusRevealMobileSheet
@@ -207,7 +208,10 @@ export function PaymentReceiptPreviewModal({
             ) : error ? (
               <p className="py-12 text-center text-sm text-destructive">{error}</p>
             ) : data ? (
-              <div ref={receiptExportRef} className="receipt-pdf-export-root">
+              <div
+                ref={receiptExportRef}
+                className="receipt-pdf-export-root payment-receipt-export-root"
+              >
                 <PaymentReceiptDocument data={data} />
               </div>
             ) : null}
