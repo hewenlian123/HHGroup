@@ -157,6 +157,7 @@ export default async function ProjectDetailPage({
       laborCost: 0,
       expenseCost: 0,
       subcontractCost: 0,
+      commissionCost: 0,
     }),
     safe(() => getProjectBillingSummary(id), {
       paidTotal: 0,
@@ -197,7 +198,7 @@ export default async function ProjectDetailPage({
     safe(() => getInvoicesWithDerived({ projectId: id }), []),
     safe(() => getEstimateList(), []),
     safe(() => getProjectCostDashboard(id), {
-      breakdown: { totalCost: 0, materials: 0, labor: 0, bills: 0, other: 0 },
+      breakdown: { totalCost: 0, materials: 0, labor: 0, bills: 0, commission: 0, other: 0 },
       spentTotal: 0,
       profit: 0,
       margin: 0,

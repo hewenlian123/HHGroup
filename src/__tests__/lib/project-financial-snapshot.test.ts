@@ -109,6 +109,25 @@ describe("project financial snapshot", () => {
     expect(snapshot.cashOut).toBe(400);
   });
 
+  it("treats accrued commission as actual project cost without using payment totals", () => {
+    const snapshot = calculateProjectFinancialSnapshot({
+      projectId: "project-1",
+      contractValue: 5000,
+      expenseLines: [{ id: "expense-1", amount: 800, status: "paid" }],
+      commissionCosts: [
+        { id: "commission-1", amount: 300, status: null },
+        { id: "commission-void", amount: 999, status: "Void" },
+      ],
+      cashOutPayments: [{ id: "commission-payment-1", amount: 100, status: "Posted" }],
+    });
+
+    expect(snapshot.expenseCost).toBe(800);
+    expect(snapshot.commissionCost).toBe(300);
+    expect(snapshot.actualCost).toBe(1100);
+    expect(snapshot.grossProfit).toBe(3900);
+    expect(snapshot.cashOut).toBe(100);
+  });
+
   it("does not count a worker reimbursement twice when it has a reimbursement expense line", () => {
     const snapshot = calculateProjectFinancialSnapshot({
       projectId: "project-1",

@@ -84,6 +84,7 @@ describe("buildDataQualityReport", () => {
             laborCost: 40,
             reimbursementCost: 0,
             subcontractCost: 0,
+            commissionCost: 0,
             apCost: 0,
             grossProfit: 910,
             grossMargin: 91,

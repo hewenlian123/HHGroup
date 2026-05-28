@@ -34,6 +34,7 @@ import * as materialCatalogDb from "../material-catalog-db";
 import * as materialSelectionsDb from "../material-selections-db";
 import * as projectCloseoutDb from "../project-closeout-db";
 import * as apBillsDb from "../ap-bills-db";
+import { getCommissionCostByProject } from "../commission-db";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   getCanonicalProjectProfit,
@@ -204,6 +205,8 @@ export {
   getPaymentRecordsByCommissionId,
   getPaymentRecordById,
   getSumPaidForCommission,
+  getCommissionCostByProject,
+  getCommissionCostByProjectBatch,
   createPaymentRecord,
   updatePaymentRecord,
   deletePaymentRecord,
@@ -2447,7 +2450,7 @@ export interface ProjectFinancialSummary {
   cashflow: number;
 }
 
-/** Project financial summary: budget from project; spent = canonical actualCost (labor+expense+subcontract); revenue/collected from invoices. Display "spent" uses canonical only; project.spent is legacy and not used here. */
+/** Project financial summary: budget from project; spent = canonical actualCost (labor+expense+subcontract+commission); revenue/collected from invoices. Display "spent" uses canonical only; project.spent is legacy and not used here. */
 export async function getProjectFinancialSummary(
   projectId: string
 ): Promise<ProjectFinancialSummary | null> {
@@ -2486,6 +2489,7 @@ export async function getProjectForecastRisk(
     subcontracts,
     budgetItems,
     expenseLines,
+    commissionCost,
   ] = await Promise.all([
     getProjectFinancialSummary(projectId),
     dailyLaborDb.getLaborEntriesWithJoins({ project_id: projectId }),
@@ -2494,13 +2498,14 @@ export async function getProjectForecastRisk(
     subcontractsDb.getSubcontractsByProject(projectId),
     coDb.getProjectBudgetItems(projectId),
     expensesDb.getProjectExpenseLines(projectId),
+    getCommissionCostByProject(projectId),
   ]);
   const revenue = summary?.revenue ?? 0;
   const laborActual = (laborEntries ?? []).reduce(
     (s: number, e) => s + (Number(e.cost_amount) || 0),
     0
   );
-  const totalCost = laborActual + subcontractTotal + expenseTotal;
+  const totalCost = laborActual + subcontractTotal + expenseTotal + commissionCost;
   const totalSubcontractContractAmount = (subcontracts ?? []).reduce(
     (s: number, c: { contract_amount: number }) => s + c.contract_amount,
     0
@@ -2595,6 +2600,7 @@ export async function getProjectForecastSummary(
     subcontracts,
     budgetItems,
     expenseLines,
+    commissionCost,
   ] = await Promise.all([
     getProjectFinancialSummary(projectId),
     dailyLaborDb.getLaborEntriesWithJoins({ project_id: projectId }),
@@ -2603,13 +2609,14 @@ export async function getProjectForecastSummary(
     subcontractsDb.getSubcontractsByProject(projectId),
     coDb.getProjectBudgetItems(projectId),
     expensesDb.getProjectExpenseLines(projectId),
+    getCommissionCostByProject(projectId),
   ]);
   const revenue = summary?.revenue ?? 0;
   const laborActual = (laborEntries ?? []).reduce(
     (s: number, e) => s + (Number(e.cost_amount) || 0),
     0
   );
-  const actualCost = laborActual + subcontractTotal + expenseTotal;
+  const actualCost = laborActual + subcontractTotal + expenseTotal + commissionCost;
   const totalSubcontractContractAmount = (subcontracts ?? []).reduce(
     (s: number, c: { contract_amount: number }) => s + c.contract_amount,
     0
@@ -2696,7 +2703,7 @@ export type CompanyFinancialDashboard = {
   cashflow: number;
 };
 
-/** Company financial dashboard: budget from projects; spent = sum of canonical actualCost per project (labor+expense+subcontract); revenue/collected from invoices. project.spent not used for display. */
+/** Company financial dashboard: budget from projects; spent = sum of canonical actualCost per project (labor+expense+subcontract+commission); revenue/collected from invoices. project.spent not used for display. */
 export async function getCompanyFinancialDashboard(): Promise<CompanyFinancialDashboard> {
   const [projects, revenueData] = await Promise.all([
     getProjects(),
@@ -3524,7 +3531,7 @@ export function getEstimateSummaryFromPayload(payload: {
 }
 
 export interface ProjectDetailFinancial {
-  /** Display "spent" / actualCost is canonical only: labor + expense + subcontract (getCanonicalProjectProfit). project.spent is legacy and must not be used for UI. */
+  /** Display "spent" / actualCost is canonical only: labor + expense + subcontract + commission (getCanonicalProjectProfit). project.spent is legacy and must not be used for UI. */
   totalBudget: number;
   totalRevenue: number;
   totalSpent: number;

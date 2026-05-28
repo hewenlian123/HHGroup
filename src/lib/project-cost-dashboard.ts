@@ -11,6 +11,7 @@ export type ProjectCostBreakdown = {
   materials: number;
   labor: number;
   bills: number;
+  commission: number;
   other: number;
 };
 
@@ -69,7 +70,7 @@ function toCostTableRow(r: ProjectExpenseCostLineRow): ProjectCostTableRow {
 /**
  * Project detail cost model (no schema changes):
  * Spent = sum(confirmed-status expense lines on this project) + canonical labor + approved subcontract bills
- *   + paid worker reimbursements.
+ *   + accrued commission / selling cost + paid worker reimbursements.
  * Confirmed expense statuses: done, reviewed, approved, paid (see isConfirmedExpenseStatus).
  */
 export async function getProjectCostDashboard(
@@ -90,9 +91,10 @@ export async function getProjectCostDashboard(
 
   const labor = canonical.laborCost;
   const bills = canonical.subcontractCost;
+  const commission = canonical.commissionCost;
   const other = expenseOther + reimb;
   const materials = expenseMaterials;
-  const totalCost = materials + labor + bills + other;
+  const totalCost = materials + labor + bills + commission + other;
 
   const revenue = canonical.revenue;
   const profit = revenue - totalCost;
@@ -106,6 +108,7 @@ export async function getProjectCostDashboard(
       materials,
       labor,
       bills,
+      commission,
       other,
     },
     spentTotal: totalCost,

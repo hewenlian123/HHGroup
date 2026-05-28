@@ -227,6 +227,40 @@ describe("project financial snapshot DB mapper", () => {
     );
   });
 
+  it("maps commission records as accrued cost and commission payments as cash tracking", () => {
+    const snapshot = mapProjectFinancialRowsToSnapshot({
+      projectId: "project-1",
+      project: { id: "project-1", budget: 2000 },
+      changeOrders: [],
+      invoices: [],
+      invoicePayments: [],
+      expenses: [],
+      expenseLines: [],
+      laborEntries: [],
+      workerReimbursements: [],
+      subcontractBills: [],
+      subcontractPayments: [],
+      commissions: [
+        { id: "commission-1", project_id: "project-1", commission_amount: 300 },
+        {
+          id: "commission-void",
+          project_id: "project-1",
+          commission_amount: 999,
+          status: "Void",
+        },
+      ],
+      commissionPayments: [
+        { id: "commission-payment-1", commission_id: "commission-1", amount: 100 },
+      ],
+      apBills: [],
+    });
+
+    expect(snapshot.commissionCost).toBe(300);
+    expect(snapshot.actualCost).toBe(300);
+    expect(snapshot.grossProfit).toBe(1700);
+    expect(snapshot.cashOut).toBe(100);
+  });
+
   it("uses project expense lines first, falls back to headers only when needed, and explains diagnostics", () => {
     const { input, warnings, diagnostics } = buildProjectFinancialSnapshotInput({
       projectId: "project-1",
@@ -430,13 +464,14 @@ describe("project financial snapshot DB mapper", () => {
         laborCost: 0,
         expenseCost: 0,
         subcontractCost: 0,
+        commissionCost: 0,
       },
       oldProjectCostDashboard: {
         spentTotal: 0,
         profit: 1000,
         margin: 1,
         revenue: 1000,
-        breakdown: { totalCost: 0, materials: 0, labor: 0, bills: 0, other: 0 },
+        breakdown: { totalCost: 0, materials: 0, labor: 0, bills: 0, commission: 0, other: 0 },
       },
     });
 
