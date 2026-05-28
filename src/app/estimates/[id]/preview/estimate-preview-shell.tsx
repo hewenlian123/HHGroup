@@ -24,9 +24,11 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
     if (!el) return;
     setPdfBusy(true);
     try {
+      el.classList.add("estimate-pdf-exporting");
+      await new Promise((resolve) => requestAnimationFrame(resolve));
       const html2pdf = (await import("html2pdf.js")).default;
       const pdfOptions = {
-        margin: [12, 12, 12, 12],
+        margin: [0, 0, 0, 0],
         filename: safePdfFilename(estimateNumber),
         image: { type: "jpeg", quality: 0.98 },
         html2canvas: {
@@ -36,8 +38,12 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
           letterRendering: true,
         },
         pagebreak: {
-          mode: ["css", "legacy"],
-          avoid: [".estimate-payment-row", ".estimate-signature-block"],
+          mode: ["css"],
+          avoid: [
+            ".estimate-final-packet-section",
+            ".estimate-payment-row",
+            ".estimate-signature-block",
+          ],
         },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       } as Record<string, unknown>;
@@ -45,6 +51,7 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
     } catch (e) {
       console.error(e);
     } finally {
+      el.classList.remove("estimate-pdf-exporting");
       setPdfBusy(false);
     }
   };

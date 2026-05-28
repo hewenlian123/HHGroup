@@ -171,6 +171,13 @@ test("customer estimate preview and print use polished proposal output", async (
     .poll(async () => previewPages.count(), { timeout: 10_000 })
     .toBeGreaterThanOrEqual(2);
   const previewPageCount = await previewPages.count();
+  await expect
+    .poll(async () =>
+      previewPages.evaluateAll((pages) =>
+        pages.every((page) => page.scrollHeight <= page.clientHeight + 3)
+      )
+    )
+    .toBe(true);
   await expect(previewPages.nth(previewPageCount - 2)).toContainText("Grand Total");
   await expect(previewPages.nth(previewPageCount - 1)).not.toContainText("Grand Total");
   await expect
@@ -244,6 +251,13 @@ test("customer estimate preview and print use polished proposal output", async (
   const printDocument = page.getByRole("document", { name: "Estimate print view" });
   const printPages = page.getByTestId("estimate-preview-page");
   await expect.poll(async () => printPages.count(), { timeout: 10_000 }).toBe(previewPageCount);
+  await expect
+    .poll(async () =>
+      printPages.evaluateAll((pages) =>
+        pages.every((page) => page.scrollHeight <= page.clientHeight + 3)
+      )
+    )
+    .toBe(true);
   await expect(printPages.first()).toContainText("Page 1");
   await expect(printPages.nth(1)).toContainText("Page 2");
   const printPageSize = await printPages.first().evaluate((node) => {
