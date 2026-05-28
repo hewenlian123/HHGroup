@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getProjectById, getWorkerById, getWorkerPaymentById } from "@/lib/data";
+import { getWorkerByIdWithClient } from "@/lib/labor-db";
+import { getProjectByIdWithClient } from "@/lib/projects-db";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { getWorkerPaymentByIdWithClient } from "@/lib/worker-payments-db";
 import { getWorkerPaymentReceiptPayload } from "@/lib/worker-payment-receipt-data";
 import type { WorkerPaymentReceiptPreviewDto } from "@/lib/worker-payment-receipt-preview-dto";
 import { computeWorkerPaymentReceiptNo } from "@/lib/worker-payment-receipt-no";
@@ -14,14 +17,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   try {
-    const payment = await getWorkerPaymentById(id);
+    const supabase = getServerSupabaseInternalNoStore();
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
+    }
+
+    const payment = await getWorkerPaymentByIdWithClient(supabase, id);
     if (!payment) {
       return NextResponse.json({ error: "Not found." }, { status: 404 });
     }
 
     const [worker, project, receiptData, receiptNo, company] = await Promise.all([
-      getWorkerById(payment.workerId),
-      payment.projectId ? getProjectById(payment.projectId) : Promise.resolve(undefined),
+      getWorkerByIdWithClient(supabase, payment.workerId),
+      payment.projectId
+        ? getProjectByIdWithClient(supabase, payment.projectId)
+        : Promise.resolve(undefined),
       getWorkerPaymentReceiptPayload(payment.id, payment.workerId, payment.amount, {
         laborEntryIdsFromPayment: payment.laborEntryIds,
       }),

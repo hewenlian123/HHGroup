@@ -551,18 +551,15 @@ export async function getConfirmedLaborDailyTotalByWorker(
   endDate: string,
   projectId?: string
 ): Promise<number> {
-  const [worker, entries] = await Promise.all([
-    laborDb.getWorkerById(workerId),
-    laborDb.getLaborEntries(),
-  ]);
-  const halfDayRate = worker?.halfDayRate ?? 0;
-  const hourlyRate = halfDayRate / 4;
+  const entries = await dailyLaborDb.getLaborEntriesWithJoins({
+    worker_id: workerId,
+    date_from: startDate,
+    date_to: endDate,
+    project_id: projectId,
+  });
   let total = 0;
   for (const row of entries) {
-    if (row.workerId !== workerId) continue;
-    if (!inDateRange(row.date, startDate, endDate)) continue;
-    if (projectId && row.projectId !== projectId) continue;
-    total += (Number(row.hours) || 0) * hourlyRate;
+    total += Number(row.labor_cost_snapshot ?? row.amount_snapshot ?? row.cost_amount) || 0;
   }
   return total;
 }
@@ -666,26 +663,26 @@ export async function getWorkerEarningsAllocations(
   endDate: string,
   projectId?: string
 ): Promise<WorkerEarningAllocationRow[]> {
-  const [projects, worker, entries] = await Promise.all([
+  const [projects, entries] = await Promise.all([
     getProjects(),
-    laborDb.getWorkerById(workerId),
-    laborDb.getLaborEntries(),
+    dailyLaborDb.getLaborEntriesWithJoins({
+      worker_id: workerId,
+      date_from: startDate,
+      date_to: endDate,
+      project_id: projectId,
+    }),
   ]);
   const projectMap = new Map(projects.map((p) => [p.id, p]));
   const getName = (id: string) => projectMap.get(id)?.name ?? id;
-  const hourlyRate = (worker?.halfDayRate ?? 0) / 4;
   const out: WorkerEarningAllocationRow[] = [];
   for (const row of entries) {
-    if (row.workerId !== workerId) continue;
-    if (!inDateRange(row.date, startDate, endDate)) continue;
-    if (projectId && row.projectId !== projectId) continue;
-    const hours = Number(row.hours) || 0;
-    if (hours <= 0 || !row.projectId) continue;
-    const amount = hours * hourlyRate;
+    if (!row.project_id) continue;
+    const amount = Number(row.labor_cost_snapshot ?? row.amount_snapshot ?? row.cost_amount) || 0;
+    if (amount <= 0) continue;
     out.push({
-      date: row.date,
-      projectId: row.projectId,
-      projectName: getName(row.projectId),
+      date: row.work_date,
+      projectId: row.project_id,
+      projectName: getName(row.project_id),
       shift: "OT",
       amount,
       notes: row.notes || null,

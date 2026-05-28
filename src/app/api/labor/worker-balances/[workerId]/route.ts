@@ -86,7 +86,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       const [laborRes, reimbRes, advRes] = await Promise.all([
         c
           .from("labor_entries")
-          .select("worker_payment_id, cost_amount, total")
+          .select("worker_payment_id, labor_cost_snapshot, amount_snapshot, cost_amount, total")
           .eq("worker_id", workerId),
         c.from("worker_reimbursements").select("amount, status").eq("worker_id", workerId),
         c.from("worker_advances").select("amount, status").eq("worker_id", workerId),
@@ -94,6 +94,8 @@ export async function DELETE(req: Request, { params }: RouteParams) {
 
       const laborRows = (laborRes.data ?? []) as Array<{
         worker_payment_id?: string | null;
+        amount_snapshot?: number | null;
+        labor_cost_snapshot?: number | null;
         cost_amount?: number | null;
         total?: number | null;
       }>;
@@ -109,7 +111,9 @@ export async function DELETE(req: Request, { params }: RouteParams) {
       const laborOwed = laborRows.reduce((s, r) => {
         const linked = String(r.worker_payment_id ?? "").trim().length > 0;
         if (linked) return s;
-        return s + (Number(r.cost_amount ?? r.total) || 0);
+        return (
+          s + (Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.total) || 0)
+        );
       }, 0);
       const reimbursements = reimbRows.reduce((s, r) => {
         if (String(r.status ?? "").toLowerCase() === "paid") return s;

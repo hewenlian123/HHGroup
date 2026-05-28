@@ -34,7 +34,7 @@ function payrollAmountFingerprint(
 }
 
 function laborEntryTotal(entry: LaborEntryWithJoins): number {
-  return Number(entry.cost_amount) || 0;
+  return Number(entry.labor_cost_snapshot ?? entry.amount_snapshot ?? entry.cost_amount) || 0;
 }
 
 export function laborEntryToDailyWorkEntry(entry: LaborEntryWithJoins): DailyWorkEntry {

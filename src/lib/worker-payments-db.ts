@@ -229,8 +229,10 @@ export async function getWorkerPayments(filters?: {
   return getWorkerPaymentsWithClient(client(), filters);
 }
 
-export async function getWorkerPaymentById(id: string): Promise<WorkerPayment | null> {
-  const c = client();
+export async function getWorkerPaymentByIdWithClient(
+  c: SupabaseClient,
+  id: string
+): Promise<WorkerPayment | null> {
   let lastError: { message?: string } | null = null;
   for (const cols of WORKER_PAYMENTS_SELECT_VARIANTS) {
     const { data, error } = await c
@@ -248,4 +250,8 @@ export async function getWorkerPaymentById(id: string): Promise<WorkerPayment | 
     }
   }
   throw new Error(lastError?.message ?? "Failed to load worker payment.");
+}
+
+export async function getWorkerPaymentById(id: string): Promise<WorkerPayment | null> {
+  return getWorkerPaymentByIdWithClient(client(), id);
 }

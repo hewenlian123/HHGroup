@@ -6,6 +6,10 @@ import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternal,
 } from "@/lib/supabase-server";
+import {
+  getWorkerCurrentDailyRateWithClient,
+  getWorkerRateHistoryWithClient,
+} from "@/lib/worker-rate-history-db";
 
 export const dynamic = "force-dynamic";
 
@@ -27,14 +31,30 @@ export async function GET(req: Request, { params }: RouteParams) {
     );
   }
   try {
-    const [worker, usage] = await Promise.all([
+    const [worker, usage, rateHistory, currentRate] = await Promise.all([
       getWorkerByIdWithClient(admin, id),
       getWorkerUsageWithClient(admin, id).catch(() => ({ used: false })),
+      getWorkerRateHistoryWithClient(admin, id),
+      getWorkerCurrentDailyRateWithClient(admin, id),
     ]);
     if (!worker) {
       return NextResponse.json({ ok: false, message: "Worker not found." }, { status: 404 });
     }
-    return NextResponse.json({ ok: true, worker, usage });
+    const currentDailyRate =
+      currentRate.dailyRate > 0 ? currentRate.dailyRate : worker.dailyRate || worker.halfDayRate;
+    return NextResponse.json({
+      ok: true,
+      worker: {
+        ...worker,
+        dailyRate: currentDailyRate,
+        halfDayRate: currentDailyRate,
+        currentDailyRateEffectiveFrom: currentRate.effectiveFrom,
+        rateHistory,
+      },
+      usage,
+      rateHistory,
+      currentDailyRate: currentRate,
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to load worker.";
     return NextResponse.json({ ok: false, message }, { status: 500 });

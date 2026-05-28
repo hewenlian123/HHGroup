@@ -74,7 +74,9 @@ export async function GET(request: Request) {
       ) {
         return supabase
           .from("labor_entries")
-          .select("id,work_date,worker_id,cost_amount,hours,project_id")
+          .select(
+            "id,work_date,worker_id,labor_cost_snapshot,amount_snapshot,cost_amount,hours,project_id"
+          )
           .gte("work_date", startDate)
           .lte("work_date", endDate)
           .limit(2000);
@@ -148,6 +150,8 @@ export async function GET(request: Request) {
       worker_id: string;
       total?: number | null;
       cost_amount?: number | null;
+      amount_snapshot?: number | null;
+      labor_cost_snapshot?: number | null;
       am_worked?: boolean;
       am_project_id?: string | null;
       pm_worked?: boolean;
@@ -178,7 +182,10 @@ export async function GET(request: Request) {
       let confirmedTotal: number;
       if (projectId) {
         confirmedTotal = workerEntries.reduce((sum, entry) => {
-          const fallbackTotal = entry.project_id === projectId ? safeNumber(entry.cost_amount) : 0;
+          const fallbackTotal =
+            entry.project_id === projectId
+              ? safeNumber(entry.labor_cost_snapshot ?? entry.amount_snapshot ?? entry.cost_amount)
+              : 0;
           const am = entry.am_worked && entry.am_project_id === projectId ? rate : 0;
           const pm = entry.pm_worked && entry.pm_project_id === projectId ? rate : 0;
           const ot = entry.ot_project_id === projectId ? safeNumber(entry.ot_amount) : 0;
@@ -189,7 +196,11 @@ export async function GET(request: Request) {
         }, 0);
       } else {
         confirmedTotal = workerEntries.reduce(
-          (sum, entry) => sum + safeNumber(entry.total ?? entry.cost_amount),
+          (sum, entry) =>
+            sum +
+            safeNumber(
+              entry.total ?? entry.labor_cost_snapshot ?? entry.amount_snapshot ?? entry.cost_amount
+            ),
           0
         );
       }

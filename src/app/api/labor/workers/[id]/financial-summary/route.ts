@@ -36,15 +36,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   try {
-    let laborRes: RawResult = await query("labor_entries", "cost_amount");
-    if (laborRes.error && /column.*cost_amount|schema cache/i.test(laborRes.error.message ?? "")) {
+    let laborRes: RawResult = await query(
+      "labor_entries",
+      "labor_cost_snapshot, amount_snapshot, cost_amount"
+    );
+    if (laborRes.error && /column|schema cache/i.test(laborRes.error.message ?? "")) {
       laborRes = await query("labor_entries", "amount");
     }
     const laborRows = (laborRes.data ?? []) as {
+      amount_snapshot?: number | null;
+      labor_cost_snapshot?: number | null;
       cost_amount?: number | null;
       amount?: number | null;
     }[];
-    const totalLabor = laborRows.reduce((s, r) => s + (Number(r.cost_amount ?? r.amount) || 0), 0);
+    const totalLabor = laborRows.reduce(
+      (s, r) =>
+        s + (Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.amount) || 0),
+      0
+    );
 
     const reimbRes = await query("worker_reimbursements", "amount");
     const reimbRows = (reimbRes.data ?? []) as { amount?: number | null }[];

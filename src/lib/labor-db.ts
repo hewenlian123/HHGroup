@@ -7,6 +7,11 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import {
+  buildLaborEntryRateSnapshotWithClient,
+  changeWorkerDailyRateWithClient,
+  ensureInitialWorkerRateHistoryWithClient,
+} from "@/lib/worker-rate-history-db";
 
 const LABOR_ENTRIES_COLS = "id, worker_id, project_id, work_date, hours, cost_code, notes" as const;
 const LABOR_ENTRIES_COLS_NO_PROJECT = "id, worker_id, work_date, hours, cost_code, notes" as const;
@@ -32,6 +37,11 @@ const LABOR_ENTRIES_ALLOWED = new Set<string>([
   "cost_code",
   "notes",
   "cost_amount",
+  "days_worked",
+  "daily_rate_snapshot",
+  "amount_snapshot",
+  "labor_cost_snapshot",
+  "rate_history_id",
   "morning",
   "afternoon",
 ]);
@@ -381,10 +391,20 @@ export async function createWorkerWithClient(
         .select("id, name, role, phone, half_day_rate, status, notes, created_at")
         .single();
       if (err2 || !row2) throw new Error(err2?.message ?? "Failed to create worker.");
+      await ensureInitialWorkerRateHistoryWithClient(c, {
+        workerId: (row2 as { id: string }).id,
+        dailyRate: dailyRate ?? halfDayRate,
+        effectiveFrom: ((row2 as { created_at?: string | null }).created_at ?? "").slice(0, 10),
+      });
       return toWorker(row2 as WorkerRow);
     }
     throw new Error(error.message ?? "Failed to create worker.");
   }
+  await ensureInitialWorkerRateHistoryWithClient(c, {
+    workerId: (row as { id: string }).id,
+    dailyRate: dailyRate ?? halfDayRate,
+    effectiveFrom: ((row as { created_at?: string | null }).created_at ?? "").slice(0, 10),
+  });
   return toWorker((row ?? {}) as WorkerRow);
 }
 
@@ -400,14 +420,23 @@ export async function updateWorker(
   }>
 ): Promise<Worker | null> {
   const c = client();
+  const dailyRatePatch = patch.halfDayRate;
   const updates: Record<string, unknown> = {};
   if (patch.name != null) updates.name = patch.name.trim();
   if (patch.phone !== undefined) updates.phone = patch.phone?.trim() ?? null;
   if (patch.trade !== undefined) updates.role = patch.trade?.trim() ?? null;
   if (patch.status != null) updates.status = patch.status;
-  if (patch.halfDayRate != null) updates.half_day_rate = Math.max(0, patch.halfDayRate);
   if (patch.notes !== undefined) updates.notes = patch.notes?.trim() ?? null;
-  if (Object.keys(updates).length === 0) return getWorkerById(id);
+  if (Object.keys(updates).length === 0) {
+    if (dailyRatePatch != null) {
+      await changeWorkerDailyRateWithClient(c, id, {
+        dailyRate: dailyRatePatch,
+        effectiveFrom: new Date().toISOString().slice(0, 10),
+        notes: "Updated from legacy worker edit",
+      });
+    }
+    return getWorkerById(id);
+  }
   const { data: row, error } = await c
     .from("workers")
     .update(updates)
@@ -415,6 +444,14 @@ export async function updateWorker(
     .select("id, name, role, phone, half_day_rate, status, notes, created_at")
     .single();
   if (error || !row) return null;
+  if (dailyRatePatch != null) {
+    await changeWorkerDailyRateWithClient(c, id, {
+      dailyRate: dailyRatePatch,
+      effectiveFrom: new Date().toISOString().slice(0, 10),
+      notes: "Updated from legacy worker edit",
+    });
+    return getWorkerById(id);
+  }
   return toWorker(row as WorkerRow);
 }
 
@@ -567,9 +604,6 @@ export type DailyLaborRowInput = {
   otHours?: number;
 };
 
-/** Overtime rate multiplier (1.5x typical). */
-const OT_MULTIPLIER = 1.5;
-
 /** Insert one labor_entries row per worker with morning and/or afternoon set. AM = 0.5h, PM = 0.5h, both = 1h. Total pay = base + OT. */
 export async function insertDailyLaborEntries(
   projectId: string,
@@ -626,12 +660,15 @@ export async function insertDailyLaborEntriesWithClient(
     if (!worker) continue;
     const hours = (r.morning ? 0.5 : 0) + (r.afternoon ? 0.5 : 0);
     if (hours <= 0) continue;
-    const dailyRate = worker.dailyRate ?? (worker.halfDayRate ?? 0) * 2;
-    const basePay = (r.morning ? dailyRate / 2 : 0) + (r.afternoon ? dailyRate / 2 : 0);
     const otHours = Math.max(0, Number(r.otHours) || 0);
-    const otRate = (dailyRate / 8) * OT_MULTIPLIER;
-    const otPay = otHours * otRate;
-    const totalPay = basePay + otPay;
+    const snapshot = await buildLaborEntryRateSnapshotWithClient(c, {
+      workerId: r.workerId,
+      workDate: date,
+      hours,
+      morning: r.morning,
+      afternoon: r.afternoon,
+      otHours,
+    });
     payloads.push({
       worker_id: r.workerId,
       project_id: projectId || null,
@@ -641,7 +678,7 @@ export async function insertDailyLaborEntriesWithClient(
       hours,
       cost_code: options?.costCode?.trim() || null,
       notes: options?.notes?.trim() || null,
-      cost_amount: totalPay,
+      ...snapshot,
     });
   }
   if (payloads.length === 0) return [];
@@ -672,6 +709,11 @@ export async function insertDailyLaborEntriesWithClient(
         const rest = { ...(p as Record<string, unknown>) };
         delete rest.morning;
         delete rest.afternoon;
+        delete rest.days_worked;
+        delete rest.daily_rate_snapshot;
+        delete rest.amount_snapshot;
+        delete rest.labor_cost_snapshot;
+        delete rest.rate_history_id;
         return rest;
       });
       let fallback = await insertPayloads(payloadsHoursOnly, LABOR_ENTRIES_COLS);
@@ -754,8 +796,14 @@ export async function upsertLaborEntry(
     throw new Error(`labor_workers: failed to sync worker before write. ${msg}`);
   }
 
-  const hourlyRate = (worker.halfDayRate ?? 0) / 4;
   const hours = Math.max(0, entry.hours ?? 0);
+  const snapshot = await buildLaborEntryRateSnapshotWithClient(c, {
+    workerId: entry.workerId,
+    workDate: entry.date,
+    hours,
+    morning: entry.morning,
+    afternoon: entry.afternoon,
+  });
   const payload = {
     worker_id: entry.workerId,
     project_id: entry.projectId || null,
@@ -763,7 +811,7 @@ export async function upsertLaborEntry(
     hours,
     cost_code: entry.costCode?.trim() || null,
     notes: entry.notes?.trim() || null,
-    cost_amount: hours * hourlyRate,
+    ...snapshot,
   };
   assertLaborEntriesColumns(Object.keys(payload) as string[]);
   const existing = entry.id ? await getLaborEntryById(entry.id) : null;

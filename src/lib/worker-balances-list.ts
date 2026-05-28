@@ -185,6 +185,8 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
       type LaborRaw = {
         id?: string | null;
         worker_id?: string | null;
+        amount_snapshot?: number | null;
+        labor_cost_snapshot?: number | null;
         cost_amount?: number | null;
         total?: number | null;
         status?: string | null;
@@ -194,6 +196,7 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
       let laborSettlementMode: "payment_link" | "status_fallback" = "payment_link";
 
       for (const cols of [
+        "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, total, status, worker_payment_id",
         "id, worker_id, cost_amount, total, status, worker_payment_id",
         "id, worker_id, cost_amount, status, worker_payment_id",
         "id, worker_id, total, status, worker_payment_id",
@@ -255,7 +258,9 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
           )
         )
           return s;
-        return s + (Number(r.cost_amount ?? r.total) || 0);
+        return (
+          s + (Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.total) || 0)
+        );
       }, 0);
 
       // Reimbursements: prefer `amount`, fallback to `total_amount` (older schemas).
