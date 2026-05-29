@@ -66,6 +66,7 @@ async function fillNewEstimateCustomerFields(
   await dialog.getByPlaceholder("Client or company name").fill(params.clientName);
   await dialog.getByPlaceholder("Project name").fill(params.projectName);
   await dialog.getByPlaceholder("Site or client address").fill("123 Proposal Polish Lane");
+  await dialog.getByRole("radio", { name: "Proposal" }).check();
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
 }
 
@@ -148,10 +149,6 @@ test("customer estimate preview and print use polished proposal output", async (
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
   const estimateId = page.url().match(/\/estimates\/([^/?#]+)/)?.[1];
   expect(estimateId).toBeTruthy();
-
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await page.getByRole("button", { name: "More actions" }).locator("visible=true").first().click();
-  await page.getByRole("menuitem", { name: "Hide amount on PDF" }).click();
 
   await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
   const previewMain = page.locator("main");
@@ -243,8 +240,8 @@ test("customer estimate preview and print use polished proposal output", async (
 
   const previewRow = page.getByTestId("estimate-line-item-output").filter({ hasText: lineTitle });
   await expect(previewRow).toBeVisible({ timeout: 30_000 });
-  await expect(previewRow.getByTestId("estimate-line-item-unit-price")).toHaveText("Unit —");
-  await expect(previewRow.getByTestId("estimate-line-item-total")).toHaveText("—");
+  await expect(previewRow.getByTestId("estimate-line-item-unit-price")).toHaveCount(0);
+  await expect(previewRow.getByTestId("estimate-line-item-total")).toHaveCount(0);
   await prepareCustomerDocumentScreenshot(page);
   await page.getByTestId("estimate-document").screenshot({
     path: "test-results/estimate-preview-polished.png",
@@ -318,8 +315,8 @@ test("customer estimate preview and print use polished proposal output", async (
   await expect(printDocument).not.toContainText(/markup|overhead|profit/i);
   const printRow = page.getByTestId("estimate-line-item-output").filter({ hasText: lineTitle });
   await expect(printRow).toBeVisible({ timeout: 30_000 });
-  await expect(printRow.getByTestId("estimate-line-item-unit-price")).toHaveText("Unit —");
-  await expect(printRow.getByTestId("estimate-line-item-total")).toHaveText("—");
+  await expect(printRow.getByTestId("estimate-line-item-unit-price")).toHaveCount(0);
+  await expect(printRow.getByTestId("estimate-line-item-total")).toHaveCount(0);
   await prepareCustomerDocumentScreenshot(page);
   await page.getByTestId("estimate-document").screenshot({
     path: "test-results/estimate-print-polished.png",

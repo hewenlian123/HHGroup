@@ -45,6 +45,7 @@ import {
   type EstimateLineItemStatus,
 } from "../_components/estimate-line-item-status";
 import type { CustomerOption } from "@/components/customers/customer-select-with-add";
+import type { EstimateDocumentStyle } from "@/lib/estimate-document-style";
 
 type CostCodeType = "material" | "labor" | "subcontractor";
 
@@ -98,6 +99,7 @@ export function NewEstimateEditor({
     Number.isFinite(initialDefaultTaxPct) && initialDefaultTaxPct >= 0 ? initialDefaultTaxPct : 0
   );
   const [discount, setDiscount] = React.useState(0);
+  const [documentStyle, setDocumentStyle] = React.useState<EstimateDocumentStyle>("proposal");
   const [categoryNames, setCategoryNames] = React.useState<Record<string, string>>({});
   const [sectionOrder, setSectionOrder] = React.useState<string[]>([]);
   const [lineItems, setLineItems] = React.useState<LineItem[]>([]);
@@ -265,6 +267,7 @@ export function NewEstimateEditor({
         discount,
         overheadPct: 0,
         profitPct: 0,
+        documentStyle,
         costCategoryNames: costCategoryNamesForSave(),
         documentNotes: estimateNotes,
         items: lineItemsForSave()
@@ -469,6 +472,8 @@ export function NewEstimateEditor({
             onTaxTouched={() => setTaxTouched(true)}
             onDiscountChange={setDiscount}
             onCustomerPickerChange={handleCustomerPickerChange}
+            documentStyle={documentStyle}
+            onDocumentStyleChange={setDocumentStyle}
           />
 
           <EstimateLineItemsLocal

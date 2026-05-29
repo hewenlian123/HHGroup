@@ -518,6 +518,11 @@ export async function saveEstimateMetaInlineAction(
     const validUntil = (formData.get("validUntil") as string)?.trim();
     const notes = (formData.get("notes") as string)?.trim();
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
+    const documentStyleRaw = (formData.get("documentStyle") as string)?.trim();
+    const documentStyle =
+      documentStyleRaw === "itemized" || documentStyleRaw === "proposal"
+        ? documentStyleRaw
+        : undefined;
     if (formData.has("clientName") && !clientName) {
       return { ok: false, error: "Client name is required." };
     }
@@ -542,6 +547,7 @@ export async function saveEstimateMetaInlineAction(
       ...(validUntil != null ? { validUntil: validUntil || undefined } : {}),
       ...(notes != null ? { notes: notes || undefined } : {}),
       ...(salesPerson != null ? { salesPerson: salesPerson || undefined } : {}),
+      ...(documentStyle != null ? { documentStyle } : {}),
     });
     if (ok) {
       revalidateEstimatePaths(estimateId);
@@ -1115,6 +1121,11 @@ export async function saveEstimateMetaAction(formData: FormData) {
     const validUntil = (formData.get("validUntil") as string)?.trim();
     const notes = (formData.get("notes") as string)?.trim();
     const salesPerson = (formData.get("salesPerson") as string)?.trim();
+    const documentStyleRaw = (formData.get("documentStyle") as string)?.trim();
+    const documentStyle =
+      documentStyleRaw === "itemized" || documentStyleRaw === "proposal"
+        ? documentStyleRaw
+        : undefined;
     const db = getEstimateWriteClient();
     if (!db) return;
     const ok = await updateEstimateMetaWithClient(db, estimateId, {
@@ -1133,6 +1144,7 @@ export async function saveEstimateMetaAction(formData: FormData) {
       ...(validUntil != null ? { validUntil: validUntil || undefined } : {}),
       ...(notes != null ? { notes: notes || undefined } : {}),
       ...(salesPerson != null ? { salesPerson: salesPerson || undefined } : {}),
+      ...(documentStyle != null ? { documentStyle } : {}),
     });
     revalidateEstimatePaths(estimateId);
     revalidatePath("/estimates");
