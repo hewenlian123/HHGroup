@@ -1,9 +1,6 @@
 import "server-only";
 
 import path from "node:path";
-
-import "./estimate-chromium-vercel-env";
-import chromium from "@sparticuz/chromium";
 import puppeteer, { type Browser } from "puppeteer-core";
 
 export type GenerateEstimatePrintPdfOptions = {
@@ -18,6 +15,19 @@ function isVercelRuntime(): boolean {
   return process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
 }
 
+/** Must run before `@sparticuz/chromium` is first imported (dynamic import on Vercel). */
+function ensureVercelChromiumRuntimeEnv(): void {
+  const runtime = process.env.AWS_LAMBDA_JS_RUNTIME ?? "";
+  if (!runtime.includes("20.x") && !runtime.includes("22.x")) {
+    process.env.AWS_LAMBDA_JS_RUNTIME = "nodejs20.x";
+  }
+
+  const executionEnv = process.env.AWS_EXECUTION_ENV ?? "";
+  if (!executionEnv.includes("20.x") && !executionEnv.includes("22.x")) {
+    process.env.AWS_EXECUTION_ENV = "AWS_Lambda_nodejs20.x";
+  }
+}
+
 function applyChromiumLibraryPath(executablePath: string): void {
   const execDir = path.dirname(executablePath);
   const candidates = [execDir, "/tmp/al2023/lib", "/tmp/al2/lib"];
@@ -25,18 +35,25 @@ function applyChromiumLibraryPath(executablePath: string): void {
   process.env.LD_LIBRARY_PATH = [...new Set([...candidates, ...existing])].join(":");
 }
 
+async function launchChromiumOnVercel(): Promise<Browser> {
+  ensureVercelChromiumRuntimeEnv();
+  const chromium = (await import("@sparticuz/chromium")).default;
+  chromium.setGraphicsMode = false;
+
+  const executablePath = await chromium.executablePath();
+  applyChromiumLibraryPath(executablePath);
+
+  return puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath,
+    headless: chromium.headless,
+  });
+}
+
 async function launchChromiumBrowser(): Promise<Browser> {
   if (isVercelRuntime()) {
-    chromium.setGraphicsMode = false;
-    const executablePath = await chromium.executablePath();
-    applyChromiumLibraryPath(executablePath);
-
-    return puppeteer.launch({
-      args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath,
-      headless: chromium.headless,
-    });
+    return launchChromiumOnVercel();
   }
 
   const executablePath =
