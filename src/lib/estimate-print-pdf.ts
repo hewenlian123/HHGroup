@@ -1,5 +1,8 @@
 import "server-only";
 
+import path from "node:path";
+
+import "./estimate-chromium-vercel-env";
 import chromium from "@sparticuz/chromium";
 import puppeteer, { type Browser } from "puppeteer-core";
 
@@ -15,12 +18,23 @@ function isVercelRuntime(): boolean {
   return process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
 }
 
+function applyChromiumLibraryPath(executablePath: string): void {
+  const execDir = path.dirname(executablePath);
+  const candidates = [execDir, "/tmp/al2023/lib", "/tmp/al2/lib"];
+  const existing = (process.env.LD_LIBRARY_PATH ?? "").split(":").filter(Boolean);
+  process.env.LD_LIBRARY_PATH = [...new Set([...candidates, ...existing])].join(":");
+}
+
 async function launchChromiumBrowser(): Promise<Browser> {
   if (isVercelRuntime()) {
+    chromium.setGraphicsMode = false;
+    const executablePath = await chromium.executablePath();
+    applyChromiumLibraryPath(executablePath);
+
     return puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
+      executablePath,
       headless: chromium.headless,
     });
   }

@@ -2,6 +2,9 @@
   "name": "hh-unified-web",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "next dev -p 3000",
     "dev:safe": "ulimit -n 10240 2>/dev/null; next dev -p 3000",
