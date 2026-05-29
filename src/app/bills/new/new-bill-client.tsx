@@ -16,30 +16,20 @@ import { Button } from "@/components/ui/button";
 import { createApBill } from "@/lib/data";
 import { AP_BILL_TYPES } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import {
+  billsAmountInputClass,
+  billsDateInputClass,
+  billsFieldClass,
+  billsFormBodyClass,
+  billsFormCardClass,
+  billsPrimaryButtonClass,
+  billsSecondaryButtonClass,
+} from "../bills-ui-styles";
 
 type Props = {
   projects: { id: string; name: string }[];
   dataLoadWarning?: string | null;
 };
-
-const FORM_CARD_CLASS =
-  "rounded-[1.25rem] border border-[rgb(190_198_210/0.14)] bg-[#111318] shadow-[0_1px_0_rgb(255_255_255/0.04)_inset,0_18px_48px_rgb(0_0_0/0.28)]";
-
-const FORM_BODY_CLASS = "space-y-5 p-4 md:space-y-6 md:p-8";
-
-const FIELD_CLASS = "mt-1.5 h-11 rounded-[0.625rem] text-[14px] max-md:min-h-11";
-
-const DATE_INPUT_CLASS =
-  "tabular-nums [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-55";
-
-const AMOUNT_INPUT_CLASS =
-  "neo-amount tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
-
-const PRIMARY_BUTTON_CLASS =
-  "h-11 rounded-[0.625rem] border-transparent bg-[var(--neo-gold)] text-zinc-950 hover:bg-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)]";
-
-const SECONDARY_BUTTON_CLASS =
-  "h-11 rounded-[0.625rem] border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]";
 
 export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
   const router = useRouter();
@@ -100,14 +90,18 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
         </p>
       ) : null}
 
-      <NeoPanel title="Bill details" className={FORM_CARD_CLASS} bodyClassName={FORM_BODY_CLASS}>
+      <NeoPanel
+        title="Bill details"
+        className={billsFormCardClass}
+        bodyClassName={billsFormBodyClass}
+      >
         <form onSubmit={handleSubmit} className="min-w-0 space-y-5 md:space-y-6">
           <div className={neoFormFieldClassName}>
             <NeoFieldLabel required>Vendor / payee name</NeoFieldLabel>
             <NeoInput
               value={vendorName}
               onChange={(e) => setVendorName(e.target.value)}
-              className={FIELD_CLASS}
+              className={billsFieldClass}
               required
             />
           </div>
@@ -117,7 +111,7 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
             <NeoSelect
               value={billType}
               onChange={(e) => setBillType(e.target.value as typeof billType)}
-              className={FIELD_CLASS}
+              className={billsFieldClass}
             >
               {AP_BILL_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -132,7 +126,7 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
             <NeoSelect
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
-              className={FIELD_CLASS}
+              className={billsFieldClass}
             >
               <option value="">—</option>
               {projects.map((p) => (
@@ -150,7 +144,7 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
                 type="date"
                 value={issueDate}
                 onChange={(e) => setIssueDate(e.target.value)}
-                className={cn(FIELD_CLASS, DATE_INPUT_CLASS)}
+                className={cn(billsFieldClass, billsDateInputClass)}
               />
             </div>
             <div className={neoFormFieldClassName}>
@@ -159,7 +153,7 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className={cn(FIELD_CLASS, DATE_INPUT_CLASS)}
+                className={cn(billsFieldClass, billsDateInputClass)}
               />
             </div>
           </NeoFormGrid>
@@ -173,7 +167,7 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className={cn(FIELD_CLASS, AMOUNT_INPUT_CLASS)}
+              className={cn(billsFieldClass, billsAmountInputClass)}
               placeholder="0.00"
               required
             />
@@ -184,7 +178,7 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
             <NeoInput
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className={FIELD_CLASS}
+              className={billsFieldClass}
             />
           </div>
 
@@ -193,7 +187,7 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
             <NeoInput
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className={FIELD_CLASS}
+              className={billsFieldClass}
             />
           </div>
 
@@ -208,7 +202,7 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
             <Button
               type="submit"
               size="touch"
-              className={PRIMARY_BUTTON_CLASS}
+              className={billsPrimaryButtonClass}
               disabled={submitting}
             >
               {submitting ? "Creating…" : "Create bill"}
@@ -217,7 +211,7 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
               type="button"
               variant="outline"
               size="touch"
-              className={SECONDARY_BUTTON_CLASS}
+              className={billsSecondaryButtonClass}
               asChild
             >
               <Link href="/bills">Cancel</Link>
