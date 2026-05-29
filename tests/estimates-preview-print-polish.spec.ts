@@ -151,6 +151,12 @@ test("customer estimate preview and print use polished proposal output", async (
   expect(estimateId).toBeTruthy();
 
   await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
+  const downloadPdfLink = page.getByRole("link", { name: "Download PDF" });
+  await expect(downloadPdfLink).toHaveAttribute(
+    "href",
+    `/estimates/${estimateId}/print?autoprint=1`
+  );
+  await expect(downloadPdfLink).toHaveAttribute("target", "_blank");
   const previewMain = page.locator("main");
   await expect(previewMain).toContainText("Project Proposal");
   await expect(previewMain).toContainText("Luxury Design-Build Proposal");
