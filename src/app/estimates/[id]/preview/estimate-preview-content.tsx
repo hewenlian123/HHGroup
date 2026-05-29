@@ -19,6 +19,7 @@ import {
   DEFAULT_LINE_ITEM_STATUS,
   LINE_ITEM_STATUS_LABELS,
 } from "@/app/estimates/_components/estimate-line-item-status";
+import { EstimatePreviewSummaryPanel } from "@/app/estimates/_components/estimate-preview-summary-panel";
 
 export type EstimatePreviewProps = {
   company: DocumentCompanyProfileDTO;
@@ -442,26 +443,14 @@ export function EstimatePreviewContent({
             </section>
 
             {summary && isLastScopePage ? (
-              <section className="mt-10 print:break-inside-avoid">
-                <div className="ml-auto max-w-[21rem] space-y-2.5 text-sm">
-                  <div className="flex justify-between gap-6">
-                    <span className="text-zinc-600">Subtotal</span>
-                    <span className="tabular-nums text-zinc-900">${fmt(summary.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between gap-6">
-                    <span className="text-zinc-600">Tax</span>
-                    <span className="tabular-nums text-zinc-900">${fmt(summary.tax)}</span>
-                  </div>
-                  <div className="flex justify-between gap-6">
-                    <span className="text-zinc-600">Discount</span>
-                    <span className="tabular-nums text-zinc-900">−${fmt(summary.discount)}</span>
-                  </div>
-                  <div className="mt-4 flex justify-between gap-6 border-t border-zinc-200/80 pt-4 text-[18px] font-semibold tracking-[-0.025em] text-zinc-950">
-                    <span>Grand Total</span>
-                    <span className="tabular-nums">${fmt(summary.grandTotal)}</span>
-                  </div>
-                </div>
-              </section>
+              <EstimatePreviewSummaryPanel
+                subtotal={summary.subtotal}
+                tax={summary.tax}
+                discount={summary.discount}
+                grandTotal={summary.grandTotal}
+                isProposalStyle
+                fmt={fmt}
+              />
             ) : null}
           </section>
         );
