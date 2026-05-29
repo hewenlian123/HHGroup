@@ -137,8 +137,6 @@ test("customer estimate preview and print use polished proposal output", async (
   await page.getByRole("button", { name: "More actions" }).locator("visible=true").first().click();
   await page.getByText("Set status", { exact: true }).hover();
   await page.getByRole("menuitem", { name: "Optional" }).click();
-  await page.getByRole("button", { name: "More actions" }).locator("visible=true").first().click();
-  await page.getByRole("menuitem", { name: "Hide amount on PDF" }).click();
 
   await page.getByRole("button", { name: "Add note" }).click();
   await page.getByRole("menuitem", { name: "Assumptions" }).click();
@@ -150,6 +148,10 @@ test("customer estimate preview and print use polished proposal output", async (
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
   const estimateId = page.url().match(/\/estimates\/([^/?#]+)/)?.[1];
   expect(estimateId).toBeTruthy();
+
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("button", { name: "More actions" }).locator("visible=true").first().click();
+  await page.getByRole("menuitem", { name: "Hide amount on PDF" }).click();
 
   await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
   const previewMain = page.locator("main");
@@ -178,8 +180,8 @@ test("customer estimate preview and print use polished proposal output", async (
       )
     )
     .toBe(true);
-  await expect(previewPages.nth(previewPageCount - 2)).toContainText("Grand Total");
-  await expect(previewPages.nth(previewPageCount - 1)).not.toContainText("Grand Total");
+  await expect(previewPages.nth(previewPageCount - 2)).toContainText("Contract Price");
+  await expect(previewPages.nth(previewPageCount - 1)).not.toContainText("Contract Price");
   await expect
     .poll(async () =>
       previewPages.first().evaluate((node) => {
@@ -231,7 +233,11 @@ test("customer estimate preview and print use polished proposal output", async (
       breakBefore: "page",
       pageBreakBefore: "always",
     });
-  await expect(previewMain).toContainText("Grand Total");
+  await expect(previewMain).toContainText("Contract Price");
+  const previewSummary = page.getByTestId("estimate-preview-summary");
+  await expect(previewSummary).toContainText("Contract Price");
+  await expect(previewSummary).not.toContainText("Discount");
+  await expect(previewSummary).not.toContainText(/Tax \(/);
   await expect(previewMain).not.toContainText(/undefined|null/i);
   await expect(previewMain).not.toContainText(/markup|overhead|profit/i);
 
@@ -269,8 +275,8 @@ test("customer estimate preview and print use polished proposal output", async (
   });
   expect(printPageSize.width).toBeGreaterThan(700);
   expect(printPageSize.minHeight).toBeGreaterThan(1050);
-  await expect(printPages.nth(previewPageCount - 2)).toContainText("Grand Total");
-  await expect(printPages.nth(previewPageCount - 1)).not.toContainText("Grand Total");
+  await expect(printPages.nth(previewPageCount - 2)).toContainText("Contract Price");
+  await expect(printPages.nth(previewPageCount - 1)).not.toContainText("Contract Price");
   await expect(printDocument).toContainText("Project Proposal");
   await expect(printDocument).toContainText("Luxury Design-Build Proposal");
   await expect(printDocument).toContainText("Prepared for");
@@ -307,7 +313,7 @@ test("customer estimate preview and print use polished proposal output", async (
       breakBefore: "page",
       pageBreakBefore: "always",
     });
-  await expect(printDocument).toContainText("Grand Total");
+  await expect(printDocument).toContainText("Contract Price");
   await expect(printDocument).not.toContainText(/undefined|null/i);
   await expect(printDocument).not.toContainText(/markup|overhead|profit/i);
   const printRow = page.getByTestId("estimate-line-item-output").filter({ hasText: lineTitle });
