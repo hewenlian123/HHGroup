@@ -22,6 +22,11 @@ import {
   EstimateTaxPresetMenu,
   EstimateValidUntilQuickChips,
 } from "./estimate-details-drawer-controls";
+import {
+  EstimateDocumentStyleField,
+  EstimateDocumentStyleReadOnly,
+} from "./estimate-document-style-field";
+import type { EstimateDocumentStyle } from "@/lib/estimate-document-style";
 import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 
@@ -40,6 +45,7 @@ type DetailsSnapshot = {
   tax: number;
   discount: number;
   selectedCustomer: CustomerOption | null;
+  documentStyle: EstimateDocumentStyle;
 };
 
 export type EstimateNewCustomerSectionProps = {
@@ -58,6 +64,7 @@ export type EstimateNewCustomerSectionProps = {
   estimateSubtotal: number;
   /** Subtotal + tax (before discount). */
   preDiscountTotal: number;
+  documentStyle: EstimateDocumentStyle;
   submitAttempted: boolean;
   onClientNameChange: (v: string) => void;
   onProjectNameChange: (v: string) => void;
@@ -70,6 +77,7 @@ export type EstimateNewCustomerSectionProps = {
   onTaxTouched: () => void;
   onDiscountChange: (v: number) => void;
   onCustomerPickerChange: (customerId: string | null, customer?: CustomerOption | null) => void;
+  onDocumentStyleChange: (v: EstimateDocumentStyle) => void;
 };
 
 export function EstimateNewCustomerSection({
@@ -98,6 +106,8 @@ export function EstimateNewCustomerSection({
   onTaxTouched,
   onDiscountChange,
   onCustomerPickerChange,
+  onDocumentStyleChange,
+  documentStyle,
 }: EstimateNewCustomerSectionProps): React.ReactElement {
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const snapshotRef = React.useRef<DetailsSnapshot | null>(null);
@@ -114,6 +124,7 @@ export function EstimateNewCustomerSection({
       tax,
       discount,
       selectedCustomer,
+      documentStyle,
     }),
     [
       clientName,
@@ -126,6 +137,7 @@ export function EstimateNewCustomerSection({
       tax,
       discount,
       selectedCustomer,
+      documentStyle,
     ]
   );
 
@@ -147,6 +159,7 @@ export function EstimateNewCustomerSection({
     onTaxChange(s.tax);
     onDiscountChange(s.discount);
     onCustomerPickerChange(s.selectedCustomer?.id ?? null, s.selectedCustomer ?? undefined);
+    onDocumentStyleChange(s.documentStyle);
     snapshotRef.current = null;
   };
 
@@ -237,6 +250,9 @@ export function EstimateNewCustomerSection({
               {estimateDate}
             </dd>
           </div>
+          <div className="min-w-0 hidden lg:block">
+            <EstimateDocumentStyleReadOnly value={documentStyle} />
+          </div>
         </dl>
       </div>
 
@@ -313,6 +329,8 @@ export function EstimateNewCustomerSection({
                   className={ebSheetInput("text-sm")}
                 />
               </div>
+
+              <EstimateDocumentStyleField value={documentStyle} onChange={onDocumentStyleChange} />
 
               <div className="border-t border-white/[0.08] pt-4">
                 <p className={EB.sheetSectionLabel}>Terms & pricing</p>

@@ -20,6 +20,10 @@ import {
   LINE_ITEM_STATUS_LABELS,
 } from "@/app/estimates/_components/estimate-line-item-status";
 import { EstimatePreviewSummaryPanel } from "@/app/estimates/_components/estimate-preview-summary-panel";
+import {
+  DEFAULT_ESTIMATE_DOCUMENT_STYLE,
+  type EstimateDocumentStyle,
+} from "@/lib/estimate-document-style";
 
 export type EstimatePreviewProps = {
   company: DocumentCompanyProfileDTO;
@@ -153,7 +157,15 @@ function ProposalFact({ label, children }: { label: string; children: string }) 
   );
 }
 
-function ScopeLineItems({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: number) => string }) {
+function ScopeLineItems({
+  rows,
+  fmt,
+  showLineAmounts,
+}: {
+  rows: EstimateItemRow[];
+  fmt: (n: number) => string;
+  showLineAmounts: boolean;
+}) {
   return (
     <div className="space-y-4">
       {rows.map((row) => {
@@ -166,7 +178,45 @@ function ScopeLineItems({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: numbe
             data-testid="estimate-line-item-output"
             className="break-inside-avoid"
           >
-            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_9.25rem] sm:gap-8">
+            {showLineAmounts ? (
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_9.25rem] sm:gap-8">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h4 className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-zinc-950">
+                      {itemTitle || row.desc}
+                    </h4>
+                    {row.status && row.status !== DEFAULT_LINE_ITEM_STATUS ? (
+                      <span className="inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-[9px] font-medium tracking-[0.05em] text-zinc-600">
+                        {LINE_ITEM_STATUS_LABELS[row.status] ?? row.status}
+                      </span>
+                    ) : null}
+                  </div>
+                  {body.trim() ? (
+                    <div className="mt-2 max-w-[34rem] text-[13px] leading-[1.62] text-zinc-600">
+                      <LineItemOrScopeBodyPreview body={body} variant="default" />
+                    </div>
+                  ) : null}
+                </div>
+                <div className="min-w-0 text-left sm:text-right">
+                  <p
+                    data-testid="estimate-line-item-total"
+                    className="tabular-nums text-[15px] font-semibold leading-none text-zinc-950"
+                  >
+                    {lineTotal}
+                  </p>
+                  <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+                    <span className="tabular-nums">Qty {row.qty}</span>
+                    {row.unit ? <span> · {row.unit}</span> : null}
+                  </p>
+                  <p
+                    data-testid="estimate-line-item-unit-price"
+                    className="text-[11px] leading-relaxed text-zinc-500"
+                  >
+                    Unit {unitPrice}
+                  </p>
+                </div>
+              </div>
+            ) : (
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h4 className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-zinc-950">
@@ -184,25 +234,7 @@ function ScopeLineItems({ rows, fmt }: { rows: EstimateItemRow[]; fmt: (n: numbe
                   </div>
                 ) : null}
               </div>
-              <div className="min-w-0 text-left sm:text-right">
-                <p
-                  data-testid="estimate-line-item-total"
-                  className="tabular-nums text-[15px] font-semibold leading-none text-zinc-950"
-                >
-                  {lineTotal}
-                </p>
-                <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
-                  <span className="tabular-nums">Qty {row.qty}</span>
-                  {row.unit ? <span> · {row.unit}</span> : null}
-                </p>
-                <p
-                  data-testid="estimate-line-item-unit-price"
-                  className="text-[11px] leading-relaxed text-zinc-500"
-                >
-                  Unit {unitPrice}
-                </p>
-              </div>
-            </div>
+            )}
           </article>
         );
       })}
@@ -353,6 +385,10 @@ export function EstimatePreviewContent({
   const estimateDateStr =
     meta?.estimateDate ?? (estimate.updatedAt ? estimate.updatedAt.slice(0, 10) : "—");
   const statusLabel = estimate.status === "Converted" ? "Converted to Project" : estimate.status;
+  const documentStyle: EstimateDocumentStyle =
+    meta?.documentStyle ?? DEFAULT_ESTIMATE_DOCUMENT_STYLE;
+  const isProposalStyle = documentStyle === "proposal";
+  const showLineAmounts = !isProposalStyle;
 
   const costSections = groupEstimateItemsByCategoryId(items, categories, catalogNameByCode);
   const scopePages = paginateScopeSections(costSections);
@@ -366,6 +402,7 @@ export function EstimatePreviewContent({
   return (
     <article
       data-testid="estimate-document"
+      data-estimate-document-style={documentStyle}
       className="estimate-preview-paper-stack text-zinc-900 print:block"
     >
       {scopePages.map((pageSections, pageIndex) => {
@@ -431,11 +468,15 @@ export function EstimatePreviewContent({
                             </span>
                           ) : null}
                         </h3>
-                        <p className="shrink-0 text-[12px] tabular-nums text-zinc-500">
-                          <span className="font-semibold text-zinc-900">${fmt(sectionTotal)}</span>
-                        </p>
+                        {showLineAmounts ? (
+                          <p className="shrink-0 text-[12px] tabular-nums text-zinc-500">
+                            <span className="font-semibold text-zinc-900">
+                              ${fmt(sectionTotal)}
+                            </span>
+                          </p>
+                        ) : null}
                       </div>
-                      <ScopeLineItems rows={rows} fmt={fmt} />
+                      <ScopeLineItems rows={rows} fmt={fmt} showLineAmounts={showLineAmounts} />
                     </div>
                   ))}
                 </>
@@ -448,7 +489,7 @@ export function EstimatePreviewContent({
                 tax={summary.tax}
                 discount={summary.discount}
                 grandTotal={summary.grandTotal}
-                isProposalStyle
+                isProposalStyle={isProposalStyle}
                 fmt={fmt}
               />
             ) : null}

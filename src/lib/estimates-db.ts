@@ -6,6 +6,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 import { generateCode } from "@/lib/estimate-cost-code-suggest";
+import {
+  DEFAULT_ESTIMATE_DOCUMENT_STYLE,
+  mergeDocumentStyleIntoCostCategoryNames,
+  readEstimateDocumentStyleFromCostCategoryNames,
+  type EstimateDocumentStyle,
+} from "@/lib/estimate-document-style";
 import { normalizeEstimateNoteBlocks, type EstimateNoteBlock } from "@/lib/estimate-notes";
 
 // —— Types ——
@@ -41,6 +47,7 @@ export type EstimateMetaRecord = {
   notes: string | null;
   documentNotes: EstimateNoteBlock[];
   salesPerson: string | null;
+  documentStyle: EstimateDocumentStyle;
 };
 
 export type EstimateCategoryRecord = { costCode: string; displayName: string; orderIndex: number };
@@ -278,6 +285,7 @@ export async function createEstimateWithClient(
     notes?: string;
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
+    documentStyle?: EstimateDocumentStyle;
     tax?: number;
     discount?: number;
     overheadPct?: number;
@@ -333,6 +341,10 @@ export async function createEstimateWithClient(
   if (payload.documentNotes != null)
     metaIns.document_notes = normalizeEstimateNoteBlocks(payload.documentNotes);
   if (payload.salesPerson != null) metaIns.sales_person = payload.salesPerson;
+  metaIns.cost_category_names = mergeDocumentStyleIntoCostCategoryNames(
+    {},
+    payload.documentStyle ?? DEFAULT_ESTIMATE_DOCUMENT_STYLE
+  );
 
   const { error: e2Initial } = await c.from("estimate_meta").insert(metaIns);
   let e2 = e2Initial;
@@ -364,6 +376,7 @@ export async function createEstimate(payload: {
   notes?: string;
   documentNotes?: EstimateNoteBlock[];
   salesPerson?: string;
+  documentStyle?: EstimateDocumentStyle;
   tax?: number;
   discount?: number;
   overheadPct?: number;
@@ -385,6 +398,7 @@ export async function createEstimateWithItemsWithClient(
     notes?: string;
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
+    documentStyle?: EstimateDocumentStyle;
     tax?: number;
     discount?: number;
     overheadPct?: number;
@@ -420,6 +434,7 @@ export async function createEstimateWithItemsWithClient(
     notes: payload.notes,
     documentNotes: payload.documentNotes,
     salesPerson: payload.salesPerson,
+    documentStyle: payload.documentStyle,
     tax: payload.tax,
     discount: payload.discount,
     overheadPct: payload.overheadPct,
@@ -631,6 +646,7 @@ export async function getEstimateMeta(
     notes: (row.notes as string) ?? null,
     documentNotes: normalizeEstimateNoteBlocks(row.document_notes),
     salesPerson: (row.sales_person as string) ?? null,
+    documentStyle: readEstimateDocumentStyleFromCostCategoryNames(row.cost_category_names),
   };
 }
 
@@ -1113,11 +1129,18 @@ export async function updateEstimateMetaWithClient(
     notes?: string;
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
+    documentStyle?: EstimateDocumentStyle;
     categoryNames?: Record<string, string>;
   }
 ): Promise<boolean> {
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
+
+  const { data: existingMetaRow } = await c
+    .from("estimate_meta")
+    .select("cost_category_names")
+    .eq("estimate_id", estimateId)
+    .maybeSingle();
 
   const updates: Record<string, unknown> = {};
   if (payload.client?.name != null) updates.client_name = payload.client.name;
@@ -1138,6 +1161,12 @@ export async function updateEstimateMetaWithClient(
   if (payload.documentNotes != null)
     updates.document_notes = normalizeEstimateNoteBlocks(payload.documentNotes);
   if (payload.salesPerson != null) updates.sales_person = payload.salesPerson;
+  if (payload.documentStyle != null) {
+    updates.cost_category_names = mergeDocumentStyleIntoCostCategoryNames(
+      (existingMetaRow as { cost_category_names?: unknown } | null)?.cost_category_names,
+      payload.documentStyle
+    );
+  }
 
   if (Object.keys(updates).length > 0) {
     const { data: metaRow, error: e1 } = await c
@@ -1214,6 +1243,7 @@ export async function updateEstimateMeta(
     notes?: string;
     documentNotes?: EstimateNoteBlock[];
     salesPerson?: string;
+    documentStyle?: EstimateDocumentStyle;
     categoryNames?: Record<string, string>;
   }
 ): Promise<boolean> {

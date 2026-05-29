@@ -21,6 +21,7 @@ export type CreateEstimatePayload = {
   discount?: number;
   overheadPct?: number;
   profitPct?: number;
+  documentStyle?: import("@/lib/estimate-document-style").EstimateDocumentStyle;
   costCategoryNames?: Record<string, string>;
   items: Array<{
     costCode: string;
@@ -97,6 +98,7 @@ export async function createEstimateWithItemsAction(
       discount: payload.discount ?? 0,
       overheadPct: payload.overheadPct ?? 0,
       profitPct: payload.profitPct ?? 0,
+      documentStyle: payload.documentStyle,
       categoryNames: payload.costCategoryNames,
       items: items.map((i) => ({
         costCode: i.costCode,

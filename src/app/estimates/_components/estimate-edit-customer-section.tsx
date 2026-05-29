@@ -21,6 +21,11 @@ import {
   EstimateTaxPresetMenu,
   EstimateValidUntilQuickChips,
 } from "./estimate-details-drawer-controls";
+import {
+  EstimateDocumentStyleField,
+  EstimateDocumentStyleReadOnly,
+} from "./estimate-document-style-field";
+import type { EstimateDocumentStyle } from "@/lib/estimate-document-style";
 import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
 
@@ -36,6 +41,7 @@ export type EstimateEditCustomerMeta = {
   validUntil?: string | null;
   salesPerson?: string | null;
   notes?: string | null;
+  documentStyle?: EstimateDocumentStyle;
 };
 
 function ReadOnlyMetaRows({
@@ -43,14 +49,16 @@ function ReadOnlyMetaRows({
   project,
   address,
   estimateDate,
+  documentStyle,
 }: {
   customer: string;
   project: string;
   address: string;
   estimateDate: string;
+  documentStyle: EstimateDocumentStyle;
 }): React.ReactElement {
   return (
-    <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-4">
+    <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-5">
       <div className="min-w-0">
         <dt className={metaLabel}>Customer</dt>
         <dd className="truncate text-[14px] font-medium leading-snug text-[#F6F7FA]">
@@ -73,6 +81,7 @@ function ReadOnlyMetaRows({
           {estimateDate}
         </dd>
       </div>
+      <EstimateDocumentStyleReadOnly value={documentStyle} />
     </dl>
   );
 }
@@ -108,6 +117,9 @@ export function EstimateEditCustomerSection({
   const [validUntil, setValidUntil] = React.useState(meta.validUntil ?? "");
   const [taxDraft, setTaxDraft] = React.useState(tax);
   const [discountDraft, setDiscountDraft] = React.useState(discount);
+  const [documentStyleDraft, setDocumentStyleDraft] = React.useState<EstimateDocumentStyle>(
+    meta.documentStyle ?? "proposal"
+  );
   const formRef = React.useRef<HTMLFormElement | null>(null);
 
   React.useEffect(() => {
@@ -115,7 +127,8 @@ export function EstimateEditCustomerSection({
     setValidUntil(meta.validUntil ?? "");
     setTaxDraft(tax);
     setDiscountDraft(discount);
-  }, [discount, meta.estimateDate, meta.validUntil, tax, today]);
+    setDocumentStyleDraft(meta.documentStyle ?? "proposal");
+  }, [discount, meta.documentStyle, meta.estimateDate, meta.validUntil, tax, today]);
 
   React.useEffect(() => {
     if (isReadOnly) setDetailsOpen(false);
@@ -128,6 +141,7 @@ export function EstimateEditCustomerSection({
     setValidUntil(meta.validUntil ?? "");
     setTaxDraft(tax);
     setDiscountDraft(discount);
+    setDocumentStyleDraft(meta.documentStyle ?? "proposal");
     setFormResetKey((k) => k + 1);
   };
 
@@ -171,6 +185,7 @@ export function EstimateEditCustomerSection({
           project={meta.project.name}
           address={meta.client.address}
           estimateDate={displayDate}
+          documentStyle={meta.documentStyle ?? "proposal"}
         />
       </div>
 
@@ -253,6 +268,11 @@ export function EstimateEditCustomerSection({
                       />
                     </div>
                   </div>
+
+                  <EstimateDocumentStyleField
+                    value={documentStyleDraft}
+                    onChange={setDocumentStyleDraft}
+                  />
 
                   <div className="border-t border-white/[0.08] pt-4">
                     <p className={EB.sheetSectionLabel}>Terms & pricing</p>
