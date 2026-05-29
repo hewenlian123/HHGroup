@@ -1,0 +1,11 @@
+{
+  "functions": {
+    "src/app/api/estimates/[id]/pdf/route.ts": {
+      "memory": 3008,
+      "maxDuration": 60
+    }
+  },
+  "env": {
+    "AWS_LAMBDA_JS_RUNTIME": "nodejs20.x"
+  }
+}
