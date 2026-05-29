@@ -152,11 +152,18 @@ test("customer estimate preview and print use polished proposal output", async (
 
   await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
   const downloadPdfLink = page.getByRole("link", { name: "Download PDF" });
-  await expect(downloadPdfLink).toHaveAttribute(
-    "href",
-    `/estimates/${estimateId}/print?autoprint=1`
+  await expect(downloadPdfLink).toHaveAttribute("href", `/api/estimates/${estimateId}/pdf`);
+  await expect(downloadPdfLink).toHaveAttribute("download", "");
+
+  const pdfResponse = await page.request.get(`/api/estimates/${estimateId}/pdf`);
+  expect(pdfResponse.ok()).toBe(true);
+  expect(pdfResponse.headers()["content-type"] ?? "").toContain("application/pdf");
+  expect(pdfResponse.headers()["content-disposition"] ?? "").toMatch(
+    /attachment;\s*filename="Estimate-/
   );
-  await expect(downloadPdfLink).toHaveAttribute("target", "_blank");
+  const pdfBytes = await pdfResponse.body();
+  expect(pdfBytes.subarray(0, 4).toString("utf8")).toBe("%PDF");
+  expect(pdfBytes.length).toBeGreaterThan(2_000);
   const previewMain = page.locator("main");
   await expect(previewMain).toContainText("Project Proposal");
   await expect(previewMain).toContainText("Luxury Design-Build Proposal");

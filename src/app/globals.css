@@ -1423,6 +1423,36 @@
   }
 }
 
+/* Server PDF capture (/estimates/[id]/print?pdf=1) — collapse app chrome before Chromium print. */
+body:has([data-estimate-pdf-capture="true"]) .app-shell aside,
+body:has([data-estimate-pdf-capture="true"]) .app-shell > div > header,
+body:has([data-estimate-pdf-capture="true"]) [data-app-main-column] > header,
+body:has([data-estimate-pdf-capture="true"]) [data-app-main-column] > nav.fixed.bottom-0,
+body:has([data-estimate-pdf-capture="true"])
+  [data-app-main-column]
+  > div.fixed.z-40[aria-label="Quick actions"] {
+  display: none !important;
+}
+
+body:has([data-estimate-pdf-capture="true"]) .app-shell,
+body:has([data-estimate-pdf-capture="true"]) [data-app-main-column] {
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+body:has([data-estimate-pdf-capture="true"]) .app-shell main,
+body:has([data-estimate-pdf-capture="true"]) [data-app-main-column] > main {
+  flex: none !important;
+  height: auto !important;
+  max-height: none !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  padding: 0 !important;
+}
+
 @media print {
   @page {
     size: A4;

@@ -63,6 +63,8 @@ export default function nextConfig(phase) {
     // Avoid broken server chunks like `vendor-chunks/@supabase.js` (MODULE_NOT_FOUND) on App Router pages.
     experimental: {
       serverComponentsExternalPackages: [
+        "@sparticuz/chromium",
+        "puppeteer-core",
         "@supabase/supabase-js",
         "@supabase/ssr",
         // Used by ensure-expenses-source-columns; bundling breaks RSC route chunks (webpack __webpack_modules__ error).
