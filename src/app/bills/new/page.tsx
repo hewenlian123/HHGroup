@@ -18,6 +18,7 @@ export default async function NewBillPage() {
 
   return (
     <PageLayout
+      className="dark financial-nums min-w-0 overflow-x-hidden text-[var(--neo-canvas-text-secondary)]"
       header={
         <PageHeader title="New bill" description="Create a vendor, labor, or other payable bill." />
       }
