@@ -22,10 +22,11 @@ export default async function EstimatePrintPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ autoprint?: string }>;
+  searchParams: Promise<{ autoprint?: string; pdf?: string }>;
 }) {
   const { id } = await params;
-  const { autoprint } = await searchParams;
+  const { autoprint, pdf } = await searchParams;
+  const pdfCapture = pdf === "1";
   const readClient = getServerSupabaseInternalNoStore();
 
   const [estimate, meta, items, categories, summary, paymentSchedule, costCodes, company] =
@@ -47,14 +48,15 @@ export default async function EstimatePrintPage({
 
   return (
     <div
-      className="min-h-screen bg-white text-zinc-900 print:min-h-0"
+      className={`min-h-screen bg-white text-zinc-900 print:min-h-0${pdfCapture ? " estimate-print-pdf-capture" : ""}`}
       data-read-only="true"
+      data-estimate-pdf-capture={pdfCapture ? "true" : undefined}
       role="document"
       aria-label="Estimate print view"
     >
-      <SetBreadcrumbEntityTitle label={estimate.number} />
-      <AutoprintTrigger enabled={autoprint === "1"} />
-      <PrintActionBar estimateId={id} />
+      {!pdfCapture ? <SetBreadcrumbEntityTitle label={estimate.number} /> : null}
+      {!pdfCapture ? <AutoprintTrigger enabled={autoprint === "1"} /> : null}
+      {!pdfCapture ? <PrintActionBar estimateId={id} /> : null}
       <style
         dangerouslySetInnerHTML={{
           __html: `
