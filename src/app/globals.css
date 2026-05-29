@@ -1453,6 +1453,50 @@ body:has([data-estimate-pdf-capture="true"]) [data-app-main-column] > main {
   padding: 0 !important;
 }
 
+/* Server PDF capture (?pdf=1) — pure white paper; no preview shadow/gutter/frame. */
+html:has([data-estimate-pdf-capture="true"]),
+body:has([data-estimate-pdf-capture="true"]) {
+  background: #fff !important;
+  color-scheme: light;
+}
+
+body:has([data-estimate-pdf-capture="true"]) .app-shell,
+body:has([data-estimate-pdf-capture="true"]) [data-app-main-column],
+body:has([data-estimate-pdf-capture="true"]) .app-shell main,
+body:has([data-estimate-pdf-capture="true"]) [data-app-main-column] > main,
+body:has([data-estimate-pdf-capture="true"]) .estimate-print-pdf-capture,
+body:has([data-estimate-pdf-capture="true"]) .estimate-preview-paper-stack,
+body:has([data-estimate-pdf-capture="true"]) [data-testid="estimate-document"] {
+  background: #fff !important;
+}
+
+body:has([data-estimate-pdf-capture="true"]) .estimate-preview-paper-stack {
+  display: block;
+  gap: 0;
+}
+
+body:has([data-estimate-pdf-capture="true"]) .estimate-a4-page {
+  width: 210mm !important;
+  min-height: 297mm;
+  margin: 0 !important;
+  padding: 12mm !important;
+  background: #fff !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  break-after: page;
+  page-break-after: always;
+}
+
+body:has([data-estimate-pdf-capture="true"]) .estimate-a4-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+body:has([data-estimate-pdf-capture="true"]) .estimate-page-label {
+  display: none !important;
+}
+
 @media print {
   @page {
     size: A4;
@@ -1497,16 +1541,20 @@ body:has([data-estimate-pdf-capture="true"]) [data-app-main-column] > main {
     overflow: visible !important;
     padding: 0 !important;
   }
+  html,
   body {
-    background: #fff;
+    background: #fff !important;
+    color-scheme: light;
   }
   .estimate-preview-shell {
     background: #fff !important;
     padding: 0 !important;
   }
-  .estimate-preview-paper-stack {
+  .estimate-preview-paper-stack,
+  .estimate-print-pdf-capture {
     display: block;
     gap: 0;
+    background: #fff !important;
   }
   .estimate-a4-page {
     width: 210mm !important;
@@ -1514,6 +1562,8 @@ body:has([data-estimate-pdf-capture="true"]) [data-app-main-column] > main {
     margin: 0 !important;
     padding: 12mm !important;
     background: #fff !important;
+    border: none !important;
+    outline: none !important;
     box-shadow: none !important;
     break-after: page;
     page-break-after: always;
