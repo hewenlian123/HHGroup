@@ -167,6 +167,34 @@ async function createQaFixture(): Promise<{
   };
 }
 
+const AP_BILLS_REQUIRED_COLUMNS = [
+  "bill_no",
+  "bill_type",
+  "vendor_name",
+  "project_id",
+  "issue_date",
+  "due_date",
+  "amount",
+  "paid_amount",
+  "balance_amount",
+  "status",
+  "category",
+  "notes",
+] as const;
+
+/** Bills (AP) module must exist after migrations (see 20260529122000_restore_ap_bills_after_remote_schema). */
+async function assertApBillsModuleSchema(): Promise<void> {
+  const db = serviceRoleClient();
+  const { error: billsError } = await db
+    .from("ap_bills")
+    .select(AP_BILLS_REQUIRED_COLUMNS.join(","))
+    .limit(0);
+  expect(billsError).toBeNull();
+
+  const { error: paymentsError } = await db.from("ap_bill_payments").select("id,bill_id").limit(0);
+  expect(paymentsError).toBeNull();
+}
+
 async function cleanupQaFixture(ids: {
   projectId?: string;
   companyProfileId?: string;
@@ -241,7 +269,8 @@ test.describe("System QA check", () => {
       expect(checks.some((check) => check.diagnosticCode === "optional_schema_warning")).toBe(
         false
       );
-      expect(text).not.toMatch(/public\.ap_bills|schema cache|Could not find/i);
+      expect(text).not.toMatch(/schema cache|Could not find the table/i);
+      await assertApBillsModuleSchema();
 
       const destructive = body.sections?.find((section) => section.id === "destructive-safety");
       expect(destructive?.checks?.length ?? 0).toBeGreaterThan(0);
@@ -272,16 +301,17 @@ test.describe("System QA check", () => {
         timeout: 30_000,
       });
       await expect(page.getByText("Optional Modules", { exact: true })).toBeVisible();
+      await assertApBillsModuleSchema();
       const optionalModulesSection = page
         .locator("details")
         .filter({ hasText: "Optional Modules" })
         .first();
       await optionalModulesSection.locator("summary").click();
       await expect(
-        optionalModulesSection
-          .getByRole("cell", { name: /AP Bills module is optional and not configured\./ })
-          .first()
-      ).toBeVisible();
+        optionalModulesSection.getByRole("cell", {
+          name: /AP Bills module is optional and not configured\./,
+        })
+      ).toHaveCount(0);
 
       await page.getByRole("button", { name: /Run System QA|Running QA/ }).click();
       await expect(page.getByText("Page availability and visible errors")).toBeVisible({
