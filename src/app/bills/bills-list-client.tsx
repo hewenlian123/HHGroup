@@ -6,18 +6,27 @@ import * as React from "react";
 import { startTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { StatusBadge, ConfirmDialog, DeleteRowAction } from "@/components/base";
-import { FilterBar } from "@/components/filter-bar";
+import {
+  StatusBadge,
+  ConfirmDialog,
+  DeleteRowAction,
+  KpiTile,
+  NeoAmount,
+  NeoFieldLabel,
+  NeoInput,
+  NeoPanel,
+  NeoSelect,
+  NeoTable,
+  FilterToolbar,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils";
 import {
   listTableAmountCellClassName,
   listTablePrimaryCellClassName,
   listTableRowClassName,
 } from "@/lib/list-table-interaction";
+import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +46,12 @@ import {
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { TYPO } from "@/lib/typography";
+import {
+  billsFilterFieldClass,
+  billsGhostButtonClass,
+  billsPrimaryButtonClass,
+} from "./bills-ui-styles";
 
 function startOfToday(): Date {
   const d = new Date();
@@ -146,7 +161,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-6 text-foreground [font-family:var(--font-inter)_var(--font-geist-sans)_sans-serif]",
+        "flex min-w-0 flex-col gap-4 overflow-x-hidden text-[var(--neo-text-primary)] md:gap-5",
         mobileListPagePaddingClass,
         "max-md:!gap-3"
       )}
@@ -162,14 +177,14 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         searchSlot={
           <div className="relative w-full">
             <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+            <NeoInput
               type="text"
               placeholder="Vendor, reference…"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               onBlur={() => setFilters({ search: searchInput })}
               onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
-              className="h-10 pl-8 text-sm"
+              className={cn("h-10 pl-8 text-sm", billsFilterFieldClass)}
               aria-label="Search bills"
             />
           </div>
@@ -177,11 +192,11 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       />
       <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Status</p>
-          <Select
+          <NeoFieldLabel>Status</NeoFieldLabel>
+          <NeoSelect
             value={status}
             onChange={(e) => setFilters({ status: e.target.value })}
-            className="w-full"
+            className={cn("w-full", billsFilterFieldClass)}
           >
             <option value="">All</option>
             {AP_BILL_STATUSES.map((s) => (
@@ -189,14 +204,14 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 {s}
               </option>
             ))}
-          </Select>
+          </NeoSelect>
         </div>
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Type</p>
-          <Select
+          <NeoFieldLabel>Type</NeoFieldLabel>
+          <NeoSelect
             value={billType}
             onChange={(e) => setFilters({ bill_type: e.target.value })}
-            className="w-full"
+            className={cn("w-full", billsFilterFieldClass)}
           >
             <option value="">All</option>
             {AP_BILL_TYPES.map((t) => (
@@ -204,14 +219,14 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 {t}
               </option>
             ))}
-          </Select>
+          </NeoSelect>
         </div>
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Project</p>
-          <Select
+          <NeoFieldLabel>Project</NeoFieldLabel>
+          <NeoSelect
             value={projectId}
             onChange={(e) => setFilters({ project_id: e.target.value })}
-            className="w-full"
+            className={cn("w-full", billsFilterFieldClass)}
           >
             <option value="">All</option>
             {projects.map((p) => (
@@ -219,158 +234,137 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 {p.name}
               </option>
             ))}
-          </Select>
+          </NeoSelect>
         </div>
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Date from</p>
-          <Input
+          <NeoFieldLabel>Date from</NeoFieldLabel>
+          <NeoInput
             type="date"
             value={dateFrom}
             onChange={(e) => setFilters({ date_from: e.target.value })}
-            className="w-full"
+            className={cn("w-full tabular-nums [color-scheme:dark]", billsFilterFieldClass)}
           />
         </div>
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Date to</p>
-          <Input
+          <NeoFieldLabel>Date to</NeoFieldLabel>
+          <NeoInput
             type="date"
             value={dateTo}
             onChange={(e) => setFilters({ date_to: e.target.value })}
-            className="w-full"
+            className={cn("w-full tabular-nums [color-scheme:dark]", billsFilterFieldClass)}
           />
         </div>
-        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+        <Button
+          type="button"
+          className={cn("w-full rounded-[0.625rem]", billsPrimaryButtonClass)}
+          onClick={() => setFiltersOpen(false)}
+        >
           Done
         </Button>
       </MobileFilterSheet>
 
-      <Card className="hidden overflow-hidden p-0 md:block">
-        <div className="grid divide-y divide-[var(--neo-border)] sm:grid-cols-2 sm:divide-y-0 md:grid-cols-4 md:divide-x">
-          <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Outstanding
-            </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-text-primary dark:text-foreground">
-              {formatCurrency(summary.totalOutstanding)}
-            </p>
-          </div>
-          <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Overdue
-            </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-text-primary dark:text-foreground">
-              {formatCurrency(summary.overdueAmount)}
-            </p>
-          </div>
-          <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Due This Week
-            </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-text-primary dark:text-foreground">
-              {formatCurrency(summary.dueThisWeekAmount)}
-            </p>
-          </div>
-          <div className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Paid This Month
-            </p>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-hh-profit-positive dark:text-hh-profit-positive">
-              {formatCurrency(summary.paidThisMonthAmount)}
-            </p>
-          </div>
-        </div>
-      </Card>
+      <section className="hidden min-w-0 grid-cols-2 gap-3 md:grid lg:grid-cols-4">
+        <KpiTile label="Outstanding" value={formatCurrency(summary.totalOutstanding)} />
+        <KpiTile label="Overdue" value={formatCurrency(summary.overdueAmount)} />
+        <KpiTile label="Due this week" value={formatCurrency(summary.dueThisWeekAmount)} />
+        <KpiTile
+          label="Paid this month"
+          value={formatCurrency(summary.paidThisMonthAmount)}
+          tone="positive"
+        />
+      </section>
 
-      <FilterBar className="hidden md:block">
-        <div className="flex w-full flex-col gap-4">
-          <div className="space-y-1">
-            <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-              Search
-            </p>
-            <Input
-              type="text"
-              placeholder="Vendor, reference…"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onBlur={() => setFilters({ search: searchInput })}
-              onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                Status
-              </p>
-              <Select
-                value={status}
-                onChange={(e) => setFilters({ status: e.target.value })}
-                className="min-h-[44px] md:min-h-9"
-              >
-                <option value="">All</option>
-                {AP_BILL_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </Select>
+      <NeoPanel className="hidden md:block" bodyClassName="p-3">
+        <FilterToolbar className="border-0 bg-transparent p-0 shadow-none">
+          <div className="flex w-full min-w-0 flex-col gap-4">
+            <div className="min-w-0 space-y-1.5">
+              <NeoFieldLabel>Search</NeoFieldLabel>
+              <NeoInput
+                type="text"
+                placeholder="Vendor, reference…"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onBlur={() => setFilters({ search: searchInput })}
+                onKeyDown={(e) => e.key === "Enter" && setFilters({ search: searchInput })}
+                className={billsFilterFieldClass}
+              />
             </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                Type
-              </p>
-              <Select
-                value={billType}
-                onChange={(e) => setFilters({ bill_type: e.target.value })}
-                className="min-h-[44px] md:min-h-9"
-              >
-                <option value="">All</option>
-                {AP_BILL_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                Project
-              </p>
-              <Select
-                value={projectId}
-                onChange={(e) => setFilters({ project_id: e.target.value })}
-                className="min-h-[44px] md:min-h-9"
-              >
-                <option value="">All</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
-                Date range
-              </p>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setFilters({ date_from: e.target.value })}
-                  className="w-full sm:flex-1"
-                />
-                <span className="text-muted-foreground text-sm shrink-0 hidden sm:inline">–</span>
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setFilters({ date_to: e.target.value })}
-                  className="w-full sm:flex-1"
-                />
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="min-w-0 space-y-1.5">
+                <NeoFieldLabel>Status</NeoFieldLabel>
+                <NeoSelect
+                  value={status}
+                  onChange={(e) => setFilters({ status: e.target.value })}
+                  className={billsFilterFieldClass}
+                >
+                  <option value="">All</option>
+                  {AP_BILL_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </NeoSelect>
+              </div>
+              <div className="min-w-0 space-y-1.5">
+                <NeoFieldLabel>Type</NeoFieldLabel>
+                <NeoSelect
+                  value={billType}
+                  onChange={(e) => setFilters({ bill_type: e.target.value })}
+                  className={billsFilterFieldClass}
+                >
+                  <option value="">All</option>
+                  {AP_BILL_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </NeoSelect>
+              </div>
+              <div className="min-w-0 space-y-1.5">
+                <NeoFieldLabel>Project</NeoFieldLabel>
+                <NeoSelect
+                  value={projectId}
+                  onChange={(e) => setFilters({ project_id: e.target.value })}
+                  className={billsFilterFieldClass}
+                >
+                  <option value="">All</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </NeoSelect>
+              </div>
+              <div className="min-w-0 space-y-1.5">
+                <NeoFieldLabel>Date range</NeoFieldLabel>
+                <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                  <NeoInput
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setFilters({ date_from: e.target.value })}
+                    className={cn(
+                      "w-full min-w-0 tabular-nums [color-scheme:dark] sm:flex-1",
+                      billsFilterFieldClass
+                    )}
+                  />
+                  <span className="hidden shrink-0 text-sm text-[var(--neo-text-tertiary)] sm:inline">
+                    –
+                  </span>
+                  <NeoInput
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setFilters({ date_to: e.target.value })}
+                    className={cn(
+                      "w-full min-w-0 tabular-nums [color-scheme:dark] sm:flex-1",
+                      billsFilterFieldClass
+                    )}
+                  />
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </FilterBar>
+        </FilterToolbar>
+      </NeoPanel>
 
       {/* Table or empty state */}
       {localBills.length === 0 ? (
@@ -379,41 +373,48 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             icon={<MoreHorizontal className="h-8 w-8 opacity-80" aria-hidden />}
             message="No bills yet. Create one to track payables."
             action={
-              <Button asChild size="sm" variant="outline">
+              <Button asChild size="sm" className={billsPrimaryButtonClass}>
                 <Link href="/bills/new">New bill</Link>
               </Button>
             }
           />
-          <div className="hidden md:flex min-h-[280px] flex-col items-center justify-center text-center">
-            <p className="text-sm font-medium text-foreground">No bills yet</p>
-            <Button asChild size="touch" className="mt-4 rounded-sm">
-              <Link href="/bills/new">Create First Bill</Link>
+          <NeoPanel
+            className="hidden md:flex"
+            bodyClassName="flex min-h-[240px] flex-col items-center justify-center px-6 py-10 text-center"
+          >
+            <p className="text-[15px] font-medium text-[var(--neo-text-primary)]">No bills yet</p>
+            <p className="mt-1 max-w-sm text-[13px] text-[var(--neo-text-secondary)]">
+              Track vendor, labor, and other payables in one place.
+            </p>
+            <Button asChild size="touch" className={cn("mt-5", billsPrimaryButtonClass)}>
+              <Link href="/bills/new">Create first bill</Link>
             </Button>
-          </div>
+          </NeoPanel>
         </>
       ) : (
         <>
-          <div className="divide-y divide-[var(--neo-border)] md:hidden">
+          <div className="min-w-0 divide-y divide-[var(--neo-border)] md:hidden">
             {localBills.map((bill) => {
               const s = statusPill(bill);
               return (
-                <div key={bill.id} className="group relative flex min-h-[48px] items-center py-2.5">
+                <div
+                  key={bill.id}
+                  className="group relative flex min-h-[52px] min-w-0 items-center py-2.5"
+                >
                   <Link
                     href={`/bills/${bill.id}`}
                     className="flex min-w-0 flex-1 items-center gap-3 pr-10 text-left"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">
+                      <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
                         {bill.vendor_name}
                       </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {bill.project_name ?? "—"} · Due {formatDate(bill.due_date)}
+                      <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                        {bill.project_name ?? "No project"} · Due {formatDate(bill.due_date)}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
-                      <span className="text-sm font-medium tabular-nums">
-                        {formatCurrency(bill.amount)}
-                      </span>
+                      <NeoAmount className="text-sm">{formatCurrency(bill.amount)}</NeoAmount>
                       <StatusBadge label={s.label} variant={s.variant} />
                     </div>
                   </Link>
@@ -432,122 +433,115 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               );
             })}
           </div>
-          {/* Desktop/tablet: table */}
-          <div className="hidden md:block airtable-table-wrap airtable-table-wrap--ruled">
-            <div className="airtable-table-scroll">
-              <table className="w-full min-w-[640px] text-[13px] lg:min-w-0">
-                <thead>
-                  <tr>
-                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
-                      Vendor
-                    </th>
-                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
-                      Project
-                    </th>
-                    <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)] tabular-nums">
-                      Amount
-                    </th>
-                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
-                      Due Date
-                    </th>
-                    <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
-                      Status
-                    </th>
-                    <th className="h-8 w-10 px-1" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {localBills.map((bill) => (
-                    <tr
-                      key={bill.id}
-                      className={listTableRowClassName}
-                      onClick={() => startTransition(() => router.push(`/bills/${bill.id}`))}
-                    >
-                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
-                        <span
-                          className={cn(
-                            "block max-w-[220px] truncate font-medium text-foreground hover:underline",
-                            listTablePrimaryCellClassName
-                          )}
-                        >
-                          {bill.vendor_name}
-                        </span>
-                      </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] text-muted-foreground">
-                        <span className="block max-w-[240px] truncate">
-                          {bill.project_name ?? "—"}
-                        </span>
-                      </td>
-                      <td
+          <NeoPanel className="hidden min-w-0 md:block" bodyClassName="p-0">
+            <NeoTable
+              className="rounded-none border-0 shadow-none"
+              tableClassName="min-w-[720px] lg:min-w-0"
+            >
+              <thead>
+                <tr>
+                  <th className={tableRawThClass}>Vendor</th>
+                  <th className={tableRawThClass}>Project</th>
+                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Amount</th>
+                  <th className={tableRawThClass}>Due date</th>
+                  <th className={tableRawThClass}>Status</th>
+                  <th className={cn(tableRawThClass, "w-10 px-1")} aria-hidden />
+                </tr>
+              </thead>
+              <tbody>
+                {localBills.map((bill) => (
+                  <tr
+                    key={bill.id}
+                    className={listTableRowClassName}
+                    onClick={() => startTransition(() => router.push(`/bills/${bill.id}`))}
+                  >
+                    <td className={cn(tableRawTdClass, "max-w-[220px]")}>
+                      <span
                         className={cn(
-                          "h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums whitespace-nowrap",
-                          listTableAmountCellClassName
+                          "block truncate font-medium text-[var(--neo-text-primary)] hover:underline",
+                          listTablePrimaryCellClassName
                         )}
                       >
-                        {formatCurrency(bill.amount)}
-                      </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums whitespace-nowrap text-muted-foreground">
-                        {formatDate(bill.due_date)}
-                      </td>
-                      <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px]">
-                        {(() => {
-                          const s = statusPill(bill);
-                          return <StatusBadge label={s.label} variant={s.variant} />;
-                        })()}
-                      </td>
-                      <td
-                        className="h-11 min-h-[44px] px-1 py-0 align-middle text-[13px]"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex items-center justify-end gap-2">
-                          {bill.status === "Draft" && bill.paid_amount <= 0 ? (
-                            <DeleteRowAction onDelete={() => handleDeleteDraft(bill.id)} />
-                          ) : null}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="btn-outline-ghost h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="min-w-[140px]">
+                        {bill.vendor_name}
+                      </span>
+                    </td>
+                    <td
+                      className={cn(
+                        tableRawTdClass,
+                        "max-w-[240px] text-[var(--neo-text-secondary)]"
+                      )}
+                    >
+                      <span className="block truncate">{bill.project_name ?? "—"}</span>
+                    </td>
+                    <td
+                      className={cn(
+                        tableRawTdClass,
+                        "text-right whitespace-nowrap",
+                        TYPO.amount,
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      <NeoAmount>{formatCurrency(bill.amount)}</NeoAmount>
+                    </td>
+                    <td className={cn(tableRawTdClass, TYPO.date)}>{formatDate(bill.due_date)}</td>
+                    <td className={tableRawTdClass}>
+                      {(() => {
+                        const s = statusPill(bill);
+                        return <StatusBadge label={s.label} variant={s.variant} />;
+                      })()}
+                    </td>
+                    <td
+                      className={cn(tableRawTdClass, "px-1")}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-end gap-2">
+                        {bill.status === "Draft" && bill.paid_amount <= 0 ? (
+                          <DeleteRowAction onDelete={() => handleDeleteDraft(bill.id)} />
+                        ) : null}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={cn("h-8 w-8 p-0", billsGhostButtonClass)}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="min-w-[140px]">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/bills/${bill.id}`}>Open</Link>
+                            </DropdownMenuItem>
+                            {bill.status !== "Paid" && bill.status !== "Void" && (
                               <DropdownMenuItem asChild>
-                                <Link href={`/bills/${bill.id}`}>Open</Link>
+                                <Link href={`/bills/${bill.id}?addPayment=1`}>Add payment</Link>
                               </DropdownMenuItem>
-                              {bill.status !== "Paid" && bill.status !== "Void" && (
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/bills/${bill.id}?addPayment=1`}>Add payment</Link>
-                                </DropdownMenuItem>
-                              )}
-                              {bill.status !== "Void" && (
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/bills/${bill.id}/edit`}>Edit</Link>
-                                </DropdownMenuItem>
-                              )}
-                              {bill.status !== "Void" && (
-                                <DropdownMenuItem
-                                  className="text-muted-foreground"
-                                  onSelect={(e) => {
-                                    e.preventDefault();
-                                    setVoidConfirmId(bill.id);
-                                  }}
-                                >
-                                  Void
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                            )}
+                            {bill.status !== "Void" && (
+                              <DropdownMenuItem asChild>
+                                <Link href={`/bills/${bill.id}/edit`}>Edit</Link>
+                              </DropdownMenuItem>
+                            )}
+                            {bill.status !== "Void" && (
+                              <DropdownMenuItem
+                                className="text-[var(--neo-text-secondary)]"
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  setVoidConfirmId(bill.id);
+                                }}
+                              >
+                                Void
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </NeoTable>
+          </NeoPanel>
         </>
       )}
 

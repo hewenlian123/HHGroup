@@ -3,6 +3,11 @@ import { getApBills, getApBillsSummary, getProjects } from "@/lib/data";
 import { BillsListClient } from "./bills-list-client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import {
+  billsContentMaxClass,
+  billsPageWrapClass,
+  billsPrimaryButtonClass,
+} from "./bills-ui-styles";
 
 export const dynamic = "force-dynamic";
 
@@ -38,14 +43,14 @@ export default async function BillsPage({ searchParams }: Props) {
 
   return (
     <PageLayout
-      className="dark"
+      className={billsPageWrapClass}
       header={
         <div className="hidden md:block">
           <PageHeader
             title="Bills"
             description="Track vendor, labor, and other payables"
             actions={
-              <Button asChild size="sm">
+              <Button asChild size="sm" className={billsPrimaryButtonClass}>
                 <Link href="/bills/new">+ New Bill</Link>
               </Button>
             }
@@ -53,7 +58,7 @@ export default async function BillsPage({ searchParams }: Props) {
         </div>
       }
     >
-      <div className="mx-auto w-full max-w-[1200px]">
+      <div className={billsContentMaxClass}>
         <BillsListClient bills={bills} summary={summary} projects={projectOptions} />
       </div>
     </PageLayout>

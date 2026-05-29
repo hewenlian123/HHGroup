@@ -1,6 +1,7 @@
 import { PageLayout, PageHeader } from "@/components/base";
 import { getProjects } from "@/lib/data";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
+import { billsPageWrapClass } from "../bills-ui-styles";
 import { NewBillClient } from "./new-bill-client";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,7 @@ export default async function NewBillPage() {
 
   return (
     <PageLayout
-      className="dark financial-nums min-w-0 overflow-x-hidden text-[var(--neo-canvas-text-secondary)]"
+      className={billsPageWrapClass}
       header={
         <PageHeader title="New bill" description="Create a vendor, labor, or other payable bill." />
       }

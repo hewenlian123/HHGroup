@@ -4,13 +4,30 @@ import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blockin
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Divider, SectionHeader } from "@/components/base";
+import {
+  NeoFieldLabel,
+  NeoFormGrid,
+  NeoInput,
+  NeoPanel,
+  NeoSelect,
+  neoFormErrorClassName,
+  neoFormFieldClassName,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { Input } from "@/components/ui/input";
 import { updateApBill } from "@/lib/data";
 import { AP_BILL_TYPES } from "@/lib/data";
 import type { ApBillWithProject } from "@/lib/data";
+import { cn } from "@/lib/utils";
+import {
+  billsAmountInputClass,
+  billsDateInputClass,
+  billsFieldClass,
+  billsFormBodyClass,
+  billsFormCardClass,
+  billsPrimaryButtonClass,
+  billsSecondaryButtonClass,
+} from "../../bills-ui-styles";
 
 type Props = { bill: ApBillWithProject; projects: { id: string; name: string }[] };
 
@@ -66,116 +83,155 @@ export function EditBillClient({ bill, projects }: Props) {
   };
 
   return (
-    <>
-      <SectionHeader label="Bill details" />
-      <Divider />
-      <form onSubmit={handleSubmit} className="max-w-xl space-y-4 py-4">
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">Bill no.</label>
-          <Input value={billNo} onChange={(e) => setBillNo(e.target.value)} className="mt-1 h-9" />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">Vendor / payee name *</label>
-          <Input
-            value={vendorName}
-            onChange={(e) => setVendorName(e.target.value)}
-            className="mt-1 h-9"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">Bill type</label>
-          <select
-            value={billType}
-            onChange={(e) => setBillType(e.target.value as typeof billType)}
-            className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
-          >
-            {AP_BILL_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">Project</label>
-          <select
-            value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            className="mt-1 h-9 w-full rounded border border-input bg-transparent px-2 text-sm"
-          >
-            <option value="">—</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Issue date</label>
-            <Input
-              type="date"
-              value={issueDate}
-              onChange={(e) => setIssueDate(e.target.value)}
-              className="mt-1 h-9"
+    <div className="mx-auto w-full min-w-0 max-w-[1000px]">
+      <NeoPanel
+        title="Bill details"
+        className={billsFormCardClass}
+        bodyClassName={billsFormBodyClass}
+      >
+        <form onSubmit={handleSubmit} className="min-w-0 space-y-5 md:space-y-6">
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel>Bill no.</NeoFieldLabel>
+            <NeoInput
+              value={billNo}
+              onChange={(e) => setBillNo(e.target.value)}
+              className={billsFieldClass}
             />
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Due date</label>
-            <Input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="mt-1 h-9"
+
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel required>Vendor / payee name</NeoFieldLabel>
+            <NeoInput
+              value={vendorName}
+              onChange={(e) => setVendorName(e.target.value)}
+              className={billsFieldClass}
+              required
             />
           </div>
-        </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">Amount *</label>
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="mt-1 h-9"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">Category</label>
-          <Input
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="mt-1 h-9"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">Notes</label>
-          <Input value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1 h-9" />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground">Attachment URL</label>
-          <Input
-            value={attachmentUrl}
-            onChange={(e) => setAttachmentUrl(e.target.value)}
-            className="mt-1 h-9"
-            placeholder="https://..."
-          />
-        </div>
-        {error && <p className="text-sm text-destructive">{error}</p>}
-        <div className="flex gap-2 pt-2">
-          <Button type="submit" size="sm" disabled={submitting}>
-            <SubmitSpinner loading={submitting} className="mr-2" />
-            {submitting ? "Saving…" : "Save"}
-          </Button>
-          <Button type="button" variant="outline" size="sm" asChild>
-            <Link href={`/bills/${bill.id}`}>Cancel</Link>
-          </Button>
-        </div>
-      </form>
-    </>
+
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel>Bill type</NeoFieldLabel>
+            <NeoSelect
+              value={billType}
+              onChange={(e) => setBillType(e.target.value as typeof billType)}
+              className={billsFieldClass}
+            >
+              {AP_BILL_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
+            </NeoSelect>
+          </div>
+
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel>Project</NeoFieldLabel>
+            <NeoSelect
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className={billsFieldClass}
+            >
+              <option value="">—</option>
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </NeoSelect>
+          </div>
+
+          <NeoFormGrid className="gap-5 md:gap-6">
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel>Issue date</NeoFieldLabel>
+              <NeoInput
+                type="date"
+                value={issueDate}
+                onChange={(e) => setIssueDate(e.target.value)}
+                className={cn(billsFieldClass, billsDateInputClass)}
+              />
+            </div>
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel>Due date</NeoFieldLabel>
+              <NeoInput
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className={cn(billsFieldClass, billsDateInputClass)}
+              />
+            </div>
+          </NeoFormGrid>
+
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel required>Amount</NeoFieldLabel>
+            <NeoInput
+              type="number"
+              step="0.01"
+              min="0"
+              inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className={cn(billsFieldClass, billsAmountInputClass)}
+              required
+            />
+          </div>
+
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel>Category</NeoFieldLabel>
+            <NeoInput
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className={billsFieldClass}
+            />
+          </div>
+
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel>Notes</NeoFieldLabel>
+            <NeoInput
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className={billsFieldClass}
+            />
+          </div>
+
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel>Attachment URL</NeoFieldLabel>
+            <NeoInput
+              value={attachmentUrl}
+              onChange={(e) => setAttachmentUrl(e.target.value)}
+              className={billsFieldClass}
+              placeholder="https://..."
+            />
+          </div>
+
+          {error ? <p className={neoFormErrorClassName}>{error}</p> : null}
+
+          <div
+            className={cn(
+              "flex flex-col gap-2 border-t border-[var(--neo-border)] pt-5 sm:flex-row sm:items-center",
+              "max-md:[&_button]:min-h-11 max-md:[&_button]:w-full"
+            )}
+          >
+            <Button
+              type="submit"
+              size="touch"
+              className={billsPrimaryButtonClass}
+              disabled={submitting}
+            >
+              <SubmitSpinner loading={submitting} className="mr-2" />
+              {submitting ? "Saving…" : "Save changes"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="touch"
+              className={billsSecondaryButtonClass}
+              asChild
+            >
+              <Link href={`/bills/${bill.id}`}>Cancel</Link>
+            </Button>
+          </div>
+        </form>
+      </NeoPanel>
+    </div>
   );
 }

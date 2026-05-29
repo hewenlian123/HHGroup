@@ -3,6 +3,7 @@ import { PageLayout, PageHeader } from "@/components/base";
 import { getApBillById, getProjects } from "@/lib/data";
 import { EditBillClient } from "./edit-bill-client";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { billsPageWrapClass } from "../../bills-ui-styles";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function EditBillPage({ params }: Props) {
 
   return (
     <PageLayout
+      className={billsPageWrapClass}
       header={
         <PageHeader title={`Edit ${bill.bill_no ?? "bill"}`} description={bill.vendor_name} />
       }
