@@ -128,8 +128,11 @@ export async function getDeposits(): Promise<DepositWithMeta[]> {
 }
 
 /** Deposits linked to an invoice (via invoice_id). */
-export async function getDepositsByInvoiceId(invoiceId: string): Promise<DepositRow[]> {
-  const c = client();
+export async function getDepositsByInvoiceId(
+  invoiceId: string,
+  explicitClient?: SupabaseClient
+): Promise<DepositRow[]> {
+  const c = client(explicitClient);
   const selectWithStatus =
     "id, payment_id, invoice_id, amount, deposit_account, deposit_date, customer_name, project_id, payment_method, status, created_at";
   const selectWithoutStatus =

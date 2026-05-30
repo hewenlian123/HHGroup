@@ -1064,9 +1064,10 @@ export async function deletePaymentReceived(
 
 /** Get payments for a single invoice. */
 export async function getPaymentsReceivedByInvoiceId(
-  invoiceId: string
+  invoiceId: string,
+  explicitClient?: SupabaseClient
 ): Promise<PaymentReceivedRow[]> {
-  const c = client();
+  const c = client(explicitClient);
   const schema = await getPaymentOptionalSchema();
   let rows: unknown[] | null = null;
   let error: { message?: string } | null = null;

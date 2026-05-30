@@ -24,15 +24,13 @@ import {
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { ConfirmDialog, KpiTile } from "@/components/base";
 import {
-  getProjectById,
-  getPaymentsByInvoiceId,
-  getPaymentsReceivedByInvoiceId,
-  getDepositsByInvoiceId,
-  getPaymentAttachmentPreviewUrl,
   type InvoiceWithDerived,
   type InvoicePayment,
   type PaymentReceivedAttachment,
   type InvoiceDeleteDependenciesResult,
+  type PaymentReceivedRow,
+  type DepositRow,
+  type Project,
 } from "@/lib/data";
 import {
   ArrowLeft,
@@ -74,6 +72,24 @@ type EditLineDraft = {
   description: string;
   qty: number;
   unitPrice: number;
+};
+
+type PaymentReceivedAttachmentWithPreview = PaymentReceivedAttachment & {
+  previewUrl?: string | null;
+};
+
+type PaymentReceivedForInvoice = Omit<PaymentReceivedRow, "attachments"> & {
+  attachments: PaymentReceivedAttachmentWithPreview[];
+};
+
+type InvoiceDetailApiResponse = {
+  ok: boolean;
+  message?: string;
+  invoice?: InvoiceWithDerived | null;
+  payments?: InvoicePayment[];
+  paymentsReceived?: PaymentReceivedForInvoice[];
+  deposits?: DepositRow[];
+  project?: Project | null;
 };
 
 function safeNumber(v: unknown): number {
@@ -145,12 +161,9 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = React.useState<InvoiceWithDerived | null>(null);
   const [notFound, setNotFound] = React.useState(false);
   const [payments, setPayments] = React.useState<InvoicePayment[]>([]);
-  const [paymentsReceived, setPaymentsReceived] = React.useState<
-    Awaited<ReturnType<typeof getPaymentsReceivedByInvoiceId>>
-  >([]);
-  const [deposits, setDeposits] = React.useState<
-    Awaited<ReturnType<typeof getDepositsByInvoiceId>>
-  >([]);
+  const [paymentsReceived, setPaymentsReceived] = React.useState<PaymentReceivedForInvoice[]>([]);
+  const [deposits, setDeposits] = React.useState<DepositRow[]>([]);
+  const [project, setProject] = React.useState<Project | null>(null);
   const [deleteBlockedOpen, setDeleteBlockedOpen] = React.useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [deleteDependenciesOpen, setDeleteDependenciesOpen] = React.useState(false);
@@ -174,21 +187,16 @@ export default function InvoiceDetailPage() {
 
   const refresh = React.useCallback(async () => {
     if (!id) return;
-    const [invRes, pays, received, depositList] = await Promise.all([
-      fetch(`/api/invoices/${encodeURIComponent(id)}?t=${Date.now()}`, { cache: "no-store" })
-        .then((r) => r.json())
-        .catch(() => ({ ok: false as const })),
-      getPaymentsByInvoiceId(id),
-      getPaymentsReceivedByInvoiceId(id),
-      getDepositsByInvoiceId(id).catch(() => []),
-    ]);
-    const inv = (
-      invRes && invRes.ok ? (invRes.invoice as InvoiceWithDerived) : null
-    ) as InvoiceWithDerived | null;
+    const response = await fetch(`/api/invoices/${encodeURIComponent(id)}?t=${Date.now()}`, {
+      cache: "no-store",
+    });
+    const invRes = (await response.json().catch(() => null)) as InvoiceDetailApiResponse | null;
+    const inv = response.ok && invRes?.ok ? (invRes.invoice ?? null) : null;
     setInvoice(inv);
-    setPayments(pays);
-    setPaymentsReceived(received ?? []);
-    setDeposits(Array.isArray(depositList) ? depositList : []);
+    setPayments(Array.isArray(invRes?.payments) ? invRes.payments : []);
+    setPaymentsReceived(Array.isArray(invRes?.paymentsReceived) ? invRes.paymentsReceived : []);
+    setDeposits(Array.isArray(invRes?.deposits) ? invRes.deposits : []);
+    setProject(invRes?.project ?? null);
     if (inv === null || inv === undefined) setNotFound(true);
   }, [id]);
 
@@ -211,14 +219,6 @@ export default function InvoiceDetailPage() {
     }
   }, [router, searchParams, invoice]);
 
-  const [project, setProject] = React.useState<Awaited<ReturnType<typeof getProjectById>> | null>(
-    null
-  );
-  React.useEffect(() => {
-    if (invoice) getProjectById(invoice.projectId).then(setProject);
-    else setProject(null);
-  }, [invoice?.projectId, invoice]);
-
   useOnAppSync(
     React.useCallback(() => {
       void refresh();
@@ -235,19 +235,21 @@ export default function InvoiceDetailPage() {
   >(null);
 
   const openPaymentAttachments = React.useCallback(
-    async (paymentId: string, attachments: PaymentReceivedAttachment[]) => {
+    async (paymentId: string, attachments: PaymentReceivedAttachmentWithPreview[]) => {
       if (attachments.length === 0) return;
       setOpeningPaymentAttachmentsId(paymentId);
       try {
-        const files = await Promise.all(
-          attachments.map(async (att) => ({
-            url: await getPaymentAttachmentPreviewUrl(att),
+        const files = attachments.map((att) => {
+          const url = att.previewUrl ?? att.file_url;
+          if (!url) throw new Error("Attachment preview URL is missing.");
+          return {
+            url,
             fileName: att.file_name,
             fileType: att.file_type,
             mimeType: att.mime_type ?? undefined,
             attachmentId: att.id,
-          }))
-        );
+          };
+        });
         openPreview({ files, initialIndex: 0 });
       } catch (err) {
         toast({

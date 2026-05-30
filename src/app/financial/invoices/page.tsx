@@ -22,12 +22,11 @@ import {
 import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import { listTableRowClassName } from "@/lib/list-table-interaction";
 import { NEO, OS, TYPO } from "@/lib/typography";
-import {
-  getInvoicesWithDerived,
-  getProjects,
-  type InvoiceWithDerived,
-  type InvoiceComputedStatus,
-  type InvoiceDeleteDependenciesResult,
+import type {
+  InvoiceWithDerived,
+  InvoiceComputedStatus,
+  InvoiceDeleteDependenciesResult,
+  Project,
 } from "@/lib/data";
 import {
   AlertTriangle,
@@ -275,6 +274,36 @@ const STATUS_OPTIONS: { value: "" | InvoiceComputedStatus; label: string }[] = [
   { value: "Void", label: "Void" },
 ];
 
+type InvoiceListApiResponse = {
+  ok: boolean;
+  invoices?: InvoiceWithDerived[];
+  total?: number;
+  projects?: Project[];
+  message?: string;
+};
+
+async function fetchInvoiceList(): Promise<{
+  invoices: InvoiceWithDerived[];
+  projects: Project[];
+}> {
+  const params = new URLSearchParams({
+    derived: "1",
+    all: "1",
+    page: "1",
+    pageSize: "1000",
+    includeProjects: "1",
+  });
+  const res = await fetch(`/api/invoices?${params.toString()}`, { cache: "no-store" });
+  const data = (await res.json().catch(() => null)) as InvoiceListApiResponse | null;
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.message ?? "Failed to load invoices.");
+  }
+  return {
+    invoices: Array.isArray(data.invoices) ? data.invoices : [],
+    projects: Array.isArray(data.projects) ? data.projects : [],
+  };
+}
+
 export default function InvoicesPage() {
   return (
     <React.Suspense fallback={<div className="page-container py-6" />}>
@@ -294,7 +323,7 @@ function InvoicesPageInner() {
   const [statusFilter, setStatusFilter] = React.useState<"" | InvoiceComputedStatus>("");
   const [projectFilter, setProjectFilter] = React.useState("");
   const [voidBusyId, setVoidBusyId] = React.useState<string | null>(null);
-  const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
+  const [projects, setProjects] = React.useState<Project[]>([]);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [desktopFiltersOpen, setDesktopFiltersOpen] = React.useState(false);
   const [summaryOpen, setSummaryOpen] = React.useState(false);
@@ -315,10 +344,7 @@ function InvoicesPageInner() {
 
     const loadInitialData = async (): Promise<void> => {
       try {
-        const [invoiceList, projectList] = await Promise.all([
-          getInvoicesWithDerived(),
-          getProjects(),
-        ]);
+        const { invoices: invoiceList, projects: projectList } = await fetchInvoiceList();
         if (cancelled) return;
         setInvoices(invoiceList);
         setProjects(projectList);
@@ -403,7 +429,7 @@ function InvoicesPageInner() {
   const refresh = React.useCallback(async () => {
     setRefreshing(true);
     try {
-      const [list, projectList] = await Promise.all([getInvoicesWithDerived(), getProjects()]);
+      const { invoices: list, projects: projectList } = await fetchInvoiceList();
       setInvoices(list);
       setProjects(projectList);
       setLoadError(null);
