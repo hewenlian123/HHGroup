@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { createApBill } from "@/lib/data";
 import { AP_BILL_TYPES } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { BillCategoryCombobox } from "../bill-category-combobox";
 import {
   billsAmountInputClass,
   billsDateInputClass,
@@ -175,10 +176,10 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
 
           <div className={neoFormFieldClassName}>
             <NeoFieldLabel>Category</NeoFieldLabel>
-            <NeoInput
+            <BillCategoryCombobox
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className={billsFieldClass}
+              onChange={setCategory}
+              inputClassName={billsFieldClass}
             />
           </div>
 

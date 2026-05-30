@@ -39,3 +39,12 @@ export const billsDetailDlClass =
 export const billsDetailDtClass = "text-[var(--neo-text-tertiary)]";
 
 export const billsDetailDdClass = "min-w-0 font-medium text-[var(--neo-text-primary)]";
+
+export const billsCategoryDropdownClass =
+  "absolute z-[100] mt-1 max-h-56 w-full min-w-0 overflow-auto rounded-[0.625rem] border border-[rgb(190_198_210/0.14)] bg-[#111318] py-1 text-[var(--neo-text-primary)] shadow-[0_18px_48px_rgb(0_0_0/0.28)]";
+
+export const billsCategoryOptionClass =
+  "flex min-h-[44px] cursor-pointer items-center px-3 py-2 text-[13px] text-[var(--neo-text-primary)] transition-colors hover:bg-[var(--neo-surface-muted)]";
+
+export const billsCategoryAddItemClass =
+  "flex min-h-[44px] cursor-pointer items-center px-3 py-2 text-[13px] font-medium text-[rgb(184_147_90_/_0.92)] transition-colors hover:bg-[rgb(184_147_90_/_0.08)]";
