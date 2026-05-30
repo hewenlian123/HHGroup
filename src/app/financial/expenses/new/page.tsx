@@ -23,7 +23,6 @@ import {
   createExpense,
   getProjects,
   getVendors,
-  addVendor,
   getAccounts,
   getPaymentAccounts,
   updateExpenseReceiptUrl,
@@ -78,6 +77,26 @@ function newLine(): LineForm {
 function safeAmount(s: string): number {
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
+}
+
+async function addVendorViaApi(name: string): Promise<string> {
+  const v = name.trim();
+  if (!v) return "";
+  const response = await fetch("/api/vendors", {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: v, status: "active" }),
+  });
+  const payload = (await response.json().catch(() => null)) as {
+    ok?: boolean;
+    message?: string;
+    vendor?: { name?: string | null };
+  } | null;
+  if (!response.ok || payload?.ok === false) {
+    throw new Error(payload?.message || "Failed to save vendor.");
+  }
+  return payload?.vendor?.name?.trim() || v;
 }
 
 function parseCurrency(input: string): number {
@@ -321,10 +340,19 @@ export default function NewExpensePage() {
                   placeholder="Vendor name"
                   onChange={setVendorName}
                   onCreate={async (name) => {
-                    const v = await addVendor(name);
-                    if (v) {
-                      setVendorName(v);
-                      setVendors((prev) => (prev.includes(v) ? prev : [...prev, v]));
+                    try {
+                      const v = await addVendorViaApi(name);
+                      if (v) {
+                        setVendorName(v);
+                        setVendors((prev) => (prev.includes(v) ? prev : [...prev, v]));
+                      }
+                    } catch (error) {
+                      toast({
+                        title: "Vendor not saved",
+                        description:
+                          error instanceof Error ? error.message : "Failed to save vendor.",
+                        variant: "error",
+                      });
                     }
                   }}
                 />

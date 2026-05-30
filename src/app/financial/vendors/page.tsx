@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
-import { createBrowserClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import {
@@ -82,15 +81,25 @@ function vendorStatusVariant(status: VendorRow["status"] | null | undefined) {
   return vendorStatus(status) === "active" ? "success" : "muted";
 }
 
-export default function VendorsPage() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const configured = Boolean(url && anon);
-  const supabase = React.useMemo(
-    () => (configured ? createBrowserClient(url as string, anon as string) : null),
-    [configured, url, anon]
-  );
+async function vendorApi<T>(input: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, {
+    ...init,
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | ({ ok?: boolean; message?: string } & T)
+    | null;
+  if (!response.ok || payload?.ok === false) {
+    throw new Error(payload?.message || "Vendor request failed.");
+  }
+  return payload as T;
+}
 
+export default function VendorsPage() {
   const [rows, setRows] = React.useState<VendorRow[]>([]);
   const [query, setQuery] = React.useState("");
   const [message, setMessage] = React.useState<string | null>(null);
@@ -106,19 +115,9 @@ export default function VendorsPage() {
   const refresh = React.useCallback(async () => {
     setLoading(true);
     setMessage(null);
-    if (!configured || !supabase) {
-      setRows([]);
-      setMessage("Supabase is not configured.");
-      setLoading(false);
-      return;
-    }
     try {
-      const { data, error } = await supabase
-        .from("vendors")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setRows((data ?? []) as VendorRow[]);
+      const payload = await vendorApi<{ vendors: VendorRow[] }>("/api/vendors?includeDisabled=1");
+      setRows(payload.vendors ?? []);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
       setRows([]);
@@ -126,7 +125,7 @@ export default function VendorsPage() {
     } finally {
       setLoading(false);
     }
-  }, [configured, supabase]);
+  }, []);
 
   React.useEffect(() => {
     void refresh();
@@ -180,10 +179,6 @@ export default function VendorsPage() {
   };
 
   const handleSave = React.useCallback(async () => {
-    if (!configured || !supabase) {
-      setMessage("Supabase is not configured.");
-      return;
-    }
     if (!form.name.trim()) {
       setMessage("Vendor name is required.");
       return;
@@ -201,12 +196,16 @@ export default function VendorsPage() {
     };
     try {
       if (editorMode === "create") {
-        const { error } = await supabase.from("vendors").insert([payload]);
-        if (error) throw error;
+        await vendorApi<{ vendor: VendorRow }>("/api/vendors", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
       } else {
         if (!form.id) throw new Error("Missing vendor id.");
-        const { error } = await supabase.from("vendors").update(payload).eq("id", form.id);
-        if (error) throw error;
+        await vendorApi<{ vendor: VendorRow }>(`/api/vendors/${encodeURIComponent(form.id)}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
       }
       setEditorOpen(false);
       setForm(EMPTY_FORM);
@@ -222,40 +221,34 @@ export default function VendorsPage() {
     } finally {
       setSubmitting(false);
     }
-  }, [configured, editorMode, form, refresh, supabase]);
+  }, [editorMode, form, refresh]);
 
-  const handleDelete = React.useCallback(
-    async (row: VendorRow) => {
-      if (!configured || !supabase) {
-        setMessage("Supabase is not configured.");
-        return;
-      }
-      if (!window.confirm(`Delete vendor "${row.name}"?`)) return;
-      setDeletingId(row.id);
-      setMessage(null);
-      let snapshot: VendorRow[] | undefined;
-      setRows((r) => {
-        snapshot = r;
-        return r.filter((v) => v.id !== row.id);
+  const handleDelete = React.useCallback(async (row: VendorRow) => {
+    if (!window.confirm(`Delete vendor "${row.name}"?`)) return;
+    setDeletingId(row.id);
+    setMessage(null);
+    let snapshot: VendorRow[] | undefined;
+    setRows((r) => {
+      snapshot = r;
+      return r.filter((v) => v.id !== row.id);
+    });
+    try {
+      await vendorApi<{ id: string }>(`/api/vendors/${encodeURIComponent(row.id)}`, {
+        method: "DELETE",
       });
-      try {
-        const { error } = await supabase.from("vendors").delete().eq("id", row.id);
-        if (error) throw error;
-      } catch (error: unknown) {
-        const msg =
-          error instanceof Error
-            ? error.message
-            : typeof error === "object" && error !== null && "message" in error
-              ? String((error as { message: unknown }).message)
-              : String(error);
-        setMessage(msg || "Failed to delete vendor.");
-        if (snapshot) setRows(snapshot);
-      } finally {
-        setDeletingId(null);
-      }
-    },
-    [configured, supabase]
-  );
+    } catch (error: unknown) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : typeof error === "object" && error !== null && "message" in error
+            ? String((error as { message: unknown }).message)
+            : String(error);
+      setMessage(msg || "Failed to delete vendor.");
+      if (snapshot) setRows(snapshot);
+    } finally {
+      setDeletingId(null);
+    }
+  }, []);
 
   return (
     <PageLayout
