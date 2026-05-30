@@ -18,28 +18,20 @@ import { Dialog } from "@/components/ui/dialog";
 import { tableRawThClass } from "@/components/ui/table";
 import {
   getExpenseCategories,
-  getVendors,
   getPaymentMethods,
   addExpenseCategory,
-  addVendor,
   addPaymentMethod,
   renameExpenseCategory,
-  renameVendor,
   renamePaymentMethod,
   disableExpenseCategory,
-  disableVendor,
   disablePaymentMethod,
   enableExpenseCategory,
-  enableVendor,
   enablePaymentMethod,
   deleteExpenseCategory,
-  deleteVendor,
   deletePaymentMethod,
   getCategoryUsageCount,
-  getVendorUsageCount,
   getPaymentMethodUsageCount,
   isExpenseCategoryDisabled,
-  isVendorDisabled,
   isPaymentMethodDisabled,
 } from "@/lib/data";
 import { Pencil, Ban, Check, Trash2, X } from "lucide-react";
@@ -47,13 +39,79 @@ import { cn } from "@/lib/utils";
 
 type TabId = "categories" | "vendors" | "paymentMethods";
 
-type ListRow = { name: string; used: number; disabled: boolean };
+type ListRow = { id?: string; name: string; used: number; disabled: boolean };
 
 type ListConfig = {
   getItems: (includeDisabled: boolean) => Promise<string[]>;
   getUsage: (name: string) => Promise<number>;
   isDisabled: (name: string) => Promise<boolean>;
+  getRows?: (includeDisabled: boolean) => Promise<ListRow[]>;
 };
+
+type VendorApiRow = {
+  id: string;
+  name: string;
+  status?: "active" | "inactive" | null;
+  used?: number;
+  disabled?: boolean;
+};
+
+async function vendorApi<T>(input: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(input, {
+    ...init,
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+  const payload = (await response.json().catch(() => null)) as
+    | ({ ok?: boolean; message?: string } & T)
+    | null;
+  if (!response.ok || payload?.ok === false) {
+    throw new Error(payload?.message || "Vendor request failed.");
+  }
+  return payload as T;
+}
+
+async function getVendorRows(includeDisabled: boolean): Promise<ListRow[]> {
+  const params = new URLSearchParams({ withUsage: "1" });
+  if (includeDisabled) params.set("includeDisabled", "1");
+  const payload = await vendorApi<{ vendors: VendorApiRow[] }>(`/api/vendors?${params}`);
+  return (payload.vendors ?? []).map((vendor) => ({
+    id: vendor.id,
+    name: vendor.name,
+    used: Number(vendor.used ?? 0),
+    disabled: Boolean(vendor.disabled ?? vendor.status === "inactive"),
+  }));
+}
+
+async function addVendorViaApi(name: string): Promise<boolean> {
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  await vendorApi<{ vendor: VendorApiRow }>("/api/vendors", {
+    method: "POST",
+    body: JSON.stringify({ name: trimmed, status: "active" }),
+  });
+  return true;
+}
+
+async function patchVendorViaApi(id: string | undefined, patch: Record<string, unknown>) {
+  if (!id) return false;
+  await vendorApi<{ vendor: VendorApiRow }>(`/api/vendors/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+  return true;
+}
+
+async function deleteVendorViaApi(id: string | undefined): Promise<boolean> {
+  if (!id) return false;
+  await vendorApi<{ id: string }>(`/api/vendors/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  return true;
+}
 
 function useListState(tab: TabId, refresh: number, config: ListConfig) {
   const [search, setSearch] = React.useState("");
@@ -67,20 +125,24 @@ function useListState(tab: TabId, refresh: number, config: ListConfig) {
 
   React.useEffect(() => {
     let cancelled = false;
-    config
-      .getItems(true)
-      .then((names) => {
-        if (cancelled) return;
-        return Promise.all(
-          names.map(async (name) => ({
-            name,
-            used: await config.getUsage(name),
-            disabled: await config.isDisabled(name),
-          }))
-        );
-      })
+    const loadRows = config.getRows
+      ? config.getRows(true)
+      : config.getItems(true).then((names) => {
+          if (cancelled) return undefined;
+          return Promise.all(
+            names.map(async (name) => ({
+              name,
+              used: await config.getUsage(name),
+              disabled: await config.isDisabled(name),
+            }))
+          );
+        });
+    loadRows
       .then((rows) => {
         if (!cancelled && rows) setItems(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setItems([]);
       });
     return () => {
       cancelled = true;
@@ -125,9 +187,10 @@ export default function SettingsListsPage() {
   );
   const vendorsConfig = React.useMemo<ListConfig>(
     () => ({
-      getItems: (inc) => getVendors(inc),
-      getUsage: getVendorUsageCount,
-      isDisabled: isVendorDisabled,
+      getItems: async () => [],
+      getUsage: async () => 0,
+      isDisabled: async () => false,
+      getRows: getVendorRows,
     }),
     []
   );
@@ -154,7 +217,7 @@ export default function SettingsListsPage() {
       const out = await addExpenseCategory(v);
       if (out) await refreshAll();
     } else if (tab === "vendors") {
-      const out = await addVendor(v);
+      const out = await addVendorViaApi(v);
       if (out) await refreshAll();
     } else {
       const out = await addPaymentMethod(v);
@@ -168,8 +231,10 @@ export default function SettingsListsPage() {
     if (!newVal || !state.renameFor) return;
     let ok = false;
     if (tab === "categories") ok = await renameExpenseCategory(state.renameFor, newVal);
-    else if (tab === "vendors") ok = await renameVendor(state.renameFor, newVal);
-    else ok = await renamePaymentMethod(state.renameFor, newVal);
+    else if (tab === "vendors") {
+      const row = vendorsState.items.find((item) => item.name === state.renameFor);
+      ok = await patchVendorViaApi(row?.id, { name: newVal });
+    } else ok = await renamePaymentMethod(state.renameFor, newVal);
     if (ok) {
       await refreshAll();
       state.setRenameFor(null);
@@ -182,8 +247,8 @@ export default function SettingsListsPage() {
       if (currentlyDisabled) await enableExpenseCategory(name);
       else await disableExpenseCategory(name);
     } else if (tab === "vendors") {
-      if (currentlyDisabled) await enableVendor(name);
-      else await disableVendor(name);
+      const row = vendorsState.items.find((item) => item.name === name);
+      await patchVendorViaApi(row?.id, { status: currentlyDisabled ? "active" : "inactive" });
     } else {
       if (currentlyDisabled) await enablePaymentMethod(name);
       else await disablePaymentMethod(name);
@@ -198,8 +263,10 @@ export default function SettingsListsPage() {
     }
     let ok = false;
     if (tab === "categories") ok = await deleteExpenseCategory(name);
-    else if (tab === "vendors") ok = await deleteVendor(name);
-    else ok = await deletePaymentMethod(name);
+    else if (tab === "vendors") {
+      const row = vendorsState.items.find((item) => item.name === name);
+      ok = await deleteVendorViaApi(row?.id);
+    } else ok = await deletePaymentMethod(name);
     if (ok) await refreshAll();
   };
 

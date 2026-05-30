@@ -260,6 +260,27 @@ async function ensureVendorsExist(): Promise<void> {
 }
 
 export async function getVendors(includeDisabled = false): Promise<string[]> {
+  if (typeof window !== "undefined") {
+    const params = new URLSearchParams();
+    if (includeDisabled) params.set("includeDisabled", "1");
+    const response = await fetch(`/api/vendors${params.size ? `?${params}` : ""}`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+      message?: string;
+      vendors?: Array<{ name?: string | null; status?: string | null }>;
+    } | null;
+    if (!response.ok || payload?.ok === false) {
+      throw new Error(payload?.message || "Failed to load vendors.");
+    }
+    return (payload?.vendors ?? [])
+      .filter((row) => includeDisabled || (row.status ?? "active") === "active")
+      .map((row) => row.name?.trim() ?? "")
+      .filter(Boolean);
+  }
+
   const c = client();
   await ensureVendorsExist();
   let rows: unknown[] | null = null;

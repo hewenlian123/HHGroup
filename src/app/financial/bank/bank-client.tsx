@@ -422,16 +422,32 @@ export default function BankReconcileClient() {
 
   const addVendor = async (name: string): Promise<string> => {
     const v = name.trim();
-    if (!v || !supabase) return "";
-    const { error: insErr } = await supabase.from("vendors").insert({ name: v, status: "active" });
-    if (!insErr) {
+    if (!v) return "";
+    try {
+      const response = await fetch("/api/vendors", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: v, status: "active" }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        message?: string;
+        vendor?: { name?: string | null };
+      } | null;
+      if (!response.ok || payload?.ok === false) {
+        throw new Error(payload?.message || "Failed to save vendor.");
+      }
+      const savedName = payload?.vendor?.name?.trim() || v;
       setVendorsList((prev) =>
-        prev.includes(v) ? prev : [...prev, v].sort((a, b) => a.localeCompare(b))
+        prev.includes(savedName) ? prev : [...prev, savedName].sort((a, b) => a.localeCompare(b))
       );
-      return v;
+      return savedName;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save vendor.";
+      setToastMessage(message);
+      return "";
     }
-    setToastMessage(insErr.message);
-    return "";
   };
 
   const addPaymentMethod = async (name: string): Promise<string> => {
