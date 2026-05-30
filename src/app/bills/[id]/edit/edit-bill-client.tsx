@@ -19,6 +19,7 @@ import { updateApBill } from "@/lib/data";
 import { AP_BILL_TYPES } from "@/lib/data";
 import type { ApBillWithProject } from "@/lib/data";
 import { cn } from "@/lib/utils";
+import { BillCategoryCombobox } from "../../bill-category-combobox";
 import {
   billsAmountInputClass,
   billsDateInputClass,
@@ -29,9 +30,13 @@ import {
   billsSecondaryButtonClass,
 } from "../../bills-ui-styles";
 
-type Props = { bill: ApBillWithProject; projects: { id: string; name: string }[] };
+type Props = {
+  bill: ApBillWithProject;
+  projects: { id: string; name: string }[];
+  learnedCategories?: string[];
+};
 
-export function EditBillClient({ bill, projects }: Props) {
+export function EditBillClient({ bill, projects, learnedCategories = [] }: Props) {
   const router = useRouter();
   const [billNo, setBillNo] = React.useState(bill.bill_no ?? "");
   const [vendorName, setVendorName] = React.useState(bill.vendor_name);
@@ -177,10 +182,11 @@ export function EditBillClient({ bill, projects }: Props) {
 
           <div className={neoFormFieldClassName}>
             <NeoFieldLabel>Category</NeoFieldLabel>
-            <NeoInput
+            <BillCategoryCombobox
               value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className={billsFieldClass}
+              onChange={setCategory}
+              learnedCategories={learnedCategories}
+              inputClassName={billsFieldClass}
             />
           </div>
 
