@@ -1,55 +1,71 @@
 import { NextResponse } from "next/server";
-import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseInternalNoStore,
+} from "@/lib/supabase-server";
 
 const BUCKET = "expense-attachments";
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+
+function apiError(status: number, message: string): NextResponse {
+  return NextResponse.json(
+    { ok: false, message },
+    { status, headers: { "Cache-Control": "no-store" } }
+  );
+}
+
+function safeExtension(file: File): string {
+  const mime = file.type.toLowerCase();
+  if (mime === "image/jpeg") return "jpg";
+  if (mime === "image/png") return "png";
+  if (mime === "image/webp") return "webp";
+  if (mime === "application/pdf") return "pdf";
+  return "bin";
+}
 
 export async function POST(req: Request) {
-  // Prefer service role so uploads do not depend on storage.objects policies for anon.
-  const admin = getServerSupabaseAdmin();
-  const supabase = admin ?? getServerSupabase();
-  if (process.env.NODE_ENV === "production" && !admin) {
-    console.warn(
-      "[quick-expense/upload-attachment] SUPABASE_SERVICE_ROLE_KEY is unset; using anon. " +
-        "Set it in production so receipt uploads succeed even with restrictive storage RLS."
-    );
-  }
+  const guard = await requireAuthenticatedUser(req);
+  if (!guard.ok) return guard.response;
+
+  const supabase = getServerSupabaseInternalNoStore();
   if (!supabase) {
-    return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
+    return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
   }
+
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
-    if (!file?.size) {
-      return NextResponse.json({ ok: false, message: "No file provided." }, { status: 400 });
+    if (!(file instanceof File)) return apiError(400, "Receipt file is required.");
+    if (file.size <= 0) return apiError(400, "Receipt file is empty.");
+    if (file.size > MAX_UPLOAD_BYTES) return apiError(400, "Receipt file is too large.");
+    if (!ALLOWED_MIME_TYPES.has(file.type.toLowerCase())) {
+      return apiError(400, "Only JPEG, PNG, WebP, and PDF receipts are allowed.");
     }
 
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "receipt.jpg";
-    const path = `quick-expense/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
+    const path = `quick-expense/${Date.now()}-${crypto.randomUUID()}.${safeExtension(file)}`;
 
     const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
-      contentType: file.type || "image/jpeg",
+      contentType: file.type,
       upsert: false,
     });
     if (error) {
-      return NextResponse.json(
-        {
-          ok: false,
-          message:
-            error.message ||
-            "Upload failed. Ensure bucket 'expense-attachments' exists and policies are valid.",
-        },
-        { status: 500 }
-      );
+      console.error("[quick-expense/upload-attachment] upload failed", error);
+      return apiError(500, "Receipt upload failed.");
     }
 
     const { data: signed } = await supabase.storage.from(BUCKET).createSignedUrl(path, 60 * 60 * 6);
-    return NextResponse.json({
-      ok: true as const,
-      path,
-      signed_url: signed?.signedUrl ?? null,
-    });
+    return NextResponse.json(
+      {
+        ok: true as const,
+        path,
+        signed_url: signed?.signedUrl ?? null,
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Upload failed.";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+    console.error("[quick-expense/upload-attachment] unexpected upload error", e);
+    return apiError(500, "Receipt upload failed.");
   }
 }

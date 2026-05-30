@@ -120,6 +120,55 @@ import { OS, TYPO } from "@/lib/typography";
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
 
+type ExpenseReviewApiPayload = {
+  expenseId: string;
+  date: string;
+  vendorName: string;
+  amount: number;
+  projectId: string | null;
+  workerId: string | null;
+  category: string;
+  notes: string | undefined;
+  status: Expense["status"];
+  sourceType: Expense["sourceType"];
+  paymentAccountId: string | null;
+  paymentMethod: string;
+};
+
+type ExpenseApiResponse = {
+  ok?: boolean;
+  message?: string;
+};
+
+async function saveExpenseReviewViaApi(payload: ExpenseReviewApiPayload): Promise<void> {
+  const response = await fetch(`/api/expenses/${encodeURIComponent(payload.expenseId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      date: payload.date,
+      vendorName: payload.vendorName,
+      amount: payload.amount,
+      projectId: payload.projectId,
+      workerId: payload.workerId,
+      category: payload.category,
+      notes: payload.notes,
+      status: payload.status,
+      sourceType: payload.sourceType,
+      paymentAccountId: payload.paymentAccountId,
+      paymentMethod: payload.paymentMethod,
+    }),
+  });
+  let body: ExpenseApiResponse | null = null;
+  try {
+    body = (await response.json()) as ExpenseApiResponse;
+  } catch {
+    body = null;
+  }
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message || "Failed to save expense.");
+  }
+}
+
 const QuickExpenseModal = dynamic(
   () => import("./quick-expense-modal").then((m) => m.QuickExpenseModal),
   { ssr: false }
@@ -1087,7 +1136,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       try {
         const pmTrim =
           payload.paymentMethod.trim() || (target.paymentMethod ?? "").trim() || "Cash";
-        const next = await updateExpenseForReview(payload.expenseId, {
+        await saveExpenseReviewViaApi({
+          expenseId: payload.expenseId,
           date: payload.date,
           vendorName: payload.vendorName,
           amount: payload.amount,
@@ -1100,7 +1150,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           paymentAccountId: payload.paymentAccountId,
           paymentMethod: pmTrim,
         });
-        let final: Expense = next ?? merged;
+        let final: Expense = merged;
         if (pmTrim) final = { ...final, paymentMethod: pmTrim };
         flushSync(() => {
           setExpenses((prev) => prev.map((e) => (e.id === payload.expenseId ? final : e)));

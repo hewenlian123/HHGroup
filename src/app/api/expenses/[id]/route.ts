@@ -17,6 +17,17 @@ const NO_CACHE_HEADERS: Record<string, string> = {
 };
 
 const EXPENSE_LINE_SELECT = "id, expense_id, project_id, category, cost_code, memo, amount";
+const EXPENSE_STATUS_VALUES = new Set([
+  "pending",
+  "needs_review",
+  "reviewed",
+  "approved",
+  "reimbursed",
+  "reimbursable",
+  "paid",
+  "draft",
+]);
+const EXPENSE_SOURCE_TYPES = new Set(["company", "reimbursement", "receipt_upload", "bank_import"]);
 
 type ExpenseLinePatch = {
   projectId?: unknown;
@@ -45,6 +56,34 @@ function stringOrNull(value: unknown): string | null {
 
 function nullableString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function optionalStatus(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") return undefined;
+  const status = value.trim();
+  return EXPENSE_STATUS_VALUES.has(status) ? status : undefined;
+}
+
+function optionalSourceType(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") return undefined;
+  const sourceType = value.trim();
+  return EXPENSE_SOURCE_TYPES.has(sourceType) ? sourceType : undefined;
+}
+
+function isMissingTable(error: { message?: string } | null): boolean {
+  const message = error?.message ?? "";
+  return /schema cache|relation.*does not exist|could not find the table/i.test(message);
+}
+
+function slugKey(value: string): string {
+  const slug = value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return slug || crypto.randomUUID().slice(0, 12);
 }
 
 function linePatchToDb(patch: ExpenseLinePatch): Record<string, unknown> {
@@ -79,37 +118,60 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const supabase = getServerSupabaseInternalNoStore();
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
-  const [expRes, linesRes, projectRes, vendorsRes, categoriesRes, pmRes, attachmentsRes] =
-    await Promise.all([
-      supabase.from("expenses").select("*").eq("id", id).maybeSingle(),
-      supabase.from("expense_lines").select("*").eq("expense_id", id),
-      supabase
-        .from("projects")
-        .select("id,name")
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("vendors")
-        .select("id,name,status")
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("categories")
-        .select("id,name,status")
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("payment_methods")
-        .select("id,name,status")
-        .order("created_at", { ascending: false })
-        .limit(500),
-      supabase
-        .from("attachments")
-        .select("*")
-        .eq("entity_type", "expense")
-        .eq("entity_id", id)
-        .order("created_at", { ascending: false }),
-    ]);
+  const [
+    expRes,
+    linesRes,
+    projectRes,
+    vendorsRes,
+    categoriesRes,
+    pmRes,
+    optionCategoriesRes,
+    optionPaymentMethodsRes,
+    attachmentsRes,
+  ] = await Promise.all([
+    supabase.from("expenses").select("*").eq("id", id).maybeSingle(),
+    supabase.from("expense_lines").select("*").eq("expense_id", id),
+    supabase
+      .from("projects")
+      .select("id,name")
+      .order("created_at", { ascending: false })
+      .limit(500),
+    supabase
+      .from("vendors")
+      .select("id,name,status")
+      .order("created_at", { ascending: false })
+      .limit(500),
+    supabase
+      .from("categories")
+      .select("id,name,status")
+      .order("created_at", { ascending: false })
+      .limit(500),
+    supabase
+      .from("payment_methods")
+      .select("id,name,status")
+      .order("created_at", { ascending: false })
+      .limit(500),
+    supabase
+      .from("expense_options")
+      .select("id,name,active")
+      .eq("type", "category")
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true })
+      .limit(500),
+    supabase
+      .from("expense_options")
+      .select("id,name,active")
+      .eq("type", "payment_method")
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true })
+      .limit(500),
+    supabase
+      .from("attachments")
+      .select("*")
+      .eq("entity_type", "expense")
+      .eq("entity_id", id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   if (expRes.error) {
     console.error("[expenses/:id] load failed", expRes.error);
@@ -128,8 +190,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       lines: linesRes.data ?? [],
       projects: projectRes.error ? [] : (projectRes.data ?? []),
       vendors: vendorsRes.error ? [] : (vendorsRes.data ?? []),
-      categories: categoriesRes.error ? [] : (categoriesRes.data ?? []),
-      paymentMethods: pmRes.error ? [] : (pmRes.data ?? []),
+      categories:
+        !optionCategoriesRes.error && (optionCategoriesRes.data?.length ?? 0) > 0
+          ? optionCategoriesRes.data.map((row) => ({
+              id: row.id,
+              name: row.name,
+              status: row.active ? "active" : "inactive",
+            }))
+          : categoriesRes.error
+            ? []
+            : (categoriesRes.data ?? []),
+      paymentMethods:
+        !optionPaymentMethodsRes.error && (optionPaymentMethodsRes.data?.length ?? 0) > 0
+          ? optionPaymentMethodsRes.data.map((row) => ({
+              id: row.id,
+              name: row.name,
+              status: row.active ? "active" : "inactive",
+            }))
+          : pmRes.error
+            ? []
+            : (pmRes.data ?? []),
       attachments: attachmentsRes.error ? [] : (attachmentsRes.data ?? []),
     },
     { headers: NO_CACHE_HEADERS }
@@ -151,11 +231,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (Object.prototype.hasOwnProperty.call(body, "expense_date")) {
     patch.expense_date = stringOrNull(body.expense_date);
   }
+  if (Object.prototype.hasOwnProperty.call(body, "date")) {
+    patch.expense_date = stringOrNull(body.date);
+  }
   if (Object.prototype.hasOwnProperty.call(body, "vendor_name")) {
     patch.vendor_name = stringOrNull(body.vendor_name);
   }
+  if (Object.prototype.hasOwnProperty.call(body, "vendorName")) {
+    const vendorName = stringOrNull(body.vendorName);
+    patch.vendor_name = vendorName;
+    patch.vendor = vendorName;
+  }
   if (Object.prototype.hasOwnProperty.call(body, "payment_method")) {
     patch.payment_method = stringOrNull(body.payment_method);
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "paymentMethod")) {
+    patch.payment_method = stringOrNull(body.paymentMethod);
   }
   if (Object.prototype.hasOwnProperty.call(body, "reference_no")) {
     patch.reference_no = stringOrNull(body.reference_no);
@@ -163,6 +254,29 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (Object.prototype.hasOwnProperty.call(body, "notes")) {
     patch.notes = stringOrNull(body.notes);
   }
+  if (Object.prototype.hasOwnProperty.call(body, "status")) {
+    const status = optionalStatus(body.status);
+    if (!status) return apiError(400, "Invalid expense status.");
+    patch.status = status;
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "workerId")) {
+    patch.worker_id = stringOrNull(body.workerId);
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "sourceType")) {
+    const sourceType = optionalSourceType(body.sourceType);
+    if (!sourceType) return apiError(400, "Invalid expense source.");
+    patch.source_type = sourceType;
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "paymentAccountId")) {
+    patch.payment_account_id = stringOrNull(body.paymentAccountId);
+  }
+  if (Object.prototype.hasOwnProperty.call(body, "projectId")) {
+    patch.project_id = stringOrNull(body.projectId);
+  }
+  const hasLinePatch =
+    Object.prototype.hasOwnProperty.call(body, "projectId") ||
+    Object.prototype.hasOwnProperty.call(body, "category") ||
+    Object.prototype.hasOwnProperty.call(body, "amount");
   if (Object.keys(patch).length === 0) return apiError(400, "No expense fields to update.");
 
   const { data, error } = await supabase
@@ -176,6 +290,50 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return apiError(500, "Failed to save expense.");
   }
   if (!data) return apiError(404, "Expense not found.");
+
+  if (hasLinePatch) {
+    const linePatch: Record<string, unknown> = {};
+    if (Object.prototype.hasOwnProperty.call(body, "projectId")) {
+      linePatch.project_id = stringOrNull(body.projectId);
+    }
+    if (Object.prototype.hasOwnProperty.call(body, "category")) {
+      linePatch.category = nullableString(body.category) ?? "Other";
+    }
+    if (Object.prototype.hasOwnProperty.call(body, "amount")) {
+      const amount = Number(body.amount);
+      if (!Number.isFinite(amount) || amount < 0) {
+        return apiError(400, "Line amount must be a valid number.");
+      }
+      linePatch.amount = amount;
+    }
+
+    if (Object.keys(linePatch).length > 0) {
+      const { data: firstLine, error: firstLineError } = await supabase
+        .from("expense_lines")
+        .select("id")
+        .eq("expense_id", id)
+        .limit(1)
+        .maybeSingle();
+      if (firstLineError) {
+        console.error("[expenses/:id] first line load failed", firstLineError);
+        return apiError(500, "Failed to save expense line.");
+      }
+      if (!firstLine) return apiError(404, "Expense line not found.");
+      const { data: updatedLine, error: lineError } = await supabase
+        .from("expense_lines")
+        .update(linePatch)
+        .eq("id", firstLine.id)
+        .eq("expense_id", id)
+        .select("id")
+        .maybeSingle();
+      if (lineError) {
+        console.error("[expenses/:id] line update failed", lineError);
+        return apiError(500, "Failed to save expense line.");
+      }
+      if (!updatedLine) return apiError(404, "Expense line not found.");
+    }
+  }
+
   return NextResponse.json({ ok: true, expense: data }, { headers: NO_CACHE_HEADERS });
 }
 
@@ -236,6 +394,54 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (action === "add-vendor" || action === "add-category" || action === "add-payment-method") {
       const name = stringOrNull(body.name);
       if (!name) return apiError(400, "Name is required.");
+      if (action === "add-category" || action === "add-payment-method") {
+        const type = action === "add-category" ? "category" : "payment_method";
+        const { data: existing, error: existingError } = await supabase
+          .from("expense_options")
+          .select("*")
+          .eq("type", type)
+          .ilike("name", name)
+          .maybeSingle();
+        if (!existingError && existing) {
+          const row = existing as { id: string; name: string; active?: boolean };
+          if (!row.active) {
+            const { error: activateError } = await supabase
+              .from("expense_options")
+              .update({ active: true })
+              .eq("id", row.id);
+            if (activateError) throw activateError;
+          }
+          return NextResponse.json({ ok: true, name: row.name }, { headers: NO_CACHE_HEADERS });
+        }
+        if (existingError && !isMissingTable(existingError)) throw existingError;
+        if (!existingError) {
+          const { data: rows } = await supabase
+            .from("expense_options")
+            .select("sort_order")
+            .eq("type", type);
+          const maxSort = Array.isArray(rows)
+            ? rows.reduce((max, row) => Math.max(max, Number(row.sort_order ?? 0)), 0)
+            : 0;
+          const { data, error } = await supabase
+            .from("expense_options")
+            .insert({
+              type,
+              key: slugKey(name),
+              name,
+              active: true,
+              is_default: false,
+              is_system: false,
+              sort_order: maxSort + 10,
+            })
+            .select("name")
+            .single();
+          if (error) throw error;
+          return NextResponse.json(
+            { ok: true, name: data?.name ?? name },
+            { headers: NO_CACHE_HEADERS }
+          );
+        }
+      }
       const table =
         action === "add-vendor"
           ? "vendors"

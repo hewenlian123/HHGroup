@@ -25,7 +25,6 @@ import { useToast } from "@/components/toast/toast-provider";
 import {
   addExpenseCategory,
   addPaymentAccount,
-  addPaymentMethod,
   disableExpenseCategory,
   disablePaymentMethod,
   enableExpenseCategory,
@@ -37,7 +36,6 @@ import type { ExpenseOptionRow, ExpenseOptionType } from "@/lib/expense-options-
 import {
   loadExpenseOptionsAdmin,
   renamePaymentAccountOptionDisplay,
-  setDefaultExpenseOption,
   setExpenseOptionActive,
   updateExpenseOptionName,
 } from "@/lib/expense-options-db";
@@ -54,6 +52,61 @@ const TABS: { id: ExpenseOptionType; label: string }[] = [
   { id: "payment_source", label: "Payment sources" },
   { id: "category", label: "Categories" },
 ];
+
+type ExpenseOptionsApiResponse = {
+  ok?: boolean;
+  rows?: ExpenseOptionRow[];
+  row?: ExpenseOptionRow;
+  tableMissing?: boolean;
+  message?: string;
+};
+
+async function readJson<T>(response: Response): Promise<T | null> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchExpenseOptions(type: ExpenseOptionType): Promise<ExpenseOptionsApiResponse> {
+  const response = await fetch(`/api/settings/expense-options?type=${encodeURIComponent(type)}`, {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  const body = await readJson<ExpenseOptionsApiResponse>(response);
+  if (!response.ok || !body?.ok) {
+    return { ok: false, message: body?.message || "Failed to load expense options." };
+  }
+  return body;
+}
+
+async function createExpenseOption(
+  type: ExpenseOptionType,
+  name: string
+): Promise<ExpenseOptionRow | null> {
+  const response = await fetch("/api/settings/expense-options", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ type, name }),
+  });
+  const body = await readJson<ExpenseOptionsApiResponse>(response);
+  if (!response.ok || !body?.ok) return null;
+  return body.row ?? null;
+}
+
+async function setDefaultExpenseOptionViaApi(
+  id: string,
+  type: ExpenseOptionType
+): Promise<boolean> {
+  const response = await fetch("/api/settings/expense-options", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ action: "set-default", id, type }),
+  });
+  const body = await readJson<ExpenseOptionsApiResponse>(response);
+  return response.ok && Boolean(body?.ok);
+}
 
 export default function SettingsExpensesPage() {
   const { toast } = useToast();
@@ -82,15 +135,23 @@ export default function SettingsExpensesPage() {
     }
     setLoading(true);
     try {
-      const {
-        rows: list,
-        tableMissing: missing,
-        error: loadErr,
-      } = await loadExpenseOptionsAdmin(tab);
-      setTableMissing(missing);
-      setRows(list);
-      if (loadErr) {
-        toast({ title: "Expense options", description: loadErr, variant: "error" });
+      const body = await fetchExpenseOptions(tab);
+      if (body.ok) {
+        setTableMissing(Boolean(body.tableMissing));
+        setRows(body.rows ?? []);
+      } else {
+        const {
+          rows: list,
+          tableMissing: missing,
+          error: loadErr,
+        } = await loadExpenseOptionsAdmin(tab);
+        setTableMissing(missing);
+        setRows(list);
+        toast({
+          title: "Expense options",
+          description: body.message || loadErr || "Failed to load expense options.",
+          variant: "error",
+        });
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -182,7 +243,7 @@ export default function SettingsExpensesPage() {
   };
 
   const setDefault = async (r: ExpenseOptionRow) => {
-    const ok = await setDefaultExpenseOption(r.id, r.type);
+    const ok = await setDefaultExpenseOptionViaApi(r.id, r.type);
     if (!ok) {
       toast({ title: "Could not set default", variant: "error" });
       return;
@@ -202,7 +263,7 @@ export default function SettingsExpensesPage() {
           return;
         }
       } else if (tab === "payment_method") {
-        const out = await addPaymentMethod(trimmed);
+        const out = (await createExpenseOption(tab, trimmed))?.name ?? "";
         if (!out) {
           toast({ title: "Could not add payment method", variant: "error" });
           return;
