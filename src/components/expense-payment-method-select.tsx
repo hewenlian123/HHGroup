@@ -17,12 +17,35 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { addPaymentMethod } from "@/lib/data";
 import { pickerItemsByStoredName } from "@/lib/expense-options-db";
 import { useToast } from "@/components/toast/toast-provider";
 import { cn } from "@/lib/utils";
 
 const ADD_NEW_VALUE = "__hh_add_payment_method__";
+
+type ExpenseOptionCreateResponse = {
+  ok?: boolean;
+  row?: { name?: string | null } | null;
+  message?: string;
+};
+
+async function createPaymentMethod(name: string): Promise<string> {
+  const response = await fetch("/api/settings/expense-options", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ type: "payment_method", name }),
+  });
+  let body: ExpenseOptionCreateResponse | null = null;
+  try {
+    body = (await response.json()) as ExpenseOptionCreateResponse;
+  } catch {
+    body = null;
+  }
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message || "Failed to save payment method.");
+  }
+  return body.row?.name?.trim() || name.trim();
+}
 
 export type ExpensePaymentMethodSelectProps = {
   value: string;
@@ -108,7 +131,7 @@ export function ExpensePaymentMethodSelect({
     );
     onValueChange(trimmed);
     try {
-      const created = await addPaymentMethod(trimmed);
+      const created = await createPaymentMethod(trimmed);
       if (!created) {
         onValueChange(previousValue);
         toast({ title: "Could not add payment method", variant: "error" });

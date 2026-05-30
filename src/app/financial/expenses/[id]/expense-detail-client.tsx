@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { CreatableSelect } from "@/components/ui/creatable-select";
+import { ExpensePaymentMethodSelect } from "@/components/expense-payment-method-select";
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { formatCurrency } from "@/lib/formatters";
@@ -534,18 +535,16 @@ export function ExpenseDetailClient({ id }: { id: string }) {
                 />
               </div>
               <div>
-                <CreatableSelect
-                  label="Payment method"
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Payment method
+                </p>
+                <ExpensePaymentMethodSelect
+                  id="expense-detail-payment-method-select"
                   value={expense.payment_method ?? "ACH"}
-                  options={paymentMethods.options}
-                  placeholder="Payment method"
-                  onChange={(v) =>
+                  onValueChange={(v) =>
                     setExpense((prev) => (prev ? { ...prev, payment_method: v } : prev))
                   }
-                  onCreate={async (name) => {
-                    const v = await addPaymentMethod(name);
-                    if (v) setExpense((prev) => (prev ? { ...prev, payment_method: v } : prev));
-                  }}
+                  className="mt-1"
                 />
                 {expense.payment_method && paymentMethods.disabled.has(expense.payment_method) ? (
                   <span className="mt-1 inline-block text-xs text-amber-600">Disabled</span>
@@ -579,6 +578,26 @@ export function ExpenseDetailClient({ id }: { id: string }) {
             <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
               <SubmitSpinner loading={saving} className="shrink-0" />
               {saving ? "Saving…" : message === "Saved." ? "Saved" : null}
+              <Button
+                type="button"
+                size="sm"
+                className="rounded-sm"
+                disabled={saving || !headerForSave}
+                onClick={() => {
+                  if (!headerForSave) return;
+                  void saveHeader({
+                    expense_date: headerForSave.expense_date,
+                    vendor_name: headerForSave.vendor_name ?? undefined,
+                    payment_method: headerForSave.payment_method,
+                    reference_no: headerForSave.reference_no ?? undefined,
+                    notes: headerForSave.notes ?? undefined,
+                  }).then((ok) => {
+                    if (ok) lastSavedHeaderRef.current = headerForSave;
+                  });
+                }}
+              >
+                Save header
+              </Button>
             </div>
           </div>
         )}
