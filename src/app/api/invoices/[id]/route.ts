@@ -3,6 +3,13 @@ import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { getServerSupabase } from "@/lib/supabase-server";
+import { getProjectByIdWithClient } from "@/lib/projects-db";
+import {
+  getPaymentAttachmentPreviewUrl,
+  getPaymentsReceivedByInvoiceId,
+  type PaymentReceivedRow,
+} from "@/lib/payments-received-db";
+import { getDepositsByInvoiceId } from "@/lib/deposits-db";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +41,17 @@ type InvoiceWithDerived = {
   daysOverdue: number;
 };
 
+type InvoicePaymentForClient = {
+  id: string;
+  invoiceId: string;
+  date: string;
+  amount: number;
+  method: string;
+  memo?: string;
+  status?: "Posted" | "Voided";
+  paymentReceivedId?: string | null;
+};
+
 function toNum(v: unknown): number {
   const n = typeof v === "number" ? v : Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -45,6 +63,44 @@ function logInvoiceApiError(context: string, error: unknown) {
 
 function safeInvoiceApiResponse(message: string, status = 500) {
   return NextResponse.json({ ok: false, message }, { status });
+}
+
+function mapInvoicePayment(row: Record<string, unknown>): InvoicePaymentForClient {
+  const date = row.paid_at ?? row.payment_date ?? "";
+  return {
+    id: String(row.id ?? ""),
+    invoiceId: String(row.invoice_id ?? ""),
+    date: typeof date === "string" ? date.slice(0, 10) : "",
+    amount: toNum(row.amount),
+    method: String(row.method ?? ""),
+    memo: row.memo ? String(row.memo) : row.reference ? String(row.reference) : undefined,
+    status: String(row.status ?? "") === "Voided" ? "Voided" : "Posted",
+    paymentReceivedId: row.payment_received_id ? String(row.payment_received_id) : null,
+  };
+}
+
+async function withPaymentAttachmentPreviewUrls(
+  payments: PaymentReceivedRow[],
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseAdmin>>
+): Promise<PaymentReceivedRow[]> {
+  return Promise.all(
+    payments.map(async (payment) => ({
+      ...payment,
+      attachments: await Promise.all(
+        (payment.attachments ?? []).map(async (attachment) => {
+          try {
+            return {
+              ...attachment,
+              previewUrl: await getPaymentAttachmentPreviewUrl(attachment, supabase),
+            };
+          } catch (error) {
+            logInvoiceApiError("failed to sign payment attachment preview", error);
+            return { ...attachment, previewUrl: null };
+          }
+        })
+      ),
+    }))
+  );
 }
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -185,7 +241,38 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       daysOverdue,
     };
 
-    return NextResponse.json({ ok: true, invoice });
+    const [projectResult, paymentsReceivedResult, depositsResult] = await Promise.allSettled([
+      invoice.projectId ? getProjectByIdWithClient(supabase, invoice.projectId) : null,
+      getPaymentsReceivedByInvoiceId(id, supabase),
+      getDepositsByInvoiceId(id, supabase),
+    ]);
+
+    if (projectResult.status === "rejected") {
+      logInvoiceApiError("failed to load invoice project", projectResult.reason);
+      return safeInvoiceApiResponse("Failed to load invoice project.");
+    }
+    if (paymentsReceivedResult.status === "rejected") {
+      logInvoiceApiError("failed to load payments received", paymentsReceivedResult.reason);
+      return safeInvoiceApiResponse("Failed to load invoice payment records.");
+    }
+    if (depositsResult.status === "rejected") {
+      logInvoiceApiError("failed to load invoice deposits", depositsResult.reason);
+      return safeInvoiceApiResponse("Failed to load invoice deposits.");
+    }
+
+    const paymentsReceived = await withPaymentAttachmentPreviewUrls(
+      paymentsReceivedResult.value,
+      supabase
+    );
+
+    return NextResponse.json({
+      ok: true,
+      invoice,
+      payments: ((paysRes.data ?? []) as Array<Record<string, unknown>>).map(mapInvoicePayment),
+      paymentsReceived,
+      deposits: depositsResult.value,
+      project: projectResult.value,
+    });
   } catch (e) {
     logInvoiceApiError("unexpected invoice load error", e);
     return safeInvoiceApiResponse("Failed to load invoice.");
