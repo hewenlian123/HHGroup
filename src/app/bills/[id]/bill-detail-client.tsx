@@ -153,6 +153,19 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
           <dd className={billsDetailDdClass}>{bill.bill_type}</dd>
           <dt className={billsDetailDtClass}>Project</dt>
           <dd className={billsDetailDdClass}>{bill.project_name ?? "—"}</dd>
+          <dt className={billsDetailDtClass}>Subcontract</dt>
+          <dd className={billsDetailDdClass}>
+            {bill.project_id && bill.subcontract_id ? (
+              <Link
+                href={`/projects/${bill.project_id}/subcontracts/${bill.subcontract_id}`}
+                className="underline-offset-2 hover:underline"
+              >
+                {bill.subcontractor_name ?? bill.subcontract_cost_code ?? "Linked subcontract"}
+              </Link>
+            ) : (
+              "—"
+            )}
+          </dd>
           <dt className={billsDetailDtClass}>Category</dt>
           <dd className={billsDetailDdClass}>{bill.category ?? "—"}</dd>
           <dt className={billsDetailDtClass}>Issue date</dt>

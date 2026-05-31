@@ -27,10 +27,12 @@ import { cn } from "@/lib/utils";
 export type SubcontractorSummaryRow = {
   id: string;
   name: string;
-  totalContracts: number;
-  approved: number;
-  paid: number;
-  outstanding: number;
+  contractAmount: number;
+  scheduledAmount: number;
+  billedToDate: number;
+  paidToDate: number;
+  apOutstanding: number;
+  remainingContract: number;
   insurance_alert: boolean;
   insurance_expiration_date: string | null;
 };
@@ -178,16 +180,16 @@ export function SubcontractorsListClient({
                       <div>
                         <dt className="inline text-[10px] uppercase tracking-normal">Contracts</dt>{" "}
                         <dd className="inline">
-                          <NeoAmount>${fmtUsd(r.totalContracts)}</NeoAmount>
+                          <NeoAmount>${fmtUsd(r.contractAmount)}</NeoAmount>
                         </dd>
                       </div>
                       <div>
                         <dt className="inline text-[10px] uppercase tracking-normal">
-                          Outstanding
+                          AP Outstanding
                         </dt>{" "}
                         <dd className="inline">
-                          <NeoAmount tone={r.outstanding > 0 ? "expense" : "neutral"}>
-                            ${fmtUsd(r.outstanding)}
+                          <NeoAmount tone={r.apOutstanding > 0 ? "expense" : "neutral"}>
+                            ${fmtUsd(r.apOutstanding)}
                           </NeoAmount>
                         </dd>
                       </div>
@@ -197,15 +199,17 @@ export function SubcontractorsListClient({
               ))}
             </div>
           )}
-          <NeoTable className="hidden md:block" tableClassName="min-w-[760px] lg:min-w-0">
+          <NeoTable className="hidden md:block" tableClassName="min-w-[1080px] lg:min-w-0">
             <thead>
               <tr>
                 <th className={tableHeadClass}>Subcontractor</th>
                 <th className={tableHeadClass}>Insurance</th>
-                <th className={numericHeadClass}>Total Contracts</th>
-                <th className={numericHeadClass}>Approved</th>
-                <th className={numericHeadClass}>Paid</th>
-                <th className={numericHeadClass}>Outstanding</th>
+                <th className={numericHeadClass}>Contract Amount</th>
+                <th className={numericHeadClass}>Scheduled</th>
+                <th className={numericHeadClass}>Billed To Date</th>
+                <th className={numericHeadClass}>Paid To Date</th>
+                <th className={numericHeadClass}>AP Outstanding</th>
+                <th className={numericHeadClass}>Remaining Contract</th>
               </tr>
             </thead>
             <tbody>
@@ -236,17 +240,25 @@ export function SubcontractorsListClient({
                     )}
                   </td>
                   <td className={amountCellClass}>
-                    <NeoAmount>${fmtUsd(r.totalContracts)}</NeoAmount>
+                    <NeoAmount>${fmtUsd(r.contractAmount)}</NeoAmount>
                   </td>
                   <td className={amountCellClass}>
-                    <NeoAmount>${fmtUsd(r.approved)}</NeoAmount>
+                    <NeoAmount>${fmtUsd(r.scheduledAmount)}</NeoAmount>
                   </td>
                   <td className={amountCellClass}>
-                    <NeoAmount>${fmtUsd(r.paid)}</NeoAmount>
+                    <NeoAmount>${fmtUsd(r.billedToDate)}</NeoAmount>
                   </td>
                   <td className={amountCellClass}>
-                    <NeoAmount tone={r.outstanding > 0 ? "expense" : "neutral"}>
-                      ${fmtUsd(r.outstanding)}
+                    <NeoAmount tone="income">${fmtUsd(r.paidToDate)}</NeoAmount>
+                  </td>
+                  <td className={amountCellClass}>
+                    <NeoAmount tone={r.apOutstanding > 0 ? "expense" : "neutral"}>
+                      ${fmtUsd(r.apOutstanding)}
+                    </NeoAmount>
+                  </td>
+                  <td className={amountCellClass}>
+                    <NeoAmount tone={r.remainingContract < 0 ? "expense" : "neutral"}>
+                      ${fmtUsd(r.remainingContract)}
                     </NeoAmount>
                   </td>
                 </tr>

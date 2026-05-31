@@ -159,34 +159,13 @@ test.describe("Delete mutations: create then delete", () => {
     await expect(row).toHaveCount(0, { timeout: ROW_REMOVED_MS });
   });
 
-  test("labor subcontractors: create then delete", async ({ page }) => {
+  test("legacy labor subcontractors route redirects instead of allowing direct writes", async ({
+    page,
+  }) => {
     await page.goto(`${BASE}/labor/subcontractors`);
     await page.waitForLoadState("domcontentloaded");
-    if (
-      await page
-        .getByText(/Supabase is not configured/i)
-        .isVisible()
-        .catch(() => false)
-    ) {
-      test.skip(true, "Supabase not configured.");
-    }
-
-    const label = `PW-SUB-${Date.now()}`;
-    await page.getByRole("button", { name: /\+ New Subcontractor/i }).click();
-    await page.getByPlaceholder("Required").first().fill(label);
-    await page.getByRole("button", { name: /Create Subcontractor/i }).click();
-
-    const row = page.locator("tbody tr").filter({ hasText: label });
-    try {
-      await expect(row).toBeVisible({ timeout: 25_000 });
-    } catch {
-      test.skip(true, "Subcontractor did not appear after create.");
-    }
-
-    const del = row.getByRole("button", { name: /^Delete$/ });
-    await expectDeleteControlVisibleWithoutHover(page, del, 900);
-    await del.click();
-    await expect(row).toHaveCount(0, { timeout: ROW_REMOVED_MS });
+    await expect(page).toHaveURL(/\/subcontractors(?:[/?#]|$)/, { timeout: 25_000 });
+    await expect(page.locator("body")).not.toContainText("Internal Server Error");
   });
 
   test("customers: create then delete via menu + dialog", async ({ page }) => {

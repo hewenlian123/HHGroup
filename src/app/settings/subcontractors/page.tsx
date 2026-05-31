@@ -8,6 +8,8 @@ import { SubcontractorsTableClient } from "./subcontractors-table-client";
 export const dynamic = "force-dynamic";
 
 export default async function SubcontractorsPage() {
+  // Legacy management surface kept for add/edit workflows until `/subcontractors/new`
+  // becomes the canonical entry point.
   let rows: Awaited<ReturnType<typeof getSubcontractors>> = [];
   let dataLoadWarning: string | null = null;
   try {

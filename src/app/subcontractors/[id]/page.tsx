@@ -11,18 +11,27 @@ import {
   StatusBadge,
 } from "@/components/base";
 import {
+  getApBillsBySubcontractIds,
   getSubcontractorById,
   getSubcontractsBySubcontractor,
   getBillsBySubcontractIds,
+  getPaymentScheduleBySubcontractIds,
   getPaymentsBySubcontractIds,
-  getProjectBudgetItems,
   type SubcontractorRow,
 } from "@/lib/data";
 import { SubcontractorW9 } from "./subcontractor-w9";
 import { SubcontractorDetailClient } from "./subcontractor-detail-client";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
+import {
+  summarizeSubcontractFinancials,
+  summarizeSubcontractorFinancials,
+} from "@/lib/subcontractor-financials";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -50,58 +59,84 @@ export default async function SubcontractorDetailPage({ params }: Props) {
   let contracts: Awaited<ReturnType<typeof getSubcontractsBySubcontractor>> = [];
   let bills: Awaited<ReturnType<typeof getBillsBySubcontractIds>> = [];
   let payments: Awaited<ReturnType<typeof getPaymentsBySubcontractIds>> = [];
-  let budgetItemArrays: Awaited<ReturnType<typeof getProjectBudgetItems>>[] = [];
+  let paymentSchedule: Awaited<ReturnType<typeof getPaymentScheduleBySubcontractIds>> = [];
+  let linkedApBills: Awaited<ReturnType<typeof getApBillsBySubcontractIds>> = [];
   let dataLoadWarning: string | null = null;
   try {
     contracts = await getSubcontractsBySubcontractor(id);
     const subcontractIds = contracts.map((c) => c.id);
-    const projectIds = Array.from(new Set(contracts.map((c) => c.project_id)));
-    [bills, payments] = await Promise.all([
+    const supabase = getServerSupabaseInternalNoStore();
+    [bills, payments, paymentSchedule, linkedApBills] = await Promise.all([
       getBillsBySubcontractIds(subcontractIds),
       getPaymentsBySubcontractIds(subcontractIds),
+      getPaymentScheduleBySubcontractIds(subcontractIds, supabase ?? undefined).catch(() => []),
+      getApBillsBySubcontractIds(subcontractIds, supabase ?? undefined).catch(() => []),
     ]);
-    budgetItemArrays = await Promise.all(projectIds.map((pid) => getProjectBudgetItems(pid)));
   } catch (e) {
     logServerPageDataError(`subcontractors/${id} financials`, e);
     dataLoadWarning = serverDataLoadWarning(e, "subcontractor contracts or payments");
   }
 
-  const projectIds = Array.from(new Set(contracts.map((c) => c.project_id)));
-
-  const approvedCoByProjectAndCostCode = new Map<string, Map<string, number>>();
-  projectIds.forEach((pid, idx) => {
-    const items = budgetItemArrays[idx] ?? [];
-    const byCode = new Map<string, number>();
-    for (const item of items) {
-      const code = item.costCode ?? "";
-      byCode.set(code, (byCode.get(code) ?? 0) + item.total);
-    }
-    approvedCoByProjectAndCostCode.set(pid, byCode);
-  });
-
-  const paidBySubcontractId = new Map<string, number>();
-  for (const p of payments) {
-    paidBySubcontractId.set(
-      p.subcontract_id,
-      (paidBySubcontractId.get(p.subcontract_id) ?? 0) + p.amount
-    );
-  }
-
   const contractRows = contracts.map((c) => {
-    const revised =
-      c.contract_amount +
-      (approvedCoByProjectAndCostCode.get(c.project_id)?.get(c.cost_code ?? "") ?? 0);
-    const paid = paidBySubcontractId.get(c.id) ?? 0;
-    const exposure = revised - paid;
-    return { ...c, revised, paid, exposure };
+    const summary = summarizeSubcontractFinancials({
+      contractAmount: c.contract_amount,
+      scheduleItems: paymentSchedule
+        .filter((item) => item.subcontract_id === c.id)
+        .map((item) => ({
+          amount: item.amount,
+          status: item.status,
+          apBillId: item.ap_bill_id,
+        })),
+      apBills: linkedApBills
+        .filter((bill) => bill.subcontract_id === c.id)
+        .map((bill) => ({
+          id: bill.id,
+          amount: bill.amount,
+          paidAmount: bill.paid_amount,
+          balanceAmount: bill.balance_amount,
+          status: bill.status,
+        })),
+      bills: bills
+        .filter((bill) => bill.subcontract_id === c.id)
+        .map((bill) => ({ amount: bill.amount, status: bill.status })),
+      payments: payments
+        .filter((payment) => payment.subcontract_id === c.id)
+        .map((payment) => ({ amount: payment.amount })),
+      remainingBasis: "scheduledOrBilled",
+    });
+    return { ...c, summary };
   });
 
-  const totalContracts = contracts.reduce((s, c) => s + c.contract_amount, 0);
-  const approved = bills
-    .filter((b) => b.status === "Approved" || b.status === "Paid")
-    .reduce((s, b) => s + b.amount, 0);
-  const paid = payments.reduce((s, p) => s + p.amount, 0);
-  const outstanding = approved - paid;
+  const summary = summarizeSubcontractorFinancials({
+    contracts: contracts.map((contract) => ({
+      id: contract.id,
+      contractAmount: contract.contract_amount,
+    })),
+    scheduleItems: paymentSchedule.map((item) => ({
+      subcontractId: item.subcontract_id,
+      amount: item.amount,
+      status: item.status,
+      apBillId: item.ap_bill_id,
+    })),
+    apBills: linkedApBills.map((bill) => ({
+      subcontractId: bill.subcontract_id,
+      id: bill.id,
+      amount: bill.amount,
+      paidAmount: bill.paid_amount,
+      balanceAmount: bill.balance_amount,
+      status: bill.status,
+    })),
+    bills: bills.map((bill) => ({
+      subcontractId: bill.subcontract_id,
+      amount: bill.amount,
+      status: bill.status,
+    })),
+    payments: payments.map((payment) => ({
+      subcontractId: payment.subcontract_id,
+      amount: payment.amount,
+    })),
+    remainingBasis: "scheduledOrBilled",
+  });
 
   const subcontractIdToProjectName = new Map(contracts.map((c) => [c.id, c.project_name]));
 
@@ -190,15 +225,21 @@ export default async function SubcontractorDetailPage({ params }: Props) {
         </div>
       </NeoPanel>
 
-      <NeoPanel bodyClassName="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
+      <NeoPanel bodyClassName="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6">
         {[
-          { label: "Total Contracts", value: totalContracts, tone: "neutral" as const },
-          { label: "Approved", value: approved, tone: "neutral" as const },
-          { label: "Paid", value: paid, tone: "income" as const },
+          { label: "Contract Amount", value: summary.contractAmount, tone: "neutral" as const },
+          { label: "Scheduled", value: summary.scheduledAmount, tone: "neutral" as const },
+          { label: "Billed To Date", value: summary.billedToDate, tone: "neutral" as const },
+          { label: "Paid To Date", value: summary.paidToDate, tone: "income" as const },
           {
-            label: "Outstanding",
-            value: outstanding,
-            tone: outstanding > 0 ? ("expense" as const) : ("neutral" as const),
+            label: "AP Outstanding",
+            value: summary.apOutstanding,
+            tone: summary.apOutstanding > 0 ? ("expense" as const) : ("neutral" as const),
+          },
+          {
+            label: "Remaining Contract",
+            value: summary.remainingContract,
+            tone: summary.remainingContract < 0 ? ("expense" as const) : ("neutral" as const),
           },
         ].map((item) => (
           <div key={item.label} className="min-w-0">
@@ -213,7 +254,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
       </NeoPanel>
 
       <NeoPanel title="Contracts" bodyClassName="p-0">
-        <NeoTable className="border-0 shadow-none" tableClassName="min-w-[880px]">
+        <NeoTable className="border-0 shadow-none" tableClassName="min-w-[1080px]">
           <thead>
             <tr className="border-b border-[var(--neo-border)]">
               <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
@@ -226,23 +267,26 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                 Contract Amount
               </th>
               <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
-                Retainage %
+                Scheduled
               </th>
               <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
-                Revised Contract
+                Billed To Date
               </th>
               <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
-                Paid
+                Paid To Date
               </th>
               <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
-                Exposure
+                AP Outstanding
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
+                Remaining Contract
               </th>
             </tr>
           </thead>
           <tbody>
             {contractRows.length === 0 ? (
               <tr className="border-b border-[var(--neo-border)]">
-                <td colSpan={7} className="py-6 px-3">
+                <td colSpan={8} className="py-6 px-3">
                   <EmptyState
                     title="No contracts"
                     description="No contract records for this subcontractor."
@@ -251,15 +295,15 @@ export default async function SubcontractorDetailPage({ params }: Props) {
               </tr>
             ) : (
               contractRows.map((c) => {
-                const exposurePositive = c.exposure > 0;
-                const paidInFull = c.paid >= c.revised;
+                const outstandingPositive = c.summary.apOutstanding > 0;
+                const fullyBilled = c.summary.remainingContract <= 0;
                 return (
                   <tr
                     key={c.id}
                     className={`border-b border-[var(--neo-border)] ${
-                      paidInFull
+                      fullyBilled
                         ? "bg-emerald-500/10"
-                        : exposurePositive
+                        : outstandingPositive
                           ? "bg-[rgb(184_137_45_/_0.08)]"
                           : ""
                     }`}
@@ -269,18 +313,23 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                     <td className="py-1.5 px-3 text-right tabular-nums">
                       <NeoAmount>${fmtUsd(c.contract_amount)}</NeoAmount>
                     </td>
-                    <td className="py-1.5 px-3 text-right tabular-nums">—</td>
                     <td className="py-1.5 px-3 text-right tabular-nums">
-                      <NeoAmount>${fmtUsd(c.revised)}</NeoAmount>
+                      <NeoAmount>${fmtUsd(c.summary.scheduledAmount)}</NeoAmount>
                     </td>
                     <td className="py-1.5 px-3 text-right tabular-nums">
-                      <NeoAmount tone="income">${fmtUsd(c.paid)}</NeoAmount>
+                      <NeoAmount>${fmtUsd(c.summary.billedToDate)}</NeoAmount>
                     </td>
                     <td className="py-1.5 px-3 text-right tabular-nums">
-                      <NeoAmount
-                        tone={exposurePositive ? "expense" : paidInFull ? "income" : "neutral"}
-                      >
-                        ${fmtUsd(c.exposure)}
+                      <NeoAmount tone="income">${fmtUsd(c.summary.paidToDate)}</NeoAmount>
+                    </td>
+                    <td className="py-1.5 px-3 text-right tabular-nums">
+                      <NeoAmount tone={c.summary.apOutstanding > 0 ? "expense" : "neutral"}>
+                        ${fmtUsd(c.summary.apOutstanding)}
+                      </NeoAmount>
+                    </td>
+                    <td className="py-1.5 px-3 text-right tabular-nums">
+                      <NeoAmount tone={c.summary.remainingContract < 0 ? "expense" : "neutral"}>
+                        ${fmtUsd(c.summary.remainingContract)}
                       </NeoAmount>
                     </td>
                   </tr>

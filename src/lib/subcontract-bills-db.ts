@@ -84,28 +84,54 @@ export async function getBillsBySubcontract(subcontractId: string): Promise<Subc
 /** Create one subcontract bill via RPC (enforces total bills <= contract amount). */
 export async function insertSubcontractBill(draft: SubcontractBillDraft): Promise<void> {
   const c = client();
+  const amount = Number(draft.amount) || 0;
+  const billDate = draft.bill_date.slice(0, 10);
+  const dueDate = draft.due_date ? draft.due_date.slice(0, 10) : null;
+  const description = draft.description?.trim() || null;
   const { error } = await c.rpc("create_subcontract_bill_guard", {
     p_subcontract_id: draft.subcontract_id,
     p_project_id: draft.project_id,
-    p_bill_date: draft.bill_date.slice(0, 10),
-    p_due_date: draft.due_date ? draft.due_date.slice(0, 10) : null,
-    p_amount: Number(draft.amount) || 0,
-    p_description: draft.description?.trim() || null,
+    p_bill_date: billDate,
+    p_due_date: dueDate,
+    p_amount: amount,
+    p_description: description,
   });
-  if (error) {
-    if (!isMissingFunction(error)) throw new Error(error.message ?? "Failed to add bill.");
-    // Fallback: direct insert without contract-amount guard.
-    const { error: insErr } = await c.from("subcontract_bills").insert({
-      subcontract_id: draft.subcontract_id,
-      project_id: draft.project_id,
-      bill_date: draft.bill_date.slice(0, 10),
-      due_date: draft.due_date ? draft.due_date.slice(0, 10) : null,
-      amount: Number(draft.amount) || 0,
-      description: draft.description?.trim() || null,
-      status: "Pending",
-    });
-    if (insErr) throw new Error(insErr.message ?? "Failed to add bill.");
-  }
+  if (!error) return;
+  if (!isMissingFunction(error)) throw new Error(error.message ?? "Failed to add bill.");
+
+  const legacyRpc = await c.rpc("create_subcontract_bill_guard", {
+    p_subcontract_id: draft.subcontract_id,
+    p_project_id: draft.project_id,
+    p_bill_date: billDate,
+    p_amount: amount,
+    p_description: description,
+  });
+  if (!legacyRpc.error) return;
+  if (!isMissingFunction(legacyRpc.error))
+    throw new Error(legacyRpc.error.message ?? "Failed to add bill.");
+
+  const payload = {
+    subcontract_id: draft.subcontract_id,
+    project_id: draft.project_id,
+    bill_date: billDate,
+    due_date: dueDate,
+    amount,
+    description,
+    status: "Pending",
+  };
+  const { error: insErr } = await c.from("subcontract_bills").insert(payload);
+  if (!insErr) return;
+  if (!isMissingColumn(insErr)) throw new Error(insErr.message ?? "Failed to add bill.");
+
+  const { error: fallbackInsertError } = await c.from("subcontract_bills").insert({
+    subcontract_id: payload.subcontract_id,
+    project_id: payload.project_id,
+    bill_date: payload.bill_date,
+    amount: payload.amount,
+    description: payload.description,
+    status: payload.status,
+  });
+  if (fallbackInsertError) throw new Error(fallbackInsertError.message ?? "Failed to add bill.");
 }
 
 /** Approve a subcontract bill via RPC (sets status to Approved, adds amount to project.spent). */
@@ -179,7 +205,18 @@ export async function updateSubcontractBill(
   if (patch.amount !== undefined) updates.amount = newAmount;
   if (patch.description !== undefined) updates.description = patch.description?.trim() || null;
   const { error } = await c.from("subcontract_bills").update(updates).eq("id", billId);
-  if (error) throw new Error(error.message ?? "Failed to update bill.");
+  if (!error) return;
+  if (!isMissingColumn(error) || updates.due_date === undefined) {
+    throw new Error(error.message ?? "Failed to update bill.");
+  }
+  const withoutDueDate = { ...updates };
+  delete withoutDueDate.due_date;
+  if (Object.keys(withoutDueDate).length === 0) return;
+  const { error: fallbackError } = await c
+    .from("subcontract_bills")
+    .update(withoutDueDate)
+    .eq("id", billId);
+  if (fallbackError) throw new Error(fallbackError.message ?? "Failed to update bill.");
 }
 
 export async function deleteSubcontractBillDraft(billId: string): Promise<void> {

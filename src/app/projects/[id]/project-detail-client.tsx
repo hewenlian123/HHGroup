@@ -351,7 +351,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
       header: "Subcontractor",
       render: (row) => (
         <Link
-          href={row.subcontractors?.id ? `/labor/subcontractors/${row.subcontractors.id}` : "#"}
+          href={row.subcontractors?.id ? `/subcontractors/${row.subcontractors.id}` : "#"}
           className="font-medium text-foreground hover:underline"
         >
           {row.subcontractors?.name || "—"}
@@ -514,7 +514,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
                         {state.subs.length} linked
                       </div>
                       <Button asChild variant="outline" size="sm">
-                        <Link href="/labor/subcontractors">
+                        <Link href="/subcontractors">
                           <Users className="h-4 w-4" />
                           Manage
                         </Link>

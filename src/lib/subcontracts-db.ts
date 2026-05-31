@@ -246,13 +246,31 @@ export async function getSubcontractsWithDetailsAll(): Promise<
     project_id: string;
     subcontractor_name: string;
     project_name: string;
+    status: SubcontractRow["status"];
+    cost_code: string | null;
+    contract_amount: number;
+    description: string | null;
   }[]
 > {
   const c = client();
-  const { data: rows, error } = await c
+  const selectCols =
+    "id, subcontractor_id, project_id, status, cost_code, contract_amount, description, subcontractors(name), projects(name)";
+  const fallbackCols =
+    "id, subcontractor_id, project_id, cost_code, contract_amount, description, subcontractors(name), projects(name)";
+  const first = await c
     .from("subcontracts")
-    .select("id, subcontractor_id, project_id, subcontractors(name), projects(name)")
+    .select(selectCols)
     .order("created_at", { ascending: false });
+  let rows = first.data as Record<string, unknown>[] | null;
+  let error = first.error;
+  if (error && isMissingColumn(error)) {
+    const retry = await c
+      .from("subcontracts")
+      .select(fallbackCols)
+      .order("created_at", { ascending: false });
+    rows = retry.data as Record<string, unknown>[] | null;
+    error = retry.error;
+  }
   if (error) throw new Error(error.message ?? "Failed to load subcontracts.");
   return (rows ?? []).map((r: Record<string, unknown>) => {
     const sub = r.subcontractors as { name?: string } | null;
@@ -263,6 +281,10 @@ export async function getSubcontractsWithDetailsAll(): Promise<
       project_id: (r.project_id as string) ?? "",
       subcontractor_name: sub?.name ?? "—",
       project_name: proj?.name ?? "—",
+      status: ((r.status as string | null) || "Active") as SubcontractRow["status"],
+      cost_code: (r.cost_code as string | null) ?? null,
+      contract_amount: Number(r.contract_amount) || 0,
+      description: (r.description as string | null) ?? null,
     };
   });
 }
@@ -270,7 +292,7 @@ export async function getSubcontractsWithDetailsAll(): Promise<
 /** Insert one subcontract. */
 export async function insertSubcontract(draft: SubcontractDraft): Promise<void> {
   const c = client();
-  const { error } = await c.from("subcontracts").insert({
+  const payload = {
     project_id: draft.project_id,
     subcontractor_id: draft.subcontractor_id,
     cost_code: draft.cost_code?.trim() || null,
@@ -279,8 +301,21 @@ export async function insertSubcontract(draft: SubcontractDraft): Promise<void> 
     description: draft.description?.trim() || null,
     start_date: draft.start_date?.slice(0, 10) || null,
     end_date: draft.end_date?.slice(0, 10) || null,
+  };
+  const { error } = await c.from("subcontracts").insert(payload);
+  if (!error) return;
+  if (!isMissingColumn(error)) throw new Error(error.message ?? "Failed to add subcontract.");
+
+  const { error: fallbackError } = await c.from("subcontracts").insert({
+    project_id: payload.project_id,
+    subcontractor_id: payload.subcontractor_id,
+    cost_code: payload.cost_code,
+    contract_amount: payload.contract_amount,
+    description: payload.description,
+    start_date: payload.start_date,
+    end_date: payload.end_date,
   });
-  if (error) throw new Error(error.message ?? "Failed to add subcontract.");
+  if (fallbackError) throw new Error(fallbackError.message ?? "Failed to add subcontract.");
 }
 
 export async function updateSubcontractStatus(
@@ -289,5 +324,11 @@ export async function updateSubcontractStatus(
 ): Promise<void> {
   const c = client();
   const { error } = await c.from("subcontracts").update({ status }).eq("id", subcontractId);
-  if (error) throw new Error(error.message ?? "Failed to update subcontract status.");
+  if (!error) return;
+  if (isMissingColumn(error)) {
+    throw new Error(
+      "Subcontract status is not configured yet. Apply the Phase 1 subcontract schema migration."
+    );
+  }
+  throw new Error(error.message ?? "Failed to update subcontract status.");
 }

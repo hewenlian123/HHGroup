@@ -191,6 +191,8 @@ export async function POST(request: Request) {
         amount,
         category: stringOrNull(body.category),
         notes: stringOrNull(body.notes),
+        subcontractor_id: stringOrNull(body.subcontractor_id),
+        subcontract_id: stringOrNull(body.subcontract_id),
       },
       supabase
     );

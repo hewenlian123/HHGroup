@@ -109,6 +109,18 @@ describe("project financial snapshot", () => {
     expect(snapshot.cashOut).toBe(400);
   });
 
+  it("does not treat subcontract contract amount as actual cost before bills exist", () => {
+    const snapshot = calculateProjectFinancialSnapshot({
+      projectId: "project-1",
+      contractValue: 10000,
+      subcontractCosts: [],
+    });
+
+    expect(snapshot.subcontractCost).toBe(0);
+    expect(snapshot.actualCost).toBe(0);
+    expect(snapshot.grossProfit).toBe(10000);
+  });
+
   it("treats accrued commission as actual project cost without using payment totals", () => {
     const snapshot = calculateProjectFinancialSnapshot({
       projectId: "project-1",

@@ -438,6 +438,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                         {[
                           bill.bill_no,
                           bill.project_name ?? "No project",
+                          bill.subcontractor_name ? `Subcontract ${bill.subcontractor_name}` : null,
                           `Due ${formatDate(bill.due_date)}`,
                         ]
                           .filter(Boolean)
@@ -512,6 +513,17 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                       )}
                     >
                       <span className="block truncate">{bill.project_name ?? "—"}</span>
+                      {bill.project_id && bill.subcontract_id ? (
+                        <Link
+                          href={`/projects/${bill.project_id}/subcontracts/${bill.subcontract_id}`}
+                          onClick={(event) => event.stopPropagation()}
+                          className="mt-0.5 block truncate text-[11px] text-[var(--neo-gold)] underline-offset-2 hover:underline"
+                        >
+                          {bill.subcontractor_name
+                            ? `Subcontract: ${bill.subcontractor_name}`
+                            : "Linked subcontract"}
+                        </Link>
+                      ) : null}
                     </td>
                     <td
                       className={cn(
