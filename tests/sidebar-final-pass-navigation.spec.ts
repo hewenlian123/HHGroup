@@ -113,7 +113,7 @@ test.describe("HH Project OS sidebar final pass", () => {
     await prepareStableSidebar(page);
   });
 
-  test("desktop sidebar presents the final primary IA without deep leaf clutter", async ({
+  test("desktop sidebar presents the practical daily IA without losing high-use leaves", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -125,45 +125,65 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Projects",
       "Estimates",
       "Change Orders",
-      "Customers",
+      "Time Entries",
       "Tasks",
+      "Punch List",
       "Schedule",
+      "Material Catalog",
       "Overview",
+      "Owner Dashboard",
       "AR",
+      "Invoices",
+      "Payments Received",
+      "Deposits",
       "AP",
+      "Bills",
+      "Expenses",
+      "Receipt Inbox",
+      "Reimbursements",
+      "Commission Payments",
       "Cash",
+      "Accounts",
+      "Bank Transactions",
       "Reports",
+      "Customers",
       "Workers",
+      "Worker Balances",
+      "Worker Payments",
+      "Worker Advances",
+      "Worker Invoices",
+      "Payroll Summary",
       "Vendors",
       "Subcontractors",
       "All Contacts",
       "Documents",
       "Site Photos",
       "Inspection Log",
+      "Receipt Uploads",
       "Company",
       "Users",
       "Roles",
       "Preferences",
       "Admin Center",
+      "System Health",
+      "System Metrics",
+      "System Logs",
+      "Backups",
     ]) {
       await expect(visibleSidebar(page).getByText(label, { exact: true }).first()).toBeVisible({
         timeout: 10_000,
       });
     }
 
-    for (const removedLabel of [
-      "Material Catalog",
-      "Punch List",
-      "Upload Receipt",
-      "Receipt Inbox",
-      "Worker Balances",
+    for (const intentionallyHiddenLabel of [
       "Worker Receipts",
-      "Worker Invoices",
-      "System Metrics",
-      "System Logs",
-      "Backups",
+      "Cash Flow",
+      "Expense Preferences",
+      "Financial Review",
     ]) {
-      await expect(visibleSidebar(page).getByText(removedLabel, { exact: true })).toHaveCount(0);
+      await expect(
+        visibleSidebar(page).getByText(intentionallyHiddenLabel, { exact: true })
+      ).toHaveCount(0);
     }
   });
 
@@ -175,20 +195,43 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/dashboard", active: "Dashboard" },
       { path: "/projects", active: "Projects" },
       { path: "/estimates", active: "Estimates" },
+      { path: "/change-orders", active: "Change Orders" },
+      { path: "/labor", active: "Time Entries" },
       { path: "/tasks", active: "Tasks" },
+      { path: "/punch-list", active: "Punch List" },
       { path: "/schedule", active: "Schedule" },
+      { path: "/materials/catalog", active: "Material Catalog" },
       { path: "/financial", active: "Overview" },
+      { path: "/financial/owner", active: "Owner Dashboard" },
       { path: "/financial/ar", active: "AR" },
-      { path: "/bills", active: "AP" },
-      { path: "/financial/expenses", active: "AP" },
+      { path: "/financial/invoices", active: "Invoices" },
+      { path: "/financial/payments", active: "Payments Received" },
+      { path: "/financial/deposits", active: "Deposits" },
+      { path: "/bills", active: "Bills" },
+      { path: "/financial/expenses", active: "Expenses" },
+      { path: "/financial/inbox", active: "Receipt Inbox" },
+      { path: "/labor/reimbursements", active: "Reimbursements" },
+      { path: "/financial/commissions", active: "Commission Payments" },
+      { path: "/financial/accounts", active: "Accounts" },
+      { path: "/financial/bank", active: "Bank Transactions" },
+      { path: "/settings/project-financial-review", active: "Reports" },
+      { path: "/customers", active: "Customers" },
       { path: "/financial/vendors", active: "Vendors" },
       { path: "/workers", active: "Workers" },
+      { path: "/labor/worker-balances", active: "Worker Balances" },
+      { path: "/labor/payments", active: "Worker Payments" },
+      { path: "/labor/advances", active: "Worker Advances" },
+      { path: "/labor/worker-invoices", active: "Worker Invoices" },
+      { path: "/labor/payroll", active: "Payroll Summary" },
       { path: "/subcontractors", active: "Subcontractors" },
       { path: "/documents", active: "Documents" },
       { path: "/site-photos", active: "Site Photos" },
       { path: "/inspection-log", active: "Inspection Log" },
       { path: "/settings/company", active: "Company" },
-      { path: "/system-health", active: "Admin Center" },
+      { path: "/system-health", active: "System Health" },
+      { path: "/system-metrics", active: "System Metrics" },
+      { path: "/system-logs", active: "System Logs" },
+      { path: "/system/backups", active: "Backups" },
     ];
 
     for (const route of routes) {
@@ -209,7 +252,10 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/site-photos", bottom: "Documents" },
       { path: "/inspection-log", bottom: "Documents" },
       { path: "/estimates", bottom: "Projects" },
-      { path: "/labor/payroll", bottom: "Financial" },
+      { path: "/labor", bottom: "Projects" },
+      { path: "/labor/payroll", bottom: "People" },
+      { path: "/labor/payments", bottom: "People" },
+      { path: "/labor/reimbursements", bottom: "Financial" },
     ]) {
       await test.step(route.path, async () => {
         await waitForRouteSmoke(page, route.path);
@@ -225,13 +271,12 @@ test.describe("HH Project OS sidebar final pass", () => {
     await page.getByRole("button", { name: /^Open menu$/i }).click();
     await ensureAllSectionsOpen(page);
     await expect(visibleSidebar(page).getByText("Admin Center", { exact: true })).toBeVisible();
-    await expect(visibleSidebar(page).getByText("Material Catalog", { exact: true })).toHaveCount(
-      0
-    );
+    await expect(visibleSidebar(page).getByText("Material Catalog", { exact: true })).toBeVisible();
+    await expect(visibleSidebar(page).getByText("Receipt Uploads", { exact: true })).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 
-  test("command palette finds routes removed from the primary sidebar", async ({ page }) => {
+  test("command palette finds restored and deep practical routes", async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await waitForRouteSmoke(page, "/dashboard");
     const dialog = await openCommandPalette(page);
@@ -240,6 +285,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { query: "material catalog", label: "Go to Material Catalog" },
       { query: "punch list", label: "Go to Punch List" },
       { query: "receipt inbox", label: "Go to Receipt Inbox" },
+      { query: "upload receipt", label: "Go to Receipt Uploads" },
       { query: "worker balances", label: "Go to Worker Balances" },
       { query: "worker receipts", label: "Go to Worker Receipts" },
       { query: "worker invoices", label: "Go to Worker Invoices" },
@@ -265,7 +311,7 @@ test.describe("HH Project OS sidebar final pass", () => {
     for (const route of [
       { path: "/bills", title: "Financial › AP › Bills" },
       { path: "/financial/vendors", title: "People › Vendors" },
-      { path: "/labor/payroll", title: "Financial › AP › Payroll" },
+      { path: "/labor/payroll", title: "People › Payroll Summary" },
       { path: "/materials/catalog", title: "Projects › Material Catalog" },
       { path: "/system-health", title: "Settings › Admin Center › System Health" },
     ]) {

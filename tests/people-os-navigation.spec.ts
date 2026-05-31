@@ -26,6 +26,31 @@ const peopleRoutes: PeopleRoute[] = [
     heading: /^Worker Summary$/i,
     activeLabel: "Workers",
   },
+  {
+    label: "Worker Balances",
+    path: "/labor/worker-balances",
+    heading: /^(Worker Balances|Balances)$/i,
+  },
+  {
+    label: "Worker Payments",
+    path: "/labor/payments",
+    heading: /^Worker Payments$/i,
+  },
+  {
+    label: "Worker Advances",
+    path: "/labor/advances",
+    heading: /^(Worker Advances|Advances)$/i,
+  },
+  {
+    label: "Worker Invoices",
+    path: "/labor/worker-invoices",
+    heading: /^Worker Invoices$/i,
+  },
+  {
+    label: "Payroll Summary",
+    path: "/labor/payroll",
+    heading: /^Payroll Summary$/i,
+  },
   { label: "Vendors", path: "/financial/vendors", heading: /^Vendors$/i },
   {
     label: "Vendors Alias",
@@ -86,7 +111,17 @@ async function ensureSectionOpen(page: Page, label: string) {
 async function ensurePeopleNavigationVisible(page: Page) {
   await ensureSectionOpen(page, "PEOPLE");
   const sidebar = visibleSidebar(page);
-  for (const label of ["Customers", "Workers", "Vendors", "Subcontractors"]) {
+  for (const label of [
+    "Customers",
+    "Workers",
+    "Worker Balances",
+    "Worker Payments",
+    "Worker Advances",
+    "Worker Invoices",
+    "Payroll Summary",
+    "Vendors",
+    "Subcontractors",
+  ]) {
     await expect(navLink(page, label)).toBeVisible({ timeout: 10_000 });
   }
   await expect(sidebar.getByText("All Contacts", { exact: true })).toBeVisible({
@@ -163,19 +198,12 @@ test.describe("People OS navigation shell", () => {
     await ensurePeopleNavigationVisible(page);
     await ensureSectionOpen(page, "PROJECTS");
     await ensureSectionOpen(page, "FINANCIAL");
-    for (const label of [
-      "Time Entries",
-      "Payroll Summary",
-      "Worker Payments",
-      "Worker Advances",
-      "Worker Reimbursements",
-      "Worker Balances",
-      "Worker Invoices",
-      "Worker Receipts",
-    ]) {
+    for (const label of ["Worker Reimbursements", "Worker Receipts"]) {
       await expect(visibleSidebar(page).getByText(label, { exact: true })).toHaveCount(0);
     }
-    await expect(navLink(page, "AP")).toBeVisible({ timeout: 10_000 });
+    await expect(visibleSidebar(page).getByText("AP", { exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
 
     for (const route of peopleRoutes) {
       await test.step(route.label, async () => {
@@ -210,6 +238,11 @@ test.describe("People OS navigation shell", () => {
       { query: "workers", label: "Go to Workers" },
       { query: "vendors", label: "Go to Vendors" },
       { query: "subcontractors", label: "Go to Subcontractors" },
+      { query: "worker balances", label: "Go to Worker Balances" },
+      { query: "worker payments", label: "Go to Worker Payments" },
+      { query: "worker advances", label: "Go to Worker Advances" },
+      { query: "worker invoices", label: "Go to Worker Invoices" },
+      { query: "payroll summary", label: "Go to Payroll Summary" },
     ]) {
       await test.step(item.query, async () => {
         await page.getByRole("combobox").fill(item.query);
@@ -238,7 +271,14 @@ test.describe("People OS navigation shell", () => {
     await ensurePeopleNavigationVisible(page);
     await expectNoHorizontalOverflow(page);
 
-    for (const route of [peopleRoutes[1], peopleRoutes[3], peopleRoutes[5]]) {
+    for (const route of [
+      peopleRoutes[1],
+      peopleRoutes[3],
+      peopleRoutes[4],
+      peopleRoutes[5],
+      peopleRoutes[8],
+      peopleRoutes[10],
+    ]) {
       await test.step(route.label, async () => {
         await Promise.all([
           page.waitForURL(routeUrlPattern(route.path), { timeout: 30_000 }),

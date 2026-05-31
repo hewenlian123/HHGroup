@@ -22,7 +22,7 @@ const financialRoutes: FinancialRoute[] = [
     label: "Owner Dashboard",
     path: "/financial/owner",
     heading: /^Finance dashboard$/i,
-    activeLabel: "Overview",
+    activeLabel: "Owner Dashboard",
   },
   {
     label: "AR Summary",
@@ -30,53 +30,60 @@ const financialRoutes: FinancialRoute[] = [
     heading: /^Accounts Receivable$/i,
     activeLabel: "AR",
   },
-  { label: "Invoices", path: "/financial/invoices", heading: /^Invoices$/i, activeLabel: "AR" },
+  {
+    label: "Invoices",
+    path: "/financial/invoices",
+    heading: /^Invoices$/i,
+    activeLabel: "Invoices",
+  },
   {
     label: "Payments Received",
     path: "/financial/payments",
     heading: /^Payments Received$/i,
-    activeLabel: "AR",
+    activeLabel: "Payments Received",
   },
-  { label: "Deposits", path: "/financial/deposits", heading: /^Deposits$/i, activeLabel: "AR" },
-  { label: "Bills", path: "/bills", heading: /^Bills$/i, activeLabel: "AP" },
-  { label: "Expenses", path: "/financial/expenses", heading: /^Expenses$/i, activeLabel: "AP" },
-  { label: "Receipt Inbox", path: "/financial/inbox", heading: /^Inbox$/i, activeLabel: "AP" },
-  { label: "Accounts", path: "/financial/accounts", heading: /^Accounts$/i, activeLabel: "Cash" },
+  {
+    label: "Deposits",
+    path: "/financial/deposits",
+    heading: /^Deposits$/i,
+    activeLabel: "Deposits",
+  },
+  { label: "Bills", path: "/bills", heading: /^Bills$/i, activeLabel: "Bills" },
+  {
+    label: "Expenses",
+    path: "/financial/expenses",
+    heading: /^Expenses$/i,
+    activeLabel: "Expenses",
+  },
+  {
+    label: "Receipt Inbox",
+    path: "/financial/inbox",
+    heading: /^Inbox$/i,
+    activeLabel: "Receipt Inbox",
+  },
+  {
+    label: "Accounts",
+    path: "/financial/accounts",
+    heading: /^Accounts$/i,
+    activeLabel: "Accounts",
+  },
   {
     label: "Bank Transactions",
     path: "/financial/bank",
     heading: /^Bank Reconcile$/i,
-    activeLabel: "Cash",
+    activeLabel: "Bank Transactions",
   },
   {
     label: "Commission Payments",
     path: "/financial/commissions",
     heading: /^Commission Payments$/i,
-    activeLabel: "AP",
+    activeLabel: "Commission Payments",
   },
   {
-    label: "Payroll Summary",
-    path: "/labor/payroll",
-    heading: /^Payroll Summary$/i,
-    activeLabel: "AP",
-  },
-  {
-    label: "Worker Payments",
-    path: "/labor/payments",
-    heading: /^Worker Payments$/i,
-    activeLabel: "AP",
-  },
-  {
-    label: "Worker Advances",
-    path: "/labor/advances",
-    heading: /^Worker Advances$/i,
-    activeLabel: "AP",
-  },
-  {
-    label: "Worker Reimbursements",
+    label: "Reimbursements",
     path: "/labor/reimbursements",
     heading: /^(Worker Reimbursements|Reimbursements)$/i,
-    activeLabel: "AP",
+    activeLabel: "Reimbursements",
   },
 ];
 
@@ -121,7 +128,24 @@ async function ensureFinancialSectionOpen(page: Page) {
 
 async function expectFinancialGroupsVisible(page: Page) {
   const sidebar = visibleSidebar(page);
-  for (const label of ["Overview", "AR", "AP", "Cash", "Reports"]) {
+  for (const label of [
+    "Overview",
+    "Owner Dashboard",
+    "AR",
+    "Invoices",
+    "Payments Received",
+    "Deposits",
+    "AP",
+    "Bills",
+    "Expenses",
+    "Receipt Inbox",
+    "Reimbursements",
+    "Commission Payments",
+    "Cash",
+    "Accounts",
+    "Bank Transactions",
+    "Reports",
+  ]) {
     await expect(sidebar.getByText(label, { exact: true }).first()).toBeVisible({
       timeout: 10_000,
     });
@@ -238,8 +262,8 @@ test.describe("Financial OS navigation grouping", () => {
     for (const route of [
       financialRoutes[2],
       financialRoutes[6],
+      financialRoutes[8],
       financialRoutes[12],
-      financialRoutes[15],
     ]) {
       await test.step(route.label, async () => {
         await page.goto(route.path);
