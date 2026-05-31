@@ -839,9 +839,10 @@ export async function deleteLaborShiftEntry(workerId: string, date: string): Pro
 
 export async function getLaborAllocatedByProject(
   projectId: string,
-  date?: string
+  date?: string,
+  explicitClient?: SupabaseClient
 ): Promise<number> {
-  return laborDb.getLaborAllocatedByProject(projectId, date);
+  return laborDb.getLaborAllocatedByProject(projectId, date, explicitClient);
 }
 
 export type {
@@ -862,9 +863,10 @@ export async function getDailyLaborEntriesByDate(workDate: string) {
   return dailyLaborDb.getDailyLaborEntriesByDate(workDate);
 }
 export async function getLaborEntriesWithJoins(
-  filters: import("../daily-labor-db").LaborEntriesFilters = {}
+  filters: import("../daily-labor-db").LaborEntriesFilters = {},
+  explicitClient?: SupabaseClient
 ) {
-  return dailyLaborDb.getLaborEntriesWithJoins(filters);
+  return dailyLaborDb.getLaborEntriesWithJoins(filters, explicitClient);
 }
 export async function getLaborWorkersList() {
   return dailyLaborDb.getLaborWorkersList();
@@ -1368,10 +1370,15 @@ export async function deleteWorkerAdvance(id: string) {
   return workerAdvancesDb.deleteWorkerAdvance(id);
 }
 
-export async function getLaborActualByProject(projectId: string): Promise<number> {
+export async function getLaborActualByProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<number> {
   const [fromEntries, fromInvoices] = await Promise.all([
-    laborDb.getLaborAllocatedByProject(projectId),
-    includeLaborInvoicesInProjectLabor ? laborDb.getLaborInvoiceActualByProject(projectId) : 0,
+    laborDb.getLaborAllocatedByProject(projectId, undefined, explicitClient),
+    includeLaborInvoicesInProjectLabor
+      ? laborDb.getLaborInvoiceActualByProject(projectId, explicitClient)
+      : 0,
   ]);
   return fromEntries + fromInvoices;
 }
@@ -2019,7 +2026,10 @@ export async function getExpenseLinesByProject(
   return expensesDb.getExpenseLinesByProject(projectId, limit);
 }
 
-export async function getProjectExpenseLines(projectId: string): Promise<
+export async function getProjectExpenseLines(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<
   Array<{
     expenseId: string;
     date: string;
@@ -2027,7 +2037,7 @@ export async function getProjectExpenseLines(projectId: string): Promise<
     line: import("../expenses-db").ExpenseLine;
   }>
 > {
-  return expensesDb.getProjectExpenseLines(projectId);
+  return expensesDb.getProjectExpenseLines(projectId, explicitClient);
 }
 
 /** Map expense line category to drilldown bucket (Materials/Labor/Vendor/Other). */

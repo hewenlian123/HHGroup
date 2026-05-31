@@ -19,6 +19,7 @@ import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -28,6 +29,7 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function ProjectProfitPage({ params }: Props) {
   const { id } = await params;
+  const supabase = getServerSupabaseInternalNoStore();
   const [
     project,
     canonical,
@@ -42,15 +44,15 @@ export default async function ProjectProfitPage({ params }: Props) {
     workers,
   ] = await Promise.all([
     getProjectById(id),
-    getCanonicalProjectProfit(id),
-    getLaborEntriesWithJoins({ project_id: id }),
-    getLaborActualByProject(id),
+    getCanonicalProjectProfit(id, supabase ?? undefined),
+    getLaborEntriesWithJoins({ project_id: id }, supabase ?? undefined),
+    getLaborActualByProject(id, supabase ?? undefined),
     getApprovedSubcontractBillsTotalByProject(id),
     getExpenseTotalsByProject(id),
     getProjectEstimate(id),
     getSubcontractsByProject(id),
     getProjectBudgetItems(id),
-    getProjectExpenseLines(id),
+    getProjectExpenseLines(id, supabase ?? undefined),
     getWorkers(),
   ]);
   const rateByWorker = new Map(workers.map((w) => [w.id, w.halfDayRate / 4]));

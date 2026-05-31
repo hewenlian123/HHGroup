@@ -1,6 +1,7 @@
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
 import { getCommissionCostByProject, getCommissionCostByProjectBatch } from "@/lib/commission-db";
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type CanonicalProjectProfit = {
   revenue: number;
@@ -17,8 +18,8 @@ export type CanonicalProjectProfit = {
   commissionCost: number;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -141,8 +142,11 @@ function laborLineAmountForProject(row: LaborCostRow, projectId: string): number
   return 0;
 }
 
-async function fetchLaborCostForProject(projectId: string): Promise<number> {
-  const c = client();
+async function fetchLaborCostForProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const c = client(explicitClient);
   // Prefer project_id (current schema). Many remotes dropped project_am_id / project_pm_id.
   const byProjectId = await c
     .from("labor_entries")
@@ -203,8 +207,11 @@ async function fetchLaborCostBatch(projectIds: string[]): Promise<Map<string, nu
 }
 
 /** Lines with null `project_id` whose expense header is allocated to `projectId` (legacy / partial writes). */
-async function getExpenseCostHeaderOnlyLines(projectId: string): Promise<number> {
-  const c = client();
+async function getExpenseCostHeaderOnlyLines(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const c = client(explicitClient);
   const { data: lines, error } = await c
     .from("expense_lines")
     .select("amount, expense_id, project_id")
@@ -241,8 +248,11 @@ async function getExpenseCostHeaderOnlyLines(projectId: string): Promise<number>
  * Fetch expense cost for a single project.
  * Detects schema on first call and caches the result for all subsequent calls.
  */
-async function getExpenseCostForProject(projectId: string): Promise<number> {
-  const c = client();
+async function getExpenseCostForProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const c = client(explicitClient);
 
   // Fast path: already know the schema
   if (expenseLinesHasProjectId === true) {
@@ -264,7 +274,7 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
         if (!eid || !allow.has(eid)) return s;
         return s + toNum(row.amount);
       }, 0);
-      const headerOnly = await getExpenseCostHeaderOnlyLines(projectId);
+      const headerOnly = await getExpenseCostHeaderOnlyLines(projectId, explicitClient);
       return direct + headerOnly;
     }
     devLogFail("expense_lines (direct)", error);
@@ -272,7 +282,7 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
   }
 
   if (expenseLinesHasProjectId === false) {
-    return getExpenseCostViaJoin(projectId);
+    return getExpenseCostViaJoin(projectId, explicitClient);
   }
 
   // Schema unknown — probe it
@@ -305,13 +315,13 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
       if (!eid || !allow.has(eid)) return s;
       return s + toNum(row.amount);
     }, 0);
-    const headerOnly = await getExpenseCostHeaderOnlyLines(projectId);
+    const headerOnly = await getExpenseCostHeaderOnlyLines(projectId, explicitClient);
     return direct + headerOnly;
   }
 
   if (isMissingColumn(error)) {
     expenseLinesHasProjectId = false;
-    return getExpenseCostViaJoin(projectId);
+    return getExpenseCostViaJoin(projectId, explicitClient);
   }
 
   devLogFail("expense_lines (probe)", error);
@@ -322,8 +332,11 @@ async function getExpenseCostForProject(projectId: string): Promise<number> {
  * Fallback when `expense_lines.project_id` is missing from the PostgREST schema cache
  * or the column does not exist: sum line amounts for expenses whose header `project_id` matches.
  */
-async function getExpenseCostViaJoin(projectId: string): Promise<number> {
-  const c = client();
+async function getExpenseCostViaJoin(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const c = client(explicitClient);
   const { data: headers, error: e1 } = await c
     .from("expenses")
     .select("id, status, reference_no")
@@ -357,9 +370,10 @@ async function getExpenseCostViaJoin(projectId: string): Promise<number> {
 }
 
 export async function getCanonicalProjectProfit(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<CanonicalProjectProfit> {
-  const c = client();
+  const c = client(explicitClient);
 
   const [projectRes, approvedChangeOrdersRes, subcontractBillsRes] = await Promise.all([
     c.from("projects").select("budget").eq("id", projectId).single(),
@@ -397,10 +411,10 @@ export async function getCanonicalProjectProfit(
     devLogFail("project_change_orders", approvedChangeOrdersRes.error);
   }
 
-  const laborCost = await fetchLaborCostForProject(projectId);
+  const laborCost = await fetchLaborCostForProject(projectId, explicitClient);
 
   // Expense cost via schema-aware helper (caches detection)
-  const expenseCost = await getExpenseCostForProject(projectId);
+  const expenseCost = await getExpenseCostForProject(projectId, explicitClient);
 
   const commissionCost = await getCommissionCostByProject(projectId).catch((err) => {
     devLogFail("commissions", err);

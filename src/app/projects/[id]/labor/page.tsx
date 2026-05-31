@@ -6,6 +6,7 @@ import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -34,9 +35,10 @@ export default async function ProjectLaborPage({ params }: Props) {
   let entries: Awaited<ReturnType<typeof getLaborEntriesWithJoins>> = [];
   let workers: Awaited<ReturnType<typeof getWorkers>> = [];
   let dataLoadWarning: string | null = null;
+  const supabase = getServerSupabaseInternalNoStore();
   try {
     [entries, workers] = await Promise.all([
-      getLaborEntriesWithJoins({ project_id: id }),
+      getLaborEntriesWithJoins({ project_id: id }, supabase ?? undefined),
       getWorkers(),
     ]);
   } catch (e) {

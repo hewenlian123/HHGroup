@@ -2171,9 +2171,10 @@ export async function getProjectExpenseLinesBundle(projectId: string): Promise<{
 /** Expense lines for a project (for project detail / profit drilldown). */
 export async function getExpenseLinesByProject(
   projectId: string,
-  limit = 5
+  limit = 5,
+  explicitClient?: SupabaseClient
 ): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }>> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: lineRows } = await c
     .from("expense_lines")
     .select("id, expense_id, project_id, category, cost_code, memo, amount")
@@ -2182,7 +2183,7 @@ export async function getExpenseLinesByProject(
   const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> =
     [];
   for (const l of lines.slice(0, limit * 2)) {
-    const exp = await getExpenseById(l.expense_id);
+    const exp = await getExpenseById(l.expense_id, explicitClient);
     if (!exp) continue;
     result.push({
       expenseId: exp.id,
@@ -2197,9 +2198,10 @@ export async function getExpenseLinesByProject(
 
 /** All expense lines for a project. */
 export async function getProjectExpenseLines(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }>> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: lineRows } = await c
     .from("expense_lines")
     .select("id, expense_id, project_id, category, cost_code, memo, amount")
@@ -2208,7 +2210,7 @@ export async function getProjectExpenseLines(
   const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> =
     [];
   for (const l of lines) {
-    const exp = await getExpenseById(l.expense_id);
+    const exp = await getExpenseById(l.expense_id, explicitClient);
     if (!exp) continue;
     result.push({
       expenseId: exp.id,
