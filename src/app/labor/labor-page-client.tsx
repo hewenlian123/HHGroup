@@ -56,6 +56,12 @@ const timeSegmentedPill =
 const timeSegmentedButton =
   "relative z-10 flex h-full w-1/2 items-center justify-center gap-1.5 rounded-[6px] px-3 text-xs font-medium transition-colors duration-200";
 
+const calendarControlButton =
+  "h-9 min-h-[44px] rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-[13px] text-[var(--neo-text-primary)] shadow-none hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] focus-visible:ring-[var(--neo-gold-ring)] md:min-h-9";
+
+const calendarIconButton =
+  "h-9 w-9 min-h-[44px] min-w-[44px] rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-secondary)] shadow-none hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-text-primary)] focus-visible:ring-[var(--neo-gold-ring)] md:min-h-9 md:min-w-9";
+
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HIGH_COST_THRESHOLD = 1000;
 
@@ -116,6 +122,24 @@ function getDatesInMonth(ym: string): string[] {
 
 function formatShortDate(dateStr: string): string {
   return formatDate(dateStr, "compact");
+}
+
+function formatHoursLabel(hours: number): string {
+  return `${formatNumber(hours, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  })}h`;
+}
+
+function getWorkerInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) return Array.from(parts[0]).slice(0, 2).join("").toUpperCase();
+  return parts
+    .slice(0, 2)
+    .map((part) => Array.from(part)[0] ?? "")
+    .join("")
+    .toUpperCase();
 }
 
 /** Build calendar grid for month (Mon–Sun). Each cell is null (empty) or day number 1–31. Last row padded to 7. */
@@ -374,6 +398,11 @@ export default function LaborPageClient() {
     }
     return map;
   }, [monthEntries]);
+
+  const calendarEntryDates = React.useMemo(
+    () => datesInMonth.filter((date) => (entriesByDate.get(date) ?? []).length > 0),
+    [datesInMonth, entriesByDate]
+  );
 
   return (
     <div
@@ -847,174 +876,330 @@ export default function LaborPageClient() {
 
         {/* Calendar View */}
         {view === "calendar" && (
-          <section className="mt-4 border-b border-border/60 pb-4">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {formatMonthLabel(selectedMonth)}
-              </p>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-9 rounded-sm shadow-none"
-                  onClick={() => {
-                    setSelectedMonth(initialMonth);
-                    setExpandedDate(null);
-                    setSelectedDayForDetail(null);
-                  }}
-                >
-                  Today
-                </Button>
-                <div className="flex items-center gap-1">
-                  <button
+          <section className="mt-6 pb-4 md:mt-7">
+            <div className="overflow-hidden rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]">
+              <div className="flex flex-col gap-3 border-b border-[var(--neo-border)] px-3 py-3 sm:px-4 md:flex-row md:items-center md:justify-between md:px-5 md:py-4">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                    Daily Labor Calendar
+                  </p>
+                  <h2 className="mt-1 truncate text-[20px] font-semibold leading-none tracking-normal text-[var(--neo-text-primary)] md:text-[22px]">
+                    {formatMonthLabel(selectedMonth)}
+                  </h2>
+                </div>
+                <div className="flex items-center justify-between gap-2 sm:justify-end">
+                  <Button
                     type="button"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-sm border border-border/70 bg-transparent text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
+                    size="sm"
+                    variant="outline"
+                    className={calendarControlButton}
                     onClick={() => {
-                      setSelectedMonth((m) => monthAdd(m, -1));
+                      setSelectedMonth(initialMonth);
                       setExpandedDate(null);
                       setSelectedDayForDetail(null);
                     }}
-                    aria-label="Previous month"
                   >
-                    <ChevronLeft className="h-4 w-4" aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-sm border border-border/70 bg-transparent text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
-                    onClick={() => {
-                      setSelectedMonth((m) => monthAdd(m, 1));
-                      setExpandedDate(null);
-                      setSelectedDayForDetail(null);
-                    }}
-                    aria-label="Next month"
-                  >
-                    <ChevronRight className="h-4 w-4" aria-hidden />
-                  </button>
+                    Today
+                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className={calendarIconButton}
+                      onClick={() => {
+                        setSelectedMonth((m) => monthAdd(m, -1));
+                        setExpandedDate(null);
+                        setSelectedDayForDetail(null);
+                      }}
+                      aria-label="Previous month"
+                    >
+                      <ChevronLeft className="h-4 w-4" aria-hidden />
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className={calendarIconButton}
+                      onClick={() => {
+                        setSelectedMonth((m) => monthAdd(m, 1));
+                        setExpandedDate(null);
+                        setSelectedDayForDetail(null);
+                      }}
+                      aria-label="Next month"
+                    >
+                      <ChevronRight className="h-4 w-4" aria-hidden />
+                    </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-            {loadingEntries ? (
-              <p className="py-4 text-sm text-muted-foreground">Loading…</p>
-            ) : (
-              <div className={cn(timeShell, "overflow-hidden p-0")}>
-                <div className="grid grid-cols-7 text-sm">
-                  {WEEKDAYS.map((wd) => (
-                    <div
-                      key={wd}
-                      className="border-b border-r border-border/40 py-2 px-1 text-center text-[11px] font-medium tracking-wide text-muted-foreground/80 last:border-r-0"
-                    >
-                      {wd}
-                    </div>
-                  ))}
-                  {getCalendarGrid(selectedMonth)
-                    .flat()
-                    .map((day, idx) => (
-                      <div
-                        key={idx}
-                        className={cn(
-                          "min-h-[4.5rem] border-b border-r border-border/40 p-1 last:border-r-0 flex flex-col sm:min-h-[5.25rem] md:min-h-[6.25rem]",
-                          day === null && "border-border/25"
-                        )}
-                      >
-                        {day === null ? (
-                          <span className="invisible">0</span>
-                        ) : (
-                          (() => {
-                            const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`;
-                            const entries = entriesByDate.get(dateStr) ?? [];
-                            const hasEntries = entries.length > 0;
-                            const workerCount = entries.length;
-                            const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
-                            const isHighCost = totalPay > HIGH_COST_THRESHOLD;
-                            const totalHours = entries.reduce(
-                              (s, e) => s + (Number(e.hours) || 0),
-                              0
-                            );
-                            const isToday = dateStr === todayYmd;
-                            const crewTopLabels = entries
-                              .map((e) => (e.worker_name ?? "").trim())
-                              .filter(Boolean)
-                              .map((name) => name[0] ?? "")
-                              .filter(Boolean)
-                              .slice(0, 3);
-                            return (
-                              <button
-                                type="button"
-                                onClick={() => setSelectedDayForDetail(dateStr)}
-                                className={cn(
-                                  "group w-full h-full min-h-[4.5rem] rounded-sm px-1.5 py-1.5 text-left transition-colors sm:min-h-[5.25rem] md:min-h-[6.25rem]",
-                                  hasEntries
-                                    ? isHighCost
-                                      ? "bg-amber-50/70 text-foreground hover:bg-amber-50 dark:bg-amber-950/25 dark:hover:bg-amber-950/40"
-                                      : "bg-background text-foreground hover:bg-muted/25 dark:hover:bg-muted/25"
-                                    : "bg-transparent text-muted-foreground hover:bg-muted/15 dark:hover:bg-muted/20",
-                                  isToday &&
-                                    "ring-1 ring-emerald-500/35 ring-inset bg-emerald-50/30 dark:bg-emerald-950/10"
-                                )}
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <span className="text-[12px] font-medium tabular-nums text-foreground/90">
-                                    {day}
-                                  </span>
-                                  {hasEntries ? (
-                                    <span
+
+              {loadingEntries ? (
+                <p className="px-4 py-6 text-sm text-[var(--neo-text-secondary)]">Loading…</p>
+              ) : (
+                <>
+                  <div className="hidden px-3 pb-3 pt-4 md:block md:px-5 md:pb-5">
+                    <div className="overflow-hidden rounded-[18px] border border-[var(--neo-border)] bg-[var(--neo-border)]">
+                      <div className="grid grid-cols-7 bg-[var(--neo-surface-muted)]">
+                        {WEEKDAYS.map((wd) => (
+                          <div
+                            key={wd}
+                            className="border-r border-[var(--neo-border)] px-2 py-2.5 text-center text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)] last:border-r-0"
+                          >
+                            {wd}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-7 gap-px bg-[var(--neo-border)]">
+                        {getCalendarGrid(selectedMonth)
+                          .flat()
+                          .map((day, idx) => (
+                            <div
+                              key={idx}
+                              className={cn(
+                                "min-h-[136px] bg-[var(--neo-surface-raised)] p-1.5 lg:min-h-[148px]",
+                                day === null && "bg-[var(--neo-surface-muted)]"
+                              )}
+                            >
+                              {day === null ? (
+                                <span className="invisible">0</span>
+                              ) : (
+                                (() => {
+                                  const dateStr = `${selectedMonth}-${String(day).padStart(2, "0")}`;
+                                  const entries = entriesByDate.get(dateStr) ?? [];
+                                  const hasEntries = entries.length > 0;
+                                  const workerCount = entries.length;
+                                  const totalPay = entries.reduce(
+                                    (s, e) => s + (e.cost_amount ?? 0),
+                                    0
+                                  );
+                                  const isHighCost = totalPay > HIGH_COST_THRESHOLD;
+                                  const totalHours = entries.reduce(
+                                    (s, e) => s + (Number(e.hours) || 0),
+                                    0
+                                  );
+                                  const isToday = dateStr === todayYmd;
+                                  const crewPreview = entries
+                                    .map((e) => (e.worker_name ?? "").trim())
+                                    .filter(Boolean)
+                                    .slice(0, 3)
+                                    .map((name) => ({
+                                      name,
+                                      initials: getWorkerInitials(name),
+                                    }));
+                                  const workerLabel =
+                                    workerCount === 1 ? "1 worker" : `${workerCount} workers`;
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedDayForDetail(dateStr)}
+                                      aria-label={
+                                        hasEntries
+                                          ? `${formatShortDate(dateStr)}, ${formatHoursLabel(
+                                              totalHours
+                                            )}, ${formatCurrency(totalPay)}, ${workerLabel}`
+                                          : `${formatShortDate(dateStr)}, no labor entries`
+                                      }
                                       className={cn(
-                                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
-                                        isHighCost
-                                          ? "bg-amber-100/70 text-amber-800 dark:bg-amber-900/25 dark:text-amber-200"
-                                          : "bg-emerald-50/80 text-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-200"
+                                        "group relative flex h-full min-h-[124px] w-full flex-col overflow-hidden rounded-[14px] border px-3 py-2.5 text-left transition-[background,border-color,box-shadow] duration-150 ease-out motion-reduce:transition-none lg:min-h-[136px]",
+                                        hasEntries
+                                          ? "border-[var(--neo-border)] bg-[rgb(255_255_255_/_0.025)] text-[var(--neo-text-primary)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset] hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)]"
+                                          : "border-transparent bg-transparent text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)]",
+                                        isToday &&
+                                          "border-[rgb(184_147_90_/_0.38)] bg-[rgb(184_147_90_/_0.06)] ring-1 ring-inset ring-[rgb(184_147_90_/_0.18)]"
                                       )}
                                     >
-                                      {formatNumber(totalHours, {
-                                        minimumFractionDigits: 0,
-                                        maximumFractionDigits: 1,
-                                      })}
-                                      h · <NeoAmount>{formatCurrency(totalPay)}</NeoAmount>
+                                      {hasEntries ? (
+                                        <span
+                                          aria-hidden
+                                          className={cn(
+                                            "absolute left-0 top-3 h-10 w-[2px] rounded-full",
+                                            isHighCost
+                                              ? "bg-[rgb(184_147_90_/_0.72)]"
+                                              : "bg-emerald-400/45"
+                                          )}
+                                        />
+                                      ) : null}
+                                      <div className="flex items-start justify-between gap-2">
+                                        <span
+                                          className={cn(
+                                            "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-[12px] font-semibold tabular-nums text-[var(--neo-text-primary)]",
+                                            isToday &&
+                                              "bg-[rgb(184_147_90_/_0.14)] text-[var(--neo-gold-soft)] ring-1 ring-inset ring-[rgb(184_147_90_/_0.26)]"
+                                          )}
+                                        >
+                                          {day}
+                                        </span>
+                                      </div>
+
+                                      {hasEntries ? (
+                                        <>
+                                          <div
+                                            className={cn(
+                                              "mt-3 rounded-xl border px-2.5 py-2",
+                                              isHighCost
+                                                ? "border-[rgb(184_147_90_/_0.26)] bg-[rgb(184_147_90_/_0.10)]"
+                                                : "border-emerald-400/15 bg-emerald-400/5"
+                                            )}
+                                          >
+                                            <div className="flex items-baseline justify-between gap-2">
+                                              <span className="shrink-0 text-[13px] font-semibold tabular-nums leading-none text-[var(--neo-text-primary)]">
+                                                {formatHoursLabel(totalHours)}
+                                              </span>
+                                              <NeoAmount
+                                                tone={isHighCost ? "neutral" : "income"}
+                                                className={cn(
+                                                  "min-w-0 truncate text-right text-[12px] leading-none",
+                                                  isHighCost && "text-[var(--neo-gold-soft)]"
+                                                )}
+                                              >
+                                                {formatCurrency(totalPay)}
+                                              </NeoAmount>
+                                            </div>
+                                          </div>
+
+                                          <div className="mt-auto pt-3">
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="flex min-w-0 items-center -space-x-1.5">
+                                                {crewPreview.map(({ name, initials }, i) => (
+                                                  <span
+                                                    key={`${name}-${i}`}
+                                                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset]"
+                                                    aria-hidden
+                                                    title={name}
+                                                  >
+                                                    {initials}
+                                                  </span>
+                                                ))}
+                                                {workerCount > crewPreview.length ? (
+                                                  <span className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-1.5 text-[10px] font-semibold tabular-nums text-[var(--neo-text-tertiary)]">
+                                                    +{workerCount - crewPreview.length}
+                                                  </span>
+                                                ) : null}
+                                              </div>
+                                              <span className="shrink-0 text-[11px] font-medium text-[var(--neo-text-tertiary)]">
+                                                {workerLabel}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </>
+                                      ) : (
+                                        <span className="mt-auto h-1.5 w-1.5 rounded-full bg-[var(--neo-border-strong)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 motion-reduce:transition-none" />
+                                      )}
+                                    </button>
+                                  );
+                                })()
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="px-3 pb-3 pt-3 md:hidden">
+                    {calendarEntryDates.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-8 text-center">
+                        <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+                          No labor entries this month
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">
+                          Add a labor entry to see the month agenda.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {calendarEntryDates.map((date) => {
+                          const entries = entriesByDate.get(date) ?? [];
+                          const workerCount = entries.length;
+                          const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
+                          const isHighCost = totalPay > HIGH_COST_THRESHOLD;
+                          const totalHours = entries.reduce(
+                            (s, e) => s + (Number(e.hours) || 0),
+                            0
+                          );
+                          const isToday = date === todayYmd;
+                          const workerLabel =
+                            workerCount === 1 ? "1 worker" : `${workerCount} workers`;
+                          const crewPreview = entries
+                            .map((e) => (e.worker_name ?? "").trim())
+                            .filter(Boolean)
+                            .slice(0, 3)
+                            .map((name) => ({ name, initials: getWorkerInitials(name) }));
+                          return (
+                            <button
+                              key={date}
+                              type="button"
+                              onClick={() => setSelectedDayForDetail(date)}
+                              className={cn(
+                                "flex min-h-[72px] w-full items-center justify-between gap-3 rounded-xl border border-[var(--neo-border)] bg-[rgb(255_255_255_/_0.025)] px-3 py-3 text-left transition-[background,border-color,box-shadow] duration-150 ease-out hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] motion-reduce:transition-none",
+                                isToday &&
+                                  "border-[rgb(184_147_90_/_0.38)] bg-[rgb(184_147_90_/_0.06)]"
+                              )}
+                            >
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-semibold text-[var(--neo-text-primary)]">
+                                    {formatShortDate(date)}
+                                  </span>
+                                  {isToday ? (
+                                    <span className="rounded-full border border-[rgb(184_147_90_/_0.26)] bg-[rgb(184_147_90_/_0.12)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-gold-soft)]">
+                                      Today
                                     </span>
                                   ) : null}
                                 </div>
-
-                                {hasEntries ? (
-                                  <div className="mt-1.5 flex items-center gap-2">
-                                    <div className="min-w-0 flex items-center gap-1 overflow-hidden">
-                                      <span className="shrink-0 text-[10px] font-medium text-zinc-500">
-                                        Crew:
+                                <div className="mt-2 flex min-w-0 items-center gap-2">
+                                  <div className="flex shrink-0 items-center -space-x-1.5">
+                                    {crewPreview.map(({ name, initials }, i) => (
+                                      <span
+                                        key={`${name}-${i}`}
+                                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[10px] font-semibold uppercase text-[var(--neo-text-secondary)]"
+                                        aria-hidden
+                                        title={name}
+                                      >
+                                        {initials}
                                       </span>
-                                      <div className="min-w-0 flex items-center gap-1 overflow-hidden">
-                                        {crewTopLabels.map((label, i) => (
-                                          <span
-                                            key={`${label}-${i}`}
-                                            className="inline-flex shrink-0 items-center rounded-md bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-700 ring-1 ring-inset ring-zinc-200/70"
-                                            aria-hidden
-                                            title={label}
-                                          >
-                                            {label}
-                                          </span>
-                                        ))}
-                                        {workerCount > crewTopLabels.length ? (
-                                          <span className="inline-flex shrink-0 items-center rounded-md bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-inset ring-zinc-200/70">
-                                            +{workerCount - crewTopLabels.length}
-                                          </span>
-                                        ) : null}
-                                      </div>
-                                    </div>
-                                    <span className="shrink-0 text-[10px] text-zinc-400">
-                                      {workerCount} workers
-                                    </span>
+                                    ))}
+                                    {workerCount > crewPreview.length ? (
+                                      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-1.5 text-[10px] font-semibold tabular-nums text-[var(--neo-text-tertiary)]">
+                                        +{workerCount - crewPreview.length}
+                                      </span>
+                                    ) : null}
                                   </div>
-                                ) : (
-                                  <div className="mt-3 h-2 w-2 rounded-full bg-muted/50 opacity-0 transition-opacity group-hover:opacity-100" />
+                                  <span className="truncate text-xs font-medium text-[var(--neo-text-secondary)]">
+                                    {workerLabel}
+                                  </span>
+                                </div>
+                              </div>
+                              <div
+                                className={cn(
+                                  "shrink-0 rounded-xl border px-2.5 py-2 text-right",
+                                  isHighCost
+                                    ? "border-[rgb(184_147_90_/_0.26)] bg-[rgb(184_147_90_/_0.10)]"
+                                    : "border-emerald-400/15 bg-emerald-400/5"
                                 )}
-                              </button>
-                            );
-                          })()
-                        )}
+                              >
+                                <p className="text-[13px] font-semibold tabular-nums leading-none text-[var(--neo-text-primary)]">
+                                  {formatHoursLabel(totalHours)}
+                                </p>
+                                <NeoAmount
+                                  tone={isHighCost ? "neutral" : "income"}
+                                  className={cn(
+                                    "mt-1 block text-[12px] leading-none",
+                                    isHighCost && "text-[var(--neo-gold-soft)]"
+                                  )}
+                                >
+                                  {formatCurrency(totalPay)}
+                                </NeoAmount>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </div>
-                    ))}
-                </div>
-              </div>
-            )}
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </section>
         )}
 
