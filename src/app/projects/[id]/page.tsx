@@ -40,6 +40,9 @@ const LEGACY_TAB_MAP: Record<string, string> = {
 
 type TabKey =
   | "overview"
+  | "financial"
+  | "work"
+  | "documents"
   | "cost"
   | "tasks"
   | "schedule"
@@ -79,6 +82,9 @@ export default async function ProjectDetailPage({
   const tabParam = LEGACY_TAB_MAP[rawTab] ?? rawTab;
   const validTabs: TabKey[] = [
     "overview",
+    "financial",
+    "work",
+    "documents",
     "cost",
     "tasks",
     "schedule",
