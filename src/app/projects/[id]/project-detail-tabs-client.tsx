@@ -22,8 +22,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/toast/toast-provider";
@@ -278,8 +276,98 @@ function SnapshotTextMetricCard({
   );
 }
 
+function DashboardMetric({
+  label,
+  value,
+  testId,
+  tone = "neutral",
+  detail,
+}: {
+  label: string;
+  value: React.ReactNode;
+  testId?: string;
+  tone?: "neutral" | "positive" | "negative" | "attention";
+  detail?: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0 border-t border-[var(--neo-border)] pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0 first:sm:border-l-0 first:sm:pl-0">
+      <p className={cn(TYPO.kpiLabel, "text-[10px]")}>{label}</p>
+      <p
+        data-testid={testId}
+        className={cn(
+          TYPO.amount,
+          "mt-1 truncate text-[20px] leading-tight sm:text-[22px]",
+          tone === "positive" && OS.emeraldAccent,
+          tone === "negative" && OS.dangerAmount,
+          tone === "attention" && "text-[var(--neo-gold)]"
+        )}
+      >
+        {value}
+      </p>
+      {detail ? (
+        <p className="mt-1 truncate text-[11px] text-[var(--neo-text-tertiary)]">{detail}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function ExecutiveCard({
+  title,
+  action,
+  children,
+  className,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn(OS.card, "min-w-0 overflow-hidden px-4 py-4 sm:px-5", className)}>
+      <div className="flex min-h-8 items-center justify-between gap-3">
+        <SectionHeader
+          label={title}
+          className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
+        />
+        {action}
+      </div>
+      <Divider />
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: React.ReactNode;
+  tone?: "neutral" | "positive" | "negative" | "attention";
+}) {
+  return (
+    <div className="flex min-h-9 items-center justify-between gap-3 border-b border-[var(--neo-border)] py-2 last:border-0">
+      <span className="min-w-0 truncate text-[13px] text-[var(--neo-text-secondary)]">{label}</span>
+      <span
+        className={cn(
+          "shrink-0 text-right text-[13px] font-medium tabular-nums text-[var(--neo-text-primary)]",
+          tone === "positive" && OS.emeraldAccent,
+          tone === "negative" && OS.dangerAmount,
+          tone === "attention" && "text-[var(--neo-gold)]"
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
 type TabKey =
   | "overview"
+  | "financial"
+  | "work"
+  | "documents"
   | "cost"
   | "tasks"
   | "schedule"
@@ -295,6 +383,37 @@ type TabKey =
   | "closeout"
   | "commission"
   | "punch-list";
+
+type DashboardTabKey = "overview" | "financial" | "work" | "documents";
+
+function normalizeDashboardTab(tab: TabKey): DashboardTabKey {
+  if (
+    tab === "cost" ||
+    tab === "budget" ||
+    tab === "expenses" ||
+    tab === "labor" ||
+    tab === "subcontracts" ||
+    tab === "bills" ||
+    tab === "change-orders" ||
+    tab === "commission" ||
+    tab === "financial"
+  ) {
+    return "financial";
+  }
+  if (
+    tab === "tasks" ||
+    tab === "schedule" ||
+    tab === "activity" ||
+    tab === "punch-list" ||
+    tab === "work"
+  ) {
+    return "work";
+  }
+  if (tab === "docs" || tab === "materials" || tab === "closeout" || tab === "documents") {
+    return "documents";
+  }
+  return "overview";
+}
 
 export interface ProjectDetailTabsClientProps {
   projectId: string;
@@ -368,7 +487,7 @@ export function ProjectDetailTabsClient({
   const router = useRouter();
   const { toast } = useToast();
   const [, startTabTransition] = React.useTransition();
-  const [tab, setTab] = React.useState<TabKey>(initialTab);
+  const [tab, setTab] = React.useState<DashboardTabKey>(() => normalizeDashboardTab(initialTab));
   const [costBucketFilter, setCostBucketFilter] = React.useState<CostBucketFilter>(null);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
   const [archiveConfirmOpen, setArchiveConfirmOpen] = React.useState(false);
@@ -385,7 +504,7 @@ export function ProjectDetailTabsClient({
   }, [project]);
 
   React.useEffect(() => {
-    if (tab !== "cost") {
+    if (tab !== "financial") {
       setCostBucketFilter(null);
     }
   }, [tab]);
@@ -588,12 +707,27 @@ export function ProjectDetailTabsClient({
       : profitReadinessWarning != null
         ? profitReadinessWarning
         : null;
+  const topCollectedValue = financialSummary?.collected ?? billingSummary.paidTotal;
+  const topNeedCollectValue = snapshotCostSummary.openAR;
+  const topProfitTone =
+    headerProfitValue == null ? "attention" : headerProfitValue >= 0 ? "positive" : "negative";
+  const topMarginDisplay = headerMarginValue == null ? "—" : `${headerMarginValue.toFixed(1)}%`;
+  const openTaskCount = tasks.filter((task) => {
+    const status = String(task.status ?? "").toLowerCase();
+    return status !== "done" && status !== "completed" && status !== "complete";
+  }).length;
+  const openPunchCount = punchItems.filter((item) => {
+    const status = String(item.status ?? "").toLowerCase();
+    return status !== "completed" && status !== "resolved" && status !== "done";
+  }).length;
+  const latestActivity = activityLogs.slice(0, 4);
+  const recentCostActivity = recentExpenseLines.slice(0, 4);
 
   const expensesProjectHref = `/financial/expenses?project_id=${encodeURIComponent(projectId)}`;
   const inboxProjectHref = `/financial/inbox?project_id=${encodeURIComponent(projectId)}`;
 
   const goToCostTab = React.useCallback(() => {
-    startTabTransition(() => setTab("cost"));
+    startTabTransition(() => setTab("financial"));
   }, [startTabTransition]);
 
   const filteredCostRows = React.useMemo(() => {
@@ -721,63 +855,58 @@ export function ProjectDetailTabsClient({
               </div>
             </div>
             <div className="mt-5 border-t border-[var(--neo-border)] pt-5">
-              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <div>
-                  <p className={TYPO.kpiLabel}>Budget</p>
-                  <p
-                    data-testid="project-header-contract-value"
-                    className={cn(TYPO.amount, "mt-1 text-2xl")}
-                  >
-                    {fmtMoney(budgetVal)}
-                  </p>
-                </div>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+                <DashboardMetric
+                  label="Contract Value"
+                  value={fmtMoney(budgetVal)}
+                  testId="project-header-contract-value"
+                />
+                <DashboardMetric
+                  label="Collected"
+                  value={fmtMoney(topCollectedValue)}
+                  testId="project-header-collected"
+                />
+                <DashboardMetric
+                  label="Need Collect"
+                  value={fmtMoney(topNeedCollectValue)}
+                  testId="project-header-need-collect"
+                  tone={topNeedCollectValue > 0 ? "attention" : "positive"}
+                />
                 <button
                   type="button"
                   onClick={goToCostTab}
-                  className="rounded-lg text-left outline-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                  className="min-w-0 border-t border-[var(--neo-border)] pt-3 text-left outline-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0"
                 >
-                  <p className={TYPO.kpiLabel}>Actual Cost</p>
+                  <p className={cn(TYPO.kpiLabel, "text-[10px]")}>Actual Cost</p>
                   <p
                     data-testid="project-header-actual-cost"
                     className={cn(
                       TYPO.amount,
-                      "mt-1 text-2xl underline decoration-[var(--neo-border)] underline-offset-4"
+                      "mt-1 truncate text-[20px] leading-tight underline decoration-[var(--neo-border)] underline-offset-4 sm:text-[22px]"
                     )}
                   >
                     {fmtMoney(headerActualCost)}
                   </p>
                 </button>
-                <div>
-                  <p className={TYPO.kpiLabel}>Confirmed Profit</p>
-                  {headerProfitValue == null ? (
-                    <p
-                      data-testid="project-header-profit"
-                      className="mt-1 text-[13px] font-semibold text-[var(--neo-gold)]"
-                    >
-                      {snapshotState.status === "loading" ? "Loading…" : "Needs review"}
-                    </p>
-                  ) : (
-                    <p
-                      data-testid="project-header-profit"
-                      className={cn(
-                        "mt-1 font-mono text-2xl font-bold tabular-nums",
-                        headerProfitValue >= 0 ? OS.emeraldAccent : OS.dangerAmount
-                      )}
-                    >
-                      {headerProfitValue >= 0 ? "" : "−"}
-                      {fmtMoney(Math.abs(headerProfitValue))}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <p className={TYPO.kpiLabel}>Confirmed Margin</p>
-                  <p
-                    data-testid="project-header-margin"
-                    className={cn(TYPO.amount, "mt-1 text-2xl")}
-                  >
-                    {headerMarginValue == null ? "—" : `${headerMarginValue.toFixed(1)}%`}
-                  </p>
-                </div>
+                <DashboardMetric
+                  label="Profit"
+                  value={
+                    headerProfitValue == null
+                      ? snapshotState.status === "loading"
+                        ? "Loading..."
+                        : "Needs review"
+                      : `${headerProfitValue >= 0 ? "" : "-"}${fmtMoney(
+                          Math.abs(headerProfitValue)
+                        )}`
+                  }
+                  testId="project-header-profit"
+                  tone={topProfitTone}
+                />
+                <DashboardMetric
+                  label="Margin"
+                  value={topMarginDisplay}
+                  testId="project-header-margin"
+                />
               </div>
               {headerFinancialWarning ? (
                 <p
@@ -837,416 +966,310 @@ export function ProjectDetailTabsClient({
           <Tabs
             value={tab}
             onValueChange={(v) => {
-              startTabTransition(() => setTab(v as TabKey));
+              startTabTransition(() => setTab(v as DashboardTabKey));
             }}
             className="w-full"
           >
-            <div className="flex items-center justify-between gap-2 border-b border-white/10 pb-0">
-              <TabsList className="h-10 min-h-0 flex-1 justify-start gap-0 overflow-x-auto whitespace-nowrap rounded-none border-0 bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="border-b border-white/10 pb-0">
+              <TabsList className="h-11 min-h-[44px] w-full justify-start gap-0 overflow-x-auto whitespace-nowrap rounded-none border-0 bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {(
                   [
                     { key: "overview" as const, label: "Overview" },
-                    { key: "cost" as const, label: "Cost" },
-                    { key: "tasks" as const, label: "Tasks" },
-                    { key: "schedule" as const, label: "Schedule" },
-                    { key: "docs" as const, label: "Docs" },
+                    { key: "financial" as const, label: "Financial" },
+                    { key: "work" as const, label: "Work" },
+                    { key: "documents" as const, label: "Documents" },
                   ] as const
                 ).map((t) => (
                   <TabsTrigger
                     key={t.key}
                     value={t.key}
-                    className="rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-[13px] font-medium text-[var(--neo-canvas-text-secondary)] shadow-none data-[state=active]:border-[var(--neo-gold)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--neo-canvas-text-primary)] data-[state=active]:shadow-none sm:text-[14px]"
+                    className="min-h-[44px] rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-[13px] font-medium text-[var(--neo-canvas-text-secondary)] shadow-none data-[state=active]:border-[var(--neo-gold)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--neo-canvas-text-primary)] data-[state=active]:shadow-none sm:px-4 sm:text-[14px]"
                   >
-                    {t.label}
-                  </TabsTrigger>
-                ))}
-                {/* Hidden triggers for secondary tabs so keyboard navigation still works */}
-                {(
-                  [
-                    { key: "budget" as const, label: "Budget" },
-                    { key: "expenses" as const, label: "Expenses" },
-                    { key: "labor" as const, label: "Labor" },
-                    { key: "subcontracts" as const, label: "Subcontracts" },
-                    { key: "bills" as const, label: "Bills" },
-                    { key: "activity" as const, label: "Activity" },
-                    { key: "change-orders" as const, label: "Change Orders" },
-                    { key: "materials" as const, label: "Material Selections" },
-                    { key: "closeout" as const, label: "Closeout" },
-                    { key: "commission" as const, label: "Commission" },
-                    { key: "punch-list" as const, label: "Punch List" },
-                  ] as const
-                ).map((t) => (
-                  <TabsTrigger key={t.key} value={t.key} className="hidden">
                     {t.label}
                   </TabsTrigger>
                 ))}
               </TabsList>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-9 shrink-0 border-white/10 bg-white/[0.06] px-2 text-[13px] text-[var(--neo-canvas-text-secondary)] hover:bg-white/[0.1] hover:text-[var(--neo-canvas-text-primary)]"
-                  >
-                    More ▾
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="min-w-[220px]">
-                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)]">
-                    Cost
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTab("expenses");
-                    }}
-                  >
-                    Expenses
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTab("labor");
-                    }}
-                  >
-                    Labor
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTab("bills");
-                    }}
-                  >
-                    Bills
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTab("subcontracts");
-                    }}
-                  >
-                    Subcontracts
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)]">
-                    Project
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTab("budget");
-                    }}
-                  >
-                    Budget
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTab("change-orders");
-                    }}
-                  >
-                    Change Orders
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTab("materials");
-                    }}
-                  >
-                    Material Selections
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)]">
-                    Activity
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTab("activity");
-                    }}
-                  >
-                    Activity
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTab("punch-list");
-                    }}
-                  >
-                    Punch List
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)]">
-                    Final
-                  </DropdownMenuLabel>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTab("closeout");
-                    }}
-                  >
-                    Closeout
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTab("commission");
-                    }}
-                  >
-                    Commission
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
 
-            <TabsContent value="overview" className={cn(TAB_PANEL, "space-y-6")}>
-              {/* A. Cost snapshot */}
-              <div
-                role="button"
-                tabIndex={0}
-                className={cn(
-                  OS.card,
-                  "cursor-pointer px-4 py-4 outline-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
-                )}
-                onClick={goToCostTab}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    goToCostTab();
+            <TabsContent value="overview" className="mt-4 space-y-4">
+              <div className="grid gap-4 xl:grid-cols-2">
+                <ExecutiveCard
+                  title="Financial Summary"
+                  action={
+                    <button
+                      type="button"
+                      onClick={() => setTab("financial")}
+                      className="min-h-8 text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                    >
+                      Financial
+                    </button>
                   }
-                }}
-              >
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <SectionHeader
-                    label="Cost snapshot"
-                    className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
-                  />
-                  <span className="text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline">
-                    View cost details
-                  </span>
-                </div>
-                <Divider />
-                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-                  {(
-                    [
-                      { label: "Total cost", value: projectCost.breakdown.totalCost },
-                      { label: "Materials", value: projectCost.breakdown.materials },
-                      { label: "Labor", value: projectCost.breakdown.labor },
-                      { label: "Bills / Subcontracts", value: projectCost.breakdown.bills },
-                      { label: "Other", value: projectCost.breakdown.other },
-                    ] as const
-                  ).map((cell) => (
-                    <div key={cell.label} className="min-w-0">
-                      <p className={cn(TYPO.kpiLabel, "text-[10px]")}>{cell.label}</p>
-                      <AmountCell className="mt-1 block text-[15px]">
-                        {fmtMoney(cell.value)}
-                      </AmountCell>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* B. Alerts */}
-              <div className={cn(OS.card, "px-4 py-4")}>
-                <SectionHeader
-                  label="Alerts / issues"
-                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
-                />
-                <Divider />
-                <ul className="mt-3 divide-y divide-[var(--neo-border)] text-[13px]">
-                  <li className="py-0">
-                    <Link
-                      href={inboxProjectHref}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md py-2.5 text-[var(--neo-text-primary)] outline-none hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
-                    >
-                      <span>Needs review expenses</span>
-                      <span className="tabular-nums text-[var(--neo-text-secondary)]">
-                        {projectCost.alerts.needsReviewCount}
-                        <span className="ml-2 text-[12px] font-medium text-[var(--neo-gold)]">
-                          Inbox →
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
-                  <li className="py-0">
-                    <Link
-                      href={expensesProjectHref}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md py-2.5 text-[var(--neo-text-primary)] outline-none hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
-                    >
-                      <span>Missing receipt</span>
-                      <span className="tabular-nums text-[var(--neo-text-secondary)]">
-                        {projectCost.alerts.missingReceiptCount}
-                        <span className="ml-2 text-[12px] font-medium text-[var(--neo-gold)]">
-                          Expenses →
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
-                  <li className="py-0">
-                    <Link
-                      href={inboxProjectHref}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md py-2.5 text-[var(--neo-text-primary)] outline-none hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
-                    >
-                      <span>Duplicate expenses</span>
-                      <span className="text-[12px] font-medium text-[var(--neo-gold)]">
-                        Inbox →
-                      </span>
-                    </Link>
-                  </li>
-                  <li className="py-0">
-                    <Link
-                      href={expensesProjectHref}
-                      className="flex flex-wrap items-center justify-between gap-2 rounded-md py-2.5 text-[var(--neo-text-primary)] outline-none hover:bg-[var(--neo-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
-                    >
-                      <span>Missing project / category</span>
-                      <span className="tabular-nums text-[var(--neo-text-secondary)]">
-                        {projectCost.alerts.missingClassificationCount}
-                        <span className="ml-2 text-[12px] font-medium text-[var(--neo-gold)]">
-                          Expenses →
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-
-              {/* C. Recent costs (done only, max 5) */}
-              <div className={cn(OS.card, "px-4 py-4")}>
-                <SectionHeader
-                  label="Recent costs"
-                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
-                />
-                <Divider />
-                <div className="mt-2">
-                  {recentExpenseLines.length === 0 ? (
-                    <p className="py-6 text-center text-sm text-[var(--neo-text-secondary)]">
-                      No recorded costs yet.
-                    </p>
-                  ) : (
-                    <RecentExpenseLines rows={recentExpenseLines} />
-                  )}
-                </div>
-                <div className="mt-3 border-t border-[var(--neo-border)] pt-3">
-                  <button
-                    type="button"
-                    onClick={goToCostTab}
-                    className="text-[12px] font-medium text-[var(--neo-gold)] underline-offset-2 hover:underline"
-                  >
-                    View all costs →
-                  </button>
-                </div>
-              </div>
-
-              {/* D. Quick actions */}
-              <div className={cn(OS.card, "px-4 py-4")}>
-                <SectionHeader
-                  label="Quick actions"
-                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
-                />
-                <Divider />
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="h-8 text-[13px]" asChild>
-                    <Link href="/financial/expenses/new">Add expense</Link>
-                  </Button>
-                  <Button variant="outline" size="sm" className="h-8 text-[13px]" asChild>
-                    <Link href={inboxProjectHref}>Inbox draft</Link>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-[13px]"
-                    type="button"
-                    onClick={goToCostTab}
-                  >
-                    View all costs
-                  </Button>
-                </div>
-              </div>
-
-              {/* Compact context (no KPI repeat) */}
-              <div className={cn(OS.card, "px-4 py-4")}>
-                <SectionHeader
-                  label="Project context"
-                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
-                />
-                <Divider />
-                <div className="mt-2 grid grid-cols-1 gap-2 text-[13px] sm:grid-cols-2">
-                  <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-[var(--neo-text-secondary)]">Client</span>
-                    {displayProject.customerId ? (
-                      <Link
-                        href={`/customers/${displayProject.customerId}`}
-                        className="truncate text-right font-medium text-[var(--neo-text-primary)] underline-offset-2 hover:underline"
-                      >
-                        {displayProject.client ??
-                          (displayProject as { client_name?: string }).client_name ??
-                          "Customer"}
-                      </Link>
-                    ) : (
-                      <span className="truncate text-right font-medium text-[var(--neo-text-primary)]">
-                        {displayProject.client ??
-                          (displayProject as { client_name?: string }).client_name ??
-                          "—"}
-                      </span>
-                    )}
+                >
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <DetailRow label="Contract value" value={fmtMoney(budgetVal)} />
+                    <DetailRow
+                      label="Collected"
+                      value={fmtMoney(topCollectedValue)}
+                      tone="positive"
+                    />
+                    <DetailRow
+                      label="Need collect"
+                      value={fmtMoney(topNeedCollectValue)}
+                      tone={topNeedCollectValue > 0 ? "attention" : "positive"}
+                    />
+                    <DetailRow
+                      label="Billed"
+                      value={fmtExactMoney(snapshotCostSummary.billedAmount)}
+                    />
+                    <DetailRow label="Paid" value={fmtExactMoney(snapshotCostSummary.paidAmount)} />
+                    <DetailRow
+                      label="Last payment"
+                      value={billingSummary.lastPaymentDate?.slice(0, 10) ?? "—"}
+                    />
                   </div>
-                  <div className="flex items-center justify-between gap-3 py-2">
-                    <span className="text-[var(--neo-text-secondary)]">Contract value</span>
-                    <span className="tabular-nums text-right font-medium text-[var(--neo-text-primary)]">
-                      {fmtMoney(canonicalProfit.revenue)}
-                    </span>
-                  </div>
-                  {financialSummary ? (
-                    <>
-                      <div className="flex items-center justify-between gap-3 py-2">
-                        <span className="text-[var(--neo-text-secondary)]">Collected</span>
-                        <span className="tabular-nums text-right text-[var(--neo-text-primary)]">
-                          {fmtMoney(financialSummary.collected)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3 py-2">
-                        <span className="text-[var(--neo-text-secondary)]">AR outstanding</span>
-                        <span className="tabular-nums text-right text-[var(--neo-text-primary)]">
-                          {fmtMoney(financialSummary.outstanding)}
-                        </span>
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              </div>
+                </ExecutiveCard>
 
-              <div className={cn(OS.card, "px-4 py-4")}>
-                <SectionHeader
-                  label="Related estimates"
-                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
-                />
-                <Divider />
-                {relatedEstimates.length === 0 ? (
-                  <p className="mt-3 text-sm text-[var(--neo-text-secondary)]">
-                    No estimates linked by this project or client name.
-                  </p>
-                ) : (
-                  <div className="mt-2 divide-y divide-[var(--neo-border)]">
-                    {relatedEstimates.slice(0, 5).map((estimate) => (
-                      <Link
-                        key={estimate.id}
-                        href={`/estimates/${estimate.id}`}
-                        className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
+                <ExecutiveCard
+                  title="Cost Breakdown"
+                  action={
+                    <button
+                      type="button"
+                      onClick={goToCostTab}
+                      className="min-h-8 text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                    >
+                      Cost detail
+                    </button>
+                  }
+                >
+                  <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                    {(
+                      [
+                        { label: "Actual cost", value: snapshotCostSummary.actualCost },
+                        { label: "Expenses", value: snapshotCostSummary.expenseCost },
+                        { label: "Labor", value: snapshotCostSummary.laborCost },
+                        { label: "Reimbursements", value: snapshotCostSummary.reimbursementCost },
+                        { label: "Subcontracts", value: snapshotCostSummary.subcontractCost },
+                        { label: "Commission", value: snapshotCostSummary.commissionCost },
+                      ] as const
+                    ).map((cell) => (
+                      <div
+                        key={cell.label}
+                        className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3"
                       >
-                        <span className="min-w-0 truncate font-medium text-[var(--neo-text-primary)]">
-                          {estimate.number}
-                        </span>
-                        <span className="shrink-0 text-xs text-[var(--neo-text-secondary)]">
-                          {estimate.status}
-                        </span>
-                      </Link>
+                        <p className={cn(TYPO.kpiLabel, "text-[10px]")}>{cell.label}</p>
+                        <AmountCell className="mt-1 block text-[15px]">
+                          {fmtMoney(cell.value)}
+                        </AmountCell>
+                      </div>
                     ))}
                   </div>
-                )}
+                </ExecutiveCard>
+
+                <ExecutiveCard title="Project Health">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <DetailRow
+                      label="Status"
+                      value={<ProjectDetailStatusPill status={displayProject.status} />}
+                    />
+                    <DetailRow
+                      label="Open tasks"
+                      value={openTaskCount}
+                      tone={openTaskCount > 0 ? "attention" : "positive"}
+                    />
+                    <DetailRow label="Schedule items" value={scheduleItems.length} />
+                    <DetailRow
+                      label="Open punch items"
+                      value={openPunchCount}
+                      tone={openPunchCount > 0 ? "attention" : "positive"}
+                    />
+                    <DetailRow
+                      label="Needs review"
+                      value={
+                        <Link
+                          href={inboxProjectHref}
+                          className="underline-offset-2 hover:underline"
+                        >
+                          {projectCost.alerts.needsReviewCount}
+                        </Link>
+                      }
+                      tone={projectCost.alerts.needsReviewCount > 0 ? "attention" : "positive"}
+                    />
+                    <DetailRow
+                      label="Missing receipts"
+                      value={
+                        <Link
+                          href={expensesProjectHref}
+                          className="underline-offset-2 hover:underline"
+                        >
+                          {projectCost.alerts.missingReceiptCount}
+                        </Link>
+                      }
+                      tone={projectCost.alerts.missingReceiptCount > 0 ? "attention" : "positive"}
+                    />
+                  </div>
+                  <div className="mt-3 border-t border-[var(--neo-border)] pt-3 text-[13px] text-[var(--neo-text-secondary)]">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-[var(--neo-text-tertiary)]">Client</span>
+                      {displayProject.customerId ? (
+                        <Link
+                          href={`/customers/${displayProject.customerId}`}
+                          className="font-medium text-[var(--neo-text-primary)] underline-offset-2 hover:underline"
+                        >
+                          {displayProject.client ??
+                            (displayProject as { client_name?: string }).client_name ??
+                            "Customer"}
+                        </Link>
+                      ) : (
+                        <span className="font-medium text-[var(--neo-text-primary)]">
+                          {displayProject.client ??
+                            (displayProject as { client_name?: string }).client_name ??
+                            "—"}
+                        </span>
+                      )}
+                    </div>
+                    {displayProject.address ? (
+                      <p className="mt-1 truncate">{displayProject.address}</p>
+                    ) : null}
+                  </div>
+                </ExecutiveCard>
+
+                <ExecutiveCard title="Recent Activity">
+                  {latestActivity.length > 0 ? (
+                    <ul className="divide-y divide-[var(--neo-border)]">
+                      {latestActivity.map((log) => (
+                        <li key={log.id} className="flex gap-3 py-2.5 text-[13px]">
+                          <span className="w-[6.5rem] shrink-0 font-mono tabular-nums text-[var(--neo-text-tertiary)]">
+                            {log.created_at?.slice(0, 10) ?? "—"}
+                          </span>
+                          <span className="min-w-0 text-[var(--neo-text-primary)]">
+                            {log.description ?? log.type}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : recentCostActivity.length > 0 ? (
+                    <ul className="divide-y divide-[var(--neo-border)]">
+                      {recentCostActivity.map((row) => (
+                        <li key={row.id} className="flex items-center gap-3 py-2.5 text-[13px]">
+                          <span className="w-[6.5rem] shrink-0 font-mono tabular-nums text-[var(--neo-text-tertiary)]">
+                            {row.date ?? "—"}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-[var(--neo-text-primary)]">
+                            {row.vendorName || row.memo || "Cost recorded"}
+                          </span>
+                          <span className="shrink-0 font-mono tabular-nums text-[var(--neo-text-secondary)]">
+                            {fmtMoney(row.amount)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                      No recent activity for this project.
+                    </p>
+                  )}
+                </ExecutiveCard>
               </div>
             </TabsContent>
 
-            <TabsContent value="tasks" className={TAB_PANEL}>
-              <ProjectTasksTab
-                projectId={projectId}
-                tasks={tasks}
-                workers={workers}
-                onTaskCreated={() =>
-                  syncClientsThenRefreshInBackground(router, "project-task-created")
+            <TabsContent value="work" className="mt-4 space-y-4">
+              <ExecutiveCard title="Tasks">
+                <ProjectTasksTab
+                  projectId={projectId}
+                  tasks={tasks}
+                  workers={workers}
+                  onTaskCreated={() =>
+                    syncClientsThenRefreshInBackground(router, "project-task-created")
+                  }
+                  onTaskUpdated={() =>
+                    syncClientsThenRefreshInBackground(router, "project-task-updated")
+                  }
+                />
+              </ExecutiveCard>
+
+              <ExecutiveCard
+                title="Schedule"
+                action={
+                  <Link
+                    href="/schedule"
+                    className="min-h-8 text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                  >
+                    Company schedule
+                  </Link>
                 }
-                onTaskUpdated={() =>
-                  syncClientsThenRefreshInBackground(router, "project-task-updated")
-                }
-              />
+              >
+                {scheduleItems.length === 0 ? (
+                  <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                    No schedule milestones for this project.
+                  </p>
+                ) : (
+                  <div className="airtable-table-wrap airtable-table-wrap--ruled">
+                    <div className="airtable-table-scroll">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                              Title
+                            </th>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                              Start
+                            </th>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                              End
+                            </th>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {scheduleItems.map((s) => (
+                            <tr key={s.id} className={listTableRowStaticClassName}>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                                {s.title}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                                {s.start_date ?? "—"}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                                {s.end_date ?? "—"}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] capitalize">
+                                {(s.status ?? "scheduled").replace(/_/g, " ")}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </ExecutiveCard>
+
+              <ExecutiveCard title="Activity">
+                {activityLogs.length === 0 ? (
+                  <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                    No activity for this project.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-[var(--neo-border)]">
+                    {activityLogs.map((log) => (
+                      <li key={log.id} className="flex gap-3 py-2.5 text-[13px]">
+                        <span className="w-[9rem] shrink-0 font-mono tabular-nums text-[var(--neo-text-secondary)]">
+                          {log.created_at?.slice(0, 19).replace("T", " ") ?? "—"}
+                        </span>
+                        <span className="min-w-0 text-[var(--neo-text-primary)]">
+                          {log.description ?? log.type}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </ExecutiveCard>
+
+              <ExecutiveCard title="Punch List">
+                <ProjectPunchListTab projectId={projectId} punchItems={punchItems} />
+              </ExecutiveCard>
             </TabsContent>
 
             <TabsContent value="schedule" className={TAB_PANEL}>
@@ -1313,8 +1336,54 @@ export function ProjectDetailTabsClient({
               )}
             </TabsContent>
 
-            <TabsContent value="cost" className={cn(TAB_PANEL, "space-y-8")}>
-              <div>
+            <TabsContent value="financial" className="mt-4 space-y-4">
+              <ExecutiveCard title="Revenue">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <SnapshotTextMetricCard
+                    label="Contract value"
+                    value={fmtMoney(budgetVal)}
+                    testId="project-financial-revenue-contract"
+                  />
+                  <SnapshotTextMetricCard
+                    label="Billed"
+                    value={fmtExactMoney(snapshotCostSummary.billedAmount)}
+                    testId="snapshot-ar-billed"
+                  />
+                  <SnapshotTextMetricCard
+                    label="Collected"
+                    value={fmtExactMoney(snapshotCostSummary.paidAmount)}
+                    testId="snapshot-ar-paid"
+                  />
+                  <SnapshotTextMetricCard
+                    label="Need Collect"
+                    value={fmtExactMoney(snapshotCostSummary.openAR)}
+                    testId="snapshot-ar-open"
+                  />
+                </div>
+                {relatedEstimates.length > 0 ? (
+                  <div className="mt-4 border-t border-[var(--neo-border)] pt-3">
+                    <p className={cn(TYPO.kpiLabel, "mb-1 text-[10px]")}>Related estimates</p>
+                    <div className="divide-y divide-[var(--neo-border)]">
+                      {relatedEstimates.slice(0, 5).map((estimate) => (
+                        <Link
+                          key={estimate.id}
+                          href={`/estimates/${estimate.id}`}
+                          className="flex min-h-10 items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
+                        >
+                          <span className="min-w-0 truncate font-medium text-[var(--neo-text-primary)]">
+                            {estimate.number}
+                          </span>
+                          <span className="shrink-0 text-xs text-[var(--neo-text-secondary)]">
+                            {estimate.status}
+                          </span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </ExecutiveCard>
+
+              <ExecutiveCard title="Cost">
                 <SectionHeader
                   label="Cost breakdown"
                   className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
@@ -1413,9 +1482,64 @@ export function ProjectDetailTabsClient({
                     </p>
                   ) : null}
                 </div>
-              </div>
+              </ExecutiveCard>
 
-              <div>
+              <ExecutiveCard title="Profit">
+                {snapshotComparison ? (
+                  <>
+                    {showSnapshotProfit ? (
+                      <>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          <SnapshotTextMetricCard
+                            label="Confirmed Gross Profit"
+                            value={fmtExactMoney(snapshotComparison.newSnapshot.grossProfit)}
+                            testId="snapshot-profit-gross"
+                          />
+                          <SnapshotTextMetricCard
+                            label="Confirmed Margin"
+                            value={fmtPercentRatio(snapshotComparison.newSnapshot.grossMargin)}
+                            testId="snapshot-profit-margin"
+                          />
+                          <SnapshotMetricCard
+                            label="Confirmed Actual Cost"
+                            value={snapshotCostSummary.actualCost}
+                            testId="snapshot-profit-actual-cost"
+                          />
+                        </div>
+                        <p className="mt-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 text-[12px] text-[var(--neo-text-secondary)]">
+                          Profit is based on confirmed costs and accrued commission. Pending review
+                          costs, unpaid reimbursements, and generic AP are shown separately and are
+                          not included yet.
+                        </p>
+                      </>
+                    ) : (
+                      <p className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[12px] font-medium text-[var(--neo-gold)]">
+                        {profitReadinessWarning}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    <SnapshotTextMetricCard
+                      label="Legacy profit"
+                      value={fmtExactMoney(legacyProfitVal)}
+                      testId="snapshot-profit-gross"
+                    />
+                    <SnapshotTextMetricCard
+                      label="Legacy margin"
+                      value={`${legacyMarginPct.toFixed(1)}%`}
+                      testId="snapshot-profit-margin"
+                    />
+                    <SnapshotMetricCard
+                      label="Actual Cost"
+                      value={snapshotCostSummary.actualCost}
+                      testId="snapshot-profit-actual-cost"
+                    />
+                  </div>
+                )}
+              </ExecutiveCard>
+
+              <ExecutiveCard title="Commission Commitments">
                 <SectionHeader
                   label="Commission commitments"
                   className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
@@ -1495,13 +1619,12 @@ export function ProjectDetailTabsClient({
                       </tbody>
                     </table>
                     {commissions.length > 5 ? (
-                      <button
-                        type="button"
-                        className="mt-2 text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
-                        onClick={() => setTab("commission")}
+                      <Link
+                        href="/financial/commissions"
+                        className="mt-2 inline-flex min-h-8 items-center text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
                       >
                         View all commissions
-                      </button>
+                      </Link>
                     ) : null}
                   </div>
                 ) : (
@@ -1509,49 +1632,9 @@ export function ProjectDetailTabsClient({
                     No commissions are linked to this project yet.
                   </p>
                 )}
-              </div>
+              </ExecutiveCard>
 
-              {snapshotComparison ? (
-                <div>
-                  <SectionHeader
-                    label="Confirmed profit"
-                    className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
-                  />
-                  <Divider />
-                  {showSnapshotProfit ? (
-                    <>
-                      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <SnapshotTextMetricCard
-                          label="Confirmed Gross Profit"
-                          value={fmtExactMoney(snapshotComparison.newSnapshot.grossProfit)}
-                          testId="snapshot-profit-gross"
-                        />
-                        <SnapshotTextMetricCard
-                          label="Confirmed Margin"
-                          value={fmtPercentRatio(snapshotComparison.newSnapshot.grossMargin)}
-                          testId="snapshot-profit-margin"
-                        />
-                        <SnapshotMetricCard
-                          label="Confirmed Actual Cost"
-                          value={snapshotCostSummary.actualCost}
-                          testId="snapshot-profit-actual-cost"
-                        />
-                      </div>
-                      <p className="mt-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 text-[12px] text-[var(--neo-text-secondary)]">
-                        Profit is based on confirmed costs and accrued commission. Pending review
-                        costs, unpaid reimbursements, and generic AP are shown separately and are
-                        not included yet.
-                      </p>
-                    </>
-                  ) : (
-                    <p className="mt-3 rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-3 py-2 text-[12px] font-medium text-[var(--neo-gold)]">
-                      {profitReadinessWarning}
-                    </p>
-                  )}
-                </div>
-              ) : null}
-
-              <div>
+              <ExecutiveCard title="Cost Detail">
                 <SectionHeader
                   label="Cost detail"
                   className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
@@ -1565,31 +1648,22 @@ export function ProjectDetailTabsClient({
                     emptyMessage={costTableEmptyMessage}
                   />
                 </div>
-              </div>
+              </ExecutiveCard>
 
               {showFinancialSnapshotComparison ? (
                 <ProjectFinancialSnapshotComparisonPanel projectId={projectId} />
               ) : null}
 
-              <div className="border-t border-[var(--neo-border)] pt-6">
+              <ExecutiveCard title="Invoices">
                 <SectionHeader
                   label="Invoicing"
                   className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                 />
                 <Divider />
                 <p className="mt-1 text-sm text-[var(--neo-text-secondary)]">
-                  Billed{" "}
-                  <span data-testid="snapshot-ar-billed">
-                    {fmtExactMoney(snapshotCostSummary.billedAmount)}
-                  </span>{" "}
-                  · Paid{" "}
-                  <span data-testid="snapshot-ar-paid">
-                    {fmtExactMoney(snapshotCostSummary.paidAmount)}
-                  </span>{" "}
-                  · Open AR{" "}
-                  <span data-testid="snapshot-ar-open">
-                    {fmtExactMoney(snapshotCostSummary.openAR)}
-                  </span>
+                  Billed {fmtExactMoney(snapshotCostSummary.billedAmount)} · Paid{" "}
+                  {fmtExactMoney(snapshotCostSummary.paidAmount)} · Open AR{" "}
+                  {fmtExactMoney(snapshotCostSummary.openAR)}
                 </p>
                 {projectInvoices.length === 0 ? (
                   <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
@@ -1656,11 +1730,43 @@ export function ProjectDetailTabsClient({
                     View all invoices →
                   </Link>
                 </div>
-              </div>
+              </ExecutiveCard>
             </TabsContent>
 
-            <TabsContent value="docs" className={TAB_PANEL}>
-              <ProjectDocumentsTab projectId={projectId} documents={documents} />
+            <TabsContent value="documents" className="mt-4 space-y-4">
+              <ExecutiveCard title="Docs">
+                <ProjectDocumentsTab projectId={projectId} documents={documents} />
+              </ExecutiveCard>
+              <ExecutiveCard title="Material Selections">
+                <ProjectMaterialsTab
+                  projectId={projectId}
+                  projectName={displayProject.name}
+                  clientName={
+                    displayProject.client ??
+                    (displayProject as { client_name?: string }).client_name ??
+                    undefined
+                  }
+                  selections={materialSelections}
+                  catalog={materialCatalog}
+                  onRefresh={() =>
+                    syncClientsThenRefreshInBackground(router, "project-materials-mutated")
+                  }
+                />
+              </ExecutiveCard>
+              <ExecutiveCard title="Closeout">
+                <ProjectCloseoutTab
+                  projectId={projectId}
+                  projectName={displayProject.name}
+                  billingSummary={billingSummary}
+                  contractValue={canonicalProfit.revenue}
+                  punch={closeoutPunch}
+                  warranty={closeoutWarranty}
+                  completion={closeoutCompletion}
+                  onRefresh={() =>
+                    syncClientsThenRefreshInBackground(router, "project-closeout-mutated")
+                  }
+                />
+              </ExecutiveCard>
             </TabsContent>
 
             <TabsContent value="expenses" className={TAB_PANEL}>
