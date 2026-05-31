@@ -114,7 +114,7 @@ function laborNavLink(page: Page, label: string): Locator {
 async function ensureOsSectionsOpen(page: Page) {
   const sidebar = visibleSidebar(page);
   await expect(sidebar).toBeVisible({ timeout: 20_000 });
-  for (const label of ["FINANCIAL", "PEOPLE", "DOCUMENTS"]) {
+  for (const label of ["PROJECTS", "FINANCIAL", "PEOPLE", "DOCUMENTS"]) {
     const sectionButton = sidebar.getByRole("button", { name: new RegExp(`^${label}$`) }).first();
     if (await sectionButton.isVisible().catch(() => false)) {
       const expanded = await sectionButton.getAttribute("aria-expanded");
