@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageLayout, PageHeader } from "@/components/base";
-import { getApBillById, getApBills, getProjects } from "@/lib/data";
 import type { ApBillWithProject } from "@/lib/data";
+import { fetchBillDetailData, fetchBillsPageData } from "../../bills-api";
 import { EditBillClient } from "./edit-bill-client";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { billsPageWrapClass } from "../../bills-ui-styles";
@@ -26,14 +26,10 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function EditBillPage({ params }: Props) {
   const { id } = await params;
-  const [bill, projects, bills] = await Promise.all([
-    getApBillById(id),
-    getProjects(),
-    getApBills(),
-  ]);
-  if (!bill) notFound();
-  const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }));
-  const learnedCategories = uniqueBillCategories(bills);
+  const [detail, listData] = await Promise.all([fetchBillDetailData(id), fetchBillsPageData({})]);
+  if (!detail) notFound();
+  const { bill } = detail;
+  const learnedCategories = uniqueBillCategories(listData.bills);
 
   return (
     <PageLayout
@@ -43,7 +39,11 @@ export default async function EditBillPage({ params }: Props) {
       }
     >
       <SetBreadcrumbEntityTitle label={bill.bill_no?.trim() || bill.vendor_name?.trim() || null} />
-      <EditBillClient bill={bill} projects={projectOptions} learnedCategories={learnedCategories} />
+      <EditBillClient
+        bill={bill}
+        projects={listData.projects}
+        learnedCategories={learnedCategories}
+      />
     </PageLayout>
   );
 }

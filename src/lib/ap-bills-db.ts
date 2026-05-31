@@ -4,9 +4,12 @@
  * Payments: `ap_bill_payments` (FK → ap_bills.id).
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 const BILLS_TABLE = "ap_bills";
+const AP_BILLS_SELECT =
+  "id, bill_no, bill_type, vendor_name, project_id, issue_date, due_date, amount, paid_amount, balance_amount, status, category, notes, attachment_url, created_at, updated_at, created_by, projects(name)";
 
 export const AP_BILL_TYPES = [
   "Vendor",
@@ -66,7 +69,10 @@ export type ApBillsFilters = {
   overdue_only?: boolean;
 };
 
-function client() {
+type SupabaseLike = SupabaseClient;
+
+function client(explicitClient?: SupabaseLike) {
+  if (explicitClient) return explicitClient;
   const c = getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
@@ -183,13 +189,14 @@ function mapPayment(r: Record<string, unknown>): ApBillPaymentRow {
 }
 
 /** Get one bill by id. */
-export async function getApBillById(id: string): Promise<ApBillWithProject | null> {
-  const c = client();
+export async function getApBillById(
+  id: string,
+  explicitClient?: SupabaseLike
+): Promise<ApBillWithProject | null> {
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from(BILLS_TABLE)
-    .select(
-      "id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)"
-    )
+    .select(AP_BILLS_SELECT)
     .eq("id", id)
     .maybeSingle();
   if (error) {
@@ -203,14 +210,12 @@ export async function getApBillById(id: string): Promise<ApBillWithProject | nul
 }
 
 /** List bills with optional filters and project name join. */
-export async function getApBills(filters: ApBillsFilters = {}): Promise<ApBillWithProject[]> {
-  const c = client();
-  let q = c
-    .from(BILLS_TABLE)
-    .select(
-      "id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)"
-    )
-    .order("created_at", { ascending: false });
+export async function getApBills(
+  filters: ApBillsFilters = {},
+  explicitClient?: SupabaseLike
+): Promise<ApBillWithProject[]> {
+  const c = client(explicitClient);
+  let q = c.from(BILLS_TABLE).select(AP_BILLS_SELECT).order("created_at", { ascending: false });
 
   if (filters.status) q = q.eq("status", filters.status);
   if (filters.bill_type) q = q.eq("bill_type", filters.bill_type);
@@ -244,18 +249,22 @@ export async function getApBills(filters: ApBillsFilters = {}): Promise<ApBillWi
 }
 
 /** Get bills by project (for project detail). */
-export async function getApBillsByProject(projectId: string): Promise<ApBillWithProject[]> {
-  return getApBills({ project_id: projectId });
+export async function getApBillsByProject(
+  projectId: string,
+  explicitClient?: SupabaseLike
+): Promise<ApBillWithProject[]> {
+  return getApBills({ project_id: projectId }, explicitClient);
 }
 
 /** Recent bills for dashboard activity feed. Ordered by created_at desc, limit. */
-export async function getApBillsRecent(limit: number): Promise<ApBillWithProject[]> {
-  const c = client();
+export async function getApBillsRecent(
+  limit: number,
+  explicitClient?: SupabaseLike
+): Promise<ApBillWithProject[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from(BILLS_TABLE)
-    .select(
-      "id, bill_type, vendor_name, project_id, issue_date, due_date, amount, status, category, notes, created_at, updated_at, projects(name)"
-    )
+    .select(AP_BILLS_SELECT)
     .order("created_at", { ascending: false })
     .limit(Math.max(1, Math.min(limit, 100)));
   if (error) {
@@ -269,8 +278,11 @@ export async function getApBillsRecent(limit: number): Promise<ApBillWithProject
 }
 
 /** Get payments for a bill. */
-export async function getApBillPayments(billId: string): Promise<ApBillPaymentRow[]> {
-  const c = client();
+export async function getApBillPayments(
+  billId: string,
+  explicitClient?: SupabaseLike
+): Promise<ApBillPaymentRow[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("ap_bill_payments")
     .select(
@@ -286,23 +298,27 @@ export async function getApBillPayments(billId: string): Promise<ApBillPaymentRo
 }
 
 /** Create a new bill. */
-export async function createApBill(draft: {
-  bill_no?: string | null;
-  bill_type?: ApBillType;
-  vendor_name: string;
-  project_id?: string | null;
-  issue_date?: string | null;
-  due_date?: string | null;
-  amount: number;
-  category?: string | null;
-  notes?: string | null;
-}): Promise<ApBillRow> {
-  const c = client();
+export async function createApBill(
+  draft: {
+    bill_no?: string | null;
+    bill_type?: ApBillType;
+    vendor_name: string;
+    project_id?: string | null;
+    issue_date?: string | null;
+    due_date?: string | null;
+    amount: number;
+    category?: string | null;
+    notes?: string | null;
+  },
+  explicitClient?: SupabaseLike
+): Promise<ApBillRow> {
+  const c = client(explicitClient);
   const vendorName = draft.vendor_name.trim();
   if (!vendorName) throw new Error("Vendor name is required");
   if (!(draft.amount > 0)) throw new Error("Amount must be greater than 0");
   const amount = draft.amount;
   const payload = {
+    bill_no: draft.bill_no?.trim() || null,
     bill_type: AP_BILL_TYPES.includes(draft.bill_type!) ? draft.bill_type : "Vendor",
     vendor_name: vendorName,
     project_id: draft.project_id || null,
@@ -337,10 +353,12 @@ export async function updateApBill(
     notes: string | null;
     attachment_url: string | null;
     status: ApBillStatus;
-  }>
+  }>,
+  explicitClient?: SupabaseLike
 ): Promise<ApBillRow | null> {
-  const c = client();
+  const c = client(explicitClient);
   const updates: Record<string, unknown> = {};
+  if (patch.bill_no !== undefined) updates.bill_no = patch.bill_no?.trim() || null;
   if (patch.bill_type !== undefined)
     updates.bill_type = AP_BILL_TYPES.includes(patch.bill_type) ? patch.bill_type : "Vendor";
   if (patch.vendor_name !== undefined) updates.vendor_name = patch.vendor_name.trim();
@@ -350,10 +368,12 @@ export async function updateApBill(
   if (patch.amount !== undefined) updates.amount = Math.max(0, patch.amount);
   if (patch.category !== undefined) updates.category = patch.category?.trim() || null;
   if (patch.notes !== undefined) updates.notes = patch.notes?.trim() || null;
+  if (patch.attachment_url !== undefined)
+    updates.attachment_url = patch.attachment_url?.trim() || null;
   if (patch.status !== undefined)
     updates.status = AP_BILL_STATUSES.includes(patch.status) ? patch.status : "Draft";
   if (Object.keys(updates).length === 0)
-    return getApBillById(id).then((b) =>
+    return getApBillById(id, explicitClient).then((b) =>
       b ? mapBill(b as unknown as Record<string, unknown>) : null
     );
   const { data: row, error } = await c
@@ -361,11 +381,12 @@ export async function updateApBill(
     .update(updates)
     .eq("id", id)
     .select("*")
-    .single();
+    .maybeSingle();
   if (error) {
     if (isMissingTable(error)) return null;
     throw new Error(error.message ?? "Failed to update bill.");
   }
+  if (!row) return null;
   return mapBill(row as Record<string, unknown>);
 }
 
@@ -378,9 +399,10 @@ export async function addApBillPayment(
     payment_method?: string | null;
     reference_no?: string | null;
     notes?: string | null;
-  }
+  },
+  explicitClient?: SupabaseLike
 ): Promise<ApBillPaymentRow> {
-  const c = client();
+  const c = client(explicitClient);
   const amt = Math.max(0, payment.amount);
   const { data: row, error } = await c
     .from("ap_bill_payments")
@@ -405,29 +427,51 @@ export async function addApBillPayment(
 }
 
 /** Mark bill as Pending (confirm). */
-export async function setApBillPending(id: string): Promise<void> {
-  const bill = await getApBillById(id);
-  if (!bill || bill.status !== "Draft") return;
-  await client().from(BILLS_TABLE).update({ status: "Pending" }).eq("id", id);
+export async function setApBillPending(
+  id: string,
+  explicitClient?: SupabaseLike
+): Promise<boolean> {
+  const c = client(explicitClient);
+  const bill = await getApBillById(id, c);
+  if (!bill || bill.status !== "Draft") return false;
+  const { data, error } = await c
+    .from(BILLS_TABLE)
+    .update({ status: "Pending" })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(error.message ?? "Failed to update bill.");
+  return Boolean(data);
 }
 
 /** Mark bill as Void. */
-export async function voidApBill(id: string): Promise<void> {
-  await client().from(BILLS_TABLE).update({ status: "Void" }).eq("id", id);
+export async function voidApBill(id: string, explicitClient?: SupabaseLike): Promise<boolean> {
+  const { data, error } = await client(explicitClient)
+    .from(BILLS_TABLE)
+    .update({ status: "Void" })
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+  if (error) throw new Error(error.message ?? "Failed to void bill.");
+  return Boolean(data);
 }
 
 /** Delete a Draft bill with no payments. */
-export async function deleteApBillDraft(id: string): Promise<void> {
-  const c = client();
+export async function deleteApBillDraft(
+  id: string,
+  explicitClient?: SupabaseLike
+): Promise<boolean> {
+  const c = client(explicitClient);
   const { data: bill, error: billErr } = await c
     .from(BILLS_TABLE)
     .select("id,status")
     .eq("id", id)
-    .single();
+    .maybeSingle();
   if (billErr) {
-    if (isMissingTable(billErr)) return;
+    if (isMissingTable(billErr)) return false;
     throw new Error(billErr.message ?? "Failed to load bill.");
   }
+  if (!bill) return false;
   const status = ((bill as { status?: unknown })?.status ?? "").toString();
   if (status !== "Draft") throw new Error("Only Draft bills can be deleted");
 
@@ -442,13 +486,18 @@ export async function deleteApBillDraft(id: string): Promise<void> {
     // ap_bill_payments may not exist; allow delete
   }
 
-  const { error: delErr } = await c.from(BILLS_TABLE).delete().eq("id", id);
+  const { data: deleted, error: delErr } = await c
+    .from(BILLS_TABLE)
+    .delete()
+    .eq("id", id)
+    .select("id");
   if (delErr) throw new Error(delErr.message ?? "Failed to delete bill.");
+  return (deleted ?? []).length > 0;
 }
 
 /** Total amount of all non-void bills (for finance overview). */
-export async function getTotalBillsAmount(): Promise<number> {
-  const c = client();
+export async function getTotalBillsAmount(explicitClient?: SupabaseLike): Promise<number> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from(BILLS_TABLE)
     .select("amount")
@@ -459,7 +508,7 @@ export async function getTotalBillsAmount(): Promise<number> {
 }
 
 /** Summary stats for dashboard / list. */
-export async function getApBillsSummary(): Promise<{
+export async function getApBillsSummary(explicitClient?: SupabaseLike): Promise<{
   totalOutstanding: number;
   overdueCount: number;
   overdueAmount: number;
@@ -467,7 +516,7 @@ export async function getApBillsSummary(): Promise<{
   dueThisWeekAmount: number;
   paidThisMonthAmount: number;
 }> {
-  const c = client();
+  const c = client(explicitClient);
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
   const startOfWeek = new Date(now);

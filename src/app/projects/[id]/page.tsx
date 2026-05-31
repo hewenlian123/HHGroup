@@ -10,7 +10,6 @@ import {
   getMaterialCatalog,
   getPunchListByProject,
   getSubcontractsByProject,
-  getApBillsByProject,
   getActivityLogsByProject,
   getChangeOrdersByProject,
   getProjectBudgetItems,
@@ -21,6 +20,7 @@ import {
   getInvoicesWithDerived,
   getEstimateList,
 } from "@/lib/data";
+import { getApBillsByProject } from "@/lib/ap-bills-db";
 import { getProjectByIdWithClient } from "@/lib/projects-db";
 import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
@@ -187,7 +187,11 @@ export default async function ProjectDetailPage({
     safe(() => getMaterialCatalog(), []),
     safe(() => getPunchListByProject(id), []),
     safe(() => getSubcontractsByProject(id), []),
-    safe(() => getApBillsByProject(id), []),
+    safe(
+      () =>
+        internalSupabase ? getApBillsByProject(id, internalSupabase) : getApBillsByProject(id),
+      []
+    ),
     safe(() => getActivityLogsByProject(id, 20), []),
     safe(() => getChangeOrdersByProject(id), []),
     safe(() => getProjectBudgetItems(id), []),

@@ -1,21 +1,12 @@
 import { PageLayout, PageHeader } from "@/components/base";
-import { getProjects } from "@/lib/data";
-import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
+import { fetchBillsPageData } from "../bills-api";
 import { billsPageWrapClass } from "../bills-ui-styles";
 import { NewBillClient } from "./new-bill-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewBillPage() {
-  let projects: Awaited<ReturnType<typeof getProjects>> = [];
-  let dataLoadWarning: string | null = null;
-  try {
-    projects = await getProjects();
-  } catch (e) {
-    logServerPageDataError("bills/new", e);
-    dataLoadWarning = serverDataLoadWarning(e, "projects");
-  }
-  const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }));
+  const listData = await fetchBillsPageData({});
 
   return (
     <PageLayout
@@ -24,7 +15,7 @@ export default async function NewBillPage() {
         <PageHeader title="New bill" description="Create a vendor, labor, or other payable bill." />
       }
     >
-      <NewBillClient projects={projectOptions} dataLoadWarning={dataLoadWarning} />
+      <NewBillClient projects={listData.projects} dataLoadWarning={listData.message} />
     </PageLayout>
   );
 }

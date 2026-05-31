@@ -102,15 +102,17 @@ export function ProjectsClient() {
     setTotal(projectsRes.count ?? nextRows.length);
 
     const projectIds = nextRows.map((p) => p.id).filter(Boolean);
-    const billsRes = projectIds.length
-      ? await supabase
-          .from("ap_bills")
-          .select("project_id,status,amount")
-          .in("project_id", projectIds)
-      : { data: [] as unknown[], error: null as unknown };
-    const billRows = (billsRes as { error?: unknown; data?: unknown[] }).error
-      ? ([] as BillMiniRow[])
-      : (((billsRes as { data?: unknown[] }).data ?? []) as BillMiniRow[]);
+    let billRows: BillMiniRow[] = [];
+    if (projectIds.length > 0) {
+      const billsRes = await fetch("/api/bills", { cache: "no-store" });
+      if (billsRes.ok) {
+        const body = (await billsRes.json().catch(() => null)) as { bills?: unknown[] } | null;
+        const projectIdSet = new Set(projectIds);
+        billRows = ((body?.bills ?? []) as BillMiniRow[]).filter(
+          (bill) => bill.project_id && projectIdSet.has(bill.project_id)
+        );
+      }
+    }
     const totals = new Map<string, number>();
     for (const b of billRows) {
       const pid = b.project_id;

@@ -19,8 +19,6 @@ import { Dialog } from "@/components/ui/dialog";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 import type { ApBillWithProject, ApBillPaymentRow } from "@/lib/data";
-import { addApBillPayment } from "@/lib/data";
-import { deleteBillDraftAction, voidBillAction } from "../actions";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { createBrowserClient } from "@/lib/supabase";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
@@ -42,6 +40,11 @@ type Props = {
   payments: ApBillPaymentRow[];
   addPaymentOpen: boolean;
 };
+
+async function readApiMessage(response: Response, fallback: string): Promise<string> {
+  const body = (await response.json().catch(() => null)) as { message?: unknown } | null;
+  return typeof body?.message === "string" ? body.message : fallback;
+}
 
 export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPaymentOpen }: Props) {
   const router = useRouter();
@@ -83,13 +86,20 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
     setSubmitting(true);
     setError(null);
     try {
-      await addApBillPayment(bill.id, {
-        payment_date: paymentDate,
-        amount: amt,
-        payment_method: paymentMethod || undefined,
-        reference_no: paymentRef || undefined,
-        notes: paymentNotes || undefined,
+      const response = await fetch(`/api/bills/${encodeURIComponent(bill.id)}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          payment_date: paymentDate,
+          amount: amt,
+          payment_method: paymentMethod || undefined,
+          reference_no: paymentRef || undefined,
+          notes: paymentNotes || undefined,
+        }),
       });
+      if (!response.ok) {
+        throw new Error(await readApiMessage(response, "Failed to add payment."));
+      }
       setPaymentAmount("");
       setPaymentMethod("");
       setPaymentRef("");
@@ -104,20 +114,30 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
   };
 
   const handleVoid = async () => {
-    const result = await voidBillAction(bill.id);
-    if (result.ok) {
+    setError(null);
+    const response = await fetch(`/api/bills/${encodeURIComponent(bill.id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "void" }),
+    });
+    if (response.ok) {
       setVoidConfirm(false);
       syncRouterNonBlocking(router);
+    } else {
+      setError(await readApiMessage(response, "Failed to void bill."));
     }
   };
 
   const handleDeleteDraft = async () => {
-    const result = await deleteBillDraftAction(bill.id);
-    if (result.ok) {
+    setError(null);
+    const response = await fetch(`/api/bills/${encodeURIComponent(bill.id)}`, {
+      method: "DELETE",
+    });
+    if (response.ok) {
       router.push("/bills");
       syncRouterNonBlocking(router);
     } else {
-      setError(result.error ?? "Failed to delete bill.");
+      setError(await readApiMessage(response, "Failed to delete bill."));
     }
   };
 

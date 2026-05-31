@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import {
   getProjectBillingSummary,
   getProjectTransactions,
@@ -11,7 +12,6 @@ import {
   getSubcontractsByProject,
   getBillsBySubcontractIds,
   getPaymentsBySubcontractIds,
-  getApBillsByProject,
   getProjectTasks,
   getProjectSchedule,
   getActivityLogsByProject,
@@ -24,6 +24,8 @@ import {
   getCommissionsByProject,
   getPunchListByProject,
 } from "@/lib/data";
+import { getApBillsByProject } from "@/lib/ap-bills-db";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 
 type TabKey =
@@ -49,6 +51,9 @@ function jsonError(message: string, status = 400) {
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const guard = await requireAuthenticatedUser(_req);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const url = new URL(_req.url);
   const key = (url.searchParams.get("key") ?? "overview").toLowerCase() as TabKey;
@@ -144,7 +149,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (key === "bills") {
-      const projectBills = await getApBillsByProject(id).catch(() => []);
+      const supabase = getServerSupabaseInternalNoStore();
+      const projectBills = supabase ? await getApBillsByProject(id, supabase).catch(() => []) : [];
       return NextResponse.json({ ok: true as const, key, projectBills });
     }
 
