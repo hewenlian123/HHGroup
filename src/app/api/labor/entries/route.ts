@@ -7,6 +7,16 @@ import {
 import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
 import { insertDailyLaborEntriesWithClient } from "@/lib/labor-db";
 import {
+  hasLaborOvertimeAmountInput,
+  hasLaborOvertimeHoursInput,
+  hasLaborOvertimeInput,
+  mergeLaborOvertimeIntoNotes,
+  parseLaborOvertimeAmountFromNotes,
+  parseLaborOvertimeHoursFromNotes,
+  readLaborOvertimeAmountInput,
+  readLaborOvertimeHoursInput,
+} from "@/lib/labor-overtime-notes";
+import {
   buildLaborEntryRateSnapshotWithClient,
   resolveWorkerDailyRateForDateWithClient,
 } from "@/lib/worker-rate-history-db";
@@ -36,6 +46,14 @@ type LaborEntryPayload = {
   notes?: unknown;
   costAmount?: unknown;
   cost_amount?: unknown;
+  overtimeHours?: unknown;
+  overtime_hours?: unknown;
+  otHours?: unknown;
+  ot_hours?: unknown;
+  overtimeAmount?: unknown;
+  overtime_amount?: unknown;
+  otAmount?: unknown;
+  ot_amount?: unknown;
   session?: unknown;
   rows?: unknown;
   recalculateWithEffectiveRate?: unknown;
@@ -46,6 +64,13 @@ type DailyLaborInput = {
   morning?: unknown;
   afternoon?: unknown;
   otHours?: unknown;
+  overtimeHours?: unknown;
+  overtime_hours?: unknown;
+  ot_hours?: unknown;
+  overtimeAmount?: unknown;
+  overtime_amount?: unknown;
+  otAmount?: unknown;
+  ot_amount?: unknown;
 };
 
 function safeNumber(v: unknown): number {
@@ -83,6 +108,12 @@ function toPayload(input: LaborEntryPayload) {
   if (!projectId) throw new Error("Project is required.");
   if (!workDate) throw new Error("Work date is required.");
   if (hours <= 0) throw new Error("Hours must be greater than 0.");
+  const notes = hasLaborOvertimeInput(input as Record<string, unknown>)
+    ? mergeLaborOvertimeIntoNotes(input.notes, {
+        hours: readLaborOvertimeHoursInput(input),
+        amount: readLaborOvertimeAmountInput(input),
+      })
+    : safeString(input.notes) || null;
 
   return {
     worker_id: workerId,
@@ -90,7 +121,7 @@ function toPayload(input: LaborEntryPayload) {
     work_date: workDate,
     hours,
     cost_code: safeString(input.costCode ?? input.cost_code) || null,
-    notes: safeString(input.notes) || null,
+    notes,
     cost_amount: safeNumber(input.costAmount ?? input.cost_amount),
   };
 }
@@ -145,7 +176,7 @@ async function updateSessionEntry(
 
   const { data: current, error: curErr } = await supabase
     .from("labor_entries")
-    .select("id, worker_id, work_date, morning, afternoon, status, daily_rate_snapshot")
+    .select("id, worker_id, work_date, morning, afternoon, status, daily_rate_snapshot, notes")
     .eq("id", id)
     .maybeSingle();
   if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
@@ -158,6 +189,7 @@ async function updateSessionEntry(
     afternoon?: boolean | null;
     status?: string | null;
     daily_rate_snapshot?: number | null;
+    notes?: string | null;
   };
   if (row.status === "Locked") throw new Error("Cannot edit a locked labor entry.");
 
@@ -174,6 +206,13 @@ async function updateSessionEntry(
   const flags = toSessionFlags(session);
   const hours = safeNumber(body.hours);
   const amount = safeNumber(body.costAmount ?? body.cost_amount);
+  const hasOvertime = hasLaborOvertimeInput(body as Record<string, unknown>);
+  const otHours = hasLaborOvertimeHoursInput(body as Record<string, unknown>)
+    ? readLaborOvertimeHoursInput(body)
+    : parseLaborOvertimeHoursFromNotes(row.notes);
+  const otAmount = hasLaborOvertimeAmountInput(body as Record<string, unknown>)
+    ? readLaborOvertimeAmountInput(body)
+    : parseLaborOvertimeAmountFromNotes(row.notes);
   const snapshot = await buildLaborEntryRateSnapshotWithClient(supabase, {
     workerId: row.worker_id,
     workDate: row.work_date,
@@ -182,11 +221,14 @@ async function updateSessionEntry(
     afternoon: flags.afternoon,
     existingDailyRateSnapshot: row.daily_rate_snapshot,
   });
+  const notesSource = Object.prototype.hasOwnProperty.call(body, "notes") ? body.notes : row.notes;
   const payload: Record<string, unknown> = {
     project_id: safeString(body.projectId ?? body.project_id) || null,
     hours,
     cost_amount: amount,
-    notes: safeString(body.notes) || null,
+    notes: hasOvertime
+      ? mergeLaborOvertimeIntoNotes(notesSource, { hours: otHours, amount: otAmount })
+      : safeString(notesSource) || null,
     morning: flags.morning,
     afternoon: flags.afternoon,
     days_worked: snapshot.days_worked,
@@ -196,8 +238,14 @@ async function updateSessionEntry(
   };
   if (snapshot.rate_history_id) payload.rate_history_id = snapshot.rate_history_id;
 
-  const { error } = await supabase.from("labor_entries").update(payload).eq("id", id);
+  const { data: updated, error } = await supabase
+    .from("labor_entries")
+    .update(payload)
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
   if (error) throw new Error(error.message ?? "Failed to update labor entry.");
+  if (!updated) throw new Error("Labor entry not found.");
 }
 
 async function updateDailyEntry(
@@ -209,7 +257,7 @@ async function updateDailyEntry(
 
   const { data: current, error: curErr } = await supabase
     .from("labor_entries")
-    .select("id, worker_id, work_date, status, daily_rate_snapshot")
+    .select("id, worker_id, work_date, status, daily_rate_snapshot, notes")
     .eq("id", id)
     .maybeSingle();
   if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
@@ -219,6 +267,7 @@ async function updateDailyEntry(
     work_date?: string | null;
     status?: string | null;
     daily_rate_snapshot?: number | null;
+    notes?: string | null;
   };
   if (row.status === "Locked") {
     throw new Error("Cannot edit a locked labor entry.");
@@ -230,6 +279,13 @@ async function updateDailyEntry(
   const hours = safeNumber(body.hours);
   const workerChanged = workerId !== safeString(row.worker_id);
   const dateChanged = workDate !== safeString(row.work_date).slice(0, 10);
+  const hasOvertime = hasLaborOvertimeInput(body as Record<string, unknown>);
+  const otHours = hasLaborOvertimeHoursInput(body as Record<string, unknown>)
+    ? readLaborOvertimeHoursInput(body)
+    : parseLaborOvertimeHoursFromNotes(row.notes);
+  const otAmount = hasLaborOvertimeAmountInput(body as Record<string, unknown>)
+    ? readLaborOvertimeAmountInput(body)
+    : parseLaborOvertimeAmountFromNotes(row.notes);
   const snapshot = await buildLaborEntryRateSnapshotWithClient(supabase, {
     workerId,
     workDate,
@@ -239,18 +295,27 @@ async function updateDailyEntry(
         ? undefined
         : row.daily_rate_snapshot,
   });
+  const notesSource = Object.prototype.hasOwnProperty.call(body, "notes") ? body.notes : row.notes;
   const payload = {
     worker_id: workerId,
     project_id: safeString(body.projectId ?? body.project_id) || null,
     work_date: workDate,
     hours,
     cost_code: safeString(body.costCode ?? body.cost_code) || null,
-    notes: safeString(body.notes) || null,
+    notes: hasOvertime
+      ? mergeLaborOvertimeIntoNotes(notesSource, { hours: otHours, amount: otAmount })
+      : safeString(notesSource) || null,
     ...snapshot,
   };
 
-  const { error } = await supabase.from("labor_entries").update(payload).eq("id", id);
+  const { data: updated, error } = await supabase
+    .from("labor_entries")
+    .update(payload)
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
   if (error) throw new Error(error.message ?? "Failed to update labor entry.");
+  if (!updated) throw new Error("Labor entry not found.");
 }
 
 async function runBulkAction(
@@ -380,7 +445,13 @@ export async function GET(request: Request) {
       {
         ok: true,
         missingLaborTable,
-        entries: entriesRes.error ? [] : (entriesRes.data ?? []),
+        entries: entriesRes.error
+          ? []
+          : (entriesRes.data ?? []).map((entry: { notes?: string | null }) => ({
+              ...entry,
+              overtime_hours: parseLaborOvertimeHoursFromNotes(entry.notes),
+              overtime_amount: parseLaborOvertimeAmountFromNotes(entry.notes),
+            })),
         workers: workerRows
           .map((row) => {
             const effectiveDailyRate = effectiveRateByWorkerId.get(row.id);
@@ -428,7 +499,8 @@ export async function POST(request: Request) {
           workerId: typeof row.workerId === "string" ? row.workerId.trim() : "",
           morning: row.morning === true,
           afternoon: row.afternoon === true,
-          otHours: safeNumber(row.otHours),
+          otHours: readLaborOvertimeHoursInput(row),
+          otAmount: readLaborOvertimeAmountInput(row),
         }))
         .filter((row) => row.workerId && (row.morning || row.afternoon));
       const entries = await insertDailyLaborEntriesWithClient(supabase, projectId, workDate, rows, {
@@ -486,11 +558,14 @@ export async function PATCH(request: Request) {
         workDate: payload.work_date,
         hours: payload.hours,
       });
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("labor_entries")
         .update({ ...payload, ...snapshot })
-        .eq("id", id);
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
       if (error) throw new Error(error.message);
+      if (!updated) throw new Error("Labor entry not found.");
     }
     return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
   } catch (e) {

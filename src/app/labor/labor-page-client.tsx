@@ -65,12 +65,17 @@ const calendarIconButton =
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const HIGH_COST_THRESHOLD = 1000;
 
-function parseDayTypeAndOt(notes: string | null): { dayType: string; otHours: string } {
+function parseDayTypeAndOt(notes: string | null): {
+  dayType: string;
+  otHours: string;
+  otAmount: string;
+} {
   const defaultDay = "—";
   const defaultOt = "—";
-  if (!notes?.trim()) return { dayType: defaultDay, otHours: defaultOt };
+  if (!notes?.trim()) return { dayType: defaultDay, otHours: defaultOt, otAmount: defaultOt };
   const dayMatch = /day_type=(\w+)/.exec(notes);
   const otMatch = /ot_hours=([\d.]+)/.exec(notes);
+  const otAmountMatch = /ot_amount=([\d.]+)/.exec(notes);
   return {
     dayType: dayMatch
       ? dayMatch[1] === "full_day"
@@ -82,6 +87,7 @@ function parseDayTypeAndOt(notes: string | null): { dayType: string; otHours: st
             : dayMatch[1]
       : defaultDay,
     otHours: otMatch ? otMatch[1] : defaultOt,
+    otAmount: otAmountMatch ? formatCurrency(Number(otAmountMatch[1]) || 0) : defaultOt,
   };
 }
 
@@ -1242,7 +1248,7 @@ export default function LaborPageClient() {
                   }
                   return (
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[480px] border-collapse text-sm">
+                      <table className="w-full min-w-[560px] border-collapse text-sm">
                         <thead>
                           <tr className="border-b border-border/60">
                             <th className="px-3 py-2 text-left text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
@@ -1258,6 +1264,9 @@ export default function LaborPageClient() {
                               OT
                             </th>
                             <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
+                              OT Amount
+                            </th>
+                            <th className="px-3 py-2 text-right text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70 tabular-nums">
                               Total Pay
                             </th>
                             <th className="w-[84px] px-3 py-2" />
@@ -1265,7 +1274,7 @@ export default function LaborPageClient() {
                         </thead>
                         <tbody>
                           {dayEntries.map((e) => {
-                            const { otHours } = parseDayTypeAndOt(e.notes);
+                            const { otHours, otAmount } = parseDayTypeAndOt(e.notes);
                             const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
                             const session = sessionFromFlags(e);
                             return (
@@ -1294,6 +1303,9 @@ export default function LaborPageClient() {
                                 </td>
                                 <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
                                   {otHours}
+                                </td>
+                                <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                                  {otAmount}
                                 </td>
                                 <td className="py-2 px-3 text-right">
                                   <NeoAmount>{pay > 0 ? formatCurrency(pay) : "—"}</NeoAmount>

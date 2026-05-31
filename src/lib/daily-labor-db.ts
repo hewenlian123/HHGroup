@@ -8,6 +8,10 @@
 
 import { getSupabaseClient } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  parseLaborOvertimeAmountFromNotes,
+  parseLaborOvertimeHoursFromNotes,
+} from "@/lib/labor-overtime-notes";
 import { buildLaborEntryRateSnapshotWithClient } from "@/lib/worker-rate-history-db";
 
 export type LaborEntryStatus = "Draft" | "Submitted" | "Approved" | "Locked";
@@ -58,6 +62,8 @@ export type DailyLaborEntryRow = {
   amount_snapshot?: number | null;
   labor_cost_snapshot?: number | null;
   rate_history_id?: string | null;
+  overtime_hours?: number;
+  overtime_amount?: number;
   status?: LaborEntryStatus;
   submitted_at?: string | null;
   submitted_by?: string | null;
@@ -95,6 +101,8 @@ export type LaborEntryWithJoins = {
   amount_snapshot?: number | null;
   labor_cost_snapshot?: number | null;
   rate_history_id?: string | null;
+  overtime_hours?: number;
+  overtime_amount?: number;
   status: LaborEntryStatus;
   submitted_at: string | null;
   submitted_by: string | null;
@@ -149,8 +157,11 @@ function parseDayTypeFromNotes(notes: string): "full_day" | "half_day" | "absent
 }
 
 function parseOtHoursFromNotes(notes: string): number {
-  const m = /(?:^|[\s,])ot_hours=([\d.]+)/i.exec(notes);
-  return m ? Number(m[1]) || 0 : 0;
+  return parseLaborOvertimeHoursFromNotes(notes);
+}
+
+function parseOtAmountFromNotes(notes: string): number {
+  return parseLaborOvertimeAmountFromNotes(notes);
 }
 
 function amountMatchesDailyWage(a: number, b: number): boolean {
@@ -194,7 +205,8 @@ export function formatLaborEntrySessionLabel(
   const halfFromWorker = Number(opts?.halfDayRate) || 0;
   const half = halfFromWorker > 0 ? halfFromWorker : daily > 0 ? daily / 2 : 0;
 
-  const ot = parseOtHoursFromNotes(n);
+  const otAmount = parseOtAmountFromNotes(n);
+  const ot = otAmount > 0 ? 0 : parseOtHoursFromNotes(n);
   const otRate = daily > 0 ? (daily / 8) * 1.5 : 0;
   const baseCost = ot > 0 && otRate > 0 ? Math.max(0, cost - ot * otRate) : cost;
 
@@ -521,6 +533,8 @@ export async function getLaborEntriesWithJoins(
           hasSnapshots && row.labor_cost_snapshot != null ? Number(row.labor_cost_snapshot) : null,
         rate_history_id:
           hasSnapshots && row.rate_history_id != null ? String(row.rate_history_id) : null,
+        overtime_hours: parseLaborOvertimeHoursFromNotes(r.notes),
+        overtime_amount: parseLaborOvertimeAmountFromNotes(r.notes),
         status,
         submitted_at: (row.submitted_at ?? null) as string | null,
         submitted_by: (row.submitted_by ?? null) as string | null,
@@ -864,6 +878,7 @@ export async function updateLaborEntry(
     session?: LaborSession;
     amount?: number;
     overtime_hours?: number;
+    overtime_amount?: number;
   }
 ): Promise<void> {
   const c = client();
@@ -896,14 +911,23 @@ export async function updateLaborEntry(
   if (updates.amount !== undefined) payload.cost_amount = Number(updates.amount) || 0;
 
   const ot = updates.overtime_hours;
-  if (session || ot !== undefined) {
+  const otAmount = updates.overtime_amount;
+  if (session || ot !== undefined || otAmount !== undefined) {
     const tokens = existingNotes
       .split(/\s+/)
       .filter(Boolean)
-      .filter((t) => !/^session=(morning|afternoon|full_day)$/i.test(t) && !/^ot_hours=/i.test(t));
+      .filter(
+        (t) =>
+          !/^session=(morning|afternoon|full_day)$/i.test(t) &&
+          !/^ot_hours=/i.test(t) &&
+          !/^ot_amount=/i.test(t)
+      );
     if (session) tokens.push(`session=${session}`);
     if (ot !== undefined && Number.isFinite(Number(ot)) && Number(ot) > 0)
       tokens.push(`ot_hours=${Number(ot)}`);
+    if (otAmount !== undefined && Number.isFinite(Number(otAmount)) && Number(otAmount) > 0) {
+      tokens.push(`ot_amount=${Number(otAmount)}`);
+    }
     payload.notes = tokens.length ? tokens.join(" ") : null;
   }
 

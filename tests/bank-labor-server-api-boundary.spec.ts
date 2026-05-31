@@ -48,6 +48,12 @@ function serviceRoleClient(): SupabaseClient {
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
+function isoDateOffset(daysFromToday: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromToday);
+  return date.toISOString().slice(0, 10);
+}
+
 test.describe("bank and labor server API boundary", () => {
   test.describe.configure({ mode: "serial", timeout: 60_000 });
 
@@ -214,47 +220,165 @@ test.describe("bank and labor server API boundary", () => {
     expect(workerError).toBeNull();
 
     const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
-    const loginResponse = await context.request.post("/api/auth/pin-login", {
-      data: { pin: "1234" },
-    });
-    expect(loginResponse.status()).toBe(200);
+    const entryIds: string[] = [];
+    try {
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
 
-    const workDate = new Date().toISOString().slice(0, 10);
-    const createResponse = await context.request.post("/api/labor/entries", {
-      data: {
-        projectId: project!.id,
-        workDate,
-        rows: [{ workerId: worker!.id, morning: true, afternoon: false, otHours: 0 }],
-      },
-    });
-    expect(createResponse.status()).toBe(200);
-    const createBody = (await createResponse.json()) as { entries?: Array<{ id?: string }> };
-    const entryId = createBody.entries?.[0]?.id;
-    expect(entryId).toBeTruthy();
+      const overtimeCreateDate = isoDateOffset(0);
+      const createWithOvertimeResponse = await context.request.post("/api/labor/entries", {
+        data: {
+          projectId: project!.id,
+          workDate: overtimeCreateDate,
+          rows: [
+            {
+              workerId: worker!.id,
+              morning: true,
+              afternoon: false,
+              otHours: 1.5,
+              otAmount: 60,
+            },
+          ],
+        },
+      });
+      expect(createWithOvertimeResponse.status()).toBe(200);
+      const createWithOvertimeBody = (await createWithOvertimeResponse.json()) as {
+        entries?: Array<{ id?: string }>;
+      };
+      const overtimeEntryId = createWithOvertimeBody.entries?.[0]?.id;
+      expect(overtimeEntryId).toBeTruthy();
+      entryIds.push(overtimeEntryId!);
 
-    const editResponse = await context.request.patch("/api/labor/entries", {
-      data: {
-        mode: "session-entry",
-        id: entryId,
-        workerId: worker!.id,
-        workDate,
-        projectId: project!.id,
-        session: "full_day",
-        costAmount: 100,
-        hours: 1,
-        notes: "boundary edit",
-      },
-    });
-    expect(editResponse.status()).toBe(200);
+      const { data: createdWithOvertime, error: createdWithOvertimeError } = await db
+        .from("labor_entries")
+        .select("id, notes, cost_amount, labor_cost_snapshot")
+        .eq("id", overtimeEntryId!)
+        .maybeSingle();
+      expect(createdWithOvertimeError).toBeNull();
+      expect(createdWithOvertime?.notes).toContain("ot_hours=1.5");
+      expect(createdWithOvertime?.notes).toContain("ot_amount=60");
+      expect(Number(createdWithOvertime?.cost_amount)).toBe(50);
+      expect(Number(createdWithOvertime?.labor_cost_snapshot)).toBe(50);
+      expect(Number.isFinite(Number(createdWithOvertime?.cost_amount))).toBe(true);
+      expect(Number.isFinite(Number(createdWithOvertime?.labor_cost_snapshot))).toBe(true);
 
-    const deleteResponse = await context.request.delete(
-      `/api/labor/entries?id=${encodeURIComponent(entryId!)}`
-    );
-    expect(deleteResponse.status()).toBe(200);
+      const workDate = isoDateOffset(-1);
+      const createResponse = await context.request.post("/api/labor/entries", {
+        data: {
+          projectId: project!.id,
+          workDate,
+          rows: [{ workerId: worker!.id, morning: true, afternoon: false, otHours: 0 }],
+        },
+      });
+      expect(createResponse.status()).toBe(200);
+      const createBody = (await createResponse.json()) as { entries?: Array<{ id?: string }> };
+      const entryId = createBody.entries?.[0]?.id;
+      expect(entryId).toBeTruthy();
+      entryIds.push(entryId!);
 
-    await db.from("projects").delete().eq("id", project!.id);
-    await db.from("labor_workers").delete().eq("id", worker!.id);
-    await db.from("workers").delete().eq("id", worker!.id);
-    await context.close();
+      const editResponse = await context.request.patch("/api/labor/entries", {
+        data: {
+          mode: "session-entry",
+          id: entryId,
+          workerId: worker!.id,
+          workDate,
+          projectId: project!.id,
+          session: "full_day",
+          costAmount: 100,
+          hours: 1,
+          overtimeHours: 2,
+          overtimeAmount: 60,
+          notes: "boundary edit",
+        },
+      });
+      expect(editResponse.status()).toBe(200);
+
+      const { data: editedEntry, error: editedEntryError } = await db
+        .from("labor_entries")
+        .select("id, notes, cost_amount, labor_cost_snapshot")
+        .eq("id", entryId!)
+        .maybeSingle();
+      expect(editedEntryError).toBeNull();
+      expect(editedEntry?.notes).toContain("boundary edit");
+      expect(editedEntry?.notes).toContain("ot_hours=2");
+      expect(editedEntry?.notes).toContain("ot_amount=60");
+      expect(Number(editedEntry?.cost_amount)).toBe(100);
+      expect(Number(editedEntry?.labor_cost_snapshot)).toBe(100);
+      expect(Number.isFinite(Number(editedEntry?.labor_cost_snapshot))).toBe(true);
+
+      const joinedResponse = await context.request.get(
+        `/api/labor/entries?view=joined&workerId=${encodeURIComponent(
+          worker!.id
+        )}&dateFrom=${encodeURIComponent(workDate)}&dateTo=${encodeURIComponent(workDate)}`
+      );
+      expect(joinedResponse.status()).toBe(200);
+      const joinedBody = (await joinedResponse.json()) as {
+        entries?: Array<{
+          id?: string;
+          overtime_hours?: number;
+          overtime_amount?: number;
+          cost_amount?: number | null;
+        }>;
+      };
+      const joinedEntry = joinedBody.entries?.find((entry) => entry.id === entryId);
+      expect(joinedEntry?.overtime_hours).toBe(2);
+      expect(joinedEntry?.overtime_amount).toBe(60);
+      expect(Number.isFinite(Number(joinedEntry?.cost_amount))).toBe(true);
+
+      const defaultGetResponse = await context.request.get(
+        `/api/labor/entries?date=${encodeURIComponent(workDate)}`
+      );
+      expect(defaultGetResponse.status()).toBe(200);
+      const defaultGetBody = (await defaultGetResponse.json()) as {
+        entries?: Array<{ id?: string; overtime_hours?: number; overtime_amount?: number }>;
+      };
+      expect(defaultGetBody.entries?.find((entry) => entry.id === entryId)?.overtime_hours).toBe(2);
+      expect(defaultGetBody.entries?.find((entry) => entry.id === entryId)?.overtime_amount).toBe(
+        60
+      );
+
+      const payrollResponse = await context.request.get(
+        `/api/labor/payroll-summary?fromDate=${encodeURIComponent(
+          workDate
+        )}&toDate=${encodeURIComponent(overtimeCreateDate)}`
+      );
+      expect(payrollResponse.status()).toBeLessThan(500);
+
+      const workerBalanceResponse = await context.request.get("/api/labor/worker-balances");
+      expect(workerBalanceResponse.status()).toBeLessThan(500);
+
+      const page = await context.newPage();
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto("/labor/entries");
+      await expect(page.getByRole("heading", { name: "Daily Entries" })).toBeVisible();
+      await page.getByLabel("Search entries").fill("boundary edit");
+      await expect(page.getByText("boundary edit").first()).toBeVisible();
+      await page.getByRole("button", { name: "Edit" }).first().click();
+      const dialog = page.getByRole("dialog", { name: /Edit entry/i });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByLabel("Overtime Hours")).toBeVisible();
+      await expect(dialog.getByLabel("Overtime Hours")).toHaveValue("2");
+      await expect(dialog.getByLabel("Overtime Fixed Amount")).toBeVisible();
+      await expect(dialog.getByLabel("Overtime Fixed Amount")).toHaveValue("60");
+      await expect(page.getByText(/ot_hours=|ot_amount=/)).toHaveCount(0);
+      await page.close();
+
+      for (const id of entryIds) {
+        const deleteResponse = await context.request.delete(
+          `/api/labor/entries?id=${encodeURIComponent(id)}`
+        );
+        expect(deleteResponse.status()).toBe(200);
+      }
+    } finally {
+      if (entryIds.length > 0) await db.from("labor_entries").delete().in("id", entryIds);
+      if (project?.id) await db.from("projects").delete().eq("id", project.id);
+      if (worker?.id) {
+        await db.from("labor_workers").delete().eq("id", worker.id);
+        await db.from("workers").delete().eq("id", worker.id);
+      }
+      await context.close();
+    }
   });
 });

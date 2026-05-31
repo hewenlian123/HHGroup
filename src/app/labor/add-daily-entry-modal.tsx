@@ -30,7 +30,7 @@ const labelClass =
 const fieldClass =
   "h-10 rounded-lg border-white/[0.09] bg-[#0d0f14] text-sm text-[var(--neo-text-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] placeholder:text-[var(--neo-text-tertiary)] hover:border-white/[0.14] hover:bg-[#111318] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-[44px]";
 const workerGridClass =
-  "grid grid-cols-[minmax(8.5rem,1.75fr)_4.4rem_3.35rem_3.35rem_3.45rem_5.7rem] items-center gap-2";
+  "grid grid-cols-[minmax(8.5rem,1.75fr)_4.4rem_3.35rem_3.35rem_3.45rem_5.6rem_5.7rem] items-center gap-2";
 
 type Props = {
   open: boolean;
@@ -59,11 +59,10 @@ type DailyLaborRowInput = {
   morning: boolean;
   afternoon: boolean;
   otHours?: number;
+  otAmount?: number;
 };
 
-const OT_MULTIPLIER = 1.5;
-
-type Sel = { morning: boolean; afternoon: boolean; otHours: number };
+type Sel = { morning: boolean; afternoon: boolean; otHours: number; otAmount: number };
 
 function ymdToLocalDate(ymd: string): Date | null {
   const raw = String(ymd ?? "").slice(0, 10);
@@ -83,18 +82,16 @@ function toYmd(d: Date): string {
   return `${yy}-${mm}-${dd}`;
 }
 
-function computeTotalPay(
-  dailyRate: number,
-  morning: boolean,
-  afternoon: boolean,
-  otHours: number
-): number {
-  const base = morning && afternoon ? dailyRate : morning || afternoon ? dailyRate / 2 : 0;
-  const otPay = Math.max(0, otHours) * (dailyRate / 8) * OT_MULTIPLIER;
-  return base + otPay;
+function computeRegularPay(dailyRate: number, morning: boolean, afternoon: boolean): number {
+  return morning && afternoon ? dailyRate : morning || afternoon ? dailyRate / 2 : 0;
 }
 
-const defaultSel = (): Sel => ({ morning: false, afternoon: false, otHours: 0 });
+const defaultSel = (): Sel => ({
+  morning: false,
+  afternoon: false,
+  otHours: 0,
+  otAmount: 0,
+});
 
 function AddDailyEntryDateField({
   value,
@@ -247,28 +244,41 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
   morning,
   afternoon,
   otHours,
+  otAmount,
   disabled,
   toggleMorning,
   toggleAfternoon,
   commitOtHours,
+  commitOtAmount,
 }: {
   worker: LaborWorker;
   morning: boolean;
   afternoon: boolean;
   otHours: number;
+  otAmount: number;
   disabled: boolean;
   toggleMorning: (id: string) => void;
   toggleAfternoon: (id: string) => void;
   commitOtHours: (id: string, value: number) => void;
+  commitOtAmount: (id: string, value: number) => void;
 }) {
   const [otDraft, setOtDraft] = React.useState(() => (otHours === 0 ? "" : String(otHours)));
+  const [otAmountDraft, setOtAmountDraft] = React.useState(() =>
+    otAmount === 0 ? "" : String(otAmount)
+  );
   const otDraftRef = React.useRef(otDraft);
+  const otAmountDraftRef = React.useRef(otAmountDraft);
   otDraftRef.current = otDraft;
+  otAmountDraftRef.current = otAmountDraft;
   const otRafRef = React.useRef<number | null>(null);
+  const otAmountRafRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     setOtDraft(otHours === 0 ? "" : String(otHours));
   }, [otHours]);
+  React.useEffect(() => {
+    setOtAmountDraft(otAmount === 0 ? "" : String(otAmount));
+  }, [otAmount]);
 
   const onAm = React.useCallback(() => toggleMorning(worker.id), [toggleMorning, worker.id]);
   const onPm = React.useCallback(() => toggleAfternoon(worker.id), [toggleAfternoon, worker.id]);
@@ -284,18 +294,28 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
     });
   }, [commitOtHours, worker.id]);
 
+  const scheduleOtAmountCommit = React.useCallback(() => {
+    if (otAmountRafRef.current != null) cancelAnimationFrame(otAmountRafRef.current);
+    otAmountRafRef.current = requestAnimationFrame(() => {
+      otAmountRafRef.current = null;
+      const raw = otAmountDraftRef.current;
+      const n = parseFloat(raw);
+      const v = Number.isFinite(n) ? Math.max(0, n) : 0;
+      commitOtAmount(worker.id, v);
+    });
+  }, [commitOtAmount, worker.id]);
+
   React.useEffect(
     () => () => {
       if (otRafRef.current != null) cancelAnimationFrame(otRafRef.current);
+      if (otAmountRafRef.current != null) cancelAnimationFrame(otAmountRafRef.current);
     },
     []
   );
 
   const rate =
     worker.dailyRate != null && Number(worker.dailyRate) >= 0 ? Number(worker.dailyRate) : 0;
-  const otParsed = parseFloat(otDraft);
-  const otLive = Number.isFinite(otParsed) ? Math.max(0, otParsed) : 0;
-  const total = computeTotalPay(rate, morning, afternoon, otLive);
+  const total = computeRegularPay(rate, morning, afternoon);
 
   return (
     <div
@@ -360,6 +380,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
           min={0}
           step={0.5}
           value={otDraft}
+          aria-label={`Overtime hours for ${worker.name}`}
           onChange={(e) => {
             const v = e.target.value;
             setOtDraft(v);
@@ -379,8 +400,34 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
           className="h-8 min-h-8 w-full min-w-0 rounded-md border-white/[0.09] bg-white/[0.035] px-1 text-center text-sm tabular-nums text-[var(--neo-text-primary)] hover:border-white/[0.14] hover:bg-white/[0.065] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       </div>
+      <div>
+        <Input
+          type="number"
+          min={0}
+          step={1}
+          value={otAmountDraft}
+          aria-label={`Overtime fixed amount for ${worker.name}`}
+          onChange={(e) => {
+            const v = e.target.value;
+            setOtAmountDraft(v);
+            scheduleOtAmountCommit();
+          }}
+          onBlur={() => {
+            if (otAmountRafRef.current != null) {
+              cancelAnimationFrame(otAmountRafRef.current);
+              otAmountRafRef.current = null;
+            }
+            const n = parseFloat(otAmountDraftRef.current);
+            const v = Number.isFinite(n) ? Math.max(0, n) : 0;
+            commitOtAmount(worker.id, v);
+            setOtAmountDraft(v === 0 ? "" : String(v));
+          }}
+          disabled={disabled}
+          className="h-8 min-h-8 w-full min-w-0 rounded-md border-white/[0.09] bg-white/[0.035] px-1 text-center text-sm tabular-nums text-[var(--neo-text-primary)] hover:border-white/[0.14] hover:bg-white/[0.065] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        />
+      </div>
       <div className="pr-1 text-right text-xs font-semibold tabular-nums text-[var(--neo-text-secondary)]">
-        {morning || afternoon || otLive > 0 ? `$${total.toFixed(2)}` : "—"}
+        {morning || afternoon ? `$${total.toFixed(2)}` : "—"}
       </div>
     </div>
   );
@@ -472,11 +519,18 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
     });
   }, []);
 
+  const commitOtAmount = React.useCallback((workerId: string, value: number) => {
+    setSelectionByWorkerId((prev) => {
+      const cur = prev[workerId] ?? defaultSel();
+      return { ...prev, [workerId]: { ...cur, otAmount: value } };
+    });
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const ae = document.activeElement;
     if (ae instanceof HTMLElement) ae.blur();
-    // One frame so blur + pending rAF OT commits land before reading selections (~16ms)
+    // One frame so blur + pending rAF overtime commits land before reading selections (~16ms)
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     const map = selectionRef.current;
     if (!projectId || !workDate) {
@@ -492,6 +546,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
         morning: s.morning,
         afternoon: s.afternoon,
         otHours: s.otHours,
+        otAmount: s.otAmount,
       });
     }
     if (toSave.length === 0) {
@@ -582,7 +637,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
             </div>
             <div className="min-w-0 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0d0f14] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
               <div className={cn(modalScrollbar, "overflow-x-auto")}>
-                <div className="min-w-[620px] sm:min-w-0">
+                <div className="min-w-[720px] sm:min-w-0">
                   <div
                     className={cn(
                       workerGridClass,
@@ -596,7 +651,8 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                     <div className="text-right">Rate</div>
                     <div className="text-center">AM</div>
                     <div className="text-center">PM</div>
-                    <div className="text-center">OT</div>
+                    <div className="text-center">OT Hrs</div>
+                    <div className="text-center">OT Amount</div>
                     <div className="pr-1 text-right">Total</div>
                   </div>
                   {workers.length > WORKER_LIST_VIRTUAL_THRESHOLD ? (
@@ -620,10 +676,12 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                             morning={sel.morning}
                             afternoon={sel.afternoon}
                             otHours={sel.otHours}
+                            otAmount={sel.otAmount}
                             disabled={disabled}
                             toggleMorning={toggleMorning}
                             toggleAfternoon={toggleAfternoon}
                             commitOtHours={commitOtHours}
+                            commitOtAmount={commitOtAmount}
                           />
                         );
                       }}
@@ -645,10 +703,12 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                             morning={sel.morning}
                             afternoon={sel.afternoon}
                             otHours={sel.otHours}
+                            otAmount={sel.otAmount}
                             disabled={disabled}
                             toggleMorning={toggleMorning}
                             toggleAfternoon={toggleAfternoon}
                             commitOtHours={commitOtHours}
+                            commitOtAmount={commitOtAmount}
                           />
                         );
                       })}
