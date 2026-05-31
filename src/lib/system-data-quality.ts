@@ -606,7 +606,8 @@ function checkInvoices(
         .filter((payment) => isVoidPaymentStatus(normalizeStatus(payment.status)))
         .reduce((sum, payment) => sum + (firstNumber(payment, ["amount", "total"]) ?? 0), 0)
     );
-    const paidAmount = storedPaid ?? postedPaymentSum;
+    const hasPaymentRows = payments.length > 0;
+    const paidAmount = hasPaymentRows ? postedPaymentSum : storedPaid;
 
     const fractionalField = amountFieldWithFractionalCents(invoice, [
       "total",
@@ -706,6 +707,23 @@ function checkInvoices(
         currentValue: paidAmount,
         expectedValue: total,
         recommendedAction: "Review invoice payments and void/reversal handling.",
+        link: issueLink("invoices", id),
+      });
+    }
+
+    if (hasPaymentRows && storedPaid != null && !nearlyEqual(storedPaid, postedPaymentSum)) {
+      pushIssue(issues, {
+        severity: "warning",
+        module: "invoices",
+        entityType: "invoice",
+        entityId: id,
+        entityName: name,
+        issueCode: "invoice_paid_total_stale",
+        message: "Invoice stored paid total does not match non-void invoice payment rows.",
+        currentValue: `paid_total=${storedPaid}, invoice_payments=${postedPaymentSum}`,
+        expectedValue: postedPaymentSum,
+        recommendedAction:
+          "Review invoice payment sync; balance checks use non-void invoice payments as source of truth.",
         link: issueLink("invoices", id),
       });
     }
