@@ -36,6 +36,7 @@ const laborRoutes: LaborRoute[] = [
     label: "Time Entries",
     path: "/labor",
     heading: /^(Daily Labor|Labor)$/i,
+    activeLabel: "Time Entries",
     bottomNavLabel: "Projects",
     action: { kind: "dialog", button: /^Add Entry$/i, dialog: /^Add Daily Entry$/i },
   },
@@ -43,7 +44,7 @@ const laborRoutes: LaborRoute[] = [
     label: "Worker Reimbursements",
     path: "/labor/reimbursements",
     heading: /^(Worker Reimbursements|Reimbursements)$/i,
-    activeLabel: "AP",
+    activeLabel: "Reimbursements",
     bottomNavLabel: "Financial",
     action: {
       kind: "inline",
@@ -56,37 +57,36 @@ const laborRoutes: LaborRoute[] = [
     label: "Worker Balances",
     path: "/labor/worker-balances",
     heading: /^(Worker Balances|Balances)$/i,
-    activeLabel: "AP",
-    bottomNavLabel: "Financial",
+    activeLabel: "Worker Balances",
+    bottomNavLabel: "People",
   },
   {
     label: "Worker Payments",
     path: "/labor/payments",
     heading: /^Worker Payments$/i,
-    activeLabel: "AP",
-    bottomNavLabel: "Financial",
+    activeLabel: "Worker Payments",
+    bottomNavLabel: "People",
   },
   {
     label: "Worker Advances",
     path: "/labor/advances",
     heading: /^(Worker Advances|Advances)$/i,
-    activeLabel: "AP",
-    bottomNavLabel: "Financial",
+    activeLabel: "Worker Advances",
+    bottomNavLabel: "People",
     action: { kind: "dialog", button: /^Create Advance$/i, dialog: /^Create Advance$/i },
   },
   {
     label: "Worker Receipts",
     path: "/labor/receipts",
     heading: /^(Worker Receipt Uploads|Receipt Uploads)$/i,
-    activeLabel: "AP",
     bottomNavLabel: "Financial",
   },
   {
     label: "Worker Invoices",
     path: "/labor/worker-invoices",
     heading: /^Worker Invoices$/i,
-    activeLabel: "AP",
-    bottomNavLabel: "Financial",
+    activeLabel: "Worker Invoices",
+    bottomNavLabel: "People",
     action: {
       kind: "inline",
       button: /^New Invoice$/i,
@@ -98,8 +98,8 @@ const laborRoutes: LaborRoute[] = [
     label: "Payroll Summary",
     path: "/labor/payroll",
     heading: /^Payroll Summary$/i,
-    activeLabel: "AP",
-    bottomNavLabel: "Financial",
+    activeLabel: "Payroll Summary",
+    bottomNavLabel: "People",
   },
 ];
 
@@ -281,7 +281,7 @@ test.describe("Labor module navigation compatibility", () => {
     await prepareStableSidebar(page);
   });
 
-  test("desktop labor routes remain compatible under final Projects/Financial ownership", async ({
+  test("desktop labor routes remain compatible under practical Projects/Financial/People ownership", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -289,10 +289,23 @@ test.describe("Labor module navigation compatibility", () => {
     await page.goto("/dashboard");
     await page.waitForLoadState("domcontentloaded");
     await ensureOsSectionsOpen(page);
-    await expect(navLink(page, "AP")).toBeVisible({ timeout: 10_000 });
-    for (const removedLabel of laborRoutes.map((route) => route.label)) {
-      await expect(visibleSidebar(page).getByText(removedLabel, { exact: true })).toHaveCount(0);
+    await expect(visibleSidebar(page).getByText("AP", { exact: true })).toBeVisible({
+      timeout: 10_000,
+    });
+    for (const restoredLabel of [
+      "Time Entries",
+      "Reimbursements",
+      "Worker Balances",
+      "Worker Payments",
+      "Worker Advances",
+      "Worker Invoices",
+      "Payroll Summary",
+    ]) {
+      await expect(visibleSidebar(page).getByText(restoredLabel, { exact: true })).toBeVisible({
+        timeout: 10_000,
+      });
     }
+    await expect(visibleSidebar(page).getByText("Worker Receipts", { exact: true })).toHaveCount(0);
 
     for (const route of laborRoutes) {
       await test.step(route.label, async () => {
