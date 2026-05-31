@@ -12,6 +12,7 @@ import {
   changeWorkerDailyRateWithClient,
   ensureInitialWorkerRateHistoryWithClient,
 } from "@/lib/worker-rate-history-db";
+import { mergeLaborOvertimeIntoNotes } from "@/lib/labor-overtime-notes";
 
 const LABOR_ENTRIES_COLS = "id, worker_id, project_id, work_date, hours, cost_code, notes" as const;
 const LABOR_ENTRIES_COLS_NO_PROJECT = "id, worker_id, work_date, hours, cost_code, notes" as const;
@@ -601,11 +602,13 @@ export type DailyLaborRowInput = {
   workerId: string;
   morning: boolean;
   afternoon: boolean;
-  /** Optional OT hours. Pay = base (AM/PM) + otHours * (dailyRate/8)*1.5 */
+  /** Optional OT hours tracked separately from regular cost. */
   otHours?: number;
+  /** Optional fixed OT amount tracked separately from regular cost. */
+  otAmount?: number;
 };
 
-/** Insert one labor_entries row per worker with morning and/or afternoon set. AM = 0.5h, PM = 0.5h, both = 1h. Total pay = base + OT. */
+/** Insert one labor_entries row per worker with morning and/or afternoon set. AM = 0.5h, PM = 0.5h, both = 1h. */
 export async function insertDailyLaborEntries(
   projectId: string,
   workDate: string,
@@ -662,13 +665,13 @@ export async function insertDailyLaborEntriesWithClient(
     const hours = (r.morning ? 0.5 : 0) + (r.afternoon ? 0.5 : 0);
     if (hours <= 0) continue;
     const otHours = Math.max(0, Number(r.otHours) || 0);
+    const otAmount = Math.max(0, Number(r.otAmount) || 0);
     const snapshot = await buildLaborEntryRateSnapshotWithClient(c, {
       workerId: r.workerId,
       workDate: date,
       hours,
       morning: r.morning,
       afternoon: r.afternoon,
-      otHours,
     });
     payloads.push({
       worker_id: r.workerId,
@@ -678,7 +681,7 @@ export async function insertDailyLaborEntriesWithClient(
       afternoon: !!r.afternoon,
       hours,
       cost_code: options?.costCode?.trim() || null,
-      notes: options?.notes?.trim() || null,
+      notes: mergeLaborOvertimeIntoNotes(options?.notes, { hours: otHours, amount: otAmount }),
       ...snapshot,
     });
   }

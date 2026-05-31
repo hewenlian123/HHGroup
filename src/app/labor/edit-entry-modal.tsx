@@ -12,6 +12,11 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
+import {
+  parseLaborOvertimeAmountFromNotes,
+  parseLaborOvertimeHoursFromNotes,
+  stripLaborOvertimeHoursFromNotes,
+} from "@/lib/labor-overtime-notes";
 
 export type LaborSession = "morning" | "afternoon" | "full_day";
 
@@ -51,6 +56,8 @@ export function EditEntryModal(props: {
   const [session, setSession] = React.useState<LaborSession>("full_day");
   const [costAmount, setCostAmount] = React.useState<string>("");
   const [hours, setHours] = React.useState<string>("");
+  const [overtimeHours, setOvertimeHours] = React.useState<string>("");
+  const [overtimeAmount, setOvertimeAmount] = React.useState<string>("");
   const [notes, setNotes] = React.useState<string>("");
 
   React.useEffect(() => {
@@ -60,7 +67,11 @@ export function EditEntryModal(props: {
     setSession(sessionFromFlags(flags.morning, flags.afternoon));
     setCostAmount(String(entry.cost_amount != null ? Number(entry.cost_amount) : 0));
     setHours(String(entry.hours != null ? Number(entry.hours) : 0));
-    setNotes(entry.notes ?? "");
+    setOvertimeHours(String(entry.overtime_hours ?? parseLaborOvertimeHoursFromNotes(entry.notes)));
+    setOvertimeAmount(
+      String(entry.overtime_amount ?? parseLaborOvertimeAmountFromNotes(entry.notes))
+    );
+    setNotes(stripLaborOvertimeHoursFromNotes(entry.notes));
     setError(null);
   }, [open, entry]);
 
@@ -74,6 +85,16 @@ export function EditEntryModal(props: {
     const hrs = Number(hours);
     if (!Number.isFinite(hrs) || hrs < 0) {
       setError("Enter valid hours.");
+      return;
+    }
+    const ot = Number(overtimeHours || 0);
+    if (!Number.isFinite(ot) || ot < 0) {
+      setError("Enter valid overtime hours.");
+      return;
+    }
+    const otAmount = Number(overtimeAmount || 0);
+    if (!Number.isFinite(otAmount) || otAmount < 0) {
+      setError("Enter a valid overtime fixed amount.");
       return;
     }
     setBusy(true);
@@ -91,6 +112,8 @@ export function EditEntryModal(props: {
           session,
           costAmount: amt,
           hours: hrs,
+          overtimeHours: ot,
+          overtimeAmount: otAmount,
           notes: notes.trim() || null,
         }),
       });
@@ -147,7 +170,7 @@ export function EditEntryModal(props: {
               <option value="full_day">Full Day</option>
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Cost Amount</label>
               <Input
@@ -166,7 +189,32 @@ export function EditEntryModal(props: {
                 inputMode="decimal"
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Overtime Hours</label>
+              <Input
+                aria-label="Overtime Hours"
+                value={overtimeHours}
+                onChange={(e) => setOvertimeHours(e.target.value)}
+                className="h-9 tabular-nums"
+                inputMode="decimal"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">
+                Overtime Fixed Amount
+              </label>
+              <Input
+                aria-label="Overtime Fixed Amount"
+                value={overtimeAmount}
+                onChange={(e) => setOvertimeAmount(e.target.value)}
+                className="h-9 tabular-nums"
+                inputMode="decimal"
+              />
+            </div>
           </div>
+          <p className="-mt-2 text-[11px] leading-4 text-muted-foreground">
+            Overtime is tracked separately; cost amount remains unchanged.
+          </p>
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">Notes (optional)</label>
             <Input

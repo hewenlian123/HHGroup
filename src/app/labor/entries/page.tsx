@@ -43,6 +43,11 @@ import {
   type LaborPaymentStatus,
 } from "@/lib/labor-balance-shared";
 import { formatDate } from "@/lib/formatters";
+import {
+  parseLaborOvertimeAmountFromNotes,
+  parseLaborOvertimeHoursFromNotes,
+  stripLaborOvertimeHoursFromNotes,
+} from "@/lib/labor-overtime-notes";
 
 function DailyEntriesSuspenseFallback() {
   return (
@@ -100,6 +105,11 @@ type LaborEntryRowProps = {
   onDelete: (row: LaborEntryWithJoins) => void;
 };
 
+type LaborEntryEditDraft = DailyLaborEntryDraft & {
+  overtime_hours: number;
+  overtime_amount: number;
+};
+
 const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
   row,
   isSelected,
@@ -112,6 +122,7 @@ const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
 }: LaborEntryRowProps) {
   const rate = row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
   const cost = row.cost_amount ?? 0;
+  const visibleNotes = stripLaborOvertimeHoursFromNotes(row.notes);
   return (
     <tr
       className={cn(
@@ -162,8 +173,8 @@ const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
           variant={laborEntryPayrollStatusBadgeVariant(payrollStatus)}
         />
       </td>
-      <td className="py-1.5 px-3 max-w-[160px] truncate" title={row.notes ?? ""}>
-        {row.notes ?? "—"}
+      <td className="py-1.5 px-3 max-w-[160px] truncate" title={visibleNotes}>
+        {visibleNotes || "—"}
       </td>
       <td className="py-1.5 px-1" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-1">
@@ -203,7 +214,7 @@ function DailyEntriesPageInner() {
   const [error, setError] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
   const [editEntry, setEditEntry] = React.useState<LaborEntryWithJoins | null>(null);
-  const [editDraft, setEditDraft] = React.useState<DailyLaborEntryDraft | null>(null);
+  const [editDraft, setEditDraft] = React.useState<LaborEntryEditDraft | null>(null);
   const [saving, setSaving] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
@@ -299,7 +310,9 @@ function DailyEntriesPageInner() {
       project_id: row.project_id,
       hours: row.hours,
       cost_code: row.cost_code,
-      notes: row.notes,
+      notes: stripLaborOvertimeHoursFromNotes(row.notes),
+      overtime_hours: row.overtime_hours ?? parseLaborOvertimeHoursFromNotes(row.notes),
+      overtime_amount: row.overtime_amount ?? parseLaborOvertimeAmountFromNotes(row.notes),
     });
   }, []);
 
@@ -322,6 +335,8 @@ function DailyEntriesPageInner() {
           workerId: editDraft.worker_id,
           projectId: editDraft.project_id,
           hours: editDraft.hours,
+          overtimeHours: editDraft.overtime_hours,
+          overtimeAmount: editDraft.overtime_amount,
           costCode: editDraft.cost_code,
           notes: editDraft.notes,
         }),
@@ -740,6 +755,7 @@ function DailyEntriesPageInner() {
               const cost = row.cost_amount ?? 0;
               const rate =
                 row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
+              const visibleNotes = stripLaborOvertimeHoursFromNotes(row.notes);
               return (
                 <div key={row.id} className="flex min-h-[48px] flex-col gap-2 py-2.5">
                   <div className="flex items-start gap-3">
@@ -779,9 +795,9 @@ function DailyEntriesPageInner() {
                           variant={laborEntryPayrollStatusBadgeVariant(payrollStatus)}
                         />
                       </div>
-                      {row.notes ? (
+                      {visibleNotes ? (
                         <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                          {row.notes}
+                          {visibleNotes}
                         </p>
                       ) : null}
                     </button>
@@ -939,7 +955,7 @@ function DailyEntriesPageInner() {
                   ))}
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground">Hours</label>
                   <Input
@@ -950,6 +966,42 @@ function DailyEntriesPageInner() {
                     onChange={(e) =>
                       setEditDraft((d) =>
                         d ? { ...d, hours: parseFloat(e.target.value) || 0 } : null
+                      )
+                    }
+                    className="mt-1 h-9 text-sm tabular-nums"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Overtime Hours
+                  </label>
+                  <Input
+                    aria-label="Overtime Hours"
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    value={editDraft.overtime_hours || ""}
+                    onChange={(e) =>
+                      setEditDraft((d) =>
+                        d ? { ...d, overtime_hours: parseFloat(e.target.value) || 0 } : null
+                      )
+                    }
+                    className="mt-1 h-9 text-sm tabular-nums"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">
+                    Overtime Fixed Amount
+                  </label>
+                  <Input
+                    aria-label="Overtime Fixed Amount"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={editDraft.overtime_amount || ""}
+                    onChange={(e) =>
+                      setEditDraft((d) =>
+                        d ? { ...d, overtime_amount: parseFloat(e.target.value) || 0 } : null
                       )
                     }
                     className="mt-1 h-9 text-sm tabular-nums"
