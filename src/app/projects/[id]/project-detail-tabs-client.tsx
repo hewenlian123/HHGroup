@@ -370,7 +370,10 @@ type TabKey =
   | "documents"
   | "cost"
   | "tasks"
+  | "people"
   | "schedule"
+  | "photos"
+  | "inspections"
   | "docs"
   | "budget"
   | "expenses"
@@ -384,9 +387,47 @@ type TabKey =
   | "commission"
   | "punch-list";
 
-type DashboardTabKey = "overview" | "financial" | "work" | "documents";
+type WorkspaceTabKey =
+  | "overview"
+  | "financial"
+  | "schedule"
+  | "tasks"
+  | "people"
+  | "documents"
+  | "photos"
+  | "materials"
+  | "inspections"
+  | "closeout";
 
-function normalizeDashboardTab(tab: TabKey): DashboardTabKey {
+const PROJECT_WORKSPACE_TABS: Array<{ key: WorkspaceTabKey; label: string }> = [
+  { key: "overview", label: "Overview" },
+  { key: "financial", label: "Financial" },
+  { key: "schedule", label: "Schedule" },
+  { key: "tasks", label: "Tasks" },
+  { key: "people", label: "People" },
+  { key: "documents", label: "Documents" },
+  { key: "photos", label: "Photos" },
+  { key: "materials", label: "Materials" },
+  { key: "inspections", label: "Inspections" },
+  { key: "closeout", label: "Closeout" },
+];
+
+function uniqueText(values: Array<string | null | undefined>, limit = 5) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+    if (result.length >= limit) break;
+  }
+
+  return result;
+}
+
+function normalizeWorkspaceTab(tab: TabKey): WorkspaceTabKey {
   if (
     tab === "cost" ||
     tab === "budget" ||
@@ -400,16 +441,28 @@ function normalizeDashboardTab(tab: TabKey): DashboardTabKey {
   ) {
     return "financial";
   }
-  if (
-    tab === "tasks" ||
-    tab === "schedule" ||
-    tab === "activity" ||
-    tab === "punch-list" ||
-    tab === "work"
-  ) {
-    return "work";
+  if (tab === "tasks" || tab === "activity" || tab === "punch-list" || tab === "work") {
+    return "tasks";
   }
-  if (tab === "docs" || tab === "materials" || tab === "closeout" || tab === "documents") {
+  if (tab === "schedule") {
+    return "schedule";
+  }
+  if (tab === "people") {
+    return "people";
+  }
+  if (tab === "photos") {
+    return "photos";
+  }
+  if (tab === "inspections") {
+    return "inspections";
+  }
+  if (tab === "materials") {
+    return "materials";
+  }
+  if (tab === "closeout") {
+    return "closeout";
+  }
+  if (tab === "docs" || tab === "documents") {
     return "documents";
   }
   return "overview";
@@ -487,7 +540,7 @@ export function ProjectDetailTabsClient({
   const router = useRouter();
   const { toast } = useToast();
   const [, startTabTransition] = React.useTransition();
-  const [tab, setTab] = React.useState<DashboardTabKey>(() => normalizeDashboardTab(initialTab));
+  const [tab, setTab] = React.useState<WorkspaceTabKey>(() => normalizeWorkspaceTab(initialTab));
   const [costBucketFilter, setCostBucketFilter] = React.useState<CostBucketFilter>(null);
   const [editModalOpen, setEditModalOpen] = React.useState(false);
   const [archiveConfirmOpen, setArchiveConfirmOpen] = React.useState(false);
@@ -722,6 +775,73 @@ export function ProjectDetailTabsClient({
   }).length;
   const latestActivity = activityLogs.slice(0, 4);
   const recentCostActivity = recentExpenseLines.slice(0, 4);
+  const projectClientName =
+    displayProject.client ?? (displayProject as { client_name?: string }).client_name ?? null;
+  const projectWorkerNames = React.useMemo(
+    () =>
+      uniqueText([
+        ...tasks.map((task) => task.worker_name),
+        ...laborEntries.map((entry) => entry.worker_name),
+      ]),
+    [laborEntries, tasks]
+  );
+  const subcontractorNames = React.useMemo(
+    () => uniqueText(subcontracts.map((subcontract) => subcontract.subcontractor_name)),
+    [subcontracts]
+  );
+  const vendorNames = React.useMemo(
+    () => uniqueText(bills.map((bill) => bill.vendor_name)),
+    [bills]
+  );
+  const commissionPeople = React.useMemo(
+    () => uniqueText(commissions.map((commission) => commission.person_name)),
+    [commissions]
+  );
+  const peopleSections = React.useMemo(
+    () => [
+      {
+        label: "Customer",
+        href: displayProject.customerId ? `/customers/${displayProject.customerId}` : "/customers",
+        count: projectClientName ? 1 : 0,
+        items: projectClientName ? [projectClientName] : [],
+      },
+      {
+        label: "Workers",
+        href: "/workers",
+        count: projectWorkerNames.length,
+        items: projectWorkerNames,
+      },
+      {
+        label: "Subcontractors",
+        href: `/projects/${projectId}/subcontracts`,
+        count: subcontracts.length,
+        items: subcontractorNames,
+      },
+      {
+        label: "Vendors / Payees",
+        href: "/financial/vendors",
+        count: vendorNames.length,
+        items: vendorNames,
+      },
+      {
+        label: "Commission",
+        href: "/financial/commissions",
+        count: commissions.length,
+        items: commissionPeople,
+      },
+    ],
+    [
+      commissionPeople,
+      commissions.length,
+      displayProject.customerId,
+      projectClientName,
+      projectId,
+      projectWorkerNames,
+      subcontractorNames,
+      subcontracts.length,
+      vendorNames,
+    ]
+  );
 
   const expensesProjectHref = `/financial/expenses?project_id=${encodeURIComponent(projectId)}`;
   const inboxProjectHref = `/financial/inbox?project_id=${encodeURIComponent(projectId)}`;
@@ -966,24 +1086,20 @@ export function ProjectDetailTabsClient({
           <Tabs
             value={tab}
             onValueChange={(v) => {
-              startTabTransition(() => setTab(v as DashboardTabKey));
+              startTabTransition(() => setTab(v as WorkspaceTabKey));
             }}
             className="w-full"
           >
-            <div className="border-b border-white/10 pb-0">
-              <TabsList className="h-11 min-h-[44px] w-full justify-start gap-0 overflow-x-auto whitespace-nowrap rounded-none border-0 bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                {(
-                  [
-                    { key: "overview" as const, label: "Overview" },
-                    { key: "financial" as const, label: "Financial" },
-                    { key: "work" as const, label: "Work" },
-                    { key: "documents" as const, label: "Documents" },
-                  ] as const
-                ).map((t) => (
+            <div className="max-w-full overflow-hidden border-b border-white/10 pb-0">
+              <TabsList
+                aria-label="Project workspace sections"
+                className="h-11 min-h-[44px] w-full touch-pan-x justify-start gap-0 overflow-x-auto overscroll-x-contain whitespace-nowrap rounded-none border-0 bg-transparent p-0 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                {PROJECT_WORKSPACE_TABS.map((t) => (
                   <TabsTrigger
                     key={t.key}
                     value={t.key}
-                    className="min-h-[44px] rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-[13px] font-medium text-[var(--neo-canvas-text-secondary)] shadow-none data-[state=active]:border-[var(--neo-gold)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--neo-canvas-text-primary)] data-[state=active]:shadow-none sm:px-4 sm:text-[14px]"
+                    className="min-h-[44px] shrink-0 rounded-none border-b-2 border-transparent bg-transparent px-3 py-2.5 text-[13px] font-medium text-[var(--neo-canvas-text-secondary)] shadow-none data-[state=active]:border-[var(--neo-gold)] data-[state=active]:bg-transparent data-[state=active]:text-[var(--neo-canvas-text-primary)] data-[state=active]:shadow-none sm:px-4 sm:text-[14px]"
                   >
                     {t.label}
                   </TabsTrigger>
@@ -1172,7 +1288,7 @@ export function ProjectDetailTabsClient({
               </div>
             </TabsContent>
 
-            <TabsContent value="work" className="mt-4 space-y-4">
+            <TabsContent value="tasks" className="mt-4 space-y-4">
               <ExecutiveCard title="Tasks">
                 <ProjectTasksTab
                   projectId={projectId}
@@ -1781,40 +1897,111 @@ export function ProjectDetailTabsClient({
               </ExecutiveCard>
             </TabsContent>
 
+            <TabsContent value="people" className="mt-4 space-y-4">
+              <ExecutiveCard title="People">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {peopleSections.map((section) => (
+                    <div
+                      key={section.label}
+                      className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-medium uppercase tracking-normal text-[var(--neo-text-secondary)]">
+                            {section.label}
+                          </p>
+                          <p className="mt-1 font-mono text-[18px] font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                            {section.count}
+                          </p>
+                        </div>
+                        <Link
+                          href={section.href}
+                          className="shrink-0 text-[12px] font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                        >
+                          Open
+                        </Link>
+                      </div>
+                      <p className="mt-3 line-clamp-2 text-[13px] text-[var(--neo-text-secondary)]">
+                        {section.items.length > 0 ? section.items.join(", ") : "None linked"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </ExecutiveCard>
+            </TabsContent>
+
             <TabsContent value="documents" className="mt-4 space-y-4">
               <ExecutiveCard title="Docs">
                 <ProjectDocumentsTab projectId={projectId} documents={documents} />
               </ExecutiveCard>
-              <ExecutiveCard title="Material Selections">
-                <ProjectMaterialsTab
-                  projectId={projectId}
-                  projectName={displayProject.name}
-                  clientName={
-                    displayProject.client ??
-                    (displayProject as { client_name?: string }).client_name ??
-                    undefined
-                  }
-                  selections={materialSelections}
-                  catalog={materialCatalog}
-                  onRefresh={() =>
-                    syncClientsThenRefreshInBackground(router, "project-materials-mutated")
-                  }
-                />
-              </ExecutiveCard>
-              <ExecutiveCard title="Closeout">
-                <ProjectCloseoutTab
-                  projectId={projectId}
-                  projectName={displayProject.name}
-                  billingSummary={billingSummary}
-                  contractValue={canonicalProfit.revenue}
-                  punch={closeoutPunch}
-                  warranty={closeoutWarranty}
-                  completion={closeoutCompletion}
-                  onRefresh={() =>
-                    syncClientsThenRefreshInBackground(router, "project-closeout-mutated")
-                  }
-                />
-              </ExecutiveCard>
+            </TabsContent>
+
+            <TabsContent value="photos" className={TAB_PANEL}>
+              <SectionHeader
+                label="Photos"
+                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
+                action={
+                  <Link
+                    href={`/site-photos?project_id=${encodeURIComponent(projectId)}`}
+                    className="text-xs font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                  >
+                    Open site photos
+                  </Link>
+                }
+              />
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Link
+                  href={`/site-photos?project_id=${encodeURIComponent(projectId)}`}
+                  className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3 text-sm font-medium text-[var(--neo-text-primary)] transition-colors hover:border-[var(--neo-gold)]"
+                >
+                  Site Photos
+                  <span className="mt-1 block text-[12px] font-normal text-[var(--neo-text-secondary)]">
+                    Project photo stream
+                  </span>
+                </Link>
+                <Link
+                  href="/site-photos/upload"
+                  className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3 text-sm font-medium text-[var(--neo-text-primary)] transition-colors hover:border-[var(--neo-gold)]"
+                >
+                  Upload Photos
+                  <span className="mt-1 block text-[12px] font-normal text-[var(--neo-text-secondary)]">
+                    Field photo intake
+                  </span>
+                </Link>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="inspections" className={TAB_PANEL}>
+              <SectionHeader
+                label="Inspections"
+                className="text-[11px] tracking-normal text-[var(--neo-text-secondary)] font-medium"
+                action={
+                  <Link
+                    href="/inspection-log"
+                    className="text-xs font-medium text-[var(--neo-gold)] underline-offset-4 hover:underline"
+                  >
+                    Open inspection log
+                  </Link>
+                }
+              />
+              <div className="mt-3 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+                      Inspection Log
+                    </p>
+                    <p className="mt-1 text-[12px] text-[var(--neo-text-secondary)]">
+                      Field inspections and punch follow-up
+                    </p>
+                  </div>
+                  <Link
+                    href="/inspection-log"
+                    className="min-h-9 rounded-md border border-[var(--neo-border)] px-3 py-2 text-xs font-medium text-[var(--neo-text-primary)] transition-colors hover:border-[var(--neo-gold)]"
+                  >
+                    Open
+                  </Link>
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="expenses" className={TAB_PANEL}>

@@ -34,8 +34,18 @@ import type { RecentExpenseLineRow } from "./recent-expense-lines";
 export const dynamic = "force-dynamic";
 
 const LEGACY_TAB_MAP: Record<string, string> = {
-  financial: "cost",
-  documents: "docs",
+  cost: "financial",
+  budget: "financial",
+  expenses: "financial",
+  labor: "financial",
+  subcontracts: "financial",
+  bills: "financial",
+  commission: "financial",
+  "change-orders": "financial",
+  work: "tasks",
+  "punch-list": "tasks",
+  activity: "tasks",
+  docs: "documents",
 };
 
 type TabKey =
@@ -45,7 +55,10 @@ type TabKey =
   | "documents"
   | "cost"
   | "tasks"
+  | "people"
   | "schedule"
+  | "photos"
+  | "inspections"
   | "docs"
   | "budget"
   | "expenses"
@@ -87,7 +100,10 @@ export default async function ProjectDetailPage({
     "documents",
     "cost",
     "tasks",
+    "people",
     "schedule",
+    "photos",
+    "inspections",
     "docs",
     "budget",
     "expenses",
