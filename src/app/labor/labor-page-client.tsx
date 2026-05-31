@@ -124,11 +124,13 @@ function formatShortDate(dateStr: string): string {
   return formatDate(dateStr, "compact");
 }
 
-function formatHoursLabel(hours: number): string {
-  return `${formatNumber(hours, {
+function formatLaborDaysLabel(days: number, options: { compact?: boolean } = {}): string {
+  const value = formatNumber(days, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 1,
-  })}h`;
+  });
+  if (options.compact) return `${value}d`;
+  return `${value} ${days === 1 ? "day" : "days"}`;
 }
 
 function getWorkerInitials(name: string): string {
@@ -974,7 +976,7 @@ export default function LaborPageClient() {
                                     0
                                   );
                                   const isHighCost = totalPay > HIGH_COST_THRESHOLD;
-                                  const totalHours = entries.reduce(
+                                  const totalLaborDays = entries.reduce(
                                     (s, e) => s + (Number(e.hours) || 0),
                                     0
                                   );
@@ -995,8 +997,8 @@ export default function LaborPageClient() {
                                       onClick={() => setSelectedDayForDetail(dateStr)}
                                       aria-label={
                                         hasEntries
-                                          ? `${formatShortDate(dateStr)}, ${formatHoursLabel(
-                                              totalHours
+                                          ? `${formatShortDate(dateStr)}, ${formatLaborDaysLabel(
+                                              totalLaborDays
                                             )}, ${formatCurrency(totalPay)}, ${workerLabel}`
                                           : `${formatShortDate(dateStr)}, no labor entries`
                                       }
@@ -1044,7 +1046,9 @@ export default function LaborPageClient() {
                                           >
                                             <div className="flex items-baseline justify-between gap-2">
                                               <span className="shrink-0 text-[13px] font-semibold tabular-nums leading-none text-[var(--neo-text-primary)]">
-                                                {formatHoursLabel(totalHours)}
+                                                {formatLaborDaysLabel(totalLaborDays, {
+                                                  compact: true,
+                                                })}
                                               </span>
                                               <NeoAmount
                                                 tone={isHighCost ? "neutral" : "income"}
@@ -1113,7 +1117,7 @@ export default function LaborPageClient() {
                           const workerCount = entries.length;
                           const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
                           const isHighCost = totalPay > HIGH_COST_THRESHOLD;
-                          const totalHours = entries.reduce(
+                          const totalLaborDays = entries.reduce(
                             (s, e) => s + (Number(e.hours) || 0),
                             0
                           );
@@ -1179,7 +1183,7 @@ export default function LaborPageClient() {
                                 )}
                               >
                                 <p className="text-[13px] font-semibold tabular-nums leading-none text-[var(--neo-text-primary)]">
-                                  {formatHoursLabel(totalHours)}
+                                  {formatLaborDaysLabel(totalLaborDays)}
                                 </p>
                                 <NeoAmount
                                   tone={isHighCost ? "neutral" : "income"}
