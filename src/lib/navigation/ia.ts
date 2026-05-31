@@ -98,11 +98,7 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
   {
     key: "DASHBOARD",
     label: "DASHBOARD",
-    entries: [
-      { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-      { href: "/dashboard/cashflow", label: "Cash Flow", icon: "cashflow" },
-      { href: "/financial/owner", label: "Owner Dashboard", icon: "activity" },
-    ],
+    entries: [{ href: "/dashboard", label: "Dashboard", icon: "dashboard" }],
   },
   {
     key: "PROJECTS",
@@ -123,9 +119,17 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
     key: "FINANCIAL",
     label: "FINANCIAL",
     entries: [
+      { type: "subheader", label: "Overview" },
       { href: "/financial", label: "Overview", icon: "financial", exact: true },
+      { href: "/financial/owner", label: "Owner Dashboard", icon: "activity" },
       { type: "subheader", label: "AR" },
       { href: "/financial/ar", label: "AR Summary", icon: "ar" },
+      {
+        href: "/estimates",
+        label: "Estimates",
+        icon: "estimates",
+        aliases: ["/financial/estimates"],
+      },
       { href: "/financial/invoices", label: "Invoices", icon: "invoice" },
       { href: "/financial/payments", label: "Payments Received", icon: "payments" },
       { href: "/financial/deposits", label: "Deposits", icon: "deposits" },
@@ -148,6 +152,14 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
       { type: "subheader", label: "Cash" },
       { href: "/financial/accounts", label: "Accounts", icon: "accounts" },
       { href: "/financial/bank", label: "Bank Transactions", icon: "bank" },
+      { href: "/dashboard/cashflow", label: "Cash Flow", icon: "cashflow" },
+      { type: "subheader", label: "Reports" },
+      {
+        href: "/settings/project-financial-review",
+        label: "Project Financial Review",
+        icon: "financial",
+      },
+      { href: "/system-health", label: "System Health", icon: "activity", badge: "systemHealth" },
     ],
   },
   {
@@ -198,7 +210,13 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
 export const HH_PROJECT_OS_MOBILE_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/projects", label: "Projects", icon: "projects" },
-  { href: "/financial", label: "Financial", icon: "financial", exact: true },
+  {
+    href: "/financial",
+    label: "Financial",
+    icon: "financial",
+    exact: true,
+    aliases: ["/dashboard/cashflow"],
+  },
   { href: "/workers", label: "People", icon: "workers" },
   { href: "/documents", label: "Documents", icon: "documents" },
 ] as const satisfies readonly HhProjectOsNavItem[];
@@ -229,6 +247,14 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
     icon: "financial",
   },
   {
+    id: "go-ar-summary",
+    label: "Go to AR Summary",
+    description: "Open receivables aging and collection status",
+    href: "/financial/ar",
+    keywords: ["receivables", "ar", "aging", "collections"],
+    icon: "ar",
+  },
+  {
     id: "go-people",
     label: "Go to People",
     description: "Workers, vendors, and subcontractors",
@@ -253,12 +279,52 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
     icon: "invoice",
   },
   {
+    id: "go-payments-received",
+    label: "Go to Payments Received",
+    description: "Open customer payment history and receipts",
+    href: "/financial/payments",
+    keywords: ["payments received", "collections", "cash in"],
+    icon: "payments",
+  },
+  {
+    id: "go-bills",
+    label: "Go to Bills",
+    description: "Open AP bills and payables",
+    href: "/bills",
+    keywords: ["bills", "ap", "payables", "vendor"],
+    icon: "bills",
+  },
+  {
     id: "go-expenses",
     label: "Go to Expenses",
     description: "Expenses, inbox, and receipt workflow",
     href: "/financial/expenses",
     keywords: ["receipts", "costs", "ap", "inbox"],
     icon: "expenses",
+  },
+  {
+    id: "go-bank-transactions",
+    label: "Go to Bank Transactions",
+    description: "Open cash reconciliation and bank activity",
+    href: "/financial/bank",
+    keywords: ["bank", "cash", "reconcile", "transactions"],
+    icon: "bank",
+  },
+  {
+    id: "go-payroll-summary",
+    label: "Go to Payroll Summary",
+    description: "Open worker payroll and payable balances",
+    href: "/labor/payroll",
+    keywords: ["payroll", "labor", "worker pay", "ap"],
+    icon: "payroll",
+  },
+  {
+    id: "go-project-financial-review",
+    label: "Go to Project Financial Review",
+    description: "Open financial data quality and contract review",
+    href: "/settings/project-financial-review",
+    keywords: ["reports", "profit", "contract review", "financial review"],
+    icon: "financial",
   },
   {
     id: "go-settings",

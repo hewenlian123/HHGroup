@@ -68,19 +68,25 @@ const BottomNavItem = React.memo(function BottomNavItem({
   href,
   label,
   Icon,
+  aliases,
   pathname,
   onPointerEnterNav,
 }: {
   href: string;
   label: string;
   Icon: LucideIcon;
+  aliases?: readonly string[];
   pathname: string | null;
   onPointerEnterNav?: () => void;
 }) {
   const router = useRouter();
-  const isActive =
-    pathname === href ||
-    (href !== "/dashboard" && pathname != null && pathname.startsWith(href + "/"));
+  const matchesNavPath = React.useCallback(
+    (target: string) =>
+      pathname === target ||
+      (target !== "/dashboard" && pathname != null && pathname.startsWith(target + "/")),
+    [pathname]
+  );
+  const isActive = matchesNavPath(href) || (aliases ?? []).some((alias) => matchesNavPath(alias));
 
   return (
     <Link
@@ -132,6 +138,7 @@ export function BottomNav({ className }: { className?: string }) {
           href={item.href}
           label={item.label}
           Icon={MOBILE_ICON_MAP[item.icon]}
+          aliases={"aliases" in item ? item.aliases : undefined}
           pathname={pathname}
           onPointerEnterNav={
             item.href.startsWith("/financial")
