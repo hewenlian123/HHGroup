@@ -40,7 +40,8 @@ async function fillNewBillForm(page: import("@playwright/test").Page): Promise<v
   const inputs = form.locator("input");
 
   await expect(page.getByText("Vendor / payee name")).toBeVisible({ timeout: LOAD_MS });
-  await inputs.nth(0).fill(VENDOR);
+  await inputs.nth(0).fill(`${VENDOR}-001`);
+  await inputs.nth(1).fill(VENDOR);
   await page.getByRole("combobox").nth(0).selectOption("Vendor");
 
   const projectSelect = page.getByRole("combobox").nth(1);
@@ -49,8 +50,8 @@ async function fillNewBillForm(page: import("@playwright/test").Page): Promise<v
   }).toPass({ timeout: LOAD_MS, intervals: [400, 800, 1500] });
   await projectSelect.selectOption({ index: 1 });
 
-  await inputs.nth(1).fill(today);
   await inputs.nth(2).fill(today);
+  await inputs.nth(3).fill(today);
   await page.getByPlaceholder("0.00").fill("123.45");
 
   const category = page.getByRole("combobox", { name: "Category" });
@@ -64,7 +65,7 @@ async function fillNewBillForm(page: import("@playwright/test").Page): Promise<v
   }
   await expect(category).toHaveValue("Foundation");
 
-  await inputs.nth(5).fill("category helper smoke");
+  await inputs.last().fill("category helper smoke");
 }
 
 test.describe("Bills category helper", () => {

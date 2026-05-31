@@ -281,7 +281,8 @@ test.describe("Delete mutations: create then delete", () => {
     await page.goto(`${BASE}/bills/new`);
     await page.waitForLoadState("domcontentloaded");
     const billForm = page.locator("form").first();
-    await billForm.locator("input").first().fill(vendor);
+    await billForm.locator("input").nth(0).fill(`${vendor}-001`);
+    await billForm.locator("input").nth(1).fill(vendor);
     await page.locator('input[placeholder="0.00"]').fill("1");
     await page.getByRole("button", { name: /Create bill/i }).click();
     try {

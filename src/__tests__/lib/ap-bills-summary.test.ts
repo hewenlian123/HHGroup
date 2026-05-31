@@ -64,4 +64,34 @@ describe("AP bills dashboard summary", () => {
     expect(summary.totalOutstanding).toBe(750);
     expect(summary.overdueAmount).toBe(750);
   });
+
+  it("treats active bills with stale zero balance as unpaid and excludes paid bills", () => {
+    const summary = summarizeApBillsForDashboard(
+      [
+        {
+          amount: 100,
+          paid_amount: 0,
+          balance_amount: 0,
+          status: "Draft",
+          due_date: "2026-05-18",
+        },
+        {
+          amount: 200,
+          paid_amount: 200,
+          balance_amount: 50,
+          status: "Paid",
+          due_date: "2026-05-18",
+        },
+      ],
+      {
+        today: "2026-05-17",
+        weekStart: "2026-05-17",
+        weekEnd: "2026-05-23",
+        paidThisMonthAmount: 0,
+      }
+    );
+
+    expect(summary.totalOutstanding).toBe(100);
+    expect(summary.dueThisWeekAmount).toBe(100);
+  });
 });

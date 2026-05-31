@@ -182,6 +182,7 @@ export async function POST(request: Request) {
     if (!(await apBillsAvailable(supabase))) return apiError(503, AP_UNAVAILABLE_MESSAGE);
     const bill = await createApBill(
       {
+        bill_no: stringOrNull(body.bill_no),
         vendor_name: vendorName,
         bill_type: billType(stringOrNull(body.bill_type)) ?? "Vendor",
         project_id: stringOrNull(body.project_id),

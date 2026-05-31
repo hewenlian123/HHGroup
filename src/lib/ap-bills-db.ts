@@ -89,6 +89,10 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function money(v: unknown): number {
+  return Math.round(toNum(v) * 100) / 100;
+}
+
 type ApSummaryBill = {
   amount?: number | string | null;
   paid_amount?: number | string | null;
@@ -105,8 +109,26 @@ type ApSummaryWindow = {
 };
 
 function apOutstandingBalance(bill: ApSummaryBill): number {
-  if (bill.balance_amount != null) return Math.max(0, toNum(bill.balance_amount));
-  return Math.max(0, toNum(bill.amount) - toNum(bill.paid_amount));
+  if (bill.status === "Void" || bill.status === "Paid") return 0;
+  const derived = Math.max(0, money(bill.amount) - money(bill.paid_amount));
+  if (bill.balance_amount == null) return derived;
+  const stored = Math.max(0, money(bill.balance_amount));
+  if (stored <= 0 && derived > 0) return derived;
+  return stored;
+}
+
+function normalizedBillBalance(row: {
+  amount?: unknown;
+  paid_amount?: unknown;
+  balance_amount?: unknown;
+  status?: unknown;
+}): number {
+  return apOutstandingBalance({
+    amount: row.amount as number | string | null | undefined,
+    paid_amount: row.paid_amount as number | string | null | undefined,
+    balance_amount: row.balance_amount as number | string | null | undefined,
+    status: row.status as string | null | undefined,
+  });
 }
 
 export function summarizeApBillsForDashboard(
@@ -153,6 +175,7 @@ export function summarizeApBillsForDashboard(
 
 function mapBill(r: Record<string, unknown>): ApBillRow {
   const amount = toNum(r.amount);
+  const paidAmount = toNum(r.paid_amount);
   return {
     id: (r.id as string) ?? "",
     bill_no: (r.bill_no as string | null) ?? null,
@@ -162,8 +185,16 @@ function mapBill(r: Record<string, unknown>): ApBillRow {
     issue_date: r.issue_date != null ? String(r.issue_date).slice(0, 10) : null,
     due_date: r.due_date != null ? String(r.due_date).slice(0, 10) : null,
     amount,
-    paid_amount: toNum(r.paid_amount),
-    balance_amount: r.balance_amount != null ? toNum(r.balance_amount) : amount,
+    paid_amount: paidAmount,
+    balance_amount:
+      r.balance_amount != null
+        ? normalizedBillBalance({
+            amount,
+            paid_amount: paidAmount,
+            balance_amount: r.balance_amount,
+            status: r.status,
+          })
+        : Math.max(0, amount - paidAmount),
     status: (r.status as ApBillStatus) ?? "Draft",
     category: (r.category as string | null) ?? null,
     notes: (r.notes as string | null) ?? null,
@@ -172,6 +203,27 @@ function mapBill(r: Record<string, unknown>): ApBillRow {
     updated_at: (r.updated_at as string) ?? "",
     created_by: (r.created_by as string | null) ?? null,
   };
+}
+
+async function sumApBillPayments(billId: string, explicitClient: SupabaseLike): Promise<number> {
+  const { data, error } = await explicitClient
+    .from("ap_bill_payments")
+    .select("amount")
+    .eq("bill_id", billId);
+  if (error) {
+    if (isMissingTable(error)) return 0;
+    throw new Error(error.message ?? "Failed to load bill payments.");
+  }
+  return money(
+    (data ?? []).reduce((sum, row) => sum + toNum((row as { amount?: unknown }).amount), 0)
+  );
+}
+
+function statusForBillTotals(current: ApBillStatus | undefined, paid: number, balance: number) {
+  if (current === "Void") return "Void" as const;
+  if (paid <= 0) return current === "Draft" ? ("Draft" as const) : ("Pending" as const);
+  if (balance <= 0) return "Paid" as const;
+  return "Partially Paid" as const;
 }
 
 function mapPayment(r: Record<string, unknown>): ApBillPaymentRow {
@@ -315,8 +367,8 @@ export async function createApBill(
   const c = client(explicitClient);
   const vendorName = draft.vendor_name.trim();
   if (!vendorName) throw new Error("Vendor name is required");
-  if (!(draft.amount > 0)) throw new Error("Amount must be greater than 0");
-  const amount = draft.amount;
+  const amount = money(draft.amount);
+  if (!(amount > 0)) throw new Error("Amount must be greater than 0");
   const payload = {
     bill_no: draft.bill_no?.trim() || null,
     bill_type: AP_BILL_TYPES.includes(draft.bill_type!) ? draft.bill_type : "Vendor",
@@ -325,6 +377,8 @@ export async function createApBill(
     issue_date: draft.issue_date?.slice(0, 10) || null,
     due_date: draft.due_date?.slice(0, 10) || null,
     amount,
+    paid_amount: 0,
+    balance_amount: amount,
     status: "Draft" as const,
     category: draft.category?.trim() || null,
     notes: draft.notes?.trim() || null,
@@ -365,7 +419,19 @@ export async function updateApBill(
   if (patch.project_id !== undefined) updates.project_id = patch.project_id || null;
   if (patch.issue_date !== undefined) updates.issue_date = patch.issue_date?.slice(0, 10) || null;
   if (patch.due_date !== undefined) updates.due_date = patch.due_date?.slice(0, 10) || null;
-  if (patch.amount !== undefined) updates.amount = Math.max(0, patch.amount);
+  if (patch.amount !== undefined) {
+    const nextAmount = Math.max(0, money(patch.amount));
+    const currentBill = await getApBillById(id, c);
+    if (!currentBill) return null;
+    const paidAmount = await sumApBillPayments(id, c);
+    const balanceAmount = Math.max(0, money(nextAmount - paidAmount));
+    updates.amount = nextAmount;
+    updates.paid_amount = paidAmount;
+    updates.balance_amount = balanceAmount;
+    if (patch.status === undefined) {
+      updates.status = statusForBillTotals(currentBill.status, paidAmount, balanceAmount);
+    }
+  }
   if (patch.category !== undefined) updates.category = patch.category?.trim() || null;
   if (patch.notes !== undefined) updates.notes = patch.notes?.trim() || null;
   if (patch.attachment_url !== undefined)

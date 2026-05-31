@@ -38,6 +38,7 @@ async function readApiMessage(response: Response, fallback: string): Promise<str
 
 export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
   const router = useRouter();
+  const [billNo, setBillNo] = React.useState("");
   const [vendorName, setVendorName] = React.useState("");
   const [billType, setBillType] = React.useState<
     "Vendor" | "Labor" | "Overhead" | "Utility" | "Permit" | "Equipment" | "Other"
@@ -70,6 +71,7 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          bill_no: billNo.trim() || null,
           vendor_name: vendor,
           bill_type: billType,
           project_id: projectId || null,
@@ -111,6 +113,16 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
         bodyClassName={billsFormBodyClass}
       >
         <form onSubmit={handleSubmit} className="min-w-0 space-y-5 md:space-y-6">
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel>Bill no.</NeoFieldLabel>
+            <NeoInput
+              value={billNo}
+              onChange={(e) => setBillNo(e.target.value)}
+              className={billsFieldClass}
+              placeholder="BILL-001"
+            />
+          </div>
+
           <div className={neoFormFieldClassName}>
             <NeoFieldLabel required>Vendor / payee name</NeoFieldLabel>
             <NeoInput

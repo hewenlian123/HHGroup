@@ -145,6 +145,8 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
     <div className="mx-auto flex min-w-0 max-w-[1000px] flex-col gap-4 md:gap-5">
       <NeoPanel title="Bill details" bodyClassName="px-4 py-4 md:px-6 md:py-5">
         <dl className={billsDetailDlClass}>
+          <dt className={billsDetailDtClass}>Bill no.</dt>
+          <dd className={billsDetailDdClass}>{bill.bill_no ?? "—"}</dd>
           <dt className={billsDetailDtClass}>Vendor / payee</dt>
           <dd className={billsDetailDdClass}>{bill.vendor_name}</dd>
           <dt className={billsDetailDtClass}>Type</dt>
