@@ -13,6 +13,8 @@ type LaborRoute = {
   label: string;
   path: string;
   heading: RegExp;
+  activeLabel?: string;
+  bottomNavLabel: string;
   action?: LaborAction;
 };
 
@@ -34,12 +36,15 @@ const laborRoutes: LaborRoute[] = [
     label: "Time Entries",
     path: "/labor",
     heading: /^(Daily Labor|Labor)$/i,
+    bottomNavLabel: "Projects",
     action: { kind: "dialog", button: /^Add Entry$/i, dialog: /^Add Daily Entry$/i },
   },
   {
     label: "Worker Reimbursements",
     path: "/labor/reimbursements",
     heading: /^(Worker Reimbursements|Reimbursements)$/i,
+    activeLabel: "AP",
+    bottomNavLabel: "Financial",
     action: {
       kind: "inline",
       button: /^\+ New Reimbursement$/i,
@@ -51,27 +56,37 @@ const laborRoutes: LaborRoute[] = [
     label: "Worker Balances",
     path: "/labor/worker-balances",
     heading: /^(Worker Balances|Balances)$/i,
+    activeLabel: "AP",
+    bottomNavLabel: "Financial",
   },
   {
     label: "Worker Payments",
     path: "/labor/payments",
     heading: /^Worker Payments$/i,
+    activeLabel: "AP",
+    bottomNavLabel: "Financial",
   },
   {
     label: "Worker Advances",
     path: "/labor/advances",
     heading: /^(Worker Advances|Advances)$/i,
+    activeLabel: "AP",
+    bottomNavLabel: "Financial",
     action: { kind: "dialog", button: /^Create Advance$/i, dialog: /^Create Advance$/i },
   },
   {
     label: "Worker Receipts",
     path: "/labor/receipts",
     heading: /^(Worker Receipt Uploads|Receipt Uploads)$/i,
+    activeLabel: "AP",
+    bottomNavLabel: "Financial",
   },
   {
     label: "Worker Invoices",
     path: "/labor/worker-invoices",
     heading: /^Worker Invoices$/i,
+    activeLabel: "AP",
+    bottomNavLabel: "Financial",
     action: {
       kind: "inline",
       button: /^New Invoice$/i,
@@ -83,6 +98,8 @@ const laborRoutes: LaborRoute[] = [
     label: "Payroll Summary",
     path: "/labor/payroll",
     heading: /^Payroll Summary$/i,
+    activeLabel: "AP",
+    bottomNavLabel: "Financial",
   },
 ];
 
@@ -105,9 +122,9 @@ function visibleSidebar(page: Page): Locator {
   return page.locator("[data-app-sidebar]:visible").first();
 }
 
-function laborNavLink(page: Page, label: string): Locator {
+function navLink(page: Page, label: string): Locator {
   return visibleSidebar(page)
-    .getByRole("link", { name: new RegExp(`^${label}$`) })
+    .getByRole("link", { name: new RegExp(`^${label}(?: \\(\\d+\\))?$`) })
     .first();
 }
 
@@ -153,8 +170,8 @@ async function waitForRouteReady(page: Page, route: LaborRoute) {
   expect(textLength, `${route.label} main content should not be blank`).toBeGreaterThan(20);
 }
 
-async function expectActiveSidebarItem(page: Page, route: LaborRoute) {
-  const link = laborNavLink(page, route.label);
+async function expectActiveSidebarItem(page: Page, label: string) {
+  const link = navLink(page, label);
   await expect(link).toBeVisible({ timeout: 20_000 });
   await expect(link).toHaveClass(/text-white/, { timeout: 10_000 });
 }
@@ -259,12 +276,12 @@ async function expectScrollRootUsable(page: Page, route: LaborRoute) {
   }
 }
 
-test.describe("Labor module sidebar navigation", () => {
+test.describe("Labor module navigation compatibility", () => {
   test.beforeEach(async ({ page }) => {
     await prepareStableSidebar(page);
   });
 
-  test("desktop sidebar routes load, activate, and render lists or empty states", async ({
+  test("desktop labor routes remain compatible under final Projects/Financial ownership", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -272,16 +289,16 @@ test.describe("Labor module sidebar navigation", () => {
     await page.goto("/dashboard");
     await page.waitForLoadState("domcontentloaded");
     await ensureOsSectionsOpen(page);
+    await expect(navLink(page, "AP")).toBeVisible({ timeout: 10_000 });
+    for (const removedLabel of laborRoutes.map((route) => route.label)) {
+      await expect(visibleSidebar(page).getByText(removedLabel, { exact: true })).toHaveCount(0);
+    }
 
     for (const route of laborRoutes) {
       await test.step(route.label, async () => {
-        await ensureOsSectionsOpen(page);
-        await Promise.all([
-          page.waitForURL(routeUrlPattern(route.path), { timeout: 30_000 }),
-          laborNavLink(page, route.label).click(),
-        ]);
+        await page.goto(route.path);
         await waitForRouteReady(page, route);
-        await expectActiveSidebarItem(page, route);
+        if (route.activeLabel) await expectActiveSidebarItem(page, route.activeLabel);
         await expectRowsOrEmptyState(page, route);
         await smokeMainAction(page, route);
         await expectNoVisibleAppError(page);
@@ -297,14 +314,16 @@ test.describe("Labor module sidebar navigation", () => {
 
     for (const route of laborRoutes) {
       await test.step(route.label, async () => {
-        await openMobileLaborDrawer(page);
-        await Promise.all([
-          page.waitForURL(routeUrlPattern(route.path), { timeout: 30_000 }),
-          laborNavLink(page, route.label).click(),
-        ]);
+        await page.goto(route.path);
         await waitForRouteReady(page, route);
+        await expect(
+          page
+            .getByRole("navigation", { name: "Bottom navigation" })
+            .getByRole("link", { name: new RegExp(`^${route.bottomNavLabel}$`) })
+        ).toHaveAttribute("aria-current", "page");
         await expect(page.getByRole("button", { name: /^Open menu$/i })).toBeVisible();
         await expectScrollRootUsable(page, route);
+        await openMobileLaborDrawer(page);
         await expectNoVisibleAppError(page);
       });
     }

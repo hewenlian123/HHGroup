@@ -16,7 +16,11 @@ import { cn } from "@/lib/utils";
 import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
 import { createBrowserClient } from "@/lib/supabase";
 import { BOTTOM_NAV_ROUTES, prefetchRoutes, runWhenIdle } from "@/lib/route-prefetch";
-import { HH_PROJECT_OS_MOBILE_NAV_ITEMS, type HhProjectOsIconKey } from "@/lib/navigation/ia";
+import {
+  HH_PROJECT_OS_MOBILE_NAV_ITEMS,
+  getHhProjectOsMobileActiveHref,
+  type HhProjectOsIconKey,
+} from "@/lib/navigation/ia";
 
 const MOBILE_ICON_MAP: Record<HhProjectOsIconKey, LucideIcon> = {
   accounts: CircleDollarSign,
@@ -68,25 +72,16 @@ const BottomNavItem = React.memo(function BottomNavItem({
   href,
   label,
   Icon,
-  aliases,
-  pathname,
+  active,
   onPointerEnterNav,
 }: {
   href: string;
   label: string;
   Icon: LucideIcon;
-  aliases?: readonly string[];
-  pathname: string | null;
+  active: boolean;
   onPointerEnterNav?: () => void;
 }) {
   const router = useRouter();
-  const matchesNavPath = React.useCallback(
-    (target: string) =>
-      pathname === target ||
-      (target !== "/dashboard" && pathname != null && pathname.startsWith(target + "/")),
-    [pathname]
-  );
-  const isActive = matchesNavPath(href) || (aliases ?? []).some((alias) => matchesNavPath(alias));
 
   return (
     <Link
@@ -100,9 +95,9 @@ const BottomNavItem = React.memo(function BottomNavItem({
       className={cn(
         "flex min-h-[44px] min-w-[40px] flex-1 flex-col items-center justify-center gap-0.5 text-xs touch-manipulation cursor-pointer",
         "transition-[color_transform_opacity] duration-75 active:opacity-80 active:scale-[0.97]",
-        isActive ? "font-medium text-[var(--neo-gold)]" : "text-sm text-[var(--neo-text-secondary)]"
+        active ? "font-medium text-[var(--neo-gold)]" : "text-sm text-[var(--neo-text-secondary)]"
       )}
-      aria-current={isActive ? "page" : undefined}
+      aria-current={active ? "page" : undefined}
     >
       <Icon className="h-[18px] w-[18px] shrink-0 pointer-events-none" strokeWidth={1.75} />
       <span className="truncate">{label}</span>
@@ -124,6 +119,8 @@ export function BottomNav({ className }: { className?: string }) {
     return runWhenIdle(() => prefetchRoutes(router, [...BOTTOM_NAV_ROUTES]));
   }, [router]);
 
+  const activeHref = getHhProjectOsMobileActiveHref(pathname);
+
   return (
     <nav
       className={cn(
@@ -138,8 +135,7 @@ export function BottomNav({ className }: { className?: string }) {
           href={item.href}
           label={item.label}
           Icon={MOBILE_ICON_MAP[item.icon]}
-          aliases={"aliases" in item ? item.aliases : undefined}
-          pathname={pathname}
+          active={activeHref === item.href}
           onPointerEnterNav={
             item.href.startsWith("/financial")
               ? () => prefetchFinancialRoute(queryClient, prefetchSupabase, item.href)
