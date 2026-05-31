@@ -13,32 +13,70 @@ type FinancialRoute = {
   label: string;
   path: string;
   heading: RegExp;
+  activeLabel: string;
 };
 
 const financialRoutes: FinancialRoute[] = [
-  { label: "Overview", path: "/financial", heading: /^Financial$/i },
-  { label: "Owner Dashboard", path: "/financial/owner", heading: /^Finance dashboard$/i },
-  { label: "AR Summary", path: "/financial/ar", heading: /^Accounts Receivable$/i },
-  { label: "Invoices", path: "/financial/invoices", heading: /^Invoices$/i },
-  { label: "Payments Received", path: "/financial/payments", heading: /^Payments Received$/i },
-  { label: "Deposits", path: "/financial/deposits", heading: /^Deposits$/i },
-  { label: "Bills", path: "/bills", heading: /^Bills$/i },
-  { label: "Expenses", path: "/financial/expenses", heading: /^Expenses$/i },
-  { label: "Receipt Inbox", path: "/financial/inbox", heading: /^Inbox$/i },
-  { label: "Accounts", path: "/financial/accounts", heading: /^Accounts$/i },
-  { label: "Bank Transactions", path: "/financial/bank", heading: /^Bank Reconcile$/i },
+  { label: "Overview", path: "/financial", heading: /^Financial$/i, activeLabel: "Overview" },
+  {
+    label: "Owner Dashboard",
+    path: "/financial/owner",
+    heading: /^Finance dashboard$/i,
+    activeLabel: "Overview",
+  },
+  {
+    label: "AR Summary",
+    path: "/financial/ar",
+    heading: /^Accounts Receivable$/i,
+    activeLabel: "AR",
+  },
+  { label: "Invoices", path: "/financial/invoices", heading: /^Invoices$/i, activeLabel: "AR" },
+  {
+    label: "Payments Received",
+    path: "/financial/payments",
+    heading: /^Payments Received$/i,
+    activeLabel: "AR",
+  },
+  { label: "Deposits", path: "/financial/deposits", heading: /^Deposits$/i, activeLabel: "AR" },
+  { label: "Bills", path: "/bills", heading: /^Bills$/i, activeLabel: "AP" },
+  { label: "Expenses", path: "/financial/expenses", heading: /^Expenses$/i, activeLabel: "AP" },
+  { label: "Receipt Inbox", path: "/financial/inbox", heading: /^Inbox$/i, activeLabel: "AP" },
+  { label: "Accounts", path: "/financial/accounts", heading: /^Accounts$/i, activeLabel: "Cash" },
+  {
+    label: "Bank Transactions",
+    path: "/financial/bank",
+    heading: /^Bank Reconcile$/i,
+    activeLabel: "Cash",
+  },
   {
     label: "Commission Payments",
     path: "/financial/commissions",
     heading: /^Commission Payments$/i,
+    activeLabel: "AP",
   },
-  { label: "Payroll Summary", path: "/labor/payroll", heading: /^Payroll Summary$/i },
-  { label: "Worker Payments", path: "/labor/payments", heading: /^Worker Payments$/i },
-  { label: "Worker Advances", path: "/labor/advances", heading: /^Worker Advances$/i },
+  {
+    label: "Payroll Summary",
+    path: "/labor/payroll",
+    heading: /^Payroll Summary$/i,
+    activeLabel: "AP",
+  },
+  {
+    label: "Worker Payments",
+    path: "/labor/payments",
+    heading: /^Worker Payments$/i,
+    activeLabel: "AP",
+  },
+  {
+    label: "Worker Advances",
+    path: "/labor/advances",
+    heading: /^Worker Advances$/i,
+    activeLabel: "AP",
+  },
   {
     label: "Worker Reimbursements",
     path: "/labor/reimbursements",
     heading: /^(Worker Reimbursements|Reimbursements)$/i,
+    activeLabel: "AP",
   },
 ];
 
@@ -148,7 +186,7 @@ test.describe("Financial OS navigation grouping", () => {
     await prepareStableSidebar(page);
   });
 
-  test("desktop sidebar groups Financial routes into Overview, AR, AP, Cash, and Reports", async ({
+  test("desktop sidebar groups Financial into final OS hubs and keeps routes compatible", async ({
     page,
   }) => {
     test.setTimeout(180_000);
@@ -158,20 +196,11 @@ test.describe("Financial OS navigation grouping", () => {
     await ensureFinancialSectionOpen(page);
     await expectFinancialGroupsVisible(page);
 
-    await expect(navLink(page, "Estimates")).toBeVisible();
-    await expect(navLink(page, "Cash Flow")).toBeVisible();
-    await expect(navLink(page, "Project Financial Review")).toBeVisible();
-    await expect(navLink(page, "System Health")).toBeVisible();
-
     for (const route of financialRoutes) {
       await test.step(route.label, async () => {
-        await ensureFinancialSectionOpen(page);
-        await Promise.all([
-          page.waitForURL(routeUrlPattern(route.path), { timeout: 30_000 }),
-          navLink(page, route.label).click(),
-        ]);
+        await page.goto(route.path);
         await waitForRouteReady(page, route);
-        await expectActiveSidebarItem(page, route.label);
+        await expectActiveSidebarItem(page, route.activeLabel);
       });
     }
   });
@@ -205,8 +234,6 @@ test.describe("Financial OS navigation grouping", () => {
 
     await openMobileMenu(page);
     await expectFinancialGroupsVisible(page);
-    await expect(navLink(page, "Cash Flow")).toBeVisible();
-    await expect(navLink(page, "Project Financial Review")).toBeVisible();
 
     for (const route of [
       financialRoutes[2],
@@ -215,11 +242,13 @@ test.describe("Financial OS navigation grouping", () => {
       financialRoutes[15],
     ]) {
       await test.step(route.label, async () => {
-        await Promise.all([
-          page.waitForURL(routeUrlPattern(route.path), { timeout: 30_000 }),
-          navLink(page, route.label).click(),
-        ]);
+        await page.goto(route.path);
         await waitForRouteReady(page, route);
+        await expect(
+          page
+            .getByRole("navigation", { name: "Bottom navigation" })
+            .getByRole("link", { name: /^Financial$/ })
+        ).toHaveAttribute("aria-current", "page");
         await expect(page.getByRole("button", { name: /^Open menu$/i })).toBeVisible();
         await expectNoHorizontalOverflow(page);
         await openMobileMenu(page);

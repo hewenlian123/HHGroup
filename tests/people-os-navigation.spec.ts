@@ -42,14 +42,6 @@ const peopleRoutes: PeopleRoute[] = [
     heading: /^Subcontractors$/i,
     activeLabel: "Subcontractors",
   },
-  { label: "Payroll Summary", path: "/labor/payroll", heading: /^Payroll Summary$/i },
-  { label: "Worker Payments", path: "/labor/payments", heading: /^Worker Payments$/i },
-  { label: "Worker Advances", path: "/labor/advances", heading: /^(Worker Advances|Advances)$/i },
-  {
-    label: "Worker Reimbursements",
-    path: "/labor/reimbursements",
-    heading: /^(Worker Reimbursements|Reimbursements)$/i,
-  },
 ];
 
 function escapeRegExp(value: string): string {
@@ -94,13 +86,9 @@ async function ensureSectionOpen(page: Page, label: string) {
 async function ensurePeopleNavigationVisible(page: Page) {
   await ensureSectionOpen(page, "PEOPLE");
   const sidebar = visibleSidebar(page);
-  await expect(sidebar.getByText("Directory", { exact: true })).toBeVisible({ timeout: 10_000 });
   for (const label of ["Customers", "Workers", "Vendors", "Subcontractors"]) {
     await expect(navLink(page, label)).toBeVisible({ timeout: 10_000 });
   }
-  await expect(sidebar.getByText("Future", { exact: true }).first()).toBeVisible({
-    timeout: 10_000,
-  });
   await expect(sidebar.getByText("All Contacts", { exact: true })).toBeVisible({
     timeout: 10_000,
   });
@@ -174,9 +162,9 @@ test.describe("People OS navigation shell", () => {
     await page.waitForLoadState("domcontentloaded");
     await ensurePeopleNavigationVisible(page);
     await ensureSectionOpen(page, "PROJECTS");
-    await expect(navLink(page, "Time Entries")).toBeVisible({ timeout: 10_000 });
     await ensureSectionOpen(page, "FINANCIAL");
     for (const label of [
+      "Time Entries",
       "Payroll Summary",
       "Worker Payments",
       "Worker Advances",
@@ -185,13 +173,13 @@ test.describe("People OS navigation shell", () => {
       "Worker Invoices",
       "Worker Receipts",
     ]) {
-      await expect(navLink(page, label)).toBeVisible({ timeout: 10_000 });
+      await expect(visibleSidebar(page).getByText(label, { exact: true })).toHaveCount(0);
     }
+    await expect(navLink(page, "AP")).toBeVisible({ timeout: 10_000 });
 
     for (const route of peopleRoutes) {
       await test.step(route.label, async () => {
         await ensureSectionOpen(page, "PEOPLE");
-        await ensureSectionOpen(page, "FINANCIAL");
 
         if (route.activeLabel || route.finalPath) {
           await page.goto(route.path);

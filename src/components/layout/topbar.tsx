@@ -98,6 +98,42 @@ const SEGMENT_LABELS: Record<string, string> = {
   "worker-balances": "Worker Balances",
 };
 
+const LOGICAL_BREADCRUMB_RULES = [
+  {
+    prefix: "/settings/project-financial-review",
+    labels: ["Financial", "Reports", "Project Financial Review"],
+  },
+  { prefix: "/financial/vendors", labels: ["People", "Vendors"] },
+  { prefix: "/financial/inbox", labels: ["Financial", "AP", "Receipt Inbox"] },
+  { prefix: "/financial/receipt-queue", labels: ["Financial", "AP", "Receipt Queue"] },
+  { prefix: "/financial/expenses", labels: ["Financial", "AP", "Expenses"] },
+  { prefix: "/financial/commissions", labels: ["Financial", "AP", "Commissions"] },
+  { prefix: "/financial/bills", labels: ["Financial", "AP", "Bills"] },
+  { prefix: "/financial/accounts", labels: ["Financial", "Cash", "Accounts"] },
+  { prefix: "/financial/bank", labels: ["Financial", "Cash", "Bank Transactions"] },
+  { prefix: "/financial/ar", labels: ["Financial", "AR"] },
+  { prefix: "/financial/invoices", labels: ["Financial", "AR", "Invoices"] },
+  { prefix: "/financial/payments", labels: ["Financial", "AR", "Payments Received"] },
+  { prefix: "/financial/payments-received", labels: ["Financial", "AR", "Payments Received"] },
+  { prefix: "/financial/deposits", labels: ["Financial", "AR", "Deposits"] },
+  { prefix: "/bills", labels: ["Financial", "AP", "Bills"] },
+  { prefix: "/labor/payroll-summary", labels: ["Financial", "AP", "Payroll Summary"] },
+  { prefix: "/labor/payroll", labels: ["Financial", "AP", "Payroll"] },
+  { prefix: "/labor/payments", labels: ["Financial", "AP", "Worker Payments"] },
+  { prefix: "/labor/advances", labels: ["Financial", "AP", "Worker Advances"] },
+  { prefix: "/labor/reimbursements", labels: ["Financial", "AP", "Worker Reimbursements"] },
+  { prefix: "/labor/worker-balances", labels: ["Financial", "AP", "Worker Balances"] },
+  { prefix: "/labor/worker-invoices", labels: ["Financial", "AP", "Worker Invoices"] },
+  { prefix: "/labor/receipts", labels: ["Financial", "AP", "Worker Receipts"] },
+  { prefix: "/materials/catalog", labels: ["Projects", "Material Catalog"] },
+  { prefix: "/system/backups", labels: ["Settings", "Admin Center", "Backups"] },
+  { prefix: "/settings/system-health", labels: ["Settings", "Admin Center", "System Health"] },
+  { prefix: "/system-health", labels: ["Settings", "Admin Center", "System Health"] },
+  { prefix: "/system-metrics", labels: ["Settings", "Admin Center", "Metrics"] },
+  { prefix: "/system-logs", labels: ["Settings", "Admin Center", "Logs"] },
+  { prefix: "/backups", labels: ["Settings", "Admin Center", "Backups"] },
+] as const satisfies readonly { prefix: string; labels: readonly string[] }[];
+
 /** When under /labor, "payments" shows as "Worker Payments". */
 function getBreadcrumbLabel(segment: string, pathSegments: string[]): string {
   const lower = segment.toLowerCase();
@@ -107,10 +143,31 @@ function getBreadcrumbLabel(segment: string, pathSegments: string[]): string {
   );
 }
 
+function findLogicalBreadcrumbRule(path: string) {
+  return LOGICAL_BREADCRUMB_RULES.find(
+    (rule) => path === rule.prefix || path.startsWith(`${rule.prefix}/`)
+  );
+}
+
 function buildBreadcrumbs(pathname: string, overrides: Map<string, string>): string[] {
   const path = pathname.split("?")[0].split("#")[0];
   const parts = path.split("/").filter(Boolean);
   if (parts.length === 0) return ["Dashboard"];
+  const logicalRule = findLogicalBreadcrumbRule(path);
+  if (logicalRule) {
+    const prefixPartCount = logicalRule.prefix.split("/").filter(Boolean).length;
+    const rest = parts.slice(prefixPartCount);
+    return [
+      ...logicalRule.labels,
+      ...rest.map((p, i) => {
+        const segmentIndex = prefixPartCount + i;
+        const key = `${path}:${segmentIndex}`;
+        const override = overrides.get(key);
+        if (override) return override;
+        return getBreadcrumbLabel(p, parts);
+      }),
+    ];
+  }
   return parts.map((p, i) => {
     const key = `${path}:${i}`;
     const override = overrides.get(key);
