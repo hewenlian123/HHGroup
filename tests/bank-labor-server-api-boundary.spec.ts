@@ -200,6 +200,7 @@ test.describe("bank and labor server API boundary", () => {
   }) => {
     const db = serviceRoleClient();
     const tag = `rls-${Date.now()}`;
+    const workerName = `[E2E] Time Worker ${tag}`;
     const { data: project, error: projectError } = await db
       .from("projects")
       .insert({ name: `[E2E] Time Entries ${tag}`, status: "Active", budget: 0, spent: 0 })
@@ -210,7 +211,7 @@ test.describe("bank and labor server API boundary", () => {
     const { data: worker, error: workerError } = await db
       .from("workers")
       .insert({
-        name: `[E2E] Time Worker ${tag}`,
+        name: workerName,
         half_day_rate: 100,
         daily_rate: 100,
         status: "active",
@@ -263,6 +264,22 @@ test.describe("bank and labor server API boundary", () => {
       expect(Number(createdWithOvertime?.labor_cost_snapshot)).toBe(50);
       expect(Number.isFinite(Number(createdWithOvertime?.cost_amount))).toBe(true);
       expect(Number.isFinite(Number(createdWithOvertime?.labor_cost_snapshot))).toBe(true);
+
+      const plainWorkDate = isoDateOffset(-3);
+      const createPlainResponse = await context.request.post("/api/labor/entries", {
+        data: {
+          projectId: project!.id,
+          workDate: plainWorkDate,
+          rows: [{ workerId: worker!.id, morning: true, afternoon: true }],
+        },
+      });
+      expect(createPlainResponse.status()).toBe(200);
+      const createPlainBody = (await createPlainResponse.json()) as {
+        entries?: Array<{ id?: string }>;
+      };
+      const plainEntryId = createPlainBody.entries?.[0]?.id;
+      expect(plainEntryId).toBeTruthy();
+      entryIds.push(plainEntryId!);
 
       const workDate = isoDateOffset(-1);
       const createResponse = await context.request.post("/api/labor/entries", {
@@ -364,6 +381,66 @@ test.describe("bank and labor server API boundary", () => {
       await expect(dialog.getByLabel("Overtime Fixed Amount")).toHaveValue("60");
       await expect(page.getByText(/ot_hours=|ot_amount=/)).toHaveCount(0);
       await page.close();
+
+      const laborPage = await context.newPage();
+      await laborPage.goto("/labor");
+      await expect(laborPage.getByRole("heading", { name: "Daily Labor" })).toBeVisible();
+      await laborPage.locator("select").nth(0).selectOption(plainWorkDate.slice(0, 7));
+      await expect(laborPage.locator(`select option[value="${worker!.id}"]`)).toHaveCount(1, {
+        timeout: 30_000,
+      });
+      await laborPage.locator("select").nth(2).selectOption(worker!.id);
+
+      const dailyEntries = laborPage.locator("section").filter({ hasText: /Daily entries/i });
+      const dailyEntryDateRow = dailyEntries.getByRole("button").filter({ hasText: /entries/i });
+      await expect(dailyEntryDateRow.first()).toBeVisible({ timeout: 30_000 });
+      await dailyEntryDateRow.first().click();
+      const laborEditButton = dailyEntries.locator('button[aria-label="Edit"]').first();
+      await expect(laborEditButton).toBeVisible();
+      const laborDialog = laborPage.getByRole("dialog").filter({ hasText: "Edit Entry" });
+      await laborEditButton.click({ force: true });
+      if (!(await laborDialog.isVisible({ timeout: 1000 }).catch(() => false))) {
+        await laborEditButton.evaluate((node) => (node as HTMLButtonElement).click());
+      }
+      await expect(laborDialog).toBeVisible({ timeout: 10_000 });
+      await expect(laborDialog.getByTestId("labor-edit-session")).toHaveValue("full_day");
+      await expect(laborDialog.getByLabel("Overtime Hours")).toHaveCount(0);
+      await expect(laborDialog.getByLabel("Overtime Fixed Amount")).toHaveCount(0);
+      await expect(laborDialog.getByTestId("labor-edit-advanced-toggle")).toHaveAttribute(
+        "aria-expanded",
+        "false"
+      );
+      await expect(laborDialog.getByLabel("Override Entry Amount")).toHaveCount(0);
+
+      await laborDialog.getByTestId("labor-edit-session").selectOption("morning");
+      await expect(laborDialog.getByLabel("Overtime Hours")).toHaveCount(0);
+      await laborDialog.getByTestId("labor-edit-session").selectOption("overtime");
+      await expect(laborDialog.getByLabel("Overtime Hours")).toBeVisible();
+      await expect(laborDialog.getByLabel("Overtime Fixed Amount")).toBeVisible();
+      await laborDialog.getByLabel("Overtime Hours").fill("2");
+      await laborDialog.getByLabel("Overtime Fixed Amount").fill("60");
+      await expect(laborPage.getByText(/ot_hours=|ot_amount=/)).toHaveCount(0);
+      await laborDialog.getByRole("button", { name: /^Save Changes$/i }).click();
+      await expect(laborDialog).toBeHidden({ timeout: 30_000 });
+
+      await expect(laborEditButton).toBeVisible({ timeout: 30_000 });
+      await laborEditButton.click({ force: true });
+      if (!(await laborDialog.isVisible({ timeout: 1000 }).catch(() => false))) {
+        await laborEditButton.evaluate((node) => (node as HTMLButtonElement).click());
+      }
+      await expect(laborDialog).toBeVisible({ timeout: 10_000 });
+      await expect(laborDialog.getByTestId("labor-edit-session")).toHaveValue("overtime");
+      await expect(laborDialog.getByLabel("Overtime Hours")).toHaveValue("2");
+      await expect(laborDialog.getByLabel("Overtime Fixed Amount")).toHaveValue("60");
+      await laborPage.setViewportSize({ width: 390, height: 844 });
+      await expect(laborDialog).toBeVisible();
+      await expect(laborDialog.getByLabel("Overtime Hours")).toBeVisible();
+      await expect(laborDialog.getByLabel("Overtime Fixed Amount")).toBeVisible();
+      const noMobileOverflow = await laborPage.evaluate(
+        () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
+      );
+      expect(noMobileOverflow).toBe(true);
+      await laborPage.close();
 
       for (const id of entryIds) {
         const deleteResponse = await context.request.delete(
