@@ -196,10 +196,12 @@ async function updateSessionEntry(
   const session =
     toSession(body.session) ??
     (row.morning && row.afternoon ? "full_day" : row.morning ? "morning" : "afternoon");
+  const workDate = safeString(body.workDate ?? body.work_date) || row.work_date;
+  const normalizedWorkDate = workDate.slice(0, 10);
   await ensureNotDuplicateSession(supabase, {
     entryId: id,
     workerId: row.worker_id,
-    workDate: row.work_date,
+    workDate: normalizedWorkDate,
     session,
   });
 
@@ -215,7 +217,7 @@ async function updateSessionEntry(
     : parseLaborOvertimeAmountFromNotes(row.notes);
   const snapshot = await buildLaborEntryRateSnapshotWithClient(supabase, {
     workerId: row.worker_id,
-    workDate: row.work_date,
+    workDate: normalizedWorkDate,
     hours,
     morning: flags.morning,
     afternoon: flags.afternoon,
@@ -224,6 +226,7 @@ async function updateSessionEntry(
   const notesSource = Object.prototype.hasOwnProperty.call(body, "notes") ? body.notes : row.notes;
   const payload: Record<string, unknown> = {
     project_id: safeString(body.projectId ?? body.project_id) || null,
+    work_date: normalizedWorkDate,
     hours,
     cost_amount: amount,
     notes: hasOvertime
