@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import { addApBillPayment, getApBillById } from "@/lib/ap-bills-db";
 import {
@@ -94,6 +95,22 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       supabase
     );
     const updatedBill = await getApBillById(id, supabase);
+    const billForRevalidation = updatedBill ?? bill;
+    revalidatePath(`/bills/${id}`);
+    revalidatePath("/bills");
+    if (billForRevalidation.project_id) {
+      revalidatePath(`/projects/${billForRevalidation.project_id}`);
+      revalidatePath(`/projects/${billForRevalidation.project_id}/subcontracts`);
+      if (billForRevalidation.subcontract_id) {
+        revalidatePath(
+          `/projects/${billForRevalidation.project_id}/subcontracts/${billForRevalidation.subcontract_id}`
+        );
+      }
+    }
+    if (billForRevalidation.subcontractor_id) {
+      revalidatePath(`/subcontractors/${billForRevalidation.subcontractor_id}`);
+      revalidatePath("/subcontractors");
+    }
     return NextResponse.json(
       { ok: true, payment, bill: updatedBill ?? bill },
       { headers: NO_CACHE_HEADERS }

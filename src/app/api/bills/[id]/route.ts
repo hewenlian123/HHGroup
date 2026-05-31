@@ -151,6 +151,10 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
         notes: body.notes === undefined ? undefined : stringOrNull(body.notes),
         attachment_url:
           body.attachment_url === undefined ? undefined : stringOrNull(body.attachment_url),
+        subcontractor_id:
+          body.subcontractor_id === undefined ? undefined : stringOrNull(body.subcontractor_id),
+        subcontract_id:
+          body.subcontract_id === undefined ? undefined : stringOrNull(body.subcontract_id),
         status: billStatus(body.status),
       },
       supabase

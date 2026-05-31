@@ -23,6 +23,7 @@ import * as subcontractorsDb from "../subcontractors-db";
 import * as subcontractsDb from "../subcontracts-db";
 import * as subcontractBillsDb from "../subcontract-bills-db";
 import * as subcontractPaymentsDb from "../subcontract-payments-db";
+import * as subcontractPaymentScheduleDb from "../subcontract-payment-schedule-db";
 import * as documentsDb from "../documents-db";
 import * as projectTasksDb from "../project-tasks-db";
 import * as projectScheduleDb from "../project-schedule-db";
@@ -144,6 +145,14 @@ export type {
   SubcontractDraft,
 } from "../subcontracts-db";
 export type { SubcontractBillRow, SubcontractBillDraft } from "../subcontract-bills-db";
+export type {
+  SubcontractPaymentScheduleDraft,
+  CreateApBillFromScheduleResult,
+} from "../subcontract-payment-schedule-db";
+export type {
+  SubcontractPaymentScheduleRow,
+  SubcontractScheduleStatus,
+} from "../subcontract-ap-linkage";
 export type {
   DocumentRow,
   DocumentWithProject,
@@ -1095,6 +1104,12 @@ export async function upsertCloseoutCompletion(
 export async function getApBills(filters: import("../ap-bills-db").ApBillsFilters = {}) {
   return apBillsDb.getApBills(filters);
 }
+export async function getApBillsBySubcontractIds(
+  subcontractIds: string[],
+  explicitClient?: Parameters<typeof apBillsDb.getApBillsBySubcontractIds>[1]
+) {
+  return apBillsDb.getApBillsBySubcontractIds(subcontractIds, explicitClient);
+}
 export async function getApBillById(id: string) {
   return apBillsDb.getApBillById(id);
 }
@@ -1581,6 +1596,10 @@ export async function getSubcontractsWithDetailsAll(): Promise<
     project_id: string;
     subcontractor_name: string;
     project_name: string;
+    status: import("../subcontracts-db").SubcontractRow["status"];
+    cost_code: string | null;
+    contract_amount: number;
+    description: string | null;
   }[]
 > {
   return subcontractsDb.getSubcontractsWithDetailsAll();
@@ -1662,6 +1681,42 @@ export async function getBillsBySubcontractIds(
   subcontractIds: string[]
 ): Promise<import("../subcontract-bills-db").SubcontractBillRow[]> {
   return subcontractBillsDb.getBillsBySubcontractIds(subcontractIds);
+}
+
+export async function getPaymentScheduleBySubcontractId(
+  subcontractId: string,
+  explicitClient?: Parameters<
+    typeof subcontractPaymentScheduleDb.getPaymentScheduleBySubcontractId
+  >[1]
+): Promise<import("../subcontract-ap-linkage").SubcontractPaymentScheduleRow[]> {
+  return subcontractPaymentScheduleDb.getPaymentScheduleBySubcontractId(
+    subcontractId,
+    explicitClient
+  );
+}
+
+export async function getPaymentScheduleBySubcontractIds(
+  subcontractIds: string[],
+  explicitClient?: Parameters<
+    typeof subcontractPaymentScheduleDb.getPaymentScheduleBySubcontractIds
+  >[1]
+): Promise<import("../subcontract-ap-linkage").SubcontractPaymentScheduleRow[]> {
+  return subcontractPaymentScheduleDb.getPaymentScheduleBySubcontractIds(
+    subcontractIds,
+    explicitClient
+  );
+}
+
+export async function insertPaymentScheduleItem(
+  draft: import("../subcontract-payment-schedule-db").SubcontractPaymentScheduleDraft
+): Promise<import("../subcontract-ap-linkage").SubcontractPaymentScheduleRow> {
+  return subcontractPaymentScheduleDb.insertPaymentScheduleItem(draft);
+}
+
+export async function createApBillFromScheduleItem(
+  scheduleId: string
+): Promise<import("../subcontract-payment-schedule-db").CreateApBillFromScheduleResult> {
+  return subcontractPaymentScheduleDb.createApBillFromScheduleItem(scheduleId);
 }
 
 export async function getPaymentsSummaryAll(): Promise<

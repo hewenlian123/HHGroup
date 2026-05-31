@@ -8,8 +8,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 const BILLS_TABLE = "ap_bills";
-const AP_BILLS_SELECT =
+const AP_BILLS_BASE_SELECT =
   "id, bill_no, bill_type, vendor_name, project_id, issue_date, due_date, amount, paid_amount, balance_amount, status, category, notes, attachment_url, created_at, updated_at, created_by, projects(name)";
+const AP_BILLS_LINKED_SELECT = `${AP_BILLS_BASE_SELECT}, subcontractor_id, subcontract_id, subcontractors(name), subcontracts(cost_code, description, project_id)`;
 
 export const AP_BILL_TYPES = [
   "Vendor",
@@ -43,9 +44,16 @@ export type ApBillRow = {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  subcontractor_id: string | null;
+  subcontract_id: string | null;
 };
 
-export type ApBillWithProject = ApBillRow & { project_name: string | null };
+export type ApBillWithProject = ApBillRow & {
+  project_name: string | null;
+  subcontractor_name: string | null;
+  subcontract_cost_code: string | null;
+  subcontract_description: string | null;
+};
 
 export type ApBillPaymentRow = {
   id: string;
@@ -81,6 +89,22 @@ function client(explicitClient?: SupabaseLike) {
 function isMissingTable(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /schema cache|relation.*does not exist|could not find the table/i.test(m);
+}
+
+function isMissingLinkedApColumns(err: { message?: string; code?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return (
+    err?.code === "42703" ||
+    err?.code === "PGRST200" ||
+    /subcontractor_id|subcontract_id|relationship.*subcontract|schema cache/i.test(m)
+  );
+}
+
+function omitSubcontractLinkColumns<T extends Record<string, unknown>>(payload: T) {
+  const fallback = { ...payload };
+  delete fallback.subcontractor_id;
+  delete fallback.subcontract_id;
+  return fallback;
 }
 
 function toNum(v: unknown): number {
@@ -202,6 +226,24 @@ function mapBill(r: Record<string, unknown>): ApBillRow {
     created_at: (r.created_at as string) ?? "",
     updated_at: (r.updated_at as string) ?? "",
     created_by: (r.created_by as string | null) ?? null,
+    subcontractor_id: (r.subcontractor_id as string | null) ?? null,
+    subcontract_id: (r.subcontract_id as string | null) ?? null,
+  };
+}
+
+function mapBillWithProject(r: Record<string, unknown>): ApBillWithProject {
+  const proj = r.projects as { name?: string } | null;
+  const subcontractor = r.subcontractors as { name?: string } | null;
+  const subcontract = r.subcontracts as {
+    cost_code?: string | null;
+    description?: string | null;
+  } | null;
+  return {
+    ...mapBill(r),
+    project_name: proj?.name ?? null,
+    subcontractor_name: subcontractor?.name ?? null,
+    subcontract_cost_code: subcontract?.cost_code ?? null,
+    subcontract_description: subcontract?.description ?? null,
   };
 }
 
@@ -246,19 +288,28 @@ export async function getApBillById(
   explicitClient?: SupabaseLike
 ): Promise<ApBillWithProject | null> {
   const c = client(explicitClient);
-  const { data: row, error } = await c
+  let { data: row, error } = await c
     .from(BILLS_TABLE)
-    .select(AP_BILLS_SELECT)
+    .select(AP_BILLS_LINKED_SELECT)
     .eq("id", id)
     .maybeSingle();
+  if (error) {
+    if (isMissingLinkedApColumns(error)) {
+      const retry = await c
+        .from(BILLS_TABLE)
+        .select(AP_BILLS_BASE_SELECT)
+        .eq("id", id)
+        .maybeSingle();
+      row = retry.data as typeof row;
+      error = retry.error;
+    }
+  }
   if (error) {
     if (isMissingTable(error)) return null;
     throw new Error(error.message ?? "Failed to load bill.");
   }
   if (!row) return null;
-  const r = row as Record<string, unknown>;
-  const proj = r.projects as { name?: string } | null;
-  return { ...mapBill(r), project_name: proj?.name ?? null };
+  return mapBillWithProject(row as Record<string, unknown>);
 }
 
 /** List bills with optional filters and project name join. */
@@ -267,7 +318,10 @@ export async function getApBills(
   explicitClient?: SupabaseLike
 ): Promise<ApBillWithProject[]> {
   const c = client(explicitClient);
-  let q = c.from(BILLS_TABLE).select(AP_BILLS_SELECT).order("created_at", { ascending: false });
+  let q = c
+    .from(BILLS_TABLE)
+    .select(AP_BILLS_LINKED_SELECT)
+    .order("created_at", { ascending: false });
 
   if (filters.status) q = q.eq("status", filters.status);
   if (filters.bill_type) q = q.eq("bill_type", filters.bill_type);
@@ -279,15 +333,30 @@ export async function getApBills(
     q = q.lt("due_date", today).neq("status", "Paid").neq("status", "Void");
   }
 
-  const { data: rows, error } = await q;
+  let { data: rows, error } = await q;
+  if (error && isMissingLinkedApColumns(error)) {
+    let retry = c
+      .from(BILLS_TABLE)
+      .select(AP_BILLS_BASE_SELECT)
+      .order("created_at", { ascending: false });
+    if (filters.status) retry = retry.eq("status", filters.status);
+    if (filters.bill_type) retry = retry.eq("bill_type", filters.bill_type);
+    if (filters.project_id) retry = retry.eq("project_id", filters.project_id);
+    if (filters.date_from) retry = retry.gte("due_date", filters.date_from.slice(0, 10));
+    if (filters.date_to) retry = retry.lte("due_date", filters.date_to.slice(0, 10));
+    if (filters.overdue_only) {
+      const today = new Date().toISOString().slice(0, 10);
+      retry = retry.lt("due_date", today).neq("status", "Paid").neq("status", "Void");
+    }
+    const retryResult = await retry;
+    rows = retryResult.data as typeof rows;
+    error = retryResult.error;
+  }
   if (error) {
     if (isMissingTable(error)) return [];
     throw new Error(error.message ?? "Failed to load bills.");
   }
-  let list = (rows ?? []).map((r: Record<string, unknown>) => {
-    const proj = r.projects as { name?: string } | null;
-    return { ...mapBill(r), project_name: proj?.name ?? null };
-  });
+  let list = (rows ?? []).map((r: Record<string, unknown>) => mapBillWithProject(r));
   if (filters.search?.trim()) {
     const q = filters.search.trim().toLowerCase();
     list = list.filter(
@@ -308,25 +377,51 @@ export async function getApBillsByProject(
   return getApBills({ project_id: projectId }, explicitClient);
 }
 
+/** Get AP bills linked to subcontract commitments. */
+export async function getApBillsBySubcontractIds(
+  subcontractIds: string[],
+  explicitClient?: SupabaseLike
+): Promise<ApBillWithProject[]> {
+  if (subcontractIds.length === 0) return [];
+  const c = client(explicitClient);
+  const { data: rows, error } = await c
+    .from(BILLS_TABLE)
+    .select(AP_BILLS_LINKED_SELECT)
+    .in("subcontract_id", subcontractIds)
+    .order("created_at", { ascending: false });
+  if (error && isMissingLinkedApColumns(error)) return [];
+  if (error) {
+    if (isMissingTable(error)) return [];
+    throw new Error(error.message ?? "Failed to load subcontract AP bills.");
+  }
+  return (rows ?? []).map((r: Record<string, unknown>) => mapBillWithProject(r));
+}
+
 /** Recent bills for dashboard activity feed. Ordered by created_at desc, limit. */
 export async function getApBillsRecent(
   limit: number,
   explicitClient?: SupabaseLike
 ): Promise<ApBillWithProject[]> {
   const c = client(explicitClient);
-  const { data: rows, error } = await c
+  let { data: rows, error } = await c
     .from(BILLS_TABLE)
-    .select(AP_BILLS_SELECT)
+    .select(AP_BILLS_LINKED_SELECT)
     .order("created_at", { ascending: false })
     .limit(Math.max(1, Math.min(limit, 100)));
+  if (error && isMissingLinkedApColumns(error)) {
+    const retry = await c
+      .from(BILLS_TABLE)
+      .select(AP_BILLS_BASE_SELECT)
+      .order("created_at", { ascending: false })
+      .limit(Math.max(1, Math.min(limit, 100)));
+    rows = retry.data as typeof rows;
+    error = retry.error;
+  }
   if (error) {
     if (isMissingTable(error)) return [];
     throw new Error(error.message ?? "Failed to load recent bills.");
   }
-  return (rows ?? []).map((r: Record<string, unknown>) => {
-    const proj = r.projects as { name?: string } | null;
-    return { ...mapBill(r), project_name: proj?.name ?? null };
-  });
+  return (rows ?? []).map((r: Record<string, unknown>) => mapBillWithProject(r));
 }
 
 /** Get payments for a bill. */
@@ -361,6 +456,8 @@ export async function createApBill(
     amount: number;
     category?: string | null;
     notes?: string | null;
+    subcontractor_id?: string | null;
+    subcontract_id?: string | null;
   },
   explicitClient?: SupabaseLike
 ): Promise<ApBillRow> {
@@ -382,8 +479,16 @@ export async function createApBill(
     status: "Draft" as const,
     category: draft.category?.trim() || null,
     notes: draft.notes?.trim() || null,
+    subcontractor_id: draft.subcontractor_id || null,
+    subcontract_id: draft.subcontract_id || null,
   };
-  const { data: row, error } = await c.from(BILLS_TABLE).insert(payload).select("*").single();
+  let { data: row, error } = await c.from(BILLS_TABLE).insert(payload).select("*").single();
+  if (error && isMissingLinkedApColumns(error)) {
+    const fallback = omitSubcontractLinkColumns(payload);
+    const retry = await c.from(BILLS_TABLE).insert(fallback).select("*").single();
+    row = retry.data;
+    error = retry.error;
+  }
   if (error) {
     if (isMissingTable(error))
       throw new Error("Bills table not found. Please ensure the bills table exists in Supabase.");
@@ -407,6 +512,8 @@ export async function updateApBill(
     notes: string | null;
     attachment_url: string | null;
     status: ApBillStatus;
+    subcontractor_id: string | null;
+    subcontract_id: string | null;
   }>,
   explicitClient?: SupabaseLike
 ): Promise<ApBillRow | null> {
@@ -436,18 +543,27 @@ export async function updateApBill(
   if (patch.notes !== undefined) updates.notes = patch.notes?.trim() || null;
   if (patch.attachment_url !== undefined)
     updates.attachment_url = patch.attachment_url?.trim() || null;
+  if (patch.subcontractor_id !== undefined)
+    updates.subcontractor_id = patch.subcontractor_id || null;
+  if (patch.subcontract_id !== undefined) updates.subcontract_id = patch.subcontract_id || null;
   if (patch.status !== undefined)
     updates.status = AP_BILL_STATUSES.includes(patch.status) ? patch.status : "Draft";
   if (Object.keys(updates).length === 0)
     return getApBillById(id, explicitClient).then((b) =>
       b ? mapBill(b as unknown as Record<string, unknown>) : null
     );
-  const { data: row, error } = await c
+  let { data: row, error } = await c
     .from(BILLS_TABLE)
     .update(updates)
     .eq("id", id)
     .select("*")
     .maybeSingle();
+  if (error && isMissingLinkedApColumns(error)) {
+    const fallback = omitSubcontractLinkColumns(updates);
+    const retry = await c.from(BILLS_TABLE).update(fallback).eq("id", id).select("*").maybeSingle();
+    row = retry.data;
+    error = retry.error;
+  }
   if (error) {
     if (isMissingTable(error)) return null;
     throw new Error(error.message ?? "Failed to update bill.");

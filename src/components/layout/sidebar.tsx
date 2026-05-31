@@ -128,7 +128,7 @@ const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavI
     items: [
       { href: "/workers", label: "Worker Profile", icon: Users },
       { href: "/workers/summary", label: "Worker Summary", icon: BarChart2 },
-      { href: "/labor/subcontractors", label: "Vendors", icon: Users },
+      { href: "/financial/vendors", label: "Vendors", icon: Users },
       { href: "/subcontractors", label: "Subcontractors", icon: Users },
     ],
   },

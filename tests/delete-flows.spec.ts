@@ -94,31 +94,13 @@ test.describe("Delete UX: Delete control visible without hover (existing rows)",
     await expectDeleteControlVisibleWithoutHover(page, del, 8000);
   });
 
-  test("labor subcontractors: first data row Delete is immediately visible", async ({ page }) => {
+  test("legacy labor subcontractors route redirects to canonical subcontractors", async ({
+    page,
+  }) => {
     await page.goto(`${BASE}/labor/subcontractors`);
     await page.waitForLoadState("domcontentloaded");
-    if (
-      await page
-        .getByText(/Supabase is not configured/i)
-        .isVisible()
-        .catch(() => false)
-    ) {
-      test.skip(true, "Supabase not configured.");
-    }
-    await expect(page.getByText(/Loading/i).first())
-      .not.toBeVisible({ timeout: LIST_LOAD_MS })
-      .catch(() => undefined);
-    const dataRow = page
-      .locator("tbody tr")
-      .filter({ hasNotText: /No subcontractors yet/i })
-      .first();
-    await expectVisibleOrSkip(
-      dataRow,
-      "No subcontractor rows or list still loading.",
-      LIST_LOAD_MS
-    );
-    const del = dataRow.getByRole("button", { name: /^Delete$/ });
-    await expectDeleteControlVisibleWithoutHover(page, del, 1200);
+    await expect(page).toHaveURL(/\/subcontractors(?:[/?#]|$)/, { timeout: LIST_LOAD_MS });
+    await expect(page.locator("body")).not.toContainText("Internal Server Error");
   });
 
   test("bills list: draft trash opens confirm quickly then cancel (no delete)", async ({

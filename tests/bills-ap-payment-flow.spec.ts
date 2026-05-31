@@ -216,14 +216,11 @@ async function expectProjectBillsAndNoActualCost(
   page: Page,
   params: { billNos: string[]; projectId: string; vendors: string[] }
 ): Promise<void> {
-  await page.goto(`${BASE}/projects/${params.projectId}`);
-  await page.getByRole("tab", { name: "Cost" }).click();
+  await page.goto(`${BASE}/projects/${params.projectId}?tab=bills`);
   await expect(page.getByTestId("snapshot-cost-actual")).toContainText(/\$0(?:\.00)?/, {
     timeout: LOAD_MS,
   });
-  await page.getByRole("button", { name: /More/i }).click();
-  await page.getByRole("menuitem", { name: "Bills" }).click();
-  await expect(page.getByText("Bills (AP)")).toBeVisible({ timeout: LOAD_MS });
+  await expect(page.getByText("Bills (AP)").first()).toBeVisible({ timeout: LOAD_MS });
   for (const vendor of params.vendors) {
     await expect(page.getByText(vendor).first()).toBeVisible({ timeout: LOAD_MS });
   }

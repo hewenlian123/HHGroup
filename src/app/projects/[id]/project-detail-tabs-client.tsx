@@ -1731,6 +1731,54 @@ export function ProjectDetailTabsClient({
                   </Link>
                 </div>
               </ExecutiveCard>
+
+              <ExecutiveCard title="Bills (AP)">
+                <SectionHeader
+                  label="Bills (AP)"
+                  className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
+                />
+                <Divider />
+                {bills.length === 0 ? (
+                  <p className="py-6 text-sm text-[var(--neo-text-secondary)]">
+                    No bills for this project.
+                  </p>
+                ) : (
+                  <div className="airtable-table-wrap airtable-table-wrap--ruled mt-3 overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)]">
+                    <div className="airtable-table-scroll">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                              Vendor
+                            </th>
+                            <th className="h-8 px-3 text-left align-middle text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+                              Bill no
+                            </th>
+                            <th className="h-8 px-3 text-right align-middle font-mono text-xs font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] tabular-nums">
+                              Amount
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bills.map((b) => (
+                            <tr key={b.id} className={listTableRowStaticClassName}>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle text-[13px] font-medium">
+                                {b.vendor_name ?? "—"}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 align-middle font-mono text-[13px] tabular-nums">
+                                {b.bill_no ?? "—"}
+                              </td>
+                              <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle font-mono text-[13px] tabular-nums">
+                                ${Number(b.amount ?? 0).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </ExecutiveCard>
             </TabsContent>
 
             <TabsContent value="documents" className="mt-4 space-y-4">
