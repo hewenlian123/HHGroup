@@ -85,6 +85,7 @@ function one<T>(value: T | T[] | null | undefined): T | null {
 type ApBillApiRow = {
   id: string;
   bill_no: string | null;
+  project_id?: string | null;
   issue_date: string | null;
   due_date: string | null;
   status: string | null;
@@ -159,12 +160,7 @@ export function ProjectDetailClient({ id }: { id: string }) {
         .select("id,name,status,budget,spent,created_at,updated_at")
         .eq("id", id)
         .maybeSingle(),
-      supabase
-        .from("ap_bills")
-        .select("id,bill_no,issue_date,due_date,status,amount,balance_amount,vendor_name")
-        .eq("project_id", id)
-        .order("issue_date", { ascending: false })
-        .limit(25),
+      fetch(`/api/bills?project_id=${encodeURIComponent(id)}`, { cache: "no-store" }),
       supabase
         .from("project_subcontractors")
         .select("id,role,subcontractors(id,name,active)")
@@ -195,11 +191,14 @@ export function ProjectDetailClient({ id }: { id: string }) {
       return;
     }
 
-    const bills: BillRow[] = billsRes.error
-      ? tableMissing(billsRes.error)
-        ? []
-        : []
-      : ((billsRes.data ?? []) as unknown as ApBillApiRow[]).map(mapApBillToBillRow);
+    const bills: BillRow[] = billsRes.ok
+      ? (
+          ((await billsRes.json().catch(() => null)) as { bills?: ApBillApiRow[] } | null)?.bills ??
+          []
+        )
+          .slice(0, 25)
+          .map(mapApBillToBillRow)
+      : [];
 
     const subs: ProjectSubcontractorRow[] = subsRes.error
       ? tableMissing(subsRes.error)

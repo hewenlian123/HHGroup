@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ApBillWithProject } from "@/lib/data";
 import { AP_BILL_TYPES, AP_BILL_STATUSES } from "@/lib/data";
-import { deleteBillDraftAction, voidBillAction } from "./actions";
 import { MoreHorizontal, Search } from "lucide-react";
 import {
   MobileEmptyState,
@@ -80,6 +79,11 @@ type Props = {
   projects: { id: string; name: string }[];
 };
 
+async function readApiMessage(response: Response, fallback: string): Promise<string> {
+  const body = (await response.json().catch(() => null)) as { message?: unknown } | null;
+  return typeof body?.message === "string" ? body.message : fallback;
+}
+
 export function BillsListClient({ bills, summary, projects }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -87,6 +91,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   React.useEffect(() => setLocalBills(bills), [bills]);
   const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [actionError, setActionError] = React.useState<string | null>(null);
 
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status") ?? "";
@@ -118,12 +123,19 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   );
 
   const handleVoid = React.useCallback(async (id: string) => {
-    const result = await voidBillAction(id);
-    if (result.ok) {
+    setActionError(null);
+    const response = await fetch(`/api/bills/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "void" }),
+    });
+    if (response.ok) {
       setVoidConfirmId(null);
       setLocalBills((prev) =>
         prev.map((b) => (b.id === id ? { ...b, status: "Void" as const } : b))
       );
+    } else {
+      setActionError(await readApiMessage(response, "Failed to void bill."));
     }
   }, []);
 
@@ -133,8 +145,12 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       snapshot = prev;
       return prev.filter((b) => b.id !== id);
     });
-    const result = await deleteBillDraftAction(id);
-    if (!result.ok && snapshot) setLocalBills(snapshot);
+    setActionError(null);
+    const response = await fetch(`/api/bills/${encodeURIComponent(id)}`, { method: "DELETE" });
+    if (!response.ok) {
+      if (snapshot) setLocalBills(snapshot);
+      setActionError(await readApiMessage(response, "Failed to delete bill."));
+    }
   }, []);
 
   const activeDrawerFilterCount =
@@ -262,6 +278,15 @@ export function BillsListClient({ bills, summary, projects }: Props) {
           Done
         </Button>
       </MobileFilterSheet>
+
+      {actionError ? (
+        <p
+          className="rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-[12px] font-medium text-rose-200"
+          role="alert"
+        >
+          {actionError}
+        </p>
+      ) : null}
 
       <section className="hidden min-w-0 grid-cols-2 gap-3 md:grid lg:grid-cols-4">
         <KpiTile label="Outstanding" value={formatCurrency(summary.totalOutstanding)} />

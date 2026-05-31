@@ -13,7 +13,6 @@ import {
   neoFormFieldClassName,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
-import { createApBill } from "@/lib/data";
 import { AP_BILL_TYPES } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { BillCategoryCombobox } from "../bill-category-combobox";
@@ -31,6 +30,11 @@ type Props = {
   projects: { id: string; name: string }[];
   dataLoadWarning?: string | null;
 };
+
+async function readApiMessage(response: Response, fallback: string): Promise<string> {
+  const body = (await response.json().catch(() => null)) as { message?: unknown } | null;
+  return typeof body?.message === "string" ? body.message : fallback;
+}
 
 export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
   const router = useRouter();
@@ -62,17 +66,27 @@ export function NewBillClient({ projects, dataLoadWarning = null }: Props) {
     setSubmitting(true);
     setError(null);
     try {
-      const bill = await createApBill({
-        vendor_name: vendor,
-        bill_type: billType,
-        project_id: projectId || null,
-        issue_date: issueDate || null,
-        due_date: dueDate || null,
-        amount: amt,
-        category: category.trim() || null,
-        notes: notes.trim() || null,
+      const response = await fetch("/api/bills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vendor_name: vendor,
+          bill_type: billType,
+          project_id: projectId || null,
+          issue_date: issueDate || null,
+          due_date: dueDate || null,
+          amount: amt,
+          category: category.trim() || null,
+          notes: notes.trim() || null,
+        }),
       });
-      router.push(`/bills/${bill.id}`);
+      if (!response.ok) {
+        throw new Error(await readApiMessage(response, "Failed to create bill."));
+      }
+      const body = (await response.json()) as { bill?: { id?: unknown } };
+      const id = typeof body.bill?.id === "string" ? body.bill.id : null;
+      if (!id) throw new Error("Failed to create bill.");
+      router.push(`/bills/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create bill.");
     } finally {

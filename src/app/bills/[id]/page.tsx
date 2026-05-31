@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { PageLayout, PageHeader } from "@/components/base";
-import { getApBillById, getApBillPayments } from "@/lib/data";
+import { fetchBillDetailData } from "../bills-api";
 import { BillDetailClient } from "./bill-detail-client";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { billsDetailMaxClass, billsPageWrapClass } from "../bills-ui-styles";
@@ -12,8 +12,9 @@ type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ addPayme
 export default async function BillDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const [bill, payments] = await Promise.all([getApBillById(id), getApBillPayments(id)]);
-  if (!bill) notFound();
+  const detail = await fetchBillDetailData(id);
+  if (!detail) notFound();
+  const { bill, payments } = detail;
 
   return (
     <PageLayout

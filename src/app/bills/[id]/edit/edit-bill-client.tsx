@@ -15,7 +15,6 @@ import {
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { updateApBill } from "@/lib/data";
 import { AP_BILL_TYPES } from "@/lib/data";
 import type { ApBillWithProject } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -35,6 +34,11 @@ type Props = {
   projects: { id: string; name: string }[];
   learnedCategories?: string[];
 };
+
+async function readApiMessage(response: Response, fallback: string): Promise<string> {
+  const body = (await response.json().catch(() => null)) as { message?: unknown } | null;
+  return typeof body?.message === "string" ? body.message : fallback;
+}
 
 export function EditBillClient({ bill, projects, learnedCategories = [] }: Props) {
   const router = useRouter();
@@ -66,18 +70,25 @@ export function EditBillClient({ bill, projects, learnedCategories = [] }: Props
     setSubmitting(true);
     setError(null);
     try {
-      await updateApBill(bill.id, {
-        bill_no: billNo.trim() || null,
-        vendor_name: vendor,
-        bill_type: billType,
-        project_id: projectId || null,
-        issue_date: issueDate || null,
-        due_date: dueDate || null,
-        amount: amt,
-        category: category.trim() || null,
-        notes: notes.trim() || null,
-        attachment_url: attachmentUrl.trim() || null,
+      const response = await fetch(`/api/bills/${encodeURIComponent(bill.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bill_no: billNo.trim() || null,
+          vendor_name: vendor,
+          bill_type: billType,
+          project_id: projectId || null,
+          issue_date: issueDate || null,
+          due_date: dueDate || null,
+          amount: amt,
+          category: category.trim() || null,
+          notes: notes.trim() || null,
+          attachment_url: attachmentUrl.trim() || null,
+        }),
       });
+      if (!response.ok) {
+        throw new Error(await readApiMessage(response, "Failed to update bill."));
+      }
       router.push(`/bills/${bill.id}`);
       syncRouterNonBlocking(router);
     } catch (err) {

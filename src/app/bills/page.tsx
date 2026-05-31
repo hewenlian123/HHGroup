@@ -1,5 +1,5 @@
-import { PageLayout, PageHeader } from "@/components/base";
-import { getApBills, getApBillsSummary, getProjects } from "@/lib/data";
+import { PageLayout, PageHeader, NeoPanel } from "@/components/base";
+import { fetchBillsPageData } from "./bills-api";
 import { BillsListClient } from "./bills-list-client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -27,19 +27,14 @@ export default async function BillsPage({ searchParams }: Props) {
   const sp = await searchParams;
   const filters = {
     search: sp.search ?? undefined,
-    status: (sp.status as import("@/lib/data").ApBillStatus) ?? undefined,
-    bill_type: (sp.bill_type as import("@/lib/data").ApBillType) ?? undefined,
+    status: sp.status ?? undefined,
+    bill_type: sp.bill_type ?? undefined,
     project_id: sp.project_id ?? undefined,
     date_from: sp.date_from ?? undefined,
     date_to: sp.date_to ?? undefined,
-    overdue_only: sp.overdue_only === "1" || sp.overdue_only === "true",
+    overdue_only: sp.overdue_only ?? undefined,
   };
-  const [bills, summary, projects] = await Promise.all([
-    getApBills(filters),
-    getApBillsSummary(),
-    getProjects(),
-  ]);
-  const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }));
+  const { available, message, bills, summary, projects } = await fetchBillsPageData(filters);
 
   return (
     <PageLayout
@@ -59,7 +54,18 @@ export default async function BillsPage({ searchParams }: Props) {
       }
     >
       <div className={billsContentMaxClass}>
-        <BillsListClient bills={bills} summary={summary} projects={projectOptions} />
+        {!available ? (
+          <NeoPanel bodyClassName="px-4 py-5 md:px-6">
+            <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+              Bills/AP is unavailable
+            </p>
+            <p className="mt-1 text-[13px] text-[var(--neo-text-secondary)]">
+              {message ?? "Bills/AP module is not configured in this environment."}
+            </p>
+          </NeoPanel>
+        ) : (
+          <BillsListClient bills={bills} summary={summary} projects={projects} />
+        )}
       </div>
     </PageLayout>
   );
