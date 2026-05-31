@@ -462,9 +462,10 @@ export async function deleteWorker(id: string): Promise<void> {
 
 export async function getLaborAllocatedByProject(
   projectId: string,
-  date?: string
+  date?: string,
+  explicitClient?: SupabaseClient
 ): Promise<number> {
-  const c = client();
+  const c = client(explicitClient);
   let q = c
     .from("labor_entries")
     .select(LABOR_ENTRIES_COLS_WITH_COST)
@@ -1091,8 +1092,11 @@ export async function voidLaborInvoice(id: string): Promise<LaborInvoice | null>
   return getLaborInvoiceById(id);
 }
 
-export async function getLaborInvoiceActualByProject(projectId: string): Promise<number> {
-  const list = await getLaborInvoices();
+export async function getLaborInvoiceActualByProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const list = await getLaborInvoices(explicitClient);
   let total = 0;
   for (const inv of list) {
     if (inv.status !== "confirmed") continue;
