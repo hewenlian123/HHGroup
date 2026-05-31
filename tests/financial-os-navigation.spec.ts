@@ -62,6 +62,12 @@ const financialRoutes: FinancialRoute[] = [
     activeLabel: "Receipt Inbox",
   },
   {
+    label: "Worker Receipts",
+    path: "/labor/receipts",
+    heading: /^(Worker Receipt Uploads|Receipt Uploads)$/i,
+    activeLabel: "Worker Receipts",
+  },
+  {
     label: "Accounts",
     path: "/financial/accounts",
     heading: /^Accounts$/i,
@@ -72,6 +78,12 @@ const financialRoutes: FinancialRoute[] = [
     path: "/financial/bank",
     heading: /^Bank Reconcile$/i,
     activeLabel: "Bank Transactions",
+  },
+  {
+    label: "Cash Flow",
+    path: "/dashboard/cashflow",
+    heading: /^Cashflow$/i,
+    activeLabel: "Cash Flow",
   },
   {
     label: "Commission Payments",
@@ -140,10 +152,12 @@ async function expectFinancialGroupsVisible(page: Page) {
     "Expenses",
     "Receipt Inbox",
     "Reimbursements",
+    "Worker Receipts",
     "Commission Payments",
     "Cash",
     "Accounts",
     "Bank Transactions",
+    "Cash Flow",
     "Reports",
   ]) {
     await expect(sidebar.getByText(label, { exact: true }).first()).toBeVisible({
@@ -263,6 +277,7 @@ test.describe("Financial OS navigation grouping", () => {
       financialRoutes[2],
       financialRoutes[6],
       financialRoutes[8],
+      financialRoutes[9],
       financialRoutes[12],
     ]) {
       await test.step(route.label, async () => {

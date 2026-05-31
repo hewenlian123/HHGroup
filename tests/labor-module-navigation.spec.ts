@@ -79,6 +79,7 @@ const laborRoutes: LaborRoute[] = [
     label: "Worker Receipts",
     path: "/labor/receipts",
     heading: /^(Worker Receipt Uploads|Receipt Uploads)$/i,
+    activeLabel: "Worker Receipts",
     bottomNavLabel: "Financial",
   },
   {
@@ -298,6 +299,7 @@ test.describe("Labor module navigation compatibility", () => {
       "Worker Balances",
       "Worker Payments",
       "Worker Advances",
+      "Worker Receipts",
       "Worker Invoices",
       "Payroll Summary",
     ]) {
@@ -305,8 +307,6 @@ test.describe("Labor module navigation compatibility", () => {
         timeout: 10_000,
       });
     }
-    await expect(visibleSidebar(page).getByText("Worker Receipts", { exact: true })).toHaveCount(0);
-
     for (const route of laborRoutes) {
       await test.step(route.label, async () => {
         await page.goto(route.path);

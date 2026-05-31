@@ -24,7 +24,6 @@ const peopleRoutes: PeopleRoute[] = [
     label: "Worker Summary",
     path: "/workers/summary",
     heading: /^Worker Summary$/i,
-    activeLabel: "Workers",
   },
   {
     label: "Worker Balances",
@@ -114,6 +113,7 @@ async function ensurePeopleNavigationVisible(page: Page) {
   for (const label of [
     "Customers",
     "Workers",
+    "Worker Summary",
     "Worker Balances",
     "Worker Payments",
     "Worker Advances",
@@ -198,7 +198,7 @@ test.describe("People OS navigation shell", () => {
     await ensurePeopleNavigationVisible(page);
     await ensureSectionOpen(page, "PROJECTS");
     await ensureSectionOpen(page, "FINANCIAL");
-    for (const label of ["Worker Reimbursements", "Worker Receipts"]) {
+    for (const label of ["Worker Reimbursements"]) {
       await expect(visibleSidebar(page).getByText(label, { exact: true })).toHaveCount(0);
     }
     await expect(visibleSidebar(page).getByText("AP", { exact: true })).toBeVisible({
@@ -236,6 +236,7 @@ test.describe("People OS navigation shell", () => {
     for (const item of [
       { query: "customers", label: "Go to Customers" },
       { query: "workers", label: "Go to Workers" },
+      { query: "worker summary", label: "Go to Worker Summary" },
       { query: "vendors", label: "Go to Vendors" },
       { query: "subcontractors", label: "Go to Subcontractors" },
       { query: "worker balances", label: "Go to Worker Balances" },
@@ -273,6 +274,7 @@ test.describe("People OS navigation shell", () => {
 
     for (const route of [
       peopleRoutes[1],
+      peopleRoutes[2],
       peopleRoutes[3],
       peopleRoutes[4],
       peopleRoutes[5],
