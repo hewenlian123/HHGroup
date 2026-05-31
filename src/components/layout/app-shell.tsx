@@ -6,7 +6,7 @@ import { Sidebar } from "./sidebar";
 import { Topbar } from "./topbar";
 import { BottomNav } from "./bottom-nav";
 import { FloatingActionButton } from "./floating-action-button";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { ToastProvider } from "../toast/toast-provider";
 import { PWAInstallPrompt } from "../pwa-install-prompt";
 import { SystemHealthProvider } from "@/contexts/system-health-context";
@@ -107,6 +107,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       "border-r border-white/[0.08] bg-[var(--neo-graphite-950)]"
                     )}
                   >
+                    <SheetTitle className="sr-only">Navigation menu</SheetTitle>
+                    <SheetDescription className="sr-only">
+                      Main HH Project OS navigation sections and module links.
+                    </SheetDescription>
                     <Sidebar
                       className="h-full w-full !rounded-none !border-none !shadow-none"
                       onNavigate={() => setMobileOpen(false)}
