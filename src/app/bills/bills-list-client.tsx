@@ -435,11 +435,20 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                         {bill.vendor_name}
                       </p>
                       <p className="truncate text-xs text-[var(--neo-text-secondary)]">
-                        {bill.project_name ?? "No project"} · Due {formatDate(bill.due_date)}
+                        {[
+                          bill.bill_no,
+                          bill.project_name ?? "No project",
+                          `Due ${formatDate(bill.due_date)}`,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <NeoAmount className="text-sm">{formatCurrency(bill.amount)}</NeoAmount>
+                      <span className="text-[11px] text-[var(--neo-text-tertiary)]">
+                        Bal {formatCurrency(bill.balance_amount)}
+                      </span>
                       <StatusBadge label={s.label} variant={s.variant} />
                     </div>
                   </Link>
@@ -468,6 +477,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                   <th className={tableRawThClass}>Vendor</th>
                   <th className={tableRawThClass}>Project</th>
                   <th className={cn(tableRawThClass, "text-right tabular-nums")}>Amount</th>
+                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Balance</th>
                   <th className={tableRawThClass}>Due date</th>
                   <th className={tableRawThClass}>Status</th>
                   <th className={cn(tableRawThClass, "w-10 px-1")} aria-hidden />
@@ -489,6 +499,11 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                       >
                         {bill.vendor_name}
                       </span>
+                      {bill.bill_no ? (
+                        <span className="mt-0.5 block truncate font-mono text-[11px] text-[var(--neo-text-tertiary)]">
+                          {bill.bill_no}
+                        </span>
+                      ) : null}
                     </td>
                     <td
                       className={cn(
@@ -507,6 +522,16 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                       )}
                     >
                       <NeoAmount>{formatCurrency(bill.amount)}</NeoAmount>
+                    </td>
+                    <td
+                      className={cn(
+                        tableRawTdClass,
+                        "text-right whitespace-nowrap",
+                        TYPO.amount,
+                        listTableAmountCellClassName
+                      )}
+                    >
+                      <NeoAmount>{formatCurrency(bill.balance_amount)}</NeoAmount>
                     </td>
                     <td className={cn(tableRawTdClass, TYPO.date)}>{formatDate(bill.due_date)}</td>
                     <td className={tableRawTdClass}>
