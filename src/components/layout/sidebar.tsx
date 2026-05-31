@@ -11,11 +11,11 @@ import {
   Receipt,
   Banknote,
   ShoppingCart,
-  Clock,
   Wallet,
   Users,
   FileStack,
   Settings,
+  Building2,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -28,7 +28,6 @@ import {
   Percent,
   Package,
   ReceiptText,
-  Upload,
   Calculator,
   FilePen,
   AlertTriangle,
@@ -36,7 +35,9 @@ import {
   BarChart2,
   ScrollText,
   Archive,
-  Inbox,
+  Landmark,
+  ShieldCheck,
+  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -56,98 +57,62 @@ import {
 import { RECEIPT_QUEUE_CHANGED_EVENT } from "@/lib/receipt-queue";
 import { getCompanyInitials } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
+import {
+  HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS,
+  HH_PROJECT_OS_NAV_SECTIONS,
+  HH_PROJECT_OS_SECTION_KEYS,
+  isHhProjectOsNavItem,
+  type HhProjectOsIconKey,
+  type HhProjectOsNavItem,
+} from "@/lib/navigation/ia";
 
 const STORAGE_KEY = "hh.sidebarSections";
-type NavItem = { href: string; label: string; icon?: LucideIcon };
 
-const SECTION_KEYS = ["PROJECTS", "OPERATIONS", "FINANCE", "LABOR", "PEOPLE", "SYSTEM"] as const;
-const DEFAULT_OPEN_SECTIONS: Record<(typeof SECTION_KEYS)[number], boolean> = {
-  PROJECTS: true,
-  OPERATIONS: true,
-  FINANCE: true,
-  LABOR: true,
-  PEOPLE: true,
-  SYSTEM: true,
+const NAV_ICON_MAP: Record<HhProjectOsIconKey, LucideIcon> = {
+  accounts: Wallet,
+  activity: Activity,
+  ar: CircleDollarSign,
+  backups: Archive,
+  bank: Landmark,
+  bills: Receipt,
+  cashflow: Banknote,
+  changeOrders: FilePen,
+  commission: Percent,
+  company: Building2,
+  customers: Users,
+  dashboard: LayoutDashboard,
+  deposits: Banknote,
+  documents: FileStack,
+  estimates: FileText,
+  expenses: ShoppingCart,
+  financial: CircleDollarSign,
+  inspection: ClipboardCheck,
+  invoice: FileText,
+  logs: ScrollText,
+  materials: Package,
+  metrics: BarChart2,
+  payments: CircleDollarSign,
+  payroll: Calculator,
+  photos: Camera,
+  preferences: Settings,
+  projects: FolderKanban,
+  punchList: ListChecks,
+  receipts: ReceiptText,
+  reimbursements: ReceiptText,
+  roles: ShieldCheck,
+  schedule: Calendar,
+  settings: Settings,
+  subcontractors: Users,
+  tasks: CheckSquare,
+  users: UserCog,
+  vendors: Users,
+  workerAdvances: CircleDollarSign,
+  workerBalances: Wallet,
+  workerInvoices: FileText,
+  workerPayments: CircleDollarSign,
+  workerSummary: BarChart2,
+  workers: Users,
 };
-
-const sections: { key: (typeof SECTION_KEYS)[number]; label: string; items: NavItem[] }[] = [
-  {
-    key: "PROJECTS",
-    label: "PROJECTS",
-    items: [
-      { href: "/projects", label: "Projects", icon: FolderKanban },
-      { href: "/estimates", label: "Estimates", icon: FileText },
-      { href: "/change-orders", label: "Change Orders", icon: FilePen },
-      { href: "/customers", label: "Customers", icon: Users },
-    ],
-  },
-  {
-    key: "OPERATIONS",
-    label: "OPERATIONS",
-    items: [
-      { href: "/tasks", label: "Tasks", icon: CheckSquare },
-      { href: "/punch-list", label: "Punch List", icon: ListChecks },
-      { href: "/schedule", label: "Schedule", icon: Calendar },
-      { href: "/site-photos", label: "Site Photos", icon: Camera },
-      { href: "/inspection-log", label: "Inspection Log", icon: ClipboardCheck },
-      { href: "/materials/catalog", label: "Material Catalog", icon: Package },
-      { href: "/financial/inbox", label: "Inbox draft", icon: Inbox },
-    ],
-  },
-  {
-    key: "FINANCE",
-    label: "FINANCE",
-    items: [
-      { href: "/financial/owner", label: "Owner dashboard", icon: LayoutDashboard },
-      { href: "/financial/invoices", label: "Invoices", icon: FileText },
-      { href: "/financial/payments", label: "Payments Received", icon: CircleDollarSign },
-      { href: "/financial/commissions", label: "Commission Payments", icon: Percent },
-      { href: "/financial/deposits", label: "Deposits", icon: Banknote },
-      { href: "/bills", label: "Bills", icon: Receipt },
-      { href: "/financial/expenses", label: "Expenses", icon: ShoppingCart },
-      { href: "/financial/accounts", label: "Accounts", icon: Wallet },
-    ],
-  },
-  {
-    key: "LABOR",
-    label: "LABOR",
-    items: [
-      { href: "/labor", label: "Time Entries", icon: Clock },
-      { href: "/labor/reimbursements", label: "Reimbursements", icon: ReceiptText },
-      { href: "/labor/worker-balances", label: "Worker Balances", icon: Wallet },
-      { href: "/labor/payments", label: "Worker Payments", icon: CircleDollarSign },
-      { href: "/labor/advances", label: "Worker Advances", icon: CircleDollarSign },
-      { href: "/labor/receipts", label: "Receipt Uploads", icon: Upload },
-      { href: "/labor/worker-invoices", label: "Worker Invoices", icon: FileText },
-      { href: "/labor/payroll", label: "Payroll Summary", icon: Calculator },
-    ],
-  },
-  {
-    key: "PEOPLE",
-    label: "PEOPLE",
-    items: [
-      { href: "/workers", label: "Worker Profile", icon: Users },
-      { href: "/workers/summary", label: "Worker Summary", icon: BarChart2 },
-      { href: "/financial/vendors", label: "Vendors", icon: Users },
-      { href: "/subcontractors", label: "Subcontractors", icon: Users },
-    ],
-  },
-  {
-    key: "SYSTEM",
-    label: "SYSTEM",
-    items: [
-      { href: "/system-health", label: "System Health", icon: Activity },
-      { href: "/system-metrics", label: "System Metrics", icon: BarChart2 },
-      { href: "/system-logs", label: "System Logs", icon: ScrollText },
-      { href: "/system/backups", label: "Backups", icon: Archive },
-    ],
-  },
-];
-
-const standaloneItems: NavItem[] = [
-  { href: "/documents", label: "Documents", icon: FileStack },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
 
 /** Bumps when `count` changes so the badge remounts and the one-shot animation runs (skip initial mount). */
 function useReceiptQueueCountAnimKey(count: number) {
@@ -241,16 +206,23 @@ export function Sidebar({
     }, 2500);
   }, [router]);
 
+  const itemMatchesPath = React.useCallback(
+    (item: HhProjectOsNavItem) => {
+      const matchesHref = (href: string) =>
+        item.exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+      return matchesHref(item.href) || (item.aliases ?? []).some((href) => matchesHref(href));
+    },
+    [pathname]
+  );
+
   const activeSectionKey = React.useMemo(() => {
-    for (const section of sections) {
-      if (
-        section.items.some((item) => pathname === item.href || pathname.startsWith(item.href + "/"))
-      ) {
+    for (const section of HH_PROJECT_OS_NAV_SECTIONS) {
+      if (section.entries.some((entry) => isHhProjectOsNavItem(entry) && itemMatchesPath(entry))) {
         return section.key;
       }
     }
     return null;
-  }, [pathname]);
+  }, [itemMatchesPath]);
 
   React.useEffect(() => {
     const onQueue = () => {
@@ -268,7 +240,7 @@ export function Sidebar({
     sectionsInitDone.current = true;
     const isMobileOrTablet = typeof window !== "undefined" && window.innerWidth < 1024;
     if (isMobileOrTablet) {
-      const allClosed = SECTION_KEYS.reduce(
+      const allClosed = HH_PROJECT_OS_SECTION_KEYS.reduce(
         (acc, k) => ({ ...acc, [k]: false }),
         {} as Record<string, boolean>
       );
@@ -280,14 +252,14 @@ export function Sidebar({
       if (raw) {
         const parsed = JSON.parse(raw) as Record<string, boolean>;
         if (parsed && typeof parsed === "object") {
-          setOpenSections({ ...DEFAULT_OPEN_SECTIONS, ...parsed });
+          setOpenSections({ ...HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS, ...parsed });
           return;
         }
       }
     } catch {
       // ignore
     }
-    setOpenSections(DEFAULT_OPEN_SECTIONS);
+    setOpenSections(HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS);
   }, []);
 
   React.useEffect(() => {
@@ -321,8 +293,11 @@ export function Sidebar({
   }, []);
 
   const { systemHealth } = useSystemHealth();
-  const isActive = (href: string) =>
-    pathname === href || (href !== "/dashboard" && pathname.startsWith(href + "/"));
+  const navLabelForItem = React.useCallback(
+    (item: HhProjectOsNavItem) =>
+      item.badge === "expenseInbox" ? `${item.label} (${expenseInboxPoolCount})` : item.label,
+    [expenseInboxPoolCount]
+  );
 
   /** Nav row: inactive label always readable; hover adjusts background only. */
   const navRowClass = (active: boolean) =>
@@ -346,6 +321,64 @@ export function Sidebar({
       active ? "text-[var(--neo-gold-soft)]" : "text-zinc-300",
       extra
     );
+
+  const renderNavItem = (item: HhProjectOsNavItem, options?: { iconOnly?: boolean }) => {
+    const active = itemMatchesPath(item);
+    const isSystemHealthWarning =
+      item.badge === "systemHealth" && systemHealth.status === "warning";
+    const Icon = isSystemHealthWarning ? AlertTriangle : NAV_ICON_MAP[item.icon];
+    const iconClass = isSystemHealthWarning
+      ? cn("h-[15px] w-[15px] shrink-0", active ? "text-amber-300" : "text-amber-400")
+      : navIconClass(active);
+    const iconOnly = options?.iconOnly ?? false;
+    const navLabel = navLabelForItem(item);
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        onClick={onNavigate}
+        {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
+        title={iconOnly ? navLabel : undefined}
+        aria-label={iconOnly ? navLabel : undefined}
+        className={navRowClass(active)}
+      >
+        {item.badge === "expenseInbox" && iconOnly ? (
+          <div className="relative flex shrink-0 items-center justify-center">
+            <Icon className={iconClass} strokeWidth={1.75} />
+            {expenseInboxPoolCount > 0 ? (
+              <span
+                key={expenseInboxPoolAnimKey}
+                className={cn(
+                  "absolute -right-2 -top-1 z-[1] flex min-h-[15px] min-w-[15px] items-center justify-center rounded-sm px-1 text-[10px] font-semibold tabular-nums leading-none animate-receipt-queue-badge",
+                  active ? "text-[var(--neo-gold-soft)]" : "text-zinc-100"
+                )}
+                aria-hidden
+              >
+                {expenseInboxPoolCount > 99 ? "99+" : expenseInboxPoolCount}
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          <Icon className={iconClass} strokeWidth={1.75} />
+        )}
+        {!iconOnly && (
+          <span className="flex min-w-0 flex-1 items-baseline gap-0">
+            <span className="truncate">{item.label}</span>
+            {item.badge === "expenseInbox" ? (
+              <span
+                key={expenseInboxPoolAnimKey}
+                className="inline-block shrink-0 origin-center rounded-sm px-0.5 tabular-nums animate-receipt-queue-badge"
+              >
+                {" "}
+                ({expenseInboxPoolCount})
+              </span>
+            ) : null}
+          </span>
+        )}
+      </Link>
+    );
+  };
 
   return (
     <aside
@@ -388,24 +421,8 @@ export function Sidebar({
           collapsed ? "px-2 py-3" : "px-2 py-3"
         )}
       >
-        {/* Dashboard */}
-        <div className="flex flex-col gap-1">
-          <Link
-            href="/dashboard"
-            onClick={onNavigate}
-            {...navIntentPrefetchProps("/dashboard", prefetchNavRoute)}
-            title={collapsed ? "Dashboard" : undefined}
-            aria-label={collapsed ? "Dashboard" : undefined}
-            className={navRowClass(isActive("/dashboard"))}
-          >
-            <LayoutDashboard className={navIconClass(isActive("/dashboard"))} strokeWidth={1.75} />
-            {!collapsed && <span className="truncate">Dashboard</span>}
-          </Link>
-        </div>
-
-        {/* Sections — collapsible groups, Estimates-style labels */}
         <div className={cn("flex flex-col", collapsed && "gap-1")}>
-          {sections.map((section, sectionIndex) => {
+          {HH_PROJECT_OS_NAV_SECTIONS.map((section, sectionIndex) => {
             const isOpen = openSections[section.key] ?? false;
             if (collapsed) {
               return (
@@ -413,64 +430,9 @@ export function Sidebar({
                   key={section.key}
                   className={cn("flex flex-col gap-1", sectionIndex > 0 && "mt-6")}
                 >
-                  {section.items.map((item) => {
-                    const active = isActive(item.href);
-                    const isSystemHealthWarning =
-                      item.href === "/system-health" && systemHealth.status === "warning";
-                    const Icon = isSystemHealthWarning ? AlertTriangle : item.icon;
-                    const iconClass = isSystemHealthWarning
-                      ? cn(
-                          "h-[15px] w-[15px] shrink-0",
-                          active ? "text-amber-300" : "text-amber-400"
-                        )
-                      : navIconClass(active);
-                    const navLabel =
-                      item.href === "/financial/inbox"
-                        ? `Inbox draft (${expenseInboxPoolCount})`
-                        : item.label;
-                    if (item.href === "/financial/inbox" && Icon) {
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          onClick={onNavigate}
-                          {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
-                          title={navLabel}
-                          aria-label={navLabel}
-                          className={navRowClass(active)}
-                        >
-                          <div className="relative flex shrink-0 items-center justify-center">
-                            <Icon className={iconClass} strokeWidth={1.75} />
-                            {expenseInboxPoolCount > 0 ? (
-                              <span
-                                key={expenseInboxPoolAnimKey}
-                                className={cn(
-                                  "absolute -right-2 -top-1 z-[1] flex min-h-[15px] min-w-[15px] items-center justify-center rounded-sm px-1 text-[10px] font-semibold tabular-nums leading-none animate-receipt-queue-badge",
-                                  active ? "text-[var(--neo-gold-soft)]" : "text-zinc-100"
-                                )}
-                                aria-hidden
-                              >
-                                {expenseInboxPoolCount > 99 ? "99+" : expenseInboxPoolCount}
-                              </span>
-                            ) : null}
-                          </div>
-                        </Link>
-                      );
-                    }
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        onClick={onNavigate}
-                        {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
-                        title={navLabel}
-                        aria-label={navLabel}
-                        className={navRowClass(active)}
-                      >
-                        {Icon ? <Icon className={iconClass} strokeWidth={1.75} /> : null}
-                      </Link>
-                    );
-                  })}
+                  {section.entries.map((entry) =>
+                    isHhProjectOsNavItem(entry) ? renderNavItem(entry, { iconOnly: true }) : null
+                  )}
                 </div>
               );
             }
@@ -500,58 +462,18 @@ export function Sidebar({
                 {isOpen ? (
                   <div>
                     <div className="flex flex-col gap-1">
-                      {section.items.map((item) => {
-                        const active = isActive(item.href);
-                        const isSystemHealthWarning =
-                          item.href === "/system-health" && systemHealth.status === "warning";
-                        const Icon = isSystemHealthWarning ? AlertTriangle : item.icon;
-                        const iconClass = isSystemHealthWarning
-                          ? cn(
-                              "h-[15px] w-[15px] shrink-0",
-                              active ? "text-amber-300" : "text-amber-400"
-                            )
-                          : navIconClass(active);
-                        const navLabel =
-                          item.href === "/financial/inbox"
-                            ? `Inbox draft (${expenseInboxPoolCount})`
-                            : item.label;
-                        if (item.href === "/financial/inbox" && Icon) {
-                          return (
-                            <Link
-                              key={item.href}
-                              href={item.href}
-                              onClick={onNavigate}
-                              {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
-                              title={collapsed ? navLabel : undefined}
-                              aria-label={collapsed ? navLabel : undefined}
-                              className={navRowClass(active)}
-                            >
-                              <Icon className={iconClass} strokeWidth={1.75} />
-                              <span className="flex min-w-0 flex-1 items-baseline gap-0">
-                                <span className="truncate">Inbox draft </span>
-                                <span
-                                  key={expenseInboxPoolAnimKey}
-                                  className="inline-block shrink-0 origin-center rounded-sm px-0.5 tabular-nums animate-receipt-queue-badge"
-                                >
-                                  ({expenseInboxPoolCount})
-                                </span>
-                              </span>
-                            </Link>
-                          );
-                        }
+                      {section.entries.map((entry, entryIndex) => {
+                        if (isHhProjectOsNavItem(entry)) return renderNavItem(entry);
                         return (
-                          <Link
-                            key={item.href}
-                            href={item.href}
-                            onClick={onNavigate}
-                            {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
-                            title={collapsed ? navLabel : undefined}
-                            aria-label={collapsed ? navLabel : undefined}
-                            className={navRowClass(active)}
+                          <div
+                            key={`${section.key}-${entry.label}`}
+                            className={cn(
+                              "px-2 pb-1 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500",
+                              entryIndex > 0 && "pt-3"
+                            )}
                           >
-                            {Icon ? <Icon className={iconClass} strokeWidth={1.75} /> : null}
-                            {!collapsed && <span className="truncate">{navLabel}</span>}
-                          </Link>
+                            {entry.label}
+                          </div>
                         );
                       })}
                     </div>
@@ -560,28 +482,6 @@ export function Sidebar({
               </div>
             );
           })}
-
-          {/* Documents & Settings */}
-          <div className="mt-6 flex flex-col gap-1">
-            {standaloneItems.map((item) => {
-              const active = isActive(item.href);
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onNavigate}
-                  {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
-                  title={collapsed ? item.label : undefined}
-                  aria-label={collapsed ? item.label : undefined}
-                  className={navRowClass(active)}
-                >
-                  {Icon ? <Icon className={navIconClass(active)} strokeWidth={1.75} /> : null}
-                  {!collapsed && <span className="truncate">{item.label}</span>}
-                </Link>
-              );
-            })}
-          </div>
         </div>
       </nav>
 

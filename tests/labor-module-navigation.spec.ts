@@ -1,12 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
 const LABOR_SECTION_STORAGE = {
+  DASHBOARD: true,
   PROJECTS: true,
-  OPERATIONS: true,
-  FINANCE: true,
-  LABOR: true,
+  FINANCIAL: true,
   PEOPLE: true,
-  SYSTEM: true,
+  DOCUMENTS: true,
+  SETTINGS: true,
 };
 
 type LaborRoute = {
@@ -37,7 +37,7 @@ const laborRoutes: LaborRoute[] = [
     action: { kind: "dialog", button: /^Add Entry$/i, dialog: /^Add Daily Entry$/i },
   },
   {
-    label: "Reimbursements",
+    label: "Worker Reimbursements",
     path: "/labor/reimbursements",
     heading: /^(Worker Reimbursements|Reimbursements)$/i,
     action: {
@@ -64,7 +64,7 @@ const laborRoutes: LaborRoute[] = [
     action: { kind: "dialog", button: /^Create Advance$/i, dialog: /^Create Advance$/i },
   },
   {
-    label: "Receipt Uploads",
+    label: "Worker Receipts",
     path: "/labor/receipts",
     heading: /^(Worker Receipt Uploads|Receipt Uploads)$/i,
   },
@@ -111,13 +111,15 @@ function laborNavLink(page: Page, label: string): Locator {
     .first();
 }
 
-async function ensureLaborSectionOpen(page: Page) {
+async function ensureOsSectionsOpen(page: Page) {
   const sidebar = visibleSidebar(page);
   await expect(sidebar).toBeVisible({ timeout: 20_000 });
-  const sectionButton = sidebar.getByRole("button", { name: /^LABOR$/ }).first();
-  if (await sectionButton.isVisible().catch(() => false)) {
-    const expanded = await sectionButton.getAttribute("aria-expanded");
-    if (expanded !== "true") await sectionButton.click();
+  for (const label of ["FINANCIAL", "PEOPLE", "DOCUMENTS"]) {
+    const sectionButton = sidebar.getByRole("button", { name: new RegExp(`^${label}$`) }).first();
+    if (await sectionButton.isVisible().catch(() => false)) {
+      const expanded = await sectionButton.getAttribute("aria-expanded");
+      if (expanded !== "true") await sectionButton.click();
+    }
   }
 }
 
@@ -209,7 +211,7 @@ async function smokeMainAction(page: Page, route: LaborRoute) {
 async function openMobileLaborDrawer(page: Page) {
   await page.getByRole("button", { name: /^Open menu$/i }).click();
   await expect(visibleSidebar(page)).toBeVisible({ timeout: 10_000 });
-  await ensureLaborSectionOpen(page);
+  await ensureOsSectionsOpen(page);
 }
 
 async function expectScrollRootUsable(page: Page, route: LaborRoute) {
@@ -269,11 +271,11 @@ test.describe("Labor module sidebar navigation", () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto("/dashboard");
     await page.waitForLoadState("domcontentloaded");
-    await ensureLaborSectionOpen(page);
+    await ensureOsSectionsOpen(page);
 
     for (const route of laborRoutes) {
       await test.step(route.label, async () => {
-        await ensureLaborSectionOpen(page);
+        await ensureOsSectionsOpen(page);
         await Promise.all([
           page.waitForURL(routeUrlPattern(route.path), { timeout: 30_000 }),
           laborNavLink(page, route.label).click(),

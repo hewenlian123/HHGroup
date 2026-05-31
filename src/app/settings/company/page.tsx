@@ -588,7 +588,7 @@ export default function SettingsCompanyPage() {
             size="sm"
             className="h-9 w-full justify-start rounded-sm"
           >
-            <Link href="/settings/permissions">Permissions</Link>
+            <Link href="/settings/permissions">Roles</Link>
           </Button>
           <Button
             asChild
