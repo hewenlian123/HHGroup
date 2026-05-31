@@ -64,6 +64,114 @@ describe("buildDataQualityReport", () => {
     expect(report.summary.status).toBe("critical");
   });
 
+  it("uses posted invoice payments before stale stored paid total for balance checks", () => {
+    const report = buildDataQualityReport({
+      invoices: [
+        {
+          id: "invoice-paid-with-stale-total",
+          invoice_no: "INV-0003",
+          status: "paid",
+          subtotal: 119358,
+          total: 119358,
+          paid_total: 0,
+          balance_due: 0,
+        },
+      ],
+      invoiceItems: [
+        {
+          id: "invoice-paid-with-stale-total-item",
+          invoice_id: "invoice-paid-with-stale-total",
+          quantity: 1,
+          rate: 119358,
+          amount: 119358,
+        },
+      ],
+      invoicePayments: [
+        {
+          id: "posted-payment",
+          invoice_id: "invoice-paid-with-stale-total",
+          amount: 119358,
+          status: "posted",
+        },
+      ],
+    });
+
+    const codes = report.issues.map((issue) => issue.issueCode);
+    expect(codes).not.toContain("invoice_balance_due_mismatch");
+    expect(codes).not.toContain("paid_invoice_has_open_balance");
+    expect(codes).toContain("invoice_paid_total_stale");
+    expect(report.summary.critical).toBe(0);
+  });
+
+  it("falls back to stored paid total when an invoice has no payment rows", () => {
+    const report = buildDataQualityReport({
+      invoices: [
+        {
+          id: "invoice-without-payments",
+          invoice_no: "INV-OPEN",
+          status: "sent",
+          subtotal: 1000,
+          total: 1000,
+          paid_total: 0,
+          balance_due: 0,
+        },
+      ],
+      invoiceItems: [
+        {
+          id: "invoice-without-payments-item",
+          invoice_id: "invoice-without-payments",
+          quantity: 1,
+          rate: 1000,
+          amount: 1000,
+        },
+      ],
+    });
+
+    const issue = report.issues.find((entry) => entry.issueCode === "invoice_balance_due_mismatch");
+    expect(issue).toMatchObject({
+      severity: "critical",
+      currentValue: 0,
+      expectedValue: 1000,
+    });
+  });
+
+  it("does not count void invoice payments toward invoice balance", () => {
+    const report = buildDataQualityReport({
+      invoices: [
+        {
+          id: "invoice-with-void-payment",
+          invoice_no: "INV-VOID",
+          status: "sent",
+          subtotal: 1000,
+          total: 1000,
+          paid_total: 1000,
+          balance_due: 1000,
+        },
+      ],
+      invoiceItems: [
+        {
+          id: "invoice-with-void-payment-item",
+          invoice_id: "invoice-with-void-payment",
+          quantity: 1,
+          rate: 1000,
+          amount: 1000,
+        },
+      ],
+      invoicePayments: [
+        {
+          id: "void-payment",
+          invoice_id: "invoice-with-void-payment",
+          amount: 1000,
+          status: "void",
+        },
+      ],
+    });
+
+    const codes = report.issues.map((issue) => issue.issueCode);
+    expect(codes).not.toContain("invoice_balance_due_mismatch");
+    expect(codes).toContain("invoice_paid_total_stale");
+  });
+
   it("checks project snapshot component consistency without including pending costs", () => {
     const report = buildDataQualityReport({
       projects: [{ id: "project-1", name: "Snapshot Project", status: "active", budget: 1000 }],
