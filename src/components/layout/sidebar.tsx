@@ -62,8 +62,10 @@ import {
   HH_PROJECT_OS_NAV_SECTIONS,
   HH_PROJECT_OS_SECTION_KEYS,
   isHhProjectOsNavItem,
+  isHhProjectOsNavPlaceholder,
   type HhProjectOsIconKey,
   type HhProjectOsNavItem,
+  type HhProjectOsNavPlaceholder,
 } from "@/lib/navigation/ia";
 
 const STORAGE_KEY = "hh.sidebarSections";
@@ -380,6 +382,42 @@ export function Sidebar({
     );
   };
 
+  const renderNavPlaceholder = (
+    item: HhProjectOsNavPlaceholder,
+    options?: { iconOnly?: boolean }
+  ) => {
+    const Icon = NAV_ICON_MAP[item.icon];
+    const iconOnly = options?.iconOnly ?? false;
+    const label = item.note ? `${item.label}: ${item.note}` : item.label;
+
+    return (
+      <div
+        key={`placeholder-${item.label}`}
+        aria-disabled="true"
+        title={label}
+        className={cn(
+          "group relative flex items-center rounded-md text-[13px] text-zinc-500",
+          "cursor-default select-none",
+          collapsed
+            ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
+            : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0"
+        )}
+      >
+        <Icon className="h-[15px] w-[15px] shrink-0 text-zinc-500" strokeWidth={1.75} />
+        {!iconOnly && (
+          <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
+            <span className="truncate">{item.label}</span>
+            {item.note ? (
+              <span className="shrink-0 rounded-sm border border-white/[0.08] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-normal text-zinc-500">
+                Future
+              </span>
+            ) : null}
+          </span>
+        )}
+      </div>
+    );
+  };
+
   return (
     <aside
       data-app-sidebar
@@ -430,9 +468,15 @@ export function Sidebar({
                   key={section.key}
                   className={cn("flex flex-col gap-1", sectionIndex > 0 && "mt-6")}
                 >
-                  {section.entries.map((entry) =>
-                    isHhProjectOsNavItem(entry) ? renderNavItem(entry, { iconOnly: true }) : null
-                  )}
+                  {section.entries.map((entry) => {
+                    if (isHhProjectOsNavItem(entry)) {
+                      return renderNavItem(entry, { iconOnly: true });
+                    }
+                    if (isHhProjectOsNavPlaceholder(entry)) {
+                      return renderNavPlaceholder(entry, { iconOnly: true });
+                    }
+                    return null;
+                  })}
                 </div>
               );
             }
@@ -464,6 +508,9 @@ export function Sidebar({
                     <div className="flex flex-col gap-1">
                       {section.entries.map((entry, entryIndex) => {
                         if (isHhProjectOsNavItem(entry)) return renderNavItem(entry);
+                        if (isHhProjectOsNavPlaceholder(entry)) {
+                          return renderNavPlaceholder(entry);
+                        }
                         return (
                           <div
                             key={`${section.key}-${entry.label}`}

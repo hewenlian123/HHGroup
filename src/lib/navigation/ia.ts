@@ -68,7 +68,17 @@ export type HhProjectOsNavSubheader = {
   label: string;
 };
 
-export type HhProjectOsNavEntry = HhProjectOsNavItem | HhProjectOsNavSubheader;
+export type HhProjectOsNavPlaceholder = {
+  type: "placeholder";
+  label: string;
+  icon: HhProjectOsIconKey;
+  note?: string;
+};
+
+export type HhProjectOsNavEntry =
+  | HhProjectOsNavItem
+  | HhProjectOsNavSubheader
+  | HhProjectOsNavPlaceholder;
 
 export type HhProjectOsNavSection = {
   key: HhProjectOsSectionKey;
@@ -107,8 +117,8 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
       { href: "/projects", label: "Projects", icon: "projects" },
       { href: "/estimates", label: "Estimates", icon: "estimates" },
       { href: "/change-orders", label: "Change Orders", icon: "changeOrders" },
-      { href: "/customers", label: "Customers", icon: "customers" },
       { type: "subheader", label: "Operations" },
+      { href: "/labor", label: "Time Entries", icon: "workers" },
       { href: "/tasks", label: "Tasks", icon: "tasks" },
       { href: "/punch-list", label: "Punch List", icon: "punchList" },
       { href: "/schedule", label: "Schedule", icon: "schedule" },
@@ -147,6 +157,7 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
       { href: "/labor/payments", label: "Worker Payments", icon: "workerPayments" },
       { href: "/labor/advances", label: "Worker Advances", icon: "workerAdvances" },
       { href: "/labor/worker-invoices", label: "Worker Invoices", icon: "workerInvoices" },
+      { href: "/labor/receipts", label: "Worker Receipts", icon: "receipts" },
       { href: "/labor/payroll", label: "Payroll Summary", icon: "payroll" },
       { href: "/financial/commissions", label: "Commission Payments", icon: "commission" },
       { type: "subheader", label: "Cash" },
@@ -166,11 +177,28 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
     key: "PEOPLE",
     label: "PEOPLE",
     entries: [
-      { href: "/labor", label: "Time Entries", icon: "workers" },
-      { href: "/workers", label: "Workers", icon: "workers" },
-      { href: "/workers/summary", label: "Worker Summary", icon: "workerSummary" },
-      { href: "/financial/vendors", label: "Vendors", icon: "vendors" },
-      { href: "/subcontractors", label: "Subcontractors", icon: "subcontractors" },
+      { type: "subheader", label: "Directory" },
+      { href: "/customers", label: "Customers", icon: "customers" },
+      { href: "/workers", label: "Workers", icon: "workers", aliases: ["/labor/workers"] },
+      {
+        href: "/financial/vendors",
+        label: "Vendors",
+        icon: "vendors",
+        aliases: ["/vendors", "/people/vendors"],
+      },
+      {
+        href: "/subcontractors",
+        label: "Subcontractors",
+        icon: "subcontractors",
+        aliases: ["/labor/subcontractors"],
+      },
+      { type: "subheader", label: "Future" },
+      {
+        type: "placeholder",
+        label: "All Contacts",
+        icon: "users",
+        note: "Read-only model planned",
+      },
     ],
   },
   {
@@ -180,7 +208,6 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
       { href: "/documents", label: "Documents", icon: "documents" },
       { href: "/site-photos", label: "Site Photos", icon: "photos" },
       { href: "/inspection-log", label: "Inspection Log", icon: "inspection" },
-      { href: "/labor/receipts", label: "Worker Receipts", icon: "receipts" },
       { href: "/upload-receipt", label: "Upload Receipt", icon: "receipts" },
     ],
   },
@@ -217,7 +244,19 @@ export const HH_PROJECT_OS_MOBILE_NAV_ITEMS = [
     exact: true,
     aliases: ["/dashboard/cashflow"],
   },
-  { href: "/workers", label: "People", icon: "workers" },
+  {
+    href: "/workers",
+    label: "People",
+    icon: "workers",
+    aliases: [
+      "/customers",
+      "/financial/vendors",
+      "/vendors",
+      "/people/vendors",
+      "/subcontractors",
+      "/labor/subcontractors",
+    ],
+  },
   { href: "/documents", label: "Documents", icon: "documents" },
 ] as const satisfies readonly HhProjectOsNavItem[];
 
@@ -257,10 +296,42 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
   {
     id: "go-people",
     label: "Go to People",
-    description: "Workers, vendors, and subcontractors",
+    description: "Customers, workers, vendors, subcontractors, and future contacts",
     href: "/workers",
-    keywords: ["people", "workers", "vendors", "subcontractors", "contacts"],
+    keywords: ["people", "customers", "workers", "vendors", "subcontractors", "contacts"],
     icon: "workers",
+  },
+  {
+    id: "go-customers",
+    label: "Go to Customers",
+    description: "Open customer profiles and project relationships",
+    href: "/customers",
+    keywords: ["people", "customers", "clients", "contacts"],
+    icon: "customers",
+  },
+  {
+    id: "go-workers",
+    label: "Go to Workers",
+    description: "Open worker profiles and labor links",
+    href: "/workers",
+    keywords: ["people", "workers", "labor", "crew"],
+    icon: "workers",
+  },
+  {
+    id: "go-vendors",
+    label: "Go to Vendors",
+    description: "Open vendor profiles and AP payees",
+    href: "/financial/vendors",
+    keywords: ["people", "vendors", "payees", "ap"],
+    icon: "vendors",
+  },
+  {
+    id: "go-subcontractors",
+    label: "Go to Subcontractors",
+    description: "Open subcontractor profiles, contracts, and AP context",
+    href: "/subcontractors",
+    keywords: ["people", "subcontractors", "subs", "contracts", "ap"],
+    icon: "subcontractors",
   },
   {
     id: "go-documents",
@@ -337,5 +408,11 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
 ] as const;
 
 export function isHhProjectOsNavItem(entry: HhProjectOsNavEntry): entry is HhProjectOsNavItem {
-  return entry.type !== "subheader";
+  return entry.type == null || entry.type === "item";
+}
+
+export function isHhProjectOsNavPlaceholder(
+  entry: HhProjectOsNavEntry
+): entry is HhProjectOsNavPlaceholder {
+  return entry.type === "placeholder";
 }
