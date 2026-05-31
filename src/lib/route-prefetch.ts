@@ -1,13 +1,9 @@
 /**
  * Routes to warm on mobile for instant navigation (Bottom nav, FAB, idle).
  */
-export const BOTTOM_NAV_ROUTES = [
-  "/dashboard",
-  "/projects",
-  "/labor",
-  "/financial/expenses",
-  "/documents",
-] as const;
+import { HH_PROJECT_OS_MOBILE_NAV_ITEMS } from "@/lib/navigation/ia";
+
+export const BOTTOM_NAV_ROUTES = HH_PROJECT_OS_MOBILE_NAV_ITEMS.map((item) => item.href);
 
 export const QUICK_ACTION_ROUTES = [
   "/site-photos/upload",

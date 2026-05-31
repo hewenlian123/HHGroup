@@ -6,7 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   ArrowRight,
   BriefcaseBusiness,
+  CircleDollarSign,
   FileText,
+  FileStack,
   FolderKanban,
   Gauge,
   Plus,
@@ -21,6 +23,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { hhNeoFocusRevealCommand, hhNeoFocusRevealOverlay } from "@/lib/motion-system";
+import { HH_PROJECT_OS_COMMAND_ITEMS, type HhProjectOsIconKey } from "@/lib/navigation/ia";
 import { cn } from "@/lib/utils";
 
 type CommandGroup = "Navigate" | "Create";
@@ -31,65 +34,62 @@ type CommandDefinition = {
   description: string;
   href: string;
   group: CommandGroup;
-  keywords: string[];
+  keywords: readonly string[];
   icon: LucideIcon;
 };
 
+const COMMAND_ICON_MAP: Record<HhProjectOsIconKey, LucideIcon> = {
+  accounts: CircleDollarSign,
+  activity: Gauge,
+  ar: CircleDollarSign,
+  backups: FileStack,
+  bank: CircleDollarSign,
+  bills: Receipt,
+  cashflow: CircleDollarSign,
+  changeOrders: FolderKanban,
+  commission: CircleDollarSign,
+  company: Settings,
+  customers: Users,
+  dashboard: Gauge,
+  deposits: CircleDollarSign,
+  documents: FileStack,
+  estimates: BriefcaseBusiness,
+  expenses: Receipt,
+  financial: CircleDollarSign,
+  inspection: FileStack,
+  invoice: FileText,
+  logs: FileStack,
+  materials: FolderKanban,
+  metrics: Gauge,
+  payments: CircleDollarSign,
+  payroll: CircleDollarSign,
+  photos: FileStack,
+  preferences: Settings,
+  projects: FolderKanban,
+  punchList: FolderKanban,
+  receipts: Receipt,
+  reimbursements: Receipt,
+  roles: Users,
+  schedule: FolderKanban,
+  settings: Settings,
+  subcontractors: Users,
+  tasks: FolderKanban,
+  users: Users,
+  vendors: Users,
+  workerAdvances: CircleDollarSign,
+  workerBalances: CircleDollarSign,
+  workerInvoices: FileText,
+  workerPayments: CircleDollarSign,
+  workerSummary: Users,
+  workers: Users,
+};
+
 const COMMANDS: CommandDefinition[] = [
-  {
-    id: "go-dashboard",
-    label: "Go to Dashboard",
-    description: "Open the executive command center",
-    href: "/dashboard",
-    group: "Navigate",
-    keywords: ["home", "overview", "command center", "kpi"],
-    icon: Gauge,
-  },
-  {
-    id: "go-projects",
-    label: "Go to Projects",
-    description: "Project pipeline and active jobs",
-    href: "/projects",
-    group: "Navigate",
-    keywords: ["jobs", "work", "construction"],
-    icon: FolderKanban,
-  },
-  {
-    id: "go-invoices",
-    label: "Go to Invoices",
-    description: "AR, invoice list, drafts, and balances",
-    href: "/financial/invoices",
-    group: "Navigate",
-    keywords: ["billing", "ar", "receivable", "finance"],
-    icon: FileText,
-  },
-  {
-    id: "go-expenses",
-    label: "Go to Expenses",
-    description: "Expenses, inbox, and receipt workflow",
-    href: "/financial/expenses",
-    group: "Navigate",
-    keywords: ["receipts", "costs", "ap", "inbox"],
-    icon: Receipt,
-  },
-  {
-    id: "go-labor",
-    label: "Go to Labor",
-    description: "Time entries, workers, payments, and balances",
-    href: "/labor",
-    group: "Navigate",
-    keywords: ["workers", "time", "payroll"],
-    icon: Users,
-  },
-  {
-    id: "go-settings",
-    label: "Go to Settings",
-    description: "Company, users, security, lists, and system setup",
-    href: "/settings",
-    group: "Navigate",
-    keywords: ["admin", "company", "security", "users"],
-    icon: Settings,
-  },
+  ...HH_PROJECT_OS_COMMAND_ITEMS.map((command) => ({
+    ...command,
+    group: "Navigate" as const,
+    icon: COMMAND_ICON_MAP[command.icon],
+  })),
   {
     id: "create-project",
     label: "Create Project",

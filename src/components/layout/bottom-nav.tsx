@@ -6,9 +6,9 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   FolderKanban,
-  Clock,
-  Receipt,
-  MoreHorizontal,
+  CircleDollarSign,
+  FileStack,
+  Users,
   type LucideIcon,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -16,14 +16,53 @@ import { cn } from "@/lib/utils";
 import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
 import { createBrowserClient } from "@/lib/supabase";
 import { BOTTOM_NAV_ROUTES, prefetchRoutes, runWhenIdle } from "@/lib/route-prefetch";
+import { HH_PROJECT_OS_MOBILE_NAV_ITEMS, type HhProjectOsIconKey } from "@/lib/navigation/ia";
 
-const items: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/projects", label: "Projects", icon: FolderKanban },
-  { href: "/labor", label: "Time Entries", icon: Clock },
-  { href: "/financial/expenses", label: "Expenses", icon: Receipt },
-  { href: "/documents", label: "More", icon: MoreHorizontal },
-];
+const MOBILE_ICON_MAP: Record<HhProjectOsIconKey, LucideIcon> = {
+  accounts: CircleDollarSign,
+  activity: LayoutDashboard,
+  ar: CircleDollarSign,
+  backups: FileStack,
+  bank: CircleDollarSign,
+  bills: CircleDollarSign,
+  cashflow: CircleDollarSign,
+  changeOrders: FolderKanban,
+  commission: CircleDollarSign,
+  company: FileStack,
+  customers: Users,
+  dashboard: LayoutDashboard,
+  deposits: CircleDollarSign,
+  documents: FileStack,
+  estimates: FolderKanban,
+  expenses: CircleDollarSign,
+  financial: CircleDollarSign,
+  inspection: FileStack,
+  invoice: CircleDollarSign,
+  logs: FileStack,
+  materials: FolderKanban,
+  metrics: LayoutDashboard,
+  payments: CircleDollarSign,
+  payroll: CircleDollarSign,
+  photos: FileStack,
+  preferences: FileStack,
+  projects: FolderKanban,
+  punchList: FolderKanban,
+  receipts: FileStack,
+  reimbursements: CircleDollarSign,
+  roles: Users,
+  schedule: FolderKanban,
+  settings: FileStack,
+  subcontractors: Users,
+  tasks: FolderKanban,
+  users: Users,
+  vendors: Users,
+  workerAdvances: CircleDollarSign,
+  workerBalances: CircleDollarSign,
+  workerInvoices: CircleDollarSign,
+  workerPayments: CircleDollarSign,
+  workerSummary: Users,
+  workers: Users,
+};
 
 const BottomNavItem = React.memo(function BottomNavItem({
   href,
@@ -87,15 +126,15 @@ export function BottomNav({ className }: { className?: string }) {
       )}
       aria-label="Bottom navigation"
     >
-      {items.map((item) => (
+      {HH_PROJECT_OS_MOBILE_NAV_ITEMS.map((item) => (
         <BottomNavItem
           key={item.href}
           href={item.href}
           label={item.label}
-          Icon={item.icon}
+          Icon={MOBILE_ICON_MAP[item.icon]}
           pathname={pathname}
           onPointerEnterNav={
-            item.href === "/financial/expenses"
+            item.href.startsWith("/financial")
               ? () => prefetchFinancialRoute(queryClient, prefetchSupabase, item.href)
               : undefined
           }
