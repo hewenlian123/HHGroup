@@ -111,6 +111,7 @@ const LOGICAL_BREADCRUMB_RULES = [
   { prefix: "/financial/bills", labels: ["Financial", "AP", "Bills"] },
   { prefix: "/financial/accounts", labels: ["Financial", "Cash", "Accounts"] },
   { prefix: "/financial/bank", labels: ["Financial", "Cash", "Bank Transactions"] },
+  { prefix: "/dashboard/cashflow", labels: ["Financial", "Cash", "Cash Flow"] },
   { prefix: "/financial/ar", labels: ["Financial", "AR"] },
   { prefix: "/financial/invoices", labels: ["Financial", "AR", "Invoices"] },
   { prefix: "/financial/payments", labels: ["Financial", "AR", "Payments Received"] },

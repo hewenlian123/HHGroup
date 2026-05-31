@@ -145,12 +145,15 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Cash",
       "Accounts",
       "Bank Transactions",
+      "Cash Flow",
       "Reports",
       "Customers",
       "Workers",
+      "Worker Summary",
       "Worker Balances",
       "Worker Payments",
       "Worker Advances",
+      "Worker Receipts",
       "Worker Invoices",
       "Payroll Summary",
       "Vendors",
@@ -175,12 +178,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       });
     }
 
-    for (const intentionallyHiddenLabel of [
-      "Worker Receipts",
-      "Cash Flow",
-      "Expense Preferences",
-      "Financial Review",
-    ]) {
+    for (const intentionallyHiddenLabel of ["Expense Preferences", "Financial Review"]) {
       await expect(
         visibleSidebar(page).getByText(intentionallyHiddenLabel, { exact: true })
       ).toHaveCount(0);
@@ -214,13 +212,16 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/financial/commissions", active: "Commission Payments" },
       { path: "/financial/accounts", active: "Accounts" },
       { path: "/financial/bank", active: "Bank Transactions" },
+      { path: "/dashboard/cashflow", active: "Cash Flow" },
       { path: "/settings/project-financial-review", active: "Reports" },
       { path: "/customers", active: "Customers" },
       { path: "/financial/vendors", active: "Vendors" },
       { path: "/workers", active: "Workers" },
+      { path: "/workers/summary", active: "Worker Summary" },
       { path: "/labor/worker-balances", active: "Worker Balances" },
       { path: "/labor/payments", active: "Worker Payments" },
       { path: "/labor/advances", active: "Worker Advances" },
+      { path: "/labor/receipts", active: "Worker Receipts" },
       { path: "/labor/worker-invoices", active: "Worker Invoices" },
       { path: "/labor/payroll", active: "Payroll Summary" },
       { path: "/subcontractors", active: "Subcontractors" },
@@ -256,6 +257,9 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/labor/payroll", bottom: "People" },
       { path: "/labor/payments", bottom: "People" },
       { path: "/labor/reimbursements", bottom: "Financial" },
+      { path: "/labor/receipts", bottom: "Financial" },
+      { path: "/workers/summary", bottom: "People" },
+      { path: "/dashboard/cashflow", bottom: "Financial" },
     ]) {
       await test.step(route.path, async () => {
         await waitForRouteSmoke(page, route.path);
@@ -273,6 +277,8 @@ test.describe("HH Project OS sidebar final pass", () => {
     await expect(visibleSidebar(page).getByText("Admin Center", { exact: true })).toBeVisible();
     await expect(visibleSidebar(page).getByText("Material Catalog", { exact: true })).toBeVisible();
     await expect(visibleSidebar(page).getByText("Receipt Uploads", { exact: true })).toBeVisible();
+    await expect(visibleSidebar(page).getByText("Worker Receipts", { exact: true })).toBeVisible();
+    await expect(visibleSidebar(page).getByText("Cash Flow", { exact: true })).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 
@@ -286,9 +292,11 @@ test.describe("HH Project OS sidebar final pass", () => {
       { query: "punch list", label: "Go to Punch List" },
       { query: "receipt inbox", label: "Go to Receipt Inbox" },
       { query: "upload receipt", label: "Go to Receipt Uploads" },
+      { query: "worker summary", label: "Go to Worker Summary" },
       { query: "worker balances", label: "Go to Worker Balances" },
       { query: "worker receipts", label: "Go to Worker Receipts" },
       { query: "worker invoices", label: "Go to Worker Invoices" },
+      { query: "cash flow", label: "Go to Cash Flow" },
       { query: "system metrics", label: "Go to System Metrics" },
       { query: "system logs", label: "Go to System Logs" },
       { query: "backups", label: "Go to Backups" },
@@ -313,6 +321,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/financial/vendors", title: "People › Vendors" },
       { path: "/labor/payroll", title: "People › Payroll Summary" },
       { path: "/materials/catalog", title: "Projects › Material Catalog" },
+      { path: "/dashboard/cashflow", title: "Financial › Cash › Cash Flow" },
       { path: "/system-health", title: "Settings › Admin Center › System Health" },
     ]) {
       await test.step(route.path, async () => {

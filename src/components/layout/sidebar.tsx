@@ -212,6 +212,13 @@ export function Sidebar({
     (item: HhProjectOsNavItem) => {
       const matchesHref = (href: string) =>
         item.exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+      if (
+        (item.excludePaths ?? []).some(
+          (href) => pathname === href || pathname.startsWith(href + "/")
+        )
+      ) {
+        return false;
+      }
       return matchesHref(item.href) || (item.aliases ?? []).some((href) => matchesHref(href));
     },
     [pathname]

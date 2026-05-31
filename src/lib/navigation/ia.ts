@@ -60,6 +60,7 @@ export type HhProjectOsNavItem = {
   icon: HhProjectOsIconKey;
   exact?: boolean;
   aliases?: readonly string[];
+  excludePaths?: readonly string[];
   badge?: HhProjectOsBadge;
 };
 
@@ -108,7 +109,7 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
   {
     key: "DASHBOARD",
     label: "DASHBOARD",
-    entries: [{ href: "/dashboard", label: "Dashboard", icon: "dashboard" }],
+    entries: [{ href: "/dashboard", label: "Dashboard", icon: "dashboard", exact: true }],
   },
   {
     key: "PROJECTS",
@@ -161,15 +162,12 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
         aliases: ["/financial/receipt-queue"],
       },
       { href: "/labor/reimbursements", label: "Reimbursements", icon: "reimbursements" },
+      { href: "/labor/receipts", label: "Worker Receipts", icon: "receipts" },
       { href: "/financial/commissions", label: "Commission Payments", icon: "commission" },
       { type: "subheader", label: "Cash" },
       { href: "/financial/accounts", label: "Accounts", icon: "accounts" },
-      {
-        href: "/financial/bank",
-        label: "Bank Transactions",
-        icon: "bank",
-        aliases: ["/dashboard/cashflow"],
-      },
+      { href: "/financial/bank", label: "Bank Transactions", icon: "bank" },
+      { href: "/dashboard/cashflow", label: "Cash Flow", icon: "cashflow" },
       {
         href: "/settings/project-financial-review",
         label: "Reports",
@@ -186,8 +184,10 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
         href: "/workers",
         label: "Workers",
         icon: "workers",
-        aliases: ["/workers/summary", "/labor/workers"],
+        aliases: ["/labor/workers"],
+        excludePaths: ["/workers/summary"],
       },
+      { href: "/workers/summary", label: "Worker Summary", icon: "workerSummary" },
       { href: "/labor/worker-balances", label: "Worker Balances", icon: "workerBalances" },
       { href: "/labor/payments", label: "Worker Payments", icon: "workerPayments" },
       { href: "/labor/advances", label: "Worker Advances", icon: "workerAdvances" },
@@ -569,6 +569,14 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
     icon: "workers",
   },
   {
+    id: "go-worker-summary",
+    label: "Go to Worker Summary",
+    description: "Open worker labor and payroll summary",
+    href: "/workers/summary",
+    keywords: ["people", "workers", "worker summary", "labor summary", "crew"],
+    icon: "workerSummary",
+  },
+  {
     id: "go-vendors",
     label: "Go to Vendors",
     description: "Open vendor profiles and AP payees",
@@ -671,6 +679,14 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
     href: "/financial/bank",
     keywords: ["bank", "cash", "reconcile", "transactions"],
     icon: "bank",
+  },
+  {
+    id: "go-cash-flow",
+    label: "Go to Cash Flow",
+    description: "Open cashflow dashboard",
+    href: "/dashboard/cashflow",
+    keywords: ["cash flow", "cashflow", "cash", "dashboard", "financial"],
+    icon: "cashflow",
   },
   {
     id: "go-accounts",
