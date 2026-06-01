@@ -196,12 +196,21 @@ export default function LaborPageClient() {
   const [projectFilter, setProjectFilter] = React.useState<string>("");
   const [workerFilter, setWorkerFilter] = React.useState<string>("");
   const appliedProjectIdFromUrl = React.useRef(false);
+  const appliedWorkerIdFromUrl = React.useRef(false);
   React.useEffect(() => {
     if (appliedProjectIdFromUrl.current) return;
     const pid = searchParams.get("project_id");
     if (pid) {
       setProjectFilter(pid);
       appliedProjectIdFromUrl.current = true;
+    }
+  }, [searchParams]);
+  React.useEffect(() => {
+    if (appliedWorkerIdFromUrl.current) return;
+    const workerId = searchParams.get("workerId");
+    if (workerId) {
+      setWorkerFilter(workerId);
+      appliedWorkerIdFromUrl.current = true;
     }
   }, [searchParams]);
 

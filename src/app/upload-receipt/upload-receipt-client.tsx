@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-panel";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ function Label({ zh, en }: { zh: string; en: string }) {
 }
 
 export function UploadReceiptClient() {
+  const searchParams = useSearchParams();
   const [workers, setWorkers] = React.useState<Option[]>([]);
   const [projects, setProjects] = React.useState<Option[]>([]);
   const [workerId, setWorkerId] = React.useState("");
@@ -116,6 +118,14 @@ export function UploadReceiptClient() {
   React.useEffect(() => {
     void loadOptions();
   }, [loadOptions]);
+
+  React.useEffect(() => {
+    const initialWorkerId = searchParams.get("workerId")?.trim();
+    if (!initialWorkerId || workers.length === 0) return;
+    if (workers.some((worker) => worker.id === initialWorkerId)) {
+      setWorkerId((current) => current || initialWorkerId);
+    }
+  }, [searchParams, workers]);
 
   useOnAppSync(
     React.useCallback(() => {

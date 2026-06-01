@@ -49,14 +49,14 @@ export default async function WorkersPage() {
       header={
         <div className="hidden md:block">
           <PageHeader
-            title="Workers"
-            description="Manage workers: trades, daily rate, default OT rate, and status."
+            title="Worker Center"
+            description="Run worker payroll tasks from one place: labor, receipts, advances, payments, and statements."
           />
         </div>
       }
     >
       <div className="hidden md:block">
-        <SectionHeader label="Workers" action={<WorkersActions />} />
+        <SectionHeader label="Worker Center" action={<WorkersActions />} />
         <Divider />
       </div>
 
