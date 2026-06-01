@@ -20,14 +20,20 @@ import { useToast } from "@/components/toast/toast-provider";
 import type { WorkerRow, WorkerStatus } from "@/lib/workers-db";
 import { updateWorkerAction, deleteWorkerAction } from "./actions";
 import { AddWorkerModal } from "./add-worker-modal";
-import { EmptyState } from "@/components/empty-state";
-import { RowActionsMenu } from "@/components/base/row-actions-menu";
 import {
   listTableAmountCellClassName,
   listTablePrimaryCellClassName,
   listTableRowClassName,
 } from "@/lib/list-table-interaction";
-import { CalendarPlus, Search, Upload, UserPlus } from "lucide-react";
+import {
+  BriefcaseBusiness,
+  CalendarPlus,
+  CircleDollarSign,
+  ReceiptText,
+  Search,
+  Upload,
+  UserPlus,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   MobileEmptyState,
@@ -37,6 +43,16 @@ import {
   MobileSearchFiltersRow,
 } from "@/components/mobile/mobile-list-chrome";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import {
+  EmptyState,
+  KpiTile,
+  NeoAmount,
+  NeoMobileCard,
+  NeoTable,
+  NeoToolbar,
+  RowActionsMenu,
+} from "@/components/base";
+import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
 
 type WorkerBalanceSnapshot = {
   workerId: string;
@@ -74,9 +90,39 @@ type WorkerCenterRow = WorkerRow & {
   payStatus: "Ready to pay" | "Settled" | "Overpaid" | "Inactive";
 };
 
+const workerCenterPrimaryAction =
+  "rounded-[0.625rem] border border-[rgb(198_165_106_/_0.28)] bg-[var(--neo-gold)] text-zinc-950 shadow-sm hover:bg-[var(--neo-gold-soft)] hover:text-zinc-950 focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+
+const workerCenterFieldClass =
+  "h-10 rounded-[0.625rem] border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-[44px]";
+
+const workerCenterKpiIconClass =
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-gold-soft)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset]";
+
+const workerCenterTableHeadClass = cn(
+  tableRawThClass,
+  "h-10 whitespace-nowrap text-[11px] font-semibold tracking-[0.06em]"
+);
+
+const workerCenterTableCellClass = cn(tableRawTdClass, "h-[56px] py-2 text-[13px] md:text-[14px]");
+
 function fmtRate(n: number): string {
   if (n === 0) return "—";
-  return formatCurrency(n);
+  return `${formatCurrency(n)} / day`;
+}
+
+function formatDayCount(value: number): string {
+  const safe = Number.isFinite(value) ? value : 0;
+  const label = Math.abs(safe) === 1 ? "day" : "days";
+  const display = Number.isInteger(safe) ? String(safe) : safe.toFixed(1).replace(/\.0$/, "");
+  return `${display} ${label}`;
+}
+
+function workerSecondaryInfo(row: Pick<WorkerRow, "trade" | "phone">): string {
+  const parts = [row.trade, row.phone].filter(
+    (value): value is string => typeof value === "string" && value.trim().length > 0
+  );
+  return parts.length ? parts.join(" · ") : "No details";
 }
 
 function normalizeWorkerId(id: string): string {
@@ -101,12 +147,14 @@ function currentWeekRange(): { from: string; to: string } {
   return { from: ymdLocal(start), to: ymdLocal(end) };
 }
 
-function paymentDisplay(payment: WorkerPaymentSnapshot | null): string {
-  if (!payment) return "—";
+function paymentDisplayParts(
+  payment: WorkerPaymentSnapshot | null
+): { amount: string; date: string } | null {
+  if (!payment) return null;
   const date =
     payment.paymentDate ?? payment.payment_date ?? payment.createdAt ?? payment.created_at ?? "";
   const amount = Number(payment.amount ?? payment.total_amount) || 0;
-  return `${formatCurrency(amount)} · ${formatDate(date, "compact")}`;
+  return { amount: formatCurrency(amount), date: formatDate(date, "compact") };
 }
 
 function paymentDateKey(payment: WorkerPaymentSnapshot | null | undefined): string {
@@ -141,11 +189,73 @@ function payStatusFor(row: WorkerRow, netToPay: number): WorkerCenterRow["paySta
   return "Settled";
 }
 
-function statusClass(status: WorkerCenterRow["payStatus"]): string {
-  if (status === "Ready to pay") return "hh-pill-warning";
-  if (status === "Settled") return "hh-pill-success";
-  if (status === "Overpaid") return "hh-pill-info";
-  return "text-muted-foreground text-sm";
+function PayStatusPill({
+  status,
+  className,
+}: {
+  status: WorkerCenterRow["payStatus"];
+  className?: string;
+}) {
+  const tone =
+    status === "Ready to pay"
+      ? "border-[rgb(216_180_106_/_0.30)] bg-[rgb(216_180_106_/_0.10)] text-[#E3C27E]"
+      : status === "Settled"
+        ? "border-[rgb(16_185_129_/_0.28)] bg-[rgb(16_185_129_/_0.08)] text-[#8BD7B1]"
+        : status === "Overpaid"
+          ? "border-[rgb(99_179_237_/_0.24)] bg-[rgb(99_179_237_/_0.08)] text-[#9AC7EF]"
+          : "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
+  const dot =
+    status === "Ready to pay"
+      ? "bg-[#E3C27E]"
+      : status === "Settled"
+        ? "bg-[#8BD7B1]"
+        : status === "Overpaid"
+          ? "bg-[#9AC7EF]"
+          : "bg-[var(--neo-text-tertiary)]";
+
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold leading-none tracking-normal shadow-[0_1px_0_rgb(255_255_255_/_0.025)_inset]",
+        tone,
+        className
+      )}
+    >
+      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dot)} aria-hidden />
+      {status}
+    </span>
+  );
+}
+
+function LastPaymentCell({
+  payment,
+  className,
+}: {
+  payment: WorkerPaymentSnapshot | null;
+  className?: string;
+}) {
+  const parts = paymentDisplayParts(payment);
+  if (!parts) {
+    return <span className={cn("text-[var(--neo-text-tertiary)]", className)}>—</span>;
+  }
+
+  return (
+    <span className={cn("block leading-tight", className)}>
+      <span className="block font-semibold tabular-nums text-[var(--neo-text-primary)]">
+        {parts.amount}
+      </span>
+      <span className="mt-0.5 block text-[12px] text-[var(--neo-text-tertiary)]">{parts.date}</span>
+    </span>
+  );
+}
+
+function KpiLabel({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <span className="flex items-center gap-2">
+      <span className={workerCenterKpiIconClass}>{icon}</span>
+      <span>{children}</span>
+    </span>
+  );
 }
 
 export function WorkersListClient({
@@ -289,7 +399,33 @@ export function WorkersListClient({
     });
   }, [workbenchRows, searchInput, statusFilter]);
 
+  const centerSummary = React.useMemo(() => {
+    const readyToPay = workbenchRows.filter((w) => w.payStatus === "Ready to pay").length;
+    const totalNetToPay = workbenchRows.reduce((sum, w) => sum + w.netToPay, 0);
+    const unpaidLabor = workbenchRows.reduce((sum, w) => sum + w.unpaidLabor, 0);
+    const reimbursements = workbenchRows.reduce((sum, w) => sum + w.reimbursements, 0);
+    const advances = workbenchRows.reduce((sum, w) => sum + w.advances, 0);
+    return { readyToPay, totalNetToPay, unpaidLabor, reimbursements, advances };
+  }, [workbenchRows]);
+
   const activeDrawerFilterCount = (statusFilter !== "all" ? 1 : 0) + (searchInput.trim() ? 1 : 0);
+
+  const searchField = (
+    <div className="relative w-full min-w-0">
+      <Search
+        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]"
+        aria-hidden
+      />
+      <Input
+        type="text"
+        placeholder="Name, trade, phone…"
+        value={searchInput}
+        onChange={(e) => setSearchInput(e.target.value)}
+        className={cn(workerCenterFieldClass, "pl-9")}
+        aria-label="Search workers"
+      />
+    </div>
+  );
 
   React.useEffect(() => {
     setItems(rows);
@@ -444,19 +580,7 @@ export function WorkersListClient({
           filterSheetOpen={filtersOpen}
           onOpenFilters={() => setFiltersOpen(true)}
           activeFilterCount={activeDrawerFilterCount}
-          searchSlot={
-            <div className="relative w-full">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Name, trade, phone…"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="h-10 pl-8 text-sm"
-                aria-label="Search workers"
-              />
-            </div>
-          }
+          searchSlot={searchField}
         />
         <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
           <div className="space-y-2">
@@ -464,7 +588,7 @@ export function WorkersListClient({
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
-              className="h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              className={cn(workerCenterFieldClass, "w-full appearance-none px-3")}
             >
               <option value="all">All</option>
               <option value="active">Active</option>
@@ -474,7 +598,11 @@ export function WorkersListClient({
           <Button asChild variant="outline" size="sm" className="h-9 w-full rounded-sm">
             <Link href="/labor/payroll">Payroll Summary</Link>
           </Button>
-          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          <Button
+            type="button"
+            className={cn("w-full", workerCenterPrimaryAction)}
+            onClick={() => setFiltersOpen(false)}
+          >
             Done
           </Button>
         </MobileFilterSheet>
@@ -482,7 +610,11 @@ export function WorkersListClient({
           icon={<UserPlus className="h-5 w-5" />}
           message="Add workers to track trades, daily rates, and OT rates."
           action={
-            <Button size="sm" className="h-9 rounded-sm" onClick={() => setAddOpen(true)}>
+            <Button
+              size="sm"
+              className={cn("h-10 rounded-[0.625rem]", workerCenterPrimaryAction)}
+              onClick={() => setAddOpen(true)}
+            >
               Add Worker
             </Button>
           }
@@ -493,7 +625,11 @@ export function WorkersListClient({
             description="Add workers to track trades, daily rates, and OT rates."
             icon={<UserPlus className="h-5 w-5" />}
             action={
-              <Button size="touch" className="min-h-[44px]" onClick={() => setAddOpen(true)}>
+              <Button
+                size="touch"
+                className={cn("min-h-[44px]", workerCenterPrimaryAction)}
+                onClick={() => setAddOpen(true)}
+              >
                 Add Worker
               </Button>
             }
@@ -514,19 +650,8 @@ export function WorkersListClient({
         filterSheetOpen={filtersOpen}
         onOpenFilters={() => setFiltersOpen(true)}
         activeFilterCount={activeDrawerFilterCount}
-        searchSlot={
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Name, trade, phone…"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="h-10 pl-8 text-sm"
-              aria-label="Search workers"
-            />
-          </div>
-        }
+        filtersTriggerClassName="h-11 min-h-[44px] rounded-[0.625rem]"
+        searchSlot={searchField}
       />
       <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
         <div className="space-y-2">
@@ -534,7 +659,7 @@ export function WorkersListClient({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
-            className="h-10 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+            className={cn(workerCenterFieldClass, "w-full appearance-none px-3")}
           >
             <option value="all">All</option>
             <option value="active">Active</option>
@@ -544,7 +669,11 @@ export function WorkersListClient({
         <Button asChild variant="outline" size="sm" className="h-9 w-full rounded-sm">
           <Link href="/labor/payroll">Payroll Summary</Link>
         </Button>
-        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+        <Button
+          type="button"
+          className={cn("w-full", workerCenterPrimaryAction)}
+          onClick={() => setFiltersOpen(false)}
+        >
           Done
         </Button>
       </MobileFilterSheet>
@@ -558,7 +687,80 @@ export function WorkersListClient({
           {metricsMessage}
         </p>
       ) : null}
-      <div className="md:hidden divide-y divide-gray-100 dark:divide-border/60">
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiTile
+          label={
+            <KpiLabel icon={<UserPlus className="h-3.5 w-3.5" aria-hidden />}>
+              Workers ready to pay
+            </KpiLabel>
+          }
+          value={centerSummary.readyToPay}
+          meta="Workers with a positive net balance"
+          tone="warning"
+          className="min-h-[94px] rounded-[18px]"
+        />
+        <KpiTile
+          label={
+            <KpiLabel icon={<CircleDollarSign className="h-3.5 w-3.5" aria-hidden />}>
+              Total net to pay
+            </KpiLabel>
+          }
+          value={
+            <NeoAmount
+              tone={centerSummary.totalNetToPay > 0.005 ? "danger" : "neutral"}
+              className={centerSummary.totalNetToPay > 0.005 ? "text-rose-300/90" : undefined}
+            >
+              {formatCurrency(centerSummary.totalNetToPay)}
+            </NeoAmount>
+          }
+          meta="Labor + reimbursements - advances - payments"
+          tone="neutral"
+          className="min-h-[94px] rounded-[18px]"
+        />
+        <KpiTile
+          label={
+            <KpiLabel icon={<BriefcaseBusiness className="h-3.5 w-3.5" aria-hidden />}>
+              Unpaid labor
+            </KpiLabel>
+          }
+          value={<NeoAmount>{formatCurrency(centerSummary.unpaidLabor)}</NeoAmount>}
+          meta="Open labor snapshot total"
+          className="min-h-[94px] rounded-[18px]"
+        />
+        <KpiTile
+          label={
+            <KpiLabel icon={<ReceiptText className="h-3.5 w-3.5" aria-hidden />}>
+              Reimbursements / Advances
+            </KpiLabel>
+          }
+          value={
+            <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <NeoAmount>{formatCurrency(centerSummary.reimbursements)}</NeoAmount>
+              <span className="text-[13px] font-medium text-[var(--neo-text-tertiary)]">/</span>
+              <NeoAmount>{formatCurrency(centerSummary.advances)}</NeoAmount>
+            </span>
+          }
+          meta="Open reimbursement and advance totals"
+          className="min-h-[94px] rounded-[18px]"
+        />
+      </div>
+
+      <NeoToolbar className="hidden gap-2 p-2 md:flex md:flex-row md:items-center md:justify-between">
+        <div className="min-w-[260px] max-w-md flex-1">{searchField}</div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as "all" | "active" | "inactive")}
+          className={cn(workerCenterFieldClass, "w-full appearance-none px-3 md:w-[180px]")}
+          aria-label="Filter workers by status"
+        >
+          <option value="all">All statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </NeoToolbar>
+
+      <div className="flex flex-col gap-2 md:hidden" data-testid="worker-center-mobile-cards">
         {filteredRows.length === 0 ? (
           <MobileEmptyState
             icon={<UserPlus className="h-5 w-5" />}
@@ -566,11 +768,11 @@ export function WorkersListClient({
           />
         ) : (
           filteredRows.map((r) => (
-            <div
+            <NeoMobileCard
               key={r.id}
               role="button"
               tabIndex={0}
-              className="hh-row-interactive flex min-h-[88px] cursor-pointer flex-col items-stretch gap-2 py-2.5 text-left"
+              className="cursor-pointer space-y-3 p-3 text-left"
               onClick={() => router.push(`/workers/${r.id}`)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -581,48 +783,75 @@ export function WorkersListClient({
             >
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-foreground">{r.name}</p>
-                  <p className="truncate text-sm text-muted-foreground">
-                    {r.trade ?? "—"} · Daily {fmtRate(r.daily_rate)}
+                  <p className="truncate text-[15px] font-semibold text-[var(--neo-text-primary)]">
+                    {r.name}
+                  </p>
+                  <p className="mt-1 truncate text-[12px] text-[var(--neo-text-tertiary)]">
+                    {workerSecondaryInfo(r)}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
                     Net to pay
                   </p>
-                  <p
+                  <NeoAmount
+                    tone={r.netToPay > 0.005 ? "danger" : "neutral"}
                     className={cn(
-                      "text-sm font-semibold tabular-nums",
-                      r.netToPay > 0.005 && "text-destructive"
+                      "block text-[18px] leading-tight",
+                      r.netToPay > 0.005 && "text-rose-300/90"
                     )}
                   >
                     {formatCurrency(r.netToPay)}
-                  </p>
+                  </NeoAmount>
                 </div>
               </div>
-              <div className="grid grid-cols-4 gap-2 text-xs text-muted-foreground">
-                <span>
-                  Week <b className="font-semibold text-foreground">{r.thisWeekDays}</b>
-                </span>
-                <span>
-                  Labor{" "}
-                  <b className="font-semibold text-foreground">{formatCurrency(r.unpaidLabor)}</b>
-                </span>
-                <span>
-                  Reimb{" "}
-                  <b className="font-semibold text-foreground">
+              <dl className="grid grid-cols-2 gap-2 text-[12px]">
+                <div className="rounded-[0.75rem] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                    Daily rate
+                  </dt>
+                  <dd className="mt-1 font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                    {fmtRate(r.daily_rate)}
+                  </dd>
+                </div>
+                <div className="rounded-[0.75rem] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                    Unpaid labor
+                  </dt>
+                  <dd className="mt-1 font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                    {formatCurrency(r.unpaidLabor)}
+                  </dd>
+                </div>
+                <div className="rounded-[0.75rem] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                    Reimb.
+                  </dt>
+                  <dd className="mt-1 font-semibold tabular-nums text-[var(--neo-text-primary)]">
                     {formatCurrency(r.reimbursements)}
-                  </b>
-                </span>
-                <span>
-                  Adv <b className="font-semibold text-foreground">{formatCurrency(r.advances)}</b>
-                </span>
-              </div>
+                  </dd>
+                </div>
+                <div className="rounded-[0.75rem] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2">
+                  <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                    Advances
+                  </dt>
+                  <dd className="mt-1 font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                    {formatCurrency(r.advances)}
+                  </dd>
+                </div>
+              </dl>
               <div
-                className="flex items-center justify-between gap-2"
+                className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--neo-border)] pt-3"
                 onClick={(e) => e.stopPropagation()}
               >
-                <span className={cn(statusClass(r.payStatus), "text-[11px]")}>{r.payStatus}</span>
+                <div className="min-w-0">
+                  <PayStatusPill status={r.payStatus} />
+                  <div className="mt-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                      Last payment
+                    </p>
+                    <LastPaymentCell payment={r.lastPayment} className="text-[12px]" />
+                  </div>
+                </div>
                 <div className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto">
                   <Button asChild variant="outline" size="sm" className="h-8 shrink-0 rounded-sm">
                     <Link href={`/labor?workerId=${encodeURIComponent(r.id)}&addDaily=1`}>
@@ -643,52 +872,64 @@ export function WorkersListClient({
                   />
                 </div>
               </div>
-            </div>
+            </NeoMobileCard>
           ))
         )}
       </div>
-      <div className="table-responsive hidden md:block">
-        <table className="w-full min-w-[1120px] border-separate border-spacing-y-1.5 border-spacing-x-0 text-sm">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Worker
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">
-                Daily Rate
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">
-                This Week
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">
-                Unpaid Labor
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">
-                Reimbursements
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">
-                Advances
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wider tabular-nums text-muted-foreground">
-                Net To Pay
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Last Payment
-              </th>
-              <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Status
-              </th>
-              <th className="w-10 px-1 text-right" aria-label="Actions" />
+      <NeoTable
+        className="hidden rounded-[18px] md:block"
+        tableClassName="min-w-[1100px] table-fixed"
+      >
+        <thead>
+          <tr>
+            <th className={cn(workerCenterTableHeadClass, "w-[260px]")}>Worker</th>
+            <th className={cn(workerCenterTableHeadClass, "w-[112px] text-right tabular-nums")}>
+              Daily Rate
+            </th>
+            <th className={cn(workerCenterTableHeadClass, "w-[86px] text-right tabular-nums")}>
+              This Week
+            </th>
+            <th className={cn(workerCenterTableHeadClass, "w-[108px] text-right tabular-nums")}>
+              Unpaid Labor
+            </th>
+            <th className={cn(workerCenterTableHeadClass, "w-[124px] text-right tabular-nums")}>
+              Reimbursements
+            </th>
+            <th className={cn(workerCenterTableHeadClass, "w-[92px] text-right tabular-nums")}>
+              Advances
+            </th>
+            <th className={cn(workerCenterTableHeadClass, "w-[106px] text-right tabular-nums")}>
+              Net To Pay
+            </th>
+            <th className={cn(workerCenterTableHeadClass, "w-[96px]")}>Last Payment</th>
+            <th className={cn(workerCenterTableHeadClass, "w-[92px]")}>Status</th>
+            <th
+              className={cn(workerCenterTableHeadClass, "w-[36px] px-2 text-right")}
+              aria-label="Actions"
+            />
+          </tr>
+        </thead>
+        <tbody>
+          {filteredRows.length === 0 ? (
+            <tr className="border-b border-[var(--neo-border)]">
+              <td
+                colSpan={10}
+                className="px-6 py-10 text-center text-sm text-[var(--neo-text-secondary)]"
+              >
+                No workers match your search or filters.
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {filteredRows.map((r) => (
+          ) : (
+            filteredRows.map((r) => (
               <tr
                 key={r.id}
                 tabIndex={0}
                 role="link"
                 aria-label={`Open worker ${r.name}`}
-                className={listTableRowClassName}
+                className={cn(
+                  listTableRowClassName,
+                  "border-b border-[var(--neo-border)] last:border-b-0"
+                )}
                 onClick={() => router.push(`/workers/${r.id}`)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -699,71 +940,82 @@ export function WorkersListClient({
               >
                 <td
                   className={cn(
-                    "first:rounded-l-xl px-3 py-1.5 font-medium",
+                    workerCenterTableCellClass,
+                    "w-[260px] font-semibold",
                     listTablePrimaryCellClassName
                   )}
                 >
-                  {r.name}
-                  <p className="mt-0.5 truncate text-xs font-normal text-muted-foreground">
-                    {r.trade ?? "—"} · {r.phone ?? "—"}
-                  </p>
+                  <span className="block truncate text-[var(--neo-text-primary)]">{r.name}</span>
+                  <span className="mt-0.5 block truncate text-[12px] font-normal text-[var(--neo-text-tertiary)]">
+                    {workerSecondaryInfo(r)}
+                  </span>
                 </td>
                 <td
                   className={cn(
-                    "px-3 py-1.5 text-right tabular-nums",
+                    workerCenterTableCellClass,
+                    "whitespace-nowrap text-right tabular-nums",
                     listTableAmountCellClassName
                   )}
                 >
-                  {fmtRate(r.daily_rate)}
+                  <NeoAmount>{fmtRate(r.daily_rate)}</NeoAmount>
                 </td>
                 <td
                   className={cn(
-                    "px-3 py-1.5 text-right tabular-nums",
+                    workerCenterTableCellClass,
+                    "whitespace-nowrap text-right tabular-nums",
                     listTableAmountCellClassName
                   )}
                 >
-                  {r.thisWeekDays}
+                  {formatDayCount(r.thisWeekDays)}
                 </td>
                 <td
                   className={cn(
-                    "px-3 py-1.5 text-right tabular-nums",
+                    workerCenterTableCellClass,
+                    "whitespace-nowrap text-right tabular-nums",
                     listTableAmountCellClassName
                   )}
                 >
-                  {formatCurrency(r.unpaidLabor)}
+                  <NeoAmount>{formatCurrency(r.unpaidLabor)}</NeoAmount>
                 </td>
                 <td
                   className={cn(
-                    "px-3 py-1.5 text-right tabular-nums",
+                    workerCenterTableCellClass,
+                    "whitespace-nowrap text-right tabular-nums",
                     listTableAmountCellClassName
                   )}
                 >
-                  {formatCurrency(r.reimbursements)}
+                  <NeoAmount>{formatCurrency(r.reimbursements)}</NeoAmount>
                 </td>
                 <td
                   className={cn(
-                    "px-3 py-1.5 text-right tabular-nums",
+                    workerCenterTableCellClass,
+                    "whitespace-nowrap text-right tabular-nums",
                     listTableAmountCellClassName
                   )}
                 >
-                  {formatCurrency(r.advances)}
+                  <NeoAmount>{formatCurrency(r.advances)}</NeoAmount>
                 </td>
                 <td
                   className={cn(
-                    "px-3 py-1.5 text-right tabular-nums font-semibold",
-                    r.netToPay > 0.005 ? "text-destructive" : listTableAmountCellClassName
+                    workerCenterTableCellClass,
+                    "whitespace-nowrap text-right tabular-nums"
                   )}
                 >
-                  {formatCurrency(r.netToPay)}
+                  <NeoAmount
+                    tone={r.netToPay > 0.005 ? "danger" : "neutral"}
+                    className={cn("text-[14px]", r.netToPay > 0.005 && "text-rose-300/90")}
+                  >
+                    {formatCurrency(r.netToPay)}
+                  </NeoAmount>
                 </td>
-                <td className="px-3 py-1.5 text-muted-foreground">
-                  {paymentDisplay(r.lastPayment)}
+                <td className={cn(workerCenterTableCellClass, "text-[var(--neo-text-secondary)]")}>
+                  <LastPaymentCell payment={r.lastPayment} />
                 </td>
-                <td className="px-3 py-1.5">
-                  <span className={statusClass(r.payStatus)}>{r.payStatus}</span>
+                <td className={workerCenterTableCellClass}>
+                  <PayStatusPill status={r.payStatus} />
                 </td>
                 <td
-                  className="last:rounded-r-xl px-1 py-1.5 text-right"
+                  className={cn(workerCenterTableCellClass, "px-2 text-right")}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <RowActionsMenu
@@ -773,10 +1025,10 @@ export function WorkersListClient({
                   />
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            ))
+          )}
+        </tbody>
+      </NeoTable>
 
       <AddWorkerModal open={addOpen} onOpenChange={setAddOpen} onSuccess={handleAddSuccess} />
 
