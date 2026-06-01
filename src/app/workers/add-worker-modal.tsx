@@ -1,9 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Dialog } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import {
+  NeoFieldLabel,
+  NeoFormGrid,
+  NeoInput,
+  NeoModal,
+  NeoSelect,
+  neoFormErrorClassName,
+  neoFormFieldClassName,
+} from "@/components/base";
 import { createWorkerAction } from "./actions";
 import type { WorkerStatus, WorkerRow } from "@/lib/workers-db";
 
@@ -23,6 +32,8 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: Props) {
   const [notes, setNotes] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
+  const fieldIdPrefix = React.useId().replace(/:/g, "");
+  const formId = `${fieldIdPrefix}-add-worker-form`;
 
   const reset = React.useCallback(() => {
     setName("");
@@ -72,45 +83,70 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm border-border/60 rounded-md gap-4 p-5">
-        <DialogHeader>
-          <DialogTitle className="text-base font-semibold">Add Worker</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Name (required)</label>
-            <Input
+      <NeoModal
+        title="Add Worker"
+        description="Create a worker profile with the current daily rate used by labor entries."
+        className="max-w-[480px]"
+        bodyClassName="space-y-3"
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-10 rounded-md"
+              onClick={() => onOpenChange(false)}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" form={formId} disabled={busy} className="min-h-10 rounded-md">
+              <SubmitSpinner loading={busy} className="mr-2" />
+              {busy ? "Saving..." : "Add Worker"}
+            </Button>
+          </>
+        }
+      >
+        <form id={formId} onSubmit={handleSubmit} className="grid gap-3">
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel htmlFor={`${fieldIdPrefix}-name`} required>
+              Name
+            </NeoFieldLabel>
+            <NeoInput
+              id={`${fieldIdPrefix}-name`}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Worker name"
-              className="h-9 text-sm"
               required
+              disabled={busy}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Phone</label>
-              <Input
+          <NeoFormGrid>
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor={`${fieldIdPrefix}-phone`}>Phone</NeoFieldLabel>
+              <NeoInput
+                id={`${fieldIdPrefix}-phone`}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Phone"
-                className="h-9 text-sm"
+                disabled={busy}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Trade</label>
-              <Input
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor={`${fieldIdPrefix}-trade`}>Trade</NeoFieldLabel>
+              <NeoInput
+                id={`${fieldIdPrefix}-trade`}
                 value={trade}
                 onChange={(e) => setTrade(e.target.value)}
                 placeholder="Trade"
-                className="h-9 text-sm"
+                disabled={busy}
               />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Daily Rate</label>
-              <Input
+          </NeoFormGrid>
+          <NeoFormGrid>
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor={`${fieldIdPrefix}-daily-rate`}>Daily Rate</NeoFieldLabel>
+              <NeoInput
+                id={`${fieldIdPrefix}-daily-rate`}
                 type="number"
                 inputMode="decimal"
                 step="0.01"
@@ -118,12 +154,15 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: Props) {
                 value={dailyRate}
                 onChange={(e) => setDailyRate(e.target.value)}
                 placeholder="0"
-                className="h-9 text-sm"
+                disabled={busy}
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Default OT Rate</label>
-              <Input
+            <div className={neoFormFieldClassName}>
+              <NeoFieldLabel htmlFor={`${fieldIdPrefix}-default-ot-rate`}>
+                Default OT Rate
+              </NeoFieldLabel>
+              <NeoInput
+                id={`${fieldIdPrefix}-default-ot-rate`}
                 type="number"
                 inputMode="decimal"
                 step="0.01"
@@ -131,50 +170,35 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: Props) {
                 value={defaultOtRate}
                 onChange={(e) => setDefaultOtRate(e.target.value)}
                 placeholder="0"
-                className="h-9 text-sm"
+                disabled={busy}
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Status</label>
-            <select
+          </NeoFormGrid>
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel htmlFor={`${fieldIdPrefix}-status`}>Status</NeoFieldLabel>
+            <NeoSelect
+              id={`${fieldIdPrefix}-status`}
               value={status}
               onChange={(e) => setStatus(e.target.value as WorkerStatus)}
-              className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+              disabled={busy}
             >
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
-            </select>
+            </NeoSelect>
           </div>
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Notes</label>
-            <Input
+          <div className={neoFormFieldClassName}>
+            <NeoFieldLabel htmlFor={`${fieldIdPrefix}-notes`}>Notes</NeoFieldLabel>
+            <NeoInput
+              id={`${fieldIdPrefix}-notes`}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Notes"
-              className="h-9 text-sm"
+              disabled={busy}
             />
           </div>
-          {error ? <p className="text-sm text-red-600 dark:text-red-400">{error}</p> : null}
-          <div className="flex justify-end gap-2 border-t border-border/40 pt-2">
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="h-9 rounded-md border border-input bg-transparent px-3 text-sm hover:bg-accent hover:text-accent-foreground"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="inline-flex h-9 items-center rounded-md border border-input bg-foreground px-3 text-sm text-background hover:bg-foreground/90 disabled:opacity-50"
-            >
-              <SubmitSpinner loading={busy} className="mr-2" />
-              {busy ? "Saving…" : "Add Worker"}
-            </button>
-          </div>
+          {error ? <p className={neoFormErrorClassName}>{error}</p> : null}
         </form>
-      </DialogContent>
+      </NeoModal>
     </Dialog>
   );
 }
