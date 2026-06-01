@@ -124,6 +124,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   const [editorMode, setEditorMode] = React.useState<"create" | "edit">("create");
   const [editing, setEditing] = React.useState<AdvanceRow | null>(null);
   const [initialCreateWorkerId, setInitialCreateWorkerId] = React.useState("");
+  const consumedInitialCreateKeyRef = React.useRef<string | null>(null);
 
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
@@ -137,7 +138,14 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     if (!initialWorkerId) return;
     if (!workerOptions.some((worker) => worker.id === initialWorkerId)) return;
     setWorkerFilter((current) => current || initialWorkerId);
-    if (searchParams.get("new") === "1" && !editorOpen && !editing) {
+    const initialCreateKey = `${initialWorkerId}:${searchParams.get("new") ?? ""}`;
+    if (
+      searchParams.get("new") === "1" &&
+      consumedInitialCreateKeyRef.current !== initialCreateKey &&
+      !editorOpen &&
+      !editing
+    ) {
+      consumedInitialCreateKeyRef.current = initialCreateKey;
       setEditorMode("create");
       setEditing(null);
       setInitialCreateWorkerId(initialWorkerId);

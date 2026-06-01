@@ -2,13 +2,23 @@
 
 import { revalidatePath } from "next/cache";
 import * as workersDb from "@/lib/workers-db";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseInternal,
+} from "@/lib/supabase-server";
 import type { WorkerDraft, UpdateWorkerPatch, WorkerRow } from "@/lib/workers-db";
+
+function workerActionClient() {
+  const client = getServerSupabaseInternal();
+  if (!client) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  return client;
+}
 
 export async function createWorkerAction(
   draft: WorkerDraft
 ): Promise<{ ok: true; worker: WorkerRow } | { ok: false; error: string }> {
   try {
-    const worker = await workersDb.insertWorker(draft);
+    const worker = await workersDb.insertWorker(draft, workerActionClient());
     revalidatePath("/workers");
     return { ok: true, worker };
   } catch (e) {
@@ -21,7 +31,7 @@ export async function updateWorkerAction(
   patch: UpdateWorkerPatch
 ): Promise<{ ok: true; worker: WorkerRow | null } | { ok: false; error: string }> {
   try {
-    const worker = await workersDb.updateWorker(id, patch);
+    const worker = await workersDb.updateWorker(id, patch, workerActionClient());
     revalidatePath("/workers");
     return { ok: true, worker };
   } catch (e) {
@@ -33,7 +43,7 @@ export async function deleteWorkerAction(
   id: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   try {
-    await workersDb.deleteWorker(id);
+    await workersDb.deleteWorker(id, workerActionClient());
     revalidatePath("/workers");
     return { ok: true };
   } catch (e) {

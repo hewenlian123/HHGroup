@@ -913,20 +913,20 @@ export default function WorkerBalanceDetailPage() {
             <DialogTitle>Pay Worker</DialogTitle>
           </DialogHeader>
           <form onSubmit={handlePaySubmit} className="space-y-5">
-            <p className="text-xs leading-relaxed text-zinc-500">
+            <p className="text-xs leading-relaxed text-[var(--neo-text-tertiary)]">
               Select items to include in this payment. Total will be calculated automatically.
             </p>
 
             {unpaidLabor.length > 0 && (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 mb-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-[var(--neo-text-tertiary)] mb-2">
                   Unpaid labor entries
                 </p>
-                <div className="max-h-32 overflow-y-auto border border-border/60 rounded-sm divide-y divide-border/40">
+                <div className="max-h-32 overflow-y-auto border border-[var(--neo-border)] rounded-sm divide-y divide-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
                   {unpaidLabor.map((e) => (
                     <label
                       key={e.id}
-                      className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-muted/10 cursor-pointer"
+                      className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-[var(--neo-surface-hover)] cursor-pointer"
                     >
                       <input
                         type="checkbox"
@@ -934,10 +934,10 @@ export default function WorkerBalanceDetailPage() {
                         onChange={() => toggleLabor(e.id)}
                         className="h-4 w-4 rounded border-input"
                       />
-                      <span className="text-sm flex-1 truncate text-zinc-700">
+                      <span className="text-sm flex-1 truncate text-[var(--neo-text-secondary)]">
                         {formatLedgerDate(e.date, "compact")} · {e.projectName ?? "—"}
                       </span>
-                      <span className="text-sm tabular-nums font-semibold tracking-tight text-zinc-900">
+                      <span className="text-sm tabular-nums font-semibold tracking-tight text-[var(--neo-text-primary)]">
                         {formatCurrency(e.amount)}
                       </span>
                     </label>
@@ -948,14 +948,14 @@ export default function WorkerBalanceDetailPage() {
 
             {unpaidReimb.length > 0 && (
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-zinc-400 mb-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-[var(--neo-text-tertiary)] mb-2">
                   Unpaid reimbursements
                 </p>
-                <div className="max-h-32 overflow-y-auto border border-border/60 rounded-sm divide-y divide-border/40">
+                <div className="max-h-32 overflow-y-auto border border-[var(--neo-border)] rounded-sm divide-y divide-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
                   {unpaidReimb.map((r) => (
                     <label
                       key={r.id}
-                      className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-muted/10 cursor-pointer"
+                      className="flex items-center justify-between gap-2 px-3 py-2 hover:bg-[var(--neo-surface-hover)] cursor-pointer"
                     >
                       <input
                         type="checkbox"
@@ -963,10 +963,10 @@ export default function WorkerBalanceDetailPage() {
                         onChange={() => toggleReimb(r.id)}
                         className="h-4 w-4 rounded border-input"
                       />
-                      <span className="text-sm flex-1 truncate text-zinc-700">
+                      <span className="text-sm flex-1 truncate text-[var(--neo-text-secondary)]">
                         {formatLedgerDate(r.date, "compact")} · {r.vendor ?? "—"}
                       </span>
-                      <span className="text-sm tabular-nums font-semibold tracking-tight text-zinc-900">
+                      <span className="text-sm tabular-nums font-semibold tracking-tight text-[var(--neo-text-primary)]">
                         {formatCurrency(r.amount)}
                       </span>
                     </label>
@@ -985,7 +985,9 @@ export default function WorkerBalanceDetailPage() {
             <div className="space-y-2">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-zinc-900">Split payment</p>
+                  <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+                    Split payment
+                  </p>
                 </div>
                 {totalPaymentAmount > 0 ? (
                   <span
@@ -1007,30 +1009,34 @@ export default function WorkerBalanceDetailPage() {
                 ) : null}
               </div>
 
-              <div className="mt-2 rounded-md border border-border/40 bg-muted/[0.05] p-2">
+              <div className="mt-2 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-2">
                 {splitRows.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-border/60 px-3 py-3">
-                    <p className="text-sm text-zinc-500">No payment methods yet.</p>
+                  <div className="rounded-md border border-dashed border-[var(--neo-border)] px-3 py-3">
+                    <p className="text-sm text-[var(--neo-text-tertiary)]">
+                      No payment methods yet.
+                    </p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-border/20">
+                  <ul className="divide-y divide-[var(--neo-border)]">
                     {splitRows.map((r, idx) => {
                       const amt = Number(r.amount);
                       const amtText = Number.isFinite(amt) ? formatCurrency(amt) : "—";
                       return (
                         <li key={r.id} className="flex items-center gap-3 py-2">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm text-zinc-700 truncate">
-                              <span className="font-medium text-zinc-900">{r.method || "—"}</span>{" "}
-                              <span className="text-zinc-500">·</span>{" "}
-                              <span className="tabular-nums font-semibold tracking-tight text-zinc-900">
+                            <p className="text-sm text-[var(--neo-text-secondary)] truncate">
+                              <span className="font-medium text-[var(--neo-text-primary)]">
+                                {r.method || "—"}
+                              </span>{" "}
+                              <span className="text-[var(--neo-text-tertiary)]">·</span>{" "}
+                              <span className="tabular-nums font-semibold tracking-tight text-[var(--neo-text-primary)]">
                                 {amtText}
                               </span>
                               {r.reference?.trim() ? (
                                 <>
                                   {" "}
-                                  <span className="text-zinc-500">·</span>{" "}
-                                  <span className="text-zinc-500 truncate">
+                                  <span className="text-[var(--neo-text-tertiary)]">·</span>{" "}
+                                  <span className="text-[var(--neo-text-tertiary)] truncate">
                                     {r.reference.trim()}
                                   </span>
                                 </>
@@ -1042,7 +1048,7 @@ export default function WorkerBalanceDetailPage() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-11 w-11 min-h-[44px] min-w-[44px] text-zinc-400/70 hover:text-zinc-600 hover:bg-muted/15 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
+                              className="h-11 w-11 min-h-[44px] min-w-[44px] text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-text-primary)] sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
                               onClick={() => openEditSplit(r)}
                               aria-label={`Edit payment split ${idx + 1}`}
                             >
@@ -1052,7 +1058,7 @@ export default function WorkerBalanceDetailPage() {
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className="h-11 w-11 min-h-[44px] min-w-[44px] text-zinc-400/70 hover:text-zinc-600 hover:bg-muted/15 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
+                              className="h-11 w-11 min-h-[44px] min-w-[44px] text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-text-primary)] sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9"
                               onClick={() => removeSplitRow(r.id)}
                               aria-label={`Remove payment split ${idx + 1}`}
                               disabled={splitRows.length === 1}
@@ -1072,24 +1078,28 @@ export default function WorkerBalanceDetailPage() {
                     variant="ghost"
                     size="sm"
                     className={cn(
-                      "px-2 text-zinc-500 hover:text-zinc-600 hover:bg-transparent",
+                      "px-2 text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)] hover:bg-transparent",
                       "min-h-[44px] sm:min-h-9 text-xs"
                     )}
                     onClick={openAddSplit}
                     disabled={totalPaymentAmount <= 0}
                   >
-                    <Plus className="mr-2 h-4 w-4 text-zinc-400/80" aria-hidden />
+                    <Plus className="mr-2 h-4 w-4 text-[var(--neo-text-tertiary)]" aria-hidden />
                     Add payment
                   </Button>
                 </div>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-zinc-400 block">Payment date</label>
+              <label className="text-xs font-medium text-[var(--neo-text-tertiary)] block">
+                Payment date
+              </label>
               <FinanceDatePicker value={payDate} onChange={setPayDate} size="md" />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-zinc-400 block">Notes (optional)</label>
+              <label className="text-xs font-medium text-[var(--neo-text-tertiary)] block">
+                Notes (optional)
+              </label>
               <Input
                 value={payNotes}
                 onChange={(e) => setPayNotes(e.target.value)}

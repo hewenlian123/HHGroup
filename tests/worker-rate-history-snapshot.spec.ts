@@ -183,8 +183,15 @@ test("daily rate history snapshots protect old labor, balances, payroll, payment
       project_id: ids.project,
       amount: 33,
       status: "pending",
+      created_at: "2026-05-10T12:00:00.000Z",
     },
-    { id: ids.workerInvoice, worker_id: ids.worker, project_id: ids.project, amount: 33 },
+    {
+      id: ids.workerInvoice,
+      worker_id: ids.worker,
+      project_id: ids.project,
+      amount: 33,
+      created_at: "2026-05-10T12:00:00.000Z",
+    },
   ]);
 
   const balanceBeforePay = await apiJson<{

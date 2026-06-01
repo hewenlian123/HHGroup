@@ -52,8 +52,8 @@ function isMissingColumn(err: { message?: string } | null | undefined): boolean 
   return /could not find the .* column|column .* does not exist|schema cache/i.test(m);
 }
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -81,8 +81,8 @@ function fromRow(r: Record<string, unknown>): WorkerReceipt {
   };
 }
 
-export async function getWorkerReceipts(): Promise<WorkerReceipt[]> {
-  const { data, error } = await client()
+export async function getWorkerReceipts(explicitClient?: SupabaseClient): Promise<WorkerReceipt[]> {
+  const { data, error } = await client(explicitClient)
     .from("worker_receipts")
     .select(COLS)
     .order("created_at", { ascending: false });
