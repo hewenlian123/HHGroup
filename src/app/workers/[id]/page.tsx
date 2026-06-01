@@ -176,14 +176,62 @@ function entryEarned(
   return Number(e.labor_cost_snapshot ?? e.amount_snapshot ?? e.cost_amount ?? 0) || 0;
 }
 
-function entryDaysWorked(e: Pick<LaborEntryWithJoins, "days_worked" | "morning" | "afternoon">) {
-  const snap = Number(e.days_worked);
-  if (Number.isFinite(snap) && snap >= 0) return snap;
+type EntryDayFallbackRates = { dailyRate?: number | null; halfDayRate?: number | null };
+
+function entryDaysWorked(
+  e: Pick<
+    LaborEntryWithJoins,
+    | "days_worked"
+    | "morning"
+    | "afternoon"
+    | "notes"
+    | "hours"
+    | "cost_amount"
+    | "amount_snapshot"
+    | "labor_cost_snapshot"
+    | "daily_rate_snapshot"
+    | "overtime_hours"
+    | "overtime_amount"
+  >,
+  rates?: EntryDayFallbackRates
+) {
+  if (e.days_worked !== null && e.days_worked !== undefined) {
+    const snap = Number(e.days_worked);
+    if (Number.isFinite(snap) && snap >= 0) return snap;
+  }
+
   const morning = e.morning === true;
   const afternoon = e.afternoon === true;
   if (morning && afternoon) return 1;
   if (morning || afternoon) return 0.5;
-  return 1;
+
+  const dailyRate = Number(e.daily_rate_snapshot ?? rates?.dailyRate ?? 0) || 0;
+  const halfDayRate =
+    e.daily_rate_snapshot != null
+      ? Number(e.daily_rate_snapshot) / 2
+      : Number(rates?.halfDayRate ?? 0) || 0;
+  const session = formatLaborEntrySessionLabel(e.notes, e.hours, {
+    costAmount: entryEarned(e),
+    dailyRate,
+    halfDayRate,
+    morning: e.morning,
+    afternoon: e.afternoon,
+  });
+  if (session === "Full") return 1;
+  if (session === "Half") return 0.5;
+  if (session === "Absent") return 0;
+
+  const notes = String(e.notes ?? "");
+  const overtimeOnly =
+    Number(e.overtime_hours ?? 0) > 0 ||
+    Number(e.overtime_amount ?? 0) > 0 ||
+    /\b(?:ot|overtime)[_ -]?(?:hours?|amount)?\b/i.test(notes);
+  if (overtimeOnly) return 0;
+
+  const hours = Number(e.hours);
+  if (Math.abs(hours - 1) < 0.005) return 1;
+  if (Math.abs(hours - 0.5) < 0.005) return 0.5;
+  return 0;
 }
 
 function fmtDays(n: number): string {
@@ -201,12 +249,12 @@ function fmtCountLabel(n: number, singular: string, plural = `${singular}s`): st
   return `${n} ${n === 1 ? singular : plural}`;
 }
 
-function buildWorkMonthGroups(entries: LaborEntryWithJoins[]) {
+function buildWorkMonthGroups(entries: LaborEntryWithJoins[], rates?: EntryDayFallbackRates) {
   const map = new Map<string, { days: number; earned: number }>();
   for (const e of entries) {
     const k = monthKeyFromDate(e.work_date);
     const cur = map.get(k) ?? { days: 0, earned: 0 };
-    cur.days += entryDaysWorked(e);
+    cur.days += entryDaysWorked(e, rates);
     cur.earned += entryEarned(e);
     map.set(k, cur);
   }
@@ -228,13 +276,13 @@ function buildWorkMonthGroups(entries: LaborEntryWithJoins[]) {
     .sort((a, b) => b.monthKey.localeCompare(a.monthKey));
 }
 
-function buildProjectTotals(entries: LaborEntryWithJoins[]) {
+function buildProjectTotals(entries: LaborEntryWithJoins[], rates?: EntryDayFallbackRates) {
   const map = new Map<string, { name: string; days: number; earned: number }>();
   for (const e of entries) {
     const pid = e.project_id ?? "";
     const name = e.project_name?.trim() ? e.project_name : pid ? "(Unknown project)" : "—";
     const cur = map.get(pid) ?? { name, days: 0, earned: 0 };
-    cur.days += entryDaysWorked(e);
+    cur.days += entryDaysWorked(e, rates);
     cur.earned += entryEarned(e);
     if (cur.name === "—" && name !== "—") cur.name = name;
     map.set(pid, cur);
@@ -560,8 +608,16 @@ export default function WorkerDashboardPage() {
     if (!laborLedgerEntries) return 0;
     return laborLedgerEntries
       .filter((entry) => inDateRange(entry.work_date, weekRange.from, weekRange.to))
-      .reduce((sum, entry) => sum + entryDaysWorked(entry), 0);
-  }, [laborLedgerEntries, weekRange]);
+      .reduce(
+        (sum, entry) =>
+          sum +
+          entryDaysWorked(entry, {
+            dailyRate: worker?.dailyRate,
+            halfDayRate: worker?.halfDayRate,
+          }),
+        0
+      );
+  }, [laborLedgerEntries, weekRange, worker?.dailyRate, worker?.halfDayRate]);
 
   const balanceSummary = balanceDetail?.summary ?? {
     laborOwed: financialSummary?.balance ?? 0,
@@ -614,8 +670,11 @@ export default function WorkerDashboardPage() {
 
   const workMonthGroups = React.useMemo(() => {
     if (!laborLedgerEntries) return [];
-    return buildWorkMonthGroups(laborLedgerEntries);
-  }, [laborLedgerEntries]);
+    return buildWorkMonthGroups(laborLedgerEntries, {
+      dailyRate: worker?.dailyRate,
+      halfDayRate: worker?.halfDayRate,
+    });
+  }, [laborLedgerEntries, worker?.dailyRate, worker?.halfDayRate]);
 
   const workTabSummary = React.useMemo(
     () =>
@@ -632,8 +691,11 @@ export default function WorkerDashboardPage() {
 
   const projectTotalsAll = React.useMemo(() => {
     if (!laborLedgerEntries) return [];
-    return buildProjectTotals(laborLedgerEntries);
-  }, [laborLedgerEntries]);
+    return buildProjectTotals(laborLedgerEntries, {
+      dailyRate: worker?.dailyRate,
+      halfDayRate: worker?.halfDayRate,
+    });
+  }, [laborLedgerEntries, worker?.dailyRate, worker?.halfDayRate]);
 
   React.useEffect(() => {
     if (!id || workMonthGroups.length === 0) return;
@@ -1183,7 +1245,14 @@ export default function WorkerDashboardPage() {
                                   </div>
                                   <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[var(--neo-text-tertiary)]">
                                     <span>{sessionLabelForEntry(entry)}</span>
-                                    <span>{fmtDayLabel(entryDaysWorked(entry))}</span>
+                                    <span>
+                                      {fmtDayLabel(
+                                        entryDaysWorked(entry, {
+                                          dailyRate: worker.dailyRate,
+                                          halfDayRate: worker.halfDayRate,
+                                        })
+                                      )}
+                                    </span>
                                   </div>
                                 </article>
                               ))}
