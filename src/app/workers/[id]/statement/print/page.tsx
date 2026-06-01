@@ -1,10 +1,35 @@
 import { notFound } from "next/navigation";
-import { getWorkerById, getWorkerEarningsAllocations, getWorkerLaborPayments } from "@/lib/data";
+import { getWorkerById } from "@/lib/data";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { DocumentCompanyHeader } from "@/components/documents/document-company-header";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseInternalNoStore,
+} from "@/lib/supabase-server";
+import { getProjects } from "@/lib/projects-db";
+import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
+import { getWorkerPaymentsWithClient } from "@/lib/worker-payments-db";
+import { getWorkerReimbursementsByWorkerId } from "@/lib/worker-reimbursements-db";
+import { getWorkerAdvances } from "@/lib/worker-advances-db";
+
+type WorkerStatementEarningRow = {
+  date: string;
+  projectId: string;
+  projectName: string;
+  shift: "AM" | "PM" | "OT";
+  amount: number;
+  notes: string | null;
+};
+
+function formatCurrency(amount: number): string {
+  return amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 export default async function WorkerStatementPrintPage({
   params,
@@ -35,11 +60,63 @@ export default async function WorkerStatementPrintPage({
   }
   if (!worker) notFound();
 
-  let earningsRows: Awaited<ReturnType<typeof getWorkerEarningsAllocations>> = [];
-  let payments: Awaited<ReturnType<typeof getWorkerLaborPayments>> = [];
+  const supabase = getServerSupabaseInternalNoStore();
+  if (!supabase) {
+    return (
+      <ServerDataLoadFallback
+        message={SUPABASE_MISSING_SERVER_ENV_MESSAGE}
+        backHref={`/workers/${id}`}
+        backLabel="Back to worker"
+      />
+    );
+  }
+
+  let earningsRows: WorkerStatementEarningRow[] = [];
+  let payments: Awaited<ReturnType<typeof getWorkerPaymentsWithClient>> = [];
+  let reimbursementTotal = 0;
+  let advanceTotal = 0;
   try {
-    earningsRows = await getWorkerEarningsAllocations(id, start, end, project);
-    payments = await getWorkerLaborPayments(id, start, end);
+    const [projects, entries, paymentRows, reimbursementRows, advanceRows] = await Promise.all([
+      getProjects(supabase),
+      getLaborEntriesWithJoins(
+        { worker_id: id, date_from: start, date_to: end, project_id: project },
+        supabase
+      ),
+      getWorkerPaymentsWithClient(supabase, { workerId: id, fromDate: start, toDate: end }),
+      getWorkerReimbursementsByWorkerId(id, supabase),
+      getWorkerAdvances({ workerId: id, fromDate: start, toDate: end }, supabase),
+    ]);
+
+    const projectMap = new Map(projects.map((p) => [p.id, p.name] as const));
+    earningsRows = entries
+      .map((row): WorkerStatementEarningRow | null => {
+        if (!row.project_id) return null;
+        const amount =
+          Number(row.labor_cost_snapshot ?? row.amount_snapshot ?? row.cost_amount) || 0;
+        if (amount <= 0) return null;
+        return {
+          date: row.work_date,
+          projectId: row.project_id,
+          projectName: projectMap.get(row.project_id) ?? row.project_name ?? row.project_id,
+          shift: "OT",
+          amount,
+          notes: row.notes || null,
+        };
+      })
+      .filter((row): row is WorkerStatementEarningRow => row != null)
+      .sort((a, b) =>
+        a.date === b.date ? a.shift.localeCompare(b.shift) : a.date.localeCompare(b.date)
+      );
+    payments = paymentRows;
+    reimbursementTotal = reimbursementRows.reduce((sum, row) => {
+      if (project && row.projectId !== project) return sum;
+      const date = (row.reimbursementDate || row.createdAt.slice(0, 10)).slice(0, 10);
+      if (date < start || date > end) return sum;
+      return sum + Math.max(0, Number(row.amount) || 0);
+    }, 0);
+    advanceTotal = advanceRows
+      .filter((row) => String(row.status).toLowerCase() !== "cancelled")
+      .reduce((sum, row) => sum + Math.max(0, Number(row.amount) || 0), 0);
   } catch (e) {
     logServerPageDataError(`workers/${id}/statement/print rows`, e);
     return (
@@ -51,8 +128,10 @@ export default async function WorkerStatementPrintPage({
     );
   }
   const earningsTotal = earningsRows.reduce((s, r) => s + r.amount, 0);
-  const paidTotal = payments.reduce((s, p) => s + p.amount, 0);
-  const balance = Math.max(0, earningsTotal - paidTotal);
+  const paymentTotal = payments.reduce((s, p) => s + p.amount, 0);
+  const paidTotal = paymentTotal + advanceTotal;
+  const totalOwed = earningsTotal + reimbursementTotal;
+  const balance = totalOwed - paidTotal;
 
   return (
     <div className="min-h-screen bg-white text-black p-8 mx-auto" style={{ maxWidth: "8.5in" }}>
@@ -75,18 +154,28 @@ export default async function WorkerStatementPrintPage({
         </p>
       </section>
 
-      <section className="grid grid-cols-3 gap-3 mb-6 text-sm">
+      <section className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6 text-sm">
         <div className="border border-zinc-300 rounded-lg p-3">
-          <p className="text-zinc-500">Total Earnings</p>
-          <p className="text-lg font-semibold tabular-nums">${earningsTotal.toLocaleString()}</p>
+          <p className="text-zinc-500">Gross Labor</p>
+          <p className="text-lg font-semibold tabular-nums">${formatCurrency(earningsTotal)}</p>
         </div>
         <div className="border border-zinc-300 rounded-lg p-3">
-          <p className="text-zinc-500">Total Paid</p>
-          <p className="text-lg font-semibold tabular-nums">${paidTotal.toLocaleString()}</p>
+          <p className="text-zinc-500">Reimbursements</p>
+          <p className="text-lg font-semibold tabular-nums">
+            ${formatCurrency(reimbursementTotal)}
+          </p>
+        </div>
+        <div className="border border-zinc-300 rounded-lg p-3">
+          <p className="text-zinc-500">Advance Deductions</p>
+          <p className="text-lg font-semibold tabular-nums">${formatCurrency(advanceTotal)}</p>
+        </div>
+        <div className="border border-zinc-300 rounded-lg p-3">
+          <p className="text-zinc-500">Payments</p>
+          <p className="text-lg font-semibold tabular-nums">${formatCurrency(paymentTotal)}</p>
         </div>
         <div className="border border-zinc-300 rounded-lg p-3">
           <p className="text-zinc-500">Balance</p>
-          <p className="text-lg font-semibold tabular-nums">${balance.toLocaleString()}</p>
+          <p className="text-lg font-semibold tabular-nums">${formatCurrency(balance)}</p>
         </div>
       </section>
 
@@ -112,7 +201,7 @@ export default async function WorkerStatementPrintPage({
                 <td className="py-2">{row.date}</td>
                 <td className="py-2">{row.projectName}</td>
                 <td className="py-2">{row.shift}</td>
-                <td className="py-2 text-right tabular-nums">${row.amount.toLocaleString()}</td>
+                <td className="py-2 text-right tabular-nums">${formatCurrency(row.amount)}</td>
               </tr>
             ))}
           </tbody>
@@ -136,9 +225,9 @@ export default async function WorkerStatementPrintPage({
             {payments.map((p) => (
               <tr key={p.id} className="border-b border-zinc-200">
                 <td className="py-2">{p.paymentDate}</td>
-                <td className="py-2">{p.method}</td>
-                <td className="py-2 text-right tabular-nums">${p.amount.toLocaleString()}</td>
-                <td className="py-2">{p.memo ?? "—"}</td>
+                <td className="py-2">{p.paymentMethod ?? "—"}</td>
+                <td className="py-2 text-right tabular-nums">${formatCurrency(p.amount)}</td>
+                <td className="py-2">{p.notes ?? "—"}</td>
               </tr>
             ))}
           </tbody>

@@ -6,6 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import {
   isLaborUnpaidForWorkerPayroll,
+  isWorkerAdvanceOpenForBalance,
   laborEntryPaymentIdMapFromWorkerPayments,
   laborSessionLabel,
   workerOutstandingBalanceFromUnsettledItems,
@@ -355,8 +356,7 @@ async function sumAdvances(c: SupabaseClient, workerId: string): Promise<number>
   if (advRes.error) return 0;
   let s = 0;
   for (const r of (advRes.data ?? []) as { amount?: number | null; status?: string | null }[]) {
-    const st = String(r.status ?? "").toLowerCase();
-    if (st !== "deducted") continue;
+    if (!isWorkerAdvanceOpenForBalance(r.status)) continue;
     s += Number(r.amount) || 0;
   }
   return s;

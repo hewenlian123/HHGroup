@@ -21,9 +21,9 @@ export default async function WorkerStatementPage({ params }: Props) {
 
   if (!worker) notFound();
 
-  const hourlyRate = (worker.halfDayRate ?? 0) / 4;
-  const entryAmount = (hours: number) => hourlyRate * hours;
-  const totalEarned = entries.reduce((s, e) => s + entryAmount(e.hours), 0);
+  const entryAmount = (entry: (typeof entries)[number]) =>
+    Number(entry.labor_cost_snapshot ?? entry.amount_snapshot ?? entry.cost_amount) || 0;
+  const totalEarned = entries.reduce((s, e) => s + entryAmount(e), 0);
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
   const balance = totalEarned - totalPaid;
 
@@ -97,9 +97,7 @@ export default async function WorkerStatementPage({ params }: Props) {
                   <td className="py-1.5 px-3 tabular-nums">{e.work_date}</td>
                   <td className="py-1.5 px-3">{e.project_name ?? "—"}</td>
                   <td className="py-1.5 px-3 text-muted-foreground">{e.cost_code ?? "—"}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">
-                    ${fmtUsd(entryAmount(e.hours))}
-                  </td>
+                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(entryAmount(e))}</td>
                 </tr>
               ))
             )}

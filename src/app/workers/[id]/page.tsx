@@ -843,7 +843,7 @@ export default function WorkerDashboardPage() {
                       className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
                       aria-hidden
                     />
-                    <span>Deducted advances are included in net to pay.</span>
+                    <span>Open advances are included in net to pay.</span>
                   </div>
                 ) : null}
                 {missingReceiptCount > 0 ? (

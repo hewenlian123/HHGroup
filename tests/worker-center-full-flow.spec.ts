@@ -393,7 +393,7 @@ test.describe("Worker Center full local flow", () => {
 
     await page.goto(`${BASE}/workers/${encodeURIComponent(createdWorkerId)}`);
     await page.getByRole("tab", { name: "Payments" }).click();
-    await expect(page.getByText("$685.00").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("$635.00").first()).toBeVisible({ timeout: 30_000 });
     await page.getByRole("tab", { name: "Statements" }).click();
     await expect(page.getByText(/Worker statements|Statements/i).first()).toBeVisible();
 

@@ -300,6 +300,14 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     });
   };
 
+  const clearInitialCreateQuery = React.useCallback(() => {
+    if (searchParams.get("new") !== "1") return;
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("new");
+    const query = next.toString();
+    router.replace(query ? `/labor/advances?${query}` : "/labor/advances", { scroll: false });
+  }, [router, searchParams]);
+
   const handleCreateOrUpdate = async (payload: {
     id?: string;
     workerId: string;
@@ -431,6 +439,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     notes: string;
   }) => {
     const amountNum = Number(draft.amount);
+    const creating = !draft.id;
     await handleCreateOrUpdate({
       id: draft.id,
       workerId: draft.workerId,
@@ -439,6 +448,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
       advanceDate: draft.advanceDate,
       notes: draft.notes,
     });
+    if (creating) clearInitialCreateQuery();
   };
 
   const initialLoading = loading && rows.length === 0;

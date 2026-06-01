@@ -96,6 +96,19 @@ export function workerOutstandingBalanceFromUnsettledItems({
   return laborOwed + reimbursements - advances;
 }
 
+/**
+ * Advances reduce current net-to-pay while they are still open/pending.
+ * Once a payment uses an advance deduction, the advance is marked `deducted`;
+ * Payroll Summary still counts deducted advances historically, but Worker Balance
+ * must stop subtracting them from already-settled unpaid items.
+ */
+export function isWorkerAdvanceOpenForBalance(status: string | null | undefined): boolean {
+  const s = String(status ?? "pending")
+    .trim()
+    .toLowerCase();
+  return s !== "cancelled" && s !== "deducted";
+}
+
 /** Map legacy worker_payments.labor_entry_ids arrays back to the payment id that settled them. */
 export function laborEntryPaymentIdMapFromWorkerPayments(
   rows: Iterable<{ id?: unknown; labor_entry_ids?: unknown }>
