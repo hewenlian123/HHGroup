@@ -74,6 +74,8 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: Props) {
       }
       onOpenChange(false);
       onSuccess(res.worker);
+      const detailPath = `/workers/${encodeURIComponent(res.worker.id)}`;
+      window.location.assign(detailPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add worker.");
     } finally {

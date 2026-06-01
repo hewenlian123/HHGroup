@@ -358,7 +358,6 @@ export function WorkersListClient({
       description: `Opening ${worker.name}.`,
       variant: "success",
     });
-    router.push(`/workers/${encodeURIComponent(worker.id)}`);
   };
 
   const workerActionItems = React.useCallback(
