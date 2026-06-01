@@ -192,7 +192,16 @@ function fmtDays(n: number): string {
   return rounded.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
 }
 
-function buildMonthlyTotals(entries: LaborEntryWithJoins[]) {
+function fmtDayLabel(n: number): string {
+  const rounded = Math.round(n * 100) / 100;
+  return `${fmtDays(rounded)} ${Math.abs(rounded - 1) < 0.005 ? "day" : "days"}`;
+}
+
+function fmtCountLabel(n: number, singular: string, plural = `${singular}s`): string {
+  return `${n} ${n === 1 ? singular : plural}`;
+}
+
+function buildWorkMonthGroups(entries: LaborEntryWithJoins[]) {
   const map = new Map<string, { days: number; earned: number }>();
   for (const e of entries) {
     const k = monthKeyFromDate(e.work_date);
@@ -207,6 +216,14 @@ function buildMonthlyTotals(entries: LaborEntryWithJoins[]) {
       label: monthLabelEn(monthKey),
       workDays: v.days,
       earned: v.earned,
+      entries: entries
+        .filter((entry) => monthKeyFromDate(entry.work_date) === monthKey)
+        .sort((a, b) => b.work_date.localeCompare(a.work_date) || b.id.localeCompare(a.id)),
+      projectCount: new Set(
+        entries
+          .filter((entry) => monthKeyFromDate(entry.work_date) === monthKey)
+          .map((entry) => entry.project_id ?? entry.project_name ?? "unassigned")
+      ).size,
     }))
     .sort((a, b) => b.monthKey.localeCompare(a.monthKey));
 }
@@ -228,31 +245,6 @@ function buildProjectTotals(entries: LaborEntryWithJoins[]) {
       projectName: v.name,
       workDays: v.days,
       earned: v.earned,
-    }))
-    .sort((a, b) => b.earned - a.earned);
-}
-
-function groupEntriesByProjectForMonth(entries: LaborEntryWithJoins[]) {
-  const map = new Map<string, LaborEntryWithJoins[]>();
-  for (const e of entries) {
-    const pid = e.project_id ?? "";
-    const list = map.get(pid) ?? [];
-    list.push(e);
-    map.set(pid, list);
-  }
-  for (const list of map.values()) {
-    list.sort((a, b) => a.work_date.localeCompare(b.work_date) || a.id.localeCompare(b.id));
-  }
-  return Array.from(map.entries())
-    .map(([projectId, list]) => ({
-      projectId,
-      projectName: list[0]?.project_name?.trim()
-        ? list[0].project_name!
-        : projectId
-          ? "(Unknown project)"
-          : "—",
-      entries: list,
-      earned: list.reduce((s, x) => s + entryEarned(x), 0),
     }))
     .sort((a, b) => b.earned - a.earned);
 }
@@ -365,7 +357,8 @@ export default function WorkerDashboardPage() {
   const [laborLedgerEntries, setLaborLedgerEntries] = React.useState<LaborEntryWithJoins[] | null>(
     null
   );
-  const [expandedMonthKey, setExpandedMonthKey] = React.useState<string | null>(null);
+  const [expandedMonthKeys, setExpandedMonthKeys] = React.useState<string[]>([]);
+  const workDefaultOpenAppliedRef = React.useRef<string | null>(null);
   const [rateHistory, setRateHistory] = React.useState<WorkerRateHistoryView[]>([]);
   const [rateDaily, setRateDaily] = React.useState("");
   const [rateEffectiveFrom, setRateEffectiveFrom] = React.useState(() => todayYmd());
@@ -553,6 +546,14 @@ export default function WorkerDashboardPage() {
       : "overview";
   }, [searchParams]);
 
+  const targetedWorkEntryId = React.useMemo(() => {
+    return (
+      searchParams.get("entryId") ??
+      searchParams.get("laborEntryId") ??
+      searchParams.get("timeEntryId")
+    );
+  }, [searchParams]);
+
   const weekRange = React.useMemo(() => currentWeekRange(), []);
 
   const thisWeekDays = React.useMemo(() => {
@@ -611,26 +612,50 @@ export default function WorkerDashboardPage() {
     [balanceDetail, receipts]
   );
 
-  const monthlyTotals = React.useMemo(() => {
+  const workMonthGroups = React.useMemo(() => {
     if (!laborLedgerEntries) return [];
-    return buildMonthlyTotals(laborLedgerEntries);
+    return buildWorkMonthGroups(laborLedgerEntries);
   }, [laborLedgerEntries]);
+
+  const workTabSummary = React.useMemo(
+    () =>
+      workMonthGroups.reduce(
+        (summary, group) => ({
+          days: summary.days + group.workDays,
+          earned: summary.earned + group.earned,
+          entries: summary.entries + group.entries.length,
+        }),
+        { days: 0, earned: 0, entries: 0 }
+      ),
+    [workMonthGroups]
+  );
 
   const projectTotalsAll = React.useMemo(() => {
     if (!laborLedgerEntries) return [];
     return buildProjectTotals(laborLedgerEntries);
   }, [laborLedgerEntries]);
 
-  const expandedMonthEntries = React.useMemo(() => {
-    if (!laborLedgerEntries || !expandedMonthKey) return [];
-    const inMonth = laborLedgerEntries.filter(
-      (e) => monthKeyFromDate(e.work_date) === expandedMonthKey
-    );
-    return groupEntriesByProjectForMonth(inMonth);
-  }, [laborLedgerEntries, expandedMonthKey]);
+  React.useEffect(() => {
+    if (!id || workMonthGroups.length === 0) return;
+    const defaultSignature = `${id}:${targetedWorkEntryId ?? "latest"}`;
+    if (workDefaultOpenAppliedRef.current === defaultSignature) return;
+
+    const targetGroup = targetedWorkEntryId
+      ? workMonthGroups.find((group) =>
+          group.entries.some((entry) => entry.id === targetedWorkEntryId)
+        )
+      : null;
+    const currentMonth = monthKeyFromDate(todayYmd());
+    const currentGroup = workMonthGroups.find((group) => group.monthKey === currentMonth);
+    const defaultGroup = targetGroup ?? currentGroup ?? workMonthGroups[0];
+    setExpandedMonthKeys(defaultGroup ? [defaultGroup.monthKey] : []);
+    workDefaultOpenAppliedRef.current = defaultSignature;
+  }, [id, targetedWorkEntryId, workMonthGroups]);
 
   const toggleMonth = (key: string) => {
-    setExpandedMonthKey((prev) => (prev === key ? null : key));
+    setExpandedMonthKeys((prev) =>
+      prev.includes(key) ? prev.filter((monthKey) => monthKey !== key) : [...prev, key]
+    );
   };
 
   const handleChangeDailyRate = async () => {
@@ -711,6 +736,15 @@ export default function WorkerDashboardPage() {
       .currentDailyRateEffectiveFrom ||
     rateHistory[0]?.effectiveFrom ||
     "—";
+  const sessionLabelForEntry = (entry: LaborEntryWithJoins) =>
+    formatLaborEntrySessionLabel(entry.notes, entry.hours, {
+      costAmount: entryEarned(entry),
+      dailyRate: entry.daily_rate_snapshot ?? worker.dailyRate,
+      halfDayRate:
+        entry.daily_rate_snapshot != null ? entry.daily_rate_snapshot / 2 : worker.halfDayRate,
+      morning: entry.morning,
+      afternoon: entry.afternoon,
+    });
 
   return (
     <div className="dark neo-page-on-graphite mx-auto flex w-full max-w-[430px] flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:max-w-[460px] md:max-w-6xl md:gap-5 md:p-6">
@@ -826,17 +860,7 @@ export default function WorkerDashboardPage() {
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">{entry.project_name ?? "—"}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatDate(entry.work_date, "compact")} ·{" "}
-                          {formatLaborEntrySessionLabel(entry.notes, entry.hours, {
-                            costAmount: entryEarned(entry),
-                            dailyRate: entry.daily_rate_snapshot ?? worker.dailyRate,
-                            halfDayRate:
-                              entry.daily_rate_snapshot != null
-                                ? entry.daily_rate_snapshot / 2
-                                : worker.halfDayRate,
-                            morning: entry.morning,
-                            afternoon: entry.afternoon,
-                          })}
+                          {formatDate(entry.work_date, "compact")} · {sessionLabelForEntry(entry)}
                         </p>
                       </div>
                       <p className="shrink-0 text-sm font-semibold tabular-nums">
@@ -979,100 +1003,202 @@ export default function WorkerDashboardPage() {
             {laborLedgerEntries === null ? (
               <p className="text-sm text-muted-foreground">Loading labor…</p>
             ) : laborLedgerEntries.length === 0 ? (
-              <EmptyPanel>No labor entries for this worker.</EmptyPanel>
+              <EmptyPanel>
+                <div className="flex flex-col items-center gap-3">
+                  <div>
+                    <p className="font-medium text-foreground">No time entries yet</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Add this worker&apos;s first labor row from Daily Labor.
+                    </p>
+                  </div>
+                  <Button asChild size="sm" className="h-9 rounded-sm">
+                    <Link href={`/labor?workerId=${encodeURIComponent(id)}&addDaily=1`}>
+                      Add Time Entry
+                    </Link>
+                  </Button>
+                </div>
+              </EmptyPanel>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[680px] border-collapse text-sm table-row-compact">
-                  <thead>
-                    <tr className="border-b border-border/60">
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Date
-                      </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Project
-                      </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Session
-                      </th>
-                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Earned
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {laborLedgerEntries.map((entry) => (
-                      <tr key={entry.id} className="border-b border-border/40">
-                        <td className="px-2 py-1.5 tabular-nums text-muted-foreground">
-                          {formatDate(entry.work_date)}
-                        </td>
-                        <td className="px-2 py-1.5 font-medium">{entry.project_name ?? "—"}</td>
-                        <td className="px-2 py-1.5 text-muted-foreground">
-                          {formatLaborEntrySessionLabel(entry.notes, entry.hours, {
-                            costAmount: entryEarned(entry),
-                            dailyRate: entry.daily_rate_snapshot ?? worker.dailyRate,
-                            halfDayRate:
-                              entry.daily_rate_snapshot != null
-                                ? entry.daily_rate_snapshot / 2
-                                : worker.halfDayRate,
-                            morning: entry.morning,
-                            afternoon: entry.afternoon,
-                          })}
-                        </td>
-                        <td className="px-2 py-1.5 text-right font-medium tabular-nums">
-                          {fmtUsd(entryEarned(entry))}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-3" data-testid="worker-work-month-groups">
+                <div className="flex flex-col gap-3 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                      Work Ledger
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--neo-text-secondary)]">
+                      {fmtCountLabel(workMonthGroups.length, "month")} ·{" "}
+                      {fmtDayLabel(workTabSummary.days)} · {fmtUsd(workTabSummary.earned)} ·{" "}
+                      {fmtCountLabel(workTabSummary.entries, "entry", "entries")}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 min-h-[44px] rounded-sm border-[var(--neo-border)] bg-[var(--neo-surface)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-hover)] md:min-h-9"
+                      onClick={() =>
+                        setExpandedMonthKeys(workMonthGroups.map((group) => group.monthKey))
+                      }
+                    >
+                      Expand all
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-9 min-h-[44px] rounded-sm border-[var(--neo-border)] bg-transparent text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-text-primary)] md:min-h-9"
+                      onClick={() => setExpandedMonthKeys([])}
+                    >
+                      Collapse all
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {workMonthGroups.map((group) => {
+                    const open = expandedMonthKeys.includes(group.monthKey);
+                    const panelId = `worker-work-month-panel-${group.monthKey}`;
+                    const projectSummary = fmtCountLabel(group.projectCount, "project");
+                    return (
+                      <section
+                        key={group.monthKey}
+                        data-testid={`worker-work-month-${group.monthKey}`}
+                        className={cn(
+                          "overflow-hidden rounded-lg border bg-[var(--neo-surface)] shadow-[var(--neo-shadow-panel)]",
+                          open
+                            ? "border-[color:rgb(184_147_90_/_0.34)]"
+                            : "border-[var(--neo-border)]"
+                        )}
+                      >
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          aria-controls={panelId}
+                          className={cn(
+                            "flex min-h-[64px] w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors",
+                            "hover:bg-[var(--neo-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:rgb(184_147_90_/_0.52)]",
+                            open && "bg-[rgb(184_147_90_/_0.08)]"
+                          )}
+                          onClick={() => toggleMonth(group.monthKey)}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[var(--neo-text-primary)]">
+                              {group.label}
+                            </p>
+                            <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">
+                              {fmtDayLabel(group.workDays)} · {fmtUsd(group.earned)} ·{" "}
+                              {projectSummary}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-3">
+                            <span className="hidden text-right text-xs text-[var(--neo-text-tertiary)] sm:block">
+                              {fmtCountLabel(group.entries.length, "entry", "entries")}
+                            </span>
+                            <ChevronRight
+                              className={cn(
+                                "h-4 w-4 text-[var(--neo-gold-soft)] transition-transform duration-200",
+                                open && "rotate-90"
+                              )}
+                              aria-hidden
+                            />
+                          </div>
+                        </button>
+
+                        {open ? (
+                          <div
+                            id={panelId}
+                            className="border-t border-[var(--neo-border)] bg-black/10"
+                          >
+                            <div className="hidden md:block">
+                              <table className="w-full border-collapse text-sm table-row-compact">
+                                <thead>
+                                  <tr className="border-b border-[var(--neo-border)] bg-white/[0.02]">
+                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                                      Date
+                                    </th>
+                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                                      Project
+                                    </th>
+                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                                      Session
+                                    </th>
+                                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                                      Earned
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {group.entries.map((entry) => (
+                                    <tr
+                                      key={entry.id}
+                                      data-testid="worker-work-entry-row"
+                                      className={cn(
+                                        "border-b border-[var(--neo-border)] last:border-b-0",
+                                        targetedWorkEntryId === entry.id &&
+                                          "bg-[rgb(184_147_90_/_0.08)]"
+                                      )}
+                                    >
+                                      <td className="px-3 py-2 tabular-nums text-[var(--neo-text-secondary)]">
+                                        {formatDate(entry.work_date)}
+                                      </td>
+                                      <td className="px-3 py-2 font-medium text-[var(--neo-text-primary)]">
+                                        {entry.project_name ?? "—"}
+                                      </td>
+                                      <td className="px-3 py-2 text-[var(--neo-text-secondary)]">
+                                        {sessionLabelForEntry(entry)}
+                                      </td>
+                                      <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                                        {fmtUsd(entryEarned(entry))}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            <div className="grid gap-2 p-3 md:hidden">
+                              {group.entries.map((entry) => (
+                                <article
+                                  key={entry.id}
+                                  data-testid="worker-work-entry-card"
+                                  className={cn(
+                                    "rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-3",
+                                    targetedWorkEntryId === entry.id &&
+                                      "border-[color:rgb(184_147_90_/_0.34)] bg-[rgb(184_147_90_/_0.08)]"
+                                  )}
+                                >
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-semibold text-[var(--neo-text-primary)]">
+                                        {formatDate(entry.work_date, "compact")}
+                                      </p>
+                                      <p className="mt-1 truncate text-xs text-[var(--neo-text-secondary)]">
+                                        {entry.project_name ?? "—"}
+                                      </p>
+                                    </div>
+                                    <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                                      {fmtUsd(entryEarned(entry))}
+                                    </p>
+                                  </div>
+                                  <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[var(--neo-text-tertiary)]">
+                                    <span>{sessionLabelForEntry(entry)}</span>
+                                    <span>{fmtDayLabel(entryDaysWorked(entry))}</span>
+                                  </div>
+                                </article>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </section>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </DetailSection>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <DetailSection title="Monthly Totals">
-              {monthlyTotals.length === 0 ? (
-                <EmptyPanel>No monthly totals yet.</EmptyPanel>
-              ) : (
-                <div className="divide-y divide-border/60">
-                  {monthlyTotals.map((row) => {
-                    const open = expandedMonthKey === row.monthKey;
-                    return (
-                      <div key={row.monthKey}>
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-between gap-3 py-2 text-left"
-                          onClick={() => toggleMonth(row.monthKey)}
-                        >
-                          <span className="font-medium">{row.label}</span>
-                          <span className="flex items-center gap-3 text-sm text-muted-foreground">
-                            {fmtDays(row.workDays)} days · {fmtUsd(row.earned)}
-                            <ChevronRight
-                              className={cn("h-4 w-4 transition-transform", open && "rotate-90")}
-                              aria-hidden
-                            />
-                          </span>
-                        </button>
-                        {open ? (
-                          <div className="pb-3 text-sm text-muted-foreground">
-                            {expandedMonthEntries.map((grp) => (
-                              <div
-                                key={grp.projectId || "none"}
-                                className="flex justify-between gap-3 py-1"
-                              >
-                                <span className="truncate">{grp.projectName}</span>
-                                <span className="shrink-0 tabular-nums">{fmtUsd(grp.earned)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </DetailSection>
-
+          <div className="grid gap-4">
             <DetailSection title="Project Totals">
               {projectTotalsAll.length === 0 ? (
                 <EmptyPanel>No project totals yet.</EmptyPanel>
