@@ -6,6 +6,7 @@
  * exist yet (i.e. before migration 202603182000_workers_add_trade_rates.sql is applied).
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 import {
   changeWorkerDailyRateWithClient,
@@ -43,8 +44,8 @@ const COLS_BASE = "id, name, phone, role, half_day_rate, status, notes, created_
 /** Minimal columns when role/half_day_rate are absent (sparse remotes). */
 const COLS_MIN = "id, name, phone, status, notes, created_at";
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -109,8 +110,8 @@ function mapMinRow(r: Record<string, unknown>): WorkerRow {
 }
 
 /** Fetch all workers, ordered by name. */
-export async function getWorkers(): Promise<WorkerRow[]> {
-  const c = client();
+export async function getWorkers(explicitClient?: SupabaseClient): Promise<WorkerRow[]> {
+  const c = client(explicitClient);
   const byName = (a: WorkerRow, b: WorkerRow) => a.name.localeCompare(b.name);
   const { data: rows, error } = await c.from("workers").select(COLS_EXT);
   if (error) {
@@ -137,8 +138,11 @@ export async function getWorkers(): Promise<WorkerRow[]> {
 }
 
 /** Fetch one worker by id. Returns null if not found. */
-export async function getWorkerById(id: string): Promise<WorkerRow | null> {
-  const c = client();
+export async function getWorkerById(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<WorkerRow | null> {
+  const c = client(explicitClient);
   const { data: row, error } = await c.from("workers").select(COLS_EXT).eq("id", id).maybeSingle();
   if (error) {
     if (isMissingTable(error)) return null;
@@ -165,8 +169,11 @@ export async function getWorkerById(id: string): Promise<WorkerRow | null> {
 }
 
 /** Insert one worker. */
-export async function insertWorker(draft: WorkerDraft): Promise<WorkerRow> {
-  const c = client();
+export async function insertWorker(
+  draft: WorkerDraft,
+  explicitClient?: SupabaseClient
+): Promise<WorkerRow> {
+  const c = client(explicitClient);
   const name = draft.name?.trim();
   if (!name) throw new Error("Name is required.");
 
@@ -225,9 +232,10 @@ export type UpdateWorkerPatch = Partial<
 /** Update one worker. */
 export async function updateWorker(
   id: string,
-  patch: UpdateWorkerPatch
+  patch: UpdateWorkerPatch,
+  explicitClient?: SupabaseClient
 ): Promise<WorkerRow | null> {
-  const c = client();
+  const c = client(explicitClient);
   const dailyRatePatch = patch.daily_rate;
   const extPayload: Record<string, unknown> = {};
   if (patch.name !== undefined) extPayload.name = patch.name.trim();
@@ -247,7 +255,7 @@ export async function updateWorker(
         notes: "Updated from Workers list",
       });
     }
-    return getWorkerById(id);
+    return getWorkerById(id, c);
   }
 
   const { data: row, error } = await c
@@ -275,7 +283,7 @@ export async function updateWorker(
             notes: "Updated from Workers list",
           });
         }
-        return getWorkerById(id);
+        return getWorkerById(id, c);
       }
       const { data: row2, error: err2 } = await c
         .from("workers")
@@ -301,14 +309,14 @@ export async function updateWorker(
       effectiveFrom: new Date().toISOString().slice(0, 10),
       notes: "Updated from Workers list",
     });
-    return getWorkerById(id);
+    return getWorkerById(id, c);
   }
   return row ? mapExtRow(row as Record<string, unknown>) : null;
 }
 
 /** Delete one worker. */
-export async function deleteWorker(id: string): Promise<void> {
-  const c = client();
+export async function deleteWorker(id: string, explicitClient?: SupabaseClient): Promise<void> {
+  const c = client(explicitClient);
   const { error } = await c.from("workers").delete().eq("id", id);
   if (error) throw new Error(error.message ?? "Failed to delete worker.");
 }
