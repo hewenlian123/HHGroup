@@ -154,7 +154,7 @@ describe("GET /api/labor/worker-balances", () => {
     });
   });
 
-  it("counts only deducted advances toward balance and Advances column", async () => {
+  it("ignores deducted advances because they were already settled by a payment", async () => {
     const workers = [{ id: "w1", name: "Worker One" }];
     const labor = [{ worker_id: "w1", cost_amount: 100, status: "pending" }];
     const reimb = [{ worker_id: "w1", amount: 20, status: "pending" }];
@@ -178,12 +178,12 @@ describe("GET /api/labor/worker-balances", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.balances[0]).toMatchObject({
-      advances: 999,
-      balance: -879,
+      advances: 0,
+      balance: 120,
     });
   });
 
-  it("ignores pending advances until marked deducted", async () => {
+  it("counts pending advances toward current net-to-pay", async () => {
     const workers = [{ id: "w1", name: "Worker One" }];
     const labor = [{ worker_id: "w1", cost_amount: 100, status: "pending" }];
     const reimb = [{ worker_id: "w1", amount: 20, status: "pending" }];
@@ -207,8 +207,8 @@ describe("GET /api/labor/worker-balances", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.balances[0]).toMatchObject({
-      advances: 0,
-      balance: 120,
+      advances: 30,
+      balance: 90,
     });
   });
 });
