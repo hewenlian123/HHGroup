@@ -149,7 +149,9 @@ export function buildPayrollSummaryRows(
     if (projectFilter && r.projectId !== projectFilter) return false;
     const d = (r.reimbursementDate ?? r.createdAt?.slice(0, 10) ?? "").slice(0, 10);
     if (d && (d < fromDate || d > toDate)) return false;
-    return String(r.status ?? "").toLowerCase() !== "paid";
+    // Payroll Summary is period-based: paid reimbursements still belong in the
+    // period's total owed so payment totals do not look artificially overpaid.
+    return true;
   });
 
   const workerInvoicesFiltered = workerInvoicesAll.filter((inv) => {

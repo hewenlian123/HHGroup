@@ -10,6 +10,7 @@ import {
   laborEntryPaymentIdMapFromWorkerPayments,
   laborPayrollSettlementModeFromSelectList,
   laborSessionLabel,
+  isWorkerAdvanceOpenForBalance,
   resolveLaborWorkerForBalance,
   workerOutstandingBalanceFromUnsettledItems,
   workerIdsForLaborBalanceFinancialQueries,
@@ -330,10 +331,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         }[])
       : [];
     const advancesTotal = advancesRows.reduce((s, r) => {
-      const st = String(r.status ?? "")
-        .trim()
-        .toLowerCase();
-      if (st !== "deducted") return s;
+      if (!isWorkerAdvanceOpenForBalance(r.status)) return s;
       return s + (Number(r.amount) || 0);
     }, 0);
     const balance = workerOutstandingBalanceFromUnsettledItems({

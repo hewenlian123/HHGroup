@@ -60,7 +60,7 @@ type Summary = {
   laborOwed: number;
   reimbursements: number;
   payments: number;
-  /** Advances applied on payroll (status deducted); pending rows do not affect summary until marked deducted. */
+  /** Open advances currently reducing net-to-pay. Deducted advances are historical payroll value. */
   advances: number;
   balance: number;
 };
@@ -189,6 +189,10 @@ function Dash() {
   return <span className="text-zinc-400">—</span>;
 }
 
+function roundMoney(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
 export default function WorkerBalanceDetailPage() {
   const params = useParams();
   const workerId = params?.id as string | undefined;
@@ -288,6 +292,22 @@ export default function WorkerBalanceDetailPage() {
     });
     return s;
   }, [unpaidLabor, unpaidReimb, selectedLaborIds, selectedReimbIds]);
+  const allUnpaidGrossAmount = React.useMemo(
+    () =>
+      unpaidLabor.reduce((s, e) => s + e.amount, 0) + unpaidReimb.reduce((s, r) => s + r.amount, 0),
+    [unpaidLabor, unpaidReimb]
+  );
+  const advanceDeductionAmount = React.useMemo(() => {
+    const openAdvances = Math.max(0, Number(summary?.advances) || 0);
+    if (openAdvances <= 0 || totalPaymentAmount <= 0) return 0;
+    const payingAllOpenItems = roundMoney(totalPaymentAmount) >= roundMoney(allUnpaidGrossAmount);
+    if (!payingAllOpenItems) return 0;
+    return Math.min(openAdvances, totalPaymentAmount);
+  }, [allUnpaidGrossAmount, summary?.advances, totalPaymentAmount]);
+  const netPaymentAmount = React.useMemo(
+    () => Math.max(0, roundMoney(totalPaymentAmount - advanceDeductionAmount)),
+    [advanceDeductionAmount, totalPaymentAmount]
+  );
 
   type SplitMethod = "Cash" | "Check" | "ACH" | "Zelle" | "Other";
   type SplitRow = { id: string; method: SplitMethod | ""; amount: string; reference: string };
@@ -303,12 +323,12 @@ export default function WorkerBalanceDetailPage() {
   }, [splitRows]);
 
   const splitDelta = React.useMemo(
-    () => totalPaymentAmount - splitTotal,
-    [totalPaymentAmount, splitTotal]
+    () => netPaymentAmount - splitTotal,
+    [netPaymentAmount, splitTotal]
   );
 
   const splitValidation = React.useMemo(() => {
-    if (totalPaymentAmount <= 0) return { ok: false, message: null as string | null };
+    if (netPaymentAmount <= 0) return { ok: false, message: null as string | null };
     if (splitRows.length === 0) return { ok: false, message: "Add a payment method." };
     for (const r of splitRows) {
       if (!r.method) return { ok: false, message: "Each split row needs a method." };
@@ -316,24 +336,29 @@ export default function WorkerBalanceDetailPage() {
       if (!Number.isFinite(n) || n <= 0)
         return { ok: false, message: "Each split row needs an amount > 0." };
     }
-    const rounded = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
-    if (rounded(splitTotal) !== rounded(totalPaymentAmount)) return { ok: false, message: null };
+    if (roundMoney(splitTotal) !== roundMoney(netPaymentAmount))
+      return { ok: false, message: null };
     return { ok: true, message: null };
-  }, [splitRows, splitTotal, totalPaymentAmount]);
+  }, [splitRows, splitTotal, netPaymentAmount]);
 
   const openPayModal = () => {
     const initialLaborIds = new Set(unpaidLabor.map((e) => e.id));
     const initialReimbIds = new Set(unpaidReimb.map((r) => r.id));
     const initialTotal =
       unpaidLabor.reduce((s, e) => s + e.amount, 0) + unpaidReimb.reduce((s, r) => s + r.amount, 0);
+    const initialAdvanceDeduction = Math.min(
+      Math.max(0, Number(summary?.advances) || 0),
+      initialTotal
+    );
+    const initialCashTotal = Math.max(0, roundMoney(initialTotal - initialAdvanceDeduction));
     setSelectedLaborIds(initialLaborIds);
     setSelectedReimbIds(initialReimbIds);
     setPayDate(new Date().toISOString().slice(0, 10));
     setPayNotes("");
     setPayError(null);
-    const amt = initialTotal > 0 ? initialTotal.toFixed(2) : "";
+    const amt = initialCashTotal > 0 ? initialCashTotal.toFixed(2) : "";
     setSplitRows(
-      initialTotal > 0
+      initialCashTotal > 0
         ? [
             {
               id: crypto.randomUUID?.() ?? `${Date.now()}`,
@@ -353,12 +378,12 @@ export default function WorkerBalanceDetailPage() {
     setSplitRows((prev) => {
       const one = prev[0];
       if (!one) return prev;
-      const nextAmt = totalPaymentAmount > 0 ? totalPaymentAmount.toFixed(2) : "";
+      const nextAmt = netPaymentAmount > 0 ? netPaymentAmount.toFixed(2) : "";
       if (one.amount === nextAmt) return prev;
       return [{ ...one, amount: nextAmt }];
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [payModalOpen, totalPaymentAmount]);
+  }, [payModalOpen, netPaymentAmount]);
 
   const removeSplitRow = (id: string) => {
     setSplitRows((prev) => prev.filter((r) => r.id !== id));
@@ -415,7 +440,7 @@ export default function WorkerBalanceDetailPage() {
       splitEditorMode === "edit"
         ? splitTotal - (Number.isFinite(currentAmt) ? currentAmt : 0) + amt
         : splitTotal + amt;
-    if (rounded(nextTotal) > rounded(totalPaymentAmount)) {
+    if (rounded(nextTotal) > rounded(netPaymentAmount)) {
       setDraftError("Split total can’t exceed Total Payment Amount.");
       return;
     }
@@ -460,7 +485,7 @@ export default function WorkerBalanceDetailPage() {
 
   const handlePaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!workerId || totalPaymentAmount <= 0) return;
+    if (!workerId || totalPaymentAmount <= 0 || netPaymentAmount <= 0) return;
     if (splitRows.length > 1) {
       setPayError("Split payments need backend support before saving.");
       return;
@@ -471,7 +496,7 @@ export default function WorkerBalanceDetailPage() {
     if (!method) return setPayError("Payment method is required.");
     if (!Number.isFinite(amt) || amt <= 0) return setPayError("Payment amount is required.");
     const rounded = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
-    if (rounded(amt) !== rounded(totalPaymentAmount)) {
+    if (rounded(amt) !== rounded(netPaymentAmount)) {
       setPayError("Split amount must equal Total Payment Amount.");
       return;
     }
@@ -482,12 +507,13 @@ export default function WorkerBalanceDetailPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: totalPaymentAmount,
+          amount: netPaymentAmount,
           payment_method: method,
           payment_date: payDate.slice(0, 10),
           notes: payNotes.trim() || null,
           labor_entry_ids: Array.from(selectedLaborIds),
           reimbursement_ids: Array.from(selectedReimbIds),
+          advance_deduction_amount: advanceDeductionAmount,
         }),
       });
       const data = (await res.json()) as { message?: string; payment?: { id?: string } };
@@ -976,10 +1002,22 @@ export default function WorkerBalanceDetailPage() {
             )}
 
             <div className="border-t border-border/60 pt-3">
-              <p className="text-sm font-semibold flex justify-between">
-                <span>Total Payment Amount</span>
-                <span className="tabular-nums">{formatCurrency(totalPaymentAmount)}</span>
-              </p>
+              <dl className="space-y-1.5 text-sm">
+                <div className="flex justify-between gap-3 text-[var(--neo-text-secondary)]">
+                  <dt>Selected payable</dt>
+                  <dd className="tabular-nums">{formatCurrency(totalPaymentAmount)}</dd>
+                </div>
+                {advanceDeductionAmount > 0 ? (
+                  <div className="flex justify-between gap-3 text-[var(--neo-text-secondary)]">
+                    <dt>Advance deduction</dt>
+                    <dd className="tabular-nums">-{formatCurrency(advanceDeductionAmount)}</dd>
+                  </div>
+                ) : null}
+                <div className="flex justify-between gap-3 pt-1 text-sm font-semibold">
+                  <dt>Total Payment Amount</dt>
+                  <dd className="tabular-nums">{formatCurrency(netPaymentAmount)}</dd>
+                </div>
+              </dl>
             </div>
 
             <div className="space-y-2">
@@ -989,7 +1027,7 @@ export default function WorkerBalanceDetailPage() {
                     Split payment
                   </p>
                 </div>
-                {totalPaymentAmount > 0 ? (
+                {netPaymentAmount > 0 ? (
                   <span
                     className={cn(
                       "shrink-0 text-[11px] font-medium tabular-nums",
@@ -1129,6 +1167,7 @@ export default function WorkerBalanceDetailPage() {
                 disabled={
                   paySubmitting ||
                   totalPaymentAmount <= 0 ||
+                  netPaymentAmount <= 0 ||
                   splitRows.length === 0 ||
                   splitRows.length > 1 ||
                   !splitValidation.ok

@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { omitE2ESeedWorkerFromBalanceWorkers } from "@/lib/e2e-seed-worker";
 import {
   isLaborUnpaidForWorkerPayroll,
+  isWorkerAdvanceOpenForBalance,
   laborEntryPaymentIdMapFromWorkerPayments,
   workerOutstandingBalanceFromUnsettledItems,
   workerIdsForLaborBalanceFinancialQueries,
@@ -44,7 +45,7 @@ export async function fetchWorkerBalanceRowForDelete(
 /**
  * Worker balances summary (same rules as GET /api/labor/worker-balances).
  * Labor Owed = unpaid payroll per `isLaborUnpaidForWorkerPayroll` / worker_payment_id NULL in SQL path.
- * Balance = unpaid Labor Owed + pending Reimbursements - DeductedAdvances.
+ * Balance = unpaid Labor Owed + pending Reimbursements - open Advances.
  * Worker payments remain visible as a ledger, but linked paid items are already removed
  * from the unpaid totals and unlinked legacy payments cannot prove which rows they settled.
  * Worker list comes from labor_workers; payments/advances aggregate by worker_id (same ids as labor_workers when synced).
@@ -304,12 +305,7 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
         status?: string | null;
       }>;
       const advances = advRows.reduce((s, r) => {
-        if (
-          String(r.status ?? "")
-            .trim()
-            .toLowerCase() !== "deducted"
-        )
-          return s;
+        if (!isWorkerAdvanceOpenForBalance(r.status)) return s;
         return s + (Number(r.amount ?? r.total_amount) || 0);
       }, 0);
 

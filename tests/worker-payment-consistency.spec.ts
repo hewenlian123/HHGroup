@@ -253,9 +253,8 @@ function expectMoney(actual: number, expected: number) {
 
 function totalAmount(dialog: Locator) {
   return dialog
-    .locator("p.text-sm.font-semibold")
-    .filter({ hasText: "Total Payment Amount" })
-    .locator("span.tabular-nums");
+    .getByText("Total Payment Amount", { exact: true })
+    .locator("xpath=following-sibling::*[1]");
 }
 
 async function closeAnyReceiptPreview(page: Page) {

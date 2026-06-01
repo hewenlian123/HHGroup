@@ -60,6 +60,7 @@ export function WorkerPaymentReceiptBody({
 }: WorkerPaymentReceiptBodyProps) {
   const methodLabel = paymentMethod?.trim() || "—";
   const balanceDisplay = balance != null ? fmtUsd(balance.remainingBalance) : "—";
+  const advanceDeduction = Math.max(0, laborSubtotal + reimbSubtotal - amount);
 
   return (
     <div className="receipt receipt-container">
@@ -176,6 +177,12 @@ export function WorkerPaymentReceiptBody({
           <div className="receipt-summary-row">
             <span className="receipt-summary-label">Reimbursements</span>
             <span className="receipt-summary-amount tabular-nums">{fmtUsd(reimbSubtotal)}</span>
+          </div>
+        ) : null}
+        {advanceDeduction > 0.005 ? (
+          <div className="receipt-summary-row">
+            <span className="receipt-summary-label">Advance deduction</span>
+            <span className="receipt-summary-amount tabular-nums">-{fmtUsd(advanceDeduction)}</span>
           </div>
         ) : null}
         <div className="receipt-summary-row receipt-summary-row--balance">
