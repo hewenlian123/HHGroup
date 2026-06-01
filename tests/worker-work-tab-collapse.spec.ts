@@ -120,9 +120,6 @@ async function seedWorkerWork(client: SupabaseClient): Promise<void> {
       notes: `${PREFIX} may full day_type=full_day`,
       cost_amount: 200,
       status: "Draft",
-      morning: true,
-      afternoon: true,
-      days_worked: 1,
       daily_rate_snapshot: 200,
       amount_snapshot: 200,
       labor_cost_snapshot: 200,
@@ -137,9 +134,6 @@ async function seedWorkerWork(client: SupabaseClient): Promise<void> {
       notes: `${PREFIX} may half day_type=half_day`,
       cost_amount: 100,
       status: "Draft",
-      morning: true,
-      afternoon: false,
-      days_worked: 0.5,
       daily_rate_snapshot: 200,
       amount_snapshot: 100,
       labor_cost_snapshot: 100,
@@ -243,6 +237,10 @@ test.describe("Worker detail Work tab month collapse", () => {
       timeout: 30_000,
     });
     await expect(page.getByTestId("worker-work-entry-card")).toHaveCount(2);
+    await expect(page.getByTestId("worker-work-month-2026-05")).toContainText("1.5 days");
+    await expect(
+      page.getByTestId("worker-work-entry-card").filter({ hasText: "Half" })
+    ).toContainText("0.5 days");
     await expectNoHorizontalOverflow(page);
     const monthToggleHeight = await page
       .getByTestId("worker-work-month-2026-05")
