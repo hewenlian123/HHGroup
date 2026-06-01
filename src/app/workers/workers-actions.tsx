@@ -1,6 +1,5 @@
 "use client";
 
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { AddWorkerModal } from "./add-worker-modal";
@@ -11,7 +10,6 @@ export function WorkersActions() {
   const [modalOpen, setModalOpen] = React.useState(false);
 
   const handleSuccess = (worker: { id: string }) => {
-    syncRouterNonBlocking(router);
     router.push(`/workers/${encodeURIComponent(worker.id)}`);
   };
 
