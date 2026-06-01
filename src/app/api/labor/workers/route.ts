@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAuthenticatedUser } from "@/lib/auth-boundary";
-import { createWorkerWithClient } from "@/lib/labor-db";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternal,
 } from "@/lib/supabase-server";
+import { insertWorker } from "@/lib/workers-db";
 
 export const dynamic = "force-dynamic";
 
@@ -62,16 +62,28 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const name = (body.name as string)?.trim() ?? "";
     if (!name) return NextResponse.json({ message: "Name is required." }, { status: 400 });
-    const halfDayRate = Number(body.half_day_rate ?? body.halfDayRate ?? 0) || 0;
-    const worker = await createWorkerWithClient(admin, {
-      name,
-      phone: (body.phone as string)?.trim() || undefined,
-      trade: ((body.role ?? body.trade) as string)?.trim() || undefined,
-      halfDayRate,
-      notes: (body.notes as string)?.trim() || undefined,
-      status: body.status === "inactive" ? "inactive" : "active",
+    const dailyRate =
+      Number(body.daily_rate ?? body.dailyRate ?? body.half_day_rate ?? body.halfDayRate ?? 0) || 0;
+    const worker = await insertWorker(
+      {
+        name,
+        phone: (body.phone as string)?.trim() || null,
+        trade: ((body.role ?? body.trade) as string)?.trim() || null,
+        daily_rate: dailyRate,
+        default_ot_rate: Number(body.default_ot_rate ?? body.defaultOtRate ?? 0) || 0,
+        notes: (body.notes as string)?.trim() || null,
+        status: body.status === "inactive" || body.status === "Inactive" ? "Inactive" : "Active",
+      },
+      admin
+    );
+    return NextResponse.json({
+      ...worker,
+      role: worker.trade,
+      half_day_rate: worker.daily_rate,
+      halfDayRate: worker.daily_rate,
+      dailyRate: worker.daily_rate,
+      status: worker.status === "Inactive" ? "inactive" : "active",
     });
-    return NextResponse.json(worker);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to create worker.";
     return NextResponse.json({ message }, { status: 500 });

@@ -707,13 +707,23 @@ test.describe("Worker time entry → payment → payroll → PDF local flow", ()
       expect.objectContaining({ amount: ADVANCE_AMOUNT, status: "deducted" }),
     ]);
 
+    const { data: workerBeforeCenter, error: workerBeforeCenterError } = await admin!
+      .from("workers")
+      .select("id, name")
+      .eq("id", workerId)
+      .maybeSingle();
+    expect(workerBeforeCenterError?.message).toBeUndefined();
+    expect(workerBeforeCenter).toEqual(
+      expect.objectContaining({ id: workerId, name: WORKER_NAME })
+    );
+
     await page.goto(`${BASE}/workers`);
     const workerCenterRow = page.getByRole("link", {
       name: new RegExp(`Open worker ${WORKER_NAME}`),
     });
     await expect(workerCenterRow).toBeVisible({ timeout: 30_000 });
     await expect(workerCenterRow).toContainText("$0.00");
-    await expect(workerCenterRow).toContainText("$185.00");
+    await expect(workerCenterRow).toContainText("$185.00", { timeout: 30_000 });
 
     await page.goto(`${BASE}/workers/${encodeURIComponent(workerId)}`);
     await page.getByRole("tab", { name: "Payments" }).click();
