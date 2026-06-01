@@ -363,6 +363,7 @@ async function createWorkerFromUi(page: Page) {
   await addWorker.getByPlaceholder("Notes").fill(`${PREFIX} created by Playwright ${RUN_ID}`);
   await addWorker.getByRole("button", { name: /^Add Worker$/i }).click();
   await expect(addWorker).not.toBeVisible({ timeout: 30_000 });
+  await expect(page).toHaveURL(/\/workers\/[0-9a-f-]+/i, { timeout: 30_000 });
 }
 
 async function openAddDailyEntryFromWorker(page: Page) {
@@ -439,6 +440,10 @@ async function addReimbursementViaUi(page: Page) {
   await form.getByRole("button", { name: /^Save$/i }).click();
   const response = await reimbPost;
   await expectResponseOk(response);
+  await expect
+    .poll(() => new URL(page.url()).searchParams.get("new"), { timeout: 30_000 })
+    .not.toBe("1");
+  await expect(form).not.toBeVisible({ timeout: 30_000 });
 }
 
 async function uploadReceiptViaUi(page: Page) {
@@ -622,6 +627,8 @@ test.describe("Worker time entry → payment → payroll → PDF local flow", ()
     await page.getByRole("tab", { name: "Work" }).click();
     await expect(page.getByText("$200.00").first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("$100.00").first()).toBeVisible();
+    await expect(page.getByText(/1\.5 days · \$300\.00/).first()).toBeVisible();
+    await expect(page.getByText(/2 days · \$300\.00/)).toHaveCount(0);
     await expectNoFatalUi(page);
 
     let balance = await balanceJson(page);
@@ -759,6 +766,11 @@ test.describe("Worker time entry → payment → payroll → PDF local flow", ()
     await expect(
       page.getByText("Total days", { exact: true }).locator("xpath=following-sibling::dd[1]")
     ).toHaveText("1.5");
+    await expect(page.locator("body")).toContainText("$300.00");
+    await expect(page.locator("body")).toContainText("$35.00");
+    await expect(page.locator("body")).toContainText("$285.00");
+    await expect(page.locator("body")).toContainText("-$50.00");
+    await expect(page.locator("body")).not.toContainText("$-0.00");
     await page.evaluate(() => {
       (window as typeof window & { __payrollPrintCalls?: number }).__payrollPrintCalls = 0;
       window.print = () => {
@@ -780,10 +792,23 @@ test.describe("Worker time entry → payment → payroll → PDF local flow", ()
     await expect(page.locator(".payroll-statement-print-root")).toBeVisible();
     await expect(page.locator(".payroll-statement-print-root")).toContainText(WORKER_NAME);
     await expect(page.locator(".payroll-statement-print-root")).toContainText("$300.00");
+    await expect(page.locator(".payroll-statement-print-root")).toContainText("$35.00");
+    await expect(page.locator(".payroll-statement-print-root")).toContainText("$285.00");
+    await expect(page.locator(".payroll-statement-print-root")).toContainText("-$50.00");
+    await expect(page.locator(".payroll-statement-print-root")).not.toContainText("$-0.00");
     await page.emulateMedia({ media: "screen" });
     await expectNoFatalUi(page);
 
     await changeDailyRateViaUi(page);
+    await page.goto(
+      `${BASE}/worker/${encodeURIComponent(workerId)}/monthly-report?month=${encodeURIComponent(runMonth)}`
+    );
+    await expect(
+      page.getByText("Daily rate", { exact: true }).locator("xpath=following-sibling::dd[1]")
+    ).toContainText("200.00");
+    await expect(
+      page.getByText("Daily rate", { exact: true }).locator("xpath=following-sibling::dd[1]")
+    ).not.toContainText("(from profile)");
     await addDailyEntryViaUi(page, {
       date: NEW_RATE_DATE,
       session: "full",
@@ -832,6 +857,9 @@ test.describe("Worker time entry → payment → payroll → PDF local flow", ()
       await page.goto(url);
       await page.waitForLoadState("domcontentloaded");
       await expectNoFatalUi(page);
+      if (url.includes(`/workers/${encodeURIComponent(workerId)}`)) {
+        await expect(page.getByText("Net To Pay").first()).toBeVisible({ timeout: 30_000 });
+      }
       await expectNoHorizontalOverflow(page);
     }
   });

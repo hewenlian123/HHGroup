@@ -90,6 +90,10 @@ function avatarRingClass(seed: string): string {
   return AVATAR_RING[s % AVATAR_RING.length] ?? AVATAR_RING[0];
 }
 
+function isCompleteDateInput(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
 function BalanceChip({ balance }: { balance: number }) {
   const base =
     "inline-flex w-fit min-h-[22px] shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium tabular-nums tracking-tight shadow-none";
@@ -445,14 +449,18 @@ export default function PayrollSummaryPage() {
               <Input
                 type="date"
                 value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
+                onChange={(e) => {
+                  if (isCompleteDateInput(e.target.value)) setFromDate(e.target.value);
+                }}
                 className={cn(dateInputClass, "h-10 sm:w-[152px]")}
                 aria-label="From"
               />
               <Input
                 type="date"
                 value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
+                onChange={(e) => {
+                  if (isCompleteDateInput(e.target.value)) setToDate(e.target.value);
+                }}
                 className={cn(dateInputClass, "h-10 sm:w-[152px]")}
                 aria-label="To"
               />

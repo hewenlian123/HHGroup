@@ -333,12 +333,20 @@ export default function LaborPageClient() {
     [loadMonthEntries]
   );
 
-  const handleSaved = React.useCallback(() => {
-    setMessage("Entries saved.");
-    setError(null);
-    toast({ title: "Entry saved successfully", variant: "success" });
-    void loadMonthEntries();
-  }, [loadMonthEntries, toast]);
+  const handleSaved = React.useCallback(
+    (savedDate?: string) => {
+      setMessage("Entries saved.");
+      setError(null);
+      toast({ title: "Entry saved successfully", variant: "success" });
+      const savedMonth = String(savedDate ?? "").slice(0, 7);
+      if (/^\d{4}-\d{2}$/.test(savedMonth) && savedMonth !== selectedMonth) {
+        setSelectedMonth(savedMonth);
+        return;
+      }
+      void loadMonthEntries();
+    },
+    [loadMonthEntries, selectedMonth, toast]
+  );
 
   const handleDelete = React.useCallback(
     async (e: LaborEntryWithJoins) => {

@@ -2,12 +2,14 @@ import type { WorkerMonthlyReportResult } from "@/lib/worker-monthly-report";
 import "./payroll-statement-print.css";
 
 function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const clean = Math.abs(n) < 0.005 ? 0 : n;
+  return clean.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtSignedUsd(n: number): string {
-  if (n < 0) return `-$${fmtUsd(Math.abs(n))}`;
-  return `$${fmtUsd(n)}`;
+  const clean = Math.abs(n) < 0.005 ? 0 : n;
+  if (clean < 0) return `-$${fmtUsd(Math.abs(clean))}`;
+  return `$${fmtUsd(clean)}`;
 }
 
 /**
@@ -70,7 +72,7 @@ export function WorkerPayrollStatementPrint({ report }: { report: WorkerMonthlyR
                 </span>
               ) : ps.totalDays > 0 ? (
                 <span className="ml-1 text-[10px] font-normal normal-case text-neutral-500">
-                  (implied)
+                  (snapshot)
                 </span>
               ) : null}
             </dd>
@@ -88,8 +90,16 @@ export function WorkerPayrollStatementPrint({ report }: { report: WorkerMonthlyR
             <dd className="tabular-nums font-semibold">${fmtUsd(summary.totalOwed)}</dd>
           </div>
           <div className="flex justify-between gap-4 border-b border-neutral-200 py-1.5">
-            <dt className="text-neutral-600">Paid</dt>
-            <dd className="tabular-nums font-medium">${fmtUsd(summary.paid)}</dd>
+            <dt className="text-neutral-600">Cash paid</dt>
+            <dd className="tabular-nums font-medium">${fmtUsd(summary.cashPaid)}</dd>
+          </div>
+          <div className="flex justify-between gap-4 border-b border-neutral-200 py-1.5">
+            <dt className="text-neutral-600">Advance deduction</dt>
+            <dd className="tabular-nums font-medium">-${fmtUsd(summary.advanceDeductions)}</dd>
+          </div>
+          <div className="flex justify-between gap-4 border-b border-neutral-200 py-1.5">
+            <dt className="text-neutral-600">Settled</dt>
+            <dd className="tabular-nums font-medium">${fmtUsd(summary.settled)}</dd>
           </div>
           <div className="col-span-2 flex justify-between gap-4 border-b border-black py-2">
             <dt className="font-medium">Balance</dt>

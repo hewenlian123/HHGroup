@@ -72,8 +72,10 @@ test.describe("Monthly report — payroll statement print", () => {
 
     await expect(root.getByText("Earned", { exact: true })).toBeVisible();
     await expect(root.getByText("Total owed", { exact: true })).toBeVisible();
-    await expect(root.getByText("Paid", { exact: true })).toBeVisible();
+    await expect(root.getByText("Cash paid", { exact: true })).toBeVisible();
+    await expect(root.getByText("Settled", { exact: true })).toBeVisible();
     await expect(root.getByText("Balance", { exact: true })).toBeVisible();
+    await expect(root).not.toContainText("$-0.00");
 
     await expect(root.getByRole("heading", { name: "Activity" })).toBeVisible();
     const activityTable = root.locator("table").first();

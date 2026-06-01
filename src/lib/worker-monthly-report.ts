@@ -5,9 +5,9 @@
  * - labor_entries: work_date, cost_amount, worker_id; project_id optional (older local DBs omit it)
  * - worker_invoices: created_at, amount, project_id, worker_id
  * - labor_invoices: invoice_date, amount, status, project_splits, worker_id
- * - worker_reimbursements: reimbursement_date (business date), created_at, amount, project_id, worker_id
- * - worker_advances: advance_date, amount, project_id, worker_id
- * - worker_payments: payment_date + amount + project_id (prod), or total_amount + created_at (legacy local)
+ * - worker_reimbursements: reimbursement_date, created_at, amount, project_id, worker_id, payment_id
+ * - worker_advances: advance_date, amount, project_id, worker_id, status
+ * - worker_payments: total_amount + created_at, or amount + payment_date on older deployments
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -39,6 +39,9 @@ export type WorkerMonthlyReportSummary = {
   earned: number;
   reimbursements: number;
   totalOwed: number;
+  cashPaid: number;
+  advanceDeductions: number;
+  settled: number;
   paid: number;
   balance: number;
 };
@@ -52,7 +55,7 @@ export type WorkerMonthlyReportPayrollStatement = {
   generatedAtDisplay: string;
   /** Count of labor_entries (time entries) in the month */
   totalDays: number;
-  /** Worker DB rate if present, else earned ÷ totalDays when totalDays > 0 */
+  /** Snapshot/implied daily rate for this report period; worker profile rate is only a no-labor fallback. */
   dailyRate: number;
   dailyRateFromWorker: boolean;
 };
@@ -170,71 +173,90 @@ function isRetryableSelectError(err: { message?: string } | null): boolean {
   return /could not find the .* column|column .* does not exist|schema cache|pgrst204/i.test(m);
 }
 
+function emptySummary(): WorkerMonthlyReportSummary {
+  return {
+    earned: 0,
+    reimbursements: 0,
+    totalOwed: 0,
+    cashPaid: 0,
+    advanceDeductions: 0,
+    settled: 0,
+    paid: 0,
+    balance: 0,
+  };
+}
+
+function money(value: unknown): number {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  const rounded = Math.round(n * 100) / 100;
+  return Math.abs(rounded) < 0.005 ? 0 : rounded;
+}
+
+function firstPositiveMoney(...values: unknown[]): number {
+  for (const value of values) {
+    const n = money(value);
+    if (n > 0.005) return n;
+  }
+  return money(values.find((value) => Number.isFinite(Number(value))) ?? 0);
+}
+
+function dateInMonth(
+  value: string | null | undefined,
+  range: { start: string; nextStart: string }
+): boolean {
+  const d = String(value ?? "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) && d >= range.start && d < range.nextStart;
+}
+
 type PaymentRowNormalized = {
   id: string;
   project_id: string | null;
-  amount: unknown;
+  amount: number;
   payment_date: string;
 };
 
-/** Production: amount + payment_date (+ optional project_id). Legacy local: total_amount + created_at. */
+/** Production/local schemas vary; prefer canonical total_amount, then amount. */
 async function loadWorkerPaymentsForMonth(
   admin: SupabaseClient,
   wid: string,
   range: { start: string; nextStart: string; tStart: string; tNext: string }
 ): Promise<{ rows: PaymentRowNormalized[]; error: string | null }> {
-  const modern = await admin
-    .from("worker_payments")
-    .select("id, project_id, amount, payment_date")
-    .eq("worker_id", wid)
-    .gte("payment_date", range.start)
-    .lt("payment_date", range.nextStart);
+  const selectVariants = [
+    "id, project_id, total_amount, amount, payment_date, created_at",
+    "id, total_amount, amount, payment_date, created_at",
+    "id, project_id, total_amount, created_at",
+    "id, total_amount, created_at",
+    "id, project_id, amount, payment_date, created_at",
+    "id, amount, payment_date, created_at",
+    "id, amount, payment_date",
+  ] as const;
 
-  if (!modern.error) {
-    return {
-      rows: (
-        (modern.data ?? []) as {
-          id: string;
-          project_id: string | null;
-          amount: unknown;
-          payment_date: string;
-        }[]
-      ).map((r) => ({
-        id: r.id,
-        project_id: r.project_id != null ? String(r.project_id) : null,
-        amount: r.amount,
-        payment_date: String(r.payment_date ?? "").slice(0, 10),
-      })),
-      error: null,
-    };
+  let lastError: { message?: string } | null = null;
+  for (const cols of selectVariants) {
+    const res = await admin.from("worker_payments").select(cols).eq("worker_id", wid);
+    if (!res.error) {
+      const rows = ((res.data ?? []) as unknown as Record<string, unknown>[])
+        .map((r) => {
+          const paymentDate =
+            String(r.payment_date ?? "").slice(0, 10) || String(r.created_at ?? "").slice(0, 10);
+          return {
+            id: String(r.id ?? ""),
+            project_id: r.project_id != null ? String(r.project_id) : null,
+            amount: firstPositiveMoney(r.total_amount, r.amount),
+            payment_date: paymentDate,
+          };
+        })
+        .filter((r) => r.id && dateInMonth(r.payment_date, range));
+      return { rows, error: null };
+    }
+    lastError = res.error;
+    if (!isRetryableSelectError(res.error)) {
+      return { rows: [], error: res.error?.message ?? "Failed to load worker payments." };
+    }
   }
 
-  if (!isRetryableSelectError(modern.error)) {
-    return { rows: [], error: modern.error?.message ?? "Failed to load worker payments." };
-  }
-
-  const legacy = await admin
-    .from("worker_payments")
-    .select("id, total_amount, created_at")
-    .eq("worker_id", wid)
-    .gte("created_at", range.tStart)
-    .lt("created_at", range.tNext);
-
-  if (legacy.error) {
-    return { rows: [], error: legacy.error.message ?? "Failed to load worker payments." };
-  }
-
-  return {
-    rows: ((legacy.data ?? []) as { id: string; total_amount: unknown; created_at: string }[]).map(
-      (r) => ({
-        id: r.id,
-        project_id: null,
-        amount: r.total_amount,
-        payment_date: String(r.created_at ?? "").slice(0, 10),
-      })
-    ),
-    error: null,
-  };
+  return { rows: [], error: lastError?.message ?? "Failed to load worker payments." };
 }
 
 type LaborEntryRowNormalized = {
@@ -297,7 +319,7 @@ async function loadLaborEntriesForMonth(
 
 function laborEntryAmountForMonthlyReport(row: LaborEntryRowNormalized): number {
   return Math.abs(
-    Number(row.labor_cost_snapshot ?? row.amount_snapshot ?? row.cost_amount ?? row.total) || 0
+    money(row.labor_cost_snapshot ?? row.amount_snapshot ?? row.cost_amount ?? row.total)
   );
 }
 
@@ -337,7 +359,7 @@ export async function getWorkerMonthlyReport(
       workerName: "",
       monthLabel: monthHeading(monthYm),
       rows: [],
-      summary: { earned: 0, reimbursements: 0, totalOwed: 0, paid: 0, balance: 0 },
+      summary: emptySummary(),
       payrollStatement: stubPayrollStatement(monthYm),
       supabaseConfigured: false,
       loadError: "Supabase is not configured.",
@@ -358,7 +380,7 @@ export async function getWorkerMonthlyReport(
       workerName: "",
       monthLabel: monthHeading(monthYm),
       rows: [],
-      summary: { earned: 0, reimbursements: 0, totalOwed: 0, paid: 0, balance: 0 },
+      summary: emptySummary(),
       payrollStatement: stubPayrollStatement(monthYm),
       supabaseConfigured: true,
       loadError: "Missing worker id.",
@@ -373,25 +395,10 @@ export async function getWorkerMonthlyReport(
     amount: unknown;
     created_at: unknown;
     reimbursement_date?: unknown;
+    payment_id?: unknown;
+    paid_at?: unknown;
+    status?: unknown;
   };
-  const reimbPrimary = await admin
-    .from("worker_reimbursements")
-    .select("id, project_id, amount, created_at, reimbursement_date")
-    .eq("worker_id", wid)
-    .gte("reimbursement_date", range.start)
-    .lt("reimbursement_date", range.nextStart);
-  let reimbData = reimbPrimary.data as ReimbReportRow[] | null;
-  let reimbErr = reimbPrimary.error;
-  if (reimbErr && isRetryableSelectError(reimbErr)) {
-    const reimbFallback = await admin
-      .from("worker_reimbursements")
-      .select("id, project_id, amount, created_at")
-      .eq("worker_id", wid)
-      .gte("created_at", range.tStart)
-      .lt("created_at", range.tNext);
-    reimbData = reimbFallback.data as ReimbReportRow[] | null;
-    reimbErr = reimbFallback.error;
-  }
   const [wiRes, liRes, advRes] = await Promise.all([
     admin
       .from("worker_invoices")
@@ -407,7 +414,7 @@ export async function getWorkerMonthlyReport(
       .lt("invoice_date", range.nextStart),
     admin
       .from("worker_advances")
-      .select("id, project_id, amount, advance_date")
+      .select("id, project_id, amount, advance_date, status, created_at")
       .eq("worker_id", wid)
       .gte("advance_date", range.start)
       .lt("advance_date", range.nextStart),
@@ -415,6 +422,27 @@ export async function getWorkerMonthlyReport(
 
   const { rows: laborRows, error: laborErr } = await loadLaborEntriesForMonth(admin, wid, range);
   const { rows: payRows, error: payErr } = await loadWorkerPaymentsForMonth(admin, wid, range);
+  const paymentIdsInMonth = new Set(payRows.map((r) => r.id).filter(Boolean));
+
+  const reimbSelectVariants = [
+    "id, project_id, amount, created_at, reimbursement_date, payment_id, paid_at, status",
+    "id, project_id, amount, created_at, reimbursement_date, payment_id, status",
+    "id, project_id, amount, created_at, reimbursement_date, status",
+    "id, project_id, amount, created_at, reimbursement_date",
+    "id, project_id, amount, created_at",
+  ] as const;
+  let reimbData: ReimbReportRow[] | null = null;
+  let reimbErr: { message?: string } | null = null;
+  for (const cols of reimbSelectVariants) {
+    const res = await admin.from("worker_reimbursements").select(cols).eq("worker_id", wid);
+    if (!res.error) {
+      reimbData = (res.data ?? []) as unknown as ReimbReportRow[];
+      reimbErr = null;
+      break;
+    }
+    reimbErr = res.error;
+    if (!isRetryableSelectError(res.error)) break;
+  }
 
   const firstErr =
     workerRes.error?.message ??
@@ -434,7 +462,20 @@ export async function getWorkerMonthlyReport(
     amount: unknown;
     created_at: string;
     reimbursement_date?: string | null;
+    payment_id?: string | null;
+    paid_at?: string | null;
+    status?: string | null;
   }[];
+  const reimbRowsInReport = reimbRows.filter((r) => {
+    const reimbDate =
+      typeof r.reimbursement_date === "string" && r.reimbursement_date
+        ? r.reimbursement_date
+        : String(r.created_at ?? "").slice(0, 10);
+    if (dateInMonth(reimbDate, range)) return true;
+    if (r.payment_id && paymentIdsInMonth.has(String(r.payment_id))) return true;
+    if (dateInMonth(r.paid_at, range)) return true;
+    return false;
+  });
   const wiRows = (wiRes.data ?? []) as {
     id: string;
     project_id: string | null;
@@ -453,11 +494,13 @@ export async function getWorkerMonthlyReport(
     project_id: string | null;
     amount: unknown;
     advance_date: string;
+    status?: string | null;
+    created_at?: string | null;
   }[];
 
   const projectIds: string[] = [];
   for (const r of laborRows) if (r.project_id) projectIds.push(String(r.project_id));
-  for (const r of reimbRows) if (r.project_id) projectIds.push(String(r.project_id));
+  for (const r of reimbRowsInReport) if (r.project_id) projectIds.push(String(r.project_id));
   for (const r of wiRows) if (r.project_id) projectIds.push(String(r.project_id));
   for (const r of advRows) if (r.project_id) projectIds.push(String(r.project_id));
   for (const r of payRows) if (r.project_id) projectIds.push(String(r.project_id));
@@ -487,8 +530,8 @@ export async function getWorkerMonthlyReport(
     });
   }
 
-  for (const r of reimbRows) {
-    const amt = Math.abs(Number(r.amount) || 0);
+  for (const r of reimbRowsInReport) {
+    const amt = Math.abs(money(r.amount));
     const rd = r.reimbursement_date;
     const d =
       typeof rd === "string" && /^\d{4}-\d{2}-\d{2}/.test(rd)
@@ -506,7 +549,7 @@ export async function getWorkerMonthlyReport(
   }
 
   for (const r of wiRows) {
-    const amt = Math.abs(Number(r.amount) || 0);
+    const amt = Math.abs(money(r.amount));
     const d = String(r.created_at ?? "").slice(0, 10);
     const pid = r.project_id ? String(r.project_id) : null;
     merged.push({
@@ -522,7 +565,7 @@ export async function getWorkerMonthlyReport(
   for (const r of liRows) {
     const st = String(r.status ?? "").toLowerCase();
     if (st === "void") continue;
-    const amt = Math.abs(Number(r.amount) || 0);
+    const amt = Math.abs(money(r.amount));
     const d = String(r.invoice_date ?? "").slice(0, 10);
     merged.push({
       id: `linv-${r.id}`,
@@ -535,7 +578,8 @@ export async function getWorkerMonthlyReport(
   }
 
   for (const r of advRows) {
-    const raw = Number(r.amount) || 0;
+    if (String(r.status ?? "").toLowerCase() === "cancelled") continue;
+    const raw = money(r.amount);
     const amt = -Math.abs(raw);
     const d = String(r.advance_date ?? "").slice(0, 10);
     const pid = r.project_id ? String(r.project_id) : null;
@@ -550,7 +594,7 @@ export async function getWorkerMonthlyReport(
   }
 
   for (const r of payRows) {
-    const raw = Number(r.amount) || 0;
+    const raw = money(r.amount);
     const amt = -Math.abs(raw);
     const d = String(r.payment_date ?? "").slice(0, 10);
     const pid = r.project_id ? String(r.project_id) : null;
@@ -570,28 +614,32 @@ export async function getWorkerMonthlyReport(
   for (const r of laborRows) laborSum += laborEntryAmountForMonthlyReport(r);
 
   let wiSum = 0;
-  for (const r of wiRows) wiSum += Math.abs(Number(r.amount) || 0);
+  for (const r of wiRows) wiSum += Math.abs(money(r.amount));
 
   let liSum = 0;
   for (const r of liRows) {
     if (String(r.status ?? "").toLowerCase() === "void") continue;
-    liSum += Math.abs(Number(r.amount) || 0);
+    liSum += Math.abs(money(r.amount));
   }
 
   const earned = laborSum + wiSum + liSum;
 
   let reimbSum = 0;
-  for (const r of reimbRows) reimbSum += Math.abs(Number(r.amount) || 0);
+  for (const r of reimbRowsInReport) reimbSum += Math.abs(money(r.amount));
 
   const totalOwed = earned + reimbSum;
 
-  let paySum = 0;
-  for (const r of payRows) paySum += Math.abs(Number(r.amount) || 0);
+  let cashPaid = 0;
+  for (const r of payRows) cashPaid += Math.abs(money(r.amount));
 
-  let advSum = 0;
-  for (const r of advRows) advSum += Math.abs(Number(r.amount) || 0);
+  let advanceDeductions = 0;
+  for (const r of advRows) {
+    if (String(r.status ?? "").toLowerCase() === "cancelled") continue;
+    advanceDeductions += Math.abs(money(r.amount));
+  }
 
-  const paid = paySum + advSum;
+  const settled = cashPaid + advanceDeductions;
+  const paid = settled;
   const balance = totalOwed - paid;
 
   const totalDays = laborRows.reduce((sum, r) => sum + laborEntryDaysForMonthlyReport(r), 0);
@@ -602,9 +650,10 @@ export async function getWorkerMonthlyReport(
   const dailyFromHalfPairs = halfDay > 0 ? 2 * halfDay : 0;
   const workerDailyRate =
     dailyExplicit > 0 ? dailyExplicit : dailyFromHalfPairs > 0 ? dailyFromHalfPairs : null;
-  const impliedDaily = totalDays > 0 && earned > 0 ? earned / totalDays : 0;
-  const dailyRateFromWorker = workerDailyRate != null && workerDailyRate > 0;
-  const displayDailyRate = dailyRateFromWorker ? workerDailyRate! : impliedDaily;
+  const impliedDaily = totalDays > 0 && laborSum > 0 ? laborSum / totalDays : 0;
+  const dailyRateFromWorker = impliedDaily <= 0 && workerDailyRate != null && workerDailyRate > 0;
+  const displayDailyRate =
+    impliedDaily > 0 ? impliedDaily : dailyRateFromWorker ? workerDailyRate! : 0;
 
   let company = companyProfileToDocumentDto(null);
   try {
@@ -622,6 +671,9 @@ export async function getWorkerMonthlyReport(
       earned,
       reimbursements: reimbSum,
       totalOwed,
+      cashPaid,
+      advanceDeductions,
+      settled,
       paid,
       balance,
     },

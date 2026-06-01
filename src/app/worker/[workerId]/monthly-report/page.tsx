@@ -9,12 +9,14 @@ import { MonthReportToolbar } from "./month-report-toolbar";
 import { WorkerPayrollStatementPrint } from "./worker-payroll-statement-print";
 
 function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const clean = Math.abs(n) < 0.005 ? 0 : n;
+  return clean.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function fmtSignedUsd(n: number): string {
-  if (n < 0) return `-$${fmtUsd(Math.abs(n))}`;
-  return `$${fmtUsd(n)}`;
+  const clean = Math.abs(n) < 0.005 ? 0 : n;
+  if (clean < 0) return `-$${fmtUsd(Math.abs(clean))}`;
+  return `$${fmtUsd(clean)}`;
 }
 
 type PageProps = {
@@ -95,7 +97,7 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
         <Divider />
 
         <SectionHeader label="Summary" />
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-border/60 py-3 text-sm sm:grid-cols-3 md:grid-cols-5 md:gap-y-0">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-border/60 py-3 text-sm sm:grid-cols-3 md:grid-cols-7 md:gap-y-0">
           <div>
             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Earned
@@ -116,9 +118,21 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
           </div>
           <div>
             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Paid
+              Cash paid
             </div>
-            <div className="tabular-nums">${fmtUsd(report.summary.paid)}</div>
+            <div className="tabular-nums">${fmtUsd(report.summary.cashPaid)}</div>
+          </div>
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Advance deduction
+            </div>
+            <div className="tabular-nums">-${fmtUsd(report.summary.advanceDeductions)}</div>
+          </div>
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Settled
+            </div>
+            <div className="tabular-nums">${fmtUsd(report.summary.settled)}</div>
           </div>
           <div className="col-span-2 sm:col-span-1">
             <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
