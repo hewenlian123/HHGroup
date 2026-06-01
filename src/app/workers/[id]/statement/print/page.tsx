@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { getWorkerById } from "@/lib/data";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
@@ -11,6 +10,7 @@ import {
 } from "@/lib/supabase-server";
 import { getProjects } from "@/lib/projects-db";
 import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
+import { getWorkerByIdWithClient } from "@/lib/labor-db";
 import { getWorkerPaymentsWithClient } from "@/lib/worker-payments-db";
 import { getWorkerReimbursementsByWorkerId } from "@/lib/worker-reimbursements-db";
 import { getWorkerAdvances } from "@/lib/worker-advances-db";
@@ -50,10 +50,24 @@ export default async function WorkerStatementPrintPage({
   const end = qs.end ?? new Date().toISOString().slice(0, 10);
   const project = qs.project || undefined;
 
-  let worker: Awaited<ReturnType<typeof getWorkerById>> | undefined;
+  const supabase = getServerSupabaseInternalNoStore();
+  if (!supabase) {
+    return (
+      <ServerDataLoadFallback
+        message={SUPABASE_MISSING_SERVER_ENV_MESSAGE}
+        backHref={`/workers/${id}`}
+        backLabel="Back to worker"
+      />
+    );
+  }
+
+  let worker: Awaited<ReturnType<typeof getWorkerByIdWithClient>> | undefined;
   let company: Awaited<ReturnType<typeof fetchDocumentCompanyProfile>>;
   try {
-    [worker, company] = await Promise.all([getWorkerById(id), fetchDocumentCompanyProfile()]);
+    [worker, company] = await Promise.all([
+      getWorkerByIdWithClient(supabase, id),
+      fetchDocumentCompanyProfile(),
+    ]);
   } catch (e) {
     logServerPageDataError(`workers/${id}/statement/print`, e);
     return (
@@ -65,17 +79,6 @@ export default async function WorkerStatementPrintPage({
     );
   }
   if (!worker) notFound();
-
-  const supabase = getServerSupabaseInternalNoStore();
-  if (!supabase) {
-    return (
-      <ServerDataLoadFallback
-        message={SUPABASE_MISSING_SERVER_ENV_MESSAGE}
-        backHref={`/workers/${id}`}
-        backLabel="Back to worker"
-      />
-    );
-  }
 
   let earningsRows: WorkerStatementEarningRow[] = [];
   let payments: Awaited<ReturnType<typeof getWorkerPaymentsWithClient>> = [];
@@ -144,8 +147,13 @@ export default async function WorkerStatementPrintPage({
   const totalOwed = earningsTotal + reimbursementTotal;
   const balance = totalOwed - paidTotal;
 
+  const balanceIsSettled = Math.abs(balance) < 0.005;
+
   return (
-    <div className="min-h-screen bg-white text-black p-8 mx-auto" style={{ maxWidth: "8.5in" }}>
+    <div
+      className="mx-auto min-h-screen bg-white px-6 py-8 text-zinc-950 print:min-h-0 print:p-0"
+      style={{ maxWidth: "8.5in" }}
+    >
       <SetBreadcrumbEntityTitle label={worker.name} />
       <DocumentCompanyHeader
         company={company}
@@ -154,8 +162,8 @@ export default async function WorkerStatementPrintPage({
         documentDate={end}
         documentNoLabel="Statement No"
       />
-      <section className="mb-6 text-sm text-zinc-800">
-        <p className="font-medium text-zinc-900">
+      <section className="mb-6 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 text-sm text-zinc-800 print:bg-white">
+        <p className="font-semibold text-zinc-950">
           {worker.name}
           {worker.trade?.trim() ? ` · ${worker.trade.trim()}` : ""}
           {worker.phone?.trim() ? ` · ${worker.phone.trim()}` : ""}
@@ -165,84 +173,130 @@ export default async function WorkerStatementPrintPage({
         </p>
       </section>
 
-      <section className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6 text-sm">
-        <div className="border border-zinc-300 rounded-lg p-3">
-          <p className="text-zinc-500">Gross Labor</p>
+      <section className="mb-6 grid grid-cols-2 gap-2 text-sm sm:grid-cols-5 [break-inside:avoid]">
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 print:bg-white">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
+            Earned
+          </p>
           <p className="text-lg font-semibold tabular-nums">${formatCurrency(earningsTotal)}</p>
         </div>
-        <div className="border border-zinc-300 rounded-lg p-3">
-          <p className="text-zinc-500">Reimbursements</p>
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 print:bg-white">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
+            Reimbursements
+          </p>
           <p className="text-lg font-semibold tabular-nums">
             ${formatCurrency(reimbursementTotal)}
           </p>
         </div>
-        <div className="border border-zinc-300 rounded-lg p-3">
-          <p className="text-zinc-500">Advance Deductions</p>
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 print:bg-white">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
+            Advance Deductions
+          </p>
           <p className="text-lg font-semibold tabular-nums">${formatCurrency(advanceTotal)}</p>
         </div>
-        <div className="border border-zinc-300 rounded-lg p-3">
-          <p className="text-zinc-500">Payments</p>
+        <div className="rounded-xl border border-zinc-200 bg-zinc-50/80 p-3 print:bg-white">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
+            Cash Paid
+          </p>
           <p className="text-lg font-semibold tabular-nums">${formatCurrency(paymentTotal)}</p>
         </div>
-        <div className="border border-zinc-300 rounded-lg p-3">
-          <p className="text-zinc-500">Balance</p>
-          <p className="text-lg font-semibold tabular-nums">${formatCurrency(balance)}</p>
+        <div
+          className={`rounded-xl border p-3 ${
+            balanceIsSettled
+              ? "border-emerald-200 bg-emerald-50/80 print:bg-white"
+              : "border-rose-200 bg-rose-50/80 print:bg-white"
+          }`}
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
+            Balance
+          </p>
+          <p
+            className={`text-lg font-semibold tabular-nums ${
+              balanceIsSettled ? "text-emerald-700" : "text-rose-700"
+            }`}
+          >
+            ${formatCurrency(balance)}
+          </p>
         </div>
       </section>
 
       <section className="mb-6">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-zinc-500">
           Earnings detail
         </h2>
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b-2 border-zinc-300">
-              <th className="text-left py-2 font-semibold">Date</th>
-              <th className="text-left py-2 font-semibold">Project</th>
-              <th className="text-left py-2 font-semibold">Shift</th>
-              <th className="text-right py-2 font-semibold">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {earningsRows.map((row, idx) => (
-              <tr
-                key={`${row.date}-${row.projectId}-${row.shift}-${idx}`}
-                className="border-b border-zinc-200"
-              >
-                <td className="py-2">{row.date}</td>
-                <td className="py-2">{row.projectName}</td>
-                <td className="py-2">{row.shift}</td>
-                <td className="py-2 text-right tabular-nums">${formatCurrency(row.amount)}</td>
+        <div className="overflow-hidden rounded-xl border border-zinc-200">
+          <table className="w-full border-collapse text-sm">
+            <thead className="bg-zinc-50 print:bg-white">
+              <tr className="border-b border-zinc-200">
+                <th className="px-3 py-2 text-left font-semibold">Date</th>
+                <th className="px-3 py-2 text-left font-semibold">Project</th>
+                <th className="px-3 py-2 text-left font-semibold">Shift</th>
+                <th className="px-3 py-2 text-right font-semibold">Amount</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {earningsRows.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-zinc-500">
+                    No earnings for this period.
+                  </td>
+                </tr>
+              ) : (
+                earningsRows.map((row, idx) => (
+                  <tr
+                    key={`${row.date}-${row.projectId}-${row.shift}-${idx}`}
+                    className="border-b border-zinc-100 last:border-b-0"
+                  >
+                    <td className="px-3 py-2 tabular-nums">{row.date}</td>
+                    <td className="px-3 py-2">{row.projectName}</td>
+                    <td className="px-3 py-2 text-zinc-600">{row.shift}</td>
+                    <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                      ${formatCurrency(row.amount)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section>
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.06em] text-zinc-500">
           Payments
         </h2>
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b-2 border-zinc-300">
-              <th className="text-left py-2 font-semibold">Payment Date</th>
-              <th className="text-left py-2 font-semibold">Method</th>
-              <th className="text-right py-2 font-semibold">Amount</th>
-              <th className="text-left py-2 font-semibold">Memo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {payments.map((p) => (
-              <tr key={p.id} className="border-b border-zinc-200">
-                <td className="py-2">{p.paymentDate}</td>
-                <td className="py-2">{p.paymentMethod ?? "—"}</td>
-                <td className="py-2 text-right tabular-nums">${formatCurrency(p.amount)}</td>
-                <td className="py-2">{p.notes ?? "—"}</td>
+        <div className="overflow-hidden rounded-xl border border-zinc-200">
+          <table className="w-full border-collapse text-sm">
+            <thead className="bg-zinc-50 print:bg-white">
+              <tr className="border-b border-zinc-200">
+                <th className="px-3 py-2 text-left font-semibold">Payment Date</th>
+                <th className="px-3 py-2 text-left font-semibold">Method</th>
+                <th className="px-3 py-2 text-right font-semibold">Amount</th>
+                <th className="px-3 py-2 text-left font-semibold">Memo</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {payments.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-zinc-500">
+                    No cash payments for this period.
+                  </td>
+                </tr>
+              ) : (
+                payments.map((p) => (
+                  <tr key={p.id} className="border-b border-zinc-100 last:border-b-0">
+                    <td className="px-3 py-2 tabular-nums">{p.paymentDate}</td>
+                    <td className="px-3 py-2">{p.paymentMethod ?? "—"}</td>
+                    <td className="px-3 py-2 text-right font-semibold tabular-nums">
+                      ${formatCurrency(p.amount)}
+                    </td>
+                    <td className="px-3 py-2 text-zinc-600">{p.notes ?? "—"}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <footer className="mt-10 pt-6 border-t border-zinc-200 text-xs text-zinc-500">

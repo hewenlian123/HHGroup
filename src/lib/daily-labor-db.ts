@@ -587,8 +587,11 @@ export type LaborPaymentRow = {
 };
 
 /** Fetch labor_payments for a worker, order by payment_date desc. */
-export async function getLaborPaymentsByWorkerId(workerId: string): Promise<LaborPaymentRow[]> {
-  const c = client();
+export async function getLaborPaymentsByWorkerId(
+  workerId: string,
+  explicitClient?: SupabaseClient
+): Promise<LaborPaymentRow[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("labor_payments")
     .select("id, payment_date, amount, method")

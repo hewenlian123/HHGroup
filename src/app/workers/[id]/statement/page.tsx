@@ -1,47 +1,217 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
+import { PageLayout, PageHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
-import { getWorkerById, getLaborEntriesWithJoins, getLaborPaymentsByWorkerId } from "@/lib/data";
+import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { getLaborEntriesWithJoins, getLaborPaymentsByWorkerId } from "@/lib/daily-labor-db";
+import { getWorkerByIdWithClient } from "@/lib/labor-db";
+import { getWorkerAdvances } from "@/lib/worker-advances-db";
+import { getWorkerPaymentsWithClient } from "@/lib/worker-payments-db";
+import { getWorkerReimbursementsByWorkerId } from "@/lib/worker-reimbursements-db";
+import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
+import {
+  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseInternalNoStore,
+} from "@/lib/supabase-server";
+import { cn } from "@/lib/utils";
 
-function fmtUsd(n: number): string {
-  return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function formatMoney(n: number): string {
+  const clean = Math.abs(n) < 0.005 ? 0 : n;
+  const abs = Math.abs(clean).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return clean < 0 ? `-$${abs}` : `$${abs}`;
+}
+
+function formatDateLabel(value: string | null | undefined): string {
+  const ymd = String(value ?? "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return "—";
+  return new Date(`${ymd}T00:00:00`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function buildPeriodLabel(dates: string[]): string {
+  const normalized = dates
+    .map((date) => date.slice(0, 10))
+    .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+    .sort();
+  if (normalized.length === 0) return "All available activity";
+  const first = normalized[0];
+  const last = normalized[normalized.length - 1];
+  if (first === last) return formatDateLabel(first);
+  return `${formatDateLabel(first)} to ${formatDateLabel(last)}`;
 }
 
 type Props = { params: Promise<{ id: string }> };
+type StatementPaymentRow = {
+  id: string;
+  paymentDate: string;
+  method: string | null;
+  amount: number;
+  note: string | null;
+};
+
+function SummaryCard({
+  label,
+  value,
+  meta,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  meta?: string;
+  tone?: "neutral" | "gold" | "success" | "danger";
+}) {
+  return (
+    <div
+      className={cn(
+        "min-h-[86px] rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+        tone === "gold" && "border-[rgb(184_147_90_/_0.34)] bg-[rgb(184_147_90_/_0.12)]",
+        tone === "success" && "border-emerald-400/20 bg-emerald-400/[0.055]",
+        tone === "danger" && "border-rose-400/20 bg-rose-400/[0.055]"
+      )}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-2 text-[20px] font-semibold leading-none tabular-nums text-[var(--neo-text-primary)]",
+          tone === "gold" && "text-[var(--neo-gold-soft)]",
+          tone === "success" && "text-emerald-300",
+          tone === "danger" && "text-rose-300"
+        )}
+      >
+        {value}
+      </p>
+      {meta ? (
+        <p className="mt-2 truncate text-[11px] text-[var(--neo-text-secondary)]">{meta}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function EmptyState({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-8 text-center text-sm text-[var(--neo-text-secondary)]">
+      {children}
+    </div>
+  );
+}
 
 export default async function WorkerStatementPage({ params }: Props) {
   const { id } = await params;
-  const [worker, entries, payments] = await Promise.all([
-    getWorkerById(id),
-    getLaborEntriesWithJoins({ worker_id: id }),
-    getLaborPaymentsByWorkerId(id),
-  ]);
+  const supabase = getServerSupabaseInternalNoStore();
+  if (!supabase) {
+    return (
+      <ServerDataLoadFallback
+        message={SUPABASE_MISSING_SERVER_ENV_MESSAGE}
+        backHref={`/workers/${id}`}
+        backLabel="Back to worker"
+      />
+    );
+  }
+
+  let worker: Awaited<ReturnType<typeof getWorkerByIdWithClient>>;
+  let entries: Awaited<ReturnType<typeof getLaborEntriesWithJoins>> = [];
+  let workerPayments: Awaited<ReturnType<typeof getWorkerPaymentsWithClient>> = [];
+  let legacyPayments: Awaited<ReturnType<typeof getLaborPaymentsByWorkerId>> = [];
+  let reimbursements: Awaited<ReturnType<typeof getWorkerReimbursementsByWorkerId>> = [];
+  let advances: Awaited<ReturnType<typeof getWorkerAdvances>> = [];
+  try {
+    [worker, entries, workerPayments, legacyPayments, reimbursements, advances] = await Promise.all(
+      [
+        getWorkerByIdWithClient(supabase, id),
+        getLaborEntriesWithJoins({ worker_id: id }, supabase),
+        getWorkerPaymentsWithClient(supabase, { workerId: id }),
+        getLaborPaymentsByWorkerId(id, supabase),
+        getWorkerReimbursementsByWorkerId(id, supabase),
+        getWorkerAdvances({ workerId: id }, supabase),
+      ]
+    );
+  } catch (e) {
+    logServerPageDataError(`workers/${id}/statement`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "worker statement")}
+        backHref={`/workers/${id}`}
+        backLabel="Back to worker"
+      />
+    );
+  }
 
   if (!worker) notFound();
 
   const entryAmount = (entry: (typeof entries)[number]) =>
     Number(entry.labor_cost_snapshot ?? entry.amount_snapshot ?? entry.cost_amount) || 0;
   const totalEarned = entries.reduce((s, e) => s + entryAmount(e), 0);
-  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
-  const balance = totalEarned - totalPaid;
+  const paymentRows: StatementPaymentRow[] =
+    workerPayments.length > 0
+      ? workerPayments.map((payment) => ({
+          id: payment.id,
+          paymentDate: payment.paymentDate,
+          method: payment.paymentMethod,
+          amount: payment.amount,
+          note: payment.notes,
+        }))
+      : legacyPayments.map((payment) => ({
+          id: payment.id,
+          paymentDate: payment.payment_date,
+          method: payment.method,
+          amount: payment.amount,
+          note: null,
+        }));
+  const reimbursementTotal = reimbursements.reduce(
+    (sum, row) => sum + Math.max(0, Number(row.amount) || 0),
+    0
+  );
+  const advanceTotal = advances
+    .filter((row) => String(row.status).toLowerCase() !== "cancelled")
+    .reduce((sum, row) => sum + Math.max(0, Number(row.amount) || 0), 0);
+  const cashPaid = paymentRows.reduce((s, p) => s + p.amount, 0);
+  const totalOwed = totalEarned + reimbursementTotal;
+  const balance = totalOwed - cashPaid - advanceTotal;
+  const periodLabel = buildPeriodLabel([
+    ...entries.map((entry) => entry.work_date),
+    ...reimbursements.map((row) => row.reimbursementDate || row.createdAt),
+    ...advances.map((row) => row.advanceDate),
+    ...paymentRows.map((row) => row.paymentDate),
+  ]);
+  const balanceTone = balance > 0.005 ? "danger" : "success";
 
   return (
     <PageLayout
+      divider={false}
+      className="dark financial-nums min-w-0 overflow-x-hidden px-4 py-4 text-[var(--neo-canvas-text-secondary)] sm:px-5 md:px-6 md:py-6"
       header={
         <PageHeader
           title="Worker Statement"
-          description={`Earnings and payments for ${worker.name}.`}
+          description={
+            <span>
+              {worker.name} · Statement period: <span className="tabular-nums">{periodLabel}</span>
+            </span>
+          }
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <Link href={`/workers/${id}`}>
-                <Button variant="outline" size="sm" className="rounded-sm">
+                <Button
+                  size="sm"
+                  className="h-11 min-h-[44px] rounded-lg border-transparent bg-[var(--neo-gold)] px-4 text-[13px] font-semibold text-zinc-950 shadow-[0_10px_24px_rgba(184,147,90,0.16)] hover:bg-[var(--neo-gold-soft)] md:h-10 md:min-h-10"
+                >
                   Back to worker
                 </Button>
               </Link>
               <Link href="/workers">
-                <Button variant="outline" size="sm" className="rounded-sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-11 min-h-[44px] rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] md:h-10 md:min-h-10"
+                >
                   All workers
                 </Button>
               </Link>
@@ -51,97 +221,237 @@ export default async function WorkerStatementPage({ params }: Props) {
       }
     >
       <SetBreadcrumbEntityTitle label={worker.name} />
-      {/* Section 1: Worker header */}
-      <div className="flex items-baseline justify-between py-3 border-b border-border/60">
-        <h2 className="text-lg font-semibold">{worker.name}</h2>
-        <span
-          className={`text-xl font-medium tabular-nums ${
-            balance > 0 ? "text-red-600 dark:text-red-400" : "text-foreground"
-          }`}
-        >
-          Balance: ${fmtUsd(balance)}
-        </span>
-      </div>
-      <Divider />
 
-      {/* Section 2: Earnings table */}
-      <SectionHeader label="Earnings" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Date
-              </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Project
-              </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Cost Code
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Amount
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={4} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No earnings.
-                </td>
-              </tr>
-            ) : (
-              entries.map((e) => (
-                <tr key={e.id} className="border-b border-border/40">
-                  <td className="py-1.5 px-3 tabular-nums">{e.work_date}</td>
-                  <td className="py-1.5 px-3">{e.project_name ?? "—"}</td>
-                  <td className="py-1.5 px-3 text-muted-foreground">{e.cost_code ?? "—"}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(entryAmount(e))}</td>
-                </tr>
-              ))
+      <section className="rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-4 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:px-5">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+              Statement
+            </p>
+            <h2 className="mt-1 truncate text-[22px] font-semibold leading-tight text-[var(--neo-text-primary)]">
+              {worker.name}
+            </h2>
+            <p className="mt-1 text-[13px] leading-snug text-[var(--neo-text-secondary)]">
+              Snapshot-based labor, reimbursements, advance deductions, and cash payments.
+            </p>
+          </div>
+          <div
+            className={cn(
+              "rounded-xl border px-3 py-2 text-right",
+              balanceTone === "success"
+                ? "border-emerald-400/20 bg-emerald-400/[0.055]"
+                : "border-rose-400/20 bg-rose-400/[0.055]"
             )}
-          </tbody>
-        </table>
-      </div>
-      <Divider />
+          >
+            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+              Balance
+            </p>
+            <p
+              className={cn(
+                "mt-1 text-2xl font-semibold tabular-nums",
+                balanceTone === "success" ? "text-emerald-300" : "text-rose-300"
+              )}
+            >
+              {formatMoney(balance)}
+            </p>
+          </div>
+        </div>
+      </section>
 
-      {/* Section 3: Payments table */}
-      <SectionHeader label="Payments" />
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Date
-              </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Method
-              </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider tabular-nums">
-                Amount
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {payments.length === 0 ? (
-              <tr className="border-b border-border/40">
-                <td colSpan={3} className="py-6 px-3 text-center text-muted-foreground text-xs">
-                  No payments.
-                </td>
+      <section className="grid grid-cols-2 gap-2 md:grid-cols-5">
+        <SummaryCard label="Earned" value={formatMoney(totalEarned)} meta="Labor snapshots" />
+        <SummaryCard label="Reimbursements" value={formatMoney(reimbursementTotal)} />
+        <SummaryCard
+          label="Advance deductions"
+          value={formatMoney(advanceTotal)}
+          meta="Settled separately"
+        />
+        <SummaryCard label="Cash paid" value={formatMoney(cashPaid)} />
+        <SummaryCard
+          label="Balance"
+          value={formatMoney(balance)}
+          tone={balanceTone}
+          meta={balance > 0.005 ? "Open amount" : "Settled"}
+        />
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]">
+        <header className="border-b border-[var(--neo-border)] px-4 py-3 md:px-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+            Earnings
+          </p>
+          <p className="mt-1 text-[13px] text-[var(--neo-text-secondary)]">
+            Labor rows show saved snapshot amounts as recorded.
+          </p>
+        </header>
+        <div className="hidden md:block">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                  Date
+                </th>
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                  Project
+                </th>
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                  Cost Code
+                </th>
+                <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)] tabular-nums">
+                  Amount
+                </th>
               </tr>
-            ) : (
-              payments.map((p) => (
-                <tr key={p.id} className="border-b border-border/40">
-                  <td className="py-1.5 px-3 tabular-nums">{p.payment_date}</td>
-                  <td className="py-1.5 px-3">{p.method ?? "—"}</td>
-                  <td className="py-1.5 px-3 text-right tabular-nums">${fmtUsd(p.amount)}</td>
+            </thead>
+            <tbody>
+              {entries.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8">
+                    <EmptyState>No earnings yet.</EmptyState>
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                entries.map((entry) => (
+                  <tr
+                    key={entry.id}
+                    className="border-b border-[var(--neo-border)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--neo-surface-hover)]"
+                  >
+                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)]">
+                      {formatDateLabel(entry.work_date)}
+                    </td>
+                    <td className="px-4 py-2.5 text-[13px] font-medium text-[var(--neo-text-primary)]">
+                      {entry.project_name ?? "No project"}
+                    </td>
+                    <td className="px-4 py-2.5 text-[13px] text-[var(--neo-text-secondary)]">
+                      {entry.cost_code ?? "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                      {formatMoney(entryAmount(entry))}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="grid gap-2 p-3 md:hidden">
+          {entries.length === 0 ? (
+            <EmptyState>No earnings yet.</EmptyState>
+          ) : (
+            entries.map((entry) => (
+              <article
+                key={entry.id}
+                className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-semibold text-[var(--neo-text-primary)]">
+                      {entry.project_name ?? "No project"}
+                    </p>
+                    <p className="mt-1 text-[12px] text-[var(--neo-text-secondary)]">
+                      {formatDateLabel(entry.work_date)}
+                      {entry.cost_code ? ` · ${entry.cost_code}` : ""}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-[15px] font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                    {formatMoney(entryAmount(entry))}
+                  </p>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]">
+        <header className="border-b border-[var(--neo-border)] px-4 py-3 md:px-5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+            Payments
+          </p>
+          <p className="mt-1 text-[13px] text-[var(--neo-text-secondary)]">
+            Cash payments only; advance deductions are summarized above.
+          </p>
+        </header>
+        <div className="hidden md:block">
+          <table className="w-full border-collapse text-sm">
+            <thead>
+              <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                  Date
+                </th>
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                  Method
+                </th>
+                <th className="px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                  Note
+                </th>
+                <th className="px-4 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)] tabular-nums">
+                  Amount
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {paymentRows.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8">
+                    <EmptyState>No cash payments yet.</EmptyState>
+                  </td>
+                </tr>
+              ) : (
+                paymentRows.map((payment) => (
+                  <tr
+                    key={payment.id}
+                    className="border-b border-[var(--neo-border)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--neo-surface-hover)]"
+                  >
+                    <td className="whitespace-nowrap px-4 py-2.5 font-mono text-[13px] tabular-nums text-[var(--neo-text-secondary)]">
+                      {formatDateLabel(payment.paymentDate)}
+                    </td>
+                    <td className="px-4 py-2.5 text-[13px] font-medium text-[var(--neo-text-primary)]">
+                      {payment.method ?? "—"}
+                    </td>
+                    <td className="px-4 py-2.5 text-[13px] text-[var(--neo-text-secondary)]">
+                      {payment.note ?? "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right text-[13px] font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                      {formatMoney(payment.amount)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="grid gap-2 p-3 md:hidden">
+          {paymentRows.length === 0 ? (
+            <EmptyState>No cash payments yet.</EmptyState>
+          ) : (
+            paymentRows.map((payment) => (
+              <article
+                key={payment.id}
+                className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-semibold text-[var(--neo-text-primary)]">
+                      {payment.method ?? "Payment"}
+                    </p>
+                    <p className="mt-1 text-[12px] text-[var(--neo-text-secondary)]">
+                      {formatDateLabel(payment.paymentDate)}
+                    </p>
+                    {payment.note ? (
+                      <p className="mt-1 line-clamp-2 text-[12px] text-[var(--neo-text-tertiary)]">
+                        {payment.note}
+                      </p>
+                    ) : null}
+                  </div>
+                  <p className="shrink-0 text-[15px] font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                    {formatMoney(payment.amount)}
+                  </p>
+                </div>
+              </article>
+            ))
+          )}
+        </div>
+      </section>
     </PageLayout>
   );
 }

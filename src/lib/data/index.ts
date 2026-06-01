@@ -874,8 +874,11 @@ export async function getLaborWorkersList() {
 export async function getLaborWorkerById(id: string) {
   return dailyLaborDb.getLaborWorkerById(id);
 }
-export async function getLaborPaymentsByWorkerId(workerId: string) {
-  return dailyLaborDb.getLaborPaymentsByWorkerId(workerId);
+export async function getLaborPaymentsByWorkerId(
+  workerId: string,
+  explicitClient?: SupabaseClient
+) {
+  return dailyLaborDb.getLaborPaymentsByWorkerId(workerId, explicitClient);
 }
 export async function getLaborPaymentsByDateRange(dateFrom: string, dateTo: string) {
   return dailyLaborDb.getLaborPaymentsByDateRange(dateFrom, dateTo);
