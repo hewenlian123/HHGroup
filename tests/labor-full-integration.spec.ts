@@ -258,6 +258,10 @@ function itemLabel(dialog: Locator, amountText: string) {
   return dialog.locator("label").filter({ hasText: amountText });
 }
 
+function totalPaymentAmount(dialog: Locator) {
+  return dialog.locator("dl").filter({ hasText: "Total Payment Amount" }).locator("dd").last();
+}
+
 async function payLaborOnly(page: Page) {
   await page.getByRole("button", { name: /^Pay Worker$/i }).click();
   const dialog = page.getByRole("dialog", { name: /^Pay Worker$/i });
@@ -266,9 +270,7 @@ async function payLaborOnly(page: Page) {
   await expect(itemLabel(dialog, "$200.00")).toBeVisible();
   await expect(itemLabel(dialog, "$30.00")).toBeVisible();
   await itemLabel(dialog, "$30.00").locator('input[type="checkbox"]').uncheck();
-  await expect(dialog.locator("p").filter({ hasText: "Total Payment Amount" })).toContainText(
-    "$200.00"
-  );
+  await expect(totalPaymentAmount(dialog)).toContainText("$200.00");
   await dialog.getByPlaceholder("Optional notes").fill(paymentNote);
 
   const paid = page.waitForResponse(
@@ -294,9 +296,7 @@ async function verifyOnlyReimbursementSelectable(page: Page) {
   await expect(dialog).toBeVisible({ timeout: 20_000 });
   await expect(itemLabel(dialog, "$200.00")).toHaveCount(0);
   await expect(itemLabel(dialog, "$30.00")).toBeVisible();
-  await expect(dialog.locator("p").filter({ hasText: "Total Payment Amount" })).toContainText(
-    "$30.00"
-  );
+  await expect(totalPaymentAmount(dialog)).toContainText("$30.00");
   await dialog.getByRole("button", { name: /^Cancel$/i }).click();
   await expect(dialog).not.toBeVisible({ timeout: 10_000 });
 }
@@ -397,10 +397,12 @@ test("real desktop Labor flow covers entries, balances, payments, advances, invo
 
   await createDeductedAdvance(page);
   await goto(page, `/labor/workers/${workerId}/balance`);
-  await expectDetailBalance(page, "$205.00");
+  // Deducted advances are historical settlement rows. They remain visible in Payroll Summary,
+  // but they no longer reduce the current Worker Balance after being marked deducted.
+  await expectDetailBalance(page, "$230.00");
 
   await payLaborOnly(page);
-  await expectDetailBalance(page, "$5.00");
+  await expectDetailBalance(page, "$30.00");
   await verifyOnlyReimbursementSelectable(page);
   await verifyPaymentsLedger(page);
   const invoiceSupported = await createWorkerInvoice(page);
@@ -409,7 +411,7 @@ test("real desktop Labor flow covers entries, balances, payments, advances, invo
   await goto(page, `/labor/workers/${workerId}/balance`);
   await page.reload();
   await waitForStablePage(page);
-  await expectDetailBalance(page, "$5.00");
+  await expectDetailBalance(page, "$30.00");
   await verifyOnlyReimbursementSelectable(page);
 });
 
@@ -426,7 +428,7 @@ test("mobile Labor balance and pay modal remain usable after the full flow", asy
   await expect(page.getByText(workerName).first()).toBeVisible({ timeout: 30_000 });
 
   await goto(page, `/labor/workers/${workerId}/balance`);
-  await expectDetailBalance(page, "$5.00");
+  await expectDetailBalance(page, "$30.00");
   await verifyOnlyReimbursementSelectable(page);
 
   await goto(page, "/labor/payroll");

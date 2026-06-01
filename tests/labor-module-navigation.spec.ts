@@ -44,7 +44,6 @@ const laborRoutes: LaborRoute[] = [
     label: "Worker Reimbursements",
     path: "/labor/reimbursements",
     heading: /^(Worker Reimbursements|Reimbursements)$/i,
-    activeLabel: "Reimbursements",
     bottomNavLabel: "Financial",
     action: {
       kind: "inline",
@@ -57,21 +56,18 @@ const laborRoutes: LaborRoute[] = [
     label: "Worker Balances",
     path: "/labor/worker-balances",
     heading: /^(Worker Balances|Balances)$/i,
-    activeLabel: "Worker Balances",
     bottomNavLabel: "People",
   },
   {
     label: "Worker Payments",
     path: "/labor/payments",
     heading: /^Worker Payments$/i,
-    activeLabel: "Worker Payments",
     bottomNavLabel: "People",
   },
   {
     label: "Worker Advances",
     path: "/labor/advances",
     heading: /^(Worker Advances|Advances)$/i,
-    activeLabel: "Worker Advances",
     bottomNavLabel: "People",
     action: { kind: "dialog", button: /^Create Advance$/i, dialog: /^Create Advance$/i },
   },
@@ -79,14 +75,12 @@ const laborRoutes: LaborRoute[] = [
     label: "Worker Receipts",
     path: "/labor/receipts",
     heading: /^(Worker Receipt Uploads|Receipt Uploads)$/i,
-    activeLabel: "Worker Receipts",
     bottomNavLabel: "Financial",
   },
   {
     label: "Worker Invoices",
     path: "/labor/worker-invoices",
     heading: /^Worker Invoices$/i,
-    activeLabel: "Worker Invoices",
     bottomNavLabel: "People",
     action: {
       kind: "inline",
@@ -255,8 +249,21 @@ async function expectScrollRootUsable(page: Page, route: LaborRoute) {
     el.scrollTop = 0;
     window.scrollTo(0, 0);
   });
+  const box = await main.boundingBox();
+  if (box) {
+    await page.mouse.move(box.x + box.width / 2, box.y + Math.min(box.height / 2, 320));
+  }
   await page.mouse.wheel(0, 700);
-  await page.waitForTimeout(100);
+  await expect
+    .poll(
+      async () => {
+        const state = await measure();
+        return state.mainScrollTop > 0 || state.windowScrollY > 0;
+      },
+      { timeout: 5_000 }
+    )
+    .toBe(true)
+    .catch(() => undefined);
   const down = await measure();
 
   const maxScrollable = Math.max(down.mainMaxScroll, down.windowMaxScroll);
@@ -293,16 +300,7 @@ test.describe("Labor module navigation compatibility", () => {
     await expect(visibleSidebar(page).getByText("AP", { exact: true })).toBeVisible({
       timeout: 10_000,
     });
-    for (const restoredLabel of [
-      "Time Entries",
-      "Reimbursements",
-      "Worker Balances",
-      "Worker Payments",
-      "Worker Advances",
-      "Worker Receipts",
-      "Worker Invoices",
-      "Payroll Summary",
-    ]) {
+    for (const restoredLabel of ["Time Entries", "Worker Center", "Payroll Summary"]) {
       await expect(visibleSidebar(page).getByText(restoredLabel, { exact: true })).toBeVisible({
         timeout: 10_000,
       });

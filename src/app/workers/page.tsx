@@ -1,4 +1,4 @@
-import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
+import { PageLayout, PageHeader } from "@/components/base";
 import { unstable_noStore as noStore } from "next/cache";
 import { getWorkers as getLaborWorkersFlat, type Worker as LaborWorker } from "@/lib/labor-db";
 import { getWorkers } from "@/lib/workers-db";
@@ -62,21 +62,18 @@ export default async function WorkersPage() {
 
   return (
     <PageLayout
-      className={cn("max-md:!py-3", "max-md:!gap-3")}
+      divider={false}
+      className={cn("dark financial-nums max-md:!py-3", "max-md:!gap-3")}
       header={
         <div className="hidden md:block">
           <PageHeader
             title="Worker Center"
             description="Run worker payroll tasks from one place: labor, receipts, advances, payments, and statements."
+            actions={<WorkersActions />}
           />
         </div>
       }
     >
-      <div className="hidden md:block">
-        <SectionHeader label="Worker Center" action={<WorkersActions />} />
-        <Divider />
-      </div>
-
       <WorkersListClient
         rows={rows}
         dataLoadWarning={dataLoadWarning}
