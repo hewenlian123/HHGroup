@@ -263,6 +263,11 @@ export async function insertWorker(
     workerId: row.id,
     dailyRate: draft.daily_rate,
     effectiveFrom: (row.created_at ?? "").slice(0, 10),
+  }).catch((error) => {
+    console.warn(
+      "[workers] Worker created, but initial daily rate history could not be initialized.",
+      error
+    );
   });
   return row;
 }
