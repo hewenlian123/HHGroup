@@ -176,12 +176,28 @@ function entryEarned(
   return Number(e.labor_cost_snapshot ?? e.amount_snapshot ?? e.cost_amount ?? 0) || 0;
 }
 
+function entryDaysWorked(e: Pick<LaborEntryWithJoins, "days_worked" | "morning" | "afternoon">) {
+  const snap = Number(e.days_worked);
+  if (Number.isFinite(snap) && snap >= 0) return snap;
+  const morning = e.morning === true;
+  const afternoon = e.afternoon === true;
+  if (morning && afternoon) return 1;
+  if (morning || afternoon) return 0.5;
+  return 1;
+}
+
+function fmtDays(n: number): string {
+  const rounded = Math.round(n * 100) / 100;
+  if (Math.abs(rounded - Math.round(rounded)) < 0.005) return String(Math.round(rounded));
+  return rounded.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
 function buildMonthlyTotals(entries: LaborEntryWithJoins[]) {
-  const map = new Map<string, { count: number; earned: number }>();
+  const map = new Map<string, { days: number; earned: number }>();
   for (const e of entries) {
     const k = monthKeyFromDate(e.work_date);
-    const cur = map.get(k) ?? { count: 0, earned: 0 };
-    cur.count += 1;
+    const cur = map.get(k) ?? { days: 0, earned: 0 };
+    cur.days += entryDaysWorked(e);
     cur.earned += entryEarned(e);
     map.set(k, cur);
   }
@@ -189,19 +205,19 @@ function buildMonthlyTotals(entries: LaborEntryWithJoins[]) {
     .map(([monthKey, v]) => ({
       monthKey,
       label: monthLabelEn(monthKey),
-      workDays: v.count,
+      workDays: v.days,
       earned: v.earned,
     }))
     .sort((a, b) => b.monthKey.localeCompare(a.monthKey));
 }
 
 function buildProjectTotals(entries: LaborEntryWithJoins[]) {
-  const map = new Map<string, { name: string; count: number; earned: number }>();
+  const map = new Map<string, { name: string; days: number; earned: number }>();
   for (const e of entries) {
     const pid = e.project_id ?? "";
     const name = e.project_name?.trim() ? e.project_name : pid ? "(Unknown project)" : "—";
-    const cur = map.get(pid) ?? { name, count: 0, earned: 0 };
-    cur.count += 1;
+    const cur = map.get(pid) ?? { name, days: 0, earned: 0 };
+    cur.days += entryDaysWorked(e);
     cur.earned += entryEarned(e);
     if (cur.name === "—" && name !== "—") cur.name = name;
     map.set(pid, cur);
@@ -210,7 +226,7 @@ function buildProjectTotals(entries: LaborEntryWithJoins[]) {
     .map(([projectId, v]) => ({
       projectId,
       projectName: v.name,
-      workDays: v.count,
+      workDays: v.days,
       earned: v.earned,
     }))
     .sort((a, b) => b.earned - a.earned);
@@ -257,24 +273,27 @@ function SummaryTile({
   return (
     <div
       className={cn(
-        "min-h-[76px] rounded-md border border-border/60 bg-card/35 px-3 py-2.5",
-        "flex flex-col justify-between",
-        emphasis && "border-amber-500/30 bg-amber-500/[0.06]",
+        "min-h-[76px] rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-2.5",
+        "flex min-w-0 flex-col justify-between text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+        emphasis &&
+          "border-[color:rgb(184_147_90_/_0.36)] bg-[rgb(184_147_90_/_0.12)] shadow-[0_1px_0_rgba(255,255,255,0.055)_inset,0_16px_34px_rgba(0,0,0,0.26)]",
         className
       )}
     >
-      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      <p className="truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
         {label}
       </p>
       <p
         className={cn(
-          "mt-1 text-[17px] font-semibold leading-tight tabular-nums text-foreground",
-          emphasis && "text-amber-950 dark:text-amber-100"
+          "mt-1 truncate text-[17px] font-semibold leading-tight tabular-nums text-[var(--neo-text-primary)]",
+          emphasis && "text-[var(--neo-gold-soft)]"
         )}
       >
         {value}
       </p>
-      {meta ? <p className="mt-1 truncate text-[11px] text-muted-foreground">{meta}</p> : null}
+      {meta ? (
+        <p className="mt-1 truncate text-[11px] text-[var(--neo-text-secondary)]">{meta}</p>
+      ) : null}
     </div>
   );
 }
@@ -482,7 +501,7 @@ export default function WorkerDashboardPage() {
         let labor = 0;
         for (const e of ledger) {
           if (e.work_date < from || e.work_date > to) continue;
-          labor += Number(e.cost_amount ?? 0) || 0;
+          labor += entryEarned(e);
         }
         let inv = 0;
         for (const x of invoicesAllForWorker) {
@@ -538,9 +557,9 @@ export default function WorkerDashboardPage() {
 
   const thisWeekDays = React.useMemo(() => {
     if (!laborLedgerEntries) return 0;
-    return laborLedgerEntries.filter((entry) =>
-      inDateRange(entry.work_date, weekRange.from, weekRange.to)
-    ).length;
+    return laborLedgerEntries
+      .filter((entry) => inDateRange(entry.work_date, weekRange.from, weekRange.to))
+      .reduce((sum, entry) => sum + entryDaysWorked(entry), 0);
   }, [laborLedgerEntries, weekRange]);
 
   const balanceSummary = balanceDetail?.summary ?? {
@@ -694,7 +713,7 @@ export default function WorkerDashboardPage() {
     "—";
 
   return (
-    <div className="mx-auto flex w-full max-w-[430px] flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:max-w-[460px] md:max-w-6xl md:gap-5 md:p-6">
+    <div className="dark neo-page-on-graphite mx-auto flex w-full max-w-[430px] flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:max-w-[460px] md:max-w-6xl md:gap-5 md:p-6">
       <PageHeader
         title={worker.name}
         description="Worker Center detail — work, receipts, advances, payments, statements, and rate history."
@@ -735,7 +754,7 @@ export default function WorkerDashboardPage() {
         />
         <SummaryTile
           label="This Week Days"
-          value={String(thisWeekDays)}
+          value={fmtDays(thisWeekDays)}
           meta={`${weekRange.from} to ${weekRange.to}`}
         />
         <SummaryTile label="Unpaid Labor" value={fmtUsd(balanceSummary.laborOwed)} />
@@ -1027,7 +1046,7 @@ export default function WorkerDashboardPage() {
                         >
                           <span className="font-medium">{row.label}</span>
                           <span className="flex items-center gap-3 text-sm text-muted-foreground">
-                            {row.workDays} days · {fmtUsd(row.earned)}
+                            {fmtDays(row.workDays)} days · {fmtUsd(row.earned)}
                             <ChevronRight
                               className={cn("h-4 w-4 transition-transform", open && "rotate-90")}
                               aria-hidden
@@ -1066,7 +1085,7 @@ export default function WorkerDashboardPage() {
                     >
                       <span className="min-w-0 truncate font-medium">{row.projectName}</span>
                       <span className="shrink-0 text-muted-foreground">
-                        {row.workDays} days · {fmtUsd(row.earned)}
+                        {fmtDays(row.workDays)} days · {fmtUsd(row.earned)}
                       </span>
                     </div>
                   ))}

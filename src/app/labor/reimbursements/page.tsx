@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -213,6 +213,8 @@ function ReimbursementStatusChip({
 }
 
 export default function WorkerReimbursementsPage() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -267,6 +269,7 @@ export default function WorkerReimbursementsPage() {
   const [batchPayNote, setBatchPayNote] = React.useState("");
   const [batchPaySubmitting, setBatchPaySubmitting] = React.useState(false);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const suppressNewQueryAutoOpenRef = React.useRef(false);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -289,6 +292,15 @@ export default function WorkerReimbursementsPage() {
       setLoading(false);
     }
   }, []);
+
+  const clearNewQueryParam = React.useCallback(() => {
+    if (searchParams.get("new") !== "1") return;
+    suppressNewQueryAutoOpenRef.current = true;
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("new");
+    const queryString = next.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   React.useEffect(() => {
     load();
@@ -403,10 +415,18 @@ export default function WorkerReimbursementsPage() {
 
   React.useEffect(() => {
     const initialWorkerId = searchParams.get("workerId")?.trim();
+    if (searchParams.get("new") !== "1") {
+      suppressNewQueryAutoOpenRef.current = false;
+    }
     if (!initialWorkerId || workers.length === 0) return;
     if (!workers.some((worker) => worker.id === initialWorkerId)) return;
     setQuery((current) => current || (workerById.get(initialWorkerId) ?? ""));
-    if (searchParams.get("new") === "1" && !showForm && !editingId) {
+    if (
+      searchParams.get("new") === "1" &&
+      !suppressNewQueryAutoOpenRef.current &&
+      !showForm &&
+      !editingId
+    ) {
       openNewReimbursementForm(initialWorkerId);
     }
   }, [editingId, openNewReimbursementForm, searchParams, showForm, workerById, workers]);
@@ -469,6 +489,7 @@ export default function WorkerReimbursementsPage() {
         }
       }
       resetForm();
+      clearNewQueryParam();
       await load();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Save failed.");

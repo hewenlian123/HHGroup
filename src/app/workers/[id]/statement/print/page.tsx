@@ -25,10 +25,16 @@ type WorkerStatementEarningRow = {
 };
 
 function formatCurrency(amount: number): string {
-  return amount.toLocaleString("en-US", {
+  const clean = Math.abs(amount) < 0.005 ? 0 : amount;
+  return clean.toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function inStatementRange(date: string | null | undefined, start: string, end: string): boolean {
+  const ymd = String(date ?? "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(ymd) && ymd >= start && ymd <= end;
 }
 
 export default async function WorkerStatementPrintPage({
@@ -108,10 +114,15 @@ export default async function WorkerStatementPrintPage({
         a.date === b.date ? a.shift.localeCompare(b.shift) : a.date.localeCompare(b.date)
       );
     payments = paymentRows;
+    const paymentIdsInRange = new Set(paymentRows.map((row) => row.id));
     reimbursementTotal = reimbursementRows.reduce((sum, row) => {
       if (project && row.projectId !== project) return sum;
-      const date = (row.reimbursementDate || row.createdAt.slice(0, 10)).slice(0, 10);
-      if (date < start || date > end) return sum;
+      const reimbDate = (row.reimbursementDate || row.createdAt.slice(0, 10)).slice(0, 10);
+      const paidInRange = inStatementRange(row.paidAt, start, end);
+      const settledByPaymentInRange = row.paymentId ? paymentIdsInRange.has(row.paymentId) : false;
+      if (!inStatementRange(reimbDate, start, end) && !paidInRange && !settledByPaymentInRange) {
+        return sum;
+      }
       return sum + Math.max(0, Number(row.amount) || 0);
     }, 0);
     advanceTotal = advanceRows
