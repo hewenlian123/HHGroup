@@ -39,6 +39,11 @@ export type WorkerDraft = {
 
 /** Extended columns (new schema — after 202603182000 migration). */
 const COLS_EXT = "id, name, phone, trade, daily_rate, default_ot_rate, status, notes, created_at";
+/** Extended columns when a remote has trade/daily_rate but not default_ot_rate. */
+const COLS_EXT_NO_OT = "id, name, phone, trade, daily_rate, status, notes, created_at";
+/** Hybrid columns when a remote has legacy workers plus daily_rate repair. */
+const COLS_BASE_DAILY =
+  "id, name, phone, role, half_day_rate, daily_rate, status, notes, created_at";
 /** Base columns (original labor schema — always present). */
 const COLS_BASE = "id, name, phone, role, half_day_rate, status, notes, created_at";
 /** Minimal columns when role/half_day_rate are absent (sparse remotes). */
@@ -59,6 +64,14 @@ function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /column.*does not exist|does not exist.*column|undefined column|could not find.*column|schema cache/i.test(
     m
+  );
+}
+
+function isStatusConstraintError(err: { code?: string; message?: string } | null): boolean {
+  const m = err?.message ?? "";
+  return (
+    err?.code === "23514" ||
+    /workers_status_check|check constraint.*status|violates check constraint/i.test(m)
   );
 }
 
@@ -177,49 +190,81 @@ export async function insertWorker(
   const name = draft.name?.trim();
   if (!name) throw new Error("Name is required.");
 
-  // Try extended schema first
-  const extPayload = {
-    name,
-    phone: draft.phone?.trim() || null,
-    trade: draft.trade?.trim() || null,
-    daily_rate: Number(draft.daily_rate) || 0,
-    default_ot_rate: Number(draft.default_ot_rate) || 0,
-    status: draft.status === "Inactive" ? "Inactive" : "Active",
-    notes: draft.notes?.trim() || null,
-  };
-  const { data: row, error } = await c.from("workers").insert(extPayload).select(COLS_EXT).single();
-  if (error) {
-    if (isMissingColumn(error)) {
-      // fall back to base schema
-      const basePayload = {
-        name,
-        phone: draft.phone?.trim() || null,
-        role: draft.trade?.trim() || null,
-        half_day_rate: Number(draft.daily_rate) || 0,
-        status: draft.status === "Inactive" ? "inactive" : "active",
-        notes: draft.notes?.trim() || null,
-      };
-      const { data: row2, error: err2 } = await c
+  const phone = draft.phone?.trim() || null;
+  const trade = draft.trade?.trim() || null;
+  const dailyRate = Number(draft.daily_rate) || 0;
+  const defaultOtRate = Number(draft.default_ot_rate) || 0;
+  const notes = draft.notes?.trim() || null;
+  const statusVariants =
+    draft.status === "Inactive" ? ["Inactive", "inactive"] : ["Active", "active"];
+  const variants: Array<{
+    payload: Record<string, unknown>;
+    select: string;
+    map: (row: Record<string, unknown>) => WorkerRow;
+  }> = [
+    {
+      payload: { name, phone, trade, daily_rate: dailyRate, default_ot_rate: defaultOtRate, notes },
+      select: COLS_EXT,
+      map: mapExtRow,
+    },
+    {
+      payload: { name, phone, trade, daily_rate: dailyRate, notes },
+      select: COLS_EXT_NO_OT,
+      map: mapExtRow,
+    },
+    {
+      payload: { name, phone, role: trade, half_day_rate: dailyRate, daily_rate: dailyRate, notes },
+      select: COLS_BASE_DAILY,
+      map: mapBaseRow,
+    },
+    {
+      payload: { name, phone, role: trade, half_day_rate: dailyRate, notes },
+      select: COLS_BASE,
+      map: mapBaseRow,
+    },
+    {
+      payload: { name, phone, notes },
+      select: COLS_MIN,
+      map: mapMinRow,
+    },
+  ];
+
+  let lastError: { code?: string; message?: string } | null = null;
+  let row: WorkerRow | null = null;
+  for (const variant of variants) {
+    let variantNeedsSchemaFallback = false;
+    for (const status of statusVariants) {
+      const { data, error } = await c
         .from("workers")
-        .insert(basePayload)
-        .select(COLS_BASE)
+        .insert({ ...variant.payload, status })
+        .select(variant.select)
         .single();
-      if (err2) throw new Error(err2.message ?? "Failed to add worker.");
-      await ensureInitialWorkerRateHistoryWithClient(c, {
-        workerId: (row2 as { id: string }).id,
-        dailyRate: draft.daily_rate,
-        effectiveFrom: ((row2 as { created_at?: string | null }).created_at ?? "").slice(0, 10),
-      });
-      return mapBaseRow(row2 as Record<string, unknown>);
+      if (!error) {
+        row = variant.map(data as unknown as Record<string, unknown>);
+        break;
+      }
+      lastError = error;
+      if (isMissingColumn(error)) {
+        variantNeedsSchemaFallback = true;
+        break;
+      }
+      if (!isStatusConstraintError(error)) {
+        throw new Error(error.message ?? "Failed to add worker.");
+      }
     }
-    throw new Error(error.message ?? "Failed to add worker.");
+    if (row) break;
+    if (!variantNeedsSchemaFallback && lastError && !isMissingColumn(lastError)) {
+      throw new Error(lastError.message ?? "Failed to add worker.");
+    }
   }
+  if (!row) throw new Error(lastError?.message ?? "Failed to add worker.");
+
   await ensureInitialWorkerRateHistoryWithClient(c, {
-    workerId: (row as { id: string }).id,
+    workerId: row.id,
     dailyRate: draft.daily_rate,
-    effectiveFrom: ((row as { created_at?: string | null }).created_at ?? "").slice(0, 10),
+    effectiveFrom: (row.created_at ?? "").slice(0, 10),
   });
-  return mapExtRow(row as Record<string, unknown>);
+  return row;
 }
 
 export type UpdateWorkerPatch = Partial<
