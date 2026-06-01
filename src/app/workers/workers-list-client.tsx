@@ -353,6 +353,12 @@ export function WorkersListClient({
 
   const handleAddSuccess = (worker: WorkerRow) => {
     setItems((prev) => [...prev, worker].sort((a, b) => a.name.localeCompare(b.name)));
+    toast({
+      title: "Worker created",
+      description: `Opening ${worker.name}.`,
+      variant: "success",
+    });
+    router.push(`/workers/${encodeURIComponent(worker.id)}`);
   };
 
   const workerActionItems = React.useCallback(
