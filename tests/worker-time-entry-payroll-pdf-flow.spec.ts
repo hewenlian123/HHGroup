@@ -738,6 +738,14 @@ test.describe("Worker time entry → payment → payroll → PDF local flow", ()
       statementsPanel.getByRole("link", { name: /Monthly Payroll Statement/i })
     ).toBeVisible();
 
+    await page.goto(`${BASE}/workers/${encodeURIComponent(workerId)}/statement`);
+    await expect(page.getByRole("heading", { name: "Worker Statement" })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.locator("body")).toContainText(WORKER_NAME);
+    await expect(page.locator("body")).toContainText("$300.00");
+    await expectNoFatalUi(page);
+
     await page.goto(
       `${BASE}/workers/${encodeURIComponent(workerId)}/statement/print?start=${PERIOD_START}&end=${PERIOD_END}`
     );
