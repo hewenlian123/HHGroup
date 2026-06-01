@@ -48,10 +48,14 @@ type WorkerBalanceSnapshot = {
 };
 
 type WorkerPaymentSnapshot = {
-  workerId: string;
+  workerId?: string;
+  worker_id?: string;
   paymentDate?: string;
+  payment_date?: string;
   createdAt?: string;
+  created_at?: string;
   amount?: number;
+  total_amount?: number;
 };
 
 type WorkerCenterMetrics = {
@@ -99,9 +103,35 @@ function currentWeekRange(): { from: string; to: string } {
 
 function paymentDisplay(payment: WorkerPaymentSnapshot | null): string {
   if (!payment) return "—";
-  const date = payment.paymentDate ?? payment.createdAt ?? "";
-  const amount = Number(payment.amount) || 0;
+  const date =
+    payment.paymentDate ?? payment.payment_date ?? payment.createdAt ?? payment.created_at ?? "";
+  const amount = Number(payment.amount ?? payment.total_amount) || 0;
   return `${formatCurrency(amount)} · ${formatDate(date, "compact")}`;
+}
+
+function paymentDateKey(payment: WorkerPaymentSnapshot | null | undefined): string {
+  return (
+    payment?.createdAt ?? payment?.created_at ?? payment?.paymentDate ?? payment?.payment_date ?? ""
+  );
+}
+
+function paymentWorkerKey(payment: WorkerPaymentSnapshot): string {
+  return normalizeWorkerId(String(payment.workerId ?? payment.worker_id ?? ""));
+}
+
+function lastPaymentMapFromPayments(
+  payments: WorkerPaymentSnapshot[]
+): Map<string, WorkerPaymentSnapshot> {
+  const map = new Map<string, WorkerPaymentSnapshot>();
+  for (const payment of payments) {
+    const key = paymentWorkerKey(payment);
+    if (!key) continue;
+    const current = map.get(key);
+    if (!current || paymentDateKey(payment) > paymentDateKey(current)) {
+      map.set(key, payment);
+    }
+  }
+  return map;
 }
 
 function payStatusFor(row: WorkerRow, netToPay: number): WorkerCenterRow["payStatus"] {
@@ -121,9 +151,11 @@ function statusClass(status: WorkerCenterRow["payStatus"]): string {
 export function WorkersListClient({
   rows,
   dataLoadWarning = null,
+  initialLastPayments = [],
 }: {
   rows: WorkerRow[];
   dataLoadWarning?: string | null;
+  initialLastPayments?: WorkerPaymentSnapshot[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -145,7 +177,7 @@ export function WorkersListClient({
   const [metrics, setMetrics] = React.useState<WorkerCenterMetrics>({
     balancesByWorkerId: new Map(),
     weekDaysByWorkerId: new Map(),
-    lastPaymentByWorkerId: new Map(),
+    lastPaymentByWorkerId: lastPaymentMapFromPayments(initialLastPayments),
   });
   const [metricsMessage, setMetricsMessage] = React.useState<string | null>(null);
   const itemsRef = React.useRef(items);
@@ -162,7 +194,7 @@ export function WorkersListClient({
 
     const [balancesRes, paymentsRes, entriesRes] = await Promise.allSettled([
       fetch(`/api/labor/worker-balances?t=${Date.now()}`, { cache: "no-store" }),
-      fetch("/api/labor/worker-payments?limit=500", { cache: "no-store" }),
+      fetch(`/api/labor/worker-payments?limit=500&t=${Date.now()}`, { cache: "no-store" }),
       fetch(`/api/labor/entries?view=joined&dateFrom=${from}&dateTo=${to}`, {
         cache: "no-store",
       }),
@@ -192,16 +224,7 @@ export function WorkersListClient({
       const body = (await paymentsRes.value.json().catch(() => ({}))) as {
         payments?: WorkerPaymentSnapshot[];
       };
-      for (const payment of body.payments ?? []) {
-        const key = normalizeWorkerId(String(payment.workerId ?? ""));
-        if (!key) continue;
-        const current = next.lastPaymentByWorkerId.get(key);
-        const currentDate = current?.createdAt ?? current?.paymentDate ?? "";
-        const nextDate = payment.createdAt ?? payment.paymentDate ?? "";
-        if (!current || nextDate > currentDate) {
-          next.lastPaymentByWorkerId.set(key, payment);
-        }
-      }
+      next.lastPaymentByWorkerId = lastPaymentMapFromPayments(body.payments ?? []);
     } else {
       warnings.push("last payments");
     }
@@ -220,7 +243,13 @@ export function WorkersListClient({
       warnings.push("this week labor");
     }
 
-    setMetrics(next);
+    setMetrics((prev) => ({
+      ...next,
+      lastPaymentByWorkerId:
+        next.lastPaymentByWorkerId.size > 0
+          ? next.lastPaymentByWorkerId
+          : prev.lastPaymentByWorkerId,
+    }));
     setMetricsMessage(
       warnings.length ? `Some Worker Center metrics could not load: ${warnings.join(", ")}.` : null
     );

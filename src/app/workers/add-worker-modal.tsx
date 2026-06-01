@@ -13,7 +13,6 @@ import {
   neoFormErrorClassName,
   neoFormFieldClassName,
 } from "@/components/base";
-import { createWorkerAction } from "./actions";
 import type { WorkerStatus, WorkerRow } from "@/lib/workers-db";
 
 type Props = {
@@ -34,6 +33,29 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: Props) {
   const [busy, setBusy] = React.useState(false);
   const fieldIdPrefix = React.useId().replace(/:/g, "");
   const formId = `${fieldIdPrefix}-add-worker-form`;
+
+  const mapWorkerResponse = React.useCallback(
+    (data: Record<string, unknown>): WorkerRow => ({
+      id: String(data.id ?? ""),
+      name: String(data.name ?? name.trim()),
+      phone: typeof data.phone === "string" && data.phone.trim() ? data.phone : null,
+      trade:
+        typeof data.trade === "string"
+          ? data.trade
+          : typeof data.role === "string"
+            ? data.role
+            : null,
+      daily_rate:
+        Number(data.daily_rate ?? data.dailyRate ?? data.half_day_rate ?? data.halfDayRate) ||
+        Number(dailyRate) ||
+        0,
+      default_ot_rate: Number(data.default_ot_rate ?? data.defaultOtRate) || 0,
+      status: data.status === "Inactive" || data.status === "inactive" ? "Inactive" : "Active",
+      notes: typeof data.notes === "string" && data.notes.trim() ? data.notes : null,
+      created_at: String(data.created_at ?? data.createdAt ?? ""),
+    }),
+    [dailyRate, name]
+  );
 
   const reset = React.useCallback(() => {
     setName("");
@@ -59,22 +81,34 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: Props) {
     setError(null);
     setBusy(true);
     try {
-      const res = await createWorkerAction({
-        name: name.trim(),
-        phone: phone.trim() || null,
-        trade: trade.trim() || null,
-        daily_rate: Number(dailyRate) || 0,
-        default_ot_rate: Number(defaultOtRate) || 0,
-        status,
-        notes: notes.trim() || null,
+      const response = await fetch("/api/labor/workers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.trim() || null,
+          trade: trade.trim() || null,
+          role: trade.trim() || null,
+          daily_rate: Number(dailyRate) || 0,
+          half_day_rate: Number(dailyRate) || 0,
+          default_ot_rate: Number(defaultOtRate) || 0,
+          status: status === "Inactive" ? "inactive" : "active",
+          notes: notes.trim() || null,
+        }),
       });
-      if (!res.ok) {
-        setError(res.error ?? "Failed to add worker.");
+      const data = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+      if (!response.ok) {
+        setError(typeof data.message === "string" ? data.message : "Failed to add worker.");
+        return;
+      }
+      const worker = mapWorkerResponse(data);
+      if (!worker.id) {
+        setError("Worker was created, but the response did not include an id.");
         return;
       }
       onOpenChange(false);
-      onSuccess(res.worker);
-      const detailPath = `/workers/${encodeURIComponent(res.worker.id)}`;
+      onSuccess(worker);
+      const detailPath = `/workers/${encodeURIComponent(worker.id)}`;
       window.location.assign(detailPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add worker.");
