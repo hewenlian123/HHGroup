@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -212,6 +213,7 @@ function ReimbursementStatusChip({
 }
 
 export default function WorkerReimbursementsPage() {
+  const searchParams = useSearchParams();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const configured = Boolean(url && anon);
@@ -384,10 +386,10 @@ export default function WorkerReimbursementsPage() {
     setShowForm(false);
   };
 
-  const openNewReimbursementForm = () => {
+  const openNewReimbursementForm = React.useCallback((initialWorkerId = "") => {
     setEditingId(null);
     setForm({
-      workerId: "",
+      workerId: initialWorkerId,
       projectId: "",
       vendor: "",
       amount: "",
@@ -397,7 +399,17 @@ export default function WorkerReimbursementsPage() {
       status: "pending",
     });
     setShowForm(true);
-  };
+  }, []);
+
+  React.useEffect(() => {
+    const initialWorkerId = searchParams.get("workerId")?.trim();
+    if (!initialWorkerId || workers.length === 0) return;
+    if (!workers.some((worker) => worker.id === initialWorkerId)) return;
+    setQuery((current) => current || (workerById.get(initialWorkerId) ?? ""));
+    if (searchParams.get("new") === "1" && !showForm && !editingId) {
+      openNewReimbursementForm(initialWorkerId);
+    }
+  }, [editingId, openNewReimbursementForm, searchParams, showForm, workerById, workers]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -731,7 +743,7 @@ export default function WorkerReimbursementsPage() {
                 size="sm"
                 variant="outline"
                 className={cn("w-full max-md:min-h-11 sm:w-auto", rbHeaderActionButton)}
-                onClick={openNewReimbursementForm}
+                onClick={() => openNewReimbursementForm()}
                 aria-label="+ New Reimbursement"
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden />
@@ -746,7 +758,7 @@ export default function WorkerReimbursementsPage() {
         fab={
           <MobileFabButton
             ariaLabel="New reimbursement"
-            onClick={openNewReimbursementForm}
+            onClick={() => openNewReimbursementForm()}
             className="h-11 w-11 min-h-[44px] min-w-[44px]"
           />
         }

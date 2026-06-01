@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { PageHeader } from "@/components/page-header";
@@ -107,6 +107,7 @@ function AdvanceStatusChip({ status }: { status: AdvanceRow["status"] }) {
 
 export function WorkerAdvancesClient({ workers, projects }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [workerOptions, setWorkerOptions] = React.useState<WorkerOption[]>(workers);
   const [rows, setRows] = React.useState<AdvanceRow[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -122,6 +123,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [editorMode, setEditorMode] = React.useState<"create" | "edit">("create");
   const [editing, setEditing] = React.useState<AdvanceRow | null>(null);
+  const [initialCreateWorkerId, setInitialCreateWorkerId] = React.useState("");
 
   const [busyId, setBusyId] = React.useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
@@ -129,6 +131,19 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   React.useEffect(() => {
     setWorkerOptions(workers);
   }, [workers]);
+
+  React.useEffect(() => {
+    const initialWorkerId = searchParams.get("workerId")?.trim();
+    if (!initialWorkerId) return;
+    if (!workerOptions.some((worker) => worker.id === initialWorkerId)) return;
+    setWorkerFilter((current) => current || initialWorkerId);
+    if (searchParams.get("new") === "1" && !editorOpen && !editing) {
+      setEditorMode("create");
+      setEditing(null);
+      setInitialCreateWorkerId(initialWorkerId);
+      setEditorOpen(true);
+    }
+  }, [editing, editorOpen, searchParams, workerOptions]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -257,6 +272,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   const openCreate = () => {
     setEditorMode("create");
     setEditing(null);
+    setInitialCreateWorkerId(workerFilter);
     setEditorOpen(true);
   };
 
@@ -1070,7 +1086,15 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                 advanceDate: editing.advanceDate,
                 notes: editing.notes ?? "",
               }
-            : undefined
+            : initialCreateWorkerId
+              ? {
+                  workerId: initialCreateWorkerId,
+                  projectId: null,
+                  amount: "",
+                  advanceDate: new Date().toISOString().slice(0, 10),
+                  notes: "",
+                }
+              : undefined
         }
         onClose={() => setEditorOpen(false)}
         onSave={handleDialogSave}
