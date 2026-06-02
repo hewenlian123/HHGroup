@@ -683,7 +683,7 @@ export function ReceiptQueueWorkspace() {
     let workerList: WorkerRow[] = [];
     const settled = await Promise.allSettled([
       supabase ? fetchReceiptQueue(supabase) : Promise.resolve([] as ReceiptQueueRow[]),
-      getExpenses(defaultExpenseListSort),
+      getExpenses(defaultExpenseListSort, { includeLinkedBankTx: false }),
       getWorkers(),
     ]);
     const q = settled[0];
@@ -731,7 +731,7 @@ export function ReceiptQueueWorkspace() {
       toast({ title: "Receipt queue", description: msg, variant: "error" });
     }
     try {
-      const expList = await getExpenses(defaultExpenseListSort);
+      const expList = await getExpenses(defaultExpenseListSort, { includeLinkedBankTx: false });
       if (gen !== softRefreshGenRef.current) return;
       if (mountedRef.current) startTransition(() => setExpenses(expList));
       queryClient.setQueryData(buildExpensesQueryKey(defaultExpenseListSort), expList);

@@ -87,7 +87,10 @@ function WorkerReimbursementsPageInner() {
   const [markingWorkerId, setMarkingWorkerId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
-    const [expList, workerList] = await Promise.all([getExpenses(), getWorkers()]);
+    const [expList, workerList] = await Promise.all([
+      getExpenses(undefined, { includeLinkedBankTx: false }),
+      getWorkers(),
+    ]);
     setExpenses(expList);
     setWorkers(workerList as WorkerRow[]);
   }, []);

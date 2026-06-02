@@ -77,6 +77,10 @@ export const defaultExpenseListSort: ExpenseListSort = {
   order: "desc",
 };
 
+export type ExpenseListFetchOptions = {
+  includeLinkedBankTx?: boolean;
+};
+
 export function isDefaultExpenseListSort(sort: ExpenseListSort): boolean {
   return sort.field === "date" && sort.order === "desc";
 }
@@ -594,7 +598,8 @@ function applyExpenseOrderToQuery(q: any, sort: ExpenseListSort): any {
 
 export async function getExpenses(
   sort: ExpenseListSort = defaultExpenseListSort,
-  explicitClient?: SupabaseClient
+  explicitClient?: SupabaseClient,
+  options: ExpenseListFetchOptions = {}
 ): Promise<Expense[]> {
   const c = client(explicitClient);
   let rows: unknown[] = [];
@@ -688,10 +693,11 @@ export async function getExpenses(
     c,
     rowModels.map((r) => r.id).filter(Boolean)
   );
-  const linkedBankTxIdByExpenseId = await fetchLinkedBankTxIdMap(
-    c,
-    rowModels.map((r) => r.id).filter(Boolean)
-  );
+  const expenseIds = rowModels.map((r) => r.id).filter(Boolean);
+  const linkedBankTxIdByExpenseId =
+    options.includeLinkedBankTx === false
+      ? new Map<string, string>()
+      : await fetchLinkedBankTxIdMap(c, expenseIds);
   const result: Expense[] = [];
   for (const row of rowModels) {
     const r = row;
