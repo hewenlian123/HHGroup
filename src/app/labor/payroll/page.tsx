@@ -136,13 +136,20 @@ function BalanceChip({ balance }: { balance: number }) {
   );
 }
 
+function formatLocalDateYYYYMMDD(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function PayrollSummaryPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = formatLocalDateYYYYMMDD(new Date());
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
-  const defaultFrom = startOfMonth.toISOString().slice(0, 10);
+  const defaultFrom = formatLocalDateYYYYMMDD(startOfMonth);
 
   const [fromDate, setFromDate] = React.useState(defaultFrom);
   const [toDate, setToDate] = React.useState(today);
