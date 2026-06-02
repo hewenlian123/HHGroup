@@ -53,7 +53,12 @@ import type {
   LaborInvoiceChecklist,
   Attachment,
 } from "../labor-db";
-import type { Expense, ExpenseLine, ExpenseListSort } from "../expenses-db";
+import type {
+  Expense,
+  ExpenseLine,
+  ExpenseListFetchOptions,
+  ExpenseListSort,
+} from "../expenses-db";
 import type { BankTransaction } from "../bank-transactions-db";
 import type { Invoice, InvoicePayment, InvoiceStatus, InvoiceLineItem } from "../invoices-db";
 import type { InvoiceWithDerived, OverdueInvoiceRow } from "../invoices-db";
@@ -1810,8 +1815,11 @@ export async function addPaymentAccount(
   return paymentAccountsDb.addPaymentAccount(name, type);
 }
 
-export async function getExpenses(sort?: ExpenseListSort): Promise<Expense[]> {
-  return expensesDb.getExpenses(sort);
+export async function getExpenses(
+  sort?: ExpenseListSort,
+  options?: ExpenseListFetchOptions
+): Promise<Expense[]> {
+  return expensesDb.getExpenses(sort, undefined, options);
 }
 
 export async function getExpenseById(expenseId: string): Promise<Expense | null> {
