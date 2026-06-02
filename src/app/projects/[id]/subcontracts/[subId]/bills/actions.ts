@@ -21,8 +21,21 @@ export async function addSubcontractBillAction(draft: {
   await insertSubcontractBill(draft);
 }
 
-export async function approveSubcontractBillAction(billId: string) {
-  await approveSubcontractBill(billId);
+export async function approveSubcontractBillAction(
+  projectId: string,
+  subcontractId: string,
+  billId: string
+): Promise<{ ok: boolean; message?: string; error?: string }> {
+  try {
+    const result = await approveSubcontractBill(billId);
+    revalidatePath(`/projects/${projectId}/subcontracts/${subcontractId}/bills`);
+    return {
+      ok: true,
+      message: result.alreadyApproved ? "Bill was already approved." : "Bill approved.",
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Failed to approve bill." };
+  }
 }
 
 export async function updateSubcontractBillAction(

@@ -26,6 +26,12 @@ export type SubcontractBillDraft = {
   description?: string | null;
 };
 
+export type ApproveSubcontractBillResult = {
+  alreadyApproved: boolean;
+};
+
+const BILL_ALREADY_APPROVED_MESSAGE = "Bill is already approved";
+
 function client() {
   const c = getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
@@ -40,6 +46,12 @@ function isMissingFunction(err: { message?: string } | null): boolean {
 function isMissingColumn(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /column .* does not exist|does not exist.*column/i.test(m);
+}
+
+function isAlreadyApprovedError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const message = (err as { message?: unknown }).message;
+  return typeof message === "string" && message === BILL_ALREADY_APPROVED_MESSAGE;
 }
 
 const COLS_FULL =
@@ -135,9 +147,19 @@ export async function insertSubcontractBill(draft: SubcontractBillDraft): Promis
 }
 
 /** Approve a subcontract bill via RPC (sets status to Approved, adds amount to project.spent). */
-export async function approveSubcontractBill(billId: string): Promise<void> {
+export async function approveSubcontractBill(
+  billId: string
+): Promise<ApproveSubcontractBillResult> {
   const c = client();
-  const { error } = await c.rpc("approve_subcontract_bill", { p_bill_id: billId });
+  let error: { message?: string } | null = null;
+  try {
+    const result = await c.rpc("approve_subcontract_bill", { p_bill_id: billId });
+    error = result.error;
+  } catch (err) {
+    if (isAlreadyApprovedError(err)) return { alreadyApproved: true };
+    throw err;
+  }
+  if (isAlreadyApprovedError(error)) return { alreadyApproved: true };
   if (error) {
     if (!isMissingFunction(error)) throw new Error(error.message ?? "Failed to approve bill.");
     const { error: updErr } = await c
@@ -146,6 +168,7 @@ export async function approveSubcontractBill(billId: string): Promise<void> {
       .eq("id", billId);
     if (updErr) throw new Error(updErr.message ?? "Failed to approve bill.");
   }
+  return { alreadyApproved: false };
 }
 
 export async function voidSubcontractBill(billId: string): Promise<void> {
