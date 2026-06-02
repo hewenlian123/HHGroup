@@ -180,13 +180,18 @@ export function WorkerAdvanceFormDialog({
               type="button"
               variant="outline"
               size="sm"
-              className="h-9 rounded-sm"
+              className="h-11 min-h-[44px] rounded-sm md:h-9 md:min-h-9"
               onClick={onClose}
               disabled={submitting}
             >
               Cancel
             </Button>
-            <Button type="submit" size="sm" className="h-9 rounded-sm" disabled={submitting}>
+            <Button
+              type="submit"
+              size="sm"
+              className="h-11 min-h-[44px] rounded-sm md:h-9 md:min-h-9"
+              disabled={submitting}
+            >
               <SubmitSpinner loading={submitting} className="mr-2" />
               {submitting ? "Saving…" : "Save"}
             </Button>

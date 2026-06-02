@@ -1,4 +1,6 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
@@ -14,6 +16,7 @@ import { getWorkerByIdWithClient } from "@/lib/labor-db";
 import { getWorkerPaymentsWithClient } from "@/lib/worker-payments-db";
 import { getWorkerReimbursementsByWorkerId } from "@/lib/worker-reimbursements-db";
 import { getWorkerAdvances } from "@/lib/worker-advances-db";
+import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
 
 type WorkerStatementEarningRow = {
   date: string;
@@ -42,10 +45,11 @@ export default async function WorkerStatementPrintPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ start?: string; end?: string; project?: string }>;
+  searchParams?: Promise<{ start?: string; end?: string; project?: string; returnTo?: string }>;
 }) {
   const { id } = await params;
   const qs = (await searchParams) ?? {};
+  const returnHref = safeWorkerReturnPath(qs.returnTo, workerDetailReturnPath(id, "statements"));
   const start = qs.start ?? new Date(Date.now() - 6 * 24 * 3600 * 1000).toISOString().slice(0, 10);
   const end = qs.end ?? new Date().toISOString().slice(0, 10);
   const project = qs.project || undefined;
@@ -154,6 +158,14 @@ export default async function WorkerStatementPrintPage({
       className="mx-auto min-h-screen bg-white px-6 py-8 text-zinc-950 print:min-h-0 print:p-0"
       style={{ maxWidth: "8.5in" }}
     >
+      <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">
+        <Button asChild variant="outline" size="sm" className="min-h-11 rounded-lg">
+          <Link href={returnHref}>Back to Worker</Link>
+        </Button>
+        <Button asChild variant="outline" size="sm" className="min-h-11 rounded-lg">
+          <Link href="/workers">All workers</Link>
+        </Button>
+      </div>
       <SetBreadcrumbEntityTitle label={worker.name} />
       <DocumentCompanyHeader
         company={company}

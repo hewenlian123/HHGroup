@@ -25,6 +25,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { formatDate } from "@/lib/formatters";
+import { encodeWorkerReturnPath } from "@/lib/worker-return-path";
 
 type WorkerRateHistoryView = {
   id: string;
@@ -870,29 +871,35 @@ export default function WorkerDashboardPage() {
         >
           Add Time Entry
         </QuickActionLink>
-        <QuickActionLink href={`/upload-receipt?workerId=${encodeURIComponent(id)}`} icon={Upload}>
+        <QuickActionLink
+          href={`/upload-receipt?workerId=${encodeURIComponent(id)}&returnTo=${encodeWorkerReturnPath(id, "receipts")}`}
+          icon={Upload}
+        >
           Upload Receipt
         </QuickActionLink>
         <QuickActionLink
-          href={`/labor/reimbursements?workerId=${encodeURIComponent(id)}&new=1`}
+          href={`/labor/reimbursements?workerId=${encodeURIComponent(id)}&new=1&returnTo=${encodeWorkerReturnPath(id, "receipts")}`}
           icon={ReceiptText}
         >
           Add Reimbursement
         </QuickActionLink>
         <QuickActionLink
-          href={`/labor/advances?workerId=${encodeURIComponent(id)}&new=1`}
+          href={`/labor/advances?workerId=${encodeURIComponent(id)}&new=1&returnTo=${encodeWorkerReturnPath(id, "advances")}`}
           icon={HandCoins}
         >
           Add Advance
         </QuickActionLink>
         <QuickActionLink
-          href={`/labor/workers/${encodeURIComponent(id)}/balance`}
+          href={`/labor/workers/${encodeURIComponent(id)}/balance?returnTo=${encodeWorkerReturnPath(id, "payments")}`}
           icon={WalletCards}
           primary
         >
           Pay Worker
         </QuickActionLink>
-        <QuickActionLink href={`/workers/${encodeURIComponent(id)}/statement`} icon={FileText}>
+        <QuickActionLink
+          href={`/workers/${encodeURIComponent(id)}/statement?returnTo=${encodeWorkerReturnPath(id, "statements")}`}
+          icon={FileText}
+        >
           Create Statement
         </QuickActionLink>
       </div>

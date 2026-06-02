@@ -53,6 +53,7 @@ import {
   RowActionsMenu,
 } from "@/components/base";
 import { tableRawTdClass, tableRawThClass } from "@/components/ui/table";
+import { encodeWorkerReturnPath } from "@/lib/worker-return-path";
 
 type WorkerBalanceSnapshot = {
   workerId: string;
@@ -534,23 +535,34 @@ export function WorkersListClient({
       },
       {
         label: "Upload Receipt",
-        onClick: () => router.push(`/upload-receipt?workerId=${encodeURIComponent(row.id)}`),
+        onClick: () =>
+          router.push(
+            `/upload-receipt?workerId=${encodeURIComponent(row.id)}&returnTo=${encodeWorkerReturnPath(row.id, "receipts")}`
+          ),
         disabled: busy,
       },
       {
         label: "Add Reimbursement",
         onClick: () =>
-          router.push(`/labor/reimbursements?workerId=${encodeURIComponent(row.id)}&new=1`),
+          router.push(
+            `/labor/reimbursements?workerId=${encodeURIComponent(row.id)}&new=1&returnTo=${encodeWorkerReturnPath(row.id, "receipts")}`
+          ),
         disabled: busy,
       },
       {
         label: "Add Advance",
-        onClick: () => router.push(`/labor/advances?workerId=${encodeURIComponent(row.id)}&new=1`),
+        onClick: () =>
+          router.push(
+            `/labor/advances?workerId=${encodeURIComponent(row.id)}&new=1&returnTo=${encodeWorkerReturnPath(row.id, "advances")}`
+          ),
         disabled: busy,
       },
       {
         label: "Pay Worker",
-        onClick: () => router.push(`/labor/workers/${encodeURIComponent(row.id)}/balance`),
+        onClick: () =>
+          router.push(
+            `/labor/workers/${encodeURIComponent(row.id)}/balance?returnTo=${encodeWorkerReturnPath(row.id, "payments")}`
+          ),
         disabled: busy || row.netToPay <= 0.005,
       },
       {

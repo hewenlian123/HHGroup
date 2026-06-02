@@ -15,6 +15,7 @@ import {
   getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
 import { cn } from "@/lib/utils";
+import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
 
 function formatMoney(n: number): string {
   const clean = Math.abs(n) < 0.005 ? 0 : n;
@@ -47,7 +48,10 @@ function buildPeriodLabel(dates: string[]): string {
   return `${formatDateLabel(first)} to ${formatDateLabel(last)}`;
 }
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ returnTo?: string }>;
+};
 type StatementPaymentRow = {
   id: string;
   paymentDate: string;
@@ -104,8 +108,10 @@ function EmptyState({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default async function WorkerStatementPage({ params }: Props) {
+export default async function WorkerStatementPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const qs = (await searchParams) ?? {};
+  const returnHref = safeWorkerReturnPath(qs.returnTo, workerDetailReturnPath(id, "statements"));
   const supabase = getServerSupabaseInternalNoStore();
   if (!supabase) {
     return (
@@ -198,12 +204,13 @@ export default async function WorkerStatementPage({ params }: Props) {
           }
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Link href={`/workers/${id}`}>
+              <Link href={returnHref}>
                 <Button
+                  variant="outline"
                   size="sm"
-                  className="h-11 min-h-[44px] rounded-lg border-transparent bg-[var(--neo-gold)] px-4 text-[13px] font-semibold text-zinc-950 shadow-[0_10px_24px_rgba(184,147,90,0.16)] hover:bg-[var(--neo-gold-soft)] md:h-10 md:min-h-10"
+                  className="h-11 min-h-[44px] rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] md:h-10 md:min-h-10"
                 >
-                  Back to worker
+                  Back to Worker
                 </Button>
               </Link>
               <Link href="/workers">
