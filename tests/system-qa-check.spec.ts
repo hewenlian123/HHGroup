@@ -30,6 +30,7 @@ type SystemQaBody = {
       category?: string;
       page?: string;
       message?: string;
+      recommendedAction?: string;
       diagnosticCode?: string;
     }>;
   }>;
@@ -260,6 +261,29 @@ test.describe("System QA check", () => {
       expect(contractReview).toBeTruthy();
       expect(contractReview?.category).toBe("actionRequired");
       expect(contractReview?.message).toContain("need contract value review");
+
+      const subcontractApprovalIdempotency = checks.find(
+        (check) => check.diagnosticCode === "subcontract_bill_approval_idempotency_regression"
+      );
+      expect(subcontractApprovalIdempotency).toBeTruthy();
+      expect(subcontractApprovalIdempotency?.name).toBe("Subcontract Bill Approval Idempotency");
+      expect(subcontractApprovalIdempotency?.status).toBe("pass");
+      expect(subcontractApprovalIdempotency?.category).toBe("informational");
+      expect(subcontractApprovalIdempotency?.message).toContain(
+        "Pending subcontract bill can be approved"
+      );
+      expect(subcontractApprovalIdempotency?.message).toContain(
+        "approved bill can be approved again as a no-op success"
+      );
+      expect(subcontractApprovalIdempotency?.message).toContain("no 500");
+      expect(subcontractApprovalIdempotency?.message).toContain("no Server Component error");
+      expect(subcontractApprovalIdempotency?.message).toContain("no duplicate financial totals");
+      expect(subcontractApprovalIdempotency?.message).toContain(
+        "no duplicate bill approval records"
+      );
+      expect(subcontractApprovalIdempotency?.recommendedAction).toContain(
+        "tests/subcontract-legacy-duplicate-approve.spec.ts"
+      );
       expect(checks.some((check) => check.diagnosticCode === "contract_placeholder_values")).toBe(
         false
       );

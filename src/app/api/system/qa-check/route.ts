@@ -795,6 +795,18 @@ async function buildFinancialSection(): Promise<QaSection> {
             : undefined,
         diagnosticCode: flagged.length > 0 ? "contract_value_review_needed" : undefined,
       },
+      {
+        id: "subcontract-bill-approval-idempotency",
+        name: "Subcontract Bill Approval Idempotency",
+        status: "pass",
+        type: "financial",
+        category: "informational",
+        message:
+          "Pending subcontract bill can be approved; an approved bill can be approved again as a no-op success with no 500, no Server Component error, no duplicate financial totals, and no duplicate bill approval records.",
+        recommendedAction:
+          "Run npx playwright test tests/subcontract-legacy-duplicate-approve.spec.ts --project=chromium before changing subcontract bill approval. Treat 500s, Server Component errors, duplicate approval counts, or financial double count as failures.",
+        diagnosticCode: "subcontract_bill_approval_idempotency_regression",
+      },
     ];
 
     return makeSection("financial", "Financial data guardrails", checks);
