@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
@@ -36,6 +37,7 @@ import { WorkerAdvanceFormDialog } from "./worker-advance-form-dialog";
 import { WorkerAdvanceActionsMenu } from "./worker-advance-actions-menu";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
+import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
 
 type WorkerOption = { id: string; name: string };
 type ProjectOption = { id: string; name: string };
@@ -108,6 +110,13 @@ function AdvanceStatusChip({ status }: { status: AdvanceRow["status"] }) {
 export function WorkerAdvancesClient({ workers, projects }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const sourceWorkerId = searchParams.get("workerId")?.trim() ?? "";
+  const returnHref = safeWorkerReturnPath(
+    searchParams.get("returnTo"),
+    sourceWorkerId ? workerDetailReturnPath(sourceWorkerId, "advances") : "/workers"
+  );
+  const returnLabel = sourceWorkerId ? "Back to Worker" : "Back to Worker Center";
+  const shouldReturnToSource = Boolean(searchParams.get("returnTo") || sourceWorkerId);
   const [workerOptions, setWorkerOptions] = React.useState<WorkerOption[]>(workers);
   const [rows, setRows] = React.useState<AdvanceRow[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -308,6 +317,16 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     router.replace(query ? `/labor/advances?${query}` : "/labor/advances", { scroll: false });
   }, [router, searchParams]);
 
+  const closeEditor = () => {
+    setEditorOpen(false);
+    setEditing(null);
+    if (editorMode === "create" && shouldReturnToSource) {
+      router.push(returnHref);
+      return;
+    }
+    clearInitialCreateQuery();
+  };
+
   const handleCreateOrUpdate = async (payload: {
     id?: string;
     workerId: string;
@@ -448,7 +467,11 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
       advanceDate: draft.advanceDate,
       notes: draft.notes,
     });
-    if (creating) clearInitialCreateQuery();
+    if (creating) {
+      if (!shouldReturnToSource) {
+        clearInitialCreateQuery();
+      }
+    }
   };
 
   const initialLoading = loading && rows.length === 0;
@@ -535,6 +558,9 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
       />
     </>
   );
+  const sourceWorkerName = sourceWorkerId
+    ? workerOptions.find((worker) => worker.id === sourceWorkerId)?.name
+    : null;
 
   return (
     <div
@@ -550,6 +576,21 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
           "max-md:!gap-2"
         )}
       >
+        <div className="flex flex-col gap-2 border-b border-[var(--neo-border)] pb-2 pt-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="min-h-11 rounded-full border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-none hover:border-[rgb(216_180_106_/_0.36)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-gold-soft)] md:min-h-9"
+            >
+              <Link href={returnHref}>{returnLabel}</Link>
+            </Button>
+            <span className="text-xs text-[var(--neo-text-tertiary)]">
+              Worker Center{sourceWorkerName ? ` › ${sourceWorkerName}` : ""} › Advances
+            </span>
+          </div>
+        </div>
         <div className="hidden md:block">
           <PageHeader
             className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
@@ -1114,7 +1155,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                 }
               : undefined
         }
-        onClose={() => setEditorOpen(false)}
+        onClose={closeEditor}
         onSave={handleDialogSave}
       />
     </div>

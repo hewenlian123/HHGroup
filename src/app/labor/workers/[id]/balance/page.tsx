@@ -4,7 +4,7 @@ import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { dispatchClientDataSync } from "@/lib/sync-router-client";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { statusChipClass } from "@/lib/typography";
 import { AlertCircle, CheckCircle2, Info, Pencil, Plus, Trash2 } from "lucide-react";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
+import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
 
 type LaborEntryRow = {
   id: string;
@@ -195,7 +196,12 @@ function roundMoney(n: number): number {
 
 export default function WorkerBalanceDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const workerId = params?.id as string | undefined;
+  const returnHref = safeWorkerReturnPath(
+    searchParams.get("returnTo"),
+    workerId ? workerDetailReturnPath(workerId, "payments") : "/workers"
+  );
 
   const [worker, setWorker] = React.useState<{ id: string; name: string } | null>(null);
   const [summary, setSummary] = React.useState<Summary | null>(null);
@@ -554,11 +560,20 @@ export default function WorkerBalanceDetailPage() {
             </p>
           </div>
           <div className="mt-0 flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:justify-end [&_a]:w-full [&_button]:w-full lg:[&_a]:w-auto lg:[&_button]:w-auto">
+            <Link href={returnHref} className="w-full sm:w-auto">
+              <Button
+                size="sm"
+                variant="outline"
+                className="min-h-[44px] w-full sm:min-h-9 sm:w-auto"
+              >
+                Back to Worker
+              </Button>
+            </Link>
             <Link href="/labor/worker-balances" className="w-full sm:w-auto">
               <Button
                 size="sm"
                 variant="outline"
-                className="min-h-[44px] sm:min-h-9 w-full sm:w-auto"
+                className="min-h-[44px] w-full sm:min-h-9 sm:w-auto"
               >
                 Back to Balances
               </Button>

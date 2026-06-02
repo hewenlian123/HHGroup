@@ -58,6 +58,7 @@ import {
   NeoToolbar,
 } from "@/components/base";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
 
 function todayLocalISODate(): string {
   const d = new Date();
@@ -315,6 +316,13 @@ export default function WorkerReimbursementsPage() {
 
   const workerById = React.useMemo(() => new Map(workers.map((w) => [w.id, w.name])), [workers]);
   const projectById = React.useMemo(() => new Map(projects.map((p) => [p.id, p.name])), [projects]);
+  const sourceWorkerId = searchParams.get("workerId")?.trim() ?? "";
+  const returnHref = safeWorkerReturnPath(
+    searchParams.get("returnTo"),
+    sourceWorkerId ? workerDetailReturnPath(sourceWorkerId, "receipts") : "/workers"
+  );
+  const returnLabel = sourceWorkerId ? "Back to Worker" : "Back to Worker Center";
+  const sourceWorkerName = sourceWorkerId ? workerById.get(sourceWorkerId) : null;
 
   const filtered = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -398,6 +406,15 @@ export default function WorkerReimbursementsPage() {
     setShowForm(false);
   };
 
+  const handleCancelForm = () => {
+    if (!editingId && (searchParams.get("returnTo") || sourceWorkerId)) {
+      router.push(returnHref);
+      return;
+    }
+    resetForm();
+    clearNewQueryParam();
+  };
+
   const openNewReimbursementForm = React.useCallback((initialWorkerId = "") => {
     setEditingId(null);
     setForm({
@@ -433,6 +450,7 @@ export default function WorkerReimbursementsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const creating = !editingId;
     if (!form.workerId) {
       setMessage("Select a worker.");
       return;
@@ -491,6 +509,9 @@ export default function WorkerReimbursementsPage() {
       resetForm();
       clearNewQueryParam();
       await load();
+      if (creating && (searchParams.get("returnTo") || sourceWorkerId)) {
+        router.push(returnHref);
+      }
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Save failed.");
     }
@@ -742,6 +763,21 @@ export default function WorkerReimbursementsPage() {
         "max-md:!gap-1"
       )}
     >
+      <div className="flex flex-col gap-2 border-b border-[color:var(--rb-border-soft)] pb-2 pt-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="min-h-11 rounded-full border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-3 text-[13px] font-semibold text-[color:var(--rb-text)] shadow-none hover:border-[color:rgb(216_180_106_/_0.36)] hover:bg-[#171B24] hover:text-[color:var(--rb-amber)] md:min-h-9"
+          >
+            <Link href={returnHref}>{returnLabel}</Link>
+          </Button>
+          <span className="text-xs text-[color:var(--rb-muted)]">
+            Worker Center{sourceWorkerName ? ` › ${sourceWorkerName}` : ""} › Reimbursements
+          </span>
+        </div>
+      </div>
       <div className="hidden md:block">
         <PageHeader
           className="gap-2 border-b border-[color:var(--rb-border-soft)] pb-4 lg:items-end lg:gap-x-5 [&_h1]:!text-[25px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[color:var(--rb-text)] [&_p]:!mt-1.5 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[color:var(--rb-secondary)]"
@@ -1101,10 +1137,16 @@ export default function WorkerReimbursementsPage() {
                 ))}
               </Select>
             </div>
-            <Button type="submit" size="sm">
+            <Button type="submit" size="sm" className="min-h-11 md:min-h-9">
               Save
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={resetForm}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="min-h-11 md:min-h-9"
+              onClick={handleCancelForm}
+            >
               Cancel
             </Button>
           </form>

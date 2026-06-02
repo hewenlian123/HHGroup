@@ -467,8 +467,21 @@ async function uploadReceiptViaUi(page: Page) {
   await expect(page.getByRole("button", { name: /Submit Receipt/i })).toBeEnabled({
     timeout: 30_000,
   });
+  const receiptPost = page.waitForResponse(
+    (res) => res.url().includes("/api/upload-receipt/submit") && res.request().method() === "POST",
+    { timeout: 45_000 }
+  );
   await page.getByRole("button", { name: /Submit Receipt/i }).click();
-  await expect(page.getByText("Receipt submitted")).toBeVisible({ timeout: 30_000 });
+  const response = await receiptPost;
+  await expectResponseOk(response);
+  await expect(page).toHaveURL(new RegExp(`/workers/${workerId}\\?tab=receipts$`), {
+    timeout: 30_000,
+  });
+  await expect(page.getByRole("tab", { name: /Receipts & Reimbursements/i })).toHaveAttribute(
+    "data-state",
+    "active",
+    { timeout: 30_000 }
+  );
 }
 
 async function addAdvanceViaUi(page: Page) {

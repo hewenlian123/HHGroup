@@ -1,13 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
+import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
 import {
   type AmountRuleDiagnostic,
   type FieldConfidence,
@@ -65,7 +67,14 @@ function Label({ zh, en }: { zh: string; en: string }) {
 }
 
 export function UploadReceiptClient() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const queryWorkerId = searchParams.get("workerId")?.trim() ?? "";
+  const returnHref = safeWorkerReturnPath(
+    searchParams.get("returnTo"),
+    queryWorkerId ? workerDetailReturnPath(queryWorkerId, "receipts") : "/workers"
+  );
+  const returnLabel = queryWorkerId ? "Back to Worker" : "Back to Worker Center";
   const [workers, setWorkers] = React.useState<Option[]>([]);
   const [projects, setProjects] = React.useState<Option[]>([]);
   const [workerId, setWorkerId] = React.useState("");
@@ -294,6 +303,10 @@ export function UploadReceiptClient() {
       } catch {
         // ignore
       }
+      if (queryWorkerId || searchParams.get("returnTo")) {
+        router.push(returnHref);
+        return;
+      }
       setDone(true);
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "出错 / Something went wrong");
@@ -315,12 +328,15 @@ export function UploadReceiptClient() {
         <p className="text-sm text-muted-foreground mt-0.5">Receipt submitted</p>
         <p className="text-base text-foreground mt-4">等待审核</p>
         <p className="text-sm text-muted-foreground mt-0.5">Waiting for approval</p>
+        <Button asChild variant="outline" size="sm" className="mt-8 min-h-11 w-full max-w-sm">
+          <Link href={returnHref}>{returnLabel}</Link>
+        </Button>
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={resetForm}
-          className="mt-10 w-full max-w-sm"
+          className="mt-2 min-h-11 w-full max-w-sm"
         >
           再提交一张 / Upload Another
         </Button>
@@ -330,6 +346,16 @@ export function UploadReceiptClient() {
 
   return (
     <div className="max-w-lg mx-auto px-4 py-6 pb-20">
+      <div className="mb-5 flex flex-col gap-2 border-b border-border/60 pb-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="min-h-11 rounded-lg">
+            <Link href={returnHref}>{returnLabel}</Link>
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Worker Center{workerName ? ` › ${workerName}` : ""} › Upload Receipt
+          </span>
+        </div>
+      </div>
       <h1 className="text-xl font-semibold text-foreground">Worker Receipt Upload</h1>
       <p className="text-base text-muted-foreground mt-1">上传报销单 · Upload Expense Receipt</p>
       <p className="text-sm text-muted-foreground mt-4">请拍照上传发票</p>
@@ -581,6 +607,13 @@ export function UploadReceiptClient() {
           disabled={uploading || submitting || ocrBusy}
         >
           {uploading ? "上传中…" : submitting ? "提交中…" : "提交报销 / Submit Receipt"}
+        </Button>
+        <Button
+          asChild
+          variant="outline"
+          className="min-h-12 w-full text-base font-medium sm:min-h-10"
+        >
+          <Link href={returnHref}>Cancel</Link>
         </Button>
       </form>
     </div>
