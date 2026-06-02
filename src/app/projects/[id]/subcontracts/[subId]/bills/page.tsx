@@ -130,7 +130,11 @@ export default async function SubcontractBillsPage({ params }: Props) {
                         <td className="h-11 min-h-[44px] px-3 py-0 text-right align-middle text-[13px]">
                           {r.status === "Pending" ? (
                             <div className="flex items-center justify-end gap-2">
-                              <ApproveBillButton billId={r.id} />
+                              <ApproveBillButton
+                                projectId={projectId}
+                                subcontractId={subId}
+                                billId={r.id}
+                              />
                               <BillRowActions
                                 projectId={projectId}
                                 subcontractId={subId}

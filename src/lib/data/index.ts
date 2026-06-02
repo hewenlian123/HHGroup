@@ -1652,7 +1652,9 @@ export async function insertSubcontractBill(
   return subcontractBillsDb.insertSubcontractBill(draft);
 }
 
-export async function approveSubcontractBill(billId: string): Promise<void> {
+export async function approveSubcontractBill(
+  billId: string
+): Promise<import("../subcontract-bills-db").ApproveSubcontractBillResult> {
   return subcontractBillsDb.approveSubcontractBill(billId);
 }
 

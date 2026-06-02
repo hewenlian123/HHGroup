@@ -5,18 +5,23 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { approveSubcontractBillAction } from "./actions";
 
-type Props = { billId: string };
+type Props = { projectId: string; subcontractId: string; billId: string };
 
-export function ApproveBillButton({ billId }: Props) {
+export function ApproveBillButton({ projectId, subcontractId, billId }: Props) {
   const router = useRouter();
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   const handleClick = async () => {
+    if (busy) return;
     setError(null);
     setBusy(true);
     try {
-      await approveSubcontractBillAction(billId);
+      const result = await approveSubcontractBillAction(projectId, subcontractId, billId);
+      if (!result.ok) {
+        setError(result.error ?? "Failed to approve bill.");
+        return;
+      }
       syncRouterNonBlocking(router);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to approve bill.");
