@@ -1185,16 +1185,22 @@ function HealthHero({
   cadenceSeconds,
   environment,
   onRefresh,
+  onFullScan,
   disabled,
   refreshing,
+  fullScanLoading,
+  fullScanDisabled,
 }: {
   overallStatus: HealthCheckStatus;
   checkedAt?: string | Date | null;
   cadenceSeconds: number;
   environment?: SystemHealthResult["environment"];
   onRefresh: () => void;
+  onFullScan: () => void;
   disabled: boolean;
   refreshing: boolean;
+  fullScanLoading: boolean;
+  fullScanDisabled: boolean;
 }) {
   const tone = statusToneClasses(overallStatus);
   const environmentLabel = environment?.vercelEnv ?? environment?.nodeEnv ?? "local";
@@ -1234,7 +1240,7 @@ function HealthHero({
             </div>
             <div className="guardian-hero-metric">
               <span className="text-slate-400/85">Auto Refresh</span>
-              <span>{cadenceSeconds}s cadence</span>
+              <span>Health only · {cadenceSeconds}s</span>
             </div>
             <div className="guardian-hero-metric">
               <span className="text-slate-400/85">Environment</span>
@@ -1264,6 +1270,15 @@ function HealthHero({
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "Checking..." : "Refresh Now"}
+            </Button>
+            <Button
+              size="sm"
+              className="min-h-[44px] border border-[rgb(198_165_106_/_0.34)] bg-[#C6A56A] text-[#0B0D12] hover:bg-[#D9BE82]"
+              onClick={onFullScan}
+              disabled={fullScanDisabled}
+            >
+              <Activity className={`mr-2 h-4 w-4 ${fullScanLoading ? "animate-pulse" : ""}`} />
+              {fullScanLoading ? "Running full scan..." : "Run full scan"}
             </Button>
           </div>
         </div>
@@ -1626,13 +1641,14 @@ export default function SystemHealthPage() {
   const [health, setHealth] = React.useState<SystemHealthResult | null>(null);
   const [healthLoading, setHealthLoading] = React.useState(true);
   const [result, setResult] = React.useState<GuardianResult | null>(null);
-  const [loading, setLoading] = React.useState(true);
+  const [loading, setLoading] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [fullScanLoading, setFullScanLoading] = React.useState(false);
   const [lastRefreshed, setLastRefreshed] = React.useState<Date | null>(null);
   const [error, setError] = React.useState<string | null>(null);
 
   const [integrity, setIntegrity] = React.useState<DataIntegrityResult | null>(null);
-  const [integrityLoading, setIntegrityLoading] = React.useState(true);
+  const [integrityLoading, setIntegrityLoading] = React.useState(false);
   const [cleanupBusy, setCleanupBusy] = React.useState<CleanupCategory | null>(null);
   const [qa, setQa] = React.useState<SystemQaResult | null>(null);
   const [qaLoading, setQaLoading] = React.useState(false);
@@ -1643,24 +1659,32 @@ export default function SystemHealthPage() {
   const [integrityScan, setIntegrityScan] = React.useState<IntegrityScanResult | null>(null);
   const [integrityScanLoading, setIntegrityScanLoading] = React.useState(false);
   const [integrityScanError, setIntegrityScanError] = React.useState<string | null>(null);
+  const systemHealthInFlightRef = React.useRef<Promise<void> | null>(null);
 
   const fetchSystemHealth = React.useCallback(async () => {
+    if (systemHealthInFlightRef.current) return systemHealthInFlightRef.current;
     setHealthLoading(true);
-    try {
-      const res = await fetch("/api/system-health", { cache: "no-store" });
-      const data: SystemHealthResult = await res.json();
-      setHealth(data);
-      setLastRefreshed(new Date());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to reach System Health");
-      setHealth(null);
-    } finally {
-      setHealthLoading(false);
-    }
+    const request = (async () => {
+      try {
+        const res = await fetch("/api/system-health", { cache: "no-store" });
+        const data: SystemHealthResult = await res.json();
+        setHealth(data);
+        setLastRefreshed(new Date());
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to reach System Health");
+        setHealth(null);
+      } finally {
+        setHealthLoading(false);
+        systemHealthInFlightRef.current = null;
+      }
+    })();
+    systemHealthInFlightRef.current = request;
+    return request;
   }, []);
 
   const fetchGuardian = React.useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true);
+    setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/system/guardian", { cache: "no-store" });
@@ -1769,50 +1793,57 @@ export default function SystemHealthPage() {
     [fetchIntegrity, fetchGuardian]
   );
 
-  const refreshAll = React.useCallback(
-    async (isManual = false) => {
-      if (isManual) setRefreshing(true);
-      try {
-        await Promise.all([
-          fetchSystemHealth(),
-          fetchGuardian(),
-          fetchIntegrity(),
-          fetchIntegrityScan(),
-        ]);
-      } finally {
-        if (isManual) setRefreshing(false);
-      }
-    },
-    [fetchGuardian, fetchIntegrity, fetchIntegrityScan, fetchSystemHealth]
-  );
+  const refreshHealth = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchSystemHealth();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchSystemHealth]);
 
-  // Initial load
-  React.useEffect(() => {
-    void refreshAll();
-  }, [refreshAll]);
+  const runFullScan = React.useCallback(async () => {
+    setFullScanLoading(true);
+    try {
+      await Promise.all([
+        fetchSystemHealth(),
+        fetchGuardian(),
+        fetchIntegrity(),
+        fetchIntegrityScan(),
+        fetchSystemQa(),
+        fetchDataQuality(),
+      ]);
+    } finally {
+      setFullScanLoading(false);
+    }
+  }, [
+    fetchDataQuality,
+    fetchGuardian,
+    fetchIntegrity,
+    fetchIntegrityScan,
+    fetchSystemHealth,
+    fetchSystemQa,
+  ]);
 
+  // Initial load stays lightweight. Full route, QA, and integrity scans are manual.
   React.useEffect(() => {
-    void fetchSystemQa();
-  }, [fetchSystemQa]);
-
-  React.useEffect(() => {
-    void fetchDataQuality();
-  }, [fetchDataQuality]);
+    void fetchSystemHealth();
+  }, [fetchSystemHealth]);
 
   useOnAppSync(
     React.useCallback(() => {
-      void refreshAll();
-    }, [refreshAll]),
-    [refreshAll]
+      void fetchSystemHealth();
+    }, [fetchSystemHealth]),
+    [fetchSystemHealth]
   );
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh only the lightweight health summary.
   React.useEffect(() => {
     const id = setInterval(() => {
-      void refreshAll();
+      void fetchSystemHealth();
     }, REFRESH_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [refreshAll]);
+  }, [fetchSystemHealth]);
 
   const guardianFailed = result !== null && !result.ok;
   const healthWarning = health?.status === "warning";
@@ -2140,7 +2171,7 @@ export default function SystemHealthPage() {
     },
     {
       label: "Guardian Checked",
-      value: formatCheckedAt(result?.checkedAt ?? lastRefreshed),
+      value: result ? formatCheckedAt(result.checkedAt ?? lastRefreshed) : "Run full scan",
     },
     {
       label: "System QA Mode",
@@ -2148,7 +2179,7 @@ export default function SystemHealthPage() {
         ? qa.mode === "production-safe"
           ? "Production safe"
           : "Local safe"
-        : "Checking...",
+        : "Run full scan",
     },
     {
       label: "Integrity Scan",
@@ -2156,7 +2187,7 @@ export default function SystemHealthPage() {
         ? `${integrityScan.summary.totalIssues} issue(s) · ${formatCheckedAt(integrityScan.generatedAt)}`
         : integrityScanLoading
           ? "Checking..."
-          : "Not available",
+          : "Run full scan",
     },
     {
       label: "Schema Notes",
@@ -2315,9 +2346,12 @@ export default function SystemHealthPage() {
           checkedAt={displayCheckedAt}
           cadenceSeconds={cadenceSeconds}
           environment={health?.environment}
-          onRefresh={() => void refreshAll(true)}
-          disabled={loading || healthLoading || refreshing}
+          onRefresh={() => void refreshHealth()}
+          onFullScan={() => void runFullScan()}
+          disabled={healthLoading || refreshing || fullScanLoading}
           refreshing={refreshing}
+          fullScanLoading={fullScanLoading}
+          fullScanDisabled={fullScanLoading || healthLoading || refreshing}
         />
 
         {error ? (
@@ -2412,7 +2446,11 @@ export default function SystemHealthPage() {
             description="Guardian route checks are pinned first when they fail."
             defaultOpen={Boolean(routeCheckRows?.some((row) => row.status !== "ok"))}
           >
-            <HealthDetailTable rows={routeCheckRows} loading={loading} />
+            <HealthDetailTable
+              rows={routeCheckRows}
+              loading={loading}
+              emptyMessage="Run full scan to load route availability checks."
+            />
           </HealthSection>
 
           <HealthSection
@@ -2432,7 +2470,11 @@ export default function SystemHealthPage() {
               previewRows?.some((row) => row.status !== "ok" && row.status !== "info")
             )}
           >
-            <HealthDetailTable rows={previewRows} loading={qaLoading} />
+            <HealthDetailTable
+              rows={previewRows}
+              loading={qaLoading}
+              emptyMessage="Run full scan to load preview route checks."
+            />
           </HealthSection>
 
           <HealthSection
@@ -2464,7 +2506,11 @@ export default function SystemHealthPage() {
               destructiveSafetyRows?.some((row) => row.status !== "ok" && row.status !== "info")
             )}
           >
-            <HealthDetailTable rows={destructiveSafetyRows} loading={qaLoading} />
+            <HealthDetailTable
+              rows={destructiveSafetyRows}
+              loading={qaLoading}
+              emptyMessage="Run full scan to verify destructive GET protections."
+            />
           </HealthSection>
 
           <HealthSection
@@ -2484,7 +2530,11 @@ export default function SystemHealthPage() {
             description="Current task integrity checks with guarded cleanup actions."
             defaultOpen={Boolean(dataIntegrityRows?.some((row) => row.status !== "ok"))}
           >
-            <HealthDetailTable rows={dataIntegrityRows} loading={integrityLoading} />
+            <HealthDetailTable
+              rows={dataIntegrityRows}
+              loading={integrityLoading}
+              emptyMessage="Run full scan to load task integrity checks."
+            />
           </HealthSection>
 
           <HealthSection
@@ -2564,7 +2614,22 @@ export default function SystemHealthPage() {
                 />
               </>
             ) : (
-              <HealthDetailTable rows={undefined} loading={integrityScanLoading} />
+              <div className="px-4 pb-4">
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3 text-sm text-slate-300">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                      Read-only scan
+                    </span>
+                    <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                      Manual full scan
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-slate-400">
+                    No full scan has been run in this session. Use Run full scan to load marker,
+                    dependency, QA, and route safety results.
+                  </p>
+                </div>
+              </div>
             )}
           </HealthSection>
         </div>

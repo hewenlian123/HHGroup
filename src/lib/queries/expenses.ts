@@ -19,7 +19,7 @@ export function buildExpensesQueryKey(sort: ExpenseListSort) {
 export async function fetchExpenses(
   sort: ExpenseListSort = defaultExpenseListSort
 ): Promise<Expense[]> {
-  return getExpenses(sort);
+  return getExpenses(sort, { includeLinkedBankTx: false });
 }
 
 export const expenseCategoriesQueryKey = ["expense_categories"] as const;

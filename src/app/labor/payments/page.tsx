@@ -50,6 +50,11 @@ const wpKpiTile =
 const wpKpiIcon =
   "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8";
 
+const wpKpiTileLayout =
+  "flex min-h-[52px] items-start gap-1.5 px-2 py-2 md:h-[62px] md:items-center md:gap-2 md:px-3 md:py-1.5";
+
+const mobilePaymentListViewportClass = "min-h-[260px]";
+
 /** Zinc-only tints — payout history, not “demo” rainbow rings */
 const AVATAR_RING = [
   "bg-zinc-200/75 text-zinc-900 dark:bg-zinc-700/45 dark:text-zinc-100",
@@ -402,12 +407,7 @@ export default function WorkerPaymentsPage() {
 
         {!initialLoading ? (
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-2">
-            <div
-              className={cn(
-                wpKpiTile,
-                "flex min-h-[48px] items-start gap-1.5 px-2 py-2 md:h-[62px] md:items-center md:gap-2 md:px-3 md:py-1.5"
-              )}
-            >
+            <div className={cn(wpKpiTile, wpKpiTileLayout)}>
               <span className={cn(wpKpiIcon, "mt-0.5 md:mt-0")}>
                 <DollarSign className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
@@ -421,12 +421,7 @@ export default function WorkerPaymentsPage() {
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">All time</p>
               </div>
             </div>
-            <div
-              className={cn(
-                wpKpiTile,
-                "flex min-h-[48px] items-start gap-1.5 px-2 py-2 md:h-[62px] md:items-center md:gap-2 md:px-3 md:py-1.5"
-              )}
-            >
+            <div className={cn(wpKpiTile, wpKpiTileLayout)}>
               <span className={cn(wpKpiIcon, "mt-0.5 md:mt-0")}>
                 <ListOrdered className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
@@ -440,12 +435,7 @@ export default function WorkerPaymentsPage() {
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">All records</p>
               </div>
             </div>
-            <div
-              className={cn(
-                wpKpiTile,
-                "flex min-h-[48px] items-start gap-1.5 px-2 py-2 md:h-[62px] md:items-center md:gap-2 md:px-3 md:py-1.5"
-              )}
-            >
+            <div className={cn(wpKpiTile, wpKpiTileLayout)}>
               <span className={cn(wpKpiIcon, "mt-0.5 md:mt-0")}>
                 <CalendarDays
                   className="h-3 w-3 md:h-3.5 md:w-3.5"
@@ -465,12 +455,7 @@ export default function WorkerPaymentsPage() {
                 </p>
               </div>
             </div>
-            <div
-              className={cn(
-                wpKpiTile,
-                "flex min-h-[48px] items-start gap-1.5 px-2 py-2 md:h-[62px] md:items-center md:gap-2 md:px-3 md:py-1.5"
-              )}
-            >
+            <div className={cn(wpKpiTile, wpKpiTileLayout)}>
               <span className={cn(wpKpiIcon, "mt-0.5 md:mt-0")}>
                 <Users className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
@@ -484,12 +469,7 @@ export default function WorkerPaymentsPage() {
                 <p className="mt-0.5 text-[9px] leading-none text-muted-foreground">Unique</p>
               </div>
             </div>
-            <div
-              className={cn(
-                wpKpiTile,
-                "col-span-2 flex min-h-[48px] items-start gap-1.5 px-2 py-2 sm:col-span-1 md:h-[62px] md:items-center md:gap-2 md:px-3 md:py-1.5"
-              )}
-            >
+            <div className={cn(wpKpiTile, wpKpiTileLayout, "col-span-2 sm:col-span-1")}>
               <span className={cn(wpKpiIcon, "mt-0.5 md:mt-0")}>
                 <Divide className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
               </span>
@@ -509,7 +489,7 @@ export default function WorkerPaymentsPage() {
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className={cn(wpKpiTile, "flex h-[52px] items-center gap-2 px-3 md:h-[62px]")}
+                className={cn(wpKpiTile, wpKpiTileLayout, i === 4 && "col-span-2 sm:col-span-1")}
               >
                 <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
                 <div className="min-w-0 flex-1 space-y-1.5">
@@ -613,11 +593,11 @@ export default function WorkerPaymentsPage() {
         ) : null}
 
         {/* Mobile stacked cards */}
-        <div className="md:hidden">
+        <div className={cn("md:hidden", mobilePaymentListViewportClass)}>
           {initialLoading ? (
-            <div className="flex flex-col gap-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <NeoMobileCard key={i} className="space-y-3 p-3">
+            <div className="flex flex-col gap-2" aria-hidden>
+              {Array.from({ length: 2 }).map((_, i) => (
+                <NeoMobileCard key={i} className="min-h-[122px] space-y-3 p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex min-w-0 flex-1 gap-2">
                       <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
@@ -634,7 +614,7 @@ export default function WorkerPaymentsPage() {
               ))}
             </div>
           ) : rows.length === 0 ? (
-            <NeoMobileCard className="px-4 py-10 text-center">
+            <NeoMobileCard className="min-h-[122px] px-4 py-10 text-center">
               <p className="text-sm font-medium text-[var(--neo-text-primary)]">No payments yet</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Payouts you record will appear here with receipt links.
@@ -659,7 +639,7 @@ export default function WorkerPaymentsPage() {
                 const wName = workerNameById.get(r.workerId) ?? r.workerId;
                 const proj = r.projectId ? (projectNameById.get(r.projectId) ?? r.projectId) : null;
                 return (
-                  <NeoMobileCard key={r.id} className="space-y-3 p-3">
+                  <NeoMobileCard key={r.id} className="min-h-[122px] space-y-3 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex min-w-0 flex-1 items-start gap-3">
                         <span

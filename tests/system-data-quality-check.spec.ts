@@ -307,6 +307,10 @@ test.describe("System data quality check", () => {
       await expect(page.getByRole("heading", { name: "Supabase Data / Number Check" })).toBeVisible(
         { timeout: 30_000 }
       );
+      await expect(page.getByRole("button", { name: "Run full scan" })).toBeEnabled({
+        timeout: 30_000,
+      });
+      await page.getByRole("button", { name: "Run full scan" }).click();
       await expect(page.getByText("invoice_paid_exceeds_total")).toBeVisible();
       await expect(page.getByText("estimate_fractional_currency")).toBeVisible();
       await expect(page.getByText("contract_value_placeholder")).toBeVisible();

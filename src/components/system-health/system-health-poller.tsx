@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useSystemHealth } from "@/contexts/system-health-context";
 import { useToast } from "@/components/toast/toast-provider";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const POLL_INTERVAL_MS = 60_000;
 
@@ -11,9 +11,12 @@ export function SystemHealthPoller() {
   const { setSystemHealth } = useSystemHealth();
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
   const hasShownToastRef = React.useRef(false);
 
   React.useEffect(() => {
+    if (pathname === "/system-health" || pathname === "/settings/system-health") return;
+
     let cancelled = false;
 
     const run = async () => {
@@ -61,7 +64,7 @@ export function SystemHealthPoller() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [setSystemHealth, toast, router]);
+  }, [pathname, setSystemHealth, toast, router]);
 
   return null;
 }
