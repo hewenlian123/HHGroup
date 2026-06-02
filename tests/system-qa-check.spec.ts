@@ -394,6 +394,10 @@ test.describe("System QA check", () => {
       timeout: 30_000,
     });
     await expect(page.getByRole("heading", { name: "System QA" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Run full scan" })).toBeEnabled({
+      timeout: 30_000,
+    });
+    await page.getByRole("button", { name: "Run full scan" }).click();
     await expect(page.getByText("Partial QA section")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("Warnings", { exact: true }).first()).toBeVisible();
     await expect(page.getByText("Total checks", { exact: true })).toBeVisible();
