@@ -1,12 +1,42 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
+import {
+  EmptyState,
+  KpiTile,
+  NeoAmount,
+  NeoMobileCard,
+  NeoPanel,
+  NeoTable,
+  PageLayout,
+  PageHeader,
+} from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { getServerSupabase } from "@/lib/supabase-server";
 import { getWorkerMonthlyReport, parseMonthYm } from "@/lib/worker-monthly-report";
 import { MonthReportToolbar } from "./month-report-toolbar";
 import { WorkerPayrollStatementPrint } from "./worker-payroll-statement-print";
+import { cn } from "@/lib/utils";
+
+const reportSecondaryButtonClass =
+  "h-9 rounded-[0.625rem] border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-none hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11";
+
+const reportTableHeadClass =
+  "h-10 whitespace-nowrap border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]";
+
+const reportTableCellClass =
+  "h-11 border-b border-[var(--neo-border)] px-3 py-2 align-middle text-[13px] text-[var(--neo-text-primary)]";
+
+function displayDeduction(n: number): string {
+  const clean = Math.abs(n) < 0.005 ? 0 : n;
+  return clean > 0 ? `-$${fmtUsd(clean)}` : "$0.00";
+}
+
+function balanceTone(n: number): "neutral" | "positive" | "negative" {
+  if (n > 0.005) return "negative";
+  if (n < -0.005) return "positive";
+  return "positive";
+}
 
 function fmtUsd(n: number): string {
   const clean = Math.abs(n) < 0.005 ? 0 : n;
@@ -43,10 +73,59 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
   const monthYm = parseMonthYm(sp.month);
   const report = await getWorkerMonthlyReport(id, monthYm);
   const titleName = report.workerName || "Worker";
+  const summaryCards = [
+    {
+      label: "Earned",
+      value: `$${fmtUsd(report.summary.earned)}`,
+      meta: "Labor snapshot total",
+      tone: "neutral" as const,
+    },
+    {
+      label: "Reimbursements",
+      value: `$${fmtUsd(report.summary.reimbursements)}`,
+      meta: "Approved for the period",
+      tone: "neutral" as const,
+    },
+    {
+      label: "Total owed",
+      value: `$${fmtUsd(report.summary.totalOwed)}`,
+      meta: "Earned + reimbursements",
+      tone: "warning" as const,
+    },
+    {
+      label: "Cash paid",
+      value: `$${fmtUsd(report.summary.cashPaid)}`,
+      meta: "Worker payment cash",
+      tone: "neutral" as const,
+    },
+    {
+      label: "Advance deduction",
+      value: displayDeduction(report.summary.advanceDeductions),
+      meta: "Settlement deduction",
+      tone: "neutral" as const,
+    },
+    {
+      label: "Settled",
+      value: `$${fmtUsd(report.summary.settled)}`,
+      meta: "Cash + deductions",
+      tone: "positive" as const,
+    },
+    {
+      label: "Balance",
+      value: `$${fmtUsd(report.summary.balance)}`,
+      meta: Math.abs(report.summary.balance) < 0.005 ? "Fully settled" : "Remaining amount",
+      tone: balanceTone(report.summary.balance),
+      className:
+        Math.abs(report.summary.balance) < 0.005
+          ? "border-[rgb(16_185_129_/_0.22)] bg-[rgb(16_185_129_/_0.055)]"
+          : "border-[rgb(244_114_182_/_0.24)] bg-[rgb(244_114_182_/_0.055)]",
+    },
+  ];
 
   return (
     <PageLayout
       divider={false}
+      className="dark financial-nums max-md:!gap-3 max-md:!py-3"
       header={
         <PageHeader
           className="print:hidden"
@@ -60,12 +139,20 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
                 printDocumentTitle={`Payroll Statement — ${titleName}`}
               />
               <Link href={`/workers/${encodeURIComponent(id)}`}>
-                <Button variant="outline" size="sm" className="rounded-sm print:hidden">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(reportSecondaryButtonClass, "print:hidden")}
+                >
                   Worker profile
                 </Button>
               </Link>
               <Link href="/workers">
-                <Button variant="outline" size="sm" className="rounded-sm print:hidden">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(reportSecondaryButtonClass, "print:hidden")}
+                >
                   All workers
                 </Button>
               </Link>
@@ -74,131 +161,141 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
         />
       }
     >
-      <Divider className="print:hidden" />
-      <div className="print:hidden">
+      <div className="space-y-4 print:hidden">
         <SetBreadcrumbEntityTitle label={titleName} />
-        <div className="border-b border-border/60 py-3 print:py-2">
-          <h2 className="text-lg font-semibold">{titleName}</h2>
-          <p className="text-sm text-muted-foreground">{report.monthLabel}</p>
+        <NeoPanel
+          className="print:hidden"
+          bodyClassName="px-4 py-3"
+          eyebrow="Worker statement"
+          title={titleName}
+          description={`${report.monthLabel} payroll activity and settlement summary.`}
+        >
+          <div className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--neo-text-tertiary)]">
+            <span className="rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2.5 py-1">
+              {report.monthLabel}
+            </span>
+            <span className="rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2.5 py-1">
+              {report.rows.length.toLocaleString("en-US")} activity rows
+            </span>
+          </div>
+        </NeoPanel>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-7">
+          {summaryCards.map((card) => (
+            <KpiTile
+              key={card.label}
+              label={card.label}
+              value={card.value}
+              meta={card.meta}
+              tone={card.tone}
+              className={cn("min-h-[104px]", card.className)}
+            />
+          ))}
         </div>
 
         {!report.supabaseConfigured && (
-          <p className="py-4 text-sm text-destructive">
-            {report.loadError ?? "Supabase is not configured."}
-          </p>
+          <NeoPanel bodyClassName="px-4 py-3">
+            <p className="text-sm text-rose-300">
+              {report.loadError ?? "Supabase is not configured."}
+            </p>
+          </NeoPanel>
         )}
 
         {report.supabaseConfigured && report.loadError && (
-          <p className="py-2 text-sm text-amber-600 dark:text-amber-500">
-            Some data may be incomplete: {report.loadError}
-          </p>
+          <NeoPanel
+            className="border-[rgb(216_180_106_/_0.22)] bg-[rgb(216_180_106_/_0.06)]"
+            bodyClassName="px-4 py-3"
+          >
+            <p className="text-sm text-[var(--neo-gold-soft)]">
+              Some data may be incomplete: {report.loadError}
+            </p>
+          </NeoPanel>
         )}
 
-        <Divider />
+        <NeoPanel
+          eyebrow="Activity"
+          title="Monthly activity"
+          description="Labor, reimbursements, advance deductions, and payments included in this period."
+          bodyClassName="p-0"
+        >
+          {report.rows.length === 0 ? (
+            <div className="p-4">
+              <EmptyState
+                title="No rows for this month."
+                description="Choose another month or return to the worker profile to review older activity."
+                className="py-10"
+              />
+            </div>
+          ) : (
+            <>
+              <div className="hidden md:block">
+                <NeoTable
+                  className="rounded-none border-0 bg-transparent shadow-none"
+                  scrollClassName="airtable-table-scroll"
+                  tableClassName="min-w-[720px]"
+                >
+                  <thead>
+                    <tr>
+                      <th className={reportTableHeadClass}>Date</th>
+                      <th className={reportTableHeadClass}>Type</th>
+                      <th className={reportTableHeadClass}>Project</th>
+                      <th className={cn(reportTableHeadClass, "text-right tabular-nums")}>
+                        Amount
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {report.rows.map((r) => (
+                      <tr
+                        key={r.id}
+                        className="transition-colors duration-150 hover:bg-[var(--neo-surface-muted)]"
+                      >
+                        <td className={cn(reportTableCellClass, "tabular-nums")}>{r.date}</td>
+                        <td className={reportTableCellClass}>{r.type}</td>
+                        <td
+                          className={cn(reportTableCellClass, "text-[var(--neo-text-secondary)]")}
+                        >
+                          {r.projectLabel}
+                        </td>
+                        <td className={cn(reportTableCellClass, "text-right")}>
+                          <NeoAmount tone={r.amount < 0 ? "muted" : "neutral"}>
+                            {fmtSignedUsd(r.amount)}
+                          </NeoAmount>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </NeoTable>
+              </div>
 
-        <SectionHeader label="Summary" />
-        <div className="grid grid-cols-2 gap-x-4 gap-y-2 border-b border-border/60 py-3 text-sm sm:grid-cols-3 md:grid-cols-7 md:gap-y-0">
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Earned
-            </div>
-            <div className="tabular-nums">${fmtUsd(report.summary.earned)}</div>
-          </div>
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Reimbursements
-            </div>
-            <div className="tabular-nums">${fmtUsd(report.summary.reimbursements)}</div>
-          </div>
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Total owed
-            </div>
-            <div className="tabular-nums font-medium">${fmtUsd(report.summary.totalOwed)}</div>
-          </div>
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Cash paid
-            </div>
-            <div className="tabular-nums">${fmtUsd(report.summary.cashPaid)}</div>
-          </div>
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Advance deduction
-            </div>
-            <div className="tabular-nums">-${fmtUsd(report.summary.advanceDeductions)}</div>
-          </div>
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Settled
-            </div>
-            <div className="tabular-nums">${fmtUsd(report.summary.settled)}</div>
-          </div>
-          <div className="col-span-2 sm:col-span-1">
-            <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Balance
-            </div>
-            <div
-              className={`tabular-nums font-medium ${
-                report.summary.balance > 0
-                  ? "text-red-600 dark:text-red-400"
-                  : report.summary.balance < 0
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : ""
-              }`}
-            >
-              ${fmtUsd(report.summary.balance)}
-            </div>
-          </div>
-        </div>
-
-        <Divider />
-
-        <SectionHeader label="Activity" />
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-b border-border/60">
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Date
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Type
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  Project
-                </th>
-                <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide text-muted-foreground tabular-nums">
-                  Amount
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.rows.length === 0 ? (
-                <tr className="border-b border-border/40">
-                  <td colSpan={4} className="px-3 py-6 text-center text-xs text-muted-foreground">
-                    No rows for this month.
-                  </td>
-                </tr>
-              ) : (
-                report.rows.map((r) => (
-                  <tr key={r.id} className="border-b border-border/40">
-                    <td className="px-3 py-1.5 tabular-nums">{r.date}</td>
-                    <td className="px-3 py-1.5">{r.type}</td>
-                    <td className="px-3 py-1.5 text-muted-foreground">{r.projectLabel}</td>
-                    <td
-                      className={`px-3 py-1.5 text-right tabular-nums ${
-                        r.amount < 0 ? "text-muted-foreground" : ""
-                      }`}
-                    >
-                      {fmtSignedUsd(r.amount)}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+              <div className="grid gap-2 p-3 md:hidden">
+                {report.rows.map((r) => (
+                  <NeoMobileCard key={r.id} className="px-3 py-3">
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[13px] font-semibold text-[var(--neo-text-primary)]">
+                          {r.type}
+                        </p>
+                        <p className="mt-1 truncate text-[12px] text-[var(--neo-text-secondary)]">
+                          {r.projectLabel}
+                        </p>
+                        <p className="mt-2 text-[12px] tabular-nums text-[var(--neo-text-tertiary)]">
+                          {r.date}
+                        </p>
+                      </div>
+                      <NeoAmount
+                        tone={r.amount < 0 ? "muted" : "neutral"}
+                        className="shrink-0 text-right text-[13px]"
+                      >
+                        {fmtSignedUsd(r.amount)}
+                      </NeoAmount>
+                    </div>
+                  </NeoMobileCard>
+                ))}
+              </div>
+            </>
+          )}
+        </NeoPanel>
       </div>
 
       <WorkerPayrollStatementPrint report={report} />

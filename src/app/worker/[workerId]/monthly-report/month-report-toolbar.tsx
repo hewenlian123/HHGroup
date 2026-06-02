@@ -2,7 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { NativeSelect } from "@/components/ui/native-select";
+import { NeoSelect } from "@/components/base";
+
+const toolbarSelectClass =
+  "h-9 min-w-[10rem] rounded-[0.625rem] border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[13px] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11 max-md:w-full";
+
+const toolbarPrimaryButtonClass =
+  "h-9 rounded-[0.625rem] border-transparent bg-[var(--neo-gold)] px-3 text-[13px] font-semibold text-zinc-950 shadow-none hover:bg-[var(--neo-gold-soft)] hover:text-zinc-950 focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11 max-md:w-full";
 
 function monthOptions(count = 24): { value: string; label: string }[] {
   const out: { value: string; label: string }[] = [];
@@ -32,10 +38,10 @@ export function MonthReportToolbar({
   const opts = monthOptions();
 
   return (
-    <div className="flex flex-wrap items-center gap-2 print:hidden">
-      <NativeSelect
+    <div className="flex flex-wrap items-center gap-2 print:hidden max-md:w-full">
+      <NeoSelect
         aria-label="Report month"
-        className="h-8 min-w-[10rem] rounded-sm text-sm"
+        className={toolbarSelectClass}
         value={currentYm}
         onChange={(e) => {
           const v = e.target.value;
@@ -49,12 +55,12 @@ export function MonthReportToolbar({
             {o.label}
           </option>
         ))}
-      </NativeSelect>
+      </NeoSelect>
       <Button
         type="button"
-        variant="outline"
+        variant="default"
         size="sm"
-        className="rounded-sm"
+        className={toolbarPrimaryButtonClass}
         onClick={() => {
           const prev = document.title;
           if (printDocumentTitle?.trim()) document.title = printDocumentTitle.trim();
