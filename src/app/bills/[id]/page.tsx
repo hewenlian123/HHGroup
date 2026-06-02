@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { PageLayout, PageHeader } from "@/components/base";
 import { fetchBillDetailData } from "../bills-api";
 import { BillDetailClient } from "./bill-detail-client";
@@ -23,6 +24,11 @@ export default async function BillDetailPage({ params, searchParams }: Props) {
         <PageHeader
           title={bill.bill_no ?? "Bill"}
           description={`${bill.vendor_name} · ${bill.bill_type}${bill.project_name ? ` · ${bill.project_name}` : ""}`}
+          actions={
+            <Link href="/bills" className="text-sm text-muted-foreground hover:text-foreground">
+              Back to Bills
+            </Link>
+          }
         />
       }
     >
