@@ -98,7 +98,7 @@ async function createLegacyPendingBillFixture(
 async function expectNoServerError(page: Page): Promise<void> {
   const body = page.locator("body");
   await expect(body).not.toContainText(
-    /Application error|Internal Server Error|Something went wrong/i
+    /Application error|Internal Server Error|Server Component error|Something went wrong/i
   );
   await expect(body).not.toContainText("Bill is already approved");
 }
@@ -181,6 +181,20 @@ test.describe("legacy subcontract bill duplicate approval", () => {
           return num(data?.spent);
         })
         .toBe(100);
+
+      const { count: billRecordCount, error: billRecordCountError } = await supabase
+        .from("subcontract_bills")
+        .select("id", { count: "exact", head: true })
+        .eq("id", ids.billId);
+      expect(billRecordCountError?.message ?? "").toBe("");
+      expect(billRecordCount).toBe(1);
+
+      const { count: approvalPaymentCount, error: approvalPaymentCountError } = await supabase
+        .from("subcontract_payments")
+        .select("id", { count: "exact", head: true })
+        .eq("bill_id", ids.billId);
+      expect(approvalPaymentCountError?.message ?? "").toBe("");
+      expect(approvalPaymentCount).toBe(0);
     } finally {
       await cleanupFixture(supabase, ids);
     }
