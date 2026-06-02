@@ -159,7 +159,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                 href="/subcontractors"
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
-                Subcontractors
+                Back to Subcontractors
               </Link>
               <SubcontractorDetailClient subcontractor={subcontractor as SubcontractorRow} />
             </div>
