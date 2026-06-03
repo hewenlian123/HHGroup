@@ -792,11 +792,6 @@ async function createReimbursement(
   ).toBeVisible({ timeout: 30_000 });
 }
 
-async function selectProjectDetailMoreTab(page: Page, tabName: string) {
-  await page.getByRole("button", { name: /^More/i }).click();
-  await page.getByRole("menuitem", { name: tabName, exact: true }).click();
-}
-
 async function expectVisibleLinkHref(page: Page, hrefPath: string) {
   await expect(page.locator(`a[href="${hrefPath}"]`).first()).toBeVisible({ timeout: 30_000 });
 }
@@ -851,7 +846,7 @@ test("sidebar smoke loads every major module without crashes", async ({ page }, 
     { label: "Vendors", href: "/financial/vendors" },
     { label: "Subcontractors", href: "/subcontractors" },
     { label: "Documents", href: "/documents" },
-    { label: "Settings", href: "/settings" },
+    { label: "Settings", href: "/settings/company" },
   ];
 
   for (const mod of modules) {
@@ -890,6 +885,7 @@ test("creates linked system data and verifies cross-module flow", async ({ page 
     address,
   });
   const projectPath = new URL(projectUrl).pathname;
+  const projectId = projectPath.split("/").filter(Boolean).pop() ?? "";
 
   const estimateUrl = await createEstimateForProject(page, {
     customerName: names.customerName,
@@ -933,20 +929,27 @@ test("creates linked system data and verifies cross-module flow", async ({ page 
   await expectHealthyPage(page, "project-detail", testInfo);
   await expect(page.getByText(names.customerName).first()).toBeVisible({ timeout: 30_000 });
   await expectVisibleLinkHref(page, customerPath);
+
+  await page.getByRole("tab", { name: "Financial" }).click();
   await expectVisibleLinkHref(page, estimatePath);
-
-  await page.getByRole("tab", { name: "Cost" }).click();
   await expectVisibleLinkHref(page, invoicePath);
+  await expect(
+    page.getByRole("button", {
+      name: new RegExp(`Open cost line ${escapeRegex(names.expenseVendor)}`),
+    })
+  ).toBeVisible({ timeout: 30_000 });
 
-  await selectProjectDetailMoreTab(page, "Expenses");
-  await expect(page.getByText(names.expenseVendor).first()).toBeVisible({ timeout: 30_000 });
-
-  await selectProjectDetailMoreTab(page, "Change Orders");
-  await expectVisibleLinkHref(page, changeOrderPath);
+  await page.goto(changeOrderPath, { waitUntil: "domcontentloaded" });
+  await expectHealthyPage(page, "change-order-detail", testInfo);
   await expect(page.getByText(names.changeOrderTitle).first()).toBeVisible({ timeout: 30_000 });
 
-  await selectProjectDetailMoreTab(page, "Labor");
-  await expect(page.getByText(names.workerName).first()).toBeVisible({ timeout: 30_000 });
+  await page.goto(`/labor?project_id=${encodeURIComponent(projectId)}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await expectHealthyPage(page, "labor-project-filter", testInfo);
+  await expect(
+    page.locator("tbody tr, [role=row]").filter({ hasText: names.workerName }).first()
+  ).toBeVisible({ timeout: 30_000 });
 
   await page.goto(customerUrl, { waitUntil: "domcontentloaded" });
   await expectHealthyPage(page, "customer-detail", testInfo);
