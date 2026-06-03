@@ -54,6 +54,14 @@ function isoDateOffset(daysFromToday: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+async function expectJsonMessage(
+  response: { json(): Promise<unknown> },
+  pattern: RegExp
+): Promise<void> {
+  const body = (await response.json()) as { message?: unknown };
+  expect(String(body.message ?? "")).toMatch(pattern);
+}
+
 test.describe("bank and labor server API boundary", () => {
   test.describe.configure({ mode: "serial", timeout: 60_000 });
 
@@ -193,6 +201,170 @@ test.describe("bank and labor server API boundary", () => {
     await expect(page.getByText(/RLS permission denied|permission denied|401|403/i)).toHaveCount(0);
 
     await context.close();
+  });
+
+  test("guarded labor API rejects duplicate worker date sessions across projects", async ({
+    browser,
+  }) => {
+    const db = serviceRoleClient();
+    const tag = `duplicate-session-${Date.now()}`;
+    const { data: projects, error: projectsError } = await db
+      .from("projects")
+      .insert([
+        { name: `[E2E] Duplicate Session A ${tag}`, status: "Active", budget: 0, spent: 0 },
+        { name: `[E2E] Duplicate Session B ${tag}`, status: "Active", budget: 0, spent: 0 },
+      ])
+      .select("id");
+    expect(projectsError).toBeNull();
+    expect(projects?.length).toBe(2);
+
+    const { data: worker, error: workerError } = await db
+      .from("workers")
+      .insert({
+        name: `[E2E] Duplicate Guard Worker ${tag}`,
+        half_day_rate: 100,
+        daily_rate: 200,
+        status: "active",
+      })
+      .select("id")
+      .single();
+    expect(workerError).toBeNull();
+
+    const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+    try {
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const fullDayDate = isoDateOffset(-20);
+      const firstFullDayResponse = await context.request.post("/api/labor/entries", {
+        data: {
+          projectId: projects![0]!.id,
+          workDate: fullDayDate,
+          rows: [{ workerId: worker!.id, morning: true, afternoon: true }],
+        },
+      });
+      expect(firstFullDayResponse.status()).toBe(200);
+
+      const duplicateFullDayResponse = await context.request.post("/api/labor/entries", {
+        data: {
+          projectId: projects![1]!.id,
+          workDate: fullDayDate,
+          rows: [{ workerId: worker!.id, morning: true, afternoon: true }],
+        },
+      });
+      expect(duplicateFullDayResponse.status()).toBe(409);
+      await expectJsonMessage(duplicateFullDayResponse, /already has.*date\/session/i);
+
+      const fullDayJoinedResponse = await context.request.get(
+        `/api/labor/entries?view=joined&workerId=${encodeURIComponent(
+          worker!.id
+        )}&dateFrom=${encodeURIComponent(fullDayDate)}&dateTo=${encodeURIComponent(fullDayDate)}`
+      );
+      expect(fullDayJoinedResponse.status()).toBe(200);
+      const fullDayJoinedBody = (await fullDayJoinedResponse.json()) as {
+        entries?: Array<{ cost_amount?: number | null }>;
+      };
+      expect(fullDayJoinedBody.entries ?? []).toHaveLength(1);
+      expect(
+        (fullDayJoinedBody.entries ?? []).reduce(
+          (sum, entry) => sum + (Number(entry.cost_amount) || 0),
+          0
+        )
+      ).toBe(200);
+
+      const splitSessionDate = isoDateOffset(-19);
+      const morningResponse = await context.request.post("/api/labor/entries", {
+        data: {
+          projectId: projects![0]!.id,
+          workDate: splitSessionDate,
+          rows: [{ workerId: worker!.id, morning: true, afternoon: false }],
+        },
+      });
+      expect(morningResponse.status()).toBe(200);
+
+      const duplicateMorningResponse = await context.request.post("/api/labor/entries", {
+        data: {
+          projectId: projects![1]!.id,
+          workDate: splitSessionDate,
+          rows: [{ workerId: worker!.id, morning: true, afternoon: false }],
+        },
+      });
+      expect(duplicateMorningResponse.status()).toBe(409);
+      await expectJsonMessage(duplicateMorningResponse, /already has.*date\/session/i);
+
+      const afternoonResponse = await context.request.post("/api/labor/entries", {
+        data: {
+          projectId: projects![1]!.id,
+          workDate: splitSessionDate,
+          rows: [{ workerId: worker!.id, morning: false, afternoon: true }],
+        },
+      });
+      expect(afternoonResponse.status()).toBe(200);
+
+      const splitJoinedResponse = await context.request.get(
+        `/api/labor/entries?view=joined&workerId=${encodeURIComponent(
+          worker!.id
+        )}&dateFrom=${encodeURIComponent(splitSessionDate)}&dateTo=${encodeURIComponent(
+          splitSessionDate
+        )}`
+      );
+      expect(splitJoinedResponse.status()).toBe(200);
+      const splitJoinedBody = (await splitJoinedResponse.json()) as {
+        entries?: Array<{ cost_amount?: number | null }>;
+      };
+      expect(splitJoinedBody.entries ?? []).toHaveLength(2);
+      expect(
+        (splitJoinedBody.entries ?? []).reduce(
+          (sum, entry) => sum + (Number(entry.cost_amount) || 0),
+          0
+        )
+      ).toBe(200);
+
+      const duplicateRequestDate = isoDateOffset(-18);
+      const duplicateRequestResponse = await context.request.post("/api/labor/entries", {
+        data: {
+          projectId: projects![0]!.id,
+          workDate: duplicateRequestDate,
+          rows: [
+            { workerId: worker!.id, morning: true, afternoon: false },
+            { workerId: worker!.id, morning: true, afternoon: false },
+          ],
+        },
+      });
+      expect(duplicateRequestResponse.status()).toBe(409);
+      await expectJsonMessage(duplicateRequestResponse, /already has.*date\/session/i);
+
+      const duplicateRequestJoinedResponse = await context.request.get(
+        `/api/labor/entries?view=joined&workerId=${encodeURIComponent(
+          worker!.id
+        )}&dateFrom=${encodeURIComponent(duplicateRequestDate)}&dateTo=${encodeURIComponent(
+          duplicateRequestDate
+        )}`
+      );
+      expect(duplicateRequestJoinedResponse.status()).toBe(200);
+      const duplicateRequestJoinedBody = (await duplicateRequestJoinedResponse.json()) as {
+        entries?: Array<unknown>;
+      };
+      expect(duplicateRequestJoinedBody.entries ?? []).toHaveLength(0);
+    } finally {
+      if (worker?.id) {
+        await db.from("labor_entries").delete().eq("worker_id", worker.id);
+        await db.from("labor_workers").delete().eq("id", worker.id);
+        await db.from("workers").delete().eq("id", worker.id);
+      }
+      if (projects?.length) {
+        await db
+          .from("projects")
+          .delete()
+          .in(
+            "id",
+            projects.map((project) => project.id)
+          );
+      }
+      await context.close();
+    }
   });
 
   test("PIN session can create edit and delete time entries through guarded labor API", async ({

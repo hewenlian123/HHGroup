@@ -99,6 +99,22 @@ function apiError(status: number, message: string): NextResponse {
   return NextResponse.json({ ok: false, message }, { status, headers: NO_CACHE_HEADERS });
 }
 
+class DuplicateLaborSessionError extends Error {
+  constructor(message = "This worker already has a labor entry for the selected date/session.") {
+    super(message);
+    this.name = "DuplicateLaborSessionError";
+  }
+}
+
+function isDuplicateLaborSessionError(error: unknown): boolean {
+  return error instanceof DuplicateLaborSessionError;
+}
+
+function laborApiError(error: unknown, fallback: string): NextResponse {
+  const message = error instanceof Error ? error.message : fallback;
+  return apiError(isDuplicateLaborSessionError(error) ? 409 : 500, message);
+}
+
 function toPayload(input: LaborEntryPayload) {
   const workerId = safeString(input.workerId ?? input.worker_id);
   const projectId = safeString(input.projectId ?? input.project_id);
@@ -142,6 +158,84 @@ function toSessionFlags(session: LaborSession): { morning: boolean; afternoon: b
   return { morning: true, afternoon: true };
 }
 
+function sessionsOverlap(
+  left: { morning: boolean; afternoon: boolean },
+  right: { morning?: boolean | null; afternoon?: boolean | null }
+): boolean {
+  return (left.morning && right.morning === true) || (left.afternoon && right.afternoon === true);
+}
+
+function ensureNoDuplicateRowsInRequest(rows: DailyLaborInput[]): void {
+  const claimedByWorker = new Map<string, { morning: boolean; afternoon: boolean }>();
+  for (const row of rows) {
+    const workerId = typeof row.workerId === "string" ? row.workerId.trim() : "";
+    if (!workerId) continue;
+    const requested = {
+      morning: row.morning === true,
+      afternoon: row.afternoon === true,
+    };
+    if (!requested.morning && !requested.afternoon) continue;
+
+    const claimed = claimedByWorker.get(workerId) ?? { morning: false, afternoon: false };
+    if (sessionsOverlap(requested, claimed)) {
+      throw new DuplicateLaborSessionError();
+    }
+    claimedByWorker.set(workerId, {
+      morning: claimed.morning || requested.morning,
+      afternoon: claimed.afternoon || requested.afternoon,
+    });
+  }
+}
+
+async function ensureNoOverlappingLaborSession(
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  input: {
+    entryId?: string;
+    workerId: string;
+    workDate: string;
+    morning: boolean;
+    afternoon: boolean;
+  }
+): Promise<void> {
+  if (!input.workerId || !input.workDate || (!input.morning && !input.afternoon)) return;
+
+  let query = supabase
+    .from("labor_entries")
+    .select("id, morning, afternoon")
+    .eq("worker_id", input.workerId)
+    .eq("work_date", input.workDate.slice(0, 10));
+  if (input.entryId) query = query.neq("id", input.entryId);
+
+  const { data, error } = await query.limit(25);
+  if (error) throw new Error(error.message ?? "Failed to validate duplicate labor entry.");
+
+  const requested = { morning: input.morning, afternoon: input.afternoon };
+  const duplicate = (data ?? []).some((row) =>
+    sessionsOverlap(requested, row as { morning?: boolean | null; afternoon?: boolean | null })
+  );
+  if (duplicate) {
+    throw new DuplicateLaborSessionError();
+  }
+}
+
+async function ensureNoOverlappingDailyRows(
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  workDate: string,
+  rows: DailyLaborInput[]
+): Promise<void> {
+  ensureNoDuplicateRowsInRequest(rows);
+  await Promise.all(
+    rows.map((row) =>
+      ensureNoOverlappingLaborSession(supabase, {
+        workerId: typeof row.workerId === "string" ? row.workerId.trim() : "",
+        workDate,
+        morning: row.morning === true,
+        afternoon: row.afternoon === true,
+      })
+    )
+  );
+}
+
 async function ensureNotDuplicateSession(
   supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
   input: {
@@ -152,19 +246,13 @@ async function ensureNotDuplicateSession(
   }
 ): Promise<void> {
   const flags = toSessionFlags(input.session);
-  const { data, error } = await supabase
-    .from("labor_entries")
-    .select("id")
-    .eq("worker_id", input.workerId)
-    .eq("work_date", input.workDate.slice(0, 10))
-    .eq("morning", flags.morning)
-    .eq("afternoon", flags.afternoon)
-    .neq("id", input.entryId)
-    .limit(1);
-  if (error) throw new Error(error.message ?? "Failed to validate duplicate labor entry.");
-  if ((data ?? []).length > 0) {
-    throw new Error("This worker already has an entry for the selected session on this date.");
-  }
+  await ensureNoOverlappingLaborSession(supabase, {
+    entryId: input.entryId,
+    workerId: input.workerId,
+    workDate: input.workDate,
+    morning: flags.morning,
+    afternoon: flags.afternoon,
+  });
 }
 
 async function updateSessionEntry(
@@ -260,7 +348,7 @@ async function updateDailyEntry(
 
   const { data: current, error: curErr } = await supabase
     .from("labor_entries")
-    .select("id, worker_id, work_date, status, daily_rate_snapshot, notes")
+    .select("id, worker_id, work_date, morning, afternoon, status, daily_rate_snapshot, notes")
     .eq("id", id)
     .maybeSingle();
   if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
@@ -268,6 +356,8 @@ async function updateDailyEntry(
   const row = current as {
     worker_id?: string | null;
     work_date?: string | null;
+    morning?: boolean | null;
+    afternoon?: boolean | null;
     status?: string | null;
     daily_rate_snapshot?: number | null;
     notes?: string | null;
@@ -282,6 +372,13 @@ async function updateDailyEntry(
   const hours = safeNumber(body.hours);
   const workerChanged = workerId !== safeString(row.worker_id);
   const dateChanged = workDate !== safeString(row.work_date).slice(0, 10);
+  await ensureNoOverlappingLaborSession(supabase, {
+    entryId: id,
+    workerId,
+    workDate,
+    morning: row.morning === true,
+    afternoon: row.afternoon === true,
+  });
   const hasOvertime = hasLaborOvertimeInput(body as Record<string, unknown>);
   const otHours = hasLaborOvertimeHoursInput(body as Record<string, unknown>)
     ? readLaborOvertimeHoursInput(body)
@@ -506,6 +603,7 @@ export async function POST(request: Request) {
           otAmount: readLaborOvertimeAmountInput(row),
         }))
         .filter((row) => row.workerId && (row.morning || row.afternoon));
+      await ensureNoOverlappingDailyRows(supabase, workDate, rows);
       const entries = await insertDailyLaborEntriesWithClient(supabase, projectId, workDate, rows, {
         notes: typeof body.notes === "string" ? body.notes : undefined,
         costCode: typeof body.costCode === "string" ? body.costCode : undefined,
@@ -529,8 +627,7 @@ export async function POST(request: Request) {
       { headers: NO_CACHE_HEADERS }
     );
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to save labor entry.";
-    return apiError(500, message);
+    return laborApiError(e, "Failed to save labor entry.");
   }
 }
 
@@ -572,8 +669,7 @@ export async function PATCH(request: Request) {
     }
     return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to save labor entry.";
-    return apiError(500, message);
+    return laborApiError(e, "Failed to save labor entry.");
   }
 }
 
