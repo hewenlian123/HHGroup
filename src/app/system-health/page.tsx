@@ -222,6 +222,46 @@ type IntegrityScanResult = {
   sections: IntegrityScanSection[];
 };
 
+type FinancialReconciliationStatus = "pass" | "warning" | "fail" | "error";
+type FinancialReconciliationSeverity = "info" | "low" | "medium" | "high" | "critical";
+
+type FinancialReconciliationIssue = {
+  severity: FinancialReconciliationSeverity;
+  category:
+    | "invoice_reconciliation"
+    | "estimate_reconciliation"
+    | "project_snapshot"
+    | "worker_balance"
+    | "financial_marker_impact";
+  table: string;
+  id: string;
+  message: string;
+  evidence: Record<string, unknown>;
+  recommendedAction: string;
+  autoFixAvailable: false;
+};
+
+type FinancialReconciliationSection = {
+  id: string;
+  title: string;
+  status: FinancialReconciliationStatus;
+  issues: FinancialReconciliationIssue[];
+};
+
+type FinancialReconciliationResult = {
+  status: FinancialReconciliationStatus;
+  generatedAt: string;
+  summary: {
+    totalIssues: number;
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+    info: number;
+  };
+  sections: FinancialReconciliationSection[];
+};
+
 const DEFAULT_QA_SUMMARY: SystemQaResult["summary"] = {
   status: "pass",
   critical: 0,
@@ -505,6 +545,41 @@ function integrityScanRows(scan?: IntegrityScanResult | null): HealthDetailRowDa
         };
       })
     )
+    .slice(0, 10);
+}
+
+function financialReconciliationStatusToHealthStatus(
+  status?: FinancialReconciliationStatus
+): HealthCheckStatus {
+  if (status === "error" || status === "fail") return "fail";
+  if (status === "warning") return "warning";
+  return "ok";
+}
+
+function financialReconciliationSeverityToRowStatus(
+  severity: FinancialReconciliationSeverity
+): DetailRowStatus {
+  if (severity === "critical" || severity === "high") return "fail";
+  if (severity === "medium" || severity === "low") return "warning";
+  return "info";
+}
+
+function financialReconciliationRows(
+  report?: FinancialReconciliationResult | null
+): HealthDetailRowData[] | undefined {
+  if (!report) return undefined;
+  return report.sections
+    .flatMap((section) =>
+      section.issues.map((issue) => ({
+        id: `${section.id}:${issue.table}:${issue.id}:${issue.category}`,
+        name: `${issue.table} / ${issue.id}`,
+        status: financialReconciliationSeverityToRowStatus(issue.severity),
+        message: `${issue.severity.toUpperCase()} · ${issue.category} · ${issue.message}`,
+        code: issue.category,
+        meta: `${section.title} · ${formatEvidenceSummary(issue.evidence)} · ${issue.recommendedAction}`,
+      }))
+    )
+    .sort((a, b) => healthStatusPriority(a.status) - healthStatusPriority(b.status))
     .slice(0, 10);
 }
 
@@ -1659,6 +1734,12 @@ export default function SystemHealthPage() {
   const [integrityScan, setIntegrityScan] = React.useState<IntegrityScanResult | null>(null);
   const [integrityScanLoading, setIntegrityScanLoading] = React.useState(false);
   const [integrityScanError, setIntegrityScanError] = React.useState<string | null>(null);
+  const [financialReconciliation, setFinancialReconciliation] =
+    React.useState<FinancialReconciliationResult | null>(null);
+  const [financialReconciliationLoading, setFinancialReconciliationLoading] = React.useState(false);
+  const [financialReconciliationError, setFinancialReconciliationError] = React.useState<
+    string | null
+  >(null);
   const systemHealthInFlightRef = React.useRef<Promise<void> | null>(null);
 
   const fetchSystemHealth = React.useCallback(async () => {
@@ -1771,6 +1852,28 @@ export default function SystemHealthPage() {
     }
   }, []);
 
+  const fetchFinancialReconciliation = React.useCallback(async () => {
+    setFinancialReconciliationLoading(true);
+    setFinancialReconciliationError(null);
+    try {
+      const res = await fetch("/api/system/financial-reconciliation", { cache: "no-store" });
+      const data = (await res.json()) as FinancialReconciliationResult | { message?: string };
+      if (!res.ok) {
+        throw new Error(
+          "message" in data && data.message ? data.message : "Financial reconciliation failed."
+        );
+      }
+      setFinancialReconciliation(data as FinancialReconciliationResult);
+    } catch (e) {
+      setFinancialReconciliationError(
+        e instanceof Error ? e.message : "Failed to run financial reconciliation"
+      );
+      setFinancialReconciliation(null);
+    } finally {
+      setFinancialReconciliationLoading(false);
+    }
+  }, []);
+
   const runCleanup = React.useCallback(
     async (category: CleanupCategory) => {
       const confirmation = window.prompt("Type CLEAN UP to confirm this integrity cleanup.");
@@ -1810,6 +1913,7 @@ export default function SystemHealthPage() {
         fetchGuardian(),
         fetchIntegrity(),
         fetchIntegrityScan(),
+        fetchFinancialReconciliation(),
         fetchSystemQa(),
         fetchDataQuality(),
       ]);
@@ -1818,6 +1922,7 @@ export default function SystemHealthPage() {
     }
   }, [
     fetchDataQuality,
+    fetchFinancialReconciliation,
     fetchGuardian,
     fetchIntegrity,
     fetchIntegrityScan,
@@ -2074,6 +2179,10 @@ export default function SystemHealthPage() {
       : "ok";
   const integrityScanHealthStatus = integrityScanStatusToHealthStatus(integrityScan?.status);
   const integrityScanDetailRows = integrityScanRows(integrityScan);
+  const financialReconciliationHealthStatus = financialReconciliationStatusToHealthStatus(
+    financialReconciliation?.status
+  );
+  const financialReconciliationDetailRows = financialReconciliationRows(financialReconciliation);
   const healthActiveIssues: ActiveIssue[] = [...criticalIssues, ...needsAttention].map(
     (check, index) => ({
       id: `health:${index}:${check.name}:${check.code ?? ""}`,
@@ -2138,12 +2247,29 @@ export default function SystemHealthPage() {
       )
       .filter((issue) => issue.status === "fail" || issue.status === "warning")
       .slice(0, 8) ?? [];
+  const financialReconciliationActiveIssues: ActiveIssue[] =
+    financialReconciliation?.sections
+      ?.flatMap((section) =>
+        section.issues.map((issue) => ({
+          id: `financial-reconciliation:${section.id}:${issue.table}:${issue.id}:${issue.category}`,
+          title: `${issue.table} / ${issue.id}`,
+          status:
+            financialReconciliationSeverityToRowStatus(issue.severity) === "fail"
+              ? ("fail" as const)
+              : ("warning" as const),
+          message: issue.message,
+          meta: section.title,
+        }))
+      )
+      .filter((issue) => issue.status === "fail" || issue.status === "warning")
+      .slice(0, 8) ?? [];
   const activeIssues = [
     ...healthActiveIssues,
     ...guardianActiveIssues,
     ...qaActiveIssues,
     ...dataQualityActiveIssues,
     ...integrityScanActiveIssues,
+    ...financialReconciliationActiveIssues,
   ];
   const metadataRows = [
     {
@@ -2186,6 +2312,14 @@ export default function SystemHealthPage() {
       value: integrityScan
         ? `${integrityScan.summary.totalIssues} issue(s) · ${formatCheckedAt(integrityScan.generatedAt)}`
         : integrityScanLoading
+          ? "Checking..."
+          : "Run full scan",
+    },
+    {
+      label: "Financial Reconciliation",
+      value: financialReconciliation
+        ? `${financialReconciliation.summary.totalIssues} issue(s) · ${formatCheckedAt(financialReconciliation.generatedAt)}`
+        : financialReconciliationLoading
           ? "Checking..."
           : "Run full scan",
     },
@@ -2409,6 +2543,17 @@ export default function SystemHealthPage() {
             count={formatBlockedRouteCount(destructiveSafetySection)}
             icon={ShieldCheck}
           />
+          <HealthSummaryCard
+            title="Financial Reconciliation"
+            status={financialReconciliationHealthStatus}
+            summary="Read-only invoice, estimate, project, worker, and marker financial mismatch checks."
+            count={
+              financialReconciliation
+                ? `${financialReconciliation.summary.totalIssues} issue(s)`
+                : undefined
+            }
+            icon={Activity}
+          />
         </div>
 
         <ActiveIssuesPanel issues={activeIssues} optionalModules={optionalModuleChecks} />
@@ -2627,6 +2772,106 @@ export default function SystemHealthPage() {
                   <p className="mt-2 text-xs leading-5 text-slate-400">
                     No full scan has been run in this session. Use Run full scan to load marker,
                     dependency, QA, and route safety results.
+                  </p>
+                </div>
+              </div>
+            )}
+          </HealthSection>
+
+          <HealthSection
+            title="Financial Reconciliation Summary"
+            icon={Activity}
+            status={financialReconciliationHealthStatus}
+            count={
+              financialReconciliation
+                ? `${financialReconciliation.summary.totalIssues} issue(s)`
+                : financialReconciliationError
+                  ? "Scan unavailable"
+                  : undefined
+            }
+            description={`Read-only financial mismatch scan. ${
+              financialReconciliation
+                ? `Generated ${formatCheckedAt(financialReconciliation.generatedAt)}.`
+                : "No cleanup or fix actions are available here."
+            }`}
+            defaultOpen={Boolean(
+              financialReconciliationDetailRows?.some(
+                (row) => row.status !== "ok" && row.status !== "info"
+              )
+            )}
+          >
+            {financialReconciliationError ? (
+              <p className="px-4 pb-4 text-sm text-red-300">{financialReconciliationError}</p>
+            ) : financialReconciliation ? (
+              <>
+                <div className="px-4 pb-4">
+                  <div className="rounded-xl border border-[rgb(198_165_106_/_0.20)] bg-[rgb(198_165_106_/_0.055)] p-3 text-sm text-slate-200">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusPill
+                        status={financialReconciliationHealthStatus}
+                        label={`Status: ${healthStatusLabel(financialReconciliationHealthStatus)}`}
+                        compact
+                        variant="calm"
+                      />
+                      <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                        Read-only scan
+                      </span>
+                      <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                        Auto-fix disabled
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs leading-5 text-slate-400">
+                      No cleanup actions are available from this panel. Use this summary to review
+                      mismatches before any financial formula, ledger, or reversal-policy work.
+                    </p>
+                  </div>
+                </div>
+                <MetadataGrid
+                  rows={[
+                    { label: "Total issues", value: financialReconciliation.summary.totalIssues },
+                    { label: "Critical", value: financialReconciliation.summary.critical },
+                    { label: "High", value: financialReconciliation.summary.high },
+                    { label: "Medium", value: financialReconciliation.summary.medium },
+                    { label: "Low", value: financialReconciliation.summary.low },
+                    { label: "Info", value: financialReconciliation.summary.info },
+                    {
+                      label: "Generated",
+                      value: formatCheckedAt(financialReconciliation.generatedAt),
+                    },
+                    {
+                      label: "Auto fix",
+                      value: "Disabled",
+                    },
+                  ]}
+                />
+                <div className="px-4 pb-3">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                    Top 10 issues
+                  </p>
+                </div>
+                <HealthDetailTable
+                  rows={financialReconciliationDetailRows}
+                  loading={financialReconciliationLoading}
+                  emptyMessage="No obvious financial reconciliation issues found."
+                />
+              </>
+            ) : (
+              <div className="px-4 pb-4">
+                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3 text-sm text-slate-300">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                      Read-only scan
+                    </span>
+                    <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                      Manual full scan
+                    </span>
+                    <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                      Auto-fix disabled
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs leading-5 text-slate-400">
+                    No full scan has been run in this session. Use Run full scan to load invoice,
+                    estimate, project, worker, and marker financial reconciliation results.
                   </p>
                 </div>
               </div>

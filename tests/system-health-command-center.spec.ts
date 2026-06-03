@@ -126,6 +126,33 @@ test.describe("System Guardian command center", () => {
       });
     });
 
+    await page.route("**/api/system/financial-reconciliation", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          status: "pass",
+          generatedAt: "2026-05-22T12:00:00.000Z",
+          summary: {
+            totalIssues: 0,
+            critical: 0,
+            high: 0,
+            medium: 0,
+            low: 0,
+            info: 0,
+          },
+          sections: [
+            {
+              id: "invoice-reconciliation",
+              title: "Invoice Reconciliation",
+              status: "pass",
+              issues: [],
+            },
+          ],
+        }),
+      });
+    });
+
     await page.route("**/api/system/qa-check", async (route) => {
       await route.fulfill({
         status: 200,
@@ -232,9 +259,13 @@ test.describe("System Guardian command center", () => {
       "Security / PIN",
       "Critical Routes",
       "Destructive Safety",
+      "Financial Reconciliation",
     ]) {
       await expect(page.getByText(card, { exact: true }).first()).toBeVisible();
     }
+
+    await page.getByRole("button", { name: "Run full scan" }).click();
+    await expect(page.getByRole("button", { name: "Run full scan" })).toBeVisible();
 
     await expect(page.getByRole("heading", { name: "Active Issues" })).toBeVisible();
     await expect(page.getByText("No active issues")).toBeVisible();
@@ -251,6 +282,7 @@ test.describe("System Guardian command center", () => {
       "Destructive Action Safety",
       "System Metadata",
       "System Integrity Scanner",
+      "Financial Reconciliation Summary",
     ]) {
       await expect(page.getByText(section, { exact: true }).first()).toBeVisible();
     }
@@ -276,6 +308,20 @@ test.describe("System Guardian command center", () => {
     await expect(scannerSection.getByRole("button", { name: /delete|fix|cleanup/i })).toHaveCount(
       0
     );
+
+    const financialReconciliationSection = page
+      .locator("details")
+      .filter({ hasText: "Financial Reconciliation Summary" })
+      .first();
+    await financialReconciliationSection.locator("summary").click();
+    await expect(financialReconciliationSection.getByText("Read-only scan")).toBeVisible();
+    await expect(financialReconciliationSection.getByText("Auto-fix disabled")).toBeVisible();
+    await expect(
+      financialReconciliationSection.getByText("No cleanup actions are available from this panel.")
+    ).toBeVisible();
+    await expect(
+      financialReconciliationSection.getByRole("button", { name: /delete|fix|cleanup/i })
+    ).toHaveCount(0);
 
     const destructiveSection = page
       .locator("details")

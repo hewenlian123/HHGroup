@@ -424,8 +424,21 @@ test.describe("System integrity scanner", () => {
           }),
         });
       });
+      await page.route("**/api/system/financial-reconciliation", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: "pass",
+            generatedAt: "2026-05-25T12:00:00.000Z",
+            summary: { totalIssues: 0, critical: 0, high: 0, medium: 0, low: 0, info: 0 },
+            sections: [],
+          }),
+        });
+      });
 
       await page.goto("/system-health", { waitUntil: "domcontentloaded" });
+      await page.getByRole("button", { name: "Run full scan" }).click();
       const scannerSection = page
         .locator("details")
         .filter({ hasText: "System Integrity Scanner" })
