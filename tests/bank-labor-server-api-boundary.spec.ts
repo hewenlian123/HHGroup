@@ -274,6 +274,39 @@ test.describe("bank and labor server API boundary", () => {
         )
       ).toBe(200);
 
+      const page = await context.newPage();
+      await page.goto(
+        `/labor?workerId=${encodeURIComponent(worker!.id)}&month=${encodeURIComponent(
+          fullDayDate.slice(0, 7)
+        )}`
+      );
+      await expect(page.getByRole("button", { name: /Add Entry/i }).first()).toBeVisible({
+        timeout: 30_000,
+      });
+      await page
+        .getByRole("button", { name: /Add Entry/i })
+        .first()
+        .click();
+      const fullDayDialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
+      await expect(fullDayDialog).toBeVisible({ timeout: 30_000 });
+      await fullDayDialog.locator('input[type="date"]').fill(fullDayDate);
+      const fullDayWorkerRow = fullDayDialog
+        .getByRole("row")
+        .filter({ hasText: `[E2E] Duplicate Guard Worker ${tag}` })
+        .first();
+      await expect(fullDayWorkerRow).toContainText(/Already has full day/i, { timeout: 30_000 });
+      await expect(fullDayWorkerRow.getByRole("button", { name: "AM" })).toBeDisabled();
+      await expect(fullDayWorkerRow.getByRole("button", { name: "PM" })).toBeDisabled();
+      const viewExistingEntry = fullDayWorkerRow.getByRole("link", { name: /^View$/i });
+      await expect(viewExistingEntry).toBeVisible();
+      await viewExistingEntry.click();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/labor\\?(?=.*workerId=${worker!.id})(?=.*month=${fullDayDate.slice(0, 7)})(?=.*entryId=)`
+        ),
+        { timeout: 30_000 }
+      );
+
       const splitSessionDate = isoDateOffset(-19);
       const morningResponse = await context.request.post("/api/labor/entries", {
         data: {
@@ -348,6 +381,69 @@ test.describe("bank and labor server API boundary", () => {
         entries?: Array<unknown>;
       };
       expect(duplicateRequestJoinedBody.entries ?? []).toHaveLength(0);
+
+      const hiddenDate = isoDateOffset(-17);
+      const { error: hiddenInsertError } = await db.from("labor_entries").insert({
+        worker_id: worker!.id,
+        project_id: projects![0]!.id,
+        work_date: hiddenDate,
+        cost_amount: 200,
+        status: "cancelled",
+        morning: true,
+        afternoon: true,
+        notes: "hidden duplicate guard regression",
+      });
+      expect(hiddenInsertError).toBeNull();
+
+      await page.goto(
+        `/labor?workerId=${encodeURIComponent(worker!.id)}&month=${encodeURIComponent(
+          hiddenDate.slice(0, 7)
+        )}`
+      );
+      await page
+        .getByRole("button", { name: /Add Entry/i })
+        .first()
+        .click();
+      const hiddenDialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
+      await expect(hiddenDialog).toBeVisible({ timeout: 30_000 });
+      await hiddenDialog.locator('input[type="date"]').fill(hiddenDate);
+      const hiddenWorkerRow = hiddenDialog
+        .getByRole("row")
+        .filter({ hasText: `[E2E] Duplicate Guard Worker ${tag}` })
+        .first();
+      await expect(hiddenWorkerRow).toBeVisible({ timeout: 30_000 });
+      await expect(hiddenWorkerRow).not.toContainText(/already/i);
+      await expect(hiddenWorkerRow.getByRole("button", { name: "AM" })).toBeEnabled();
+      await expect(hiddenWorkerRow.getByRole("button", { name: "PM" })).toBeEnabled();
+      await page.keyboard.press("Escape");
+
+      const createOverHiddenResponse = await context.request.post("/api/labor/entries", {
+        data: {
+          projectId: projects![1]!.id,
+          workDate: hiddenDate,
+          rows: [{ workerId: worker!.id, morning: true, afternoon: true }],
+        },
+      });
+      expect(createOverHiddenResponse.status()).toBe(200);
+
+      const hiddenDateResponse = await context.request.get(
+        `/api/labor/entries?date=${encodeURIComponent(hiddenDate)}`
+      );
+      expect(hiddenDateResponse.status()).toBe(200);
+      const hiddenDateBody = (await hiddenDateResponse.json()) as {
+        entries?: Array<{
+          status?: string | null;
+          worker_id?: string;
+          morning?: boolean;
+          afternoon?: boolean;
+        }>;
+      };
+      const visibleEntriesForWorker = (hiddenDateBody.entries ?? []).filter(
+        (entry) => entry.worker_id === worker!.id
+      );
+      expect(visibleEntriesForWorker).toHaveLength(1);
+      expect(String(visibleEntriesForWorker[0]?.status ?? "").toLowerCase()).not.toBe("cancelled");
+      expect(visibleEntriesForWorker[0]).toMatchObject({ morning: true, afternoon: true });
     } finally {
       if (worker?.id) {
         await db.from("labor_entries").delete().eq("worker_id", worker.id);

@@ -191,7 +191,12 @@ export default function LaborPageClient() {
     pathname === "/labor/daily-entry" && (searchParams.get("mode") ?? "") === "worker";
   const now = new Date();
   const initialMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  const [selectedMonth, setSelectedMonth] = React.useState(initialMonth);
+  const initialMonthFromUrl = searchParams.get("month");
+  const [selectedMonth, setSelectedMonth] = React.useState(
+    initialMonthFromUrl && /^\d{4}-\d{2}$/.test(initialMonthFromUrl)
+      ? initialMonthFromUrl
+      : initialMonth
+  );
   const { dateFrom: monthStart, dateTo: monthEnd } = getMonthRange(selectedMonth);
   const [projectFilter, setProjectFilter] = React.useState<string>("");
   const [workerFilter, setWorkerFilter] = React.useState<string>("");
@@ -211,6 +216,12 @@ export default function LaborPageClient() {
     if (workerId) {
       setWorkerFilter(workerId);
       appliedWorkerIdFromUrl.current = true;
+    }
+  }, [searchParams]);
+  React.useEffect(() => {
+    const month = searchParams.get("month");
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      setSelectedMonth(month);
     }
   }, [searchParams]);
 

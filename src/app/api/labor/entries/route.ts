@@ -20,6 +20,7 @@ import {
   buildLaborEntryRateSnapshotWithClient,
   resolveWorkerDailyRateForDateWithClient,
 } from "@/lib/worker-rate-history-db";
+import { isDuplicateBlockingLaborEntryStatus } from "@/lib/labor-entry-status";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -201,7 +202,7 @@ async function ensureNoOverlappingLaborSession(
 
   let query = supabase
     .from("labor_entries")
-    .select("id, morning, afternoon")
+    .select("id, morning, afternoon, status")
     .eq("worker_id", input.workerId)
     .eq("work_date", input.workDate.slice(0, 10));
   if (input.entryId) query = query.neq("id", input.entryId);
@@ -210,9 +211,16 @@ async function ensureNoOverlappingLaborSession(
   if (error) throw new Error(error.message ?? "Failed to validate duplicate labor entry.");
 
   const requested = { morning: input.morning, afternoon: input.afternoon };
-  const duplicate = (data ?? []).some((row) =>
-    sessionsOverlap(requested, row as { morning?: boolean | null; afternoon?: boolean | null })
-  );
+  const duplicate = (data ?? []).some((row) => {
+    const candidate = row as {
+      morning?: boolean | null;
+      afternoon?: boolean | null;
+      status?: string | null;
+    };
+    return (
+      isDuplicateBlockingLaborEntryStatus(candidate.status) && sessionsOverlap(requested, candidate)
+    );
+  });
   if (duplicate) {
     throw new DuplicateLaborSessionError();
   }
@@ -498,7 +506,7 @@ export async function GET(request: Request) {
   try {
     let entryQuery = supabase
       .from("labor_entries")
-      .select("id,worker_id,project_id,work_date,hours,cost_code,notes")
+      .select("id,worker_id,project_id,work_date,hours,cost_code,notes,morning,afternoon,status")
       .limit(date ? 2000 : 500);
     if (date) {
       entryQuery = entryQuery.eq("work_date", date).order("work_date", { ascending: true });
@@ -546,11 +554,15 @@ export async function GET(request: Request) {
         missingLaborTable,
         entries: entriesRes.error
           ? []
-          : (entriesRes.data ?? []).map((entry: { notes?: string | null }) => ({
-              ...entry,
-              overtime_hours: parseLaborOvertimeHoursFromNotes(entry.notes),
-              overtime_amount: parseLaborOvertimeAmountFromNotes(entry.notes),
-            })),
+          : (entriesRes.data ?? [])
+              .filter((entry: { status?: string | null }) =>
+                isDuplicateBlockingLaborEntryStatus(entry.status)
+              )
+              .map((entry: { notes?: string | null }) => ({
+                ...entry,
+                overtime_hours: parseLaborOvertimeHoursFromNotes(entry.notes),
+                overtime_amount: parseLaborOvertimeAmountFromNotes(entry.notes),
+              })),
         workers: workerRows
           .map((row) => {
             const effectiveDailyRate = effectiveRateByWorkerId.get(row.id);

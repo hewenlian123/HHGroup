@@ -13,6 +13,7 @@ import {
   parseLaborOvertimeHoursFromNotes,
 } from "@/lib/labor-overtime-notes";
 import { buildLaborEntryRateSnapshotWithClient } from "@/lib/worker-rate-history-db";
+import { isHiddenLaborEntryStatus } from "@/lib/labor-entry-status";
 
 export type LaborEntryStatus = "Draft" | "Submitted" | "Approved" | "Locked";
 
@@ -492,6 +493,7 @@ export async function getLaborEntriesWithJoins(
   return entries
     .map((r): LaborEntryWithJoins | null => {
       const row = r as Record<string, unknown>;
+      if (isHiddenLaborEntryStatus(row.status)) return null;
       const rawStatusStr =
         usedStatusCols && row.status != null && String(row.status).trim() !== ""
           ? String(row.status)

@@ -49,9 +49,26 @@ type LaborProjectOption = { id: string; name: string };
 
 type LaborEntryOptionResponse = {
   message?: string;
-  entries?: Array<{ worker_id?: string; workerId?: string }>;
+  entries?: ExistingLaborEntryOption[];
   workers?: LaborWorker[];
   projects?: LaborProjectOption[];
+};
+
+type ExistingLaborEntryOption = {
+  id?: string;
+  worker_id?: string;
+  workerId?: string;
+  project_id?: string | null;
+  projectId?: string | null;
+  morning?: boolean | null;
+  afternoon?: boolean | null;
+  status?: string | null;
+};
+
+type ExistingSessionState = {
+  morning: boolean;
+  afternoon: boolean;
+  entryId: string | null;
 };
 
 type DailyLaborRowInput = {
@@ -84,6 +101,26 @@ function toYmd(d: Date): string {
 
 function computeRegularPay(dailyRate: number, morning: boolean, afternoon: boolean): number {
   return morning && afternoon ? dailyRate : morning || afternoon ? dailyRate / 2 : 0;
+}
+
+function existingEntryWorkerId(entry: ExistingLaborEntryOption): string {
+  return String(entry.worker_id ?? entry.workerId ?? "").trim();
+}
+
+function existingSessionLabel(existing: ExistingSessionState | undefined): string | null {
+  if (!existing) return null;
+  if (existing.morning && existing.afternoon) return "Already has full day";
+  if (existing.morning) return "AM already entered";
+  if (existing.afternoon) return "PM already entered";
+  return null;
+}
+
+function laborEntryVisiblePath(workerId: string, workDate: string, entryId: string | null): string {
+  const params = new URLSearchParams();
+  params.set("workerId", workerId);
+  if (/^\d{4}-\d{2}/.test(workDate)) params.set("month", workDate.slice(0, 7));
+  if (entryId) params.set("entryId", entryId);
+  return `/labor?${params.toString()}`;
 }
 
 const defaultSel = (): Sel => ({
@@ -245,7 +282,8 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
   afternoon,
   otHours,
   otAmount,
-  disabled,
+  existing,
+  workDate,
   toggleMorning,
   toggleAfternoon,
   commitOtHours,
@@ -256,7 +294,8 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
   afternoon: boolean;
   otHours: number;
   otAmount: number;
-  disabled: boolean;
+  existing?: ExistingSessionState;
+  workDate: string;
   toggleMorning: (id: string) => void;
   toggleAfternoon: (id: string) => void;
   commitOtHours: (id: string, value: number) => void;
@@ -282,6 +321,13 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
 
   const onAm = React.useCallback(() => toggleMorning(worker.id), [toggleMorning, worker.id]);
   const onPm = React.useCallback(() => toggleAfternoon(worker.id), [toggleAfternoon, worker.id]);
+  const morningDisabled = existing?.morning === true;
+  const afternoonDisabled = existing?.afternoon === true;
+  const fullyBlocked = morningDisabled && afternoonDisabled;
+  const existingLabel = existingSessionLabel(existing);
+  const existingHref = existingLabel
+    ? laborEntryVisiblePath(worker.id, workDate, existing?.entryId ?? null)
+    : "";
 
   const scheduleOtCommit = React.useCallback(() => {
     if (otRafRef.current != null) cancelAnimationFrame(otRafRef.current);
@@ -322,7 +368,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
       className={cn(
         workerGridClass,
         "min-h-[54px] border-b border-white/[0.065] px-3 text-sm transition-colors last:border-b-0 hover:bg-white/[0.035] [&>div]:min-w-0",
-        disabled && "bg-white/[0.018] opacity-70 hover:bg-white/[0.018]"
+        fullyBlocked && "bg-white/[0.018] opacity-70 hover:bg-white/[0.018]"
       )}
       role="row"
     >
@@ -333,9 +379,15 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
         >
           {worker.name}
         </span>
-        {disabled ? (
-          <span className="mt-0.5 block truncate text-[11px] font-medium text-[var(--neo-text-tertiary)]">
-            Already has entry
+        {existingLabel ? (
+          <span className="mt-0.5 flex min-w-0 items-center gap-1 text-[11px] font-medium text-[var(--neo-text-tertiary)]">
+            <span className="truncate">{existingLabel}</span>
+            <a
+              href={existingHref}
+              className="shrink-0 text-[#D2B77F] underline-offset-4 hover:text-[#FFE0A3] hover:underline"
+            >
+              View
+            </a>
           </span>
         ) : null}
       </div>
@@ -353,7 +405,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
               "border-[rgba(184,147,90,0.5)] bg-[rgba(184,147,90,0.18)] text-[#F4D89E] hover:border-[rgba(184,147,90,0.6)] hover:bg-[rgba(184,147,90,0.22)] hover:text-[#FFE0A3]"
           )}
           onClick={onAm}
-          disabled={disabled}
+          disabled={morningDisabled}
         >
           AM
         </Button>
@@ -369,7 +421,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
               "border-[rgba(184,147,90,0.5)] bg-[rgba(184,147,90,0.18)] text-[#F4D89E] hover:border-[rgba(184,147,90,0.6)] hover:bg-[rgba(184,147,90,0.22)] hover:text-[#FFE0A3]"
           )}
           onClick={onPm}
-          disabled={disabled}
+          disabled={afternoonDisabled}
         >
           PM
         </Button>
@@ -396,7 +448,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
             commitOtHours(worker.id, v);
             setOtDraft(v === 0 ? "" : String(v));
           }}
-          disabled={disabled}
+          disabled={fullyBlocked}
           className="h-8 min-h-8 w-full min-w-0 rounded-md border-white/[0.09] bg-white/[0.035] px-1 text-center text-sm tabular-nums text-[var(--neo-text-primary)] hover:border-white/[0.14] hover:bg-white/[0.065] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       </div>
@@ -422,7 +474,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
             commitOtAmount(worker.id, v);
             setOtAmountDraft(v === 0 ? "" : String(v));
           }}
-          disabled={disabled}
+          disabled={fullyBlocked}
           className="h-8 min-h-8 w-full min-w-0 rounded-md border-white/[0.09] bg-white/[0.035] px-1 text-center text-sm tabular-nums text-[var(--neo-text-primary)] hover:border-white/[0.14] hover:bg-white/[0.065] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-[44px] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       </div>
@@ -443,7 +495,9 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
   React.useEffect(() => {
     selectionRef.current = selectionByWorkerId;
   }, [selectionByWorkerId]);
-  const [disabledWorkerIds, setDisabledWorkerIds] = React.useState<Set<string>>(new Set());
+  const [existingSessionsByWorkerId, setExistingSessionsByWorkerId] = React.useState<
+    Record<string, ExistingSessionState>
+  >({});
   const [notes, setNotes] = React.useState("");
   const [costCode, setCostCode] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -451,7 +505,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
 
   React.useEffect(() => {
     if (!open || !workDate) {
-      setDisabledWorkerIds(new Set());
+      setExistingSessionsByWorkerId({});
       return;
     }
     let cancelled = false;
@@ -472,14 +526,27 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
           ) as Record<string, Sel>;
           return next;
         });
-        setDisabledWorkerIds(
-          new Set((body.entries ?? []).map((e) => e.worker_id ?? e.workerId ?? ""))
-        );
+        setExistingSessionsByWorkerId(() => {
+          const next: Record<string, ExistingSessionState> = {};
+          for (const entry of body.entries ?? []) {
+            const workerId = existingEntryWorkerId(entry);
+            if (!workerId) continue;
+            const current = next[workerId] ?? { morning: false, afternoon: false, entryId: null };
+            const morning = entry.morning === true;
+            const afternoon = entry.afternoon === true;
+            next[workerId] = {
+              morning: current.morning || morning,
+              afternoon: current.afternoon || afternoon,
+              entryId: current.entryId ?? (entry.id ? String(entry.id) : null),
+            };
+          }
+          return next;
+        });
         setError(null);
       })
       .catch(() => {
         if (!cancelled) {
-          setDisabledWorkerIds(new Set());
+          setExistingSessionsByWorkerId({});
           setProjects([]);
           setWorkers([]);
           setError("Failed to load labor options.");
@@ -492,24 +559,24 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
 
   const toggleMorning = React.useCallback(
     (workerId: string) => {
-      if (disabledWorkerIds.has(workerId)) return;
+      if (existingSessionsByWorkerId[workerId]?.morning) return;
       setSelectionByWorkerId((prev) => {
         const cur = prev[workerId] ?? defaultSel();
         return { ...prev, [workerId]: { ...cur, morning: !cur.morning } };
       });
     },
-    [disabledWorkerIds]
+    [existingSessionsByWorkerId]
   );
 
   const toggleAfternoon = React.useCallback(
     (workerId: string) => {
-      if (disabledWorkerIds.has(workerId)) return;
+      if (existingSessionsByWorkerId[workerId]?.afternoon) return;
       setSelectionByWorkerId((prev) => {
         const cur = prev[workerId] ?? defaultSel();
         return { ...prev, [workerId]: { ...cur, afternoon: !cur.afternoon } };
       });
     },
-    [disabledWorkerIds]
+    [existingSessionsByWorkerId]
   );
 
   const commitOtHours = React.useCallback((workerId: string, value: number) => {
@@ -631,8 +698,8 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
             </div>
             <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2">
               <p className="text-[11px] leading-5 text-[var(--neo-text-tertiary)]">
-                Workers who have completed a full day (AM+PM) on this date are disabled across all
-                projects.
+                Existing visible entries only block the matching AM/PM session. Cancelled, deleted,
+                or hidden rows do not block new time.
               </p>
             </div>
             <div className="min-w-0 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0d0f14] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
@@ -668,7 +735,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                         const worker = workers[index];
                         if (!worker) return null;
                         const sel = selectionByWorkerId[worker.id] ?? defaultSel();
-                        const disabled = disabledWorkerIds.has(worker.id);
+                        const existing = existingSessionsByWorkerId[worker.id];
                         return (
                           <AddDailyEntryWorkerRow
                             key={worker.id}
@@ -677,7 +744,8 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                             afternoon={sel.afternoon}
                             otHours={sel.otHours}
                             otAmount={sel.otAmount}
-                            disabled={disabled}
+                            existing={existing}
+                            workDate={workDate}
                             toggleMorning={toggleMorning}
                             toggleAfternoon={toggleAfternoon}
                             commitOtHours={commitOtHours}
@@ -695,7 +763,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                     >
                       {workers.map((worker) => {
                         const sel = selectionByWorkerId[worker.id] ?? defaultSel();
-                        const disabled = disabledWorkerIds.has(worker.id);
+                        const existing = existingSessionsByWorkerId[worker.id];
                         return (
                           <AddDailyEntryWorkerRow
                             key={worker.id}
@@ -704,7 +772,8 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                             afternoon={sel.afternoon}
                             otHours={sel.otHours}
                             otAmount={sel.otAmount}
-                            disabled={disabled}
+                            existing={existing}
+                            workDate={workDate}
                             toggleMorning={toggleMorning}
                             toggleAfternoon={toggleAfternoon}
                             commitOtHours={commitOtHours}
