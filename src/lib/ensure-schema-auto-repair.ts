@@ -11,9 +11,13 @@ const AUTO_REPAIR_DDL: string[] = [
   `CREATE TABLE IF NOT EXISTS public.worker_payments (
   id uuid primary key default gen_random_uuid(),
   worker_id uuid,
-  total_amount numeric not null,
+  project_id uuid,
+  payment_date date default CURRENT_DATE,
+  amount numeric not null default 0,
+  total_amount numeric not null default 0,
   payment_method text,
   note text,
+  notes text,
   created_at timestamptz default now()
 )`,
 
@@ -181,13 +185,7 @@ WHERE ip.id = candidates.invoice_payment_id
   AND candidates.ledger_match_count = 1`,
 
   // 5. labor_entries table columns
-  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'Draft'`,
-  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS submitted_at timestamptz`,
-  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS submitted_by text`,
-  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS approved_at timestamptz`,
-  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS approved_by text`,
-  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS locked_at timestamptz`,
-  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS locked_by text`,
+  `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending'`,
   `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS project_id uuid NULL REFERENCES public.projects(id) ON DELETE SET NULL`,
   `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS cost_amount numeric NULL`,
   `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS morning boolean NOT NULL DEFAULT false`,
@@ -348,19 +346,19 @@ END $$`,
    ON public.worker_rate_history FOR UPDATE TO authenticated USING (true) WITH CHECK (true)`,
   `CREATE POLICY worker_rate_history_authenticated_delete
    ON public.worker_rate_history FOR DELETE TO authenticated USING (true)`,
-  `UPDATE public.labor_entries
-   SET status = 'Draft'
-   WHERE status IS NULL OR status NOT IN ('Draft', 'Submitted', 'Approved', 'Locked')`,
-  `ALTER TABLE public.labor_entries ALTER COLUMN status SET DEFAULT 'Draft'`,
-  `ALTER TABLE public.labor_entries ALTER COLUMN status SET NOT NULL`,
+  `ALTER TABLE public.labor_entries ALTER COLUMN status SET DEFAULT 'pending'`,
+  `ALTER TABLE public.labor_entries ALTER COLUMN status DROP NOT NULL`,
   `ALTER TABLE public.labor_entries DROP CONSTRAINT IF EXISTS labor_entries_status_check`,
-  `ALTER TABLE public.labor_entries
-   ADD CONSTRAINT labor_entries_status_check
-   CHECK (status IN ('Draft', 'Submitted', 'Approved', 'Locked'))`,
   `CREATE INDEX IF NOT EXISTS idx_labor_entries_status ON public.labor_entries (status)`,
   `CREATE INDEX IF NOT EXISTS idx_labor_entries_project_id ON public.labor_entries (project_id)
    WHERE project_id IS NOT NULL`,
   `ALTER TABLE public.labor_entries ADD COLUMN IF NOT EXISTS worker_payment_id uuid`,
+  `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS project_id uuid NULL REFERENCES public.projects(id) ON DELETE SET NULL`,
+  `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS payment_date date DEFAULT CURRENT_DATE`,
+  `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS amount numeric NOT NULL DEFAULT 0`,
+  `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS notes text`,
+  `ALTER TABLE public.worker_payments ALTER COLUMN worker_id DROP NOT NULL`,
+  `ALTER TABLE public.worker_payments ALTER COLUMN total_amount SET DEFAULT 0`,
   `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS labor_entry_ids uuid[]`,
   `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS idempotency_key text`,
   `UPDATE public.worker_payments

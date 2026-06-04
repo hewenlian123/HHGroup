@@ -48,7 +48,7 @@ export function laborEntryToDailyWorkEntry(entry: LaborEntryWithJoins): DailyWor
     dailyRate: amount,
     otAmount: 0,
     notes: entry.notes,
-    createdAt: entry.submitted_at ?? entry.work_date,
+    createdAt: entry.work_date,
   };
 }
 

@@ -1,6 +1,6 @@
 /**
  * Daily Labor Log — Supabase only. No mock.
- * labor_entries schema: id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, approved_at, locked_at, etc.
+ * labor_entries schema: id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, status, etc.
  *
  * **Session display (ledger):** product default is **daily wage** (Full / Half / Absent). UI must not equate
  * stored `hours` (e.g. equivalent hours) with pay — use `formatLaborEntrySessionLabel` + worker rates / notes / AM-PM flags.
@@ -23,7 +23,7 @@ const LABOR_ENTRIES_COLS_NO_PROJECT =
 const LABOR_ENTRIES_COLS_NO_PROJECT_NO_AMPM =
   "id, worker_id, work_date, hours, cost_code, notes, cost_amount" as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS =
-  "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, submitted_by, approved_at, approved_by, locked_at, locked_by, morning, afternoon" as const;
+  "id, worker_id, project_id, work_date, hours, cost_code, notes, cost_amount, status, morning, afternoon" as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT =
   `${LABOR_ENTRIES_COLS_WITH_STATUS}, worker_payment_id` as const;
 const LABOR_ENTRY_SNAPSHOT_COLS =
@@ -33,11 +33,11 @@ const LABOR_ENTRIES_COLS_WITH_STATUS_SNAPSHOTS =
 const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT_SNAPSHOTS =
   `${LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT}, ${LABOR_ENTRY_SNAPSHOT_COLS}` as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS_NO_PROJECT =
-  "id, worker_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, submitted_by, approved_at, approved_by, locked_at, locked_by, morning, afternoon" as const;
+  "id, worker_id, work_date, hours, cost_code, notes, cost_amount, status, morning, afternoon" as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT_NO_PROJECT =
   `${LABOR_ENTRIES_COLS_WITH_STATUS_NO_PROJECT}, worker_payment_id` as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS_NO_PROJECT_NO_AMPM =
-  "id, worker_id, work_date, hours, cost_code, notes, cost_amount, status, submitted_at, submitted_by, approved_at, approved_by, locked_at, locked_by" as const;
+  "id, worker_id, work_date, hours, cost_code, notes, cost_amount, status" as const;
 const LABOR_ENTRIES_COLS_WITH_STATUS_AND_PAYMENT_NO_PROJECT_NO_AMPM =
   `${LABOR_ENTRIES_COLS_WITH_STATUS_NO_PROJECT_NO_AMPM}, worker_payment_id` as const;
 /** Columns when cost_amount column does not exist (older schema). */
@@ -65,12 +65,6 @@ export type DailyLaborEntryRow = {
   overtime_hours?: number;
   overtime_amount?: number;
   status?: LaborEntryStatus;
-  submitted_at?: string | null;
-  submitted_by?: string | null;
-  approved_at?: string | null;
-  approved_by?: string | null;
-  locked_at?: string | null;
-  locked_by?: string | null;
 };
 
 export type DailyLaborEntryDraft = {
@@ -104,12 +98,6 @@ export type LaborEntryWithJoins = {
   overtime_hours?: number;
   overtime_amount?: number;
   status: LaborEntryStatus;
-  submitted_at: string | null;
-  submitted_by: string | null;
-  approved_at: string | null;
-  approved_by: string | null;
-  locked_at: string | null;
-  locked_by: string | null;
   /** Set when `worker_payment_id` column exists; use getLaborPaymentStatus() for payroll UI. */
   worker_payment_id?: string | null;
   /** Raw DB `status` before workflow normalization; only needed for legacy payroll when FK column is missing. */
@@ -536,12 +524,6 @@ export async function getLaborEntriesWithJoins(
         overtime_hours: parseLaborOvertimeHoursFromNotes(r.notes),
         overtime_amount: parseLaborOvertimeAmountFromNotes(r.notes),
         status,
-        submitted_at: (row.submitted_at ?? null) as string | null,
-        submitted_by: (row.submitted_by ?? null) as string | null,
-        approved_at: (row.approved_at ?? null) as string | null,
-        approved_by: (row.approved_by ?? null) as string | null,
-        locked_at: (row.locked_at ?? null) as string | null,
-        locked_by: (row.locked_by ?? null) as string | null,
         worker_payment_id,
         workflowStatusRaw: rawStatusStr,
         usesPaymentLinkForPayroll: hasWorkerPaymentIdCol,
@@ -1079,16 +1061,14 @@ export async function submitLaborEntries(
 ): Promise<void> {
   if (entryIds.length === 0) return;
   const c = client();
-  const now = new Date().toISOString();
   const { error } = await c
     .from("labor_entries")
     .update({
       status: "Submitted",
-      submitted_at: now,
-      submitted_by: submittedBy?.trim() || null,
     })
     .in("id", entryIds)
     .eq("status", "Draft");
+  void submittedBy;
   if (error) throw new Error(error.message ?? "Failed to submit entries.");
 }
 
@@ -1099,16 +1079,14 @@ export async function approveLaborEntries(
 ): Promise<void> {
   if (entryIds.length === 0) return;
   const c = client();
-  const now = new Date().toISOString();
   const { error } = await c
     .from("labor_entries")
     .update({
       status: "Approved",
-      approved_at: now,
-      approved_by: approvedBy?.trim() || null,
     })
     .in("id", entryIds)
     .eq("status", "Submitted");
+  void approvedBy;
   if (error) throw new Error(error.message ?? "Failed to approve entries.");
 }
 
@@ -1119,16 +1097,14 @@ export async function lockLaborEntries(
 ): Promise<void> {
   if (entryIds.length === 0) return;
   const c = client();
-  const now = new Date().toISOString();
   const { error } = await c
     .from("labor_entries")
     .update({
       status: "Locked",
-      locked_at: now,
-      locked_by: lockedBy?.trim() || null,
     })
     .in("id", entryIds)
     .eq("status", "Approved");
+  void lockedBy;
   if (error) throw new Error(error.message ?? "Failed to lock entries.");
 }
 

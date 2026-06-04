@@ -426,13 +426,12 @@ async function runBulkAction(
   if (!["submit", "approve", "lock"].includes(action)) throw new Error("Invalid labor action.");
   const ids = Array.isArray(body.ids) ? body.ids.map((id) => safeString(id)).filter(Boolean) : [];
   if (ids.length === 0) return;
-  const now = new Date().toISOString();
   const patch =
     action === "submit"
-      ? { status: "Submitted", submitted_at: now, submitted_by: "pin-owner" }
+      ? { status: "Submitted" }
       : action === "approve"
-        ? { status: "Approved", approved_at: now, approved_by: "pin-owner" }
-        : { status: "Locked", locked_at: now, locked_by: "pin-owner" };
+        ? { status: "Approved" }
+        : { status: "Locked" };
   const expectedStatus =
     action === "submit" ? "Draft" : action === "approve" ? "Submitted" : "Approved";
   const { error } = await supabase

@@ -52,15 +52,25 @@ const LABOR_DDL = [
   `CREATE INDEX IF NOT EXISTS idx_worker_reimbursement_payments_created_at ON public.worker_reimbursement_payments (created_at)`,
   `CREATE TABLE IF NOT EXISTS public.worker_payments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  worker_id uuid NOT NULL,
-  total_amount numeric NOT NULL,
+  worker_id uuid,
+  project_id uuid REFERENCES public.projects(id) ON DELETE SET NULL,
+  payment_date date DEFAULT CURRENT_DATE,
+  amount numeric NOT NULL DEFAULT 0,
+  total_amount numeric NOT NULL DEFAULT 0,
   payment_method text,
   note text,
+  notes text,
   created_at timestamptz DEFAULT now()
 )`,
   `CREATE INDEX IF NOT EXISTS idx_worker_payments_worker_id ON public.worker_payments (worker_id)`,
   `CREATE INDEX IF NOT EXISTS idx_worker_payments_created_at ON public.worker_payments (created_at)`,
   `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS idempotency_key text`,
+  `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS project_id uuid NULL REFERENCES public.projects(id) ON DELETE SET NULL`,
+  `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS payment_date date DEFAULT CURRENT_DATE`,
+  `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS amount numeric NOT NULL DEFAULT 0`,
+  `ALTER TABLE public.worker_payments ADD COLUMN IF NOT EXISTS notes text`,
+  `ALTER TABLE public.worker_payments ALTER COLUMN worker_id DROP NOT NULL`,
+  `ALTER TABLE public.worker_payments ALTER COLUMN total_amount SET DEFAULT 0`,
   `UPDATE public.worker_payments
    SET idempotency_key = NULL
    WHERE idempotency_key IS NOT NULL AND btrim(idempotency_key) = ''`,
