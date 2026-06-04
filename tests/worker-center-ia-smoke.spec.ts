@@ -51,6 +51,33 @@ async function cleanupWorkerByName(page: Page, name: string, fallbackId?: string
 }
 
 test.describe("Worker Center IA smoke", () => {
+  test("sidebar People section keeps Worker Center IA primary entries", async ({ page }) => {
+    await expectPageLoad(page, "/workers", /^Worker Center$/i);
+
+    const sidebar = page.locator("[data-app-sidebar]").first();
+    for (const label of [
+      "Customers",
+      "Worker Center",
+      "Payroll Summary",
+      "Vendors",
+      "Subcontractors",
+    ]) {
+      await expect(sidebar.getByText(label, { exact: true })).toBeVisible({ timeout: 10_000 });
+    }
+
+    for (const legacyLabel of [
+      "Workers",
+      "Worker Summary",
+      "Worker Balances",
+      "Worker Payments",
+      "Worker Advances",
+      "Worker Invoices",
+      "All Contacts",
+    ]) {
+      await expect(sidebar.getByText(legacyLabel, { exact: true })).toHaveCount(0);
+    }
+  });
+
   test("desktop routes load", async ({ page }) => {
     await expectPageLoad(page, "/labor", /^(Daily Labor|Labor)$/i);
     await expectPageLoad(page, "/workers", /^Worker Center$/i);
