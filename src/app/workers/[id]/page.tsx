@@ -25,6 +25,7 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { formatDate } from "@/lib/formatters";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 import { encodeWorkerReturnPath } from "@/lib/worker-return-path";
 
 type WorkerRateHistoryView = {
@@ -146,7 +147,7 @@ function monthLabelEn(key: string): string {
 }
 
 function todayYmd(): string {
-  return new Date().toISOString().slice(0, 10);
+  return workerRateLocalYmd();
 }
 
 function fmtRateRange(row: WorkerRateHistoryView): string {
@@ -760,10 +761,10 @@ export default function WorkerDashboardPage() {
       });
       const body = (await response.json().catch(() => null)) as { message?: string } | null;
       if (!response.ok) throw new Error(body?.message ?? "Failed to change daily rate.");
+      await refreshAll();
       const result = body as { applyToUnpaidPreview?: RateApplyPreview | null } | null;
       setRateApplyPreview(result?.applyToUnpaidPreview ?? null);
       setRateMessage("Daily rate changed.");
-      await refreshAll();
     } catch (e) {
       setRateMessage(e instanceof Error ? e.message : "Failed to change daily rate.");
     } finally {
@@ -787,11 +788,11 @@ export default function WorkerDashboardPage() {
       } | null;
       if (!response.ok) throw new Error(body?.message ?? "Failed to update unpaid labor entries.");
       const affected = body?.summary?.affectedCount ?? rateApplyPreview.affectedCount;
+      await refreshAll();
       setRateApplyPreview(null);
       setRateMessage(
         affected === 1 ? "Updated 1 unpaid time entry." : `Updated ${affected} unpaid time entries.`
       );
-      await refreshAll();
     } catch (e) {
       setRateMessage(e instanceof Error ? e.message : "Failed to update unpaid labor entries.");
     } finally {

@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { laborEntryPaymentIdMapFromWorkerPayments } from "@/lib/labor-balance-shared";
+import { normalizeWorkerRateDate } from "@/lib/worker-rate-date";
+
+export { normalizeWorkerRateDate } from "@/lib/worker-rate-date";
 
 const OT_MULTIPLIER = 1.5;
 
@@ -76,9 +79,7 @@ function roundMoney(value: number): number {
 }
 
 function normalizeDate(value: string): string {
-  const text = String(value ?? "").trim();
-  if (!/^\d{4}-\d{2}-\d{2}/.test(text)) throw new Error("Effective date is required.");
-  return text.slice(0, 10);
+  return normalizeWorkerRateDate(value);
 }
 
 function previousDate(value: string): string {
@@ -306,7 +307,8 @@ export async function getWorkerRateHistoryWithClient(
     .eq("worker_id", workerId)
     .eq("rate_type", "daily")
     .order("effective_from", { ascending: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false });
   if (error) {
     if (isMissingRateHistorySchemaError(error)) return [];
     throw new Error(error.message ?? "Failed to load worker rate history.");
@@ -329,6 +331,7 @@ export async function resolveWorkerDailyRateForDateWithClient(
     .or(`effective_to.is.null,effective_to.gte.${date}`)
     .order("effective_from", { ascending: false })
     .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -440,6 +443,8 @@ export async function changeWorkerDailyRateWithClient(
     .eq("rate_type", "daily")
     .gt("effective_from", effectiveFrom)
     .order("effective_from", { ascending: true })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
     .limit(1)
     .maybeSingle();
   if (nextRes.error && !isMissingRateHistorySchemaError(nextRes.error)) {
@@ -466,6 +471,9 @@ export async function changeWorkerDailyRateWithClient(
     .eq("worker_id", workerId)
     .eq("rate_type", "daily")
     .eq("effective_from", effectiveFrom)
+    .order("created_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   const payload = {

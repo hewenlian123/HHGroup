@@ -4,6 +4,7 @@ import {
   changeWorkerDailyRateWithClient,
   getWorkerCurrentDailyRateWithClient,
   getWorkerRateHistoryWithClient,
+  normalizeWorkerRateDate,
   previewWorkerRateUnpaidLaborApplyWithClient,
 } from "@/lib/worker-rate-history-db";
 import {
@@ -23,11 +24,6 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 function apiError(status: number, message: string): NextResponse {
   return NextResponse.json({ ok: false, message }, { status, headers: NO_CACHE_HEADERS });
-}
-
-function safeDate(value: unknown): string {
-  const text = typeof value === "string" ? value.trim() : "";
-  return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.slice(0, 10) : "";
 }
 
 export async function GET(req: Request, { params }: RouteParams) {
@@ -69,20 +65,26 @@ export async function POST(req: Request, { params }: RouteParams) {
       notes?: unknown;
     } | null;
     if (!body) return apiError(400, "Invalid JSON body.");
-    const effectiveFrom = safeDate(body.effectiveFrom ?? body.effective_from);
-    if (!effectiveFrom) return apiError(400, "Effective date is required.");
+    let effectiveFrom: string;
+    try {
+      effectiveFrom = normalizeWorkerRateDate(body.effectiveFrom ?? body.effective_from);
+    } catch (dateError) {
+      return apiError(
+        400,
+        dateError instanceof Error ? dateError.message : "Effective date is required."
+      );
+    }
     const history = await changeWorkerDailyRateWithClient(supabase, id, {
       dailyRate: body.dailyRate ?? body.daily_rate,
       effectiveFrom,
       notes: typeof body.notes === "string" ? body.notes : null,
     });
-    const applyToUnpaidPreview = await previewWorkerRateUnpaidLaborApplyWithClient(
-      supabase,
-      id,
-      history.id
-    );
+    const [current, applyToUnpaidPreview] = await Promise.all([
+      getWorkerCurrentDailyRateWithClient(supabase, id),
+      previewWorkerRateUnpaidLaborApplyWithClient(supabase, id, history.id),
+    ]);
     return NextResponse.json(
-      { ok: true, history, applyToUnpaidPreview },
+      { ok: true, history, current, applyToUnpaidPreview },
       { headers: NO_CACHE_HEADERS }
     );
   } catch (e) {
