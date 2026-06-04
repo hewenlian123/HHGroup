@@ -63,6 +63,8 @@ export async function POST(req: Request, { params }: RouteParams) {
       effectiveFrom?: unknown;
       effective_from?: unknown;
       notes?: unknown;
+      replaceFutureRates?: unknown;
+      replace_future_rates?: unknown;
     } | null;
     if (!body) return apiError(400, "Invalid JSON body.");
     let effectiveFrom: string;
@@ -78,6 +80,9 @@ export async function POST(req: Request, { params }: RouteParams) {
       dailyRate: body.dailyRate ?? body.daily_rate,
       effectiveFrom,
       notes: typeof body.notes === "string" ? body.notes : null,
+      replaceFutureRates: !(
+        body.replaceFutureRates === false || body.replace_future_rates === false
+      ),
     });
     const [current, applyToUnpaidPreview] = await Promise.all([
       getWorkerCurrentDailyRateWithClient(supabase, id),

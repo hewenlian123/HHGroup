@@ -379,20 +379,43 @@ test("backdated rate can explicitly update only unpaid labor entry snapshots", a
       costCode: "E2E",
       notes: `${runTag} unpaid May half day`,
     });
+    const unpaidJune = await apiJson<{ id: string }>(request, "POST", "/api/labor/entries", {
+      workerId: applyIds.worker,
+      projectId: applyIds.project,
+      workDate: "2026-06-10",
+      hours: 1,
+      costCode: "E2E",
+      notes: `${runTag} unpaid June full day`,
+    });
+    const paidJune = await apiJson<{ id: string }>(request, "POST", "/api/labor/entries", {
+      workerId: applyIds.worker,
+      projectId: applyIds.project,
+      workDate: "2026-06-12",
+      hours: 1,
+      costCode: "E2E",
+      notes: `${runTag} paid June full day`,
+    });
 
     await apiJson(request, "POST", `/api/labor/workers/${applyIds.worker}/pay`, {
-      amount: 280,
+      amount: 560,
       payment_method: "Check",
       payment_date: "2026-04-13",
-      notes: `${runTag} paid entry should stay frozen`,
-      labor_entry_ids: [paidFull.id],
+      notes: `${runTag} paid entries should stay frozen`,
+      labor_entry_ids: [paidFull.id, paidJune.id],
       reimbursement_ids: [],
+    });
+
+    await apiJson(request, "POST", `/api/labor/workers/${applyIds.worker}/rate-history`, {
+      dailyRate: 280,
+      effectiveFrom: "2026-06-04",
+      notes: "Later current rate should be replaced",
     });
 
     const change = await apiJson<{
       history: { id: string; dailyRate: number; effectiveFrom: string; effectiveTo: string | null };
       applyToUnpaidPreview: {
         affectedCount: number;
+        skippedCount: number;
         oldTotal: number;
         newTotal: number;
         difference: number;
@@ -405,23 +428,32 @@ test("backdated rate can explicitly update only unpaid labor entry snapshots", a
 
     expect(change.history.dailyRate).toBe(290);
     expect(change.history.effectiveFrom).toBe("2026-04-01");
+    expect(change.history.effectiveTo).toBeNull();
     expect(change.applyToUnpaidPreview).toMatchObject({
-      affectedCount: 2,
-      oldTotal: 420,
-      newTotal: 435,
-      difference: 15,
+      affectedCount: 3,
+      skippedCount: 2,
+      oldTotal: 700,
+      newTotal: 725,
+      difference: 25,
     });
 
     const apply = await apiJson<{
-      summary: { affectedCount: number; oldTotal: number; newTotal: number; difference: number };
+      summary: {
+        affectedCount: number;
+        skippedCount: number;
+        oldTotal: number;
+        newTotal: number;
+        difference: number;
+      };
     }>(request, "POST", `/api/labor/workers/${applyIds.worker}/rate-history/apply-unpaid`, {
       rateHistoryId: change.history.id,
     });
     expect(apply.summary).toMatchObject({
-      affectedCount: 2,
-      oldTotal: 420,
-      newTotal: 435,
-      difference: 15,
+      affectedCount: 3,
+      skippedCount: 2,
+      oldTotal: 700,
+      newTotal: 725,
+      difference: 25,
     });
 
     const { data: rows, error: rowsErr } = await admin
@@ -429,7 +461,7 @@ test("backdated rate can explicitly update only unpaid labor entry snapshots", a
       .select(
         "id, cost_amount, daily_rate_snapshot, amount_snapshot, labor_cost_snapshot, worker_payment_id, rate_history_id, notes"
       )
-      .in("id", [unpaidFull.id, paidFull.id, unpaidHalf.id]);
+      .in("id", [unpaidFull.id, paidFull.id, unpaidHalf.id, unpaidJune.id, paidJune.id]);
     expect(rowsErr?.message).toBeUndefined();
     const byId = new Map((rows ?? []).map((row) => [String(row.id), row]));
 
@@ -446,34 +478,46 @@ test("backdated rate can explicitly update only unpaid labor entry snapshots", a
     expect(Number(byId.get(unpaidHalf.id)?.cost_amount)).toBe(145);
     expect(byId.get(unpaidHalf.id)?.rate_history_id).toBe(change.history.id);
 
+    expect(Number(byId.get(unpaidJune.id)?.daily_rate_snapshot)).toBe(290);
+    expect(Number(byId.get(unpaidJune.id)?.amount_snapshot)).toBe(290);
+    expect(Number(byId.get(unpaidJune.id)?.labor_cost_snapshot)).toBe(290);
+    expect(Number(byId.get(unpaidJune.id)?.cost_amount)).toBe(290);
+    expect(byId.get(unpaidJune.id)?.rate_history_id).toBe(change.history.id);
+
     expect(Number(byId.get(paidFull.id)?.daily_rate_snapshot)).toBe(280);
     expect(Number(byId.get(paidFull.id)?.amount_snapshot)).toBe(280);
     expect(Number(byId.get(paidFull.id)?.cost_amount)).toBe(280);
     expect(String(byId.get(paidFull.id)?.worker_payment_id ?? "")).toBeTruthy();
+
+    expect(Number(byId.get(paidJune.id)?.daily_rate_snapshot)).toBe(280);
+    expect(Number(byId.get(paidJune.id)?.amount_snapshot)).toBe(280);
+    expect(Number(byId.get(paidJune.id)?.cost_amount)).toBe(280);
+    expect(String(byId.get(paidJune.id)?.worker_payment_id ?? "")).toBeTruthy();
 
     const balance = await apiJson<{ summary: { laborOwed: number; balance: number } }>(
       request,
       "GET",
       `/api/labor/workers/${applyIds.worker}/balance`
     );
-    expect(balance.summary.laborOwed).toBeCloseTo(435, 2);
-    expect(balance.summary.balance).toBeCloseTo(435, 2);
+    expect(balance.summary.laborOwed).toBeCloseTo(725, 2);
+    expect(balance.summary.balance).toBeCloseTo(725, 2);
 
     const payroll = await apiJson<{
       rows: Array<{ workerId: string; laborOwed: number; paid: number; balance: number }>;
     }>(request, "GET", "/api/labor/payroll-summary?fromDate=2026-04-01&toDate=2030-12-31");
     const payrollWorker = payroll.rows.find((row) => row.workerId === applyIds.worker);
-    expect(payrollWorker?.laborOwed).toBeCloseTo(715, 2);
-    expect(payrollWorker?.paid).toBeCloseTo(280, 2);
-    expect(payrollWorker?.balance).toBeCloseTo(435, 2);
+    expect(payrollWorker?.laborOwed).toBeCloseTo(1285, 2);
+    expect(payrollWorker?.paid).toBeCloseTo(560, 2);
+    expect(payrollWorker?.balance).toBeCloseTo(725, 2);
 
     const { data: paymentRows, error: paymentErr } = await admin
       .from("worker_payments")
       .select("total_amount, labor_entry_ids")
       .eq("worker_id", applyIds.worker);
     expect(paymentErr?.message).toBeUndefined();
-    expect((paymentRows ?? []).reduce((sum, row) => sum + Number(row.total_amount), 0)).toBe(280);
+    expect((paymentRows ?? []).reduce((sum, row) => sum + Number(row.total_amount), 0)).toBe(560);
     expect(paymentRows?.[0]?.labor_entry_ids).toContain(paidFull.id);
+    expect(paymentRows?.[0]?.labor_entry_ids).toContain(paidJune.id);
 
     const { data: historyRows, error: historyErr } = await admin
       .from("worker_rate_history")
@@ -494,6 +538,9 @@ test("backdated rate can explicitly update only unpaid labor entry snapshots", a
           effective_to: null,
         }),
       ])
+    );
+    expect((historyRows ?? []).some((row) => String(row.effective_from) === "2026-06-04")).toBe(
+      false
     );
   } finally {
     await cleanupApplyIds(admin, applyIds);

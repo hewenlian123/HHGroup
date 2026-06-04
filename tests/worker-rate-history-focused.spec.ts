@@ -18,7 +18,7 @@ function makeMemoryClient(db: MemoryDb): SupabaseClient {
   let idSeq = 1000;
 
   class MemoryQuery implements PromiseLike<QueryResult> {
-    private operation: "select" | "insert" | "update" = "select";
+    private operation: "select" | "insert" | "update" | "delete" = "select";
     private insertPayload: Row | null = null;
     private updatePayload: Row | null = null;
     private filters: Array<(row: Row) => boolean> = [];
@@ -44,6 +44,11 @@ function makeMemoryClient(db: MemoryDb): SupabaseClient {
     update(payload: Row): this {
       this.operation = "update";
       this.updatePayload = { ...payload };
+      return this;
+    }
+
+    delete(): this {
+      this.operation = "delete";
       return this;
     }
 
@@ -124,6 +129,7 @@ function makeMemoryClient(db: MemoryDb): SupabaseClient {
     private execute(): Promise<QueryResult> {
       if (this.operation === "insert") return Promise.resolve(this.executeInsert());
       if (this.operation === "update") return Promise.resolve(this.executeUpdate());
+      if (this.operation === "delete") return Promise.resolve(this.executeDelete());
       return Promise.resolve(this.resultFor(this.selectRows()));
     }
 
@@ -141,6 +147,13 @@ function makeMemoryClient(db: MemoryDb): SupabaseClient {
       for (const row of rows) {
         Object.assign(row, this.updatePayload ?? {}, { updated_at: "2026-06-04T01:00:00.000Z" });
       }
+      return this.wantsSelect ? this.resultFor(rows) : { data: null, error: null };
+    }
+
+    private executeDelete(): QueryResult {
+      const rows = this.selectRows();
+      const deleteIds = new Set(rows.map((row) => row.id));
+      db[this.table] = db[this.table].filter((row) => !deleteIds.has(row.id));
       return this.wantsSelect ? this.resultFor(rows) : { data: null, error: null };
     }
 
@@ -360,5 +373,215 @@ test("current rate uses deterministic id tie-break for same effective date and c
     dailyRate: 290,
     rateHistoryId: "rate-9999",
     effectiveFrom: "2026-04-04",
+  });
+});
+
+test("replace future rates applies backdated rate to later unpaid entries", async () => {
+  const db = baseDb();
+  db.worker_rate_history = [
+    {
+      id: "rate-0001",
+      worker_id: "worker-1",
+      rate_type: "daily",
+      daily_rate: 280,
+      effective_from: "2026-03-01",
+      effective_to: "2026-06-03",
+      notes: "initial",
+      created_at: "2026-03-01T00:00:00.000Z",
+      updated_at: "2026-03-01T00:00:00.000Z",
+    },
+    {
+      id: "rate-0002",
+      worker_id: "worker-1",
+      rate_type: "daily",
+      daily_rate: 280,
+      effective_from: "2026-06-04",
+      effective_to: null,
+      notes: "future rate",
+      created_at: "2026-06-04T00:00:00.000Z",
+      updated_at: "2026-06-04T00:00:00.000Z",
+    },
+  ];
+  db.labor_entries.push({
+    id: "entry-june",
+    worker_id: "worker-1",
+    work_date: "2026-06-10",
+    hours: 1,
+    morning: true,
+    afternoon: true,
+    days_worked: 1,
+    daily_rate_snapshot: 280,
+    amount_snapshot: 280,
+    labor_cost_snapshot: 280,
+    cost_amount: 280,
+    status: "approved",
+    worker_payment_id: null,
+    rate_history_id: "rate-0001",
+    notes: "unpaid June full day",
+  });
+  db.labor_entries.push({
+    id: "entry-june-paid",
+    worker_id: "worker-1",
+    work_date: "2026-06-12",
+    hours: 1,
+    morning: true,
+    afternoon: true,
+    days_worked: 1,
+    daily_rate_snapshot: 280,
+    amount_snapshot: 280,
+    labor_cost_snapshot: 280,
+    cost_amount: 280,
+    status: "approved",
+    worker_payment_id: "payment-2",
+    rate_history_id: "rate-0002",
+    notes: "paid June full day",
+  });
+  db.worker_payments.push({
+    id: "payment-2",
+    worker_id: "worker-1",
+    labor_entry_ids: ["entry-june-paid"],
+  });
+  const client = makeMemoryClient(db);
+
+  const history = await changeWorkerDailyRateWithClient(client, "worker-1", {
+    dailyRate: 290,
+    effectiveFrom: "2026-04-01",
+    notes: "replace future rates",
+  });
+
+  expect(history).toMatchObject({
+    dailyRate: 290,
+    effectiveFrom: "2026-04-01",
+    effectiveTo: null,
+  });
+  expect(db.worker_rate_history.find((row) => row.id === "rate-0002")).toBeUndefined();
+
+  const preview = await previewWorkerRateUnpaidLaborApplyWithClient(client, "worker-1", history.id);
+  expect(preview).toMatchObject({
+    affectedCount: 3,
+    skippedCount: 2,
+    oldTotal: 700,
+    newTotal: 725,
+    difference: 25,
+  });
+
+  const applied = await applyWorkerRateToUnpaidLaborEntriesWithClient(
+    client,
+    "worker-1",
+    history.id
+  );
+  expect(applied).toMatchObject({
+    affectedCount: 3,
+    skippedCount: 2,
+    oldTotal: 700,
+    newTotal: 725,
+    difference: 25,
+  });
+  expect(db.labor_entries.find((row) => row.id === "entry-june")).toMatchObject({
+    daily_rate_snapshot: 290,
+    amount_snapshot: 290,
+    labor_cost_snapshot: 290,
+    cost_amount: 290,
+    rate_history_id: history.id,
+  });
+  expect(db.labor_entries.find((row) => row.id === "entry-paid")).toMatchObject({
+    daily_rate_snapshot: 280,
+    amount_snapshot: 280,
+    cost_amount: 280,
+    rate_history_id: "rate-0001",
+  });
+  expect(db.labor_entries.find((row) => row.id === "entry-june-paid")).toMatchObject({
+    daily_rate_snapshot: 280,
+    amount_snapshot: 280,
+    cost_amount: 280,
+    rate_history_id: "rate-0002",
+  });
+});
+
+test("advanced until-next-rate preserves later rate and limits apply range", async () => {
+  const db = baseDb();
+  db.worker_rate_history = [
+    {
+      id: "rate-0001",
+      worker_id: "worker-1",
+      rate_type: "daily",
+      daily_rate: 280,
+      effective_from: "2026-03-01",
+      effective_to: "2026-06-03",
+      notes: "initial",
+      created_at: "2026-03-01T00:00:00.000Z",
+      updated_at: "2026-03-01T00:00:00.000Z",
+    },
+    {
+      id: "rate-0002",
+      worker_id: "worker-1",
+      rate_type: "daily",
+      daily_rate: 280,
+      effective_from: "2026-06-04",
+      effective_to: null,
+      notes: "future rate",
+      created_at: "2026-06-04T00:00:00.000Z",
+      updated_at: "2026-06-04T00:00:00.000Z",
+    },
+  ];
+  db.labor_entries.push({
+    id: "entry-june",
+    worker_id: "worker-1",
+    work_date: "2026-06-10",
+    hours: 1,
+    morning: true,
+    afternoon: true,
+    days_worked: 1,
+    daily_rate_snapshot: 280,
+    amount_snapshot: 280,
+    labor_cost_snapshot: 280,
+    cost_amount: 280,
+    status: "approved",
+    worker_payment_id: null,
+    rate_history_id: "rate-0002",
+    notes: "unpaid June full day",
+  });
+  const client = makeMemoryClient(db);
+
+  const history = await changeWorkerDailyRateWithClient(client, "worker-1", {
+    dailyRate: 290,
+    effectiveFrom: "2026-04-01",
+    notes: "keep future rates",
+    replaceFutureRates: false,
+  });
+
+  expect(history).toMatchObject({
+    dailyRate: 290,
+    effectiveFrom: "2026-04-01",
+    effectiveTo: "2026-06-03",
+  });
+  expect(db.worker_rate_history.find((row) => row.id === "rate-0002")).toBeTruthy();
+
+  const preview = await previewWorkerRateUnpaidLaborApplyWithClient(client, "worker-1", history.id);
+  expect(preview).toMatchObject({
+    affectedCount: 2,
+    skippedCount: 1,
+    oldTotal: 420,
+    newTotal: 435,
+    difference: 15,
+  });
+
+  const applied = await applyWorkerRateToUnpaidLaborEntriesWithClient(
+    client,
+    "worker-1",
+    history.id
+  );
+  expect(applied).toMatchObject({
+    affectedCount: 2,
+    skippedCount: 1,
+    oldTotal: 420,
+    newTotal: 435,
+    difference: 15,
+  });
+  expect(db.labor_entries.find((row) => row.id === "entry-june")).toMatchObject({
+    daily_rate_snapshot: 280,
+    amount_snapshot: 280,
+    cost_amount: 280,
+    rate_history_id: "rate-0002",
   });
 });

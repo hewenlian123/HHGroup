@@ -42,6 +42,7 @@ type RateApplyPreview = {
   effectiveFrom: string;
   effectiveTo: string | null;
   affectedCount: number;
+  skippedCount?: number;
   oldTotal: number;
   newTotal: number;
   difference: number;
@@ -424,6 +425,7 @@ export default function WorkerDashboardPage() {
   const [rateDaily, setRateDaily] = React.useState("");
   const [rateEffectiveFrom, setRateEffectiveFrom] = React.useState(() => todayYmd());
   const [rateNotes, setRateNotes] = React.useState("");
+  const [rateReplaceFutureRates, setRateReplaceFutureRates] = React.useState(true);
   const [rateMessage, setRateMessage] = React.useState<string | null>(null);
   const [rateBusy, setRateBusy] = React.useState(false);
   const [rateApplyPreview, setRateApplyPreview] = React.useState<RateApplyPreview | null>(null);
@@ -473,6 +475,7 @@ export default function WorkerDashboardPage() {
       setRateDaily(String(Number(w.dailyRate ?? w.halfDayRate ?? 0) || ""));
       setRateEffectiveFrom(todayYmd());
       setRateNotes("");
+      setRateReplaceFutureRates(true);
       setRateMessage(null);
     }
     if (w) {
@@ -712,6 +715,20 @@ export default function WorkerDashboardPage() {
     });
   }, [laborLedgerEntries, worker?.dailyRate, worker?.halfDayRate]);
 
+  const laterRateCount = React.useMemo(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rateEffectiveFrom)) return 0;
+    return rateHistory.filter((row) => row.effectiveFrom > rateEffectiveFrom).length;
+  }, [rateEffectiveFrom, rateHistory]);
+
+  const nextRateAfterEffective = React.useMemo(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(rateEffectiveFrom)) return null;
+    return (
+      [...rateHistory]
+        .filter((row) => row.effectiveFrom > rateEffectiveFrom)
+        .sort((a, b) => a.effectiveFrom.localeCompare(b.effectiveFrom))[0] ?? null
+    );
+  }, [rateEffectiveFrom, rateHistory]);
+
   React.useEffect(() => {
     if (!id || workMonthGroups.length === 0) return;
     const defaultSignature = `${id}:${targetedWorkEntryId ?? "latest"}`;
@@ -757,6 +774,7 @@ export default function WorkerDashboardPage() {
           dailyRate: nextRate,
           effectiveFrom: rateEffectiveFrom,
           notes: rateNotes.trim() || null,
+          replaceFutureRates: rateReplaceFutureRates,
         }),
       });
       const body = (await response.json().catch(() => null)) as { message?: string } | null;
@@ -1634,6 +1652,65 @@ export default function WorkerDashboardPage() {
                     />
                   </label>
                 </div>
+                <div className="mt-3 rounded-md border border-border/60 bg-background/30 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    Existing future rates
+                  </p>
+                  {laterRateCount > 0 ? (
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      {laterRateCount} later rate{" "}
+                      {laterRateCount === 1 ? "range exists" : "ranges exist"}. This new rate will
+                      apply from {rateEffectiveFrom} forward by default. Use the advanced option
+                      only if you need to preserve the next existing rate.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                      This new rate will apply from {rateEffectiveFrom} forward.
+                    </p>
+                  )}
+                  <div className="mt-3 grid gap-2">
+                    <label className="flex min-h-[44px] items-start gap-2 rounded-sm border border-border/50 bg-background/25 px-3 py-2 text-sm text-foreground">
+                      <input
+                        type="radio"
+                        name="worker-rate-range-mode"
+                        checked={rateReplaceFutureRates}
+                        onChange={() => setRateReplaceFutureRates(true)}
+                        className="mt-1"
+                      />
+                      <span>
+                        <span className="block font-medium">
+                          Replace future rates from this date forward
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+                          This new rate will apply from {rateEffectiveFrom} forward until you
+                          manually set another rate. Paid or payment-linked labor entries still will
+                          not change.
+                        </span>
+                      </span>
+                    </label>
+                    <label className="flex min-h-[44px] items-start gap-2 rounded-sm border border-border/50 bg-background/25 px-3 py-2 text-sm text-foreground">
+                      <input
+                        type="radio"
+                        name="worker-rate-range-mode"
+                        checked={!rateReplaceFutureRates}
+                        onChange={() => setRateReplaceFutureRates(false)}
+                        className="mt-1"
+                      />
+                      <span>
+                        <span className="block font-medium">
+                          Advanced: apply only until next rate
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+                          Keep later rate ranges unchanged. This rate will end{" "}
+                          {nextRateAfterEffective
+                            ? `the day before ${nextRateAfterEffective.effectiveFrom}`
+                            : "before the next existing rate"}
+                          , and the unpaid-entry preview only covers that shorter range.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-xs text-muted-foreground">{rateMessage ?? " "}</p>
                   <Button
@@ -1663,6 +1740,11 @@ export default function WorkerDashboardPage() {
                         <p className="text-lg font-semibold tabular-nums text-foreground">
                           {rateApplyPreview.affectedCount}
                         </p>
+                        {rateApplyPreview.skippedCount ? (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {rateApplyPreview.skippedCount} paid/locked skipped
+                          </p>
+                        ) : null}
                       </div>
                     </div>
 

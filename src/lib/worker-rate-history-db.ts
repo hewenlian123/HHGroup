@@ -39,10 +39,13 @@ export type WorkerRateUnpaidApplySummary = {
   effectiveFrom: string;
   effectiveTo: string | null;
   affectedCount: number;
+  skippedCount: number;
   oldTotal: number;
   newTotal: number;
   difference: number;
 };
+
+export type WorkerRateChangeMode = "until_next_rate" | "replace_future_rates";
 
 type LaborRateApplyCandidate = {
   id: string;
@@ -50,6 +53,11 @@ type LaborRateApplyCandidate = {
   oldAmount: number;
   newAmount: number;
   notes: string | null;
+};
+
+type LaborRateApplyCandidateResult = {
+  candidates: LaborRateApplyCandidate[];
+  skippedCount: number;
 };
 
 type LaborRateApplyRow = {
@@ -176,7 +184,8 @@ function fmtRateForNote(rate: number): string {
 
 function summarizeRateApplyCandidates(
   history: WorkerRateHistory,
-  candidates: LaborRateApplyCandidate[]
+  candidates: LaborRateApplyCandidate[],
+  skippedCount = 0
 ): WorkerRateUnpaidApplySummary {
   const oldTotal = roundMoney(candidates.reduce((sum, row) => sum + row.oldAmount, 0));
   const newTotal = roundMoney(candidates.reduce((sum, row) => sum + row.newAmount, 0));
@@ -186,6 +195,7 @@ function summarizeRateApplyCandidates(
     effectiveFrom: history.effectiveFrom,
     effectiveTo: history.effectiveTo,
     affectedCount: candidates.length,
+    skippedCount,
     oldTotal,
     newTotal,
     difference: roundMoney(newTotal - oldTotal),
@@ -232,7 +242,7 @@ async function loadRateApplyCandidatesWithClient(
   c: SupabaseClient,
   workerId: string,
   history: WorkerRateHistory
-): Promise<LaborRateApplyCandidate[]> {
+): Promise<LaborRateApplyCandidateResult> {
   let query = c
     .from("labor_entries")
     .select(
@@ -250,10 +260,14 @@ async function loadRateApplyCandidatesWithClient(
   if (error) throw new Error(error.message ?? "Failed to load unpaid labor entries.");
 
   const candidates: LaborRateApplyCandidate[] = [];
+  let skippedCount = 0;
   for (const row of (data ?? []) as LaborRateApplyRow[]) {
     const id = String(row.id ?? "").trim();
     if (!id) continue;
-    if (isClosedForRateApply(row, paymentLinks.get(id) ?? null)) continue;
+    if (isClosedForRateApply(row, paymentLinks.get(id) ?? null)) {
+      skippedCount += 1;
+      continue;
+    }
     const daysWorked = daysWorkedForRateApply(row);
     if (daysWorked == null || daysWorked <= 0) continue;
     const oldAmount = roundMoney(amountSnapshotForRateApply(row));
@@ -266,7 +280,7 @@ async function loadRateApplyCandidatesWithClient(
       notes: typeof row.notes === "string" ? row.notes : null,
     });
   }
-  return candidates;
+  return { candidates, skippedCount };
 }
 
 async function fallbackWorkerDailyRate(
@@ -418,7 +432,12 @@ export async function buildLaborEntryRateSnapshotWithClient(
 export async function changeWorkerDailyRateWithClient(
   c: SupabaseClient,
   workerId: string,
-  input: { dailyRate: unknown; effectiveFrom: string; notes?: string | null }
+  input: {
+    dailyRate: unknown;
+    effectiveFrom: string;
+    notes?: string | null;
+    replaceFutureRates?: boolean;
+  }
 ): Promise<WorkerRateHistory> {
   const dailyRate = safeNumber(input.dailyRate);
   if (!Number.isFinite(dailyRate) || dailyRate < 0) {
@@ -426,6 +445,7 @@ export async function changeWorkerDailyRateWithClient(
   }
   const effectiveFrom = normalizeDate(input.effectiveFrom);
   const notes = input.notes?.trim() ? input.notes.trim() : null;
+  const replaceFutureRates = input.replaceFutureRates !== false;
   const closeTo = previousDate(effectiveFrom);
 
   const { data: worker, error: workerErr } = await c
@@ -436,23 +456,26 @@ export async function changeWorkerDailyRateWithClient(
   if (workerErr) throw new Error(workerErr.message ?? "Failed to load worker.");
   if (!worker) throw new Error("Worker not found.");
 
-  const nextRes = await c
-    .from("worker_rate_history")
-    .select("effective_from")
-    .eq("worker_id", workerId)
-    .eq("rate_type", "daily")
-    .gt("effective_from", effectiveFrom)
-    .order("effective_from", { ascending: true })
-    .order("created_at", { ascending: true })
-    .order("id", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (nextRes.error && !isMissingRateHistorySchemaError(nextRes.error)) {
-    throw new Error(nextRes.error.message ?? "Failed to load next rate history.");
+  let effectiveTo: string | null = null;
+  if (!replaceFutureRates) {
+    const nextRes = await c
+      .from("worker_rate_history")
+      .select("effective_from")
+      .eq("worker_id", workerId)
+      .eq("rate_type", "daily")
+      .gt("effective_from", effectiveFrom)
+      .order("effective_from", { ascending: true })
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (nextRes.error && !isMissingRateHistorySchemaError(nextRes.error)) {
+      throw new Error(nextRes.error.message ?? "Failed to load next rate history.");
+    }
+    const nextEffectiveFrom = (nextRes.data as { effective_from?: string | null } | null)
+      ?.effective_from;
+    effectiveTo = nextEffectiveFrom ? previousDate(String(nextEffectiveFrom)) : null;
   }
-  const nextEffectiveFrom = (nextRes.data as { effective_from?: string | null } | null)
-    ?.effective_from;
-  const effectiveTo = nextEffectiveFrom ? previousDate(String(nextEffectiveFrom)) : null;
 
   const overlapping = await c
     .from("worker_rate_history")
@@ -463,6 +486,18 @@ export async function changeWorkerDailyRateWithClient(
     .or(`effective_to.is.null,effective_to.gte.${effectiveFrom}`);
   if (overlapping.error && !isMissingRateHistorySchemaError(overlapping.error)) {
     throw new Error(overlapping.error.message ?? "Failed to close previous daily rate.");
+  }
+
+  if (replaceFutureRates) {
+    const futureRates = await c
+      .from("worker_rate_history")
+      .delete()
+      .eq("worker_id", workerId)
+      .eq("rate_type", "daily")
+      .gt("effective_from", effectiveFrom);
+    if (futureRates.error && !isMissingRateHistorySchemaError(futureRates.error)) {
+      throw new Error(futureRates.error.message ?? "Failed to replace future daily rates.");
+    }
   }
 
   const { data: sameDate } = await c
@@ -520,8 +555,12 @@ export async function previewWorkerRateUnpaidLaborApplyWithClient(
   rateHistoryId: string
 ): Promise<WorkerRateUnpaidApplySummary> {
   const history = await getRateHistoryRowForApply(c, workerId, rateHistoryId);
-  const candidates = await loadRateApplyCandidatesWithClient(c, workerId, history);
-  return summarizeRateApplyCandidates(history, candidates);
+  const { candidates, skippedCount } = await loadRateApplyCandidatesWithClient(
+    c,
+    workerId,
+    history
+  );
+  return summarizeRateApplyCandidates(history, candidates, skippedCount);
 }
 
 export async function applyWorkerRateToUnpaidLaborEntriesWithClient(
@@ -530,7 +569,11 @@ export async function applyWorkerRateToUnpaidLaborEntriesWithClient(
   rateHistoryId: string
 ): Promise<WorkerRateUnpaidApplySummary> {
   const history = await getRateHistoryRowForApply(c, workerId, rateHistoryId);
-  const candidates = await loadRateApplyCandidatesWithClient(c, workerId, history);
+  const { candidates, skippedCount } = await loadRateApplyCandidatesWithClient(
+    c,
+    workerId,
+    history
+  );
   const applied: LaborRateApplyCandidate[] = [];
 
   for (const candidate of candidates) {
@@ -553,7 +596,7 @@ export async function applyWorkerRateToUnpaidLaborEntriesWithClient(
     if (data) applied.push(candidate);
   }
 
-  return summarizeRateApplyCandidates(history, applied);
+  return summarizeRateApplyCandidates(history, applied, skippedCount);
 }
 
 export async function ensureInitialWorkerRateHistoryWithClient(
