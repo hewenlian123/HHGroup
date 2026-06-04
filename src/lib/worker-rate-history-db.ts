@@ -62,7 +62,6 @@ type LaborRateApplyRow = {
   cost_amount?: unknown;
   status?: unknown;
   worker_payment_id?: unknown;
-  locked_at?: unknown;
   rate_history_id?: unknown;
   notes?: unknown;
 };
@@ -137,7 +136,6 @@ function daysWorkedForRateApply(row: LaborRateApplyRow): number | null {
 
 function isClosedForRateApply(row: LaborRateApplyRow, legacyPaymentId: string | null): boolean {
   if (String(row.worker_payment_id ?? "").trim() || legacyPaymentId) return true;
-  if (String(row.locked_at ?? "").trim()) return true;
   const status = String(row.status ?? "")
     .trim()
     .toLowerCase();
@@ -237,7 +235,7 @@ async function loadRateApplyCandidatesWithClient(
   let query = c
     .from("labor_entries")
     .select(
-      "id, worker_id, work_date, hours, morning, afternoon, days_worked, daily_rate_snapshot, amount_snapshot, labor_cost_snapshot, cost_amount, status, worker_payment_id, locked_at, rate_history_id, notes"
+      "id, worker_id, work_date, hours, morning, afternoon, days_worked, daily_rate_snapshot, amount_snapshot, labor_cost_snapshot, cost_amount, status, worker_payment_id, rate_history_id, notes"
     )
     .eq("worker_id", workerId)
     .gte("work_date", history.effectiveFrom);
@@ -541,7 +539,6 @@ export async function applyWorkerRateToUnpaidLaborEntriesWithClient(
       .eq("id", candidate.id)
       .eq("worker_id", workerId)
       .is("worker_payment_id", null)
-      .is("locked_at", null)
       .select("id")
       .maybeSingle();
     if (error) throw new Error(error.message ?? "Failed to update unpaid labor entry snapshots.");

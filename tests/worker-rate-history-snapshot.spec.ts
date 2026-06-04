@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { loadE2EProcessEnv } from "./e2e-load-env";
@@ -103,6 +104,12 @@ async function apiJson<T>(
 }
 
 test.describe.configure({ mode: "serial", timeout: 180_000 });
+
+test("worker rate apply queries do not reference removed labor_entries locked_at column", async () => {
+  const source = await readFile("src/lib/worker-rate-history-db.ts", "utf8");
+
+  expect(source).not.toContain("locked_at");
+});
 
 test("daily rate history snapshots protect old labor, balances, payroll, payments, and worker invoices", async ({
   request,
