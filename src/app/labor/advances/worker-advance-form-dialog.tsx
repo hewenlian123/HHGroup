@@ -34,6 +34,17 @@ type Props = {
   onSave: (values: FormValues) => Promise<void> | void;
 };
 
+function createInitialFormValues(initialValues?: FormValues): FormValues {
+  return {
+    workerId: "",
+    projectId: null,
+    amount: "",
+    advanceDate: new Date().toISOString().slice(0, 10),
+    notes: "",
+    ...(initialValues ?? {}),
+  };
+}
+
 export function WorkerAdvanceFormDialog({
   open,
   mode,
@@ -43,30 +54,33 @@ export function WorkerAdvanceFormDialog({
   onClose,
   onSave,
 }: Props) {
-  const [form, setForm] = React.useState<FormValues>(() => ({
-    workerId: "",
-    projectId: null,
-    amount: "",
-    advanceDate: new Date().toISOString().slice(0, 10),
-    notes: "",
-    ...(initialValues ?? {}),
-  }));
+  const [form, setForm] = React.useState<FormValues>(() => createInitialFormValues(initialValues));
   const [error, setError] = React.useState<string | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
+  const initializedOpenKeyRef = React.useRef<string | null>(null);
+
+  const initialValuesKey = open
+    ? [
+        mode,
+        initialValues?.id ?? "new",
+        initialValues?.workerId ?? "",
+        initialValues?.projectId ?? "",
+        initialValues?.advanceDate ?? "",
+      ].join(":")
+    : "";
 
   React.useEffect(() => {
-    if (open) {
-      setForm(() => ({
-        workerId: "",
-        projectId: null,
-        amount: "",
-        advanceDate: new Date().toISOString().slice(0, 10),
-        notes: "",
-        ...(initialValues ?? {}),
-      }));
-      setError(null);
+    if (!open) {
+      initializedOpenKeyRef.current = null;
+      return;
     }
-  }, [open, initialValues]);
+    if (initializedOpenKeyRef.current === initialValuesKey) {
+      return;
+    }
+    initializedOpenKeyRef.current = initialValuesKey;
+    setForm(() => createInitialFormValues(initialValues));
+    setError(null);
+  }, [open, initialValuesKey, initialValues]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
