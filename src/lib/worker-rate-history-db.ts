@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { laborEntryPaymentIdMapFromWorkerPayments } from "@/lib/labor-balance-shared";
 
 const OT_MULTIPLIER = 1.5;
 
@@ -29,9 +30,50 @@ export type LaborEntryRateSnapshot = {
   rate_history_id: string | null;
 };
 
+export type WorkerRateUnpaidApplySummary = {
+  rateHistoryId: string;
+  dailyRate: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  affectedCount: number;
+  oldTotal: number;
+  newTotal: number;
+  difference: number;
+};
+
+type LaborRateApplyCandidate = {
+  id: string;
+  daysWorked: number;
+  oldAmount: number;
+  newAmount: number;
+  notes: string | null;
+};
+
+type LaborRateApplyRow = {
+  id?: unknown;
+  work_date?: unknown;
+  hours?: unknown;
+  morning?: unknown;
+  afternoon?: unknown;
+  days_worked?: unknown;
+  daily_rate_snapshot?: unknown;
+  amount_snapshot?: unknown;
+  labor_cost_snapshot?: unknown;
+  cost_amount?: unknown;
+  status?: unknown;
+  worker_payment_id?: unknown;
+  locked_at?: unknown;
+  rate_history_id?: unknown;
+  notes?: unknown;
+};
+
 function safeNumber(value: unknown): number {
   const n = typeof value === "number" ? value : Number(value);
   return Number.isFinite(n) ? n : 0;
+}
+
+function roundMoney(value: number): number {
+  return Math.round((safeNumber(value) + Number.EPSILON) * 100) / 100;
 }
 
 function normalizeDate(value: string): string {
@@ -72,6 +114,160 @@ function mapHistoryRow(row: Record<string, unknown>): WorkerRateHistory {
     createdAt: row.created_at ? String(row.created_at) : null,
     updatedAt: row.updated_at ? String(row.updated_at) : null,
   };
+}
+
+function amountSnapshotForRateApply(row: LaborRateApplyRow): number {
+  const laborCost = row.labor_cost_snapshot;
+  if (laborCost != null && safeNumber(laborCost) !== 0) return safeNumber(laborCost);
+  const amount = row.amount_snapshot;
+  if (amount != null && safeNumber(amount) !== 0) return safeNumber(amount);
+  return safeNumber(row.cost_amount);
+}
+
+function daysWorkedForRateApply(row: LaborRateApplyRow): number | null {
+  const savedDays = safeNumber(row.days_worked);
+  if (savedDays > 0 && savedDays <= 1) return savedDays;
+  const morning = row.morning === true;
+  const afternoon = row.afternoon === true;
+  if (morning || afternoon) return (morning ? 0.5 : 0) + (afternoon ? 0.5 : 0);
+  const hours = safeNumber(row.hours);
+  if (hours > 0 && hours <= 1) return hours;
+  return null;
+}
+
+function isClosedForRateApply(row: LaborRateApplyRow, legacyPaymentId: string | null): boolean {
+  if (String(row.worker_payment_id ?? "").trim() || legacyPaymentId) return true;
+  if (String(row.locked_at ?? "").trim()) return true;
+  const status = String(row.status ?? "")
+    .trim()
+    .toLowerCase();
+  if (!status) return false;
+  return [
+    "paid",
+    "settled",
+    "locked",
+    "final",
+    "finalized",
+    "statement",
+    "statemented",
+    "invoiced",
+    "void",
+    "voided",
+    "cancelled",
+    "canceled",
+    "deleted",
+  ].includes(status);
+}
+
+function buildRateApplyNote(existing: string | null, dailyRate: number, effectiveFrom: string) {
+  const note = `Rate snapshot updated to ${fmtRateForNote(dailyRate)}/day from ${effectiveFrom}.`;
+  const current = String(existing ?? "").trim();
+  if (!current) return note;
+  if (current.includes(note)) return current;
+  return `${current}\n${note}`;
+}
+
+function fmtRateForNote(rate: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(safeNumber(rate));
+}
+
+function summarizeRateApplyCandidates(
+  history: WorkerRateHistory,
+  candidates: LaborRateApplyCandidate[]
+): WorkerRateUnpaidApplySummary {
+  const oldTotal = roundMoney(candidates.reduce((sum, row) => sum + row.oldAmount, 0));
+  const newTotal = roundMoney(candidates.reduce((sum, row) => sum + row.newAmount, 0));
+  return {
+    rateHistoryId: history.id,
+    dailyRate: history.dailyRate,
+    effectiveFrom: history.effectiveFrom,
+    effectiveTo: history.effectiveTo,
+    affectedCount: candidates.length,
+    oldTotal,
+    newTotal,
+    difference: roundMoney(newTotal - oldTotal),
+  };
+}
+
+async function getRateHistoryRowForApply(
+  c: SupabaseClient,
+  workerId: string,
+  rateHistoryId: string
+): Promise<WorkerRateHistory> {
+  const { data, error } = await c
+    .from("worker_rate_history")
+    .select(
+      "id, worker_id, rate_type, daily_rate, effective_from, effective_to, notes, created_at, updated_at"
+    )
+    .eq("id", rateHistoryId)
+    .eq("worker_id", workerId)
+    .eq("rate_type", "daily")
+    .maybeSingle();
+  if (error) throw new Error(error.message ?? "Failed to load worker daily rate history.");
+  if (!data) throw new Error("Worker daily rate history not found.");
+  return mapHistoryRow(data as Record<string, unknown>);
+}
+
+async function loadWorkerPaymentLinksForRateApply(
+  c: SupabaseClient,
+  workerId: string
+): Promise<Map<string, string>> {
+  const { data, error } = await c
+    .from("worker_payments")
+    .select("id, labor_entry_ids")
+    .eq("worker_id", workerId);
+  if (error) {
+    if (/column|schema cache|labor_entry_ids/i.test(error.message ?? "")) return new Map();
+    throw new Error(error.message ?? "Failed to load worker payment links.");
+  }
+  return laborEntryPaymentIdMapFromWorkerPayments(
+    (data ?? []) as Array<{ id?: unknown; labor_entry_ids?: unknown }>
+  );
+}
+
+async function loadRateApplyCandidatesWithClient(
+  c: SupabaseClient,
+  workerId: string,
+  history: WorkerRateHistory
+): Promise<LaborRateApplyCandidate[]> {
+  let query = c
+    .from("labor_entries")
+    .select(
+      "id, worker_id, work_date, hours, morning, afternoon, days_worked, daily_rate_snapshot, amount_snapshot, labor_cost_snapshot, cost_amount, status, worker_payment_id, locked_at, rate_history_id, notes"
+    )
+    .eq("worker_id", workerId)
+    .gte("work_date", history.effectiveFrom);
+  if (history.effectiveTo) query = query.lte("work_date", history.effectiveTo);
+  query = query.order("work_date", { ascending: true });
+
+  const [{ data, error }, paymentLinks] = await Promise.all([
+    query,
+    loadWorkerPaymentLinksForRateApply(c, workerId),
+  ]);
+  if (error) throw new Error(error.message ?? "Failed to load unpaid labor entries.");
+
+  const candidates: LaborRateApplyCandidate[] = [];
+  for (const row of (data ?? []) as LaborRateApplyRow[]) {
+    const id = String(row.id ?? "").trim();
+    if (!id) continue;
+    if (isClosedForRateApply(row, paymentLinks.get(id) ?? null)) continue;
+    const daysWorked = daysWorkedForRateApply(row);
+    if (daysWorked == null || daysWorked <= 0) continue;
+    const oldAmount = roundMoney(amountSnapshotForRateApply(row));
+    const newAmount = roundMoney(history.dailyRate * daysWorked);
+    candidates.push({
+      id,
+      daysWorked,
+      oldAmount,
+      newAmount,
+      notes: typeof row.notes === "string" ? row.notes : null,
+    });
+  }
+  return candidates;
 }
 
 async function fallbackWorkerDailyRate(
@@ -310,6 +506,49 @@ export async function changeWorkerDailyRateWithClient(
   }
 
   return mapHistoryRow(write.data as Record<string, unknown>);
+}
+
+export async function previewWorkerRateUnpaidLaborApplyWithClient(
+  c: SupabaseClient,
+  workerId: string,
+  rateHistoryId: string
+): Promise<WorkerRateUnpaidApplySummary> {
+  const history = await getRateHistoryRowForApply(c, workerId, rateHistoryId);
+  const candidates = await loadRateApplyCandidatesWithClient(c, workerId, history);
+  return summarizeRateApplyCandidates(history, candidates);
+}
+
+export async function applyWorkerRateToUnpaidLaborEntriesWithClient(
+  c: SupabaseClient,
+  workerId: string,
+  rateHistoryId: string
+): Promise<WorkerRateUnpaidApplySummary> {
+  const history = await getRateHistoryRowForApply(c, workerId, rateHistoryId);
+  const candidates = await loadRateApplyCandidatesWithClient(c, workerId, history);
+  const applied: LaborRateApplyCandidate[] = [];
+
+  for (const candidate of candidates) {
+    const { data, error } = await c
+      .from("labor_entries")
+      .update({
+        daily_rate_snapshot: history.dailyRate,
+        amount_snapshot: candidate.newAmount,
+        labor_cost_snapshot: candidate.newAmount,
+        cost_amount: candidate.newAmount,
+        rate_history_id: history.id,
+        notes: buildRateApplyNote(candidate.notes, history.dailyRate, history.effectiveFrom),
+      })
+      .eq("id", candidate.id)
+      .eq("worker_id", workerId)
+      .is("worker_payment_id", null)
+      .is("locked_at", null)
+      .select("id")
+      .maybeSingle();
+    if (error) throw new Error(error.message ?? "Failed to update unpaid labor entry snapshots.");
+    if (data) applied.push(candidate);
+  }
+
+  return summarizeRateApplyCandidates(history, applied);
 }
 
 export async function ensureInitialWorkerRateHistoryWithClient(

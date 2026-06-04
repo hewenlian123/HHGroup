@@ -15,6 +15,14 @@ const ids = {
   workerInvoice: randomUUID(),
 };
 
+function makeApplyIds() {
+  return {
+    worker: randomUUID(),
+    project: randomUUID(),
+    initialRate: randomUUID(),
+  };
+}
+
 function envClient(): SupabaseClient | null {
   loadE2EProcessEnv();
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -63,6 +71,19 @@ async function cleanup(client: SupabaseClient): Promise<void> {
   await client.from("labor_workers").delete().eq("id", ids.worker);
   await client.from("workers").delete().eq("id", ids.worker);
   await client.from("projects").delete().eq("id", ids.project);
+}
+
+async function cleanupApplyIds(
+  client: SupabaseClient,
+  applyIds: ReturnType<typeof makeApplyIds>
+): Promise<void> {
+  await client.from("worker_payments").delete().eq("worker_id", applyIds.worker);
+  await client.from("worker_invoices").delete().eq("worker_id", applyIds.worker);
+  await client.from("labor_entries").delete().eq("worker_id", applyIds.worker);
+  await client.from("worker_rate_history").delete().eq("worker_id", applyIds.worker);
+  await client.from("labor_workers").delete().eq("id", applyIds.worker);
+  await client.from("workers").delete().eq("id", applyIds.worker);
+  await client.from("projects").delete().eq("id", applyIds.project);
 }
 
 async function apiJson<T>(
@@ -278,4 +299,196 @@ test("daily rate history snapshots protect old labor, balances, payroll, payment
   expect(payrollAfterWorker?.earned).toBeCloseTo(583, 2);
 
   await cleanup(admin);
+});
+
+test("backdated rate can explicitly update only unpaid labor entry snapshots", async ({
+  request,
+}) => {
+  const admin = envClient();
+  if (!admin) {
+    test.skip(true, "Requires local E2E Supabase service role credentials.");
+    return;
+  }
+
+  const applyIds = makeApplyIds();
+  const runTag = `${RUN_TAG} Apply`;
+
+  await cleanupApplyIds(admin, applyIds);
+
+  try {
+    await insertFirstSuccess(admin, "projects", [
+      { id: applyIds.project, name: `${runTag} Project`, status: "active", budget: 0, spent: 0 },
+      { id: applyIds.project, name: `${runTag} Project`, status: "active" },
+    ]);
+    await insertFirstSuccess(admin, "workers", [
+      {
+        id: applyIds.worker,
+        name: `${runTag} Worker`,
+        role: "Labor",
+        phone: "555-0290",
+        half_day_rate: 280,
+        daily_rate: 280,
+        status: "active",
+        notes: runTag,
+      },
+    ]);
+    await upsertFirstSuccess(admin, "labor_workers", [
+      { id: applyIds.worker, name: `${runTag} Worker`, active: true, rate: 280, type: "Sub" },
+      { id: applyIds.worker, name: `${runTag} Worker` },
+    ]);
+    await insertFirstSuccess(admin, "worker_rate_history", [
+      {
+        id: applyIds.initialRate,
+        worker_id: applyIds.worker,
+        rate_type: "daily",
+        daily_rate: 280,
+        effective_from: "2026-03-01",
+        effective_to: null,
+        notes: "initial apply E2E daily rate",
+      },
+    ]);
+
+    const unpaidFull = await apiJson<{ id: string }>(request, "POST", "/api/labor/entries", {
+      workerId: applyIds.worker,
+      projectId: applyIds.project,
+      workDate: "2026-04-10",
+      hours: 1,
+      costCode: "E2E",
+      notes: `${runTag} unpaid April full day`,
+    });
+    const paidFull = await apiJson<{ id: string }>(request, "POST", "/api/labor/entries", {
+      workerId: applyIds.worker,
+      projectId: applyIds.project,
+      workDate: "2026-04-12",
+      hours: 1,
+      costCode: "E2E",
+      notes: `${runTag} paid April full day`,
+    });
+    const unpaidHalf = await apiJson<{ id: string }>(request, "POST", "/api/labor/entries", {
+      workerId: applyIds.worker,
+      projectId: applyIds.project,
+      workDate: "2026-05-10",
+      hours: 0.5,
+      costCode: "E2E",
+      notes: `${runTag} unpaid May half day`,
+    });
+
+    await apiJson(request, "POST", `/api/labor/workers/${applyIds.worker}/pay`, {
+      amount: 280,
+      payment_method: "Check",
+      payment_date: "2026-04-13",
+      notes: `${runTag} paid entry should stay frozen`,
+      labor_entry_ids: [paidFull.id],
+      reimbursement_ids: [],
+    });
+
+    const change = await apiJson<{
+      history: { id: string; dailyRate: number; effectiveFrom: string; effectiveTo: string | null };
+      applyToUnpaidPreview: {
+        affectedCount: number;
+        oldTotal: number;
+        newTotal: number;
+        difference: number;
+      };
+    }>(request, "POST", `/api/labor/workers/${applyIds.worker}/rate-history`, {
+      dailyRate: 290,
+      effectiveFrom: "2026-04-01",
+      notes: "Backdated apply test",
+    });
+
+    expect(change.history.dailyRate).toBe(290);
+    expect(change.history.effectiveFrom).toBe("2026-04-01");
+    expect(change.applyToUnpaidPreview).toMatchObject({
+      affectedCount: 2,
+      oldTotal: 420,
+      newTotal: 435,
+      difference: 15,
+    });
+
+    const apply = await apiJson<{
+      summary: { affectedCount: number; oldTotal: number; newTotal: number; difference: number };
+    }>(request, "POST", `/api/labor/workers/${applyIds.worker}/rate-history/apply-unpaid`, {
+      rateHistoryId: change.history.id,
+    });
+    expect(apply.summary).toMatchObject({
+      affectedCount: 2,
+      oldTotal: 420,
+      newTotal: 435,
+      difference: 15,
+    });
+
+    const { data: rows, error: rowsErr } = await admin
+      .from("labor_entries")
+      .select(
+        "id, cost_amount, daily_rate_snapshot, amount_snapshot, labor_cost_snapshot, worker_payment_id, rate_history_id, notes"
+      )
+      .in("id", [unpaidFull.id, paidFull.id, unpaidHalf.id]);
+    expect(rowsErr?.message).toBeUndefined();
+    const byId = new Map((rows ?? []).map((row) => [String(row.id), row]));
+
+    expect(Number(byId.get(unpaidFull.id)?.daily_rate_snapshot)).toBe(290);
+    expect(Number(byId.get(unpaidFull.id)?.amount_snapshot)).toBe(290);
+    expect(Number(byId.get(unpaidFull.id)?.labor_cost_snapshot)).toBe(290);
+    expect(Number(byId.get(unpaidFull.id)?.cost_amount)).toBe(290);
+    expect(byId.get(unpaidFull.id)?.rate_history_id).toBe(change.history.id);
+    expect(String(byId.get(unpaidFull.id)?.notes ?? "")).toContain("Rate snapshot updated");
+
+    expect(Number(byId.get(unpaidHalf.id)?.daily_rate_snapshot)).toBe(290);
+    expect(Number(byId.get(unpaidHalf.id)?.amount_snapshot)).toBe(145);
+    expect(Number(byId.get(unpaidHalf.id)?.labor_cost_snapshot)).toBe(145);
+    expect(Number(byId.get(unpaidHalf.id)?.cost_amount)).toBe(145);
+    expect(byId.get(unpaidHalf.id)?.rate_history_id).toBe(change.history.id);
+
+    expect(Number(byId.get(paidFull.id)?.daily_rate_snapshot)).toBe(280);
+    expect(Number(byId.get(paidFull.id)?.amount_snapshot)).toBe(280);
+    expect(Number(byId.get(paidFull.id)?.cost_amount)).toBe(280);
+    expect(String(byId.get(paidFull.id)?.worker_payment_id ?? "")).toBeTruthy();
+
+    const balance = await apiJson<{ summary: { laborOwed: number; balance: number } }>(
+      request,
+      "GET",
+      `/api/labor/workers/${applyIds.worker}/balance`
+    );
+    expect(balance.summary.laborOwed).toBeCloseTo(435, 2);
+    expect(balance.summary.balance).toBeCloseTo(435, 2);
+
+    const payroll = await apiJson<{
+      rows: Array<{ workerId: string; laborOwed: number; paid: number; balance: number }>;
+    }>(request, "GET", "/api/labor/payroll-summary?fromDate=2026-04-01&toDate=2030-12-31");
+    const payrollWorker = payroll.rows.find((row) => row.workerId === applyIds.worker);
+    expect(payrollWorker?.laborOwed).toBeCloseTo(715, 2);
+    expect(payrollWorker?.paid).toBeCloseTo(280, 2);
+    expect(payrollWorker?.balance).toBeCloseTo(435, 2);
+
+    const { data: paymentRows, error: paymentErr } = await admin
+      .from("worker_payments")
+      .select("total_amount, labor_entry_ids")
+      .eq("worker_id", applyIds.worker);
+    expect(paymentErr?.message).toBeUndefined();
+    expect((paymentRows ?? []).reduce((sum, row) => sum + Number(row.total_amount), 0)).toBe(280);
+    expect(paymentRows?.[0]?.labor_entry_ids).toContain(paidFull.id);
+
+    const { data: historyRows, error: historyErr } = await admin
+      .from("worker_rate_history")
+      .select("daily_rate, effective_from, effective_to")
+      .eq("worker_id", applyIds.worker)
+      .order("effective_from", { ascending: true });
+    expect(historyErr?.message).toBeUndefined();
+    expect(historyRows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          daily_rate: 280,
+          effective_from: "2026-03-01",
+          effective_to: "2026-03-31",
+        }),
+        expect.objectContaining({
+          daily_rate: 290,
+          effective_from: "2026-04-01",
+          effective_to: null,
+        }),
+      ])
+    );
+  } finally {
+    await cleanupApplyIds(admin, applyIds);
+  }
 });

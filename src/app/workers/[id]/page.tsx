@@ -35,6 +35,17 @@ type WorkerRateHistoryView = {
   notes: string | null;
 };
 
+type RateApplyPreview = {
+  rateHistoryId: string;
+  dailyRate: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  affectedCount: number;
+  oldTotal: number;
+  newTotal: number;
+  difference: number;
+};
+
 type WorkerBalanceLaborRow = {
   id: string;
   date: string;
@@ -414,6 +425,8 @@ export default function WorkerDashboardPage() {
   const [rateNotes, setRateNotes] = React.useState("");
   const [rateMessage, setRateMessage] = React.useState<string | null>(null);
   const [rateBusy, setRateBusy] = React.useState(false);
+  const [rateApplyPreview, setRateApplyPreview] = React.useState<RateApplyPreview | null>(null);
+  const [rateApplyBusy, setRateApplyBusy] = React.useState(false);
 
   const [financialSummary, setFinancialSummary] = React.useState<{
     totalLabor: number;
@@ -734,6 +747,7 @@ export default function WorkerDashboardPage() {
     }
     setRateBusy(true);
     setRateMessage(null);
+    setRateApplyPreview(null);
     try {
       const response = await fetch(`/api/labor/workers/${id}/rate-history`, {
         method: "POST",
@@ -746,12 +760,42 @@ export default function WorkerDashboardPage() {
       });
       const body = (await response.json().catch(() => null)) as { message?: string } | null;
       if (!response.ok) throw new Error(body?.message ?? "Failed to change daily rate.");
+      const result = body as { applyToUnpaidPreview?: RateApplyPreview | null } | null;
+      setRateApplyPreview(result?.applyToUnpaidPreview ?? null);
       setRateMessage("Daily rate changed.");
       await refreshAll();
     } catch (e) {
       setRateMessage(e instanceof Error ? e.message : "Failed to change daily rate.");
     } finally {
       setRateBusy(false);
+    }
+  };
+
+  const handleApplyRateToUnpaidEntries = async () => {
+    if (!id || !rateApplyPreview) return;
+    setRateApplyBusy(true);
+    setRateMessage(null);
+    try {
+      const response = await fetch(`/api/labor/workers/${id}/rate-history/apply-unpaid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rateHistoryId: rateApplyPreview.rateHistoryId }),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        message?: string;
+        summary?: RateApplyPreview;
+      } | null;
+      if (!response.ok) throw new Error(body?.message ?? "Failed to update unpaid labor entries.");
+      const affected = body?.summary?.affectedCount ?? rateApplyPreview.affectedCount;
+      setRateApplyPreview(null);
+      setRateMessage(
+        affected === 1 ? "Updated 1 unpaid time entry." : `Updated ${affected} unpaid time entries.`
+      );
+      await refreshAll();
+    } catch (e) {
+      setRateMessage(e instanceof Error ? e.message : "Failed to update unpaid labor entries.");
+    } finally {
+      setRateApplyBusy(false);
     }
   };
 
@@ -1600,6 +1644,84 @@ export default function WorkerDashboardPage() {
                     {rateBusy ? "Saving…" : "Change Daily Rate"}
                   </Button>
                 </div>
+                {rateApplyPreview ? (
+                  <div className="mt-4 rounded-md border border-amber-400/25 bg-amber-400/10 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-200">
+                          Apply this rate to unpaid entries?
+                        </p>
+                        <p className="mt-1 text-sm text-foreground">
+                          New rate {fmtUsd(rateApplyPreview.dailyRate)} / day ·{" "}
+                          {rateApplyPreview.effectiveFrom} to{" "}
+                          {rateApplyPreview.effectiveTo ?? "open-ended"}
+                        </p>
+                      </div>
+                      <div className="text-left sm:text-right">
+                        <p className="text-xs text-muted-foreground">Affected unpaid entries</p>
+                        <p className="text-lg font-semibold tabular-nums text-foreground">
+                          {rateApplyPreview.affectedCount}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                      <div className="rounded-sm border border-border/60 bg-background/35 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                          Old total
+                        </p>
+                        <p className="mt-1 font-semibold tabular-nums text-foreground">
+                          {fmtUsd(rateApplyPreview.oldTotal)}
+                        </p>
+                      </div>
+                      <div className="rounded-sm border border-border/60 bg-background/35 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                          New total
+                        </p>
+                        <p className="mt-1 font-semibold tabular-nums text-foreground">
+                          {fmtUsd(rateApplyPreview.newTotal)}
+                        </p>
+                      </div>
+                      <div className="rounded-sm border border-border/60 bg-background/35 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                          Difference
+                        </p>
+                        <p className="mt-1 font-semibold tabular-nums text-foreground">
+                          {fmtUsd(rateApplyPreview.difference)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="mt-3 text-xs leading-5 text-muted-foreground">
+                      Paid entries will not change. Existing payment receipts/statements will not
+                      change. This only updates unpaid labor entries in the selected date range.
+                    </p>
+                    <div className="mt-4 flex flex-wrap justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-sm"
+                        onClick={() => {
+                          setRateApplyPreview(null);
+                          setRateMessage("Skipped unpaid entry snapshot updates.");
+                        }}
+                        disabled={rateApplyBusy}
+                      >
+                        Skip
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="rounded-sm"
+                        onClick={handleApplyRateToUnpaidEntries}
+                        disabled={rateApplyBusy || rateApplyPreview.affectedCount === 0}
+                      >
+                        {rateApplyBusy ? "Applying…" : "Apply to unpaid entries"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           </DetailSection>

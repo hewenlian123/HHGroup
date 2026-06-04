@@ -4,6 +4,7 @@ import {
   changeWorkerDailyRateWithClient,
   getWorkerCurrentDailyRateWithClient,
   getWorkerRateHistoryWithClient,
+  previewWorkerRateUnpaidLaborApplyWithClient,
 } from "@/lib/worker-rate-history-db";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
@@ -75,7 +76,15 @@ export async function POST(req: Request, { params }: RouteParams) {
       effectiveFrom,
       notes: typeof body.notes === "string" ? body.notes : null,
     });
-    return NextResponse.json({ ok: true, history }, { headers: NO_CACHE_HEADERS });
+    const applyToUnpaidPreview = await previewWorkerRateUnpaidLaborApplyWithClient(
+      supabase,
+      id,
+      history.id
+    );
+    return NextResponse.json(
+      { ok: true, history, applyToUnpaidPreview },
+      { headers: NO_CACHE_HEADERS }
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to change daily rate.";
     return apiError(500, message);
