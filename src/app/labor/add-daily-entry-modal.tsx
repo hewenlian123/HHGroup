@@ -43,6 +43,9 @@ type LaborWorker = {
   name: string;
   halfDayRate?: number | null;
   dailyRate?: number | null;
+  phone?: string | null;
+  nickname?: string | null;
+  code?: string | null;
 };
 
 type LaborProjectOption = { id: string; name: string };
@@ -63,6 +66,11 @@ type ExistingLaborEntryOption = {
   morning?: boolean | null;
   afternoon?: boolean | null;
   status?: string | null;
+};
+
+type JoinedLaborEntryOption = ExistingLaborEntryOption & {
+  work_date?: string | null;
+  workDate?: string | null;
 };
 
 type ExistingSessionState = {
@@ -135,6 +143,48 @@ function defaultSelectionMap(workers: LaborWorker[]): Record<string, Sel> {
     string,
     Sel
   >;
+}
+
+function workerDailyRate(worker: LaborWorker): number | null {
+  const raw = worker.dailyRate ?? worker.halfDayRate;
+  if (raw == null) return null;
+  const rate = Number(raw);
+  return Number.isFinite(rate) ? Math.max(0, rate) : null;
+}
+
+function formatDailyRate(worker: LaborWorker): string {
+  const rate = workerDailyRate(worker);
+  if (rate == null) return "—/day";
+  return `$${rate.toLocaleString(undefined, { maximumFractionDigits: 2 })}/day`;
+}
+
+function compareWorkersByDailyRate(a: LaborWorker, b: LaborWorker): number {
+  const rateA = workerDailyRate(a);
+  const rateB = workerDailyRate(b);
+  if (rateA == null && rateB != null) return 1;
+  if (rateA != null && rateB == null) return -1;
+  if (rateA != null && rateB != null && rateA !== rateB) return rateB - rateA;
+  return a.name.localeCompare(b.name, undefined, { sensitivity: "base", numeric: true });
+}
+
+function workerMatchesSearch(worker: LaborWorker, query: string): boolean {
+  const q = query.trim().toLocaleLowerCase();
+  if (!q) return true;
+  return [worker.name, worker.phone, worker.nickname, worker.code].some((value) =>
+    String(value ?? "")
+      .toLocaleLowerCase()
+      .includes(q)
+  );
+}
+
+function pluralizeWorkers(count: number): string {
+  return `${count} ${count === 1 ? "worker" : "workers"}`;
+}
+
+function recentProjectDateFrom(workDate: string): string {
+  const base = ymdToLocalDate(workDate) ?? new Date();
+  base.setDate(base.getDate() - 365);
+  return toYmd(base);
 }
 
 function AddDailyEntryDateField({
@@ -366,8 +416,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
     []
   );
 
-  const rate =
-    worker.dailyRate != null && Number(worker.dailyRate) >= 0 ? Number(worker.dailyRate) : 0;
+  const rate = workerDailyRate(worker) ?? 0;
   const total = computeRegularPay(rate, morning, afternoon);
 
   return (
@@ -399,7 +448,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
         ) : null}
       </div>
       <div className="whitespace-nowrap text-right text-xs font-medium tabular-nums text-[var(--neo-text-secondary)]">
-        ${Math.round(rate)}/d
+        {formatDailyRate(worker)}
       </div>
       <div className="flex justify-center">
         <Button
@@ -497,6 +546,8 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
   const [workDate, setWorkDate] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [projects, setProjects] = React.useState<LaborProjectOption[]>([]);
   const [workers, setWorkers] = React.useState<LaborWorker[]>([]);
+  const [workerSearch, setWorkerSearch] = React.useState("");
+  const [projectRecentWorkerIds, setProjectRecentWorkerIds] = React.useState<string[]>([]);
   const [selectionByWorkerId, setSelectionByWorkerId] = React.useState<Record<string, Sel>>({});
   const selectionRef = React.useRef(selectionByWorkerId);
   React.useEffect(() => {
@@ -573,6 +624,58 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
       cancelled = true;
     };
   }, [open, workDate]);
+
+  React.useEffect(() => {
+    if (!open || !projectId) {
+      setProjectRecentWorkerIds([]);
+      return;
+    }
+    let cancelled = false;
+    const params = new URLSearchParams({
+      view: "joined",
+      projectId,
+      dateFrom: recentProjectDateFrom(workDate),
+    });
+    fetch(`/api/labor/entries?${params.toString()}`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return [];
+        const body = (await response.json().catch(() => ({}))) as {
+          entries?: JoinedLaborEntryOption[];
+        };
+        return body.entries ?? [];
+      })
+      .then((entries) => {
+        if (cancelled) return;
+        const seen = new Set<string>();
+        const next: string[] = [];
+        for (const entry of entries) {
+          const workerId = existingEntryWorkerId(entry);
+          if (!workerId || seen.has(workerId)) continue;
+          seen.add(workerId);
+          next.push(workerId);
+        }
+        setProjectRecentWorkerIds(next);
+      })
+      .catch(() => {
+        if (!cancelled) setProjectRecentWorkerIds([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, projectId, workDate]);
+
+  const displayedWorkers = React.useMemo(() => {
+    const query = workerSearch.trim();
+    const sorted = workers
+      .filter((worker) => workerMatchesSearch(worker, query))
+      .sort(compareWorkersByDailyRate);
+    if (query || !projectId || projectRecentWorkerIds.length === 0) return sorted;
+    const recent = new Set(projectRecentWorkerIds);
+    return [
+      ...sorted.filter((worker) => recent.has(worker.id)),
+      ...sorted.filter((worker) => !recent.has(worker.id)),
+    ];
+  }, [projectId, projectRecentWorkerIds, workerSearch, workers]);
 
   const toggleMorning = React.useCallback(
     (workerId: string) => {
@@ -720,6 +823,24 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
               </p>
             </div>
             <div className="min-w-0 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0d0f14] shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
+              <div className="flex flex-col gap-2 border-b border-white/[0.08] bg-[#11151c] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 space-y-1">
+                  <label className={labelClass} htmlFor="add-daily-worker-search">
+                    Search workers
+                  </label>
+                  <p className="text-[11px] text-[var(--neo-text-tertiary)]">
+                    {pluralizeWorkers(displayedWorkers.length)}
+                  </p>
+                </div>
+                <Input
+                  id="add-daily-worker-search"
+                  type="search"
+                  value={workerSearch}
+                  onChange={(e) => setWorkerSearch(e.target.value)}
+                  placeholder="Search by name"
+                  className={cn(fieldClass, "w-full sm:w-72")}
+                />
+              </div>
               <div className={cn(modalScrollbar, "overflow-x-auto")}>
                 <div className="min-w-[720px] sm:min-w-0">
                   <div
@@ -739,9 +860,13 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                     <div className="text-center">OT Amount</div>
                     <div className="pr-1 text-right">Total</div>
                   </div>
-                  {workers.length > WORKER_LIST_VIRTUAL_THRESHOLD ? (
+                  {displayedWorkers.length === 0 ? (
+                    <div className="px-3 py-8 text-center text-sm font-medium text-[var(--neo-text-tertiary)]">
+                      No workers found
+                    </div>
+                  ) : displayedWorkers.length > WORKER_LIST_VIRTUAL_THRESHOLD ? (
                     <VirtualScrollList
-                      count={workers.length}
+                      count={displayedWorkers.length}
                       estimateSize={WORKER_ROW_ESTIMATE_PX}
                       className={cn(
                         modalScrollbar,
@@ -749,13 +874,13 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                       )}
                     >
                       {(index) => {
-                        const worker = workers[index];
+                        const worker = displayedWorkers[index];
                         if (!worker) return null;
                         const sel = selectionByWorkerId[worker.id] ?? defaultSel();
                         const existing = existingSessionsByWorkerId[worker.id];
                         return (
                           <AddDailyEntryWorkerRow
-                            key={worker.id}
+                            key={`${workDate}:${worker.id}`}
                             worker={worker}
                             morning={sel.morning}
                             afternoon={sel.afternoon}
@@ -778,12 +903,12 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                         "max-h-[min(42vh,372px)] min-h-[108px] overflow-auto text-sm"
                       )}
                     >
-                      {workers.map((worker) => {
+                      {displayedWorkers.map((worker) => {
                         const sel = selectionByWorkerId[worker.id] ?? defaultSel();
                         const existing = existingSessionsByWorkerId[worker.id];
                         return (
                           <AddDailyEntryWorkerRow
-                            key={worker.id}
+                            key={`${workDate}:${worker.id}`}
                             worker={worker}
                             morning={sel.morning}
                             afternoon={sel.afternoon}
@@ -825,9 +950,13 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
                 </div>
               </div>
             </div>
-            {error ? <p className="text-sm font-medium text-red-300">{error}</p> : null}
           </div>
-          <DialogFooter className="m-0 shrink-0 border-t border-white/[0.08] bg-[#111318]/95 px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-14px_34px_rgba(0,0,0,0.18)] backdrop-blur sm:flex-row sm:justify-end">
+          <DialogFooter className="m-0 shrink-0 border-t border-white/[0.08] bg-[#111318]/95 px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-[0_-14px_34px_rgba(0,0,0,0.18)] backdrop-blur sm:flex-row sm:items-center sm:justify-end">
+            {error ? (
+              <p className="min-w-0 text-left text-sm font-medium text-red-300 sm:mr-auto">
+                {error}
+              </p>
+            ) : null}
             <Button
               type="button"
               variant="ghost"

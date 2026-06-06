@@ -54,12 +54,112 @@ function isoDateOffset(daysFromToday: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+function compactDateLabel(ymd: string): string {
+  const [year, month, day] = ymd.split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(
+    new Date(year, (month ?? 1) - 1, day ?? 1)
+  );
+}
+
 async function expectJsonMessage(
   response: { json(): Promise<unknown> },
   pattern: RegExp
 ): Promise<void> {
   const body = (await response.json()) as { message?: unknown };
   expect(String(body.message ?? "")).toMatch(pattern);
+}
+
+const DAILY_ENTRY_FULL_FLOW_PREFIX = "LOCAL-DAILY-ENTRY-FLOW-DELETE-ME";
+
+async function cleanupDailyEntryFullFlowData(db: SupabaseClient): Promise<void> {
+  const { data: workerRows, error: workersError } = await db
+    .from("workers")
+    .select("id")
+    .like("name", `${DAILY_ENTRY_FULL_FLOW_PREFIX}%`);
+  if (workersError)
+    throw new Error(`Failed to find daily entry flow workers: ${workersError.message}`);
+
+  const { data: projectRows, error: projectsError } = await db
+    .from("projects")
+    .select("id")
+    .like("name", `${DAILY_ENTRY_FULL_FLOW_PREFIX}%`);
+  if (projectsError) {
+    throw new Error(`Failed to find daily entry flow projects: ${projectsError.message}`);
+  }
+
+  const workerIds = (workerRows ?? []).map((row) => String(row.id)).filter(Boolean);
+  const projectIds = (projectRows ?? []).map((row) => String(row.id)).filter(Boolean);
+  if (workerIds.length > 0) {
+    const { error } = await db.from("labor_entries").delete().in("worker_id", workerIds);
+    if (error)
+      throw new Error(`Failed to delete daily entry flow worker entries: ${error.message}`);
+  }
+  if (projectIds.length > 0) {
+    const { error } = await db.from("labor_entries").delete().in("project_id", projectIds);
+    if (error)
+      throw new Error(`Failed to delete daily entry flow project entries: ${error.message}`);
+  }
+  if (workerIds.length > 0) {
+    const { error: laborWorkersError } = await db
+      .from("labor_workers")
+      .delete()
+      .in("id", workerIds);
+    if (laborWorkersError) {
+      throw new Error(
+        `Failed to delete daily entry flow labor workers: ${laborWorkersError.message}`
+      );
+    }
+    const { error: workersDeleteError } = await db.from("workers").delete().in("id", workerIds);
+    if (workersDeleteError) {
+      throw new Error(`Failed to delete daily entry flow workers: ${workersDeleteError.message}`);
+    }
+  }
+  if (projectIds.length > 0) {
+    const { error } = await db.from("projects").delete().in("id", projectIds);
+    if (error) throw new Error(`Failed to delete daily entry flow projects: ${error.message}`);
+  }
+}
+
+async function dailyEntryFullFlowCounts(
+  db: SupabaseClient
+): Promise<{ workers: number; projects: number; laborEntries: number }> {
+  const { data: workerRows, error: workersError } = await db
+    .from("workers")
+    .select("id")
+    .like("name", `${DAILY_ENTRY_FULL_FLOW_PREFIX}%`);
+  if (workersError)
+    throw new Error(`Failed to count daily entry flow workers: ${workersError.message}`);
+
+  const { data: projectRows, error: projectsError } = await db
+    .from("projects")
+    .select("id")
+    .like("name", `${DAILY_ENTRY_FULL_FLOW_PREFIX}%`);
+  if (projectsError) {
+    throw new Error(`Failed to count daily entry flow projects: ${projectsError.message}`);
+  }
+
+  const workerIds = (workerRows ?? []).map((row) => String(row.id)).filter(Boolean);
+  const projectIds = (projectRows ?? []).map((row) => String(row.id)).filter(Boolean);
+  let laborEntryIds = new Set<string>();
+  if (workerIds.length > 0) {
+    const { data, error } = await db.from("labor_entries").select("id").in("worker_id", workerIds);
+    if (error) throw new Error(`Failed to count daily entry flow worker entries: ${error.message}`);
+    for (const row of data ?? []) laborEntryIds.add(String(row.id));
+  }
+  if (projectIds.length > 0) {
+    const { data, error } = await db
+      .from("labor_entries")
+      .select("id")
+      .in("project_id", projectIds);
+    if (error)
+      throw new Error(`Failed to count daily entry flow project entries: ${error.message}`);
+    for (const row of data ?? []) laborEntryIds.add(String(row.id));
+  }
+  return {
+    workers: workerIds.length,
+    projects: projectIds.length,
+    laborEntries: laborEntryIds.size,
+  };
 }
 
 test.describe("bank and labor server API boundary", () => {
@@ -515,6 +615,16 @@ test.describe("bank and labor server API boundary", () => {
       expect(loginResponse.status()).toBe(200);
 
       const page = await context.newPage();
+      const waitForLaborOptionsForDate = (date: string) =>
+        page.waitForResponse((response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === "GET" &&
+            url.pathname === "/api/labor/entries" &&
+            url.searchParams.get("date") === date &&
+            response.ok()
+          );
+        });
       await page.goto(
         `/labor?workerId=${encodeURIComponent(worker!.id)}&month=${dateA.slice(0, 7)}`
       );
@@ -535,21 +645,28 @@ test.describe("bank and labor server API boundary", () => {
       const notesInput = optionalInputs.nth(1);
 
       await projectSelect.selectOption(project!.id);
+      const dateAOptionsResponse = waitForLaborOptionsForDate(dateA);
       await dateInput.fill(dateA);
+      await dateAOptionsResponse;
       await costCodeInput.fill(`CC-${tag}`);
       await notesInput.fill(`notes ${tag}`);
+      await expect(projectSelect).toHaveValue(project!.id);
+      await expect(dateInput).toHaveValue(dateA);
       await dialog.getByRole("button", { name: /^Save$/i }).click();
       await expect(dialog.getByText("Select at least one worker with AM or PM.")).toBeVisible();
 
       let workerRow = dialog.getByRole("row").filter({ hasText: workerName }).first();
       await expect(workerRow).toBeVisible({ timeout: 30_000 });
       await workerRow.getByRole("button", { name: "AM" }).click();
+      await expect(workerRow).toContainText("$100.00");
       await workerRow.getByRole("button", { name: "PM" }).click();
       await workerRow.getByLabel(`Overtime hours for ${workerName}`).fill("1.5");
       await workerRow.getByLabel(`Overtime fixed amount for ${workerName}`).fill("60");
       await expect(workerRow).toContainText("$200.00");
 
+      const dateBOptionsResponse = waitForLaborOptionsForDate(dateB);
       await dateInput.fill(dateB);
+      await dateBOptionsResponse;
       await expect(dateInput).toHaveValue(dateB);
       workerRow = dialog.getByRole("row").filter({ hasText: workerName }).first();
       await expect(workerRow).toContainText("AM already entered", { timeout: 30_000 });
@@ -589,6 +706,501 @@ test.describe("bank and labor server API boundary", () => {
         await db.from("workers").delete().eq("id", worker.id);
       }
       await context.close();
+    }
+  });
+
+  test("Add Daily Entry searches workers and sorts daily rates with project recent first", async ({
+    browser,
+  }) => {
+    const db = serviceRoleClient();
+    const tag = `daily-worker-search-${Date.now()}`;
+    const workerAName = `[E2E] Search Worker A ${tag}`;
+    const workerBName = `[E2E] Search Worker B ${tag}`;
+    const workerCName = `[E2E] Search Worker C ${tag}`;
+    const workDate = isoDateOffset(-14);
+    const recentDate = isoDateOffset(-30);
+    const { data: project, error: projectError } = await db
+      .from("projects")
+      .insert({ name: `[E2E] Search Project ${tag}`, status: "Active", budget: 0, spent: 0 })
+      .select("id")
+      .single();
+    expect(projectError).toBeNull();
+
+    const { data: workers, error: workersError } = await db
+      .from("workers")
+      .insert([
+        { name: workerAName, half_day_rate: 100, daily_rate: 200, status: "active" },
+        { name: workerBName, half_day_rate: 145, daily_rate: 290, status: "active" },
+        { name: workerCName, half_day_rate: 125, daily_rate: 250, status: "active" },
+      ])
+      .select("id,name,daily_rate");
+    expect(workersError).toBeNull();
+    expect(workers ?? []).toHaveLength(3);
+
+    const workerA = workers!.find((worker) => worker.name === workerAName)!;
+    const workerC = workers!.find((worker) => worker.name === workerCName)!;
+    const { error: laborWorkerSyncError } = await db.from("labor_workers").upsert(
+      workers!.map((worker) => ({ id: worker.id, name: worker.name })),
+      { onConflict: "id" }
+    );
+    expect(laborWorkerSyncError).toBeNull();
+
+    const { error: recentEntryError } = await db.from("labor_entries").insert([
+      {
+        worker_id: workerA.id,
+        project_id: project!.id,
+        work_date: recentDate,
+        hours: 1,
+        cost_amount: 200,
+        status: "Draft",
+        morning: true,
+        afternoon: true,
+        notes: `${tag} recent worker a`,
+      },
+      {
+        worker_id: workerC.id,
+        project_id: project!.id,
+        work_date: recentDate,
+        hours: 1,
+        cost_amount: 250,
+        status: "Draft",
+        morning: true,
+        afternoon: true,
+        notes: `${tag} recent worker c`,
+      },
+    ]);
+    expect(recentEntryError).toBeNull();
+
+    const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+    try {
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const page = await context.newPage();
+      await page.goto(`/labor?month=${workDate.slice(0, 7)}`);
+      await expect(page.getByRole("heading", { name: "Daily Labor" })).toBeVisible({
+        timeout: 30_000,
+      });
+      await page
+        .getByRole("button", { name: /Add Entry/i })
+        .first()
+        .click();
+      const dialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
+      await expect(dialog).toBeVisible({ timeout: 30_000 });
+      await dialog.locator('input[type="date"]').fill(workDate);
+
+      const projectSelect = dialog.locator("select").first();
+      const searchInput = dialog.getByLabel("Search workers");
+      await expect(searchInput).toBeVisible();
+      await searchInput.fill(tag.toUpperCase());
+      await expect(dialog.getByText("3 workers")).toBeVisible();
+      await expect(dialog.getByRole("row").filter({ hasText: tag })).toHaveCount(3);
+      await expect(dialog.getByRole("row").filter({ hasText: workerBName })).toContainText(
+        "$290/day"
+      );
+      await expect(dialog.getByRole("row").filter({ hasText: workerCName })).toContainText(
+        "$250/day"
+      );
+      await expect(dialog.getByRole("row").filter({ hasText: workerAName })).toContainText(
+        "$200/day"
+      );
+      await expect
+        .poll(async () =>
+          dialog
+            .getByRole("row")
+            .filter({ hasText: tag })
+            .evaluateAll((rows) => rows.map((row) => row.textContent ?? ""))
+        )
+        .toEqual([
+          expect.stringContaining(workerBName),
+          expect.stringContaining(workerCName),
+          expect.stringContaining(workerAName),
+        ]);
+
+      await searchInput.fill("missing worker result");
+      await expect(dialog.getByText("0 workers")).toBeVisible();
+      await expect(dialog.getByText("No workers found")).toBeVisible();
+
+      await searchInput.fill("");
+      await projectSelect.selectOption(project!.id);
+      await expect
+        .poll(async () =>
+          dialog
+            .getByRole("row")
+            .evaluateAll((rows) => rows.slice(1, 3).map((row) => row.textContent ?? ""))
+        )
+        .toEqual([expect.stringContaining(workerCName), expect.stringContaining(workerAName)]);
+
+      await searchInput.fill(tag);
+      await expect
+        .poll(async () =>
+          dialog
+            .getByRole("row")
+            .filter({ hasText: tag })
+            .evaluateAll((rows) => rows.map((row) => row.textContent ?? ""))
+        )
+        .toEqual([
+          expect.stringContaining(workerBName),
+          expect.stringContaining(workerCName),
+          expect.stringContaining(workerAName),
+        ]);
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(searchInput).toBeVisible();
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
+          )
+        )
+        .toBe(true);
+    } finally {
+      const workerIds = (workers ?? []).map((worker) => worker.id);
+      if (workerIds.length) {
+        await db.from("labor_entries").delete().in("worker_id", workerIds);
+        await db.from("labor_workers").delete().in("id", workerIds);
+        await db.from("workers").delete().in("id", workerIds);
+      }
+      if (project?.id) await db.from("projects").delete().eq("id", project.id);
+      await context.close();
+    }
+  });
+
+  test("Add Daily Entry full local flow covers search reset save duplicates recent and mobile", async ({
+    browser,
+  }) => {
+    const db = serviceRoleClient();
+    await cleanupDailyEntryFullFlowData(db);
+
+    const projectName = `${DAILY_ENTRY_FULL_FLOW_PREFIX} Project`;
+    const workerAName = `${DAILY_ENTRY_FULL_FLOW_PREFIX} A`;
+    const workerBName = `${DAILY_ENTRY_FULL_FLOW_PREFIX} B`;
+    const workerCName = `${DAILY_ENTRY_FULL_FLOW_PREFIX} C`;
+    const dateA = isoDateOffset(-13);
+    const dateB = isoDateOffset(-12);
+    const hiddenDate = isoDateOffset(-11);
+    const mobileDate = isoDateOffset(-10);
+
+    const { data: project, error: projectError } = await db
+      .from("projects")
+      .insert({ name: projectName, status: "Active", budget: 0, spent: 0 })
+      .select("id,name")
+      .single();
+    expect(projectError).toBeNull();
+
+    const { data: workers, error: workersError } = await db
+      .from("workers")
+      .insert([
+        { name: workerAName, half_day_rate: 100, daily_rate: 200, status: "active" },
+        { name: workerBName, half_day_rate: 145, daily_rate: 290, status: "active" },
+        { name: workerCName, half_day_rate: 125, daily_rate: 250, status: "active" },
+      ])
+      .select("id,name,daily_rate");
+    expect(workersError).toBeNull();
+    expect(workers ?? []).toHaveLength(3);
+
+    const workerA = workers!.find((worker) => worker.name === workerAName)!;
+    const workerB = workers!.find((worker) => worker.name === workerBName)!;
+    const workerC = workers!.find((worker) => worker.name === workerCName)!;
+    const workerIds = [workerA.id, workerB.id, workerC.id];
+    const { error: laborWorkerSyncError } = await db.from("labor_workers").upsert(
+      workers!.map((worker) => ({ id: worker.id, name: worker.name })),
+      { onConflict: "id" }
+    );
+    expect(laborWorkerSyncError).toBeNull();
+
+    const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+    try {
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const page = await context.newPage();
+      const waitForLaborOptionsForDate = (date: string) =>
+        page.waitForResponse((response) => {
+          const url = new URL(response.url());
+          return (
+            response.request().method() === "GET" &&
+            url.pathname === "/api/labor/entries" &&
+            url.searchParams.get("date") === date &&
+            response.ok()
+          );
+        });
+      await page.goto(`/labor?month=${dateA.slice(0, 7)}`);
+      await expect(page.getByRole("heading", { name: "Daily Labor" })).toBeVisible({
+        timeout: 30_000,
+      });
+      await page
+        .getByRole("button", { name: /Add Entry/i })
+        .first()
+        .click();
+      let dialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
+      await expect(dialog).toBeVisible({ timeout: 30_000 });
+
+      let projectSelect = dialog.locator("select").first();
+      let dateInput = dialog.locator('input[type="date"]');
+      let searchInput = dialog.getByLabel("Search workers");
+      const optionalInputs = dialog.locator('input[placeholder="Optional"]');
+      const costCodeInput = optionalInputs.nth(0);
+      const notesInput = optionalInputs.nth(1);
+      await expect(searchInput).toBeVisible();
+      await expect(dialog.getByText(/\d+ workers/)).toBeVisible();
+
+      await expect
+        .poll(async () =>
+          dialog.getByRole("row").evaluateAll(
+            (rows, names) => {
+              const textRows = rows.map((row) => row.textContent ?? "");
+              const [bName, cName, aName] = names as string[];
+              const bIndex = textRows.findIndex((text) => text.includes(bName));
+              const cIndex = textRows.findIndex((text) => text.includes(cName));
+              const aIndex = textRows.findIndex((text) => text.includes(aName));
+              return (
+                bIndex >= 0 && cIndex >= 0 && aIndex >= 0 && bIndex < cIndex && cIndex < aIndex
+              );
+            },
+            [workerBName, workerCName, workerAName]
+          )
+        )
+        .toBe(true);
+
+      await searchInput.fill(DAILY_ENTRY_FULL_FLOW_PREFIX.toLowerCase());
+      await expect(dialog.getByText("3 workers")).toBeVisible();
+      await expect(
+        dialog.getByRole("row").filter({ hasText: DAILY_ENTRY_FULL_FLOW_PREFIX })
+      ).toHaveCount(3);
+      await expect
+        .poll(async () =>
+          dialog
+            .getByRole("row")
+            .filter({ hasText: DAILY_ENTRY_FULL_FLOW_PREFIX })
+            .evaluateAll((rows) => rows.map((row) => row.textContent ?? ""))
+        )
+        .toEqual([
+          expect.stringContaining(workerBName),
+          expect.stringContaining(workerCName),
+          expect.stringContaining(workerAName),
+        ]);
+      await expect(dialog.getByRole("row").filter({ hasText: workerBName })).toContainText(
+        "$290/day"
+      );
+      await expect(dialog.getByRole("row").filter({ hasText: workerCName })).toContainText(
+        "$250/day"
+      );
+      await expect(dialog.getByRole("row").filter({ hasText: workerAName })).toContainText(
+        "$200/day"
+      );
+
+      await searchInput.fill("no matching worker");
+      await expect(dialog.getByText("0 workers")).toBeVisible();
+      await expect(dialog.getByText("No workers found")).toBeVisible();
+      await searchInput.fill(DAILY_ENTRY_FULL_FLOW_PREFIX);
+
+      await projectSelect.selectOption(project!.id);
+      const dateAOptionsResponse = waitForLaborOptionsForDate(dateA);
+      await dateInput.fill(dateA);
+      await dateAOptionsResponse;
+      await costCodeInput.fill("FLOW-COST-CODE");
+      await notesInput.fill("flow notes stay after date change");
+      await expect(projectSelect).toHaveValue(project!.id);
+      await expect(dateInput).toHaveValue(dateA);
+
+      let workerBRow = dialog.getByRole("row").filter({ hasText: workerBName }).first();
+      let workerCRow = dialog.getByRole("row").filter({ hasText: workerCName }).first();
+      await workerBRow.getByRole("button", { name: "AM" }).click();
+      await expect(workerBRow).toContainText("$145.00");
+      await workerBRow.getByRole("button", { name: "PM" }).click();
+      await expect(workerBRow).toContainText("$290.00");
+      await workerBRow.getByLabel(`Overtime hours for ${workerBName}`).fill("1.5");
+      await workerBRow.getByLabel(`Overtime fixed amount for ${workerBName}`).fill("60");
+      await expect(workerBRow).toContainText("$290.00");
+
+      const dateBOptionsResponse = waitForLaborOptionsForDate(dateB);
+      await dateInput.fill(dateB);
+      await dateBOptionsResponse;
+      await expect(dateInput).toHaveValue(dateB);
+      workerBRow = dialog.getByRole("row").filter({ hasText: workerBName }).first();
+      workerCRow = dialog.getByRole("row").filter({ hasText: workerCName }).first();
+      await expect(workerBRow.getByLabel(`Overtime hours for ${workerBName}`)).toHaveValue("");
+      await expect(workerBRow.getByLabel(`Overtime fixed amount for ${workerBName}`)).toHaveValue(
+        ""
+      );
+      await expect(workerBRow).not.toContainText("$290.00");
+      await expect(workerBRow).toContainText("—");
+      await expect(projectSelect).toHaveValue(project!.id);
+      await expect(costCodeInput).toHaveValue("FLOW-COST-CODE");
+      await expect(notesInput).toHaveValue("flow notes stay after date change");
+
+      await workerBRow.getByRole("button", { name: "AM" }).click();
+      await expect(workerBRow).toContainText("$145.00");
+      await workerBRow.getByRole("button", { name: "PM" }).click();
+      await expect(workerBRow).toContainText("$290.00");
+      await workerCRow.getByRole("button", { name: "AM" }).click();
+      await expect(workerCRow).toContainText("$125.00");
+
+      await dialog.getByRole("button", { name: /^Save$/i }).click();
+      await expect(dialog).toBeHidden({ timeout: 30_000 });
+      await expect(page.getByText(/Entries saved|Entry saved successfully/i).first()).toBeVisible({
+        timeout: 30_000,
+      });
+
+      const { data: savedRows, error: savedRowsError } = await db
+        .from("labor_entries")
+        .select(
+          "id,worker_id,project_id,work_date,hours,cost_amount,morning,afternoon,cost_code,notes,daily_rate_snapshot,amount_snapshot,labor_cost_snapshot"
+        )
+        .eq("project_id", project!.id)
+        .eq("work_date", dateB)
+        .order("cost_amount", { ascending: false });
+      expect(savedRowsError).toBeNull();
+      expect(savedRows ?? []).toHaveLength(2);
+      const savedB = savedRows!.find((entry) => entry.worker_id === workerB.id)!;
+      const savedC = savedRows!.find((entry) => entry.worker_id === workerC.id)!;
+      expect(Number(savedB.cost_amount)).toBeCloseTo(290, 2);
+      expect(Number(savedB.daily_rate_snapshot)).toBeCloseTo(290, 2);
+      expect(Number(savedB.amount_snapshot)).toBeCloseTo(290, 2);
+      expect(Number(savedB.labor_cost_snapshot)).toBeCloseTo(290, 2);
+      expect(savedB).toMatchObject({ morning: true, afternoon: true, cost_code: "FLOW-COST-CODE" });
+      expect(Number(savedC.cost_amount)).toBeCloseTo(125, 2);
+      expect(Number(savedC.daily_rate_snapshot)).toBeCloseTo(250, 2);
+      expect(Number(savedC.amount_snapshot)).toBeCloseTo(125, 2);
+      expect(Number(savedC.labor_cost_snapshot)).toBeCloseTo(125, 2);
+      expect(savedC).toMatchObject({
+        morning: true,
+        afternoon: false,
+        cost_code: "FLOW-COST-CODE",
+      });
+
+      const duplicateResponse = await context.request.post("/api/labor/entries", {
+        data: {
+          projectId: project!.id,
+          workDate: dateB,
+          rows: [{ workerId: workerB.id, morning: true, afternoon: true }],
+        },
+      });
+      expect(duplicateResponse.status()).toBe(409);
+      await expectJsonMessage(duplicateResponse, /already has.*date\/session/i);
+
+      await page.goto(`/labor?month=${dateB.slice(0, 7)}&project_id=${project!.id}`);
+      await expect(page.getByRole("heading", { name: "Daily Labor" })).toBeVisible({
+        timeout: 30_000,
+      });
+      const dailyEntries = page.locator("section").filter({ hasText: /Daily entries/i });
+      const dateRow = dailyEntries
+        .getByRole("button")
+        .filter({ hasText: compactDateLabel(dateB) })
+        .first();
+      await expect(dateRow).toContainText("$415.00", { timeout: 30_000 });
+      await dateRow.click();
+      await expect(dailyEntries).toContainText(workerBName);
+      await expect(dailyEntries).toContainText("$290.00");
+      await expect(dailyEntries).toContainText(workerCName);
+      await expect(dailyEntries).toContainText("$125.00");
+
+      await page
+        .getByRole("button", { name: /Add Entry/i })
+        .first()
+        .click();
+      dialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
+      await expect(dialog).toBeVisible({ timeout: 30_000 });
+      projectSelect = dialog.locator("select").first();
+      dateInput = dialog.locator('input[type="date"]');
+      searchInput = dialog.getByLabel("Search workers");
+      await dateInput.fill(dateB);
+      await projectSelect.selectOption(project!.id);
+      await searchInput.fill("");
+      await expect
+        .poll(async () =>
+          dialog
+            .getByRole("row")
+            .evaluateAll((rows) => rows.slice(1, 3).map((row) => row.textContent ?? ""))
+        )
+        .toEqual([expect.stringContaining(workerBName), expect.stringContaining(workerCName)]);
+
+      await searchInput.fill(DAILY_ENTRY_FULL_FLOW_PREFIX);
+      workerBRow = dialog.getByRole("row").filter({ hasText: workerBName }).first();
+      workerCRow = dialog.getByRole("row").filter({ hasText: workerCName }).first();
+      await expect(workerBRow).toContainText("Already has full day", { timeout: 30_000 });
+      await expect(workerBRow.getByRole("button", { name: "AM" })).toBeDisabled();
+      await expect(workerBRow.getByRole("button", { name: "PM" })).toBeDisabled();
+      await expect(workerBRow.getByRole("link", { name: /^View$/i })).toBeVisible();
+      await expect(workerCRow).toContainText("AM already entered");
+      await expect(workerCRow.getByRole("button", { name: "AM" })).toBeDisabled();
+      await expect(workerCRow.getByRole("button", { name: "PM" })).toBeEnabled();
+      await expect(workerCRow.getByRole("link", { name: /^View$/i })).toBeVisible();
+      await workerBRow.getByRole("link", { name: /^View$/i }).click();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/labor\\?(?=.*workerId=${workerB.id})(?=.*month=${dateB.slice(0, 7)})(?=.*entryId=${savedB.id})`
+        ),
+        { timeout: 30_000 }
+      );
+
+      const { error: cancelledInsertError } = await db.from("labor_entries").insert({
+        worker_id: workerA.id,
+        project_id: project!.id,
+        work_date: hiddenDate,
+        hours: 1,
+        cost_amount: 200,
+        status: "cancelled",
+        morning: true,
+        afternoon: true,
+        notes: `${DAILY_ENTRY_FULL_FLOW_PREFIX} cancelled row should not block`,
+      });
+      expect(cancelledInsertError).toBeNull();
+
+      await page.goto(`/labor?month=${hiddenDate.slice(0, 7)}`);
+      await page
+        .getByRole("button", { name: /Add Entry/i })
+        .first()
+        .click();
+      dialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
+      await expect(dialog).toBeVisible({ timeout: 30_000 });
+      const hiddenDateOptionsResponse = waitForLaborOptionsForDate(hiddenDate);
+      await dialog.locator('input[type="date"]').fill(hiddenDate);
+      await hiddenDateOptionsResponse;
+      await dialog.locator("select").first().selectOption(project!.id);
+      searchInput = dialog.getByLabel("Search workers");
+      await searchInput.fill(workerAName);
+      const workerARow = dialog.getByRole("row").filter({ hasText: workerAName }).first();
+      await expect(workerARow).toBeVisible({ timeout: 30_000 });
+      await expect(workerARow).not.toContainText(/already/i);
+      await expect(workerARow.getByRole("button", { name: "AM" })).toBeEnabled();
+      await expect(workerARow.getByRole("button", { name: "PM" })).toBeEnabled();
+      await workerARow.getByRole("button", { name: "AM" }).click();
+      await expect(workerARow).toContainText("$100.00");
+      await page.keyboard.press("Escape");
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto("/labor?addDaily=1");
+      dialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
+      await expect(dialog).toBeVisible({ timeout: 30_000 });
+      const mobileDateOptionsResponse = waitForLaborOptionsForDate(mobileDate);
+      await dialog.locator('input[type="date"]').fill(mobileDate);
+      await mobileDateOptionsResponse;
+      await dialog.locator("select").first().selectOption(project!.id);
+      searchInput = dialog.getByLabel("Search workers");
+      await expect(searchInput).toBeVisible();
+      await searchInput.fill(workerAName);
+      const mobileWorkerRow = dialog.getByRole("row").filter({ hasText: workerAName }).first();
+      await expect(mobileWorkerRow).toBeVisible({ timeout: 30_000 });
+      await mobileWorkerRow.getByRole("button", { name: "AM" }).click();
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1
+          )
+        )
+        .toBe(true);
+      await expect(mobileWorkerRow.getByRole("button", { name: "PM" })).toBeVisible();
+    } finally {
+      await context.close();
+      await cleanupDailyEntryFullFlowData(db);
+      const counts = await dailyEntryFullFlowCounts(db);
+      expect(counts).toEqual({ workers: 0, projects: 0, laborEntries: 0 });
     }
   });
 
