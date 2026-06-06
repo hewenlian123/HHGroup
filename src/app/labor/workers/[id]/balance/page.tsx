@@ -78,6 +78,26 @@ type Summary = {
 
 type BalanceTone = "owed" | "overpaid" | "settled";
 
+const neoSecondaryButton =
+  "min-h-[44px] w-full rounded-full border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-control)] transition-colors duration-150 hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)] sm:min-h-9 sm:w-auto";
+
+const neoPrimaryButton =
+  "min-h-[44px] w-full rounded-full border border-[rgb(184_147_90_/_0.30)] bg-[rgb(184_147_90_/_0.16)] px-4 text-[13px] font-semibold text-[var(--neo-gold-soft)] shadow-[var(--neo-shadow-control)] transition-colors duration-150 hover:border-[rgb(184_147_90_/_0.44)] hover:bg-[rgb(184_147_90_/_0.22)] focus-visible:ring-[var(--neo-gold-ring)] disabled:border-[var(--neo-border)] disabled:bg-[var(--neo-surface-muted)] disabled:text-[var(--neo-text-tertiary)] sm:min-h-9 sm:w-auto";
+
+const ledgerHeaderCell =
+  "py-2.5 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]";
+
+const ledgerHeaderCellRight = cn(ledgerHeaderCell, "text-right tabular-nums");
+
+const ledgerRow =
+  "border-b border-[var(--neo-border)] bg-[var(--neo-surface-base)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--neo-surface-hover)]";
+
+const ledgerCell =
+  "py-2.5 pr-3 align-middle text-[13px] leading-snug text-[var(--neo-text-secondary)]";
+
+const ledgerAmountCell =
+  "py-2.5 pr-3 text-right align-middle text-[13px] font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)] whitespace-nowrap";
+
 function balanceTone(balance: number): BalanceTone {
   if (balance > 0) return "owed";
   if (balance < 0) return "overpaid";
@@ -107,23 +127,39 @@ function KpiTile({
 }) {
   const emphasisClass =
     emphasis === "owed"
-      ? "border-amber-500/25 bg-amber-500/[0.05] dark:border-amber-500/25 dark:bg-amber-500/[0.08]"
+      ? "border-[rgb(184_147_90_/_0.34)] bg-[rgb(184_147_90_/_0.08)]"
       : emphasis === "overpaid"
-        ? "border-blue-500/25 bg-blue-500/[0.04] dark:border-blue-500/25 dark:bg-blue-500/[0.06]"
+        ? "border-[rgb(244_63_94_/_0.30)] bg-[rgb(244_63_94_/_0.08)]"
         : emphasis === "settled"
-          ? "border-emerald-500/25 bg-emerald-500/[0.04] dark:border-emerald-500/25 dark:bg-emerald-500/[0.06]"
-          : "border-border/40 bg-background";
+          ? "border-[rgb(16_185_129_/_0.26)] bg-[rgb(16_185_129_/_0.08)]"
+          : "border-[var(--neo-border)] bg-[var(--neo-surface-raised)]";
+
+  const valueClass =
+    emphasis === "owed"
+      ? "text-[var(--neo-gold-soft)]"
+      : emphasis === "overpaid"
+        ? "text-rose-300"
+        : emphasis === "settled"
+          ? "text-emerald-300"
+          : "text-[var(--neo-text-primary)]";
 
   return (
     <div
       className={cn(
-        "min-h-[72px] rounded-md border px-3 py-2.5",
-        "flex flex-col justify-between",
+        "min-h-[76px] rounded-xl border px-3 py-3 shadow-[var(--neo-shadow-panel)]",
+        "flex flex-col justify-between transition-[border-color,background-color,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)]",
         emphasisClass
       )}
     >
-      <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">{label}</p>
-      <p className="text-[18px] font-semibold tabular-nums tracking-tight text-zinc-900 whitespace-nowrap">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "text-[19px] font-semibold tabular-nums tracking-normal whitespace-nowrap",
+          valueClass
+        )}
+      >
         {value}
       </p>
     </div>
@@ -137,29 +173,48 @@ function RecommendationPanel({ balance }: { balance: number }) {
 
   const shellClass =
     tone === "owed"
-      ? "border-amber-500/25 bg-amber-500/[0.04] dark:border-amber-500/25 dark:bg-amber-500/[0.06]"
+      ? "border-[rgb(184_147_90_/_0.34)] bg-[rgb(184_147_90_/_0.10)]"
       : tone === "overpaid"
-        ? "border-blue-500/25 bg-blue-500/[0.03] dark:border-blue-500/25 dark:bg-blue-500/[0.05]"
-        : "border-emerald-500/25 bg-emerald-500/[0.03] dark:border-emerald-500/25 dark:bg-emerald-500/[0.05]";
+        ? "border-[rgb(244_63_94_/_0.28)] bg-[rgb(244_63_94_/_0.08)]"
+        : "border-[rgb(16_185_129_/_0.24)] bg-[rgb(16_185_129_/_0.08)]";
 
   return (
     <div
       className={cn(
-        "rounded-md border px-4 py-3",
+        "rounded-xl border px-4 py-3 shadow-[var(--neo-shadow-control)]",
         "flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between",
         shellClass
       )}
     >
       <div className="flex min-w-0 items-center gap-2">
-        <Icon className="h-4 w-4 text-zinc-400" aria-hidden />
+        <Icon
+          className={cn(
+            "h-4 w-4",
+            tone === "owed"
+              ? "text-[var(--neo-gold-soft)]"
+              : tone === "overpaid"
+                ? "text-rose-300"
+                : "text-emerald-300"
+          )}
+          aria-hidden
+        />
         <span className={chip.className}>{chip.label}</span>
-        <span className="truncate text-sm font-medium text-zinc-900">
+        <span className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
           {recommendationLabel(tone)}
         </span>
       </div>
       <div className="flex items-baseline justify-between gap-3 sm:justify-end">
-        <span className="text-xs text-zinc-400 sm:hidden">Balance</span>
-        <span className="text-[16px] font-semibold tabular-nums tracking-tight text-zinc-900">
+        <span className="text-xs text-[var(--neo-text-tertiary)] sm:hidden">Balance</span>
+        <span
+          className={cn(
+            "text-[16px] font-semibold tabular-nums tracking-normal",
+            tone === "owed"
+              ? "text-[var(--neo-gold-soft)]"
+              : tone === "overpaid"
+                ? "text-rose-300"
+                : "text-emerald-300"
+          )}
+        >
           {formatCurrency(balance)}
         </span>
       </div>
@@ -177,27 +232,31 @@ function LedgerSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-md border border-border/60 bg-background shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-      <header className="flex flex-col gap-1.5 border-b border-border/60 px-4 py-3.5">
-        <h2 className="text-[12px] font-semibold uppercase tracking-wide text-zinc-900">{title}</h2>
-        <p className="text-[13px] leading-relaxed text-zinc-500/90">{description}</p>
+    <section className="overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]">
+      <header className="flex flex-col gap-1.5 border-b border-[var(--neo-border)] px-4 py-3.5">
+        <h2 className="text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-primary)]">
+          {title}
+        </h2>
+        <p className="text-[13px] leading-relaxed text-[var(--neo-text-secondary)]">
+          {description}
+        </p>
       </header>
-      <div className="px-4 py-3">{children}</div>
+      <div>{children}</div>
     </section>
   );
 }
 
 function EmptyLedgerState({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="rounded-md border border-dashed border-border/60 px-4 py-10 text-center">
-      <p className="text-sm font-medium text-zinc-900">{title}</p>
-      <p className="mt-1 text-xs leading-relaxed text-zinc-500">{subtitle}</p>
+    <div className="m-4 rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-10 text-center">
+      <p className="text-sm font-medium text-[var(--neo-text-primary)]">{title}</p>
+      <p className="mt-1 text-xs leading-relaxed text-[var(--neo-text-secondary)]">{subtitle}</p>
     </div>
   );
 }
 
 function Dash() {
-  return <span className="text-zinc-400">—</span>;
+  return <span className="text-[var(--neo-text-tertiary)]">—</span>;
 }
 
 function roundMoney(n: number): number {
@@ -563,49 +622,40 @@ export default function WorkerBalanceDetailPage() {
 
   if (!workerId) {
     return (
-      <div className="page-container page-stack py-6">
-        <p className="text-sm text-zinc-500">Worker not found.</p>
+      <div className="dark neo-page-on-graphite page-shell-standard mx-auto px-4 py-6">
+        <p className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 text-sm text-[var(--neo-text-secondary)]">
+          Worker not found.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="page-container page-stack py-6 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))]">
-      <header className="border-b border-border/60 pb-3">
+    <div className="dark neo-page-on-graphite page-shell-wide mx-auto flex w-full min-w-0 flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] md:px-6 md:py-6">
+      <header className="border-b border-white/10 pb-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between lg:gap-4">
           <div className="min-w-0">
-            <h1 className="text-[34px] leading-tight font-semibold tracking-tight text-zinc-900 md:text-[36px]">
+            <h1 className="text-[32px] leading-tight font-semibold tracking-normal text-[var(--neo-canvas-text-primary)] md:text-[36px]">
               {worker?.name ?? "Worker Balance"}
             </h1>
-            <p className="mt-1 max-w-2xl text-[15px] leading-relaxed text-zinc-500">
+            <p className="mt-1 max-w-2xl text-[15px] leading-relaxed text-[var(--neo-canvas-text-secondary)]">
               Labor entries, reimbursements, payments, and balance.
             </p>
           </div>
           <div className="mt-0 flex w-full flex-col gap-2 lg:w-auto lg:flex-row lg:flex-wrap lg:items-center lg:justify-end [&_a]:w-full [&_button]:w-full lg:[&_a]:w-auto lg:[&_button]:w-auto">
             <Link href={returnHref} className="w-full sm:w-auto">
-              <Button
-                size="sm"
-                variant="outline"
-                className="min-h-[44px] w-full sm:min-h-9 sm:w-auto"
-              >
+              <Button size="sm" variant="outline" className={neoSecondaryButton}>
                 Back to Worker
               </Button>
             </Link>
             <Link href="/labor/worker-balances" className="w-full sm:w-auto">
-              <Button
-                size="sm"
-                variant="outline"
-                className="min-h-[44px] w-full sm:min-h-9 sm:w-auto"
-              >
+              <Button size="sm" variant="outline" className={neoSecondaryButton}>
                 Back to Balances
               </Button>
             </Link>
             <Button
               size="sm"
-              className={cn(
-                "min-h-[44px] sm:min-h-9 w-full sm:w-auto",
-                "bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
-              )}
+              className={neoPrimaryButton}
               onClick={openPayModal}
               disabled={loading || (unpaidLabor.length === 0 && unpaidReimb.length === 0)}
             >
@@ -617,42 +667,46 @@ export default function WorkerBalanceDetailPage() {
       </header>
 
       {message ? (
-        <p className="text-sm text-zinc-500 border-b border-border/60 pb-3">{message}</p>
+        <p className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 text-sm text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-control)]">
+          {message}
+        </p>
       ) : null}
 
       {lastPaymentMonth ? (
         <div
           data-testid="worker-payment-next-actions"
           className={cn(
-            "flex flex-col gap-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.04] px-4 py-3",
+            "flex flex-col gap-3 rounded-xl border border-[rgb(16_185_129_/_0.24)] bg-[rgb(16_185_129_/_0.08)] px-4 py-3 shadow-[var(--neo-shadow-control)]",
             "sm:flex-row sm:items-center sm:justify-between"
           )}
         >
           <div className="flex min-w-0 items-center gap-2.5">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-700">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[rgb(16_185_129_/_0.24)] bg-[rgb(16_185_129_/_0.12)] text-emerald-300">
               <CheckCircle2 className="h-4 w-4" aria-hidden />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-zinc-900">Payment saved</p>
-              <p className="truncate text-xs text-zinc-500">
+              <p className="truncate text-sm font-semibold text-[var(--neo-text-primary)]">
+                Payment saved
+              </p>
+              <p className="truncate text-xs text-[var(--neo-text-secondary)]">
                 Continue from {worker?.name ?? "this worker"}.
               </p>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:justify-end">
-            <Button asChild variant="outline" size="sm" className="min-h-[40px] rounded-md">
+            <Button asChild variant="outline" size="sm" className={neoSecondaryButton}>
               <Link href={statementHref}>
                 <FileText className="mr-2 h-4 w-4" aria-hidden />
                 View Statement
               </Link>
             </Button>
-            <Button asChild variant="outline" size="sm" className="min-h-[40px] rounded-md">
+            <Button asChild variant="outline" size="sm" className={neoSecondaryButton}>
               <Link href={printStatementHref}>
                 <Printer className="mr-2 h-4 w-4" aria-hidden />
                 Print Statement
               </Link>
             </Button>
-            <Button asChild size="sm" className="min-h-[40px] rounded-md">
+            <Button asChild size="sm" className={neoPrimaryButton}>
               <Link href={returnHref}>
                 <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
                 Back to Worker
@@ -663,7 +717,9 @@ export default function WorkerBalanceDetailPage() {
       ) : null}
 
       {loading ? (
-        <p className="text-sm text-zinc-500 py-6">Loading…</p>
+        <p className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-6 text-sm text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-control)]">
+          Loading…
+        </p>
       ) : (
         <>
           <div className="flex flex-col gap-4">
@@ -690,14 +746,14 @@ export default function WorkerBalanceDetailPage() {
               description="Labor entries included in this worker’s balance. Same date can appear multiple times (project/session)."
             >
               {/* Mobile stacked rows */}
-              <div className="md:hidden">
+              <div className="px-4 py-3 md:hidden">
                 {laborEntries.length === 0 ? (
                   <EmptyLedgerState
                     title="No labor entries"
                     subtitle="Labor entries will appear here."
                   />
                 ) : (
-                  <div className="divide-y divide-border/60">
+                  <div className="flex flex-col gap-2">
                     {laborEntries.map((r) => {
                       const paySt = getLaborPaymentStatus(
                         r.workerPaymentId ?? null,
@@ -706,13 +762,16 @@ export default function WorkerBalanceDetailPage() {
                       );
                       const statusTone = paySt === "paid" ? "success" : "warning";
                       return (
-                        <div key={r.id} className="py-3.5">
+                        <div
+                          key={r.id}
+                          className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-base)] px-3 py-3 shadow-[var(--neo-shadow-control)]"
+                        >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className={LEDGER_DATE_CLASS}>
                                 {formatLedgerDate(r.date, "compact")}
                               </p>
-                              <p className="mt-0.5 text-sm font-medium text-zinc-700">
+                              <p className="mt-0.5 text-sm font-medium text-[var(--neo-text-primary)]">
                                 {r.session ?? <Dash />} · {r.projectName ?? r.projectId ?? <Dash />}
                               </p>
                               <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -727,7 +786,7 @@ export default function WorkerBalanceDetailPage() {
                               </div>
                             </div>
                             <div className="shrink-0 text-right">
-                              <p className="text-sm font-semibold tabular-nums tracking-tight text-zinc-900">
+                              <p className="text-sm font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
                                 {formatCurrency(r.amount)}
                               </p>
                             </div>
@@ -747,28 +806,18 @@ export default function WorkerBalanceDetailPage() {
                     subtitle="Labor entries will appear here."
                   />
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="airtable-table-scroll overflow-x-auto">
                     <table className="w-full min-w-[860px] border-collapse text-sm">
                       <thead>
-                        <tr className="border-b border-border/60">
-                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                            Date
-                          </th>
-                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                            Session
-                          </th>
-                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                            Project
-                          </th>
-                          <th className="py-2.5 pr-3 text-right text-[10px] font-medium uppercase tracking-wide text-zinc-400 tabular-nums">
-                            Amount
-                          </th>
-                          <th className="py-2.5 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                            Status
-                          </th>
+                        <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                          <th className={cn(ledgerHeaderCell, "pl-4")}>Date</th>
+                          <th className={ledgerHeaderCell}>Session</th>
+                          <th className={ledgerHeaderCell}>Project</th>
+                          <th className={ledgerHeaderCellRight}>Amount</th>
+                          <th className={cn(ledgerHeaderCell, "pr-4")}>Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-border/30">
+                      <tbody>
                         {laborEntries.map((r) => {
                           const paySt = getLaborPaymentStatus(
                             r.workerPaymentId ?? null,
@@ -777,20 +826,18 @@ export default function WorkerBalanceDetailPage() {
                           );
                           const statusTone = paySt === "paid" ? "success" : "warning";
                           return (
-                            <tr key={r.id} className="hover:bg-muted/5">
-                              <td className="py-2.5 pr-3">
+                            <tr key={r.id} className={ledgerRow}>
+                              <td className={cn(ledgerCell, "pl-4")}>
                                 <span className={LEDGER_DATE_CLASS}>
                                   {formatLedgerDate(r.date)}
                                 </span>
                               </td>
-                              <td className="py-2.5 pr-3 text-zinc-700">{r.session ?? <Dash />}</td>
-                              <td className="py-2.5 pr-3 text-zinc-700">
+                              <td className={ledgerCell}>{r.session ?? <Dash />}</td>
+                              <td className={ledgerCell}>
                                 {r.projectName ?? r.projectId ?? <Dash />}
                               </td>
-                              <td className="py-2.5 pr-3 text-right tabular-nums font-semibold tracking-tight text-zinc-900 whitespace-nowrap">
-                                {formatCurrency(r.amount)}
-                              </td>
-                              <td className="py-2.5">
+                              <td className={ledgerAmountCell}>{formatCurrency(r.amount)}</td>
+                              <td className="py-2.5 pr-4 align-middle">
                                 <span
                                   className={cn(
                                     statusChipClass(statusTone),
@@ -814,25 +861,28 @@ export default function WorkerBalanceDetailPage() {
               title="Reimbursements"
               description="Expense reimbursements tied to this worker’s balance."
             >
-              <div className="md:hidden">
+              <div className="px-4 py-3 md:hidden">
                 {reimbursements.length === 0 ? (
                   <EmptyLedgerState
                     title="No reimbursements"
                     subtitle="Reimbursements will appear here."
                   />
                 ) : (
-                  <div className="divide-y divide-border/60">
+                  <div className="flex flex-col gap-2">
                     {reimbursements.map((r) => {
                       const isPaid = String(r.status).toLowerCase() === "paid";
                       const tone = isPaid ? "success" : "warning";
                       return (
-                        <div key={r.id} className="py-3.5">
+                        <div
+                          key={r.id}
+                          className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-base)] px-3 py-3 shadow-[var(--neo-shadow-control)]"
+                        >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <p className={LEDGER_DATE_CLASS}>
                                 {formatLedgerDate(r.date, "compact")}
                               </p>
-                              <p className="mt-0.5 text-sm font-medium text-zinc-700">
+                              <p className="mt-0.5 text-sm font-medium text-[var(--neo-text-primary)]">
                                 {r.vendor ?? <Dash />} · {r.projectName ?? r.projectId ?? <Dash />}
                               </p>
                               <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -847,7 +897,7 @@ export default function WorkerBalanceDetailPage() {
                               </div>
                             </div>
                             <div className="shrink-0 text-right">
-                              <p className="text-sm font-semibold tabular-nums tracking-tight text-zinc-900">
+                              <p className="text-sm font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
                                 {formatCurrency(r.amount)}
                               </p>
                             </div>
@@ -866,46 +916,34 @@ export default function WorkerBalanceDetailPage() {
                     subtitle="Reimbursements will appear here."
                   />
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="airtable-table-scroll overflow-x-auto">
                     <table className="w-full min-w-[860px] border-collapse text-sm">
                       <thead>
-                        <tr className="border-b border-border/60">
-                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                            Date
-                          </th>
-                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                            Vendor
-                          </th>
-                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                            Project
-                          </th>
-                          <th className="py-2.5 pr-3 text-right text-[10px] font-medium uppercase tracking-wide text-zinc-400 tabular-nums">
-                            Amount
-                          </th>
-                          <th className="py-2.5 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                            Status
-                          </th>
+                        <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                          <th className={cn(ledgerHeaderCell, "pl-4")}>Date</th>
+                          <th className={ledgerHeaderCell}>Vendor</th>
+                          <th className={ledgerHeaderCell}>Project</th>
+                          <th className={ledgerHeaderCellRight}>Amount</th>
+                          <th className={cn(ledgerHeaderCell, "pr-4")}>Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-border/30">
+                      <tbody>
                         {reimbursements.map((r) => {
                           const isPaid = String(r.status).toLowerCase() === "paid";
                           const tone = isPaid ? "success" : "warning";
                           return (
-                            <tr key={r.id} className="hover:bg-muted/5">
-                              <td className="py-2.5 pr-3">
+                            <tr key={r.id} className={ledgerRow}>
+                              <td className={cn(ledgerCell, "pl-4")}>
                                 <span className={LEDGER_DATE_CLASS}>
                                   {formatLedgerDate(r.date)}
                                 </span>
                               </td>
-                              <td className="py-2.5 pr-3 text-zinc-700">{r.vendor ?? <Dash />}</td>
-                              <td className="py-2.5 pr-3 text-zinc-700">
+                              <td className={ledgerCell}>{r.vendor ?? <Dash />}</td>
+                              <td className={ledgerCell}>
                                 {r.projectName ?? r.projectId ?? <Dash />}
                               </td>
-                              <td className="py-2.5 pr-3 text-right tabular-nums font-semibold tracking-tight text-zinc-900 whitespace-nowrap">
-                                {formatCurrency(r.amount)}
-                              </td>
-                              <td className="py-2.5">
+                              <td className={ledgerAmountCell}>{formatCurrency(r.amount)}</td>
+                              <td className="py-2.5 pr-4 align-middle">
                                 <span
                                   className={cn(
                                     statusChipClass(tone),
@@ -926,27 +964,30 @@ export default function WorkerBalanceDetailPage() {
             </LedgerSection>
 
             <LedgerSection title="Payments" description="Recorded payments made to this worker.">
-              <div className="md:hidden">
+              <div className="px-4 py-3 md:hidden">
                 {payments.length === 0 ? (
                   <EmptyLedgerState title="No payments yet" subtitle="Payments will appear here." />
                 ) : (
-                  <div className="divide-y divide-border/60">
+                  <div className="flex flex-col gap-2">
                     {payments.map((r) => (
-                      <div key={r.id} className="py-3.5">
+                      <div
+                        key={r.id}
+                        className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-base)] px-3 py-3 shadow-[var(--neo-shadow-control)]"
+                      >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
                             <p className={LEDGER_DATE_CLASS}>
                               {formatLedgerDate(r.date, "compact")}
                             </p>
-                            <p className="mt-0.5 text-sm text-zinc-500">
+                            <p className="mt-0.5 text-sm text-[var(--neo-text-secondary)]">
                               {r.paymentMethod ?? <Dash />}
                             </p>
-                            <p className="mt-2 text-sm text-zinc-700 break-words">
+                            <p className="mt-2 text-sm text-[var(--neo-text-primary)] break-words">
                               {r.notes ?? <Dash />}
                             </p>
                           </div>
                           <div className="shrink-0 text-right">
-                            <p className="text-sm font-semibold tabular-nums tracking-tight text-zinc-900">
+                            <p className="text-sm font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
                               {formatCurrency(r.amount)}
                             </p>
                           </div>
@@ -961,37 +1002,25 @@ export default function WorkerBalanceDetailPage() {
                 {payments.length === 0 ? (
                   <EmptyLedgerState title="No payments yet" subtitle="Payments will appear here." />
                 ) : (
-                  <div className="overflow-x-auto">
+                  <div className="airtable-table-scroll overflow-x-auto">
                     <table className="w-full min-w-[860px] border-collapse text-sm">
                       <thead>
-                        <tr className="border-b border-border/60">
-                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                            Date
-                          </th>
-                          <th className="py-2.5 pr-3 text-right text-[10px] font-medium uppercase tracking-wide text-zinc-400 tabular-nums">
-                            Amount
-                          </th>
-                          <th className="py-2.5 pr-3 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                            Method
-                          </th>
-                          <th className="py-2.5 text-left text-[10px] font-medium uppercase tracking-wide text-zinc-400">
-                            Notes
-                          </th>
+                        <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                          <th className={cn(ledgerHeaderCell, "pl-4")}>Date</th>
+                          <th className={ledgerHeaderCellRight}>Amount</th>
+                          <th className={ledgerHeaderCell}>Method</th>
+                          <th className={cn(ledgerHeaderCell, "pr-4")}>Notes</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-border/30">
+                      <tbody>
                         {payments.map((r) => (
-                          <tr key={r.id} className="hover:bg-muted/5">
-                            <td className="py-2.5 pr-3">
+                          <tr key={r.id} className={ledgerRow}>
+                            <td className={cn(ledgerCell, "pl-4")}>
                               <span className={LEDGER_DATE_CLASS}>{formatLedgerDate(r.date)}</span>
                             </td>
-                            <td className="py-2.5 pr-3 text-right tabular-nums font-semibold tracking-tight text-zinc-900 whitespace-nowrap">
-                              {formatCurrency(r.amount)}
-                            </td>
-                            <td className="py-2.5 pr-3 text-zinc-700">
-                              {r.paymentMethod ?? <Dash />}
-                            </td>
-                            <td className="py-2.5 text-zinc-700">
+                            <td className={ledgerAmountCell}>{formatCurrency(r.amount)}</td>
+                            <td className={ledgerCell}>{r.paymentMethod ?? <Dash />}</td>
+                            <td className="py-2.5 pr-4 align-middle text-[13px] leading-snug text-[var(--neo-text-secondary)]">
                               <span
                                 className="block max-w-[520px] truncate"
                                 title={r.notes ?? undefined}
@@ -1080,7 +1109,7 @@ export default function WorkerBalanceDetailPage() {
               </div>
             )}
 
-            <div className="border-t border-border/60 pt-3">
+            <div className="border-t border-[var(--neo-border)] pt-3">
               <dl className="space-y-1.5 text-sm">
                 <div className="flex justify-between gap-3 text-[var(--neo-text-secondary)]">
                   <dt>Selected payable</dt>
@@ -1230,19 +1259,20 @@ export default function WorkerBalanceDetailPage() {
               <p className="text-sm text-destructive">{splitValidation.message}</p>
             ) : null}
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
+            <div className="flex justify-end gap-2 border-t border-[var(--neo-border)] pt-3">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setPayModalOpen(false)}
+                className={neoSecondaryButton}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 size="sm"
-                className="bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
+                className={neoPrimaryButton}
                 disabled={
                   paySubmitting ||
                   totalPaymentAmount <= 0 ||
@@ -1276,7 +1306,9 @@ export default function WorkerBalanceDetailPage() {
 
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-400 block">Method</label>
+              <label className="block text-xs font-medium text-[var(--neo-text-tertiary)]">
+                Method
+              </label>
               <select
                 value={draftMethod}
                 onChange={(e) => setDraftMethod(e.target.value as SplitRow["method"])}
@@ -1292,7 +1324,9 @@ export default function WorkerBalanceDetailPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-400 block">Amount</label>
+              <label className="block text-xs font-medium text-[var(--neo-text-tertiary)]">
+                Amount
+              </label>
               <Input
                 type="number"
                 inputMode="decimal"
@@ -1307,7 +1341,7 @@ export default function WorkerBalanceDetailPage() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-zinc-400 block">
+              <label className="block text-xs font-medium text-[var(--neo-text-tertiary)]">
                 Reference (optional)
               </label>
               <Input
@@ -1321,12 +1355,13 @@ export default function WorkerBalanceDetailPage() {
             {draftError ? <p className="text-sm text-destructive">{draftError}</p> : null}
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-border/40">
+          <div className="flex justify-end gap-2 border-t border-[var(--neo-border)] pt-3">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={() => setSplitEditorOpen(false)}
+              className={neoSecondaryButton}
             >
               Cancel
             </Button>
@@ -1335,6 +1370,7 @@ export default function WorkerBalanceDetailPage() {
               size="sm"
               onClick={saveSplitDraft}
               disabled={totalPaymentAmount <= 0}
+              className={neoPrimaryButton}
             >
               Save
             </Button>
