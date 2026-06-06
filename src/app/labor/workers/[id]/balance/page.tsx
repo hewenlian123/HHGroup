@@ -20,7 +20,17 @@ import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context
 import { formatCurrency } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { statusChipClass } from "@/lib/typography";
-import { AlertCircle, CheckCircle2, Info, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  CheckCircle2,
+  FileText,
+  Info,
+  Pencil,
+  Plus,
+  Printer,
+  Trash2,
+} from "lucide-react";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
 
@@ -222,6 +232,14 @@ export default function WorkerBalanceDetailPage() {
     React.useState<LaborPayrollSettlementMode>("payment_link");
   const [receiptPaymentId, setReceiptPaymentId] = React.useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = React.useState(false);
+  const [lastPaymentMonth, setLastPaymentMonth] = React.useState<string | null>(null);
+  const statementMonth = lastPaymentMonth ?? new Date().toISOString().slice(0, 7);
+  const statementHref = workerId
+    ? `/worker/${encodeURIComponent(workerId)}/monthly-report?month=${encodeURIComponent(
+        statementMonth
+      )}`
+    : "/workers";
+  const printStatementHref = `${statementHref}&print=1`;
 
   const load = React.useCallback(async () => {
     if (!workerId) return;
@@ -362,6 +380,7 @@ export default function WorkerBalanceDetailPage() {
     setPayDate(new Date().toISOString().slice(0, 10));
     setPayNotes("");
     setPayError(null);
+    setLastPaymentMonth(null);
     const amt = initialCashTotal > 0 ? initialCashTotal.toFixed(2) : "";
     setSplitRows(
       initialCashTotal > 0
@@ -506,6 +525,7 @@ export default function WorkerBalanceDetailPage() {
       setPayError("Split amount must equal Total Payment Amount.");
       return;
     }
+    const submittedPaymentDate = payDate.slice(0, 10);
     setPaySubmitting(true);
     setPayError(null);
     try {
@@ -515,7 +535,7 @@ export default function WorkerBalanceDetailPage() {
         body: JSON.stringify({
           amount: netPaymentAmount,
           payment_method: method,
-          payment_date: payDate.slice(0, 10),
+          payment_date: submittedPaymentDate,
           notes: payNotes.trim() || null,
           labor_entry_ids: Array.from(selectedLaborIds),
           reimbursement_ids: Array.from(selectedReimbIds),
@@ -531,6 +551,8 @@ export default function WorkerBalanceDetailPage() {
         setReceiptOpen(true);
       }
       await load();
+      setLastPaymentMonth(submittedPaymentDate.slice(0, 7));
+      setMessage("Payment saved.");
       dispatchClientDataSync({ reason: "worker-pay" });
     } catch (err) {
       setPayError(err instanceof Error ? err.message : "Payment failed.");
@@ -596,6 +618,48 @@ export default function WorkerBalanceDetailPage() {
 
       {message ? (
         <p className="text-sm text-zinc-500 border-b border-border/60 pb-3">{message}</p>
+      ) : null}
+
+      {lastPaymentMonth ? (
+        <div
+          data-testid="worker-payment-next-actions"
+          className={cn(
+            "flex flex-col gap-3 rounded-md border border-emerald-500/20 bg-emerald-500/[0.04] px-4 py-3",
+            "sm:flex-row sm:items-center sm:justify-between"
+          )}
+        >
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-700">
+              <CheckCircle2 className="h-4 w-4" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-zinc-900">Payment saved</p>
+              <p className="truncate text-xs text-zinc-500">
+                Continue from {worker?.name ?? "this worker"}.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:justify-end">
+            <Button asChild variant="outline" size="sm" className="min-h-[40px] rounded-md">
+              <Link href={statementHref}>
+                <FileText className="mr-2 h-4 w-4" aria-hidden />
+                View Statement
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="min-h-[40px] rounded-md">
+              <Link href={printStatementHref}>
+                <Printer className="mr-2 h-4 w-4" aria-hidden />
+                Print Statement
+              </Link>
+            </Button>
+            <Button asChild size="sm" className="min-h-[40px] rounded-md">
+              <Link href={returnHref}>
+                <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
+                Back to Worker
+              </Link>
+            </Button>
+          </div>
+        </div>
       ) : null}
 
       {loading ? (

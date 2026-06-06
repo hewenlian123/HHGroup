@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -19,12 +20,27 @@ import { useRegisterLaborOpenDailyEntry } from "@/contexts/labor-add-entry-conte
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { invalidateDataCache } from "@/lib/client-data-cache";
 import { useToast } from "@/components/toast/toast-provider";
-import { AddDailyEntryModal as QuickTimesheetModal } from "./add-daily-entry-modal";
+import {
+  AddDailyEntryModal as QuickTimesheetModal,
+  type DailyEntrySaveResult,
+} from "./add-daily-entry-modal";
 import { EditEntryModal, sessionLabel } from "./edit-entry-modal";
 import type { LaborSession } from "./edit-entry-modal";
-import { CalendarDays, Clock, DollarSign, ListOrdered, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  DollarSign,
+  ExternalLink,
+  ListOrdered,
+  Pencil,
+  Plus,
+  Trash2,
+  WalletCards,
+} from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { formatCurrency, formatDate, formatInteger, formatNumber } from "@/lib/formatters";
+import { encodeWorkerReturnPath } from "@/lib/worker-return-path";
 
 function monthAdd(ym: string, deltaMonths: number): string {
   const [y, m] = ym.split("-").map(Number);
@@ -272,6 +288,7 @@ export default function LaborPageClient() {
   const [loadingEntries, setLoadingEntries] = React.useState(false);
   const [message, setMessage] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [lastSavedEntry, setLastSavedEntry] = React.useState<DailyEntrySaveResult | null>(null);
   const [modalOpen, setModalOpen] = React.useState(false);
   const openAddEntryModal = React.useCallback(() => setModalOpen(true), []);
   useRegisterLaborOpenDailyEntry(openAddEntryModal);
@@ -345,7 +362,11 @@ export default function LaborPageClient() {
   );
 
   const handleSaved = React.useCallback(
-    (savedDate?: string) => {
+    (saved?: DailyEntrySaveResult | string) => {
+      const savedDate = typeof saved === "string" ? saved : saved?.workDate;
+      if (saved && typeof saved !== "string" && saved.workerId) {
+        setLastSavedEntry(saved);
+      }
       setMessage("Entries saved.");
       setError(null);
       toast({ title: "Entry saved successfully", variant: "success" });
@@ -584,6 +605,67 @@ export default function LaborPageClient() {
 
         {error ? <p className="py-3 text-sm text-red-600">{error}</p> : null}
         {message ? <p className="py-3 text-sm text-muted-foreground">{message}</p> : null}
+        {lastSavedEntry ? (
+          <div
+            data-testid="daily-entry-next-actions"
+            className={cn(
+              "mb-4 flex flex-col gap-3 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 shadow-[var(--neo-shadow-panel)]",
+              "sm:flex-row sm:items-center sm:justify-between"
+            )}
+          >
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-emerald-400/20 bg-emerald-400/10 text-emerald-300">
+                <CheckCircle2 className="h-4 w-4" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-[var(--neo-text-primary)]">
+                  Entry saved
+                </p>
+                <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                  {lastSavedEntry.workerName}
+                  {lastSavedEntry.rowCount > 1 ? ` + ${lastSavedEntry.rowCount - 1} more` : ""}
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:shrink-0 sm:flex-wrap sm:justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="min-h-[40px] rounded-[0.625rem]"
+                onClick={() => setModalOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" aria-hidden />
+                Add Another
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="min-h-[40px] rounded-[0.625rem]"
+              >
+                <Link href={`/workers/${encodeURIComponent(lastSavedEntry.workerId)}`}>
+                  <ExternalLink className="mr-2 h-4 w-4" aria-hidden />
+                  Open Worker
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                className="min-h-[40px] rounded-[0.625rem] bg-[var(--neo-gold)] text-zinc-950 hover:bg-[var(--neo-gold-soft)]"
+              >
+                <Link
+                  href={`/labor/workers/${encodeURIComponent(
+                    lastSavedEntry.workerId
+                  )}/balance?returnTo=${encodeWorkerReturnPath(lastSavedEntry.workerId, "payments")}`}
+                >
+                  <WalletCards className="mr-2 h-4 w-4" aria-hidden />
+                  Pay Worker
+                </Link>
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {/* Monthly Summary */}
         <section className="border-b border-border/60 pb-4">

@@ -190,6 +190,15 @@ function payStatusFor(row: WorkerRow, netToPay: number): WorkerCenterRow["paySta
   return "Settled";
 }
 
+function compareWorkerCenterRows(a: WorkerCenterRow, b: WorkerCenterRow): number {
+  const aOwed = a.netToPay > 0.005;
+  const bOwed = b.netToPay > 0.005;
+  if (aOwed !== bOwed) return aOwed ? -1 : 1;
+  const balanceDelta = b.netToPay - a.netToPay;
+  if (Math.abs(balanceDelta) > 0.005) return balanceDelta;
+  return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" });
+}
+
 function PayStatusPill({
   status,
   className,
@@ -393,11 +402,15 @@ export function WorkersListClient({
     let list = workbenchRows;
     if (statusFilter === "active") list = list.filter((w) => w.status === "Active");
     if (statusFilter === "inactive") list = list.filter((w) => w.status === "Inactive");
-    if (!q) return list;
-    return list.filter((w) => {
-      const hay = [w.name, w.trade, w.phone, w.notes].map((v) => (v ?? "").toLowerCase()).join(" ");
-      return hay.includes(q);
-    });
+    if (q) {
+      list = list.filter((w) => {
+        const hay = [w.name, w.trade, w.phone, w.notes]
+          .map((v) => (v ?? "").toLowerCase())
+          .join(" ");
+        return hay.includes(q);
+      });
+    }
+    return [...list].sort(compareWorkerCenterRows);
   }, [workbenchRows, searchInput, statusFilter]);
 
   const centerSummary = React.useMemo(() => {
@@ -935,6 +948,8 @@ export function WorkersListClient({
             filteredRows.map((r) => (
               <tr
                 key={r.id}
+                data-testid="worker-center-row"
+                data-worker-name={r.name}
                 tabIndex={0}
                 role="link"
                 aria-label={`Open worker ${r.name}`}

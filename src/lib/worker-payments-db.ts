@@ -11,7 +11,7 @@ export type WorkerPayment = {
   workerId: string;
   /** Legacy UI field; DB has no project scope on worker_payments — always null. */
   projectId: string | null;
-  /** Calendar date for display / receipt sequencing (from created_at). */
+  /** Calendar date for display / receipt sequencing (payment_date, fallback created_at). */
   paymentDate: string;
   amount: number;
   paymentMethod: string | null;
@@ -26,7 +26,7 @@ export type CreateWorkerPaymentInput = {
   workerId: string;
   /** Ignored at insert — column removed from worker_payments. */
   projectId?: string | null;
-  /** Ignored at insert — use server created_at; kept for API compatibility. */
+  /** Persisted to worker_payments.payment_date when available; falls back to created_at. */
   paymentDate?: string;
   amount: number;
   paymentMethod: string;
@@ -61,10 +61,15 @@ function isRetryableWorkerPaymentsSelectError(err: { message?: string } | null):
 }
 
 /**
- * Canonical shape (local / migrations): id, worker_id, total_amount, payment_method, note, created_at [, labor_entry_ids].
+ * Canonical shape (local / migrations): id, worker_id, total_amount, payment_method, note, payment_date, created_at [, labor_entry_ids].
  * Extra variants cover legacy or partial schemas without breaking the payments UI.
  */
 const WORKER_PAYMENTS_SELECT_VARIANTS = [
+  "id, worker_id, total_amount, payment_method, note, payment_date, created_at, labor_entry_ids",
+  "id, worker_id, total_amount, payment_method, note, payment_date, created_at",
+  "id, worker_id, amount, payment_method, note, payment_date, created_at",
+  "id, worker_id, total_amount, payment_method, notes, payment_date, created_at",
+  "id, worker_id, amount, payment_method, notes, payment_date, created_at",
   "id, worker_id, total_amount, payment_method, note, created_at, labor_entry_ids",
   "id, worker_id, total_amount, payment_method, note, created_at",
   "id, worker_id, amount, payment_method, note, created_at",
@@ -81,13 +86,19 @@ function parseLaborEntryIds(raw: unknown): string[] | null {
   return null;
 }
 
+function normalizePaymentDate(raw: string | null | undefined): string | null {
+  const value = String(raw ?? "").slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null;
+}
+
 function fromRow(r: Record<string, unknown>): WorkerPayment {
   const createdAt = (r.created_at as string) ?? "";
+  const paymentDate = normalizePaymentDate((r.payment_date as string | null) ?? null);
   return {
     id: (r.id as string) ?? "",
     workerId: (r.worker_id as string) ?? "",
     projectId: null,
-    paymentDate: createdAt.slice(0, 10),
+    paymentDate: paymentDate ?? createdAt.slice(0, 10),
     amount: Number(r.total_amount ?? r.amount) || 0,
     paymentMethod: (r.payment_method as string | null) ?? null,
     notes: ((r.note ?? r.notes) as string | null) ?? null,
@@ -128,6 +139,7 @@ export async function createWorkerPaymentWithClient(
   if (!method) throw new Error("Payment method is required.");
 
   const trimmedNote = input.notes?.trim() || null;
+  const paymentDate = normalizePaymentDate(input.paymentDate);
   const idempotencyKey = input.idempotencyKey?.trim() || null;
   if (idempotencyKey) {
     const existing = await getWorkerPaymentByIdempotencyKeyWithClient(c, idempotencyKey);
@@ -136,9 +148,10 @@ export async function createWorkerPaymentWithClient(
 
   type Row = Record<string, unknown>;
   const attempts: Row[] = [];
-  const pushAttempts = (includeIdempotencyKey: boolean) => {
+  const pushAttempts = (includeIdempotencyKey: boolean, includePaymentDate: boolean) => {
     for (const totalField of ["total_amount", "amount"] as const) {
       const base: Row = { worker_id: input.workerId, payment_method: method, [totalField]: amt };
+      if (includePaymentDate && paymentDate) base.payment_date = paymentDate;
       if (includeIdempotencyKey && idempotencyKey) base.idempotency_key = idempotencyKey;
       if (trimmedNote) {
         attempts.push({ ...base, note: trimmedNote });
@@ -147,9 +160,10 @@ export async function createWorkerPaymentWithClient(
       attempts.push(base);
     }
   };
-  pushAttempts(true);
-  if (!idempotencyKey) {
-    pushAttempts(false);
+  const includeIdempotencyKey = Boolean(idempotencyKey);
+  const paymentDateModes = paymentDate ? [true, false] : [false];
+  for (const includePaymentDate of paymentDateModes) {
+    pushAttempts(includeIdempotencyKey, includePaymentDate);
   }
 
   let lastError: { message?: string } | null = null;
@@ -191,15 +205,26 @@ export async function getWorkerPaymentsWithClient(
   }
 ): Promise<WorkerPayment[]> {
   async function runSelect(cols: (typeof WORKER_PAYMENTS_SELECT_VARIANTS)[number]) {
+    const dateColumn = cols.includes("payment_date") ? "payment_date" : "created_at";
     // Dynamic column lists for schema variants — not representable in generated Supabase types.
     let q = c
       .from("worker_payments")
       .select(cols as never)
-      .order("created_at", { ascending: false });
+      .order(dateColumn, { ascending: false });
     if (filters?.workerId) q = q.eq("worker_id", filters.workerId);
     // worker_payments has no project_id — ignore projectId filter.
-    if (filters?.fromDate) q = q.gte("created_at", `${filters.fromDate}T00:00:00.000Z`);
-    if (filters?.toDate) q = q.lte("created_at", `${filters.toDate}T23:59:59.999Z`);
+    if (filters?.fromDate) {
+      q =
+        dateColumn === "payment_date"
+          ? q.gte(dateColumn, filters.fromDate.slice(0, 10))
+          : q.gte(dateColumn, `${filters.fromDate.slice(0, 10)}T00:00:00.000Z`);
+    }
+    if (filters?.toDate) {
+      q =
+        dateColumn === "payment_date"
+          ? q.lte(dateColumn, filters.toDate.slice(0, 10))
+          : q.lte(dateColumn, `${filters.toDate.slice(0, 10)}T23:59:59.999Z`);
+    }
     if (filters?.limit) q = q.limit(Math.max(1, Math.min(filters.limit, 500)));
     return q;
   }

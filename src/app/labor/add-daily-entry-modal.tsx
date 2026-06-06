@@ -35,7 +35,14 @@ const workerGridClass =
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: (savedDate?: string) => void;
+  onSuccess: (result: DailyEntrySaveResult) => void;
+};
+
+export type DailyEntrySaveResult = {
+  workDate: string;
+  workerId: string;
+  workerName: string;
+  rowCount: number;
 };
 
 type LaborWorker = {
@@ -756,8 +763,15 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
       });
       const body = (await response.json().catch(() => null)) as { message?: string } | null;
       if (!response.ok) throw new Error(body?.message ?? "Failed to save entries.");
+      const firstSaved = toSave[0];
+      const firstWorker = workers.find((worker) => worker.id === firstSaved?.workerId);
       onOpenChange(false);
-      onSuccess(workDate);
+      onSuccess({
+        workDate,
+        workerId: firstSaved?.workerId ?? "",
+        workerName: firstWorker?.name ?? "Worker",
+        rowCount: toSave.length,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save entries.");
     } finally {
