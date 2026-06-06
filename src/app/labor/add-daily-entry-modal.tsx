@@ -130,6 +130,13 @@ const defaultSel = (): Sel => ({
   otAmount: 0,
 });
 
+function defaultSelectionMap(workers: LaborWorker[]): Record<string, Sel> {
+  return Object.fromEntries(workers.map((worker) => [worker.id, defaultSel()])) as Record<
+    string,
+    Sel
+  >;
+}
+
 function AddDailyEntryDateField({
   value,
   onChange,
@@ -503,6 +510,19 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
   const [error, setError] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
 
+  const handleWorkDateChange = React.useCallback(
+    (nextDate: string) => {
+      if (nextDate === workDate) return;
+      const nextSelection = defaultSelectionMap(workers);
+      selectionRef.current = nextSelection;
+      setSelectionByWorkerId(nextSelection);
+      setExistingSessionsByWorkerId({});
+      setError(null);
+      setWorkDate(nextDate);
+    },
+    [workDate, workers]
+  );
+
   React.useEffect(() => {
     if (!open || !workDate) {
       setExistingSessionsByWorkerId({});
@@ -520,12 +540,9 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
         const nextWorkers = body.workers ?? [];
         setProjects(body.projects ?? []);
         setWorkers(nextWorkers);
-        setSelectionByWorkerId((prev) => {
-          const next = Object.fromEntries(
-            nextWorkers.map((worker) => [worker.id, prev[worker.id] ?? defaultSel()])
-          ) as Record<string, Sel>;
-          return next;
-        });
+        const nextSelection = defaultSelectionMap(nextWorkers);
+        selectionRef.current = nextSelection;
+        setSelectionByWorkerId(nextSelection);
         setExistingSessionsByWorkerId(() => {
           const next: Record<string, ExistingSessionState> = {};
           for (const entry of body.entries ?? []) {
@@ -693,7 +710,7 @@ export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
               </div>
               <div className="space-y-1.5">
                 <label className={labelClass}>Date</label>
-                <AddDailyEntryDateField value={workDate} onChange={setWorkDate} />
+                <AddDailyEntryDateField value={workDate} onChange={handleWorkDateChange} />
               </div>
             </div>
             <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2">

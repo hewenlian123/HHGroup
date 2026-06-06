@@ -463,6 +463,135 @@ test.describe("bank and labor server API boundary", () => {
     }
   });
 
+  test("Add Daily Entry clears unsaved worker selections when date changes", async ({
+    browser,
+  }) => {
+    const db = serviceRoleClient();
+    const tag = `daily-date-reset-${Date.now()}`;
+    const workerName = `[E2E] Daily Date Reset Worker ${tag}`;
+    const dateA = isoDateOffset(-16);
+    const dateB = isoDateOffset(-15);
+    const { data: project, error: projectError } = await db
+      .from("projects")
+      .insert({ name: `[E2E] Daily Date Reset ${tag}`, status: "Active", budget: 0, spent: 0 })
+      .select("id")
+      .single();
+    expect(projectError).toBeNull();
+
+    const { data: worker, error: workerError } = await db
+      .from("workers")
+      .insert({
+        name: workerName,
+        half_day_rate: 100,
+        daily_rate: 200,
+        status: "active",
+      })
+      .select("id")
+      .single();
+    expect(workerError).toBeNull();
+
+    const { data: existingDateB, error: existingDateBError } = await db
+      .from("labor_entries")
+      .insert({
+        worker_id: worker!.id,
+        project_id: project!.id,
+        work_date: dateB,
+        hours: 0.5,
+        cost_amount: 100,
+        status: "Draft",
+        morning: true,
+        afternoon: false,
+        notes: `${tag} existing date b`,
+      })
+      .select("id")
+      .single();
+    expect(existingDateBError).toBeNull();
+
+    const context = await browser.newContext({ extraHTTPHeaders: LOCKED_HEADERS });
+    try {
+      const loginResponse = await context.request.post("/api/auth/pin-login", {
+        data: { pin: "1234" },
+      });
+      expect(loginResponse.status()).toBe(200);
+
+      const page = await context.newPage();
+      await page.goto(
+        `/labor?workerId=${encodeURIComponent(worker!.id)}&month=${dateA.slice(0, 7)}`
+      );
+      await expect(page.getByRole("heading", { name: "Daily Labor" })).toBeVisible({
+        timeout: 30_000,
+      });
+      await page
+        .getByRole("button", { name: /Add Entry/i })
+        .first()
+        .click();
+      const dialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
+      await expect(dialog).toBeVisible({ timeout: 30_000 });
+
+      const projectSelect = dialog.locator("select").first();
+      const dateInput = dialog.locator('input[type="date"]');
+      const optionalInputs = dialog.locator('input[placeholder="Optional"]');
+      const costCodeInput = optionalInputs.nth(0);
+      const notesInput = optionalInputs.nth(1);
+
+      await projectSelect.selectOption(project!.id);
+      await dateInput.fill(dateA);
+      await costCodeInput.fill(`CC-${tag}`);
+      await notesInput.fill(`notes ${tag}`);
+      await dialog.getByRole("button", { name: /^Save$/i }).click();
+      await expect(dialog.getByText("Select at least one worker with AM or PM.")).toBeVisible();
+
+      let workerRow = dialog.getByRole("row").filter({ hasText: workerName }).first();
+      await expect(workerRow).toBeVisible({ timeout: 30_000 });
+      await workerRow.getByRole("button", { name: "AM" }).click();
+      await workerRow.getByRole("button", { name: "PM" }).click();
+      await workerRow.getByLabel(`Overtime hours for ${workerName}`).fill("1.5");
+      await workerRow.getByLabel(`Overtime fixed amount for ${workerName}`).fill("60");
+      await expect(workerRow).toContainText("$200.00");
+
+      await dateInput.fill(dateB);
+      await expect(dateInput).toHaveValue(dateB);
+      workerRow = dialog.getByRole("row").filter({ hasText: workerName }).first();
+      await expect(workerRow).toContainText("AM already entered", { timeout: 30_000 });
+      await expect(workerRow.getByRole("button", { name: "AM" })).toBeDisabled();
+      await expect(workerRow.getByRole("button", { name: "PM" })).toBeEnabled();
+      await expect(workerRow.getByLabel(`Overtime hours for ${workerName}`)).toHaveValue("");
+      await expect(workerRow.getByLabel(`Overtime fixed amount for ${workerName}`)).toHaveValue("");
+      await expect(workerRow).not.toContainText("$200.00");
+      await expect(workerRow).toContainText("—");
+      await expect(dialog.getByText("Select at least one worker with AM or PM.")).toHaveCount(0);
+      await expect(projectSelect).toHaveValue(project!.id);
+      await expect(costCodeInput).toHaveValue(`CC-${tag}`);
+      await expect(notesInput).toHaveValue(`notes ${tag}`);
+
+      await dialog.getByRole("button", { name: /^Save$/i }).click();
+      await expect(dialog.getByText("Select at least one worker with AM or PM.")).toBeVisible();
+
+      const { data: savedRows, error: savedRowsError } = await db
+        .from("labor_entries")
+        .select("id, work_date, morning, afternoon, notes")
+        .eq("worker_id", worker!.id)
+        .in("work_date", [dateA, dateB])
+        .order("work_date");
+      expect(savedRowsError).toBeNull();
+      expect(savedRows ?? []).toHaveLength(1);
+      expect(savedRows?.[0]).toMatchObject({
+        id: existingDateB!.id,
+        work_date: dateB,
+        morning: true,
+        afternoon: false,
+      });
+    } finally {
+      if (worker?.id) await db.from("labor_entries").delete().eq("worker_id", worker.id);
+      if (project?.id) await db.from("projects").delete().eq("id", project.id);
+      if (worker?.id) {
+        await db.from("labor_workers").delete().eq("id", worker.id);
+        await db.from("workers").delete().eq("id", worker.id);
+      }
+      await context.close();
+    }
+  });
+
   test("PIN session can create edit and delete time entries through guarded labor API", async ({
     browser,
   }) => {
