@@ -1507,50 +1507,98 @@ export default function WorkerDashboardPage() {
             {(balanceDetail?.payments ?? []).length === 0 ? (
               <EmptyPanel>No worker payments yet.</EmptyPanel>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[680px] border-collapse text-sm table-row-compact">
-                  <thead>
-                    <tr className="border-b border-border/60">
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Date
-                      </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Method
-                      </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Notes
-                      </th>
-                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Amount
-                      </th>
-                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                        Receipt
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(balanceDetail?.payments ?? []).map((p) => (
-                      <tr key={p.id} className="border-b border-border/40">
-                        <td className="px-2 py-1.5 tabular-nums text-muted-foreground">
-                          {formatDate(p.date)}
-                        </td>
-                        <td className="px-2 py-1.5 font-medium">{p.paymentMethod ?? "—"}</td>
-                        <td className="px-2 py-1.5 text-muted-foreground">{p.notes ?? "—"}</td>
-                        <td className="px-2 py-1.5 text-right font-medium tabular-nums">
+              <div className="space-y-2">
+                <div className="flex flex-col gap-2 md:hidden">
+                  {(balanceDetail?.payments ?? []).map((p) => (
+                    <div
+                      key={p.id}
+                      className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-3 shadow-[var(--neo-shadow-panel)]"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-[var(--neo-text-primary)]">
+                            {formatDate(p.date, "compact")}
+                          </p>
+                          <p className="mt-1 truncate text-xs text-[var(--neo-text-secondary)]">
+                            {p.paymentMethod ?? "No method"}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--neo-gold-soft)]">
                           {fmtUsd(p.amount)}
-                        </td>
-                        <td className="px-2 py-1.5 text-right">
-                          <Link
-                            className="text-xs underline-offset-4 hover:underline"
-                            href={`/labor/payments/${p.id}/receipt`}
+                        </p>
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-xs text-[var(--neo-text-tertiary)]">
+                        {p.notes ?? "No notes"}
+                      </p>
+                      <Link
+                        className="mt-3 inline-flex min-h-[44px] items-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-base)] px-3 text-xs font-semibold text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-control)] transition-colors hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-gold-soft)]"
+                        href={`/labor/payments/${p.id}/receipt`}
+                      >
+                        Preview receipt
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hidden overflow-hidden rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-[var(--neo-shadow-panel)] md:block">
+                  <div className="airtable-table-scroll overflow-x-auto">
+                    <table className="w-full min-w-[680px] border-collapse text-sm table-row-compact">
+                      <thead>
+                        <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                          <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                            Date
+                          </th>
+                          <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                            Method
+                          </th>
+                          <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                            Notes
+                          </th>
+                          <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                            Amount
+                          </th>
+                          <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                            Receipt
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(balanceDetail?.payments ?? []).map((p) => (
+                          <tr
+                            key={p.id}
+                            className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-base)] transition-colors last:border-b-0 hover:bg-[var(--neo-surface-hover)]"
                           >
-                            Preview
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                            <td className="px-3 py-2.5 tabular-nums text-[var(--neo-text-secondary)]">
+                              {formatDate(p.date)}
+                            </td>
+                            <td className="px-3 py-2.5 font-medium text-[var(--neo-text-primary)]">
+                              {p.paymentMethod ?? "—"}
+                            </td>
+                            <td className="px-3 py-2.5 text-[var(--neo-text-secondary)]">
+                              <span
+                                className="block max-w-[420px] truncate"
+                                title={p.notes ?? undefined}
+                              >
+                                {p.notes ?? "—"}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[var(--neo-gold-soft)]">
+                              {fmtUsd(p.amount)}
+                            </td>
+                            <td className="px-3 py-2.5 text-right">
+                              <Link
+                                className="text-xs font-semibold text-[var(--neo-gold-soft)] underline-offset-4 hover:underline"
+                                href={`/labor/payments/${p.id}/receipt`}
+                              >
+                                Preview
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
           </DetailSection>

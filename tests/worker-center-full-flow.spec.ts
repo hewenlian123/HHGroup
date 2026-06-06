@@ -324,10 +324,12 @@ test.describe("Worker Center full local flow", () => {
     const uploadJson = (await uploadResponse.json()) as { path?: string };
     if (uploadJson.path) uploadedStoragePaths.add(uploadJson.path);
     expect((await receiptSubmitPost).ok()).toBe(true);
-    await expect(page.getByText("Receipt submitted")).toBeVisible({ timeout: 30_000 });
-
-    await page.goto(`${BASE}/workers/${encodeURIComponent(createdWorkerId)}`);
-    await page.getByRole("tab", { name: "Receipts & Reimbursements" }).click();
+    await expect(page).toHaveURL(
+      new RegExp(
+        `/workers/${createdWorkerId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\?tab=receipts`
+      ),
+      { timeout: 30_000 }
+    );
     await expect(page.getByText(RECEIPT_VENDOR)).toBeVisible({ timeout: 30_000 });
     await page.getByRole("link", { name: /Add Reimbursement/i }).click();
     await expect(page.getByRole("heading", { name: /Worker Reimbursements/i })).toBeVisible({
@@ -368,15 +370,21 @@ test.describe("Worker Center full local flow", () => {
     await page.goto(`${BASE}/workers/${encodeURIComponent(createdWorkerId)}`);
     await page.getByRole("tab", { name: "Advances" }).click();
     await page.getByRole("link", { name: /Pay Worker/i }).click();
-    await expect(page.getByRole("button", { name: /^Pay Worker$/i })).toBeVisible({
+    await expect(page.getByRole("button", { name: /^Pay Selected$/i }).first()).toBeVisible({
       timeout: 30_000,
     });
-    await page.getByRole("button", { name: /^Pay Worker$/i }).click();
+    const laborRow = page.locator("tr", { hasText: "$650.00" }).first();
+    await expect(laborRow).toBeVisible({ timeout: 30_000 });
+    await laborRow.locator('input[type="checkbox"]').check();
+    await page
+      .getByRole("button", { name: /^Pay Selected$/i })
+      .first()
+      .click();
     const payDialog = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(payDialog).toBeVisible();
-    await expect(payDialog.getByText("Unpaid labor entries")).toBeVisible();
-    await expect(payDialog.getByText("Unpaid reimbursements")).toBeVisible();
-    await expect(payDialog.getByText("$685.00").first()).toBeVisible();
+    await expect(payDialog.getByText("Selected labor", { exact: true }).first()).toBeVisible();
+    await expect(payDialog.getByText("Open reimbursements", { exact: true })).toBeVisible();
+    await expect(payDialog.getByText("$635.00").first()).toBeVisible();
 
     const payPost = page.waitForResponse(
       (res) =>

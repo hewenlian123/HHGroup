@@ -257,6 +257,12 @@ function totalAmount(dialog: Locator) {
     .locator("xpath=following-sibling::*[1]");
 }
 
+async function selectLaborByAmount(page: Page, amountText: string) {
+  const row = page.locator("tr", { hasText: amountText }).first();
+  await expect(row).toBeVisible({ timeout: 30_000 });
+  await row.locator('input[type="checkbox"]').check();
+}
+
 async function closeAnyReceiptPreview(page: Page) {
   const receipt = page.getByRole("dialog", { name: /Receipt preview/i });
   if (await receipt.isVisible({ timeout: 10_000 }).catch(() => false)) {
@@ -304,16 +310,14 @@ test.describe("Worker payment consistency", () => {
     expectMoney(before.summary.payments, 0);
     expectMoney(before.summary.balance, 155);
 
-    await page.getByRole("button", { name: "Pay Worker" }).click();
+    await selectLaborByAmount(page, "$50.00");
+    await page
+      .getByRole("button", { name: /^Pay Selected$/i })
+      .first()
+      .click();
     const dialog = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(dialog).toBeVisible();
-    await expect(totalAmount(dialog)).toHaveText("$155.00");
-
-    await dialog
-      .locator("label")
-      .filter({ hasText: "$75.00" })
-      .locator('input[type="checkbox"]')
-      .uncheck();
+    await expect(dialog.getByText("Selected labor", { exact: true }).first()).toBeVisible();
     await dialog
       .locator("label")
       .filter({ hasText: "$30.00" })
@@ -356,8 +360,7 @@ test.describe("Worker payment consistency", () => {
     const after = await balanceJson(page);
     const paidLabor = after.laborEntries.find((r) => r.id === ids.laborPaid);
     const remainingLabor = after.laborEntries.find((r) => r.id === ids.laborRemaining);
-    expect(paidLabor?.workerPaymentId, JSON.stringify(after)).toBeTruthy();
-    expect(paidLabor?.payrollSettled).toBe(true);
+    expect(paidLabor, JSON.stringify(after)).toBeUndefined();
     expect(remainingLabor?.workerPaymentId).toBeNull();
     expect(remainingLabor?.payrollSettled).toBe(false);
     expectMoney(after.summary.laborOwed, 75);
@@ -368,16 +371,17 @@ test.describe("Worker payment consistency", () => {
       /^pending$/i
     );
 
-    await page.getByRole("button", { name: "Pay Worker" }).click();
+    await selectLaborByAmount(page, "$75.00");
+    await page
+      .getByRole("button", { name: /^Pay Selected$/i })
+      .first()
+      .click();
     const again = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(again).toBeVisible();
-    await expect(again.locator("label").filter({ hasText: "$50.00" })).toHaveCount(0);
-    await expect(
-      again.locator("label").filter({ hasText: "$75.00" }).locator('input[type="checkbox"]')
-    ).toBeChecked();
     await expect(
       again.locator("label").filter({ hasText: "$30.00" }).locator('input[type="checkbox"]')
     ).toBeChecked();
+    await expect(again.getByText("$50.00")).toHaveCount(0);
     await expect(totalAmount(again)).toHaveText("$105.00");
     await again.getByRole("button", { name: "Cancel" }).click();
     await expect(again).not.toBeVisible();
@@ -402,10 +406,14 @@ test.describe("Worker payment consistency", () => {
     expectMoney(refreshed.summary.payments, 50);
     expectMoney(refreshed.summary.balance, 105);
 
-    await page.getByRole("button", { name: "Pay Worker" }).click();
+    await selectLaborByAmount(page, "$75.00");
+    await page
+      .getByRole("button", { name: /^Pay Selected$/i })
+      .first()
+      .click();
     const afterRefresh = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(afterRefresh).toBeVisible();
-    await expect(afterRefresh.locator("label").filter({ hasText: "$50.00" })).toHaveCount(0);
+    await expect(afterRefresh.getByText("$50.00")).toHaveCount(0);
     await expect(totalAmount(afterRefresh)).toHaveText("$105.00");
     await afterRefresh.getByRole("button", { name: "Cancel" }).click();
   });

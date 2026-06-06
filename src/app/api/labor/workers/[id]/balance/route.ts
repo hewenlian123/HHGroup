@@ -6,6 +6,7 @@ import {
   getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
 import {
+  getLaborPaymentStatus,
   isLaborUnpaidForWorkerPayroll,
   laborEntryPaymentIdMapFromWorkerPayments,
   laborPayrollSettlementModeFromSelectList,
@@ -24,6 +25,7 @@ type LaborEntryRow = {
   projectId: string | null;
   projectName: string | null;
   amount: number;
+  daysWorked: number | null;
   /** Timesheet / workflow status (Draft, Approved, …) — not used for payroll paid/unpaid display. */
   status: string;
   /** FK to worker_payments when column exists; clients should derive payment UI via getLaborPaymentStatus. */
@@ -50,6 +52,13 @@ type PaymentRow = {
   amount: number;
   paymentMethod: string | null;
   notes: string | null;
+};
+
+type AdvanceRow = {
+  id: string;
+  date: string;
+  amount: number;
+  status: string;
 };
 
 /**
@@ -131,21 +140,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     let laborRes: RawResult = { data: null, error: null };
     let laborColsApplied = "";
     for (const cols of [
-      "id, worker_id, project_id, work_date, labor_cost_snapshot, amount_snapshot, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
+      "id, worker_id, project_id, work_date, days_worked, labor_cost_snapshot, amount_snapshot, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
       // Sparse daily labor (no project_* / total / AM-PM ids) — try first for local & trimmed remotes.
-      "id, worker_id, work_date, cost_amount, cost_code, status, worker_payment_id, morning, afternoon, hours, notes",
-      "id, worker_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
+      "id, worker_id, work_date, days_worked, cost_amount, cost_code, status, worker_payment_id, morning, afternoon, hours, notes",
+      "id, worker_id, work_date, days_worked, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
       "id, worker_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",
       "id, worker_id, work_date, cost_amount, status, worker_payment_id",
       "id, worker_id, work_date, cost_amount, status",
       "id, worker_id, work_date, cost_amount",
       // With total when column exists (older daily log).
-      "id, worker_id, work_date, cost_amount, total, status, worker_payment_id, morning, afternoon, hours, notes",
+      "id, worker_id, work_date, days_worked, cost_amount, total, status, worker_payment_id, morning, afternoon, hours, notes",
       // project_id on row (newer unified schema).
-      "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
+      "id, worker_id, project_id, work_date, days_worked, cost_amount, status, worker_payment_id, morning, afternoon, hours, notes",
       "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id, morning, afternoon",
       "id, worker_id, project_id, work_date, cost_amount, status, worker_payment_id",
-      "id, worker_id, project_id, work_date, cost_amount, status, morning, afternoon, hours, notes",
+      "id, worker_id, project_id, work_date, days_worked, cost_amount, status, morning, afternoon, hours, notes",
       "id, worker_id, project_id, work_date, cost_amount, status, morning, afternoon",
       "id, worker_id, project_id, work_date, cost_amount, status",
       "id, worker_id, project_id, work_date, cost_amount",
@@ -202,10 +211,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       );
     }
 
-    const [projectsRes, advancesRes] = await Promise.all([
-      c.from("projects").select("id, name"),
-      queryFinancialTable(c, "worker_advances", "worker_id, amount, status"),
-    ]);
+    let advancesRes: RawResult = { data: null, error: null };
+    for (const cols of [
+      "id, worker_id, amount, status, advance_date, created_at",
+      "id, worker_id, amount, status, advance_date",
+      "id, worker_id, amount, status, created_at",
+      "id, worker_id, amount, status",
+    ]) {
+      const orderCol = cols.includes("advance_date")
+        ? "advance_date"
+        : cols.includes("created_at")
+          ? "created_at"
+          : undefined;
+      advancesRes = await queryFinancialTable(c, "worker_advances", cols, orderCol);
+      if (!advancesRes.error || !isMissingColumn(advancesRes.error)) break;
+    }
+
+    const [projectsRes] = await Promise.all([c.from("projects").select("id, name")]);
 
     if (!worker?.id) {
       return NextResponse.json({ message: "Worker not found" }, { status: 404 });
@@ -224,6 +246,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       labor_cost_snapshot?: number | null;
       cost_amount?: number | null;
       total?: number | null;
+      days_worked?: number | null;
       status?: string | null;
       worker_payment_id?: string | null;
       morning?: boolean | null;
@@ -267,12 +290,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         projectId: projectKey,
         projectName: projectKey ? (projectNameById.get(projectKey) ?? null) : null,
         amount: Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.total) || 0,
+        daysWorked: Number.isFinite(Number(r.days_worked)) ? Number(r.days_worked) : null,
         status: String(r.status ?? "").trim() || "—",
         workerPaymentId,
         payrollSettled,
         session: laborSessionLabel(r),
       };
     });
+    const payableLaborEntries = laborEntries.filter(
+      (r) => getLaborPaymentStatus(r.workerPaymentId, r.status, laborSettlementMode) !== "paid"
+    );
 
     const reimbRaw = (reimbRes.data ?? []) as {
       id: string;
@@ -288,15 +315,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       if (typeof rd === "string" && /^\d{4}-\d{2}-\d{2}/.test(rd)) return rd.slice(0, 10);
       return (r.created_at ?? "").slice(0, 10);
     };
-    const reimbursements: ReimbursementRow[] = reimbRaw.map((r) => ({
-      id: r.id,
-      date: reimbRowDisplayDate(r),
-      vendor: r.vendor ?? null,
-      projectId: r.project_id ?? null,
-      projectName: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
-      amount: Number(r.amount) || 0,
-      status: String(r.status ?? "") || "pending",
-    }));
+    const reimbursements: ReimbursementRow[] = reimbRaw
+      .filter((r) => String(r.status ?? "").toLowerCase() !== "paid")
+      .map((r) => ({
+        id: r.id,
+        date: reimbRowDisplayDate(r),
+        vendor: r.vendor ?? null,
+        projectId: r.project_id ?? null,
+        projectName: r.project_id ? (projectNameById.get(r.project_id) ?? null) : null,
+        amount: Number(r.amount) || 0,
+        status: String(r.status ?? "") || "pending",
+      }));
 
     const payments: PaymentRow[] = payRaw.map((r) => ({
       id: r.id,
@@ -325,11 +354,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const totalPayments = payRaw.reduce((s, r) => s + (Number(r.total_amount ?? r.amount) || 0), 0);
     const advancesRows = !advancesRes.error
       ? ((advancesRes.data ?? []) as {
+          id?: string | null;
           worker_id: string;
           amount?: number | null;
           status?: string | null;
+          advance_date?: string | null;
+          created_at?: string | null;
         }[])
       : [];
+    const openAdvances: AdvanceRow[] = advancesRows
+      .filter((r) => isWorkerAdvanceOpenForBalance(r.status))
+      .map((r) => ({
+        id: String(r.id ?? ""),
+        date: String(r.advance_date ?? r.created_at ?? "").slice(0, 10),
+        amount: Number(r.amount) || 0,
+        status: String(r.status ?? "pending"),
+      }))
+      .filter((r) => r.id && r.amount > 0);
     const advancesTotal = advancesRows.reduce((s, r) => {
       if (!isWorkerAdvanceOpenForBalance(r.status)) return s;
       return s + (Number(r.amount) || 0);
@@ -350,8 +391,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         advances: advancesTotal,
         balance,
       },
-      laborEntries,
+      laborEntries: payableLaborEntries,
       reimbursements,
+      advances: openAdvances,
       payments,
     });
   } catch (e) {

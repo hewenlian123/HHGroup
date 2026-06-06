@@ -23,6 +23,9 @@ type Props = {
   onOpenChange: (open: boolean) => void;
 };
 
+const receiptPreviewButtonClass =
+  "min-h-[44px] rounded-lg border-white/[0.12] bg-white/[0.035] px-3 text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-control)] hover:border-white/[0.2] hover:bg-white/[0.08] hover:text-[var(--neo-text-primary)] sm:min-h-9";
+
 export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange }: Props) {
   const [data, setData] = React.useState<WorkerPaymentReceiptPreviewDto | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -134,13 +137,19 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
             Worker payment receipt preview. Print from here or download PDF without leaving this
             page.
           </DialogPrimitive.Description>
-          <div className="modal-header flex shrink-0 items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
-            <DialogPrimitive.Title className="text-sm font-semibold text-foreground">
+          <div className="modal-header flex shrink-0 flex-col gap-3 border-b border-white/[0.08] bg-[var(--neo-surface-raised)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <DialogPrimitive.Title className="text-sm font-semibold text-[var(--neo-text-primary)]">
               Receipt preview
             </DialogPrimitive.Title>
-            <div className="flex flex-wrap items-center justify-end gap-1">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end">
               {paymentId ? (
-                <Button type="button" size="sm" variant="outline" className="h-8 gap-1" asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className={cn(receiptPreviewButtonClass, "gap-1")}
+                  asChild
+                >
                   <Link
                     href={`/labor/payments/${encodeURIComponent(paymentId)}/receipt`}
                     target="_blank"
@@ -155,7 +164,7 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-8 gap-1"
+                className={cn(receiptPreviewButtonClass, "gap-1")}
                 onClick={handlePrint}
               >
                 <Printer className="h-3.5 w-3.5" />
@@ -165,7 +174,7 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-8 gap-1"
+                className={cn(receiptPreviewButtonClass, "gap-1")}
                 disabled={!data?.receiptNo || pdfBusy}
                 onClick={() => void handleDownloadPdf()}
               >
@@ -177,7 +186,7 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="btn-outline-ghost h-8 w-8 shrink-0 p-0"
+                  className={cn(receiptPreviewButtonClass, "w-full shrink-0 p-0 sm:w-9")}
                   aria-label="Close"
                 >
                   <X className="h-4 w-4" />
