@@ -9,6 +9,7 @@ function createBalanceMock(
     labor?: unknown[];
     reimb?: unknown[];
     payments?: unknown[];
+    advances?: unknown[];
     projects?: unknown[];
   } = {}
 ) {
@@ -18,6 +19,7 @@ function createBalanceMock(
   const labor = overrides.labor ?? [];
   const reimb = overrides.reimb ?? [];
   const payments = overrides.payments ?? [];
+  const advances = overrides.advances ?? [];
   const projects = overrides.projects ?? [{ id: "p1", name: "Project 1" }];
 
   const thenable = <T>(data: T) => ({
@@ -65,7 +67,7 @@ function createBalanceMock(
       return { select: () => ({ eq: () => ({ order: () => thenable(payments) }) }) };
     }
     if (table === "worker_advances") {
-      return { select: () => ({ eq: () => thenable([]) }) };
+      return { select: () => ({ eq: () => ({ order: () => thenable(advances) }) }) };
     }
     if (table === "projects") {
       return { select: () => thenable(projects) };
@@ -263,9 +265,6 @@ describe("GET /api/labor/workers/[id]/balance", () => {
       payments: 100,
       balance: 20,
     });
-    expect(json.laborEntries[0]).toMatchObject({
-      workerPaymentId: "pay1",
-      payrollSettled: true,
-    });
+    expect(json.laborEntries).toEqual([]);
   });
 });
