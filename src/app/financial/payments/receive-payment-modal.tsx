@@ -31,7 +31,7 @@ import { createPaymentReceivedAction } from "./actions";
 type ReceivePaymentModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (context: { paymentId: string; invoiceId: string; projectId: string | null }) => void;
   /** Pre-fill for invoice detail page: preselect this invoice and lock it. */
   preselectedInvoiceId?: string | null;
   /** Pre-fill remaining balance as default amount. */
@@ -471,7 +471,7 @@ export function ReceivePaymentModal({
       const result = await createPaymentReceivedAction(payload);
       if (!result.ok) throw new Error(result.error);
       preserveUploadedAttachmentsRef.current = true;
-      onSuccess();
+      onSuccess({ paymentId: result.paymentId, invoiceId: invId, projectId: projectId || null });
       onOpenChange(false);
       toast({ title: "Payment recorded", variant: "success" });
       setAmount("");

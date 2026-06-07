@@ -234,7 +234,14 @@ test("invoice project linkage, mark sent, and payment received flow stay in sync
   await dialog.getByRole("button", { name: "Receive Payment" }).click();
   await expect(dialog).toBeHidden({ timeout: 30_000 });
 
-  await page.goto(`/financial/invoices/${invoiceId}`);
+  await expect(page.getByRole("main").getByText("Payment recorded")).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByRole("link", { name: "Back to Project" })).toBeVisible();
+  await page.getByRole("link", { name: "View Invoice" }).click();
+  await expect(page).toHaveURL(new RegExp(`/financial/invoices/${invoiceId}$`), {
+    timeout: 30_000,
+  });
   await expect(page.getByTestId("invoice-detail-status")).toContainText("Partial", {
     timeout: 30_000,
   });
@@ -260,7 +267,13 @@ test("invoice project linkage, mark sent, and payment received flow stay in sync
   await secondDialog.getByRole("button", { name: "Receive Payment" }).click();
   await expect(secondDialog).toBeHidden({ timeout: 30_000 });
 
-  await page.goto(`/financial/invoices/${invoiceId}`);
+  await expect(page.getByRole("link", { name: "View Invoice" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.getByRole("link", { name: "View Invoice" }).click();
+  await expect(page).toHaveURL(new RegExp(`/financial/invoices/${invoiceId}$`), {
+    timeout: 30_000,
+  });
   await expect(page.getByTestId("invoice-detail-status")).toContainText("Paid", {
     timeout: 30_000,
   });

@@ -112,6 +112,11 @@ function PaymentsReceivedPageInner() {
   );
   const [sendReceiptOpen, setSendReceiptOpen] = React.useState(false);
   const [receiptActionBusyId, setReceiptActionBusyId] = React.useState<string | null>(null);
+  const [paymentReturnContext, setPaymentReturnContext] = React.useState<{
+    paymentId: string;
+    invoiceId: string;
+    projectId: string | null;
+  } | null>(null);
   const handledQueryRef = React.useRef("");
 
   const clearPaymentQuery = React.useCallback(() => {
@@ -120,6 +125,7 @@ function PaymentsReceivedPageInner() {
 
   const openReceivePayment = React.useCallback(() => {
     setPrefillInvoiceId(null);
+    setPaymentReturnContext(null);
     setModalOpen(true);
   }, []);
 
@@ -446,6 +452,39 @@ function PaymentsReceivedPageInner() {
           title="Payments Received"
           fab={<MobileFabButton ariaLabel="Receive payment" onClick={openReceivePayment} />}
         />
+
+        {/* Post-payment return context */}
+        {paymentReturnContext ? (
+          <section className="rounded-xl border border-emerald-500/20 bg-emerald-950/25 px-3 py-3 text-sm text-emerald-50 shadow-[var(--neo-shadow-panel)]">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium">Payment recorded</p>
+                <p className="text-xs text-emerald-100/75">
+                  Return to the invoice to review the updated paid amount and open AR.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button asChild size="sm" className="min-h-11 justify-center md:min-h-9">
+                  <Link href={`/financial/invoices/${paymentReturnContext.invoiceId}`}>
+                    View Invoice
+                  </Link>
+                </Button>
+                {paymentReturnContext.projectId ? (
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="min-h-11 justify-center border-emerald-300/30 bg-transparent text-emerald-50 hover:bg-emerald-400/10 md:min-h-9"
+                  >
+                    <Link href={`/projects/${paymentReturnContext.projectId}`}>
+                      Back to Project
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         {/* KPI summary */}
         <section className="border-b border-border/60 pb-4">
@@ -949,7 +988,10 @@ function PaymentsReceivedPageInner() {
         <ReceivePaymentModal
           open={modalOpen}
           onOpenChange={handleReceivePaymentOpenChange}
-          onSuccess={load}
+          onSuccess={(context) => {
+            setPaymentReturnContext(context);
+            void load();
+          }}
           preselectedInvoiceId={prefillInvoiceId}
         />
         <EditPaymentReceivedModal
