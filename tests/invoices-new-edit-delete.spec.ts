@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
-import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
+import { E2E_PRESERVED_PROJECT_ID, E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
@@ -191,6 +191,53 @@ test("creates, edits, cancels, saves, voids, and deletes an invoice", async ({ p
   await expect(listSearch).toBeVisible({ timeout: 30_000 });
   await listSearch.fill(savedClientName);
   await expect(page.getByText(savedClientName)).toHaveCount(0, { timeout: 30_000 });
+});
+
+test("prefills invoice context from project detail create invoice CTA", async ({ page }) => {
+  test.setTimeout(90_000);
+
+  const suffix = Date.now();
+  const clientName = `PW Project CTA Invoice ${suffix}`;
+  const lineDescription = `PW project CTA line ${suffix}`;
+  createdClientNames.add(clientName);
+
+  await page.goto(`/projects/${E2E_PRESERVED_PROJECT_ID}?tab=financial`);
+  await page.waitForLoadState("domcontentloaded");
+  await expect(page.locator("body")).not.toContainText("Something went wrong");
+
+  const createInvoiceLink = page.getByTestId("project-create-invoice-link");
+  await expect(createInvoiceLink).toBeVisible({ timeout: 30_000 });
+  await createInvoiceLink.click();
+
+  await expect(page).toHaveURL(
+    new RegExp(`/financial/invoices/new\\?projectId=${E2E_PRESERVED_PROJECT_ID}`),
+    { timeout: 30_000 }
+  );
+  await expect(page.getByRole("heading", { name: "New Invoice" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(
+    E2E_PRESERVED_PROJECT_ID,
+    { timeout: 30_000 }
+  );
+  await expect(page.getByTestId("invoice-new-client-input")).not.toHaveValue("", {
+    timeout: 30_000,
+  });
+
+  await page.getByTestId("invoice-new-client-input").fill(clientName);
+  await page.getByLabel("Line item 1 description").fill(lineDescription);
+  await page.getByLabel("Line item 1 quantity").fill("1");
+  await page.getByLabel("Line item 1 rate").fill("42");
+  await page.getByRole("button", { name: "Create draft invoice" }).click();
+
+  await expect(page).toHaveURL(/\/financial\/invoices\/(?!new(?:\/|$))[^/?#]+/, {
+    timeout: 30_000,
+  });
+  await expect(page.getByText(clientName).first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(lineDescription)).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(E2E_PRESERVED_PROJECT_LABEL).first()).toBeVisible({
+    timeout: 30_000,
+  });
 });
 
 test("keeps invoice actions usable on mobile", async ({ page }) => {

@@ -1773,6 +1773,16 @@ export function ProjectDetailTabsClient({
               <ExecutiveCard title="Invoices">
                 <SectionHeader
                   label="Invoicing"
+                  action={
+                    <Button asChild size="sm" className="h-8 min-h-8 rounded-md px-3">
+                      <Link
+                        data-testid="project-create-invoice-link"
+                        href={`/financial/invoices/new?projectId=${encodeURIComponent(projectId)}`}
+                      >
+                        Create Invoice
+                      </Link>
+                    </Button>
+                  }
                   className="text-[11px] font-medium tracking-normal text-[var(--neo-text-tertiary)]"
                 />
                 <Divider />

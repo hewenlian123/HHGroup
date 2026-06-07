@@ -27,6 +27,13 @@ import type { EstimateInvoicePrefillResult } from "./estimate-prefill";
 type ProjectOption = { id: string; name: string };
 type CustomerOption = { id: string; name: string | null };
 
+export type ProjectInvoicePrefill = {
+  projectId: string;
+  projectName: string;
+  customerId: string | null;
+  customerName: string | null;
+};
+
 type LineDraft = {
   itemName: string;
   description: string;
@@ -123,10 +130,27 @@ const PRIMARY_BUTTON_CLASS =
 
 export default function NewInvoiceClient({
   estimatePrefill,
+  projectPrefill,
 }: {
   estimatePrefill?: EstimateInvoicePrefillResult | null;
+  projectPrefill?: ProjectInvoicePrefill | null;
 }) {
   const prefill = estimatePrefill?.ok ? estimatePrefill.prefill : null;
+  const projectContextPrefill = React.useMemo(
+    () =>
+      prefill || !projectPrefill
+        ? null
+        : {
+            projectId: projectPrefill.projectId,
+            projectName: projectPrefill.projectName,
+            customerId: projectPrefill.customerId ?? "",
+            customerName: projectPrefill.customerName ?? "",
+          },
+    [prefill, projectPrefill]
+  );
+  const initialProjectId = prefill?.projectId ?? projectContextPrefill?.projectId ?? "";
+  const initialCustomerId = prefill?.customerId ?? projectContextPrefill?.customerId ?? "";
+  const initialClientName = prefill?.customerName ?? projectContextPrefill?.customerName ?? "";
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = React.useState(true);
@@ -139,10 +163,10 @@ export default function NewInvoiceClient({
   const [projects, setProjects] = React.useState<ProjectOption[]>([]);
   const [customers, setCustomers] = React.useState<CustomerOption[]>([]);
 
-  const [projectId, setProjectId] = React.useState<string>(prefill?.projectId ?? "");
-  const [customerId, setCustomerId] = React.useState<string>(prefill?.customerId ?? "");
+  const [projectId, setProjectId] = React.useState<string>(initialProjectId);
+  const [customerId, setCustomerId] = React.useState<string>(initialCustomerId);
   const [invoiceNo, setInvoiceNo] = React.useState<string>("");
-  const [clientName, setClientName] = React.useState<string>(prefill?.customerName ?? "");
+  const [clientName, setClientName] = React.useState<string>(initialClientName);
 
   const today = new Date().toISOString().slice(0, 10);
   const [issueDate, setIssueDate] = React.useState<string>(today);
@@ -195,12 +219,14 @@ export default function NewInvoiceClient({
 
     if (projErr) setError(projErr.message);
     const projectOptions = ((proj ?? []) as ProjectOption[]).filter((p) => p.id && p.name);
-    if (
-      prefill?.projectId &&
-      prefill.projectName &&
-      !projectOptions.some((p) => p.id === prefill.projectId)
-    ) {
-      projectOptions.unshift({ id: prefill.projectId, name: prefill.projectName });
+    const projectPrefillOption =
+      prefill?.projectId && prefill.projectName
+        ? { id: prefill.projectId, name: prefill.projectName }
+        : projectContextPrefill?.projectId && projectContextPrefill.projectName
+          ? { id: projectContextPrefill.projectId, name: projectContextPrefill.projectName }
+          : null;
+    if (projectPrefillOption && !projectOptions.some((p) => p.id === projectPrefillOption.id)) {
+      projectOptions.unshift(projectPrefillOption);
     }
     setProjects(projectOptions);
 
@@ -209,12 +235,17 @@ export default function NewInvoiceClient({
       setCustomers([]);
     } else {
       const customerOptions = (cust ?? []) as CustomerOption[];
+      const customerPrefillOption =
+        prefill?.customerId && prefill.customerName
+          ? { id: prefill.customerId, name: prefill.customerName }
+          : projectContextPrefill?.customerId && projectContextPrefill.customerName
+            ? { id: projectContextPrefill.customerId, name: projectContextPrefill.customerName }
+            : null;
       if (
-        prefill?.customerId &&
-        prefill.customerName &&
-        !customerOptions.some((c) => c.id === prefill.customerId)
+        customerPrefillOption &&
+        !customerOptions.some((c) => c.id === customerPrefillOption.id)
       ) {
-        customerOptions.unshift({ id: prefill.customerId, name: prefill.customerName });
+        customerOptions.unshift(customerPrefillOption);
       }
       setCustomers(customerOptions);
     }
@@ -228,7 +259,7 @@ export default function NewInvoiceClient({
     }
 
     setLoading(false);
-  }, [supabase, configured, taxTouched, prefill]);
+  }, [supabase, configured, taxTouched, prefill, projectContextPrefill]);
 
   React.useEffect(() => {
     void load();
@@ -386,13 +417,25 @@ export default function NewInvoiceClient({
         description={
           prefill
             ? `Invoice for ${prefill.milestoneTitle} from Estimate ${prefill.estimateNumber}.`
-            : "Create a draft invoice for a project and client."
+            : projectContextPrefill
+              ? `Invoice for ${projectContextPrefill.projectName}.`
+              : "Create a draft invoice for a project and client."
         }
       />
 
       {error ? (
         <NeoPanel bodyClassName="p-4">
           <p className="text-sm font-medium text-rose-300">{error}</p>
+        </NeoPanel>
+      ) : null}
+
+      {projectContextPrefill && !projectContextPrefill.customerId ? (
+        <NeoPanel bodyClassName="p-4">
+          <p className="text-sm font-medium text-[var(--neo-gold)]">Project context loaded</p>
+          <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">
+            This project is not linked to a customer yet. Add or confirm the client name before
+            saving.
+          </p>
         </NeoPanel>
       ) : null}
 
