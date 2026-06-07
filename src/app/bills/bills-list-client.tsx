@@ -1,6 +1,9 @@
 "use client";
 
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import {
+  refreshRscNonBlocking,
+  syncRouterNonBlocking,
+} from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { startTransition } from "react";
@@ -76,6 +79,27 @@ type BillsSummary = Props["summary"];
 
 async function readApiMessage(response: Response, fallback: string): Promise<string> {
   const body = (await response.json().catch(() => null)) as { message?: unknown } | null;
+  return typeof body?.message === "string" ? body.message : fallback;
+}
+
+async function readApiBody(response: Response): Promise<Record<string, unknown> | null> {
+  return (await response.json().catch(() => null)) as Record<string, unknown> | null;
+}
+
+function isBillsSummary(value: unknown): value is BillsSummary {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Record<keyof BillsSummary, unknown>;
+  return (
+    typeof candidate.totalOutstanding === "number" &&
+    typeof candidate.overdueCount === "number" &&
+    typeof candidate.overdueAmount === "number" &&
+    typeof candidate.dueThisWeekCount === "number" &&
+    typeof candidate.dueThisWeekAmount === "number" &&
+    typeof candidate.paidThisMonthAmount === "number"
+  );
+}
+
+function messageFromBody(body: Record<string, unknown> | null, fallback: string): string {
   return typeof body?.message === "string" ? body.message : fallback;
 }
 
@@ -230,14 +254,16 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       if (deletedBill) setLocalSummary((prev) => subtractBillFromSummary(prev, deletedBill));
       setActionError(null);
       const response = await fetch(`/api/bills/${encodeURIComponent(id)}`, { method: "DELETE" });
+      const body = await readApiBody(response);
       if (response.ok) {
         setDeleteConfirmId(null);
-        syncRouterNonBlocking(router);
+        if (isBillsSummary(body?.summary)) setLocalSummary(body.summary);
+        refreshRscNonBlocking(router);
         return;
       }
       setLocalBills(billsSnapshot);
       setLocalSummary(summarySnapshot);
-      setActionError(await readApiMessage(response, "Failed to delete bill."));
+      setActionError(messageFromBody(body, "Failed to delete bill."));
     },
     [localBills, localSummary, router]
   );
@@ -277,7 +303,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             <Button
               variant="outline"
               size="sm"
-              className={cn("h-8 w-8 p-0", billsGhostButtonClass)}
+              className={cn("!h-11 !w-11 p-0 md:!h-8 md:!w-8", billsGhostButtonClass)}
               aria-label={`Actions for bill ${bill.vendor_name}`}
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -617,7 +643,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 >
                   <Link
                     href={`/bills/${bill.id}`}
-                    className="flex min-w-0 flex-1 items-center gap-3 pr-10 text-left"
+                    className="flex min-w-0 flex-1 items-center gap-3 pr-12 text-left"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">

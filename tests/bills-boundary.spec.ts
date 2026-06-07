@@ -22,14 +22,37 @@ function cents(value: number): number {
   return Math.round(value * 100);
 }
 
-async function outstandingKpiAmount(page: import("@playwright/test").Page): Promise<number> {
+async function kpiAmount(page: import("@playwright/test").Page, label: string): Promise<number> {
   const text = await page
-    .locator("section")
-    .filter({ hasText: "Outstanding" })
-    .getByText(/\$[\d,]+(?:\.\d{2})?/)
-    .first()
+    .getByText(label, { exact: true })
+    .locator("xpath=following-sibling::p[1]")
     .innerText();
   return parseCurrencyText(text);
+}
+
+async function outstandingKpiAmount(page: import("@playwright/test").Page): Promise<number> {
+  return kpiAmount(page, "Outstanding");
+}
+
+async function overdueKpiAmount(page: import("@playwright/test").Page): Promise<number> {
+  return kpiAmount(page, "Overdue");
+}
+
+async function dueThisWeekKpiAmount(page: import("@playwright/test").Page): Promise<number> {
+  return kpiAmount(page, "Due this week");
+}
+
+async function expectKpiAmountSoon(
+  page: import("@playwright/test").Page,
+  label: string,
+  expectedAmount: number
+): Promise<void> {
+  await expect
+    .poll(async () => cents(await kpiAmount(page, label)), {
+      intervals: [100, 250, 500],
+      timeout: 2_000,
+    })
+    .toBe(cents(expectedAmount));
 }
 
 function supabaseForLocalMutations() {
@@ -276,7 +299,9 @@ test.describe("Bills/AP guarded server boundary", () => {
     const marker = `${MARKER_PREFIX}-ACTIONS-${Date.now()}`;
     const approveVendor = `${marker}-APPROVE`;
     const draftVendor = `${marker}-DRAFT`;
+    const overdueDraftVendor = `${marker}-OVERDUE-DRAFT`;
     const voidVendor = `${marker}-VOID`;
+    const mobileVendor = `${marker}-MOBILE`;
     await cleanupBillsByMarker(marker);
 
     try {
@@ -346,6 +371,7 @@ test.describe("Bills/AP guarded server boundary", () => {
       await expect(draftRow).toBeVisible({ timeout: 30_000 });
       await expect(draftRow).toContainText("Draft");
       const outstandingBeforeDelete = await outstandingKpiAmount(page);
+      const dueThisWeekBeforeDelete = await dueThisWeekKpiAmount(page);
 
       await draftRow
         .getByRole("button", {
@@ -364,11 +390,44 @@ test.describe("Bills/AP guarded server boundary", () => {
       const deleteResponse = await deleteResponsePromise;
       expect(deleteResponse.ok()).toBeTruthy();
       await expect(draftRow).toHaveCount(0, { timeout: 30_000 });
-      await expect
-        .poll(async () => cents(await outstandingKpiAmount(page)), {
-          timeout: 15_000,
+      await expectKpiAmountSoon(page, "Outstanding", outstandingBeforeDelete - 321.45);
+      await expectKpiAmountSoon(page, "Due this week", dueThisWeekBeforeDelete - 321.45);
+
+      const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+      const overdueResponse = await postBill(request, overdueDraftVendor, {
+        amount: 111.11,
+        dueDate: yesterday,
+      });
+      expect(overdueResponse.ok(), await overdueResponse.text()).toBeTruthy();
+      const overdueBody = (await overdueResponse.json()) as { bill?: { id?: string } };
+      expect(overdueBody.bill?.id).toMatch(/^[0-9a-f-]{36}$/i);
+
+      await page.goto(`${BASE}/bills?search=${encodeURIComponent(overdueDraftVendor)}`);
+      await expect(page.getByRole("heading", { name: /^Bills$/ })).toBeVisible({
+        timeout: 60_000,
+      });
+      const overdueDraftRow = page.locator("tbody tr").filter({ hasText: overdueDraftVendor });
+      await expect(overdueDraftRow).toBeVisible({ timeout: 30_000 });
+      const outstandingBeforeOverdueDelete = await outstandingKpiAmount(page);
+      const overdueBeforeDelete = await overdueKpiAmount(page);
+      await overdueDraftRow
+        .getByRole("button", {
+          name: new RegExp(`Actions for bill ${escapeRegExp(overdueDraftVendor)}`, "i"),
         })
-        .toBe(cents(outstandingBeforeDelete - 321.45));
+        .click();
+      await page.getByRole("menuitem", { name: /^Delete$/ }).click();
+      const overdueDeleteDialog = page.getByRole("dialog", { name: "Delete bill?" });
+      const overdueDeleteResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/bills/${overdueBody.bill?.id}`) &&
+          response.request().method() === "DELETE"
+      );
+      await overdueDeleteDialog.getByRole("button", { name: /^Delete$/ }).click();
+      const overdueDeleteResponse = await overdueDeleteResponsePromise;
+      expect(overdueDeleteResponse.ok()).toBeTruthy();
+      await expect(overdueDraftRow).toHaveCount(0, { timeout: 30_000 });
+      await expectKpiAmountSoon(page, "Outstanding", outstandingBeforeOverdueDelete - 111.11);
+      await expectKpiAmountSoon(page, "Overdue", overdueBeforeDelete - 111.11);
 
       const voidResponse = await postBill(request, voidVendor);
       expect(voidResponse.ok(), await voidResponse.text()).toBeTruthy();
@@ -391,6 +450,19 @@ test.describe("Bills/AP guarded server boundary", () => {
       await expect(page.locator("tbody tr").filter({ hasText: voidVendor })).toBeVisible({
         timeout: 30_000,
       });
+
+      const mobileResponse = await postBill(request, mobileVendor, { amount: 44.44 });
+      expect(mobileResponse.ok(), await mobileResponse.text()).toBeTruthy();
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(`${BASE}/bills?search=${encodeURIComponent(mobileVendor)}`);
+      await expect(page.getByText(mobileVendor).first()).toBeVisible({ timeout: 30_000 });
+      const mobileAction = page.getByRole("button", {
+        name: new RegExp(`Actions for bill ${escapeRegExp(mobileVendor)}`, "i"),
+      });
+      await expect(mobileAction).toBeVisible({ timeout: 30_000 });
+      const box = await mobileAction.boundingBox();
+      expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
+      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
     } finally {
       await cleanupBillsByMarker(marker);
     }

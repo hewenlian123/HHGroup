@@ -7,6 +7,7 @@ import {
   deleteApBillDraft,
   getApBillById,
   getApBillPayments,
+  getApBillsSummary,
   setApBillPending,
   updateApBill,
   voidApBill,
@@ -205,7 +206,8 @@ export async function DELETE(request: Request, ctx: { params: Promise<{ id: stri
   try {
     const ok = await deleteApBillDraft(id, supabase);
     if (!ok) return apiError(404, "Bill not found.");
-    return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
+    const summary = await getApBillsSummary(supabase);
+    return NextResponse.json({ ok: true, summary }, { headers: NO_CACHE_HEADERS });
   } catch (error) {
     logBillsError("delete", error);
     const message =
