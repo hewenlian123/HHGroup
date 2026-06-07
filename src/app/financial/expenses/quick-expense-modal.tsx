@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InlineLoading } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
@@ -172,6 +173,7 @@ type Props = {
 
 export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, expenses }: Props) {
   const { toast } = useToast();
+  const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const receiptPickLockRef = React.useRef(false);
   const replaceClientIdRef = React.useRef<string | null>(null);
@@ -1010,7 +1012,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           createdAt: new Date().toISOString(),
         }));
 
-      await saveQuickExpenseViaApi({
+      const savedExpense = await saveQuickExpenseViaApi({
         date: date || new Date().toISOString().slice(0, 10),
         vendorName: effectiveVendorName || "Unknown",
         totalAmount,
@@ -1031,9 +1033,10 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       });
       toast({
         title: "Expense saved",
-        description: `${effectiveVendorName || "Unknown"} - ${formatCurrency(totalAmount)}`,
+        description: `${effectiveVendorName || "Unknown"} - ${formatCurrency(totalAmount)}. Click to open expense detail.`,
         variant: "success",
         durationMs: 14_000,
+        onClick: () => router.push(`/financial/expenses/${savedExpense.id}`),
       });
       if (
         slotsToSave.length > 0 &&
