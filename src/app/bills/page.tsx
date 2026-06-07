@@ -20,6 +20,7 @@ type Props = {
     date_from?: string;
     date_to?: string;
     overdue_only?: string;
+    show_void_bills?: string;
   }>;
 };
 
@@ -33,6 +34,7 @@ export default async function BillsPage({ searchParams }: Props) {
     date_from: sp.date_from ?? undefined,
     date_to: sp.date_to ?? undefined,
     overdue_only: sp.overdue_only ?? undefined,
+    show_void_bills: sp.show_void_bills ?? undefined,
   };
   const { available, message, bills, summary, projects } = await fetchBillsPageData(filters);
 

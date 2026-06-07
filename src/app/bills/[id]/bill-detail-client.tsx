@@ -67,7 +67,14 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
   const [voidConfirm, setVoidConfirm] = React.useState(false);
   const [deleteConfirm, setDeleteConfirm] = React.useState(false);
 
-  React.useEffect(() => setAddPaymentOpen(initialAddPaymentOpen), [initialAddPaymentOpen]);
+  const canAddPayment = bill.status === "Pending" || bill.status === "Partially Paid";
+  const canVoid =
+    bill.status === "Pending" || bill.status === "Partially Paid" || bill.status === "Paid";
+
+  React.useEffect(
+    () => setAddPaymentOpen(canAddPayment && initialAddPaymentOpen),
+    [canAddPayment, initialAddPaymentOpen]
+  );
 
   const statusVariant =
     bill.status === "Paid"
@@ -78,6 +85,10 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
 
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canAddPayment) {
+      setError("Only pending bills can be paid.");
+      return;
+    }
     const amt = parseFloat(paymentAmount);
     if (!Number.isFinite(amt) || amt <= 0) {
       setError("Enter a valid amount.");
@@ -110,6 +121,20 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
       setError(err instanceof Error ? err.message : "Failed to add payment.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleApprove = async () => {
+    setError(null);
+    const response = await fetch(`/api/bills/${encodeURIComponent(bill.id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve" }),
+    });
+    if (response.ok) {
+      syncRouterNonBlocking(router);
+    } else {
+      setError(await readApiMessage(response, "Failed to approve bill."));
     }
   };
 
@@ -203,7 +228,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         title="Payment history"
         description={payments.length === 0 ? "No payments recorded yet." : undefined}
         action={
-          bill.status !== "Paid" && bill.status !== "Void" ? (
+          canAddPayment ? (
             <Button
               variant="outline"
               size="sm"
@@ -309,7 +334,17 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             View attachment
           </Button>
         ) : null}
-        {bill.status !== "Void" &&
+        {bill.status === "Draft" ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className={billsGhostButtonClass}
+            onClick={handleApprove}
+          >
+            Approve
+          </Button>
+        ) : null}
+        {canVoid &&
           (!voidConfirm ? (
             <Button
               variant="outline"

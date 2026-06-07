@@ -54,6 +54,8 @@ export function EditBillClient({ bill, projects, learnedCategories = [] }: Props
   const [attachmentUrl, setAttachmentUrl] = React.useState(bill.attachment_url ?? "");
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const amountLocked =
+    bill.status === "Paid" || bill.status === "Partially Paid" || bill.status === "Void";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,29 +64,31 @@ export function EditBillClient({ bill, projects, learnedCategories = [] }: Props
       setError("Vendor / payee name is required.");
       return;
     }
-    const amt = parseFloat(amount);
-    if (!Number.isFinite(amt) || amt < 0) {
+    const amt = amountLocked ? bill.amount : parseFloat(amount);
+    if (!amountLocked && (!Number.isFinite(amt) || amt < 0)) {
       setError("Enter a valid amount.");
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
+      const payload: Record<string, unknown> = {
+        bill_no: billNo.trim() || null,
+        vendor_name: vendor,
+        bill_type: billType,
+        project_id: projectId || null,
+        issue_date: issueDate || null,
+        due_date: dueDate || null,
+        category: category.trim() || null,
+        notes: notes.trim() || null,
+        attachment_url: attachmentUrl.trim() || null,
+      };
+      if (!amountLocked) payload.amount = amt;
+
       const response = await fetch(`/api/bills/${encodeURIComponent(bill.id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bill_no: billNo.trim() || null,
-          vendor_name: vendor,
-          bill_type: billType,
-          project_id: projectId || null,
-          issue_date: issueDate || null,
-          due_date: dueDate || null,
-          amount: amt,
-          category: category.trim() || null,
-          notes: notes.trim() || null,
-          attachment_url: attachmentUrl.trim() || null,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) {
         throw new Error(await readApiMessage(response, "Failed to update bill."));
@@ -187,8 +191,18 @@ export function EditBillClient({ bill, projects, learnedCategories = [] }: Props
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               className={cn(billsFieldClass, billsAmountInputClass)}
+              disabled={amountLocked}
+              aria-describedby={amountLocked ? "bill-amount-lock-note" : undefined}
               required
             />
+            {amountLocked ? (
+              <p
+                id="bill-amount-lock-note"
+                className="text-[12px] text-[var(--neo-text-secondary)]"
+              >
+                Paid bills are locked to protect AP history.
+              </p>
+            ) : null}
           </div>
 
           <div className={neoFormFieldClassName}>

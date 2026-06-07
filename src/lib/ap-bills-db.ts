@@ -26,6 +26,9 @@ export type ApBillType = (typeof AP_BILL_TYPES)[number];
 export const AP_BILL_STATUSES = ["Draft", "Pending", "Partially Paid", "Paid", "Void"] as const;
 export type ApBillStatus = (typeof AP_BILL_STATUSES)[number];
 
+export const PAID_BILL_LOCKED_MESSAGE =
+  "Paid bills cannot be edited directly. Create an adjustment or void/recreate the bill.";
+
 export type ApBillRow = {
   id: string;
   bill_no: string | null;
@@ -75,6 +78,7 @@ export type ApBillsFilters = {
   date_from?: string;
   date_to?: string;
   overdue_only?: boolean;
+  include_void?: boolean;
 };
 
 type SupabaseLike = SupabaseClient;
@@ -115,6 +119,10 @@ function toNum(v: unknown): number {
 
 function money(v: unknown): number {
   return Math.round(toNum(v) * 100) / 100;
+}
+
+function isFinanciallyLockedStatus(status: ApBillStatus | undefined): boolean {
+  return status === "Paid" || status === "Partially Paid" || status === "Void";
 }
 
 type ApSummaryBill = {
@@ -323,7 +331,9 @@ export async function getApBills(
     .select(AP_BILLS_LINKED_SELECT)
     .order("created_at", { ascending: false });
 
+  q = q.neq("status", "Deleted").neq("status", "deleted");
   if (filters.status) q = q.eq("status", filters.status);
+  else if (!filters.include_void) q = q.neq("status", "Void");
   if (filters.bill_type) q = q.eq("bill_type", filters.bill_type);
   if (filters.project_id) q = q.eq("project_id", filters.project_id);
   if (filters.date_from) q = q.gte("due_date", filters.date_from.slice(0, 10));
@@ -339,7 +349,9 @@ export async function getApBills(
       .from(BILLS_TABLE)
       .select(AP_BILLS_BASE_SELECT)
       .order("created_at", { ascending: false });
+    retry = retry.neq("status", "Deleted").neq("status", "deleted");
     if (filters.status) retry = retry.eq("status", filters.status);
+    else if (!filters.include_void) retry = retry.neq("status", "Void");
     if (filters.bill_type) retry = retry.eq("bill_type", filters.bill_type);
     if (filters.project_id) retry = retry.eq("project_id", filters.project_id);
     if (filters.date_from) retry = retry.gte("due_date", filters.date_from.slice(0, 10));
@@ -519,6 +531,11 @@ export async function updateApBill(
 ): Promise<ApBillRow | null> {
   const c = client(explicitClient);
   const updates: Record<string, unknown> = {};
+  let currentBill: ApBillWithProject | null | undefined;
+  const loadCurrentBill = async () => {
+    if (currentBill === undefined) currentBill = await getApBillById(id, c);
+    return currentBill;
+  };
   if (patch.bill_no !== undefined) updates.bill_no = patch.bill_no?.trim() || null;
   if (patch.bill_type !== undefined)
     updates.bill_type = AP_BILL_TYPES.includes(patch.bill_type) ? patch.bill_type : "Vendor";
@@ -528,9 +545,15 @@ export async function updateApBill(
   if (patch.due_date !== undefined) updates.due_date = patch.due_date?.slice(0, 10) || null;
   if (patch.amount !== undefined) {
     const nextAmount = Math.max(0, money(patch.amount));
-    const currentBill = await getApBillById(id, c);
+    const currentBill = await loadCurrentBill();
     if (!currentBill) return null;
     const paidAmount = await sumApBillPayments(id, c);
+    if (isFinanciallyLockedStatus(currentBill.status) && nextAmount !== money(currentBill.amount)) {
+      throw new Error(PAID_BILL_LOCKED_MESSAGE);
+    }
+    if (nextAmount < paidAmount) {
+      throw new Error(PAID_BILL_LOCKED_MESSAGE);
+    }
     const balanceAmount = Math.max(0, money(nextAmount - paidAmount));
     updates.amount = nextAmount;
     updates.paid_amount = paidAmount;
@@ -546,8 +569,14 @@ export async function updateApBill(
   if (patch.subcontractor_id !== undefined)
     updates.subcontractor_id = patch.subcontractor_id || null;
   if (patch.subcontract_id !== undefined) updates.subcontract_id = patch.subcontract_id || null;
-  if (patch.status !== undefined)
+  if (patch.status !== undefined) {
+    const currentBill = await loadCurrentBill();
+    if (!currentBill) return null;
+    if (isFinanciallyLockedStatus(currentBill.status) && patch.status !== currentBill.status) {
+      throw new Error(PAID_BILL_LOCKED_MESSAGE);
+    }
     updates.status = AP_BILL_STATUSES.includes(patch.status) ? patch.status : "Draft";
+  }
   if (Object.keys(updates).length === 0)
     return getApBillById(id, explicitClient).then((b) =>
       b ? mapBill(b as unknown as Record<string, unknown>) : null

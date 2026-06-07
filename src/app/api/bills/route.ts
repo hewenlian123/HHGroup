@@ -96,6 +96,9 @@ function filtersFromUrl(url: URL): ApBillsFilters {
     overdue_only:
       url.searchParams.get("overdue_only") === "1" ||
       url.searchParams.get("overdue_only") === "true",
+    include_void:
+      url.searchParams.get("show_void_bills") === "1" ||
+      url.searchParams.get("show_void_bills") === "true",
   };
 }
 

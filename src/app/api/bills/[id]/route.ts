@@ -3,9 +3,11 @@ import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import {
   AP_BILL_STATUSES,
   AP_BILL_TYPES,
+  PAID_BILL_LOCKED_MESSAGE,
   deleteApBillDraft,
   getApBillById,
   getApBillPayments,
+  setApBillPending,
   updateApBill,
   voidApBill,
   type ApBillStatus,
@@ -49,6 +51,14 @@ function isMissingTableError(error: unknown): boolean {
 
 function safeFailureMessage(error: unknown, fallback: string): string {
   return isMissingTableError(error) ? "Bills/AP module is not configured." : fallback;
+}
+
+function isBillValidationError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error.message === PAID_BILL_LOCKED_MESSAGE ||
+      /Only Draft bills|Cannot delete a bill with payments/i.test(error.message))
+  );
 }
 
 function stringOrNull(value: unknown): string | null {
@@ -126,6 +136,15 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       if (!ok) return apiError(404, "Bill not found.");
       return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
     }
+    if (body.action === "approve") {
+      const ok = await setApBillPending(id, supabase);
+      if (!ok) {
+        const bill = await getApBillById(id, supabase);
+        if (!bill) return apiError(404, "Bill not found.");
+        return apiError(400, "Only Draft bills can be approved.");
+      }
+      return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
+    }
 
     const amount = numberOrUndefined(body.amount);
     let vendorName: string | undefined;
@@ -162,8 +181,14 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     if (!updated) return apiError(404, "Bill not found.");
     return NextResponse.json({ ok: true, bill: updated }, { headers: NO_CACHE_HEADERS });
   } catch (error) {
-    logBillsError("update", error);
-    return apiError(500, safeFailureMessage(error, "Failed to update bill."));
+    const validationError = isBillValidationError(error);
+    if (!validationError) logBillsError("update", error);
+    const status = validationError ? 400 : 500;
+    const message =
+      error instanceof Error && validationError
+        ? error.message
+        : safeFailureMessage(error, "Failed to update bill.");
+    return apiError(status, message);
   }
 }
 

@@ -9,7 +9,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   StatusBadge,
   ConfirmDialog,
-  DeleteRowAction,
   KpiTile,
   NeoAmount,
   NeoFieldLabel,
@@ -35,7 +34,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { ApBillWithProject } from "@/lib/data";
 import { AP_BILL_TYPES, AP_BILL_STATUSES } from "@/lib/data";
-import { MoreHorizontal, Search } from "lucide-react";
+import {
+  Ban,
+  CheckCircle2,
+  CreditCard,
+  ExternalLink,
+  MoreHorizontal,
+  Search,
+  Trash2,
+} from "lucide-react";
 import {
   MobileEmptyState,
   MobileFabPlus,
@@ -52,20 +59,6 @@ import {
   billsPrimaryButtonClass,
 } from "./bills-ui-styles";
 
-function startOfToday(): Date {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function daysUntil(due: string | null): number | null {
-  if (!due) return null;
-  const dt = new Date(due.slice(0, 10) + "T00:00:00");
-  if (Number.isNaN(dt.getTime())) return null;
-  const diff = dt.getTime() - startOfToday().getTime();
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
-}
-
 type Props = {
   bills: ApBillWithProject[];
   summary: {
@@ -79,9 +72,61 @@ type Props = {
   projects: { id: string; name: string }[];
 };
 
+type BillsSummary = Props["summary"];
+
 async function readApiMessage(response: Response, fallback: string): Promise<string> {
   const body = (await response.json().catch(() => null)) as { message?: unknown } | null;
   return typeof body?.message === "string" ? body.message : fallback;
+}
+
+function localMoney(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function localOutstandingBalance(bill: ApBillWithProject): number {
+  if (bill.status === "Void" || bill.status === "Paid") return 0;
+  const derived = Math.max(0, localMoney(bill.amount - bill.paid_amount));
+  if (bill.balance_amount <= 0 && derived > 0) return derived;
+  return Math.max(0, localMoney(bill.balance_amount));
+}
+
+function currentSummaryWindow() {
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay());
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  return {
+    today,
+    weekStart: startOfWeek.toISOString().slice(0, 10),
+    weekEnd: endOfWeek.toISOString().slice(0, 10),
+  };
+}
+
+function subtractBillFromSummary(summary: BillsSummary, bill: ApBillWithProject): BillsSummary {
+  const balance = localOutstandingBalance(bill);
+  if (balance <= 0) return summary;
+
+  const { today, weekStart, weekEnd } = currentSummaryWindow();
+  const due = bill.due_date ?? "";
+  const isOverdue = due !== "" && due < today;
+  const isDueThisWeek = due !== "" && due >= weekStart && due <= weekEnd;
+
+  return {
+    ...summary,
+    totalOutstanding: Math.max(0, localMoney(summary.totalOutstanding - balance)),
+    overdueCount: isOverdue ? Math.max(0, summary.overdueCount - 1) : summary.overdueCount,
+    overdueAmount: isOverdue
+      ? Math.max(0, localMoney(summary.overdueAmount - balance))
+      : summary.overdueAmount,
+    dueThisWeekCount: isDueThisWeek
+      ? Math.max(0, summary.dueThisWeekCount - 1)
+      : summary.dueThisWeekCount,
+    dueThisWeekAmount: isDueThisWeek
+      ? Math.max(0, localMoney(summary.dueThisWeekAmount - balance))
+      : summary.dueThisWeekAmount,
+  };
 }
 
 export function BillsListClient({ bills, summary, projects }: Props) {
@@ -89,7 +134,10 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   const searchParams = useSearchParams();
   const [localBills, setLocalBills] = React.useState<ApBillWithProject[]>(bills);
   React.useEffect(() => setLocalBills(bills), [bills]);
+  const [localSummary, setLocalSummary] = React.useState(summary);
+  React.useEffect(() => setLocalSummary(summary), [summary]);
   const [voidConfirmId, setVoidConfirmId] = React.useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [actionError, setActionError] = React.useState<string | null>(null);
 
@@ -99,9 +147,13 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   const projectId = searchParams.get("project_id") ?? "";
   const dateFrom = searchParams.get("date_from") ?? "";
   const dateTo = searchParams.get("date_to") ?? "";
+  const showVoidBills =
+    searchParams.get("show_void_bills") === "1" || searchParams.get("show_void_bills") === "true";
 
   const [searchInput, setSearchInput] = React.useState(search);
+  const [showVoidInput, setShowVoidInput] = React.useState(showVoidBills);
   React.useEffect(() => setSearchInput(search), [search]);
+  React.useEffect(() => setShowVoidInput(showVoidBills), [showVoidBills]);
 
   useOnAppSync(
     React.useCallback(() => {
@@ -122,43 +174,81 @@ export function BillsListClient({ bills, summary, projects }: Props) {
     [router, searchParams]
   );
 
-  const handleVoid = React.useCallback(async (id: string) => {
-    setActionError(null);
-    const response = await fetch(`/api/bills/${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "void" }),
-    });
-    if (response.ok) {
-      setVoidConfirmId(null);
-      setLocalBills((prev) =>
-        prev.map((b) => (b.id === id ? { ...b, status: "Void" as const } : b))
-      );
-    } else {
-      setActionError(await readApiMessage(response, "Failed to void bill."));
-    }
-  }, []);
+  const handleVoid = React.useCallback(
+    async (id: string) => {
+      setActionError(null);
+      const targetBill = localBills.find((bill) => bill.id === id);
+      const response = await fetch(`/api/bills/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "void" }),
+      });
+      if (response.ok) {
+        setVoidConfirmId(null);
+        if (targetBill) {
+          setLocalSummary((prev) => subtractBillFromSummary(prev, targetBill));
+        }
+        setLocalBills((prev) =>
+          showVoidBills
+            ? prev.map((b) => (b.id === id ? { ...b, status: "Void" as const } : b))
+            : prev.filter((b) => b.id !== id)
+        );
+        syncRouterNonBlocking(router);
+      } else {
+        setActionError(await readApiMessage(response, "Failed to void bill."));
+      }
+    },
+    [localBills, router, showVoidBills]
+  );
 
-  const handleDeleteDraft = React.useCallback(async (id: string) => {
-    let snapshot: ApBillWithProject[] | undefined;
-    setLocalBills((prev) => {
-      snapshot = prev;
-      return prev.filter((b) => b.id !== id);
-    });
-    setActionError(null);
-    const response = await fetch(`/api/bills/${encodeURIComponent(id)}`, { method: "DELETE" });
-    if (!response.ok) {
-      if (snapshot) setLocalBills(snapshot);
+  const handleApprove = React.useCallback(
+    async (id: string) => {
+      setActionError(null);
+      const response = await fetch(`/api/bills/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve" }),
+      });
+      if (response.ok) {
+        setLocalBills((prev) =>
+          prev.map((bill) => (bill.id === id ? { ...bill, status: "Pending" as const } : bill))
+        );
+        syncRouterNonBlocking(router);
+      } else {
+        setActionError(await readApiMessage(response, "Failed to approve bill."));
+      }
+    },
+    [router]
+  );
+
+  const handleDeleteDraft = React.useCallback(
+    async (id: string) => {
+      const deletedBill = localBills.find((bill) => bill.id === id);
+      const billsSnapshot = localBills;
+      const summarySnapshot = localSummary;
+      setLocalBills((prev) => prev.filter((b) => b.id !== id));
+      if (deletedBill) setLocalSummary((prev) => subtractBillFromSummary(prev, deletedBill));
+      setActionError(null);
+      const response = await fetch(`/api/bills/${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (response.ok) {
+        setDeleteConfirmId(null);
+        syncRouterNonBlocking(router);
+        return;
+      }
+      setLocalBills(billsSnapshot);
+      setLocalSummary(summarySnapshot);
       setActionError(await readApiMessage(response, "Failed to delete bill."));
-    }
-  }, []);
+    },
+    [localBills, localSummary, router]
+  );
 
   const activeDrawerFilterCount =
     (status ? 1 : 0) +
     (billType ? 1 : 0) +
     (projectId ? 1 : 0) +
     (dateFrom ? 1 : 0) +
-    (dateTo ? 1 : 0);
+    (dateTo ? 1 : 0) +
+    (showVoidBills ? 1 : 0);
 
   const statusPill = React.useCallback(
     (
@@ -166,12 +256,87 @@ export function BillsListClient({ bills, summary, projects }: Props) {
     ): { label: string; variant: Parameters<typeof StatusBadge>[0]["variant"] } => {
       if (bill.status === "Paid") return { label: "Paid", variant: "success" };
       if (bill.status === "Void") return { label: "Void", variant: "muted" };
-      const d = daysUntil(bill.due_date);
-      if (d != null && d < 0) return { label: "Overdue", variant: "danger" };
-      if (d != null && d <= 7) return { label: "Due Soon", variant: "warning" };
+      if (bill.status === "Draft") return { label: "Draft", variant: "muted" };
+      if (bill.status === "Partially Paid") return { label: "Partially Paid", variant: "warning" };
       return { label: "Pending", variant: "warning" };
     },
     []
+  );
+
+  const renderBillActions = React.useCallback(
+    (bill: ApBillWithProject) => {
+      const canApprove = bill.status === "Draft";
+      const canDelete = bill.status === "Draft" && bill.paid_amount <= 0;
+      const canPay = bill.status === "Pending" || bill.status === "Partially Paid";
+      const canVoid =
+        bill.status === "Pending" || bill.status === "Partially Paid" || bill.status === "Paid";
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn("h-8 w-8 p-0", billsGhostButtonClass)}
+              aria-label={`Actions for bill ${bill.vendor_name}`}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[160px]">
+            <DropdownMenuItem asChild>
+              <Link href={`/bills/${bill.id}`}>
+                <ExternalLink className="h-4 w-4" />
+                Open
+              </Link>
+            </DropdownMenuItem>
+            {canApprove ? (
+              <DropdownMenuItem
+                onSelect={() => {
+                  void handleApprove(bill.id);
+                }}
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Approve
+              </DropdownMenuItem>
+            ) : null}
+            {canPay ? (
+              <DropdownMenuItem asChild>
+                <Link href={`/bills/${bill.id}?addPayment=1`}>
+                  <CreditCard className="h-4 w-4" />
+                  Pay
+                </Link>
+              </DropdownMenuItem>
+            ) : null}
+            {canDelete ? (
+              <DropdownMenuItem
+                className="text-rose-300 focus:text-rose-200"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setDeleteConfirmId(bill.id);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            ) : null}
+            {canVoid ? (
+              <DropdownMenuItem
+                className="text-[var(--neo-text-secondary)]"
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setVoidConfirmId(bill.id);
+                }}
+              >
+                <Ban className="h-4 w-4" />
+                Void
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
+    [handleApprove]
   );
 
   return (
@@ -222,6 +387,18 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             ))}
           </NeoSelect>
         </div>
+        <label className="flex min-h-11 items-center gap-3 rounded-[0.625rem] border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)]">
+          <input
+            type="checkbox"
+            checked={showVoidInput}
+            onChange={(e) => {
+              setShowVoidInput(e.target.checked);
+              setFilters({ show_void_bills: e.target.checked });
+            }}
+            className="h-4 w-4 rounded border-[var(--neo-border)] accent-[var(--neo-gold)]"
+          />
+          Show void bills
+        </label>
         <div className="space-y-2">
           <NeoFieldLabel>Type</NeoFieldLabel>
           <NeoSelect
@@ -289,12 +466,12 @@ export function BillsListClient({ bills, summary, projects }: Props) {
       ) : null}
 
       <section className="hidden min-w-0 grid-cols-2 gap-3 md:grid lg:grid-cols-4">
-        <KpiTile label="Outstanding" value={formatCurrency(summary.totalOutstanding)} />
-        <KpiTile label="Overdue" value={formatCurrency(summary.overdueAmount)} />
-        <KpiTile label="Due this week" value={formatCurrency(summary.dueThisWeekAmount)} />
+        <KpiTile label="Outstanding" value={formatCurrency(localSummary.totalOutstanding)} />
+        <KpiTile label="Overdue" value={formatCurrency(localSummary.overdueAmount)} />
+        <KpiTile label="Due this week" value={formatCurrency(localSummary.dueThisWeekAmount)} />
         <KpiTile
           label="Paid this month"
-          value={formatCurrency(summary.paidThisMonthAmount)}
+          value={formatCurrency(localSummary.paidThisMonthAmount)}
           tone="positive"
         />
       </section>
@@ -387,6 +564,18 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 </div>
               </div>
             </div>
+            <label className="flex min-h-10 w-fit items-center gap-2 rounded-[0.625rem] border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-[13px] font-medium text-[var(--neo-text-secondary)]">
+              <input
+                type="checkbox"
+                checked={showVoidInput}
+                onChange={(e) => {
+                  setShowVoidInput(e.target.checked);
+                  setFilters({ show_void_bills: e.target.checked });
+                }}
+                className="h-4 w-4 rounded border-[var(--neo-border)] accent-[var(--neo-gold)]"
+              />
+              Show void bills
+            </label>
           </div>
         </FilterToolbar>
       </NeoPanel>
@@ -453,17 +642,15 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                       <StatusBadge label={s.label} variant={s.variant} />
                     </div>
                   </Link>
-                  {bill.status === "Draft" && bill.paid_amount <= 0 ? (
-                    <div
-                      className="absolute right-0 top-1/2 -translate-y-1/2"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                    >
-                      <DeleteRowAction onDelete={() => handleDeleteDraft(bill.id)} />
-                    </div>
-                  ) : null}
+                  <div
+                    className="absolute right-0 top-1/2 -translate-y-1/2"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  >
+                    {renderBillActions(bill)}
+                  </div>
                 </div>
               );
             })}
@@ -556,48 +743,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                       className={cn(tableRawTdClass, "px-1")}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="flex items-center justify-end gap-2">
-                        {bill.status === "Draft" && bill.paid_amount <= 0 ? (
-                          <DeleteRowAction onDelete={() => handleDeleteDraft(bill.id)} />
-                        ) : null}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className={cn("h-8 w-8 p-0", billsGhostButtonClass)}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="min-w-[140px]">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/bills/${bill.id}`}>Open</Link>
-                            </DropdownMenuItem>
-                            {bill.status !== "Paid" && bill.status !== "Void" && (
-                              <DropdownMenuItem asChild>
-                                <Link href={`/bills/${bill.id}?addPayment=1`}>Add payment</Link>
-                              </DropdownMenuItem>
-                            )}
-                            {bill.status !== "Void" && (
-                              <DropdownMenuItem asChild>
-                                <Link href={`/bills/${bill.id}/edit`}>Edit</Link>
-                              </DropdownMenuItem>
-                            )}
-                            {bill.status !== "Void" && (
-                              <DropdownMenuItem
-                                className="text-[var(--neo-text-secondary)]"
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  setVoidConfirmId(bill.id);
-                                }}
-                              >
-                                Void
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                      <div className="flex items-center justify-end">{renderBillActions(bill)}</div>
                     </td>
                   </tr>
                 ))}
@@ -611,11 +757,22 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         open={voidConfirmId !== null}
         onOpenChange={(open) => !open && setVoidConfirmId(null)}
         title="Void bill?"
-        description="This cannot be undone."
+        description="This will void this bill and keep audit history."
         confirmLabel="Void"
         destructive
         onConfirm={() => {
           if (voidConfirmId) void handleVoid(voidConfirmId);
+        }}
+      />
+      <ConfirmDialog
+        open={deleteConfirmId !== null}
+        onOpenChange={(open) => !open && setDeleteConfirmId(null)}
+        title="Delete bill?"
+        description="This will permanently delete this bill."
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (deleteConfirmId) void handleDeleteDraft(deleteConfirmId);
         }}
       />
     </div>

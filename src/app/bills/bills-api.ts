@@ -77,6 +77,7 @@ export async function fetchBillsPageData(searchParams: {
   date_from?: string;
   date_to?: string;
   overdue_only?: string;
+  show_void_bills?: string;
 }): Promise<BillsPageData> {
   const query = new URLSearchParams();
   query.set("includeProjects", "1");

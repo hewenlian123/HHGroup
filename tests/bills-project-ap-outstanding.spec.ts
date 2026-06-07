@@ -251,17 +251,14 @@ test.describe("Bills project linkage and AP outstanding", () => {
         { timeout: LOAD_MS }
       );
 
-      await page.goto(`${BASE}/projects/${project!.id}`);
-      await page.getByRole("tab", { name: "Cost" }).click();
+      await page.goto(`${BASE}/projects/${project!.id}?tab=bills`);
       await expect(page.getByTestId("snapshot-cost-actual")).toContainText(/\$0(?:\.00)?/, {
         timeout: LOAD_MS,
       });
-      await page.getByRole("button", { name: /More/i }).click();
-      await page.getByRole("menuitem", { name: "Bills" }).click();
-      await expect(page.getByText("Bills (AP)")).toBeVisible({ timeout: LOAD_MS });
-      await expect(page.getByText(vendorName)).toBeVisible();
-      await expect(page.getByText(billNo)).toBeVisible();
-      await expect(page.getByText("$100")).toBeVisible();
+      await expect(page.getByText("Bills (AP)").first()).toBeVisible({ timeout: LOAD_MS });
+      await expect(page.getByText(vendorName).first()).toBeVisible();
+      await expect(page.getByText(billNo).first()).toBeVisible();
+      await expect(page.getByText("$100").first()).toBeVisible();
 
       const paymentResponse = await request.post(`${BASE}/api/bills/${billId}/payments`, {
         data: {
@@ -273,10 +270,23 @@ test.describe("Bills project linkage and AP outstanding", () => {
       });
       expect(paymentResponse.ok(), await paymentResponse.text()).toBeTruthy();
 
+      const { data: partiallyPaidBill, error: partiallyPaidError } = await supabase
+        .from("ap_bills")
+        .select("amount,paid_amount,balance_amount,status")
+        .eq("id", billId)
+        .maybeSingle();
+      expect(partiallyPaidError?.message ?? "").toBe("");
+      expect(num(partiallyPaidBill?.amount)).toBe(100);
+      expect(num(partiallyPaidBill?.paid_amount)).toBe(25);
+      expect(num(partiallyPaidBill?.balance_amount)).toBe(75);
+      expect(partiallyPaidBill?.status).toBe("Partially Paid");
+
       const editResponse = await request.patch(`${BASE}/api/bills/${billId}`, {
         data: { amount: 150 },
       });
-      expect(editResponse.ok(), await editResponse.text()).toBeTruthy();
+      expect(editResponse.status()).toBe(400);
+      const editBody = (await editResponse.json().catch(() => ({}))) as { message?: string };
+      expect(editBody.message ?? "").toMatch(/Paid bills cannot be edited directly/i);
 
       const { data: editedBill, error: editedError } = await supabase
         .from("ap_bills")
@@ -284,9 +294,9 @@ test.describe("Bills project linkage and AP outstanding", () => {
         .eq("id", billId)
         .maybeSingle();
       expect(editedError?.message ?? "").toBe("");
-      expect(num(editedBill?.amount)).toBe(150);
+      expect(num(editedBill?.amount)).toBe(100);
       expect(num(editedBill?.paid_amount)).toBe(25);
-      expect(num(editedBill?.balance_amount)).toBe(125);
+      expect(num(editedBill?.balance_amount)).toBe(75);
       expect(editedBill?.status).toBe("Partially Paid");
     } finally {
       await cleanupMarkerData(supabase, marker);
