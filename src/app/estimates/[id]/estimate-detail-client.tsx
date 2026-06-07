@@ -79,6 +79,7 @@ export function EstimateDetailClient({
   const [pending, startTransition] = React.useTransition();
   const [dirty, setDirty] = React.useState(false);
   const [saveStatus, setSaveStatus] = React.useState<EstimateSaveStatus>("idle");
+  const [savingDetails, setSavingDetails] = React.useState(false);
 
   const isLocked = !["Draft", "Sent"].includes(status);
 
@@ -120,7 +121,7 @@ export function EstimateDetailClient({
   const onSave = () => {
     const finishWithoutMetaForm = () => {
       setSaveStatus("saving");
-      startTransition(async () => {
+      startTransition(() => {
         setEditing(false);
         setDirty(false);
         setSaveStatus("saved");
@@ -132,24 +133,36 @@ export function EstimateDetailClient({
     const run = (form: HTMLFormElement) => {
       const fd = new FormData(form);
       setSaveStatus("saving");
-      startTransition(async () => {
-        const res = await saveEstimateMetaInlineAction(fd);
-        if (res.ok) {
-          toast({ title: "Saved", description: "Estimate updated.", variant: "success" });
-          setEditing(false);
-          syncRouterNonBlocking(router);
-          setDirty(false);
-          setSaveStatus("saved");
-          window.setTimeout(() => setSaveStatus("idle"), 2000);
-        } else {
+      setSavingDetails(true);
+      void (async () => {
+        try {
+          const res = await saveEstimateMetaInlineAction(fd);
+          if (res.ok) {
+            toast({ title: "Saved", description: "Estimate updated.", variant: "success" });
+            setEditing(false);
+            syncRouterNonBlocking(router);
+            setDirty(false);
+            setSaveStatus("saved");
+            window.setTimeout(() => setSaveStatus("idle"), 2000);
+            return;
+          }
           setSaveStatus(dirty ? "unsaved" : "idle");
           toast({
             title: "Save failed",
             description: res.error ?? "Please try again.",
             variant: "error",
           });
+        } catch {
+          setSaveStatus(dirty ? "unsaved" : "idle");
+          toast({
+            title: "Save failed",
+            description: "Please try again.",
+            variant: "error",
+          });
+        } finally {
+          setSavingDetails(false);
         }
-      });
+      })();
     };
 
     const form = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
@@ -238,8 +251,8 @@ export function EstimateDetailClient({
         siteAddress={meta.project.siteAddress ?? meta.client.address}
         status={status}
         editing={editing}
-        pending={pending}
-        saveStatus={editing ? (pending ? "saving" : saveStatus) : "idle"}
+        pending={pending || savingDetails}
+        saveStatus={editing ? (pending || savingDetails ? "saving" : saveStatus) : "idle"}
         isLocked={isLocked}
         onEdit={() => setEditing(true)}
         onSave={onSave}

@@ -63,7 +63,7 @@ export const EB = {
   lineTotalBlock: "eb-line-total-block",
   lineTotalAmount: "eb-line-total-amount",
   lineItemMoreTrigger:
-    "eb-line-item-more-trigger inline-flex h-7 w-7 min-h-7 min-w-7 shrink-0 items-center justify-center rounded-md border-0 bg-transparent p-0 text-[#929CAF] opacity-[0.65] transition-[opacity,background,color] duration-150 hover:bg-white/[0.05] hover:text-[#B5BECC] hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15 max-md:min-h-9 max-md:min-w-9 max-md:h-9 max-md:w-9 max-md:opacity-90",
+    "eb-line-item-more-trigger inline-flex h-7 w-7 min-h-7 min-w-7 shrink-0 items-center justify-center rounded-md border-0 bg-transparent p-0 text-[#929CAF] opacity-[0.65] transition-[opacity,background,color] duration-150 hover:!translate-y-0 hover:bg-white/[0.05] hover:text-[#B5BECC] hover:opacity-100 active:!scale-100 active:!duration-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15 max-md:min-h-9 max-md:min-w-9 max-md:h-9 max-md:w-9 max-md:opacity-90",
   lineItemMoreMenu: "eb-line-item-more-menu min-w-[9.5rem] w-[9.5rem] rounded-md border p-1",
   lineItemMoreMenuItem:
     "eb-line-item-more-menu-item flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] leading-snug text-[#D8DEE8] outline-none transition-colors",
