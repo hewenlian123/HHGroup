@@ -80,6 +80,9 @@ async function fillTemplateDialog(
 ): Promise<void> {
   const dialog = page.getByTestId("estimate-template-dialog");
   await expect(dialog).toBeVisible({ timeout: 10_000 });
+  await expect(dialog.locator(".eb-scope-section-header")).toBeVisible();
+  await expect(dialog.locator(".eb-line-item-grid--pricing")).toBeVisible();
+  await expect(dialog.locator(".eb-scope-editor-surface")).toBeVisible();
   await dialog.getByTestId("estimate-template-name").fill(params.name);
   await dialog
     .getByPlaceholder("Reusable scope for recurring estimate types…")
@@ -89,7 +92,7 @@ async function fillTemplateDialog(
   await dialog.getByLabel("Template item 1 title").fill(params.item);
   await dialog.getByLabel("Template item 1 quantity").fill(params.qty);
   await dialog.getByLabel("Template item 1 unit price").fill(params.unitPrice);
-  await dialog.getByPlaceholder("Line item description…").fill(params.itemDescription);
+  await dialog.getByLabel("Template item 1 description").fill(params.itemDescription);
 }
 
 async function fillNewEstimateCustomerFields(

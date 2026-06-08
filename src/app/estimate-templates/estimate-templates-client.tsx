@@ -3,7 +3,17 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Archive, ArchiveRestore, Copy, Edit3, FileText, Plus, Search, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  Copy,
+  Edit3,
+  FileText,
+  GripVertical,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -21,7 +31,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { EstimateAutoResizeTextarea } from "@/app/estimates/_components/estimate-auto-resize-textarea";
+import { EB, ebGlassPanel, ebInput } from "@/app/estimates/_components/estimate-builder-ui";
 import { formatEstimateCurrency } from "@/app/estimates/_components/estimate-currency";
+import {
+  ScopeSectionCollapsibleBody,
+  ScopeSectionHeader,
+} from "@/app/estimates/_components/estimate-line-items-local";
+import { ProposalScopeWorkCard } from "@/app/estimates/_components/proposal-scope-work-card";
+import "@/app/estimates/_components/estimate-builder-glass.css";
 import { useToast } from "@/components/toast/toast-provider";
 import { FilterToolbar, NeoPanel, NeoStatus, NeoTable } from "@/components/base";
 import { tableRawThClass } from "@/components/ui/table";
@@ -177,6 +194,16 @@ function templateItemCount(template: EstimateTemplateRecord): number {
   return template.templateData.sections.reduce((sum, section) => sum + section.items.length, 0);
 }
 
+function draftItemTotal(item: TemplateDraftItem): number {
+  const qty = Number.isFinite(item.qty) ? item.qty : 0;
+  const unitPrice = Number.isFinite(item.unitPrice) ? item.unitPrice : 0;
+  return qty * unitPrice;
+}
+
+function draftSectionSubtotal(section: TemplateDraftSection): number {
+  return section.items.reduce((sum, item) => sum + draftItemTotal(item), 0);
+}
+
 export function EstimateTemplatesClient({ templates }: { templates: EstimateTemplateRecord[] }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -184,6 +211,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
   const [showArchived, setShowArchived] = React.useState(false);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<TemplateDraft>(() => emptyDraft());
+  const [collapsedSections, setCollapsedSections] = React.useState<Record<string, boolean>>({});
   const [busy, startTransition] = React.useTransition();
 
   const visibleTemplates = React.useMemo(() => {
@@ -202,11 +230,13 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
 
   const openCreate = (): void => {
     setDraft(emptyDraft());
+    setCollapsedSections({});
     setDialogOpen(true);
   };
 
   const openEdit = (template: EstimateTemplateRecord): void => {
     setDraft(draftFromTemplate(template));
+    setCollapsedSections({});
     setDialogOpen(true);
   };
 
@@ -279,6 +309,22 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
       ),
     }));
   };
+
+  const toggleSectionCollapsed = (sectionId: string): void => {
+    setCollapsedSections((current) => ({ ...current, [sectionId]: !current[sectionId] }));
+  };
+
+  const lineNumberByItemId = React.useMemo(() => {
+    const map = new Map<string, number>();
+    let lineNumber = 1;
+    draft.sections.forEach((section) => {
+      section.items.forEach((item) => {
+        map.set(item.id, lineNumber);
+        lineNumber += 1;
+      });
+    });
+    return map;
+  }, [draft.sections]);
 
   const runTemplateAction = (
     label: string,
@@ -567,209 +613,328 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
       </NeoPanel>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-[920px]" data-testid="estimate-template-dialog">
+        <DialogContent
+          className="flex max-h-[92vh] max-w-[min(1180px,calc(100vw-1rem))] flex-col overflow-hidden p-0"
+          data-testid="estimate-template-dialog"
+        >
           <DialogHeader>
-            <DialogTitle>{draft.id ? "Edit Template" : "Create Template"}</DialogTitle>
-            <DialogDescription>
-              Build reusable proposal sections and line items. Customer, project, payments, and
-              invoices are never stored in templates.
-            </DialogDescription>
+            <div className="px-5 pt-5 sm:px-6">
+              <DialogTitle className={EB.pageTitle}>
+                {draft.id ? "Edit Template" : "Create Template"}
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-[13px] leading-snug text-[#929CAF]">
+                Build reusable proposal sections and line items. Customer, project, payments, and
+                invoices are never stored in templates.
+              </DialogDescription>
+            </div>
           </DialogHeader>
 
-          <div className="grid gap-4 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.35fr)]">
-            <div className="space-y-3">
-              <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
-                Template Name
-                <Input
-                  data-testid="estimate-template-name"
-                  value={draft.name}
-                  onChange={(event) => setDraft((d) => ({ ...d, name: event.target.value }))}
-                  className={cn(FIELD, "mt-1")}
-                  placeholder="Kitchen Remodel"
-                />
-              </label>
-              <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
-                Description
-                <EstimateAutoResizeTextarea
-                  value={draft.description}
-                  onChange={(event) => setDraft((d) => ({ ...d, description: event.target.value }))}
-                  className={cn(FIELD, "mt-1 min-h-[72px] py-2")}
-                  placeholder="Reusable scope for recurring estimate types…"
-                  minHeight={72}
-                  maxHeight={220}
-                />
-              </label>
-              <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
-                Category
-                <Input
-                  value={draft.category}
-                  onChange={(event) => setDraft((d) => ({ ...d, category: event.target.value }))}
-                  className={cn(FIELD, "mt-1")}
-                  placeholder="Remodel"
-                />
-              </label>
-              <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
-                Default Tax Rate
-                <Input
-                  value={draft.defaultTaxRate}
-                  onChange={(event) =>
-                    setDraft((d) => ({ ...d, defaultTaxRate: event.target.value }))
-                  }
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  className={cn(FIELD, "mt-1")}
-                  placeholder="Optional"
-                />
-              </label>
-              <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
-                Default Terms
-                <EstimateAutoResizeTextarea
-                  value={draft.defaultTerms}
-                  onChange={(event) =>
-                    setDraft((d) => ({ ...d, defaultTerms: event.target.value }))
-                  }
-                  className={cn(FIELD, "mt-1 min-h-[96px] py-2")}
-                  placeholder="Payment terms or reusable proposal notes…"
-                  minHeight={96}
-                  maxHeight={260}
-                />
-              </label>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-[var(--neo-text-primary)]">
-                    Scope Sections
-                  </h3>
-                  <p className="text-xs text-[var(--neo-text-tertiary)]">
-                    Sections and line items copied into new estimates.
-                  </p>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+            <div className="estimate-builder estimate-builder-new grid gap-4 lg:grid-cols-[minmax(16rem,0.78fr)_minmax(0,1.72fr)]">
+              <div className="space-y-3">
+                <div className={ebGlassPanel("space-y-3")}>
+                  <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+                    Template Name
+                    <Input
+                      data-testid="estimate-template-name"
+                      value={draft.name}
+                      onChange={(event) => setDraft((d) => ({ ...d, name: event.target.value }))}
+                      className={cn(FIELD, "mt-1")}
+                      placeholder="Kitchen Remodel"
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+                    Description
+                    <EstimateAutoResizeTextarea
+                      value={draft.description}
+                      onChange={(event) =>
+                        setDraft((d) => ({ ...d, description: event.target.value }))
+                      }
+                      className={cn(FIELD, "mt-1 min-h-[72px] w-full py-2")}
+                      placeholder="Reusable scope for recurring estimate types…"
+                      minHeight={72}
+                      maxHeight={220}
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+                    Category
+                    <Input
+                      value={draft.category}
+                      onChange={(event) =>
+                        setDraft((d) => ({ ...d, category: event.target.value }))
+                      }
+                      className={cn(FIELD, "mt-1")}
+                      placeholder="Remodel"
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+                    Default Tax Rate
+                    <Input
+                      value={draft.defaultTaxRate}
+                      onChange={(event) =>
+                        setDraft((d) => ({ ...d, defaultTaxRate: event.target.value }))
+                      }
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      className={cn(FIELD, "mt-1")}
+                      placeholder="Optional"
+                    />
+                  </label>
+                  <label className="block text-xs font-medium text-[var(--neo-text-secondary)]">
+                    Default Terms
+                    <EstimateAutoResizeTextarea
+                      value={draft.defaultTerms}
+                      onChange={(event) =>
+                        setDraft((d) => ({ ...d, defaultTerms: event.target.value }))
+                      }
+                      className={cn(FIELD, "mt-1 min-h-[96px] w-full py-2")}
+                      placeholder="Payment terms or reusable proposal notes…"
+                      minHeight={96}
+                      maxHeight={260}
+                    />
+                  </label>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={SECONDARY_ACTION}
-                  onClick={addSection}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Section
-                </Button>
               </div>
-              <div className="max-h-[58vh] space-y-3 overflow-y-auto pr-1">
-                {draft.sections.map((section, sectionIndex) => (
-                  <div
-                    key={section.id}
-                    className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3"
+
+              <div className={cn(ebGlassPanel("eb-scope-work-panel"), "min-w-0")}>
+                <div className="mb-3.5 flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h3 className={EB.scopeHeading}>Scope of work</h3>
+                    <p className={EB.scopeSubtitle}>Template sections and line totals</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn("!h-9 !min-h-9", EB.actionSecondary)}
+                    onClick={addSection}
                   >
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={section.title}
-                        onChange={(event) =>
-                          updateSection(section.id, { title: event.target.value })
-                        }
-                        className={cn(FIELD, "h-9")}
-                        aria-label={`Template section ${sectionIndex + 1} title`}
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 shrink-0 text-rose-300"
-                        onClick={() => removeSection(section.id)}
-                        aria-label={`Remove ${section.title}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      {section.items.map((item, itemIndex) => (
-                        <div
-                          key={item.id}
-                          className="rounded-md border border-white/[0.04] bg-black/10 p-2"
-                        >
-                          <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_5rem_7rem_auto]">
-                            <Input
-                              value={item.title}
-                              onChange={(event) =>
-                                updateItem(section.id, item.id, { title: event.target.value })
-                              }
-                              className={FIELD}
-                              placeholder="Line item title"
-                              aria-label={`Template item ${itemIndex + 1} title`}
-                            />
-                            <Input
-                              value={item.qty}
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              onChange={(event) =>
-                                updateItem(section.id, item.id, {
-                                  qty: Number(event.target.value) || 0,
-                                })
-                              }
-                              className={FIELD}
-                              aria-label={`Template item ${itemIndex + 1} quantity`}
-                            />
-                            <Input
-                              value={item.unitPrice}
-                              type="number"
-                              min={0}
-                              step="0.01"
-                              onChange={(event) =>
-                                updateItem(section.id, item.id, {
-                                  unitPrice: Number(event.target.value) || 0,
-                                })
-                              }
-                              className={FIELD}
-                              aria-label={`Template item ${itemIndex + 1} unit price`}
-                            />
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-10 w-10 shrink-0 text-rose-300"
-                              onClick={() => removeItem(section.id, item.id)}
-                              aria-label={`Remove ${item.title || "line item"}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <EstimateAutoResizeTextarea
-                            value={item.description}
-                            onChange={(event) =>
-                              updateItem(section.id, item.id, {
-                                description: event.target.value,
-                              })
-                            }
-                            className={cn(FIELD, "mt-2 min-h-[60px] py-2 text-sm")}
-                            placeholder="Line item description…"
-                            minHeight={60}
-                            maxHeight={240}
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Section
+                  </Button>
+                </div>
+
+                {draft.sections.length === 0 ? (
+                  <div className={EB.scopeEmpty}>
+                    <p className={cn(EB.scopeEmptyMessage, "mb-3")}>No sections yet.</p>
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="mt-2 text-[var(--neo-gold-soft)]"
-                      onClick={() => addItem(section.id)}
+                      className={cn("!h-11 !min-h-11", EB.actionSecondary)}
+                      onClick={addSection}
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Add line item
+                      Add Section
                     </Button>
                   </div>
-                ))}
+                ) : (
+                  <div className="eb-scope-sections-list flex flex-col">
+                    {draft.sections.map((section, sectionIndex) => {
+                      const collapsed = collapsedSections[section.id] === true;
+                      const sectionSubtotal = draftSectionSubtotal(section);
+                      return (
+                        <div key={section.id} className={EB.scopeSectionSortable}>
+                          <ScopeSectionHeader
+                            code={section.id}
+                            catalogName={section.title || `Section ${sectionIndex + 1}`}
+                            displayName={section.title}
+                            itemCount={section.items.length}
+                            sectionSubtotal={sectionSubtotal}
+                            collapsed={collapsed}
+                            onToggleCollapse={() => toggleSectionCollapsed(section.id)}
+                            onDisplayNameChange={(name) =>
+                              updateSection(section.id, { title: name })
+                            }
+                            dragHandle={
+                              <span
+                                className={cn(
+                                  EB.scopeSectionDragHandle,
+                                  "cursor-default opacity-50"
+                                )}
+                                aria-hidden
+                              >
+                                <GripVertical className="h-4 w-4" strokeWidth={1.75} />
+                              </span>
+                            }
+                            titleSlot={
+                              <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                                <Input
+                                  value={section.title}
+                                  onChange={(event) =>
+                                    updateSection(section.id, { title: event.target.value })
+                                  }
+                                  onClick={(event) => event.stopPropagation()}
+                                  onKeyDown={(event) => event.stopPropagation()}
+                                  className={ebInput(
+                                    "h-7 min-h-7 min-w-[8rem] border-0 bg-transparent px-0 text-[15px] font-semibold tracking-tight text-zinc-50 shadow-none focus-visible:ring-0"
+                                  )}
+                                  placeholder={`Section ${sectionIndex + 1}`}
+                                  aria-label={`Template section ${sectionIndex + 1} title`}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className={cn(
+                                    EB.lineItemMoreTrigger,
+                                    "h-7 min-h-7 w-7 min-w-7 text-rose-200/70 hover:text-rose-100"
+                                  )}
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    removeSection(section.id);
+                                  }}
+                                  aria-label={`Remove ${section.title || "section"}`}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            }
+                          />
+                          <ScopeSectionCollapsibleBody collapsed={collapsed}>
+                            <div className="eb-scope-section-lines flex flex-col">
+                              {section.items.map((item, itemIndex) => (
+                                <div key={item.id} className={EB.lineItemCard}>
+                                  <ProposalScopeWorkCard
+                                    lineItemGridLayout
+                                    title={item.title}
+                                    description={item.description}
+                                    onTitleChange={(value) =>
+                                      updateItem(section.id, item.id, { title: value })
+                                    }
+                                    onDescriptionChange={(value) =>
+                                      updateItem(section.id, item.id, { description: value })
+                                    }
+                                    titlePlaceholder="Line item title"
+                                    titleInputAriaLabel={`Template item ${
+                                      lineNumberByItemId.get(item.id) ?? itemIndex + 1
+                                    } title`}
+                                    descriptionEditorAriaLabel={`Template item ${
+                                      lineNumberByItemId.get(item.id) ?? itemIndex + 1
+                                    } description`}
+                                    lineIndex={lineNumberByItemId.get(item.id) ?? itemIndex + 1}
+                                    inlinePricing={
+                                      <>
+                                        <div
+                                          className={cn(
+                                            EB.lineFieldStackContents,
+                                            EB.linePricingQty
+                                          )}
+                                        >
+                                          <span className={cn(EB.readLabel, EB.lineQtyLabel)}>
+                                            Qty
+                                          </span>
+                                          <Input
+                                            value={item.qty}
+                                            type="number"
+                                            min={0}
+                                            step="0.01"
+                                            onChange={(event) =>
+                                              updateItem(section.id, item.id, {
+                                                qty: Number(event.target.value) || 0,
+                                              })
+                                            }
+                                            className={ebInput(
+                                              `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`
+                                            )}
+                                            aria-label={`Template item ${
+                                              lineNumberByItemId.get(item.id) ?? itemIndex + 1
+                                            } quantity`}
+                                          />
+                                        </div>
+                                        <div
+                                          className={cn(
+                                            EB.lineFieldStackContents,
+                                            EB.linePricingUnit
+                                          )}
+                                        >
+                                          <span className={cn(EB.readLabel, EB.lineUnitLabel)}>
+                                            Unit price
+                                          </span>
+                                          <Input
+                                            value={item.unitPrice}
+                                            type="number"
+                                            min={0}
+                                            step="0.01"
+                                            onChange={(event) =>
+                                              updateItem(section.id, item.id, {
+                                                unitPrice: Number(event.target.value) || 0,
+                                              })
+                                            }
+                                            className={ebInput(
+                                              `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`
+                                            )}
+                                            aria-label={`Template item ${
+                                              lineNumberByItemId.get(item.id) ?? itemIndex + 1
+                                            } unit price`}
+                                          />
+                                        </div>
+                                        <div
+                                          className={cn(
+                                            EB.linePricingTotalCol,
+                                            EB.lineTotalActionArea
+                                          )}
+                                        >
+                                          <div className={EB.lineTotalBlock}>
+                                            <span className={cn(EB.readLabel, EB.lineTotalLabel)}>
+                                              Total
+                                            </span>
+                                            <div
+                                              className={cn(
+                                                EB.linePricingTotal,
+                                                EB.lineTotalAmount
+                                              )}
+                                            >
+                                              <span className={cn(EB.lineTotal, "leading-none")}>
+                                                {formatEstimateCurrency(draftItemTotal(item))}
+                                              </span>
+                                            </div>
+                                          </div>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className={EB.lineItemMoreTrigger}
+                                            onClick={() => removeItem(section.id, item.id)}
+                                            aria-label={`Remove ${item.title || "line item"}`}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </Button>
+                                        </div>
+                                      </>
+                                    }
+                                  />
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className={cn("mt-2 w-fit", EB.addLineLink)}
+                                onClick={() => addItem(section.id)}
+                              >
+                                <Plus className="mr-1.5 h-4 w-4" />
+                                Add line
+                              </Button>
+                            </div>
+                          </ScopeSectionCollapsibleBody>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setDialogOpen(false)}>
+          <DialogFooter className="border-t border-white/[0.06] bg-[#0B0D12]/95 px-5 py-4 sm:px-6">
+            <Button
+              type="button"
+              variant="ghost"
+              className={EB.portalGhostButton}
+              onClick={() => setDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button
