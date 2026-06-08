@@ -1,5 +1,6 @@
 import { getCostCodes } from "@/lib/data";
 import { getCompanyProfile } from "@/lib/company-profile";
+import { listEstimateTemplates } from "@/lib/estimate-templates-db";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { NewEstimateEditor } from "./new-estimate-editor";
 
@@ -17,12 +18,25 @@ async function getDefaultTaxPct(): Promise<number> {
   }
 }
 
-export default async function NewEstimatePage() {
+export default async function NewEstimatePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ templateId?: string }>;
+}) {
+  const { templateId } = await searchParams;
   const costCodes = getCostCodes();
-  const defaultTaxPct = await getDefaultTaxPct();
+  const [defaultTaxPct, templates] = await Promise.all([
+    getDefaultTaxPct(),
+    listEstimateTemplates({ includeArchived: false }).catch(() => []),
+  ]);
   return (
     <div className="estimate-builder-page page-stack py-3 md:py-4">
-      <NewEstimateEditor costCodes={costCodes} initialDefaultTaxPct={defaultTaxPct} />
+      <NewEstimateEditor
+        costCodes={costCodes}
+        initialDefaultTaxPct={defaultTaxPct}
+        templates={templates}
+        initialTemplateId={templateId}
+      />
     </div>
   );
 }

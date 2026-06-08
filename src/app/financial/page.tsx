@@ -37,6 +37,12 @@ const financeLinks = [
     icon: FileText,
   },
   {
+    href: "/estimate-templates",
+    title: "Estimate Templates",
+    description: "Reusable proposal scopes for repeated estimate types.",
+    icon: FileText,
+  },
+  {
     href: "/financial/payments",
     title: "Payments Received",
     description: "Record incoming customer payments.",

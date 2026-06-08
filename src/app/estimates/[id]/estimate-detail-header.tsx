@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, ChevronDown, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, FilePlus2, MoreVertical, Trash2 } from "lucide-react";
 import {
   EstimateBuilderSaveStatus,
   type EstimateSaveStatus,
@@ -55,6 +55,7 @@ export function EstimateDetailHeader({
   onApprove,
   onReject,
   onConvertClick,
+  onSaveAsTemplateClick,
   onDeleteClick,
 }: {
   estimateId: string;
@@ -76,6 +77,7 @@ export function EstimateDetailHeader({
   onReject: () => void;
   /** Opens the Convert-to-Project setup drawer (no immediate convert). */
   onConvertClick?: () => void;
+  onSaveAsTemplateClick?: () => void;
   onDeleteClick: () => void;
 }): React.ReactElement {
   const canConvert = status === "Approved";
@@ -250,6 +252,39 @@ export function EstimateDetailHeader({
             >
               Convert to Project
             </Button>
+          ) : null}
+
+          {!editing && onSaveAsTemplateClick ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "min-h-11 w-11 shrink-0 md:min-h-8 md:w-auto md:px-3",
+                    HEADER_BUTTON
+                  )}
+                  disabled={pending}
+                  aria-label="Estimate actions"
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="min-w-[220px] rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-1 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+              >
+                <DropdownMenuItem
+                  onSelect={onSaveAsTemplateClick}
+                  className="rounded-sm focus:bg-[var(--neo-surface-muted)] focus:text-[var(--neo-text-primary)]"
+                  data-testid="save-estimate-as-template-action"
+                >
+                  <FilePlus2 className="mr-2 h-4 w-4" />
+                  Save as Template
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : null}
 
           {!editing ? (

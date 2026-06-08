@@ -31,6 +31,7 @@ import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
 import { EstimateEditor } from "../_components/estimate-editor";
 import type { EstimatePaymentScheduleInvoiceSummary } from "../_components/estimate-payment-schedule";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
+import { SaveEstimateAsTemplateDialog } from "@/app/estimate-templates/save-estimate-as-template-dialog";
 
 export function EstimateDetailClient({
   estimateId,
@@ -74,6 +75,7 @@ export function EstimateDetailClient({
   const [editing, setEditing] = React.useState(false);
   const [resetNonce, setResetNonce] = React.useState(0);
   const [convertDrawerOpen, setConvertDrawerOpen] = React.useState(false);
+  const [saveTemplateOpen, setSaveTemplateOpen] = React.useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
@@ -264,7 +266,15 @@ export function EstimateDetailClient({
         onApprove={() => runStatusChange("Approved", () => approveEstimateInlineAction(estimateId))}
         onReject={() => runStatusChange("Rejected", () => rejectEstimateInlineAction(estimateId))}
         onConvertClick={() => setConvertDrawerOpen(true)}
+        onSaveAsTemplateClick={() => setSaveTemplateOpen(true)}
         onDeleteClick={() => setDeleteConfirmOpen(true)}
+      />
+
+      <SaveEstimateAsTemplateDialog
+        open={saveTemplateOpen}
+        onOpenChange={setSaveTemplateOpen}
+        estimateId={estimateId}
+        estimateNumber={estimateNumber}
       />
 
       <ConvertToProjectDrawer

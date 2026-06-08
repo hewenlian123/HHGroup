@@ -147,6 +147,7 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
         aliases: ["/financial/estimates"],
       },
       { href: "/financial/invoices", label: "Invoices", icon: "invoice" },
+      { href: "/estimate-templates", label: "Estimate Templates", icon: "estimates" },
       {
         href: "/financial/payments",
         label: "Payments Received",
@@ -286,6 +287,7 @@ export const HH_PROJECT_OS_MOBILE_NAV_ITEMS = [
       "/financial/ar",
       "/financial/bills",
       "/financial/invoices",
+      "/estimate-templates",
       "/financial/payments",
       "/financial/payments-received",
       "/financial/deposits",
@@ -381,6 +383,7 @@ const HH_PROJECT_OS_MOBILE_ROUTE_OWNERS = [
       "/financial/ar",
       "/financial/bills",
       "/financial/invoices",
+      "/estimate-templates",
       "/financial/payments",
       "/financial/payments-received",
       "/financial/deposits",

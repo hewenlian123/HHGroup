@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/sheet";
 import { createEstimateWithItemsAction } from "./actions";
 import type { CostCode } from "@/lib/data";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { FileText, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "../_components/estimate-currency";
@@ -46,6 +46,8 @@ import {
 } from "../_components/estimate-line-item-status";
 import type { CustomerOption } from "@/components/customers/customer-select-with-add";
 import type { EstimateDocumentStyle } from "@/lib/estimate-document-style";
+import type { EstimateTemplateRecord } from "@/lib/estimate-templates";
+import { createProposalSectionId } from "../_components/estimate-section-templates";
 
 type CostCodeType = "material" | "labor" | "subcontractor";
 
@@ -73,12 +75,88 @@ function lineTotal(li: LineItem): number {
   return li.qty * li.unitPrice;
 }
 
+const LINE_ITEM_STATUSES = new Set<EstimateLineItemStatus>([
+  "included",
+  "optional",
+  "allowance",
+  "excluded",
+  "owner_supplied",
+]);
+
+function normalizeTemplateLineItemStatus(status: unknown): EstimateLineItemStatus {
+  return LINE_ITEM_STATUSES.has(status as EstimateLineItemStatus)
+    ? (status as EstimateLineItemStatus)
+    : DEFAULT_LINE_ITEM_STATUS;
+}
+
+function EstimateTemplateSelector({
+  templates,
+  selectedTemplateId,
+  onTemplateChange,
+}: {
+  templates: EstimateTemplateRecord[];
+  selectedTemplateId: string;
+  onTemplateChange: (templateId: string) => void;
+}) {
+  return (
+    <section className={EB.section} data-testid="estimate-template-selector">
+      <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:px-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[rgb(198_165_106_/_0.22)] bg-[rgb(198_165_106_/_0.10)] text-[var(--neo-gold-soft)]">
+              <Sparkles className="h-4 w-4" aria-hidden />
+            </span>
+            <div className="min-w-0">
+              <h2 className={EB.scopeHeading}>Estimate template</h2>
+              <p className={EB.scopeSubtitle}>
+                Start blank or load a reusable scope. Customer, project, dates, payments, and
+                invoices stay separate.
+              </p>
+            </div>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+            <select
+              value={selectedTemplateId}
+              onChange={(event) => onTemplateChange(event.target.value)}
+              className="h-10 min-h-10 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 text-sm text-[var(--neo-text-primary)] outline-none focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] md:min-w-[260px]"
+              aria-label="Estimate template"
+              data-testid="estimate-template-select"
+            >
+              <option value="">Blank Estimate</option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.name}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              variant="outline"
+              asChild
+              className={cn("min-h-10 shrink-0", EB.actionSecondary)}
+            >
+              <Link href="/estimate-templates">
+                <FileText className="mr-2 h-4 w-4" />
+                Templates
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function NewEstimateEditor({
   costCodes,
   initialDefaultTaxPct = 0,
+  templates = [],
+  initialTemplateId,
 }: {
   costCodes: CostCode[];
   initialDefaultTaxPct?: number;
+  templates?: EstimateTemplateRecord[];
+  initialTemplateId?: string;
 }) {
   const today = new Date().toISOString().slice(0, 10);
   const router = useRouter();
@@ -98,6 +176,7 @@ export function NewEstimateEditor({
   const [defaultTaxPct] = React.useState(() =>
     Number.isFinite(initialDefaultTaxPct) && initialDefaultTaxPct >= 0 ? initialDefaultTaxPct : 0
   );
+  const [templateDefaultTaxPct, setTemplateDefaultTaxPct] = React.useState<number | null>(null);
   const [discount, setDiscount] = React.useState(0);
   const [documentStyle, setDocumentStyle] = React.useState<EstimateDocumentStyle>("proposal");
   const [categoryNames, setCategoryNames] = React.useState<Record<string, string>>({});
@@ -108,6 +187,7 @@ export function NewEstimateEditor({
   const [submitAttempted, setSubmitAttempted] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [paymentMilestones, setPaymentMilestones] = React.useState<PaymentMilestoneLocal[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState(initialTemplateId ?? "");
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const [editingPaymentMilestoneId, setEditingPaymentMilestoneId] = React.useState<string | null>(
     null
@@ -118,6 +198,7 @@ export function NewEstimateEditor({
   const [pmPercent, setPmPercent] = React.useState("");
   const [pmDueDate, setPmDueDate] = React.useState("");
   const { asideRef, overviewFloating } = useEstimateOverviewScrollMotion();
+  const initialTemplateAppliedRef = React.useRef<string | null>(null);
 
   const codeToType = React.useMemo(() => {
     const m = new Map<string, CostCodeType>();
@@ -206,7 +287,7 @@ export function NewEstimateEditor({
 
   React.useEffect(() => {
     if (taxTouched) return;
-    const pct = Math.max(0, Number(defaultTaxPct) || 0);
+    const pct = Math.max(0, Number(templateDefaultTaxPct ?? defaultTaxPct) || 0);
     if (!(pct > 0)) {
       if (tax !== 0) setTax(0);
       return;
@@ -214,7 +295,100 @@ export function NewEstimateEditor({
     const computed = summary.subtotal * (pct / 100);
     if (Number.isFinite(computed)) setTax(Number(computed.toFixed(2)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultTaxPct, summary.subtotal, taxTouched]);
+  }, [defaultTaxPct, summary.subtotal, taxTouched, templateDefaultTaxPct]);
+
+  const applyEstimateTemplate = React.useCallback(
+    (template: EstimateTemplateRecord, options: { quiet?: boolean } = {}): void => {
+      const usedSectionIds = new Set<string>();
+      const nextCategoryNames: Record<string, string> = {};
+      const nextSectionOrder: string[] = [];
+      const nextLineItems: LineItem[] = [];
+
+      template.templateData.sections.forEach((section, sectionIndex) => {
+        const code = createProposalSectionId(usedSectionIds);
+        usedSectionIds.add(code);
+        const sectionTitle = section.title.trim() || `Section ${sectionIndex + 1}`;
+        nextCategoryNames[code] = sectionTitle;
+        nextSectionOrder.push(code);
+        section.items.forEach((item) => {
+          nextLineItems.push({
+            id: `li-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            costCode: code,
+            title: item.title,
+            description: item.description,
+            qty: item.qty,
+            unit: item.unit || "EA",
+            unitPrice: item.unitPrice,
+            hideAmountOnPdf: Boolean(item.hideAmountOnPdf),
+            status: normalizeTemplateLineItemStatus(item.status),
+          });
+        });
+      });
+
+      const templateNotes = template.templateData.notes ?? [];
+      const notesWithTerms = [...templateNotes];
+      const hasPaymentTerms = notesWithTerms.some((note) => note.type === "payment_terms");
+      if (template.defaultTerms && !hasPaymentTerms) {
+        notesWithTerms.push({
+          id: `note-template-terms-${Date.now()}`,
+          type: "payment_terms",
+          title: "Payment Terms",
+          body: template.defaultTerms,
+        });
+      }
+
+      setCategoryNames(nextCategoryNames);
+      setSectionOrder(nextSectionOrder);
+      setLineItems(nextLineItems);
+      setEstimateNotes(
+        notesWithTerms.map((note) => ({
+          ...note,
+          id: `note-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        }))
+      );
+      setTemplateDefaultTaxPct(template.defaultTaxRate);
+      setTaxTouched(false);
+      setTax(0);
+      setDiscount(0);
+
+      if (!options.quiet) {
+        toast({
+          title: "Template applied",
+          description: `${template.name} loaded into this estimate.`,
+          variant: "success",
+        });
+      }
+    },
+    [toast]
+  );
+
+  const handleTemplateChange = React.useCallback(
+    (templateId: string): void => {
+      setSelectedTemplateId(templateId);
+      if (!templateId) {
+        setTemplateDefaultTaxPct(null);
+        setCategoryNames({});
+        setSectionOrder([]);
+        setLineItems([]);
+        setEstimateNotes([]);
+        setTaxTouched(false);
+        setTax(0);
+        return;
+      }
+      const template = templates.find((item) => item.id === templateId);
+      if (template) applyEstimateTemplate(template);
+    },
+    [applyEstimateTemplate, templates]
+  );
+
+  React.useEffect(() => {
+    if (!initialTemplateId || initialTemplateAppliedRef.current === initialTemplateId) return;
+    const template = templates.find((item) => item.id === initialTemplateId);
+    if (!template) return;
+    initialTemplateAppliedRef.current = initialTemplateId;
+    setSelectedTemplateId(initialTemplateId);
+    applyEstimateTemplate(template, { quiet: true });
+  }, [applyEstimateTemplate, initialTemplateId, templates]);
 
   /** Link customer: name always; phone / email / address only when the field is still empty. */
   const applyCustomerSelection = React.useCallback((customer: CustomerOption) => {
@@ -445,6 +619,12 @@ export function NewEstimateEditor({
               {formError}
             </div>
           ) : null}
+
+          <EstimateTemplateSelector
+            templates={templates}
+            selectedTemplateId={selectedTemplateId}
+            onTemplateChange={handleTemplateChange}
+          />
 
           <EstimateNewCustomerSection
             clientName={clientName}
