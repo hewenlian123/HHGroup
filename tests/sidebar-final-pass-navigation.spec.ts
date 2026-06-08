@@ -5,6 +5,7 @@ const OPEN_SECTIONS = {
   PROJECTS: true,
   FINANCIAL: true,
   PEOPLE: true,
+  REPORTS: true,
   DOCUMENTS: true,
   SETTINGS: true,
 };
@@ -45,7 +46,15 @@ async function ensureSectionOpen(page: Page, label: string) {
 }
 
 async function ensureAllSectionsOpen(page: Page) {
-  for (const label of ["DASHBOARD", "PROJECTS", "FINANCIAL", "PEOPLE", "DOCUMENTS", "SETTINGS"]) {
+  for (const label of [
+    "DASHBOARD",
+    "PROJECTS",
+    "FINANCIAL",
+    "PEOPLE",
+    "REPORTS",
+    "DOCUMENTS",
+    "SETTINGS",
+  ]) {
     await ensureSectionOpen(page, label);
   }
 }
@@ -172,6 +181,21 @@ test.describe("HH Project OS sidebar final pass", () => {
       });
     }
 
+    const workerCenterBox = await navLink(page, "Worker Center").boundingBox();
+    const reportsBox = await navLink(page, "Reports").boundingBox();
+    const systemHealthBox = await navLink(page, "System Health").boundingBox();
+    if (!workerCenterBox || !reportsBox || !systemHealthBox) {
+      throw new Error("Expected Worker Center, Reports, and System Health sidebar links to render");
+    }
+    expect(
+      reportsBox.y,
+      "Reports should sit after Worker Center in the main sidebar IA"
+    ).toBeGreaterThan(workerCenterBox.y);
+    expect(
+      reportsBox.y,
+      "Reports should sit before System links in the main sidebar IA"
+    ).toBeLessThan(systemHealthBox.y);
+
     for (const intentionallyHiddenLabel of ["Expense Preferences", "Financial Review"]) {
       await expect(
         visibleSidebar(page).getByText(intentionallyHiddenLabel, { exact: true })
@@ -269,6 +293,9 @@ test.describe("HH Project OS sidebar final pass", () => {
     await expect(visibleSidebar(page).getByText("Receipt Uploads", { exact: true })).toBeVisible();
     await expect(visibleSidebar(page).getByText("Worker Receipts", { exact: true })).toBeVisible();
     await expect(visibleSidebar(page).getByText("Cash Flow", { exact: true })).toBeVisible();
+    await expect(navLink(page, "Reports")).toBeVisible();
+    await navLink(page, "Reports").click();
+    await expect(page).toHaveURL(/\/reports(?:[?#].*)?$/, { timeout: 30_000 });
     await expectNoHorizontalOverflow(page);
   });
 
@@ -313,6 +340,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/labor/payroll", title: "People › Payroll Summary" },
       { path: "/materials/catalog", title: "Projects › Material Catalog" },
       { path: "/dashboard/cashflow", title: "Financial › Cash › Cash Flow" },
+      { path: "/reports", title: "Reports" },
       { path: "/system-health", title: "Settings › Admin Center › System Health" },
     ]) {
       await test.step(route.path, async () => {

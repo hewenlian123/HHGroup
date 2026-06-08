@@ -101,11 +101,11 @@ const SEGMENT_LABELS: Record<string, string> = {
 const LOGICAL_BREADCRUMB_RULES = [
   {
     prefix: "/reports",
-    labels: ["Financial", "Reports"],
+    labels: ["Reports"],
   },
   {
     prefix: "/settings/project-financial-review",
-    labels: ["Financial", "Reports", "Project Financial Review"],
+    labels: ["Reports", "Project Financial Review"],
   },
   { prefix: "/financial/vendors", labels: ["People", "Vendors"] },
   { prefix: "/financial/inbox", labels: ["Financial", "AP", "Receipt Inbox"] },

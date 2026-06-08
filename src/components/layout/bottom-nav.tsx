@@ -9,6 +9,7 @@ import {
   CircleDollarSign,
   FileStack,
   Users,
+  BarChart2,
   type LucideIcon,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -44,7 +45,7 @@ const MOBILE_ICON_MAP: Record<HhProjectOsIconKey, LucideIcon> = {
   invoice: CircleDollarSign,
   logs: FileStack,
   materials: FolderKanban,
-  metrics: LayoutDashboard,
+  metrics: BarChart2,
   payments: CircleDollarSign,
   payroll: CircleDollarSign,
   photos: FileStack,

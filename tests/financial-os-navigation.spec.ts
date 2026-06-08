@@ -5,6 +5,7 @@ const OPEN_SECTIONS = {
   PROJECTS: true,
   FINANCIAL: true,
   PEOPLE: true,
+  REPORTS: true,
   DOCUMENTS: true,
   SETTINGS: true,
 };
@@ -97,12 +98,6 @@ const financialRoutes: FinancialRoute[] = [
     heading: /^(Worker Reimbursements|Reimbursements)$/i,
     activeLabel: "Reimbursements",
   },
-  {
-    label: "Reports",
-    path: "/reports",
-    heading: /^Reports$/i,
-    activeLabel: "Reports",
-  },
 ];
 
 function escapeRegExp(value: string): string {
@@ -164,7 +159,6 @@ async function expectFinancialGroupsVisible(page: Page) {
     "Accounts",
     "Bank Transactions",
     "Cash Flow",
-    "Reports",
   ]) {
     await expect(sidebar.getByText(label, { exact: true }).first()).toBeVisible({
       timeout: 10_000,

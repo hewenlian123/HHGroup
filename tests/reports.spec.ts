@@ -5,6 +5,7 @@ const OPEN_SECTIONS = {
   PROJECTS: true,
   FINANCIAL: true,
   PEOPLE: true,
+  REPORTS: true,
   DOCUMENTS: true,
   SETTINGS: true,
 };

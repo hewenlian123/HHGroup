@@ -3,6 +3,7 @@ export type HhProjectOsSectionKey =
   | "PROJECTS"
   | "FINANCIAL"
   | "PEOPLE"
+  | "REPORTS"
   | "DOCUMENTS"
   | "SETTINGS";
 
@@ -92,6 +93,7 @@ export const HH_PROJECT_OS_SECTION_KEYS = [
   "PROJECTS",
   "FINANCIAL",
   "PEOPLE",
+  "REPORTS",
   "DOCUMENTS",
   "SETTINGS",
 ] as const satisfies readonly HhProjectOsSectionKey[];
@@ -101,6 +103,7 @@ export const HH_PROJECT_OS_DEFAULT_OPEN_SECTIONS: Record<HhProjectOsSectionKey, 
   PROJECTS: true,
   FINANCIAL: true,
   PEOPLE: true,
+  REPORTS: true,
   DOCUMENTS: true,
   SETTINGS: true,
 };
@@ -173,12 +176,6 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
       { href: "/financial/accounts", label: "Accounts", icon: "accounts" },
       { href: "/financial/bank", label: "Bank Transactions", icon: "bank" },
       { href: "/dashboard/cashflow", label: "Cash Flow", icon: "cashflow" },
-      {
-        href: "/reports",
-        label: "Reports",
-        icon: "metrics",
-        aliases: ["/settings/project-financial-review"],
-      },
     ],
   },
   {
@@ -210,6 +207,18 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
         label: "Subcontractors",
         icon: "subcontractors",
         aliases: ["/labor/subcontractors"],
+      },
+    ],
+  },
+  {
+    key: "REPORTS",
+    label: "REPORTS",
+    entries: [
+      {
+        href: "/reports",
+        label: "Reports",
+        icon: "metrics",
+        aliases: ["/settings/project-financial-review"],
       },
     ],
   },
@@ -502,9 +511,9 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
   {
     id: "go-financial",
     label: "Go to Financial",
-    description: "Financial overview, AR, AP, cash, and reports",
+    description: "Financial overview, AR, AP, and cash",
     href: "/financial",
-    keywords: ["finance", "financial", "ar", "ap", "cash", "reports"],
+    keywords: ["finance", "financial", "ar", "ap", "cash"],
     icon: "financial",
   },
   {

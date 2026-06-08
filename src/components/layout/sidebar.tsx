@@ -469,6 +469,19 @@ export function Sidebar({
         <div className={cn("flex flex-col", collapsed && "gap-1")}>
           {HH_PROJECT_OS_NAV_SECTIONS.map((section, sectionIndex) => {
             const isOpen = openSections[section.key] ?? false;
+            const standaloneEntry =
+              section.key === "REPORTS" &&
+              section.entries.length === 1 &&
+              isHhProjectOsNavItem(section.entries[0])
+                ? section.entries[0]
+                : null;
+            if (standaloneEntry) {
+              return (
+                <div key={section.key} className={cn("flex flex-col", sectionIndex > 0 && "mt-6")}>
+                  {renderNavItem(standaloneEntry, { iconOnly: collapsed })}
+                </div>
+              );
+            }
             if (collapsed) {
               return (
                 <div
