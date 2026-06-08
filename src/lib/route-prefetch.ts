@@ -25,6 +25,7 @@ export const OWNER_NAV_PREFETCH_ROUTES = [
   "/financial/invoices",
   "/financial/bank",
   "/financial/owner",
+  "/reports",
   "/labor",
   "/labor/payments",
   "/labor/worker-balances",

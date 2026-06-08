@@ -100,6 +100,10 @@ const SEGMENT_LABELS: Record<string, string> = {
 
 const LOGICAL_BREADCRUMB_RULES = [
   {
+    prefix: "/reports",
+    labels: ["Financial", "Reports"],
+  },
+  {
     prefix: "/settings/project-financial-review",
     labels: ["Financial", "Reports", "Project Financial Review"],
   },

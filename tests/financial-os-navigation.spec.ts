@@ -97,6 +97,12 @@ const financialRoutes: FinancialRoute[] = [
     heading: /^(Worker Reimbursements|Reimbursements)$/i,
     activeLabel: "Reimbursements",
   },
+  {
+    label: "Reports",
+    path: "/reports",
+    heading: /^Reports$/i,
+    activeLabel: "Reports",
+  },
 ];
 
 function escapeRegExp(value: string): string {

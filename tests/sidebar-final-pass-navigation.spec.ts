@@ -213,7 +213,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/financial/accounts", active: "Accounts" },
       { path: "/financial/bank", active: "Bank Transactions" },
       { path: "/dashboard/cashflow", active: "Cash Flow" },
-      { path: "/settings/project-financial-review", active: "Reports" },
+      { path: "/reports", active: "Reports" },
       { path: "/customers", active: "Customers" },
       { path: "/financial/vendors", active: "Vendors" },
       { path: "/workers", active: "Workers" },
@@ -260,6 +260,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/labor/receipts", bottom: "Financial" },
       { path: "/workers/summary", bottom: "People" },
       { path: "/dashboard/cashflow", bottom: "Financial" },
+      { path: "/reports", bottom: "Reports" },
     ]) {
       await test.step(route.path, async () => {
         await waitForRouteSmoke(page, route.path);
@@ -297,6 +298,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { query: "worker receipts", label: "Go to Worker Receipts" },
       { query: "worker invoices", label: "Go to Worker Invoices" },
       { query: "cash flow", label: "Go to Cash Flow" },
+      { query: "reports", label: "Go to Reports" },
       { query: "system metrics", label: "Go to System Metrics" },
       { query: "system logs", label: "Go to System Logs" },
       { query: "backups", label: "Go to Backups" },

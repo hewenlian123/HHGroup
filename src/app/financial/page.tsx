@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   ArrowLeft,
   Banknote,
+  BarChart3,
   Building2,
   CreditCard,
   FileText,
@@ -58,6 +59,12 @@ const financeLinks = [
     title: "Expenses",
     description: "Manage company expenses and receipt workflows.",
     icon: WalletCards,
+  },
+  {
+    href: "/reports",
+    title: "Reports",
+    description: "Operating analysis, profitability, AR aging, and AP aging.",
+    icon: BarChart3,
   },
 ] as const;
 
