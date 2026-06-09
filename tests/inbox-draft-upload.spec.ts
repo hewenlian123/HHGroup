@@ -106,7 +106,7 @@ async function expectCleanExpenseRow(row: import("@playwright/test").Locator): P
 
   const secondaryLine = ((await row.locator("p").nth(1).textContent()) ?? "").trim();
   expect(secondaryLine).toMatch(
-    /^[A-Z][a-z]{2} \d{1,2}(?:, \d{4})? · (?:ACH|Amex|Cash|Credit Card|Debit Card|Other) · Receipt(?: upload)?$/
+    /^[A-Z][a-z]{2} \d{1,2}(?:, \d{4})? · (?:ACH|Amex|Bank|Card|Cash|Check|Credit Card|Debit Card|Other)$/
   );
 }
 

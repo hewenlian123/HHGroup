@@ -11,18 +11,8 @@ import {
 } from "@/components/base";
 import { getExpenseTotal, type Expense, type PaymentAccountRow } from "@/lib/data";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import {
-  AlertTriangle,
-  Banknote,
-  Building2,
-  ChevronRight,
-  Copy,
-  Fuel,
-  HelpCircle,
-  Paperclip,
-  ShoppingBag,
-  Trash2,
-} from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ChevronRight, Copy, Paperclip, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tableRawThClass } from "@/components/ui/table";
 import {
@@ -43,183 +33,283 @@ import {
 import { ExpenseBulkActionBar } from "./expense-bulk-action-bar";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
-/**
- * Under description: receipt preview or missing receipt (own line, aligned with text block); other signals below.
- */
-const chipWarn =
-  "inline-flex items-center rounded-md border border-[rgb(184_137_45_/_0.22)] bg-[rgb(184_137_45_/_0.09)] px-1.5 py-0.5 text-[10px] font-medium leading-tight text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]";
+type InboxIssueId = "receipt" | "project" | "category" | "duplicate";
 
-const chipDup =
-  "inline-flex items-center gap-0.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-1.5 py-0.5 text-[10px] font-medium leading-tight text-[var(--neo-text-secondary)]";
+type InboxIssue = {
+  id: InboxIssueId;
+  label: string;
+  detail: string;
+};
 
-function InboxDescriptionSignals({
+const EXPENSE_INBOX_DISMISSED_ISSUE_PREFIX = "hh.expenseInbox.dismissedIssue";
+
+const compactTextPill =
+  "inline-flex h-6 max-h-6 min-w-0 items-center truncate rounded-md border border-[var(--neo-border)] px-1.5 py-0 text-[11px] leading-none shadow-none";
+
+function expenseInboxDismissedIssueKey(expenseId: string, issueId: InboxIssueId): string {
+  return `${EXPENSE_INBOX_DISMISSED_ISSUE_PREFIX}.${expenseId}.${issueId}`;
+}
+
+function readDismissedIssueIds(
+  expenseId: string,
+  issueIds: readonly InboxIssueId[]
+): Set<InboxIssueId> {
+  const dismissed = new Set<InboxIssueId>();
+  if (typeof window === "undefined") return dismissed;
+  for (const issueId of issueIds) {
+    try {
+      if (window.localStorage.getItem(expenseInboxDismissedIssueKey(expenseId, issueId)) === "1") {
+        dismissed.add(issueId);
+      }
+    } catch {
+      return dismissed;
+    }
+  }
+  return dismissed;
+}
+
+function ExpenseReceiptCell({
   row,
   onReceiptPreview,
   onReceiptPrefetch,
-  missingProject,
-  missingCategory,
-  duplicate,
-  triageLayout,
+  touch = false,
 }: {
   row: Expense;
-  /** Same handler as historically wired: resolves URLs and opens global attachment preview. */
   onReceiptPreview: () => void;
-  /** Optional: prefetch signed URLs before click (hover / touch). */
   onReceiptPrefetch?: () => void;
-  missingProject: boolean;
-  missingCategory: boolean;
-  duplicate: boolean;
-  /** `/financial/inbox` review queue — Linear-style chips + clearer receipt signal. */
-  triageLayout?: boolean;
+  touch?: boolean;
 }) {
   const items = React.useMemo(() => getExpenseReceiptItems(row), [row]);
   const hasReceipt = items.length > 0;
-  const extraSignals = missingCategory || duplicate;
   const touchPrimedRef = React.useRef(false);
   React.useEffect(() => {
     touchPrimedRef.current = false;
   }, [row.id]);
 
-  const receiptBtnShared =
-    "inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 font-medium transition-colors duration-150 focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)] md:min-h-[32px]";
-
-  if (triageLayout) {
-    const chipRow = missingProject || missingCategory || duplicate;
+  if (!hasReceipt) {
     return (
-      <div className="mt-2 min-w-0 space-y-2">
-        <div className="text-[11px] leading-snug">
-          {hasReceipt ? (
-            <button
-              type="button"
-              className={cn(
-                receiptBtnShared,
-                "border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)] hover:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300"
-              )}
-              onMouseEnter={() => onReceiptPrefetch?.()}
-              onTouchStart={() => {
-                if (touchPrimedRef.current) return;
-                touchPrimedRef.current = true;
-                onReceiptPrefetch?.();
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onReceiptPreview();
-              }}
-              aria-label={
-                items.length > 1 ? `Preview receipts, ${items.length} attached` : "Preview receipt"
-              }
-              title="Preview receipt"
-            >
-              <Paperclip className="h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
-              <span>
-                Receipt attached
-                {items.length > 1 ? (
-                  <span className="ml-1 tabular-nums font-semibold opacity-90">
-                    ({items.length})
-                  </span>
-                ) : null}
-              </span>
-            </button>
-          ) : (
-            <span className="inline-flex min-h-[36px] items-center gap-1.5 rounded-md border border-[rgb(184_137_45_/_0.20)] bg-[rgb(184_137_45_/_0.08)] px-1.5 py-1 text-[var(--neo-text-secondary)] md:min-h-[32px]">
-              <span
-                className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--neo-gold)]"
-                aria-hidden
-              />
-              <span className="font-medium text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
-                No receipt
-              </span>
-            </span>
-          )}
-        </div>
-        {chipRow ? (
-          <div className="flex flex-wrap gap-1.5">
-            {missingProject ? <span className={chipWarn}>Missing project</span> : null}
-            {missingCategory ? <span className={chipWarn}>Missing category</span> : null}
-            {duplicate ? (
-              <span className={chipDup}>
-                <Copy className="h-2.5 w-2.5 shrink-0 opacity-70" strokeWidth={2} aria-hidden />
-                Duplicate
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      <span
+        className={cn(
+          "inline-flex items-center whitespace-nowrap text-[11px] font-medium text-[var(--neo-text-tertiary)]",
+          touch && "min-h-6"
+        )}
+      >
+        —
+      </span>
     );
   }
 
   return (
-    <div className="mt-1.5 min-w-0 space-y-1">
-      <div className="text-[11px] leading-snug">
-        {hasReceipt ? (
+    <button
+      type="button"
+      className={cn(
+        "inline-flex h-7 max-h-7 cursor-pointer items-center gap-1 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 text-[11px] font-medium leading-none text-[var(--neo-text-primary)] transition-colors duration-150 hover:border-emerald-500/25 hover:text-[var(--neo-emerald)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
+        touch && "h-11 max-h-none min-h-11 md:h-7 md:max-h-7 md:min-h-0"
+      )}
+      onMouseEnter={() => onReceiptPrefetch?.()}
+      onTouchStart={() => {
+        if (touchPrimedRef.current) return;
+        touchPrimedRef.current = true;
+        onReceiptPrefetch?.();
+      }}
+      onClick={(e) => {
+        e.stopPropagation();
+        onReceiptPreview();
+      }}
+      aria-label={
+        items.length > 1 ? `Preview receipts, ${items.length} attached` : "Preview receipt"
+      }
+      title="Preview receipt"
+    >
+      <Paperclip className="h-3 w-3 shrink-0 opacity-75" strokeWidth={2} aria-hidden />
+      <span>View</span>
+      {items.length > 1 ? (
+        <span className="tabular-nums text-[10px] text-[var(--neo-text-tertiary)]">
+          {items.length}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function inboxProjectIssueRequired(expense: Expense, projLabel: string): boolean {
+  if (projLabel === "Overhead") return false;
+  return !expenseHasProjectForWorkflow(expense);
+}
+
+function buildInboxIssues({
+  missingReceipt,
+  missingProject,
+  missingCategory,
+  duplicate,
+  rowTotal,
+}: {
+  missingReceipt: boolean;
+  missingProject: boolean;
+  missingCategory: boolean;
+  duplicate: boolean;
+  rowTotal: number;
+}): InboxIssue[] {
+  const issues: InboxIssue[] = [];
+  if (missingReceipt) {
+    issues.push({
+      id: "receipt",
+      label: "Missing receipt",
+      detail: "Attach or confirm a receipt before completing this expense review.",
+    });
+  }
+  if (missingProject) {
+    issues.push({
+      id: "project",
+      label: "Missing project",
+      detail: "Assign a project before moving this expense out of review.",
+    });
+  }
+  if (missingCategory) {
+    issues.push({
+      id: "category",
+      label: "Missing category",
+      detail: "Choose a category so the expense can be classified.",
+    });
+  }
+  if (duplicate) {
+    issues.push({
+      id: "duplicate",
+      label: "Possible duplicate amount",
+      detail: `Possible duplicate amount: ${formatCurrency(rowTotal)}. Another loaded expense has a similar vendor, date, and amount.`,
+    });
+  }
+  return issues;
+}
+
+function ExpenseIssuesCell({
+  expenseId,
+  issues,
+  touch = false,
+}: {
+  expenseId: string;
+  issues: InboxIssue[];
+  touch?: boolean;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [dismissedIssueIds, setDismissedIssueIds] = React.useState<Set<InboxIssueId>>(
+    () => new Set()
+  );
+  const issueIdsKey = issues.map((issue) => issue.id).join("|");
+
+  React.useEffect(() => {
+    const issueIds = issueIdsKey.split("|").filter(Boolean) as InboxIssueId[];
+    setDismissedIssueIds(readDismissedIssueIds(expenseId, issueIds));
+  }, [expenseId, issueIdsKey]);
+
+  const visibleIssues = issues.filter((issue) => !dismissedIssueIds.has(issue.id));
+
+  const dismissIssue = React.useCallback(
+    (issue: InboxIssue) => {
+      setDismissedIssueIds((prev) => new Set(prev).add(issue.id));
+      try {
+        window.localStorage.setItem(expenseInboxDismissedIssueKey(expenseId, issue.id), "1");
+      } catch {
+        /* localStorage may be unavailable; in-memory dismissal still applies for this render. */
+      }
+    },
+    [expenseId]
+  );
+
+  if (visibleIssues.length === 0) {
+    return (
+      <span
+        data-testid="expense-inbox-issues"
+        className={cn(
+          "inline-flex h-6 items-center justify-center text-[11px] text-[var(--neo-text-tertiary)]",
+          !touch && "min-w-6"
+        )}
+        aria-label="No issues"
+      >
+        —
+      </span>
+    );
+  }
+
+  return (
+    <span
+      data-testid="expense-inbox-issues"
+      className="inline-flex max-w-full justify-center"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
           <button
             type="button"
             className={cn(
-              receiptBtnShared,
-              "border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)] hover:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300"
+              "inline-flex h-6 max-h-6 min-w-6 items-center justify-center rounded-md border border-transparent px-1 text-[13px] font-semibold leading-none text-[var(--neo-gold)] transition-colors duration-150 hover:border-[rgb(184_137_45_/_0.30)] hover:bg-[rgb(184_137_45_/_0.09)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)] dark:text-[var(--neo-gold-soft)]",
+              touch &&
+                "h-11 max-h-none min-h-11 min-w-11 px-2 md:h-6 md:max-h-6 md:min-h-0 md:min-w-6"
             )}
-            onMouseEnter={() => onReceiptPrefetch?.()}
-            onTouchStart={() => {
-              if (touchPrimedRef.current) return;
-              touchPrimedRef.current = true;
-              onReceiptPrefetch?.();
-            }}
+            aria-label={`${visibleIssues.length} issue${visibleIssues.length === 1 ? "" : "s"}: ${visibleIssues
+              .map((issue) => issue.label)
+              .join(", ")}`}
+            onFocus={() => setOpen(true)}
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
-              onReceiptPreview();
+              setOpen(true);
             }}
-            aria-label={
-              items.length > 1 ? `Preview receipts, ${items.length} files` : "Preview receipt"
-            }
-            title="Preview receipt"
           >
-            <Paperclip className="h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
-            <span>
-              Receipt
-              {items.length > 1 ? (
-                <span className="ml-1 tabular-nums font-semibold">({items.length})</span>
-              ) : null}
-            </span>
+            <span aria-hidden>⚠</span>
           </button>
-        ) : (
-          <span className="inline-flex min-h-[32px] items-center gap-1.5 rounded-md border border-[rgb(184_137_45_/_0.20)] bg-[rgb(184_137_45_/_0.08)] px-1.5 py-1 text-[var(--neo-text-secondary)]">
-            <span
-              className="inline-flex h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--neo-gold)]"
-              aria-hidden
-            />
-            <span className="font-medium text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
-              No receipt
-            </span>
-          </span>
-        )}
-      </div>
-      {missingProject ? (
-        <div className="flex items-start gap-1 text-[11px] leading-snug text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
-          <AlertTriangle
-            className="mt-0.5 h-3 w-3 shrink-0 opacity-80"
-            strokeWidth={2}
-            aria-hidden
-          />
-          Missing project
-        </div>
-      ) : null}
-      {extraSignals ? (
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] leading-snug text-[var(--neo-text-secondary)]">
-          {missingCategory ? (
-            <span className="inline-flex items-center gap-1 text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
-              <AlertTriangle className="h-3 w-3 shrink-0 opacity-75" strokeWidth={2} aria-hidden />
-              Missing category
-            </span>
-          ) : null}
-          {duplicate ? (
-            <span className="inline-flex items-center gap-1 text-[var(--neo-text-secondary)]">
-              <Copy className="h-3 w-3 shrink-0 opacity-75" strokeWidth={2} aria-hidden />
-              Duplicate
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+        </PopoverTrigger>
+        <PopoverContent
+          data-testid="expense-inbox-issue-popover"
+          className="w-72 p-2"
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="space-y-1.5">
+            {visibleIssues.map((issue) => (
+              <div key={issue.id} className="flex gap-2 rounded-md px-1.5 py-1.5">
+                {issue.id === "duplicate" ? (
+                  <Copy
+                    className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--neo-text-tertiary)]"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                ) : (
+                  <span
+                    className="mt-[-1px] inline-flex h-4 w-4 shrink-0 items-center justify-center text-[12px] font-semibold leading-none text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]"
+                    aria-hidden
+                  >
+                    ⚠
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12px] font-medium leading-tight text-[var(--neo-text-primary)]">
+                    {issue.label}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-[var(--neo-text-secondary)]">
+                    {issue.detail}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="ml-1 inline-flex h-8 shrink-0 items-center rounded-md px-2 text-[11px] font-medium text-[var(--neo-text-tertiary)] transition-colors duration-150 hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]"
+                  aria-label={`Dismiss ${issue.label}`}
+                  title="Hide this issue"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    dismissIssue(issue);
+                  }}
+                >
+                  Dismiss
+                </button>
+              </div>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </span>
   );
 }
 
@@ -277,23 +367,38 @@ function inboxPrimaryVendorTitle(vendor: string): string {
   return (vendor ?? "").trim() || "Unknown Vendor";
 }
 
-/** Single secondary line: Date · Payment · Source. Technical refs stay out of display. */
-function inboxSecondaryMetaLine(e: Expense): string {
-  const dateSeg = inboxSubtitleDate(e.date);
-  const paySeg = paymentMethodDisplayLabel(e.paymentMethod);
-  const srcSeg = sourceTypeLabel(e.sourceType);
-  return `${dateSeg} · ${paySeg} · ${srcSeg}`;
+function expenseDescriptionDisplayLabel(e: Expense): string {
+  return stripInboxUploadNoiseFromText(e.notes ?? "").trim();
 }
 
-function sourceTypeLabel(t: Expense["sourceType"]): string {
-  if (t === "reimbursement") return "Worker reimbursement";
-  if (t === "receipt_upload") return "Receipt upload";
-  if (t === "bank_import") return "Bank import";
-  return "Manual";
+function isInternalPaymentDisplayValue(value: string): boolean {
+  return /\b[A-Z]{2,}-PM-(?:[A-Z0-9]+)(?:[-_]|$)/i.test(value.trim());
+}
+
+function cleanPaymentDisplayValue(value: string | undefined | null): string {
+  const cleaned = stripInboxUploadNoiseFromText(value ?? "").trim();
+  if (!cleaned || isInternalPaymentDisplayValue(cleaned)) return "";
+  return cleaned;
+}
+
+function expensePaymentSourceDisplayLabel(e: Expense): string {
+  const account = cleanPaymentDisplayValue(e.paymentAccountName);
+  if (account) return account;
+  const card = cleanPaymentDisplayValue(e.cardName);
+  if (card) return card;
+  return paymentMethodDisplayLabel(e.paymentMethod);
+}
+
+/** Single secondary line: description, then payment source. Date already has its own column. */
+function inboxSecondaryMetaLine(e: Expense): string {
+  const description = expenseDescriptionDisplayLabel(e);
+  if (description) return description;
+  const sourceSeg = expensePaymentSourceDisplayLabel(e);
+  return sourceSeg === "—" ? "—" : sourceSeg;
 }
 
 function paymentMethodDisplayLabel(pm: string | undefined): string {
-  const v = (pm ?? "").trim();
+  const v = cleanPaymentDisplayValue(pm);
   return v !== "" ? v : "—";
 }
 
@@ -304,68 +409,6 @@ function primaryCategory(e: Expense): string {
 
 function inboxSubtitleDate(iso: string | undefined): string {
   return formatDate(iso, "compact");
-}
-
-type AvatarKind = "unknown" | "amazon" | "gas" | "cash" | "hardware" | "default";
-
-function inboxVendorAvatarKind(vendor: string): AvatarKind {
-  const v = (vendor ?? "").trim().toLowerCase();
-  if (!v || v === "unknown" || looksLikeTestOrSyntheticVendor(vendor)) return "unknown";
-  if (/\bamazon\b/.test(v)) return "amazon";
-  if (/\b(shell|chevron|exxon|mobil|bp\b|fuel|gas station|gasoline|petrol)\b/.test(v)) {
-    return "gas";
-  }
-  if (/\b(cash|withdrawal|atm)\b/.test(v)) return "cash";
-  if (/\b(home depot|homedepot|home-depot)\b/.test(v)) return "hardware";
-  return "default";
-}
-
-function VendorAvatar({ vendor }: { vendor: string }) {
-  const kind = inboxVendorAvatarKind(vendor);
-  const wrap =
-    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]";
-  const iconSm = "h-3 w-3";
-  switch (kind) {
-    case "unknown":
-      return (
-        <span className={wrap} aria-hidden>
-          <HelpCircle className={iconSm} strokeWidth={1.75} />
-        </span>
-      );
-    case "amazon":
-      return (
-        <span className={wrap} aria-hidden>
-          <ShoppingBag className={iconSm} strokeWidth={1.75} />
-        </span>
-      );
-    case "gas":
-      return (
-        <span className={wrap} aria-hidden>
-          <Fuel className={iconSm} strokeWidth={1.75} />
-        </span>
-      );
-    case "cash":
-      return (
-        <span className={wrap} aria-hidden>
-          <Banknote className={iconSm} strokeWidth={1.75} />
-        </span>
-      );
-    case "hardware":
-      return (
-        <span className={wrap} aria-hidden>
-          <Building2 className={iconSm} strokeWidth={1.75} />
-        </span>
-      );
-    default:
-      return (
-        <span
-          className={cn(wrap, "text-[10px] font-medium text-[var(--neo-text-secondary)]")}
-          aria-hidden
-        >
-          {(vendor ?? "").trim().slice(0, 1).toUpperCase() || "?"}
-        </span>
-      );
-  }
 }
 
 /** Row opens preview unless the click started on an interactive control. */
@@ -389,6 +432,9 @@ function inboxStatusMeta(status: string | undefined): {
   if (s === "draft") {
     return { label: "Draft", variant: "muted" };
   }
+  if (s === "rejected") {
+    return { label: "Rejected", variant: "danger" };
+  }
   if (s === "approved") {
     return { label: "Approved", variant: "success" };
   }
@@ -402,6 +448,49 @@ function inboxStatusMeta(status: string | undefined): {
     label: "Done",
     variant: "success",
   };
+}
+
+function ExpenseStatusCell({
+  status,
+  className,
+}: {
+  status: string | undefined;
+  className?: string;
+}) {
+  const inboxSt = inboxStatusMeta(status);
+  const shouldUsePill =
+    inboxSt.label === "Draft" || inboxSt.label === "Needs Review" || inboxSt.label === "Rejected";
+
+  if (shouldUsePill) {
+    return (
+      <NeoStatus
+        label={inboxSt.label}
+        variant={inboxSt.variant}
+        className={cn("h-6 max-h-6 px-1.5 text-[10px]", className)}
+      />
+    );
+  }
+
+  return (
+    <span
+      className={cn(
+        "inline-flex h-6 items-center whitespace-nowrap text-[11px] font-medium leading-none",
+        className
+      )}
+      title={inboxSt.label}
+    >
+      <span
+        data-testid="expense-status-inline-dot"
+        className="inline-block text-[9px] leading-none text-[rgb(79_175_124_/_0.58)]"
+        aria-hidden
+      >
+        ●
+      </span>{" "}
+      <span data-testid="expense-status-inline-label" className="text-[rgb(79_175_124_/_0.82)]">
+        {inboxSt.label}
+      </span>
+    </span>
+  );
 }
 
 export type ExpenseInboxApi = {
@@ -472,8 +561,9 @@ function RowActionsMenu({ row }: { row: Expense }) {
     <BaseRowActionsMenu
       ariaLabel="Row actions"
       appearance="list"
-      className="h-11 min-h-11 w-11 min-w-11 md:h-8 md:min-h-0 md:w-8 md:min-w-0"
+      className="h-11 min-h-11 w-11 min-w-11 opacity-100 md:h-8 md:min-h-0 md:w-8 md:min-w-0 md:opacity-0 md:p-1.5 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
       contentClassName="w-44"
+      destructiveItemClassName="mt-1 border-t border-[var(--neo-border)] pt-2 text-rose-600 focus:text-rose-600 hover:bg-rose-600 hover:text-white dark:text-rose-400 dark:focus:text-rose-400"
       actions={[
         {
           label: "Edit",
@@ -506,7 +596,7 @@ function RowActionsMenu({ row }: { row: Expense }) {
   );
 }
 
-const COL_COUNT = 6;
+const COL_COUNT = 10;
 
 function DateGroupDesktopHeader({
   chunk,
@@ -621,10 +711,12 @@ function DesktopRows({
   const triageLayout = a.dateGroupPool === "inbox";
   const dupIds = possibleDuplicateIds;
 
-  const projectBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-[10rem] items-center gap-1 truncate rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-1.5 py-0 text-[11px] font-medium text-[var(--neo-text-primary)] shadow-none transition-colors duration-150";
-  const categoryBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-[6.5rem] items-center truncate rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-1.5 py-0 text-[11px] font-normal text-[var(--neo-text-secondary)] shadow-none transition-colors duration-150";
+  const projectTextClass =
+    "block max-w-[10.5rem] truncate text-[13px] font-normal leading-tight text-[var(--neo-text-secondary)] opacity-75";
+  const categoryTextClass =
+    "block max-w-[6.5rem] truncate text-[12px] font-normal leading-tight text-[var(--neo-text-secondary)]";
+  const sourceClass =
+    "block max-w-[6.5rem] truncate text-[11px] font-medium leading-tight text-[var(--neo-text-secondary)]";
 
   return (
     <>
@@ -659,11 +751,18 @@ function DesktopRows({
                   const rowTotal = getExpenseTotal(row);
                   const projLabel = projectLabel(row, a.projectNameById);
                   const status = row.status ?? "pending";
-                  const inboxSt = inboxStatusMeta(status);
                   const catLabel = primaryCategory(row);
-                  const missingProject = !expenseHasProjectForWorkflow(row);
+                  const missingReceipt = getExpenseReceiptItems(row).length === 0;
+                  const missingProject = inboxProjectIssueRequired(row, projLabel);
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
                   const showDupHint = dupIds.has(row.id);
+                  const issues = buildInboxIssues({
+                    missingReceipt,
+                    missingProject,
+                    missingCategory,
+                    duplicate: showDupHint,
+                    rowTotal,
+                  });
                   const vendorRaw = row.vendorName ?? "";
                   const vendorClean = expenseVendorDisplayRaw(vendorRaw);
                   const vendorTitle = inboxPrimaryVendorTitle(vendorClean);
@@ -682,7 +781,7 @@ function DesktopRows({
                         a.rowElsRef.current[row.id] = el;
                       }}
                       className={cn(
-                        "exp-row group min-h-[52px] cursor-pointer border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] transition-[background-color,box-shadow] duration-150 ease-out hover:bg-[var(--neo-surface-muted)] [&>td]:align-middle [&>td]:px-3 [&>td]:py-3",
+                        "exp-row group h-12 cursor-pointer border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] transition-[background-color,box-shadow] duration-150 ease-out hover:bg-[var(--neo-surface-muted)] [&>td]:align-middle [&>td]:px-2.5 [&>td]:py-1",
                         a.deletingExpenseId === row.id &&
                           "pointer-events-none opacity-0 duration-300 ease-out",
                         uploadHighlight &&
@@ -706,8 +805,11 @@ function DesktopRows({
                         a.openExpensePreview(row);
                       }}
                     >
-                      <td className="min-w-0 max-w-[min(36rem,52vw)]">
-                        <div className="flex items-start gap-2">
+                      <td className="w-[82px] shrink-0 whitespace-nowrap text-[12px] font-medium text-[var(--neo-text-secondary)]">
+                        {inboxSubtitleDate(row.date)}
+                      </td>
+                      <td className="min-w-0 max-w-[min(28rem,34vw)]">
+                        <div className="flex items-center gap-2">
                           {!selectionEnabled ? null : showSelectionUi ? (
                             <input
                               type="checkbox"
@@ -732,49 +834,49 @@ function DesktopRows({
                               }}
                             />
                           )}
-                          <VendorAvatar vendor={vendorClean} />
                           <div className="min-w-0 flex-1">
                             <p
-                              className="line-clamp-2 min-w-0 max-w-full break-words text-sm font-semibold leading-snug text-[var(--neo-text-primary)] md:line-clamp-none md:truncate md:font-medium"
+                              className="min-w-0 max-w-full truncate text-[13px] font-semibold leading-tight text-[var(--neo-text-primary)] md:font-medium"
                               title={vendorClean || vendorTitle}
                             >
                               {vendorTitle}
                             </p>
-                            <p className="mt-1 truncate text-[11px] leading-snug text-[var(--neo-text-secondary)]">
+                            <p
+                              className="mt-0.5 truncate text-[10px] leading-tight text-[var(--neo-text-tertiary)]"
+                              title={secondaryLine}
+                            >
                               {secondaryLine}
                             </p>
-                            <InboxDescriptionSignals
-                              row={row}
-                              onReceiptPreview={() => a.openReceiptPreview(row)}
-                              onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
-                              missingProject={missingProject}
-                              missingCategory={missingCategory}
-                              duplicate={showDupHint}
-                              triageLayout={triageLayout}
-                            />
                           </div>
                         </div>
                       </td>
-                      <td className="w-[148px] shrink-0">
-                        <span className={cn(projectBadgeClass, "max-w-[9rem]")} title={projLabel}>
-                          <Building2
-                            className="h-2.5 w-2.5 shrink-0 text-[var(--neo-text-tertiary)]"
-                            aria-hidden
-                          />
+                      <td className="w-[156px] shrink-0">
+                        <span className={projectTextClass} title={projLabel}>
                           {projLabel}
                         </span>
                       </td>
                       <td className="w-[104px] shrink-0">
-                        <span className={cn(categoryBadgeClass, "max-w-full")} title={catLabel}>
+                        <span className={categoryTextClass} title={catLabel}>
                           {catLabel}
                         </span>
                       </td>
-                      <td className="w-[128px] shrink-0 whitespace-nowrap">
-                        <NeoStatus
-                          label={inboxSt.label}
-                          variant={inboxSt.variant}
-                          className="h-6 max-h-6 px-2 text-[11px]"
+                      <td className="w-[108px] shrink-0">
+                        <span className={sourceClass} title={expensePaymentSourceDisplayLabel(row)}>
+                          {expensePaymentSourceDisplayLabel(row)}
+                        </span>
+                      </td>
+                      <td className="w-[86px] shrink-0 whitespace-nowrap">
+                        <ExpenseReceiptCell
+                          row={row}
+                          onReceiptPreview={() => a.openReceiptPreview(row)}
+                          onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
                         />
+                      </td>
+                      <td className="w-16 shrink-0 text-center">
+                        <ExpenseIssuesCell expenseId={row.id} issues={issues} />
+                      </td>
+                      <td className="w-[112px] shrink-0 whitespace-nowrap">
+                        <ExpenseStatusCell status={status} />
                       </td>
                       <td className="w-[96px] shrink-0 whitespace-nowrap text-right tabular-nums">
                         <NeoAmount
@@ -784,7 +886,7 @@ function DesktopRows({
                           {formatCurrency(-rowTotal)}
                         </NeoAmount>
                       </td>
-                      <td className="w-10 shrink-0 text-right">
+                      <td className="w-11 shrink-0 text-right">
                         <RowActionsMenu row={row} />
                       </td>
                     </tr>
@@ -917,10 +1019,12 @@ function MobileRows({
   const a = useInbox();
   const triageLayout = a.dateGroupPool === "inbox";
   const dupIds = possibleDuplicateIds;
-  const projectBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-1.5 py-0 text-[11px] font-medium text-[var(--neo-text-primary)] shadow-none transition-colors duration-150";
-  const categoryBadgeClass =
-    "inline-flex h-6 max-h-6 max-w-full items-center truncate rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-1.5 py-0 text-[11px] font-normal text-[var(--neo-text-secondary)] shadow-none transition-colors duration-150";
+  const projectTextClass =
+    "hidden max-w-full truncate text-[13px] font-normal leading-tight text-[var(--neo-text-secondary)] opacity-75 sm:inline-block";
+  const categoryTextClass =
+    "hidden max-w-full truncate text-[12px] font-normal leading-tight text-[var(--neo-text-secondary)] sm:inline-block";
+  const sourceBadgeClass =
+    "bg-[var(--neo-surface-muted)] font-normal text-[var(--neo-text-secondary)]";
 
   return (
     <>
@@ -955,11 +1059,18 @@ function MobileRows({
                   const rowTotal = getExpenseTotal(row);
                   const projLabel = projectLabel(row, a.projectNameById);
                   const status = row.status ?? "pending";
-                  const inboxSt = inboxStatusMeta(status);
                   const catLabel = primaryCategory(row);
-                  const missingProject = !expenseHasProjectForWorkflow(row);
+                  const missingReceipt = getExpenseReceiptItems(row).length === 0;
+                  const missingProject = inboxProjectIssueRequired(row, projLabel);
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
                   const showDupHint = dupIds.has(row.id);
+                  const issues = buildInboxIssues({
+                    missingReceipt,
+                    missingProject,
+                    missingCategory,
+                    duplicate: showDupHint,
+                    rowTotal,
+                  });
                   const vendorRaw = row.vendorName ?? "";
                   const vendorClean = expenseVendorDisplayRaw(vendorRaw);
                   const vendorTitle = inboxPrimaryVendorTitle(vendorClean);
@@ -979,7 +1090,7 @@ function MobileRows({
                           a.rowElsRef.current[row.id] = el;
                         }}
                         className={cn(
-                          "exp-row group list-none cursor-pointer rounded-none border-x-0 border-t-0 border-b border-[var(--neo-border)] px-3 py-3.5 shadow-none",
+                          "exp-row group list-none cursor-pointer rounded-none border-x-0 border-t-0 border-b border-[var(--neo-border)] px-3 py-2.5 shadow-none",
                           "min-h-[52px] hover:bg-[var(--neo-surface-muted)]",
                           a.deletingExpenseId === row.id &&
                             "pointer-events-none opacity-0 duration-300 ease-out",
@@ -1016,7 +1127,7 @@ function MobileRows({
                           a.openExpensePreview(row);
                         }}
                       >
-                        <div className="flex gap-2">
+                        <div className="flex min-w-0 gap-2">
                           {!selectionEnabled ? null : showSelectionUi ? (
                             <input
                               type="checkbox"
@@ -1041,28 +1152,21 @@ function MobileRows({
                               }}
                             />
                           )}
-                          <VendorAvatar vendor={vendorClean} />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
                               <div className="min-w-0 flex-1">
                                 <p
-                                  className="line-clamp-2 min-w-0 break-words text-sm font-semibold leading-snug text-[var(--neo-text-primary)]"
+                                  className="line-clamp-1 min-w-0 break-words text-sm font-semibold leading-tight text-[var(--neo-text-primary)]"
                                   title={vendorClean || vendorTitle}
                                 >
                                   {vendorTitle}
                                 </p>
-                                <p className="mt-1 truncate text-[11px] leading-snug text-[var(--neo-text-secondary)]">
+                                <p
+                                  className="mt-0.5 truncate text-[11px] leading-tight text-[var(--neo-text-secondary)]"
+                                  title={secondaryLine}
+                                >
                                   {secondaryLine}
                                 </p>
-                                <InboxDescriptionSignals
-                                  row={row}
-                                  onReceiptPreview={() => a.openReceiptPreview(row)}
-                                  onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
-                                  missingProject={missingProject}
-                                  missingCategory={missingCategory}
-                                  duplicate={showDupHint}
-                                  triageLayout={triageLayout}
-                                />
                               </div>
                               <div className="flex max-w-[42%] shrink-0 flex-col items-end gap-1">
                                 <NeoAmount
@@ -1075,14 +1179,27 @@ function MobileRows({
                                 </NeoAmount>
                               </div>
                             </div>
-                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                              <span className={projectBadgeClass}>{projLabel}</span>
-                              <span className={categoryBadgeClass}>{catLabel}</span>
-                              <NeoStatus
-                                label={inboxSt.label}
-                                variant={inboxSt.variant}
-                                className="h-6 max-h-6 px-2 text-[11px]"
+                            <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1">
+                              <span className={projectTextClass} title={projLabel}>
+                                {projLabel}
+                              </span>
+                              <span className={categoryTextClass} title={catLabel}>
+                                {catLabel}
+                              </span>
+                              <span
+                                className={cn(compactTextPill, sourceBadgeClass, "max-w-full")}
+                                title={expensePaymentSourceDisplayLabel(row)}
+                              >
+                                {expensePaymentSourceDisplayLabel(row)}
+                              </span>
+                              <ExpenseReceiptCell
+                                row={row}
+                                onReceiptPreview={() => a.openReceiptPreview(row)}
+                                onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
+                                touch
                               />
+                              <ExpenseIssuesCell expenseId={row.id} issues={issues} touch />
+                              <ExpenseStatusCell status={status} />
                               <RowActionsMenu row={row} />
                             </div>
                           </div>
@@ -1307,20 +1424,34 @@ export function ExpenseInboxTransactionList({
           <NeoTable
             className="rounded-none border-0 shadow-none"
             scrollClassName="bg-[var(--neo-surface-raised)]"
-            tableClassName="min-w-[820px] text-sm"
+            tableClassName="min-w-[1080px] table-fixed text-sm"
           >
+            <colgroup>
+              <col className="w-[82px]" />
+              <col />
+              <col className="w-[156px]" />
+              <col className="w-[104px]" />
+              <col className="w-[108px]" />
+              <col className="w-[86px]" />
+              <col className="w-[64px]" />
+              <col className="w-[112px]" />
+              <col className="w-[96px]" />
+              <col className="w-11" />
+            </colgroup>
             <thead>
               <tr>
-                <th className={tableRawThClass}>
-                  {api.dateGroupPool === "inbox" ? "Review item" : "Description"}
-                </th>
-                <th className={cn(tableRawThClass, "w-[148px] shrink-0")}>Project</th>
+                <th className={cn(tableRawThClass, "w-[82px] shrink-0")}>Date</th>
+                <th className={tableRawThClass}>Merchant</th>
+                <th className={cn(tableRawThClass, "w-[156px] shrink-0")}>Project</th>
                 <th className={cn(tableRawThClass, "w-[104px] shrink-0")}>Category</th>
-                <th className={cn(tableRawThClass, "w-[128px] shrink-0")}>Status</th>
+                <th className={cn(tableRawThClass, "w-[108px] shrink-0")}>Source</th>
+                <th className={cn(tableRawThClass, "w-[86px] shrink-0")}>Receipt</th>
+                <th className={cn(tableRawThClass, "w-16 shrink-0")}>Issues</th>
+                <th className={cn(tableRawThClass, "w-[112px] shrink-0")}>Status</th>
                 <th className={cn(tableRawThClass, "w-[96px] shrink-0 text-right tabular-nums")}>
                   Amount
                 </th>
-                <th className={cn(tableRawThClass, "w-10 shrink-0 px-2 text-right")} aria-hidden />
+                <th className={cn(tableRawThClass, "w-11 shrink-0 px-1 text-right")}>Actions</th>
               </tr>
             </thead>
             <tbody>

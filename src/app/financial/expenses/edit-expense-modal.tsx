@@ -662,7 +662,7 @@ export function EditExpenseModal({
                     </p>
                   </div>
                   <div className="col-span-2 space-y-1.5">
-                    <label className={FIELD_LABEL}>Notes</label>
+                    <label className={FIELD_LABEL}>Description</label>
                     <Textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}

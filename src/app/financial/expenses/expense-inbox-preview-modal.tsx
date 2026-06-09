@@ -777,7 +777,7 @@ export function ExpenseInboxPreviewModal({
                     </span>
                   </PreviewRow>
                   <PreviewRow label="Date">{formatDate(expense.date)}</PreviewRow>
-                  <PreviewRow label="Notes">
+                  <PreviewRow label="Description">
                     {(() => {
                       const n = stripInboxUploadNoiseFromText((expense.notes ?? "").trim());
                       return n !== "" ? n : "—";
@@ -962,7 +962,7 @@ export function ExpenseInboxPreviewModal({
                     />
                   </div>
                   <div className="space-y-1.5 sm:col-span-2">
-                    <label className={FIELD_LABEL}>Notes</label>
+                    <label className={FIELD_LABEL}>Description</label>
                     <Textarea
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
