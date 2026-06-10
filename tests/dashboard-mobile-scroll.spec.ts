@@ -237,7 +237,7 @@ test.describe("Dashboard mobile scrolling", () => {
     await expectMainCanScrollDownAndUp(page);
     await expectMainCanNativeTouchScrollDownAndUp(page);
 
-    await page.getByRole("link", { name: /^Time Entries$/ }).click();
+    await page.getByRole("link", { name: /^Labor$/ }).click();
     await expect(page).toHaveURL(/\/labor(?:[?#].*)?$/);
     await expectMainCanScrollDownAndUp(page);
 
@@ -246,15 +246,15 @@ test.describe("Dashboard mobile scrolling", () => {
     await expectMainCanScrollDownAndUp(page);
     await expectMainCanNativeTouchScrollDownAndUp(page);
 
-    await page.getByRole("link", { name: /^Time Entries$/ }).click();
-    await page.getByRole("link", { name: /^Expenses$/ }).click();
+    await page.getByRole("link", { name: /^Labor$/ }).click();
+    await page.getByRole("link", { name: /^Financial$/ }).click();
     await page.getByRole("link", { name: /^Dashboard$/ }).click();
     await expect(page).toHaveURL(/\/dashboard(?:[?#].*)?$/);
     await expectMainCanScrollDownAndUp(page);
     await expectMainCanNativeTouchScrollDownAndUp(page);
 
-    await page.getByRole("link", { name: /^Expenses$/ }).click();
-    await expect(page).toHaveURL(/\/financial\/expenses(?:[?#].*)?$/);
+    await page.getByRole("link", { name: /^Financial$/ }).click();
+    await expect(page).toHaveURL(/\/financial(?:[?#].*)?$/);
     await expectMainCanScrollDownAndUp(page);
 
     await page.getByRole("link", { name: /^Dashboard$/ }).click();
