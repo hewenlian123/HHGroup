@@ -48,6 +48,10 @@ import {
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
+import {
+  INBOX_DRAFT_OCR_WRITEBACK_EVENT,
+  type InboxDraftOcrWritebackEventDetail,
+} from "@/lib/expense-inbox-draft-ocr-events";
 import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
 import type { ExpenseInboxPreviewSavePayload } from "./expense-inbox-preview-modal";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
@@ -140,6 +144,10 @@ type ExpenseApiResponse = {
   message?: string;
 };
 
+type ExpenseMutationApiResponse = ExpenseApiResponse & {
+  expense?: Expense;
+};
+
 async function saveExpenseReviewViaApi(payload: ExpenseReviewApiPayload): Promise<void> {
   const response = await fetch(`/api/expenses/${encodeURIComponent(payload.expenseId)}`, {
     method: "PATCH",
@@ -167,6 +175,26 @@ async function saveExpenseReviewViaApi(payload: ExpenseReviewApiPayload): Promis
   if (!response.ok || !body?.ok) {
     throw new Error(body?.message || "Failed to save expense.");
   }
+}
+
+async function approveInboxDraftViaApi(expenseId: string): Promise<Expense> {
+  const response = await fetch(
+    `/api/financial/expenses/${encodeURIComponent(expenseId)}/approve-inbox`,
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+    }
+  );
+  let body: ExpenseMutationApiResponse | null = null;
+  try {
+    body = (await response.json()) as ExpenseMutationApiResponse;
+  } catch {
+    body = null;
+  }
+  if (!response.ok || !body?.ok || !body.expense) {
+    throw new Error(body?.message || "Failed to approve Inbox draft.");
+  }
+  return body.expense;
 }
 
 const QuickExpenseModal = dynamic(
@@ -932,6 +960,25 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     }
   }, [queryClient, expenseSort, toast]);
 
+  React.useEffect(() => {
+    if (!inboxMode) return;
+    const onOcrWriteback = (event: Event) => {
+      const detail = (event as CustomEvent<InboxDraftOcrWritebackEventDetail>).detail;
+      void refresh();
+      if (detail?.ok === false) {
+        toast({
+          title: "Receipt needs review",
+          description:
+            detail.message ||
+            "Receipt OCR could not safely update this draft. The receipt is still attached.",
+          variant: "default",
+        });
+      }
+    };
+    window.addEventListener(INBOX_DRAFT_OCR_WRITEBACK_EVENT, onOcrWriteback);
+    return () => window.removeEventListener(INBOX_DRAFT_OCR_WRITEBACK_EVENT, onOcrWriteback);
+  }, [inboxMode, refresh, toast]);
+
   const receiptPreviewRef = React.useRef(receiptPreview);
   receiptPreviewRef.current = receiptPreview;
   const receiptPreviewSessionRef = React.useRef(0);
@@ -1230,7 +1277,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         );
       });
       try {
-        const saved = await updateExpenseForReview(expense.id, { status: targetStatus });
+        const saved = inboxRef
+          ? await approveInboxDraftViaApi(expense.id)
+          : await updateExpenseForReview(expense.id, { status: targetStatus });
         const final = saved ?? { ...expense, status: targetStatus };
         flushSync(() => {
           setExpenses((list) => list.map((e) => (e.id === expense.id ? final : e)));
@@ -1498,7 +1547,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       uiActionLog("expense-toggle-status-ui", t0, 100);
       void (async () => {
         try {
-          const saved = await updateExpenseForReview(expense.id, { status: next });
+          const saved =
+            inboxRef && next === "approved"
+              ? await approveInboxDraftViaApi(expense.id)
+              : await updateExpenseForReview(expense.id, { status: next });
           if (!saved) throw new Error("Failed");
           const persisted = (saved.status ?? "pending") === next;
           if (persisted) {
@@ -1577,7 +1629,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           }
           const targetStatus = inboxRef ? "approved" : "reviewed";
           try {
-            const saved = await updateExpenseForReview(id, { status: targetStatus });
+            const saved = inboxRef
+              ? await approveInboxDraftViaApi(id)
+              : await updateExpenseForReview(id, { status: targetStatus });
             if (saved && (saved.status ?? "pending") === targetStatus) {
               mergeSavedExpenseInCaches(saved);
               ok++;

@@ -1,12 +1,50 @@
-import type { Expense } from "@/lib/data";
-import { getExpenseById, getExpenseTotal, updateExpenseForReview } from "@/lib/data";
+import { notifyInboxDraftOcrWriteback } from "@/lib/expense-inbox-draft-ocr-events";
 import { notifyReceiptQueueChanged } from "@/lib/receipt-queue";
 import { inferExpenseCategoryFromVendor } from "@/lib/receipt-infer-category";
 import { mergeReceiptOcrResults, runReceiptOcrForImageFile } from "@/lib/receipt-ocr-client";
 
+type OcrWritebackResponse = {
+  ok?: boolean;
+  message?: string;
+  changedFields?: string[];
+};
+
+async function writeInboxDraftOcrResult(
+  expenseId: string,
+  merged: ReturnType<typeof mergeReceiptOcrResults>
+): Promise<string[]> {
+  const response = await fetch(
+    `/api/financial/expenses/${encodeURIComponent(expenseId)}/ocr-writeback`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        vendorName: merged.finalVendor,
+        vendorConfidence: merged.vendorConfidence,
+        amount: merged.sanitizedAmount,
+        amountConfidence: merged.amountConfidence,
+        date: merged.clampedPurchase,
+        dateConfidence: merged.dateConfidence,
+        category: merged.mappedCategory,
+        ocrSource: merged.source,
+      }),
+    }
+  );
+  let body: OcrWritebackResponse | null = null;
+  try {
+    body = (await response.json()) as OcrWritebackResponse;
+  } catch {
+    body = null;
+  }
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message || `Receipt OCR writeback failed (${response.status}).`);
+  }
+  return Array.isArray(body.changedFields) ? body.changedFields : [];
+}
+
 /**
  * Runs OCR after an inbox draft expense exists; patches empty fields only.
- * On failure, sets `needs_review` without clearing receipt or amounts.
+ * On failure, keeps the receipt-backed draft intact for manual review.
  */
 export function scheduleInboxDraftExpenseOcr(expenseId: string, file: File): void {
   void (async () => {
@@ -16,11 +54,11 @@ export function scheduleInboxDraftExpenseOcr(expenseId: string, file: File): voi
     };
 
     if (!file.type.startsWith("image/")) {
-      try {
-        await updateExpenseForReview(expenseId, { status: "needs_review" });
-      } catch {
-        /* ignore */
-      }
+      notifyInboxDraftOcrWriteback({
+        expenseId,
+        ok: false,
+        message: "Receipt saved. OCR needs an image file, so this draft still needs review.",
+      });
       notifyReceiptQueueChanged();
       return;
     }
@@ -30,73 +68,31 @@ export function scheduleInboxDraftExpenseOcr(expenseId: string, file: File): voi
       const ocrEntry = await runReceiptOcrForImageFile(file, { localTimeoutMs: 8000 });
       merged = mergeReceiptOcrResults([ocrEntry], { inferCategory: infer });
     } catch {
-      try {
-        await updateExpenseForReview(expenseId, { status: "needs_review" });
-      } catch {
-        /* ignore */
-      }
+      notifyInboxDraftOcrWriteback({
+        expenseId,
+        ok: false,
+        message: "Receipt saved. OCR could not read this file, so this draft still needs review.",
+      });
       notifyReceiptQueueChanged();
       return;
-    }
-
-    const cur = await getExpenseById(expenseId);
-    if (!cur) {
-      notifyReceiptQueueChanged();
-      return;
-    }
-
-    const patch: Parameters<typeof updateExpenseForReview>[1] = {};
-
-    const vRaw = String(cur.vendorName ?? "").trim();
-    /** Treat placeholder vendor as empty so OCR can fill (matches Quick Expense / inbox drafts). */
-    const vCur = /^unknown$/i.test(vRaw) ? "" : vRaw;
-    const aCur = String(getExpenseTotalNum(cur));
-    const dCur = String(cur.date ?? "")
-      .trim()
-      .slice(0, 10);
-    const catCur = String(cur.lines[0]?.category ?? "Other").trim();
-
-    if (merged) {
-      if (!vCur.trim() && merged.autoFillVendor && merged.finalVendor.trim()) {
-        patch.vendorName = merged.finalVendor;
-      }
-      if (merged.autoFillAmount && merged.sanitizedAmount != null) {
-        const num = merged.sanitizedAmount;
-        const current = Number(aCur);
-        if (current <= 0.011) {
-          patch.amount = num;
-        }
-      }
-      if (merged.autoFillDate && merged.clampedPurchase) {
-        if (!dCur || dCur === "") {
-          patch.date = merged.clampedPurchase;
-        }
-      }
-      if (
-        !merged.needsReview &&
-        catCur === "Other" &&
-        merged.mappedCategory &&
-        merged.mappedCategory !== "Other"
-      ) {
-        patch.category = merged.mappedCategory;
-      }
     }
 
     try {
-      if (Object.keys(patch).length > 0) {
-        await updateExpenseForReview(expenseId, patch);
-      }
-    } catch {
-      try {
-        await updateExpenseForReview(expenseId, { status: "needs_review" });
-      } catch {
-        /* ignore */
-      }
+      const changedFields = await writeInboxDraftOcrResult(expenseId, merged);
+      notifyInboxDraftOcrWriteback({ expenseId, ok: true, changedFields });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Receipt saved. OCR results could not be applied to this draft.";
+      console.warn("[expense-inbox-draft-ocr] writeback failed", message);
+      notifyInboxDraftOcrWriteback({
+        expenseId,
+        ok: false,
+        message:
+          "Receipt saved. OCR results could not be applied, so this draft still needs review.",
+      });
     }
     notifyReceiptQueueChanged();
   })();
-}
-
-function getExpenseTotalNum(e: Expense): number {
-  return getExpenseTotal(e);
 }
