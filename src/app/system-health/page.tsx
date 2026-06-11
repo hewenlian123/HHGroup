@@ -1016,7 +1016,111 @@ type ActiveIssue = {
   message: string;
   href?: string;
   meta?: string;
+  code?: string;
+  source: string;
+  sources?: string[];
+  dedupeKey?: string;
+  groupedCount?: number;
 };
+
+function normalizeActiveIssueValue(value?: string): string {
+  return (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function codedActiveIssueKey(
+  code: string | undefined,
+  title: string,
+  href: string | undefined,
+  message: string
+): string {
+  const normalizedCode = normalizeActiveIssueValue(code);
+  const normalizedHref = normalizeActiveIssueValue(href);
+  const normalizedMessage = normalizeActiveIssueValue(message);
+
+  if (normalizedCode.startsWith("reimbursement_") && normalizedHref === "/labor/worker-balances") {
+    return `code:${normalizedCode}:${normalizedHref}:${normalizedMessage}`;
+  }
+
+  return [
+    "code",
+    normalizedCode,
+    normalizeActiveIssueValue(title),
+    normalizedHref,
+    normalizedMessage,
+  ].join(":");
+}
+
+function activeIssueHrefPriority(href?: string): number {
+  if (!href) return 0;
+  if (href === "/system-health") return 1;
+  if (href === "/settings/project-financial-review") return 4;
+  if (
+    href.startsWith("/projects/") ||
+    href.startsWith("/financial/expenses/") ||
+    href.startsWith("/financial/invoices/") ||
+    href.startsWith("/estimates/")
+  ) {
+    return 5;
+  }
+  if (href === "/labor/worker-balances" || href === "/labor/entries") return 3;
+  return 2;
+}
+
+function activeIssueSourcePriority(source: string): number {
+  if (source === "Data Quality") return 5;
+  if (source === "Core Health") return 4;
+  if (source === "System Integrity Scanner") return 3;
+  if (source === "Financial Reconciliation") return 2;
+  if (source === "System QA") return 1;
+  return 0;
+}
+
+function activeIssuePriority(issue: ActiveIssue): number {
+  return activeIssueHrefPriority(issue.href) * 10 + activeIssueSourcePriority(issue.source);
+}
+
+function uniqueActiveIssueSources(issues: ActiveIssue[]): string[] {
+  const sources = new Set<string>();
+  for (const issue of issues) {
+    for (const source of issue.sources ?? [issue.source]) {
+      if (source) sources.add(source);
+    }
+  }
+  return [...sources];
+}
+
+function mergeActiveIssues(existing: ActiveIssue, incoming: ActiveIssue): ActiveIssue {
+  const preferred =
+    activeIssuePriority(incoming) > activeIssuePriority(existing) ? incoming : existing;
+  return {
+    ...preferred,
+    sources: uniqueActiveIssueSources([existing, incoming]),
+    groupedCount: (existing.groupedCount ?? 1) + (incoming.groupedCount ?? 1),
+  };
+}
+
+function activeIssueKey(issue: ActiveIssue): string {
+  if (issue.dedupeKey) return issue.dedupeKey;
+  if (issue.code) return codedActiveIssueKey(issue.code, issue.title, issue.href, issue.message);
+  return [
+    "issue",
+    normalizeActiveIssueValue(issue.title),
+    normalizeActiveIssueValue(issue.href),
+    normalizeActiveIssueValue(issue.message),
+  ].join(":");
+}
+
+function dedupeActiveIssues(issues: ActiveIssue[]): ActiveIssue[] {
+  const deduped = new Map<string, ActiveIssue>();
+
+  for (const issue of issues) {
+    const key = activeIssueKey(issue);
+    const existing = deduped.get(key);
+    deduped.set(key, existing ? mergeActiveIssues(existing, issue) : { ...issue, groupedCount: 1 });
+  }
+
+  return [...deduped.values()];
+}
 
 function healthStatusPriority(status: DetailRowStatus): number {
   if (status === "fail") return 0;
@@ -1438,6 +1542,9 @@ function ActiveIssuesPanel({
           {[...critical, ...warnings].map((issue) => {
             const tone = statusToneClasses(issue.status);
             const metaIsCode = issue.meta ? isDiagnosticCode(issue.meta) : false;
+            const sources = issue.sources ?? [issue.source];
+            const alsoReportedBy = sources.filter((source) => source && source !== issue.source);
+            const groupedCount = issue.groupedCount ?? 1;
             return (
               <div
                 key={issue.id}
@@ -1478,6 +1585,20 @@ function ActiveIssuesPanel({
                             {issue.meta}
                           </span>
                         )}
+                      </div>
+                    ) : null}
+                    {alsoReportedBy.length || groupedCount > 1 ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {alsoReportedBy.length ? (
+                          <span className="inline-flex rounded-md border border-cyan-200/10 bg-cyan-300/[0.055] px-2 py-0.5 text-[11px] text-cyan-100/75">
+                            Also reported by: {alsoReportedBy.join(", ")}
+                          </span>
+                        ) : null}
+                        {groupedCount > 1 ? (
+                          <span className="inline-flex rounded-md border border-white/10 bg-white/[0.045] px-2 py-0.5 text-[11px] text-slate-300/75">
+                            {groupedCount} active issue entries grouped
+                          </span>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
@@ -2184,14 +2305,20 @@ export default function SystemHealthPage() {
   );
   const financialReconciliationDetailRows = financialReconciliationRows(financialReconciliation);
   const healthActiveIssues: ActiveIssue[] = [...criticalIssues, ...needsAttention].map(
-    (check, index) => ({
-      id: `health:${index}:${check.name}:${check.code ?? ""}`,
-      title: check.name,
-      status: check.status === "fail" ? "fail" : "warning",
-      message: check.message ?? check.code ?? "Needs review",
-      href: check.href,
-      meta: check.code,
-    })
+    (check, index) => {
+      const message = check.message ?? check.code ?? "Needs review";
+      return {
+        id: `health:${index}:${check.name}:${check.code ?? ""}`,
+        title: check.name,
+        status: check.status === "fail" ? "fail" : "warning",
+        message,
+        href: check.href,
+        meta: check.code,
+        code: check.code,
+        source: "Core Health",
+        dedupeKey: codedActiveIssueKey(check.code, check.name, check.href, message),
+      };
+    }
   );
   const guardianActiveIssues: ActiveIssue[] =
     result?.checks
@@ -2202,6 +2329,7 @@ export default function SystemHealthPage() {
         status: "fail",
         message: check.error ?? "Guardian route check failed.",
         meta: "guardian",
+        source: "System Guardian",
       })) ?? [];
   const qaActiveIssues: ActiveIssue[] = qaSections.flatMap((section) =>
     section.checks
@@ -2218,6 +2346,9 @@ export default function SystemHealthPage() {
         message: check.message,
         href: check.page,
         meta: section.name,
+        code: check.diagnosticCode,
+        source: "System QA",
+        dedupeKey: codedActiveIssueKey(check.diagnosticCode, check.name, check.page, check.message),
       }))
   );
   const dataQualityActiveIssues: ActiveIssue[] =
@@ -2230,6 +2361,14 @@ export default function SystemHealthPage() {
         message: issue.message,
         href: issue.link,
         meta: issue.recommendedAction,
+        code: issue.issueCode,
+        source: "Data Quality",
+        dedupeKey: codedActiveIssueKey(
+          issue.issueCode,
+          issue.entityName ?? issue.issueCode,
+          issue.link,
+          issue.message
+        ),
       })) ?? [];
   const integrityScanActiveIssues: ActiveIssue[] =
     integrityScan?.sections
@@ -2243,6 +2382,14 @@ export default function SystemHealthPage() {
               : ("warning" as const),
           message: issue.message,
           meta: section.title,
+          code: issue.category,
+          source: "System Integrity Scanner",
+          dedupeKey:
+            issue.category === "test_marker" || issue.category === "dependency_risk"
+              ? `marker:${issue.table}:${issue.id}`
+              : `integrity:${issue.category}:${issue.table}:${issue.id}:${normalizeActiveIssueValue(
+                  issue.message
+                )}`,
         }))
       )
       .filter((issue) => issue.status === "fail" || issue.status === "warning")
@@ -2259,18 +2406,26 @@ export default function SystemHealthPage() {
               : ("warning" as const),
           message: issue.message,
           meta: section.title,
+          code: issue.category,
+          source: "Financial Reconciliation",
+          dedupeKey:
+            issue.category === "financial_marker_impact"
+              ? `marker:${issue.table}:${issue.id}`
+              : `financial:${issue.category}:${issue.table}:${issue.id}:${normalizeActiveIssueValue(
+                  issue.message
+                )}`,
         }))
       )
       .filter((issue) => issue.status === "fail" || issue.status === "warning")
       .slice(0, 8) ?? [];
-  const activeIssues = [
+  const activeIssues = dedupeActiveIssues([
     ...healthActiveIssues,
     ...guardianActiveIssues,
     ...qaActiveIssues,
     ...dataQualityActiveIssues,
     ...integrityScanActiveIssues,
     ...financialReconciliationActiveIssues,
-  ];
+  ]);
   const metadataRows = [
     {
       label: "Environment",
