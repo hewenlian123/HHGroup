@@ -59,15 +59,20 @@ export function ExpenseCategorySelect({
   const [loading, setLoading] = React.useState(true);
   const [addOpen, setAddOpen] = React.useState(false);
   const [newName, setNewName] = React.useState("");
+  const [createError, setCreateError] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
   const newInputRef = React.useRef<HTMLInputElement>(null);
+  const loadSeqRef = React.useRef(0);
   const onCategoriesUpdatedRef = React.useRef(onCategoriesUpdated);
   onCategoriesUpdatedRef.current = onCategoriesUpdated;
 
   const refresh = React.useCallback(async () => {
+    const loadSeq = loadSeqRef.current + 1;
+    loadSeqRef.current = loadSeq;
     setLoading(true);
     try {
       const next = await pickerItemsByStoredName("category", preserveArchivedValue ? value : null);
+      if (loadSeq !== loadSeqRef.current) return;
       setItems(next);
       onCategoriesUpdatedRef.current?.(
         next.filter((item) => !item.archived).map((item) => item.value)
@@ -76,16 +81,20 @@ export function ExpenseCategorySelect({
       if (
         !preserveArchivedValue &&
         current &&
-        !next.some((item) => item.value.toLowerCase() === current)
+        !next.some((item) => item.value.toLowerCase() === current) &&
+        next[0]?.value
       ) {
-        onValueChange(next[0]?.value ?? "");
+        onValueChange(next[0].value);
       }
     } catch (e) {
+      if (loadSeq !== loadSeqRef.current) return;
       const msg = e instanceof Error ? e.message : "Failed to load categories";
       toast({ title: "Categories", description: msg, variant: "error" });
       setItems([]);
     } finally {
-      setLoading(false);
+      if (loadSeq === loadSeqRef.current) {
+        setLoading(false);
+      }
     }
   }, [onValueChange, preserveArchivedValue, toast, value]);
 
@@ -96,6 +105,7 @@ export function ExpenseCategorySelect({
   React.useEffect(() => {
     if (addOpen) {
       setNewName("");
+      setCreateError(null);
       const t = window.setTimeout(() => newInputRef.current?.focus(), 50);
       return () => clearTimeout(t);
     }
@@ -110,16 +120,24 @@ export function ExpenseCategorySelect({
 
   const handleCreate = async () => {
     const trimmed = newName.trim();
+    setCreateError(null);
     if (!trimmed) {
-      toast({ title: "Category name required", variant: "error" });
+      setCreateError("Enter a category name.");
       return;
     }
+    loadSeqRef.current += 1;
+    setLoading(false);
     const lower = trimmed.toLowerCase();
-    if (items.some((item) => item.value.toLowerCase() === lower && !item.archived)) {
+    const existingActive = items.find(
+      (item) => item.value.toLowerCase() === lower && !item.archived
+    );
+    if (existingActive) {
+      onValueChange(existingActive.value);
+      setAddOpen(false);
       toast({
-        title: "Duplicate category",
-        description: `“${trimmed}” already exists.`,
-        variant: "error",
+        title: "Category already exists",
+        description: `Selected “${existingActive.value}”.`,
+        variant: "default",
       });
       return;
     }
@@ -127,7 +145,7 @@ export function ExpenseCategorySelect({
     try {
       const created = await addExpenseCategory(trimmed);
       if (!created) {
-        toast({ title: "Could not create category", variant: "error" });
+        setCreateError("Category was not returned by the server.");
         return;
       }
       if (created.toLowerCase() !== trimmed.toLowerCase()) {
@@ -138,15 +156,17 @@ export function ExpenseCategorySelect({
         });
       }
       const next = await pickerItemsByStoredName("category", created);
-      setItems(next);
+      const selected = next.find((item) => item.value.toLowerCase() === created.toLowerCase());
+      const nextWithCreated = selected ? next : [...next, { value: created, label: created }];
+      setItems(nextWithCreated);
       onCategoriesUpdatedRef.current?.(
-        next.filter((item) => !item.archived).map((item) => item.value)
+        nextWithCreated.filter((item) => !item.archived).map((item) => item.value)
       );
-      onValueChange(created);
+      onValueChange(selected?.value ?? created);
       setAddOpen(false);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Create failed";
-      toast({ title: "Category", description: msg, variant: "error" });
+      setCreateError(msg);
     } finally {
       setCreating(false);
     }
@@ -158,6 +178,7 @@ export function ExpenseCategorySelect({
         value={radixValue}
         disabled={disabled || loading}
         onValueChange={(v) => {
+          if (!v.trim()) return;
           if (v === ADD_NEW_VALUE) {
             setAddOpen(true);
             return;
@@ -194,7 +215,10 @@ export function ExpenseCategorySelect({
           <Input
             ref={newInputRef}
             value={newName}
-            onChange={(e) => setNewName(e.target.value)}
+            onChange={(e) => {
+              setNewName(e.target.value);
+              if (createError) setCreateError(null);
+            }}
             placeholder="Category name"
             className="h-9"
             disabled={creating}
@@ -205,6 +229,15 @@ export function ExpenseCategorySelect({
               }
             }}
           />
+          {createError ? (
+            <p
+              data-testid="expense-category-create-error"
+              role="alert"
+              className="text-xs leading-snug text-destructive"
+            >
+              {createError}
+            </p>
+          ) : null}
           <DialogFooter className="gap-2 sm:gap-2">
             <Button
               type="button"

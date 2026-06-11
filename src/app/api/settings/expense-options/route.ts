@@ -38,6 +38,11 @@ function isMissingTable(error: { message?: string } | null): boolean {
   return /schema cache|relation.*does not exist|could not find the table/i.test(message);
 }
 
+function isMissingColumn(error: { message?: string } | null): boolean {
+  const message = error?.message ?? "";
+  return /column .* does not exist|does not exist.*column|schema cache/i.test(message);
+}
+
 function sanitizeType(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const type = value.trim();
@@ -46,6 +51,10 @@ function sanitizeType(value: unknown): string | null {
 
 function stringOrNull(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function booleanOrNull(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
 }
 
 function slugKey(value: string): string {
@@ -181,7 +190,11 @@ export async function POST(request: Request) {
     return apiError(409, "Could not create expense option.");
   } catch (error) {
     console.error("[settings/expense-options] create failed", error);
-    return apiError(500, "Failed to save expense option.");
+    const message =
+      error && typeof error === "object" && "message" in error
+        ? String(error.message)
+        : "Failed to save expense option.";
+    return apiError(500, message);
   }
 }
 
@@ -198,11 +211,175 @@ export async function PATCH(request: Request) {
   const action = stringOrNull(body.action);
   const id = stringOrNull(body.id);
   const type = sanitizeType(body.type);
-  if (action !== "set-default" || !id || !type) {
+  if (!action || !id || !type) {
     return apiError(400, "Unsupported expense option action.");
   }
 
   try {
+    if (action === "rename") {
+      const name = stringOrNull(body.name);
+      if (!name) return apiError(400, "Expense option name is required.");
+
+      const { data: row, error: loadError } = await supabase
+        .from("expense_options")
+        .select("*")
+        .eq("id", id)
+        .eq("type", type)
+        .maybeSingle();
+      if (loadError) throw loadError;
+      if (!row) return apiError(404, "Expense option not found.");
+
+      const current = row as ExpenseOptionRow;
+      if (current.name.trim().toLowerCase() !== name.toLowerCase()) {
+        const { data: duplicate, error: duplicateError } = await supabase
+          .from("expense_options")
+          .select("id")
+          .eq("type", type)
+          .neq("id", id)
+          .ilike("name", name)
+          .limit(1)
+          .maybeSingle();
+        if (duplicateError) throw duplicateError;
+        if (duplicate) return apiError(409, "An expense option with this name already exists.");
+
+        if (type === "payment_account") {
+          const { data: duplicateAccount, error: accountDuplicateError } = await supabase
+            .from("payment_accounts")
+            .select("id")
+            .neq("id", current.key)
+            .ilike("name", name)
+            .limit(1)
+            .maybeSingle();
+          if (
+            accountDuplicateError &&
+            !isMissingTable(accountDuplicateError) &&
+            !isMissingColumn(accountDuplicateError)
+          ) {
+            throw accountDuplicateError;
+          }
+          if (duplicateAccount)
+            return apiError(409, "A payment account with this name already exists.");
+
+          const { error: accountUpdateError } = await supabase
+            .from("payment_accounts")
+            .update({ name })
+            .eq("id", current.key);
+          if (
+            accountUpdateError &&
+            !isMissingTable(accountUpdateError) &&
+            !isMissingColumn(accountUpdateError)
+          ) {
+            throw accountUpdateError;
+          }
+        }
+
+        const { data: updated, error: updateError } = await supabase
+          .from("expense_options")
+          .update({ name })
+          .eq("id", id)
+          .eq("type", type)
+          .select("*")
+          .maybeSingle();
+        if (updateError) throw updateError;
+        if (!updated) return apiError(404, "Expense option not found.");
+
+        if (type === "category") {
+          const { error: lineUpdateError } = await supabase
+            .from("expense_lines")
+            .update({ category: name })
+            .ilike("category", current.name);
+          if (
+            lineUpdateError &&
+            !isMissingTable(lineUpdateError) &&
+            !isMissingColumn(lineUpdateError)
+          ) {
+            throw lineUpdateError;
+          }
+        }
+        if (type === "payment_method") {
+          const { error: expenseUpdateError } = await supabase
+            .from("expenses")
+            .update({ payment_method: name })
+            .ilike("payment_method", current.name);
+          if (
+            expenseUpdateError &&
+            !isMissingTable(expenseUpdateError) &&
+            !isMissingColumn(expenseUpdateError)
+          ) {
+            throw expenseUpdateError;
+          }
+        }
+
+        return NextResponse.json({ ok: true, row: updated }, { headers: NO_CACHE_HEADERS });
+      }
+
+      return NextResponse.json({ ok: true, row: current }, { headers: NO_CACHE_HEADERS });
+    }
+
+    if (action === "set-active") {
+      const active = booleanOrNull(body.active);
+      if (active == null) return apiError(400, "Active state is required.");
+
+      const { data: row, error: loadError } = await supabase
+        .from("expense_options")
+        .select("*")
+        .eq("id", id)
+        .eq("type", type)
+        .maybeSingle();
+      if (loadError) throw loadError;
+      if (!row) return apiError(404, "Expense option not found.");
+      const current = row as ExpenseOptionRow;
+      if (!active && current.type === "payment_source" && current.is_system) {
+        return apiError(400, "System payment sources cannot be archived.");
+      }
+
+      if (!active && current.is_default) {
+        const { data: nextDefault, error: nextError } = await supabase
+          .from("expense_options")
+          .select("*")
+          .eq("type", type)
+          .eq("active", true)
+          .neq("id", id)
+          .order("sort_order", { ascending: true })
+          .order("name", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (nextError) throw nextError;
+        if (!nextDefault) {
+          return apiError(400, "Choose another active default before archiving this option.");
+        }
+
+        const { error: clearError } = await supabase
+          .from("expense_options")
+          .update({ is_default: false })
+          .eq("type", type);
+        if (clearError) throw clearError;
+
+        const { error: setNextError } = await supabase
+          .from("expense_options")
+          .update({ is_default: true })
+          .eq("id", (nextDefault as ExpenseOptionRow).id)
+          .eq("type", type);
+        if (setNextError) throw setNextError;
+      }
+
+      const { data: updated, error: updateError } = await supabase
+        .from("expense_options")
+        .update({ active, ...(active ? {} : { is_default: false }) })
+        .eq("id", id)
+        .eq("type", type)
+        .select("*")
+        .maybeSingle();
+      if (updateError) throw updateError;
+      if (!updated) return apiError(404, "Expense option not found.");
+
+      return NextResponse.json({ ok: true, row: updated }, { headers: NO_CACHE_HEADERS });
+    }
+
+    if (action !== "set-default") {
+      return apiError(400, "Unsupported expense option action.");
+    }
+
     const { data: row, error: loadError } = await supabase
       .from("expense_options")
       .select("id,type,active")

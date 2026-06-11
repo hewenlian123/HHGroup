@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
 import {
   E2E_FINANCIAL_EXPENSES_ARCHIVE_URL,
@@ -14,6 +15,61 @@ const PNG_1X1 = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
   "base64"
 );
+
+function adminClient(): SupabaseClient | null {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+
+async function cleanupQuickCategoryRows(
+  admin: SupabaseClient,
+  {
+    categoryNames,
+    vendorPrefix,
+  }: {
+    categoryNames: string[];
+    vendorPrefix: string;
+  }
+) {
+  const { data: expenses, error: expenseLoadError } = await admin
+    .from("expenses")
+    .select("id")
+    .or(`vendor_name.ilike.${vendorPrefix}%,vendor.ilike.${vendorPrefix}%`);
+  if (expenseLoadError)
+    throw new Error(`quick category cleanup load failed: ${expenseLoadError.message}`);
+
+  const expenseIds = (expenses ?? []).map((row) => String((row as { id: string }).id));
+  if (expenseIds.length > 0) {
+    const lineDelete = await admin.from("expense_lines").delete().in("expense_id", expenseIds);
+    if (lineDelete.error) {
+      throw new Error(`quick category cleanup lines failed: ${lineDelete.error.message}`);
+    }
+    const expenseDelete = await admin.from("expenses").delete().in("id", expenseIds);
+    if (expenseDelete.error) {
+      throw new Error(`quick category cleanup expenses failed: ${expenseDelete.error.message}`);
+    }
+  }
+
+  for (const name of categoryNames) {
+    await admin.from("expense_options").delete().eq("type", "category").ilike("name", name);
+  }
+}
+
+async function addCategoryFromQuickExpense(
+  page: import("@playwright/test").Page,
+  dialog: import("@playwright/test").Locator,
+  name: string
+) {
+  await dialog.locator("#quick-expense-category-select").click();
+  await page.getByRole("option", { name: "+ Add new category" }).click();
+  const categoryDialog = page.getByRole("dialog", { name: /New category/i });
+  await expect(categoryDialog).toBeVisible({ timeout: 10_000 });
+  await categoryDialog.getByPlaceholder("Category name").fill(name);
+  await categoryDialog.getByRole("button", { name: "Add", exact: true }).click();
+  return categoryDialog;
+}
 
 test.describe("Quick Expense: upload and save", () => {
   test.describe.configure({ timeout: 120_000 });
@@ -193,6 +249,163 @@ test.describe("Quick Expense: upload and save", () => {
     await expect(dataRow).toBeVisible({ timeout: 20_000 });
     await expect(dataRow).toContainText("Unknown Vendor");
     await expect(dataRow).not.toContainText(vendorMark);
+  });
+
+  test("adds, reuses, and saves a Quick Expense category without losing form fields", async ({
+    page,
+  }) => {
+    const admin = adminClient();
+    if (!admin) {
+      test.skip(true, "Supabase service role is not configured.");
+      return;
+    }
+
+    const stamp = Date.now();
+    const vendorPrefix = `E2E-QECAT-${stamp}`;
+    const newCategory = `E2E Foundation ${stamp}`;
+
+    await cleanupQuickCategoryRows(admin, {
+      categoryNames: [newCategory],
+      vendorPrefix,
+    });
+
+    try {
+      await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
+      await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
+      await waitForExpensesQuerySuccess(page);
+
+      await clickVisibleQuickExpenseButton(page);
+      const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+      await expect(dialog).toBeVisible({ timeout: 15_000 });
+
+      const vendorMark = `${vendorPrefix}-save`;
+      await dialog.locator("input[type='number']").fill("88.88");
+      await dialog.locator("#quick-expense-vendor").fill(vendorMark);
+      await dialog.locator("#quick-expense-project-select").click();
+      await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
+      await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
+      const paymentBefore = await dialog.locator("#quick-expense-payment-select").innerText();
+      const dateBefore = await dialog.locator("input[type='date']").inputValue();
+
+      const categoryDialog = await addCategoryFromQuickExpense(page, dialog, newCategory);
+      await expect(categoryDialog).not.toBeVisible({ timeout: 15_000 });
+      await expect(dialog.locator("#quick-expense-category-select")).toContainText(newCategory, {
+        timeout: 15_000,
+      });
+      await expect(dialog.locator("input[type='number']")).toHaveValue("88.88");
+      await expect(dialog.locator("#quick-expense-vendor")).toHaveValue(vendorMark);
+      await expect(dialog.locator("#quick-expense-project-select")).toContainText(
+        E2E_PRESERVED_PROJECT_LABEL
+      );
+      await expect(dialog.locator("#quick-expense-payment-select")).toContainText(
+        paymentBefore.trim()
+      );
+      await expect(dialog.locator("input[type='date']")).toHaveValue(dateBefore);
+
+      await dialog.locator("#quick-expense-category-select").click();
+      await page.getByRole("option", { name: "Other", exact: true }).click();
+      await expect(dialog.locator("#quick-expense-category-select")).toContainText("Other");
+
+      const existingCategoryDialog = await addCategoryFromQuickExpense(page, dialog, newCategory);
+      await expect(existingCategoryDialog).not.toBeVisible({ timeout: 15_000 });
+      await expect(dialog.locator("#quick-expense-category-select")).toContainText(newCategory, {
+        timeout: 15_000,
+      });
+      await expect(dialog.locator("#quick-expense-vendor")).toHaveValue(vendorMark);
+      await expect(dialog.locator("input[type='number']")).toHaveValue("88.88");
+
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      if (
+        await dialog
+          .getByText(/Possible duplicate/i)
+          .isVisible({ timeout: 4_000 })
+          .catch(() => false)
+      ) {
+        await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      }
+
+      await expect
+        .poll(
+          async () => {
+            const body = await page.locator("body").innerText();
+            if (/save failed/i.test(body)) {
+              throw new Error("Quick expense: Save failed toast is visible.");
+            }
+            if (/expense saved/i.test(body)) return "done";
+            return null;
+          },
+          { timeout: 120_000, intervals: [400] }
+        )
+        .toBe("done");
+
+      const saved = await assertE2EExpenseVisibleInDatabase(vendorMark);
+      expect(saved.line_category).toBe(newCategory);
+
+      await clickVisibleQuickExpenseButton(page);
+      const reopened = page.getByRole("dialog", { name: /Quick expense/i });
+      await expect(reopened).toBeVisible({ timeout: 15_000 });
+      await reopened.locator("#quick-expense-category-select").click();
+      await expect(page.getByRole("option", { name: newCategory, exact: true })).toBeVisible({
+        timeout: 15_000,
+      });
+    } finally {
+      await cleanupQuickCategoryRows(admin, {
+        categoryNames: [newCategory],
+        vendorPrefix,
+      });
+    }
+  });
+
+  test("shows precise inline category create errors and preserves Quick Expense fields", async ({
+    page,
+  }) => {
+    await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
+    await waitForExpensesQuerySuccess(page);
+
+    await clickVisibleQuickExpenseButton(page);
+    const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+    await expect(dialog).toBeVisible({ timeout: 15_000 });
+
+    const vendorMark = `E2E-QECAT-ERR-${Date.now()}`;
+    await dialog.locator("input[type='number']").fill("55.55");
+    await dialog.locator("#quick-expense-vendor").fill(vendorMark);
+    await dialog.locator("#quick-expense-project-select").click();
+    await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
+    await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
+
+    await page.route("**/api/settings/expense-options", async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.continue();
+        return;
+      }
+      await route.fulfill({
+        status: 403,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: false,
+          message: "Permission denied for table expense_options.",
+        }),
+      });
+    });
+
+    const categoryDialog = await addCategoryFromQuickExpense(
+      page,
+      dialog,
+      `E2E Blocked Category ${Date.now()}`
+    );
+    await expect(categoryDialog).toBeVisible();
+    await expect(categoryDialog.getByTestId("expense-category-create-error")).toContainText(
+      "Permission denied for table expense_options."
+    );
+    await categoryDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(categoryDialog).not.toBeVisible();
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator("input[type='number']")).toHaveValue("55.55");
+    await expect(dialog.locator("#quick-expense-vendor")).toHaveValue(vendorMark);
+    await expect(dialog.locator("#quick-expense-project-select")).toContainText(
+      E2E_PRESERVED_PROJECT_LABEL
+    );
   });
 
   test("mobile iPhone: receipt input attrs, preview on pick, failed upload keeps preview + retry", async ({

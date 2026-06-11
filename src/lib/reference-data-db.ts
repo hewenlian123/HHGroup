@@ -44,6 +44,12 @@ const DEFAULT_VENDORS = [
 ];
 const DEFAULT_PAYMENT_METHODS = ["ACH", "Card", "Cash", "Check", "Wire", "Zelle"];
 
+type ExpenseOptionApiResponse = {
+  ok?: boolean;
+  row?: { name?: string | null } | null;
+  message?: string;
+};
+
 async function ensureExpenseCategoriesExist(): Promise<void> {
   if (await expenseOpts.expenseOptionsTableAvailable()) {
     const rows = await expenseOpts.listExpenseOptionsByType("category");
@@ -65,6 +71,29 @@ async function ensureExpenseCategoriesExist(): Promise<void> {
   for (const name of DEFAULT_CATEGORIES) {
     await c.from("categories").insert({ name, type: "expense", status: "active" });
   }
+}
+
+async function readJson<T>(response: Response): Promise<T | null> {
+  try {
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+async function addExpenseCategoryViaApi(name: string): Promise<string> {
+  const response = await fetch("/api/settings/expense-options", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ type: "category", name }),
+  });
+  const body = await readJson<ExpenseOptionApiResponse>(response);
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message || `Failed to create category (${response.status}).`);
+  }
+  const created = body.row?.name?.trim();
+  if (!created) throw new Error("Category was not returned by the server.");
+  return created;
 }
 
 export async function getExpenseCategories(includeDisabled = false): Promise<string[]> {
@@ -97,6 +126,9 @@ export async function getExpenseCategories(includeDisabled = false): Promise<str
 export async function addExpenseCategory(name: string): Promise<string> {
   const trimmed = name.trim();
   if (!trimmed) return "";
+  if (typeof window !== "undefined" && (await expenseOpts.expenseOptionsTableAvailable())) {
+    return addExpenseCategoryViaApi(trimmed);
+  }
   if (await expenseOpts.expenseOptionsTableAvailable()) {
     const rows = await expenseOpts.listExpenseOptionsByType("category");
     const hit = rows.find((r) => r.name.toLowerCase() === trimmed.toLowerCase());

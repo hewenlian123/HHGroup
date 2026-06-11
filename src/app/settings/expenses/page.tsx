@@ -22,23 +22,9 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Dialog } from "@/components/ui/dialog";
 import { tableRawThClass } from "@/components/ui/table";
 import { useToast } from "@/components/toast/toast-provider";
-import {
-  addExpenseCategory,
-  addPaymentAccount,
-  disableExpenseCategory,
-  disablePaymentMethod,
-  enableExpenseCategory,
-  enablePaymentMethod,
-  renameExpenseCategory,
-  renamePaymentMethod,
-} from "@/lib/data";
+import { addExpenseCategory, addPaymentAccount } from "@/lib/data";
 import type { ExpenseOptionRow, ExpenseOptionType } from "@/lib/expense-options-db";
-import {
-  loadExpenseOptionsAdmin,
-  renamePaymentAccountOptionDisplay,
-  setExpenseOptionActive,
-  updateExpenseOptionName,
-} from "@/lib/expense-options-db";
+import { loadExpenseOptionsAdmin } from "@/lib/expense-options-db";
 import type { PaymentAccountType } from "@/lib/payment-accounts-db";
 import { cn } from "@/lib/utils";
 import {
@@ -106,6 +92,40 @@ async function setDefaultExpenseOptionViaApi(
   });
   const body = await readJson<ExpenseOptionsApiResponse>(response);
   return response.ok && Boolean(body?.ok);
+}
+
+async function renameExpenseOptionViaApi(
+  id: string,
+  type: ExpenseOptionType,
+  name: string
+): Promise<{ ok: boolean; message?: string }> {
+  const response = await fetch("/api/settings/expense-options", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ action: "rename", id, type, name }),
+  });
+  const body = await readJson<ExpenseOptionsApiResponse>(response);
+  return {
+    ok: response.ok && Boolean(body?.ok),
+    message: body?.message,
+  };
+}
+
+async function setExpenseOptionActiveViaApi(
+  id: string,
+  type: ExpenseOptionType,
+  active: boolean
+): Promise<{ ok: boolean; message?: string }> {
+  const response = await fetch("/api/settings/expense-options", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ action: "set-active", id, type, active }),
+  });
+  const body = await readJson<ExpenseOptionsApiResponse>(response);
+  return {
+    ok: response.ok && Boolean(body?.ok),
+    message: body?.message,
+  };
 }
 
 export default function SettingsExpensesPage() {
@@ -182,18 +202,13 @@ export default function SettingsExpensesPage() {
     }
     setRenameBusy(true);
     try {
-      let ok = false;
-      if (renameRow.type === "payment_account") {
-        ok = await renamePaymentAccountOptionDisplay(renameRow.key, next);
-      } else if (renameRow.type === "category") {
-        ok = await renameExpenseCategory(renameRow.name, next);
-      } else if (renameRow.type === "payment_method") {
-        ok = await renamePaymentMethod(renameRow.name, next);
-      } else {
-        ok = await updateExpenseOptionName(renameRow.id, next);
-      }
-      if (!ok) {
-        toast({ title: "Rename failed", variant: "error" });
+      const result = await renameExpenseOptionViaApi(renameRow.id, renameRow.type, next);
+      if (!result.ok) {
+        toast({
+          title: "Rename failed",
+          description: result.message,
+          variant: "error",
+        });
         return;
       }
       toast({ title: "Saved", variant: "success" });
@@ -214,30 +229,14 @@ export default function SettingsExpensesPage() {
       });
       return;
     }
-    if (r.type === "category") {
-      const ok = active
-        ? await enableExpenseCategory(r.name)
-        : await disableExpenseCategory(r.name);
-      if (!ok) {
-        toast({ title: "Update failed", variant: "error" });
-        return;
-      }
-    } else if (r.type === "payment_method") {
-      const ok = active ? await enablePaymentMethod(r.name) : await disablePaymentMethod(r.name);
-      if (!ok) {
-        toast({ title: "Update failed", variant: "error" });
-        return;
-      }
-    } else {
-      const res = await setExpenseOptionActive(r.id, active);
-      if (!res.ok) {
-        toast({
-          title: "Cannot update",
-          description: res.reason ?? "Update failed.",
-          variant: "error",
-        });
-        return;
-      }
+    const res = await setExpenseOptionActiveViaApi(r.id, r.type, active);
+    if (!res.ok) {
+      toast({
+        title: active ? "Could not restore" : "Cannot archive",
+        description: res.message ?? "Update failed.",
+        variant: "error",
+      });
+      return;
     }
     await refresh();
   };
