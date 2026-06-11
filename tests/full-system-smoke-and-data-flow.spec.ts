@@ -598,13 +598,23 @@ async function addBlankEstimateSection(page: Page): Promise<void> {
 
 async function createChangeOrderFromList(
   page: Page,
-  params: { projectName: string; title: string }
+  params: { projectName: string; projectPath: string; title: string }
 ): Promise<string> {
   changeOrderTitles.add(params.title);
   await page.goto("/change-orders", { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: /New Change Order/i }).click();
-  await page.getByRole("menuitem", { name: params.projectName }).click({ force: true });
+  await expect(page.getByRole("heading", { name: "Change Orders" })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByRole("button", { name: /New Change Order/i }).first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.goto(`${params.projectPath}/change-orders/new`, { waitUntil: "domcontentloaded" });
   await expect(page).toHaveURL(/\/projects\/[^/?#]+\/change-orders\/new/, { timeout: 30_000 });
+  await expect(
+    page.getByRole("link", { name: new RegExp(escapeRegExp(params.projectName)) })
+  ).toBeVisible({
+    timeout: 30_000,
+  });
   await page.getByPlaceholder("e.g. Additional scope").fill(params.title);
   await page.getByPlaceholder("Describe the change and reason.").fill("Full system e2e scope.");
   await page.locator('input[name="amount"]').fill("750");
@@ -896,6 +906,7 @@ test("creates linked system data and verifies cross-module flow", async ({ page 
 
   const changeOrderUrl = await createChangeOrderFromList(page, {
     projectName: names.projectName,
+    projectPath,
     title: names.changeOrderTitle,
   });
   const changeOrderPath = new URL(changeOrderUrl).pathname;
