@@ -191,12 +191,16 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
         aliases: ["/labor/workers"],
         excludePaths: ["/workers/summary"],
       },
+      { href: "/workers/summary", label: "Worker Summary", icon: "workerSummary" },
       {
         href: "/labor/payroll",
         label: "Payroll Summary",
         icon: "payroll",
         aliases: ["/labor/payroll-summary"],
       },
+      { href: "/labor/worker-balances", label: "Worker Balances", icon: "workerBalances" },
+      { href: "/labor/payments", label: "Worker Payments", icon: "workerPayments" },
+      { href: "/labor/advances", label: "Worker Advances", icon: "workerAdvances" },
       {
         href: "/financial/vendors",
         label: "Vendors",
