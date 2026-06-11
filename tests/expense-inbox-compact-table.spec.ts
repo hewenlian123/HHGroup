@@ -180,7 +180,7 @@ async function seedCompactRows(admin: SupabaseClient): Promise<SeededCompactRows
       notes: "compact missing project row",
       total: 77,
       amount: 77,
-      line_count: 0,
+      line_count: 1,
       status: "needs_review",
       source_type: "receipt_upload",
       project_id: null,
@@ -327,6 +327,14 @@ async function seedCompactRows(admin: SupabaseClient): Promise<SeededCompactRows
       category: "—",
       amount: 66,
       total: 66,
+    },
+    {
+      id: randomUUID(),
+      expense_id: ids.missingProject,
+      project_id: null,
+      category: "Materials",
+      amount: 77,
+      total: 77,
     },
     {
       id: randomUUID(),
@@ -549,6 +557,13 @@ test.describe("Expense inbox compact table", () => {
           .join(" ")
       );
       expect(nonIssueText).not.toMatch(/Missing project/);
+      await missingProjectRow
+        .getByTestId("expense-inbox-issues")
+        .getByRole("button", { name: /issue/i })
+        .click();
+      popover = page.getByTestId("expense-inbox-issue-popover").last();
+      await expect(popover).toContainText("Missing project");
+      await page.keyboard.press("Escape");
 
       const duplicateIssueCell = expenseListRowById(page, seeded.ids.duplicateA).getByTestId(
         "expense-inbox-issues"

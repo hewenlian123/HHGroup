@@ -54,6 +54,7 @@ import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-prefer
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import {
   deriveExpenseWorkflowStatus,
+  expenseCategoryRequiresProject,
   expenseNeedsReviewFromDb,
   expenseStatusUiLabel,
   preserveConfirmedExpenseStatusOnCompleteSave,
@@ -417,6 +418,15 @@ export function EditExpenseModal({
     const numAmount = parseFloat(amount);
     if (Number.isNaN(numAmount) || numAmount < 0) {
       toast({ title: "Invalid amount", variant: "error" });
+      return;
+    }
+    if (expenseCategoryRequiresProject(category) && !projectId) {
+      toast({
+        title: "Missing project",
+        description:
+          "Project Cost expenses must be assigned to a project. Choose Overhead only for company expenses.",
+        variant: "error",
+      });
       return;
     }
     flushSync(() => setSaving(true));

@@ -38,6 +38,7 @@ import {
 import { createBrowserClient } from "@/lib/supabase";
 import {
   deriveExpenseWorkflowStatus,
+  expenseCategoryRequiresProject,
   EXPENSE_ACCOUNT_SELECT_NONE,
   EXPENSE_PROJECT_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
@@ -237,6 +238,18 @@ export default function NewExpensePage() {
         description: showSplitLines
           ? "Total of split lines must match the Amount field."
           : "Line amounts must match the Amount field.",
+        variant: "error",
+      });
+      return false;
+    }
+    const projectCostLine = effectiveLines.find(
+      (line) => expenseCategoryRequiresProject(line.category) && !line.projectId
+    );
+    if (projectCostLine) {
+      toast({
+        title: "Missing project",
+        description:
+          "Project Cost expenses must be assigned to a project. Choose Overhead only for company expenses.",
         variant: "error",
       });
       return false;

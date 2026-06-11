@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { tableRawThClass } from "@/components/ui/table";
 import {
   expenseHasCategoryForWorkflow,
-  expenseHasProjectForWorkflow,
+  expenseHasRequiredProjectForWorkflow,
   expenseNeedsReviewFromDb,
 } from "@/lib/expense-workflow-status";
 import {
@@ -132,9 +132,8 @@ function ExpenseReceiptCell({
   );
 }
 
-function inboxProjectIssueRequired(expense: Expense, projLabel: string): boolean {
-  if (projLabel === "Overhead") return false;
-  return !expenseHasProjectForWorkflow(expense);
+function inboxProjectIssueRequired(expense: Expense): boolean {
+  return !expenseHasRequiredProjectForWorkflow(expense);
 }
 
 function buildInboxIssues({
@@ -753,7 +752,7 @@ function DesktopRows({
                   const status = row.status ?? "pending";
                   const catLabel = primaryCategory(row);
                   const missingReceipt = getExpenseReceiptItems(row).length === 0;
-                  const missingProject = inboxProjectIssueRequired(row, projLabel);
+                  const missingProject = inboxProjectIssueRequired(row);
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
                   const showDupHint = dupIds.has(row.id);
                   const issues = buildInboxIssues({
@@ -1061,7 +1060,7 @@ function MobileRows({
                   const status = row.status ?? "pending";
                   const catLabel = primaryCategory(row);
                   const missingReceipt = getExpenseReceiptItems(row).length === 0;
-                  const missingProject = inboxProjectIssueRequired(row, projLabel);
+                  const missingProject = inboxProjectIssueRequired(row);
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
                   const showDupHint = dupIds.has(row.id);
                   const issues = buildInboxIssues({

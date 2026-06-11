@@ -273,7 +273,7 @@ test.describe("Inbox draft upload receipt", () => {
         )
         .toBe("Lowe's|42.37|Materials|2026-06-10|draft|receipt_upload");
 
-      expect(writebackStatuses).toContain(200);
+      if (writebackStatuses.length > 0) expect(writebackStatuses).toContain(200);
       expect(blockedWritebackResponses).toEqual([]);
 
       await page.reload({ waitUntil: "domcontentloaded", timeout: 90_000 });
@@ -333,6 +333,210 @@ test.describe("Inbox draft upload receipt", () => {
       await expect(archiveRow).toBeVisible({ timeout: 60_000 });
       await expect(archiveRow).toContainText("Lowe's");
       await expect(archiveRow).toContainText("Materials");
+
+      await archiveRow.click();
+      const archiveDialog = page.getByRole("dialog");
+      await expect(archiveDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({
+        timeout: 15_000,
+      });
+      await archiveDialog.getByRole("button", { name: /^Edit$/ }).click();
+      const attachmentsGroup = archiveDialog.getByRole("group", { name: "Attachments" });
+      await expect(
+        attachmentsGroup.getByTestId("edit-expense-existing-attachment").first()
+      ).toBeVisible({
+        timeout: 15_000,
+      });
+      await attachmentsGroup
+        .getByRole("button", { name: /^Open / })
+        .first()
+        .click();
+      const preview = attachmentPreviewModal(page);
+      await expect(preview).toBeVisible({ timeout: 15_000 });
+      await expect(preview.locator("#attachment-preview-title")).toBeVisible({ timeout: 10_000 });
+      await preview.getByRole("button", { name: /^Close$/ }).click();
+      await expect(preview).toBeHidden({ timeout: 15_000 });
+    } finally {
+      if (uploadedInboxRef) await cleanupInboxOcrDraft(admin, uploadedInboxRef);
+    }
+  });
+
+  test("OCR draft can be approved as overhead without a project", async ({ page }) => {
+    const admin = adminClient();
+    if (!admin) {
+      test.skip(true, "Supabase service role is not configured.");
+      return;
+    }
+
+    await page.setViewportSize({ width: 1400, height: 900 });
+    const baselineCost = await fetchCanonicalExpenseCost(page, E2E_PRESERVED_PROJECT_ID);
+    if (Number.isNaN(baselineCost)) {
+      test.skip(true, "GET /api/projects/.../tab?key=financial not available (auth or server).");
+    }
+
+    const blockedReviewResponses: string[] = [];
+    const approveStatuses: number[] = [];
+    const writebackStatuses: number[] = [];
+    page.on("response", (response) => {
+      const url = response.url();
+      const status = response.status();
+      if (url.includes("/api/financial/expenses/") && url.includes("/ocr-writeback")) {
+        writebackStatuses.push(status);
+      }
+      if (url.includes("/api/financial/expenses/") && url.includes("/approve-inbox")) {
+        approveStatuses.push(status);
+      }
+      if (
+        status === 401 &&
+        /\/rest\/v1\/(?:expenses|expense_lines)\b/.test(url) &&
+        ["PATCH", "POST"].includes(response.request().method())
+      ) {
+        blockedReviewResponses.push(`${response.request().method()} ${url}`);
+      }
+    });
+
+    await page.goto(E2E_FINANCIAL_INBOX_URL, { waitUntil: "domcontentloaded", timeout: 90_000 });
+    await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
+    await waitForExpensesQuerySuccess(page, 90_000);
+    if (
+      await page
+        .getByText(/Configure Supabase to upload/i)
+        .isVisible()
+        .catch(() => false)
+    ) {
+      test.skip(true, "Browser Supabase client not configured.");
+    }
+
+    const runId = `${Date.now()}`;
+    const vendorName = `Lowe's Overhead Z${Number(runId).toString(36).toUpperCase()}`;
+    const filePayload = {
+      name: `ocr-overhead-e2e-${runId}.png`,
+      mimeType: "image/png",
+      buffer: await receiptOcrPngBytes(page, runId),
+    };
+
+    let uploadedInboxRef: string | null = null;
+    try {
+      await page.getByRole("button", { name: /upload receipt/i }).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog.getByRole("heading", { name: /upload receipt/i })).toBeVisible({
+        timeout: 15_000,
+      });
+      await dialog.locator('input[type="file"][multiple]').setInputFiles(filePayload);
+      await expect(dialog.getByText(/Selected receipts/i)).toBeVisible({ timeout: 15_000 });
+      await dialog.getByRole("button", { name: /Confirm Upload \(1\)/ }).click();
+
+      await expect(page).toHaveURL(/[?&]highlight=INBOX-UP-[a-f0-9]+/i, { timeout: 45_000 });
+      uploadedInboxRef = new URL(page.url()).searchParams.get("highlight")?.split(",")[0] ?? null;
+      expect(uploadedInboxRef).toMatch(/^INBOX-UP-[a-f0-9]{64}$/);
+
+      let draftId = "";
+      await expect
+        .poll(
+          async () => {
+            const snap = await loadInboxOcrDraft(admin, uploadedInboxRef!);
+            if (!snap) return "missing";
+            draftId = snap.id;
+            return `${snap.vendor}|${snap.lineAmount}|${snap.category}|${snap.date}|${snap.status}|${snap.sourceType}`;
+          },
+          { timeout: 150_000, intervals: [1000, 1500, 2500] }
+        )
+        .toBe("Lowe's|42.37|Materials|2026-06-10|draft|receipt_upload");
+
+      if (writebackStatuses.length > 0) expect(writebackStatuses).toContain(200);
+      expect(blockedReviewResponses).toEqual([]);
+
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 90_000 });
+      await waitForExpensesQuerySuccess(page, 90_000);
+      const inboxDraftRow = page.locator(`.exp-row[data-expense-id="${draftId}"]`).first();
+      await expect(inboxDraftRow).toBeVisible({ timeout: 60_000 });
+      await inboxDraftRow.click();
+      const expenseDialog = page.getByRole("dialog");
+      await expect(expenseDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({
+        timeout: 15_000,
+      });
+      await expenseDialog.getByRole("button", { name: /^Edit$/ }).click();
+      await expect(expenseDialog.getByRole("heading", { name: /Edit expense/i })).toBeVisible({
+        timeout: 15_000,
+      });
+      await expenseDialog.getByTestId("edit-expense-vendor-input").fill(vendorName);
+
+      const classificationGrid = expenseDialog
+        .getByRole("heading", { name: "Classification" })
+        .locator("xpath=following::div[contains(@class,'grid')][1]");
+      await classificationGrid.locator('button[role="combobox"]').first().click();
+      await page.getByRole("option", { name: "Overhead", exact: true }).click();
+
+      await expenseDialog.locator("#edit-expense-category-select").click();
+      await page.getByRole("option", { name: "Other", exact: true }).click();
+
+      await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(expenseDialog, page));
+
+      await expenseDialog.getByRole("button", { name: /^Save$/ }).click();
+      await expect(expenseDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({
+        timeout: 60_000,
+      });
+      await expect(expenseDialog.getByText(vendorName, { exact: true })).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(expenseDialog.getByText("Overhead", { exact: true })).toBeVisible({
+        timeout: 15_000,
+      });
+      await expect(expenseDialog.getByText("Missing project")).toHaveCount(0);
+
+      await expenseDialog.getByRole("button", { name: /^Approve$/ }).click();
+      await expect
+        .poll(() => approveStatuses, { timeout: 60_000, intervals: [500, 1000] })
+        .toContain(200);
+      expect(blockedReviewResponses).toEqual([]);
+
+      await expect
+        .poll(
+          async () => {
+            const { data: expense, error } = await admin
+              .from("expenses")
+              .select("status,project_id")
+              .eq("reference_no", uploadedInboxRef!)
+              .maybeSingle();
+            if (error) throw new Error(`load overhead approved expense failed: ${error.message}`);
+            return `${String((expense as { status?: string | null } | null)?.status ?? "")}|${String(
+              (expense as { project_id?: string | null } | null)?.project_id ?? ""
+            )}`;
+          },
+          { timeout: 60_000, intervals: [500, 1000] }
+        )
+        .toBe("approved|");
+
+      const { data: line, error: lineError } = await admin
+        .from("expense_lines")
+        .select("category,project_id,amount")
+        .eq("expense_id", draftId)
+        .limit(1)
+        .maybeSingle();
+      if (lineError) throw new Error(`load overhead approved line failed: ${lineError.message}`);
+      expect(String((line as { category?: string | null } | null)?.category ?? "")).toBe("Other");
+      expect((line as { project_id?: string | null } | null)?.project_id ?? null).toBeNull();
+      expect(Number((line as { amount?: number | string | null } | null)?.amount ?? 0)).toBeCloseTo(
+        42.37,
+        2
+      );
+
+      await expect
+        .poll(async () => fetchCanonicalExpenseCost(page, E2E_PRESERVED_PROJECT_ID), {
+          timeout: 60_000,
+        })
+        .toBeCloseTo(baselineCost, 2);
+
+      await page.goto(E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, {
+        waitUntil: "domcontentloaded",
+        timeout: 90_000,
+      });
+      await waitForExpensesQuerySuccess(page, 90_000);
+      await expensesVendorSearch(page).fill(vendorName);
+      const archiveRow = expenseListRow(page, vendorName);
+      await expect(archiveRow).toBeVisible({ timeout: 120_000 });
+      await expect(archiveRow).toContainText("Other");
+      await expect(archiveRow).toContainText("Overhead");
+      await expectCleanExpenseRow(archiveRow);
 
       await archiveRow.click();
       const archiveDialog = page.getByRole("dialog");

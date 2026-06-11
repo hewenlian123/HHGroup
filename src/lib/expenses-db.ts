@@ -1236,7 +1236,11 @@ export async function createQuickExpenseWithClient(
 
   /** INSERT may fall back to `pending` when `reviewed` fails the status check; upgrade once lines exist. */
   const workflowDesired = deriveExpenseWorkflowStatus(projectId, category);
-  if (workflowDesired === "reviewed") {
+  const shouldUpgradeToReviewed =
+    workflowDesired === "reviewed" &&
+    (payload.initialStatus == null ||
+      expenseStatusForDatabase(payload.initialStatus) === "reviewed");
+  if (shouldUpgradeToReviewed) {
     const st = expenseStatusForDatabase("reviewed");
     const statusUpd = await c.from("expenses").update({ status: st }).eq("id", expenseId);
     if (statusUpd.error && !isMissingColumn(statusUpd.error)) {

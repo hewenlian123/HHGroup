@@ -49,8 +49,9 @@ import {
 } from "@/lib/inbox-upload-constants";
 import {
   deriveExpenseWorkflowStatus,
+  expenseCategoryRequiresProject,
   expenseHasCategoryForWorkflow,
-  expenseHasProjectForWorkflow,
+  expenseHasRequiredProjectForWorkflow,
   expenseNeedsReviewFromDb,
   expenseStatusUiLabel,
   preserveConfirmedExpenseStatusOnCompleteSave,
@@ -614,6 +615,15 @@ export function ExpenseInboxPreviewModal({
       toast({ title: "Invalid amount", variant: "error" });
       return;
     }
+    if (expenseCategoryRequiresProject(category) && !projectId) {
+      toast({
+        title: "Missing project",
+        description:
+          "Project Cost expenses must be assigned to a project. Choose Overhead only for company expenses.",
+        variant: "error",
+      });
+      return;
+    }
     flushSync(() => setSaving(true));
     try {
       const paId = paymentAccountId.trim() || null;
@@ -715,7 +725,7 @@ export function ExpenseInboxPreviewModal({
 
   const showMarkDone = expenseNeedsReviewFromDb(expense.status);
   const inboxUploadPreview = isInboxUploadExpenseReference(expense.referenceNo);
-  const missingProject = !expenseHasProjectForWorkflow(expense);
+  const missingProject = !expenseHasRequiredProjectForWorkflow(expense);
   const missingCategory = !expenseHasCategoryForWorkflow(expense);
   const missingReceipt = receiptItems.length === 0;
 

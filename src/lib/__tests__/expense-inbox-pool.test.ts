@@ -2,7 +2,10 @@ import type { Expense } from "@/lib/data";
 import { describe, expect, it } from "vitest";
 import {
   countExpensesMatchingInboxPool,
+  deriveExpenseWorkflowStatus,
+  expenseMatchesExpensesArchivePool,
   expenseMatchesInboxPool,
+  validateApproveInboxUploadDraft,
 } from "@/lib/expense-workflow-status";
 
 /** Test overrides may use legacy / string DB statuses not in the typed union. */
@@ -85,6 +88,15 @@ describe("expenseMatchesInboxPool", () => {
     ).toBe(false);
   });
 
+  it("allows Done overhead rows without project into Expenses archive", () => {
+    const e = mockExpense({
+      status: "reviewed",
+      lines: [{ id: "l1", projectId: null, category: "Fuel", amount: 1, memo: null }],
+    });
+    expect(expenseMatchesInboxPool(e, false)).toBe(false);
+    expect(expenseMatchesExpensesArchivePool(e)).toBe(true);
+  });
+
   it("excludes Done + missing category from Inbox", () => {
     expect(
       expenseMatchesInboxPool(
@@ -104,6 +116,40 @@ describe("expenseMatchesInboxPool", () => {
 
   it("excludes Done + duplicateHint from Inbox", () => {
     expect(expenseMatchesInboxPool(mockExpense({ status: "reviewed" }), true)).toBe(false);
+  });
+});
+
+describe("expense project requirement workflow", () => {
+  it("derives overhead without project as reviewed", () => {
+    expect(deriveExpenseWorkflowStatus(null, "Fuel")).toBe("reviewed");
+    expect(deriveExpenseWorkflowStatus(null, "Office supplies")).toBe("reviewed");
+  });
+
+  it("keeps project cost categories in review until a project is selected", () => {
+    expect(deriveExpenseWorkflowStatus(null, "Materials")).toBe("needs_review");
+    expect(deriveExpenseWorkflowStatus("proj-1", "Materials")).toBe("reviewed");
+  });
+
+  it("allows inbox upload overhead approval without project but blocks project cost", () => {
+    expect(
+      validateApproveInboxUploadDraft(
+        mockExpense({
+          referenceNo: "INBOX-UP-test",
+          paymentAccountId: "pay-1",
+          lines: [{ id: "l1", projectId: null, category: "Fuel", amount: 1, memo: null }],
+        })
+      )
+    ).toBeNull();
+
+    expect(
+      validateApproveInboxUploadDraft(
+        mockExpense({
+          referenceNo: "INBOX-UP-test",
+          paymentAccountId: "pay-1",
+          lines: [{ id: "l1", projectId: null, category: "Materials", amount: 1, memo: null }],
+        })
+      )
+    ).toBe("project");
   });
 });
 

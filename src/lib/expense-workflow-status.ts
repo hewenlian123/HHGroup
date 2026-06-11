@@ -58,7 +58,53 @@ export function deriveExpenseWorkflowStatus(
   const hasProject = projectId != null && String(projectId).trim() !== "";
   const cat = (category ?? "").trim();
   const hasCategory = cat !== "" && cat !== "—";
-  return hasProject && hasCategory ? "reviewed" : "needs_review";
+  if (!hasCategory) return "needs_review";
+  if (expenseCategoryRequiresProject(cat) && !hasProject) return "needs_review";
+  return "reviewed";
+}
+
+function normalizeExpenseCategory(value: string | null | undefined): string {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Categories that are normally company overhead and do not need a project allocation.
+ * This is workflow classification only; project cost math still keys strictly on project_id.
+ */
+export function expenseCategoryLooksOverhead(category: string | null | undefined): boolean {
+  const c = normalizeExpenseCategory(category);
+  if (!c || c === "other" || c === "overhead") return true;
+  return (
+    /\b(gas|fuel|gasoline|petrol)\b/.test(c) ||
+    /\bvehicle\b.*\b(maintenance|repair|service)\b/.test(c) ||
+    /\b(auto|truck|car)\b.*\b(maintenance|repair|service|insurance)\b/.test(c) ||
+    /\binsurance\b/.test(c) ||
+    /\boffice\b.*\b(supply|supplies|expense|expenses)\b/.test(c) ||
+    /\bsoftware\b|\bsubscription\b|\bsaas\b/.test(c) ||
+    /\b(phone|internet|telecom|mobile|cell)\b/.test(c) ||
+    /\b(accounting|bookkeeping|legal|attorney|bank fee|bank fees|banking fee|banking fees)\b/.test(
+      c
+    ) ||
+    /\b(shared|company|admin|administrative)\b.*\b(tool|tools|software|subscription)\b/.test(c) ||
+    /\b(utility|utilities)\b/.test(c)
+  );
+}
+
+/**
+ * Project-cost categories must carry a real project. Unknown categories default to Project Cost
+ * so new job-specific categories do not silently become overhead.
+ */
+export function expenseCategoryRequiresProject(category: string | null | undefined): boolean {
+  const c = normalizeExpenseCategory(category);
+  if (!c || c === "—") return false;
+  if (expenseCategoryLooksOverhead(c)) return false;
+  return true;
 }
 
 /**
@@ -98,6 +144,14 @@ export function expenseHasProjectForWorkflow(expense: Expense): boolean {
   return expenseEffectiveProjectId(expense) != null;
 }
 
+export function expenseRequiresProjectForWorkflow(expense: Expense): boolean {
+  return expenseCategoryRequiresProject(expense.lines[0]?.category ?? "");
+}
+
+export function expenseHasRequiredProjectForWorkflow(expense: Expense): boolean {
+  return !expenseRequiresProjectForWorkflow(expense) || expenseHasProjectForWorkflow(expense);
+}
+
 export function expenseHasCategoryForWorkflow(expense: Expense): boolean {
   const cat = (expense.lines[0]?.category ?? "").trim();
   return cat !== "" && cat !== "—";
@@ -117,14 +171,14 @@ export function expenseIsArchivedDoneDbStatus(status: string | undefined | null)
 }
 
 /**
- * Mark Done / transition to archived: require project then category (order matches toast copy).
+ * Mark Done / transition to archived: require category, then project only for Project Cost.
  * Returns which gate failed, or null if OK.
  */
 export function validateMarkDoneRequiresProjectAndCategory(
   expense: Expense
 ): "project" | "category" | null {
-  if (!expenseHasProjectForWorkflow(expense)) return "project";
   if (!expenseHasCategoryForWorkflow(expense)) return "category";
+  if (!expenseHasRequiredProjectForWorkflow(expense)) return "project";
   return null;
 }
 
@@ -134,8 +188,8 @@ export function validateMarkDoneRequiresProjectAndCategory(
 export function validateApproveInboxUploadDraft(
   expense: Expense
 ): "project" | "category" | "payment" | null {
-  if (!expenseHasProjectForWorkflow(expense)) return "project";
   if (!expenseHasCategoryForWorkflow(expense)) return "category";
+  if (!expenseHasRequiredProjectForWorkflow(expense)) return "project";
   const pa = (expense.paymentAccountId ?? "").trim();
   if (!pa) return "payment";
   return null;
@@ -185,12 +239,12 @@ export function countExpensesMatchingInboxPool(expenses: readonly Expense[]): nu
 }
 
 /**
- * Expenses archive list: only rows explicitly archived via Mark Done (`reviewed` / `done`),
- * with project + category (guaranteed bound to a project for display).
+ * Expenses archive list: rows explicitly archived via Mark Done (`reviewed` / `done`),
+ * with category and any project required by the category.
  */
 export function expenseMatchesExpensesArchivePool(expense: Expense): boolean {
   if (!expenseIsArchivedDoneDbStatus(expense.status)) return false;
-  if (!expenseHasProjectForWorkflow(expense)) return false;
+  if (!expenseHasRequiredProjectForWorkflow(expense)) return false;
   if (!expenseHasCategoryForWorkflow(expense)) return false;
   return true;
 }

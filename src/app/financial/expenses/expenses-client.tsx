@@ -98,7 +98,7 @@ import { buildExpenseDateGroups } from "@/lib/expense-list-date-groups";
 import { expenseInboxDuplicateIdSet } from "@/lib/expense-inbox-dup";
 import {
   expenseHasCategoryForWorkflow,
-  expenseHasProjectForWorkflow,
+  expenseHasRequiredProjectForWorkflow,
   expenseMatchesExpensesArchivePool,
   countExpensesMatchingInboxPool,
   expenseMatchesInboxPool,
@@ -733,7 +733,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       if (!expenseMatchesInboxPool(e, dup.has(e.id))) continue;
       pending += 1;
       if (expenseMissingReceiptForInbox(e)) missingReceipt += 1;
-      if (!expenseHasProjectForWorkflow(e) || !expenseHasCategoryForWorkflow(e)) missingInfo += 1;
+      if (!expenseHasRequiredProjectForWorkflow(e) || !expenseHasCategoryForWorkflow(e)) {
+        missingInfo += 1;
+      }
     }
     return { pending, missingReceipt, missingInfo };
   }, [expensesForListing]);

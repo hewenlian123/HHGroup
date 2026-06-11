@@ -158,6 +158,119 @@ test.describe("Quick Expense: upload and save", () => {
     await expect(dataRow).not.toContainText("Overhead");
   });
 
+  test("overhead can save without project, while project cost requires project", async ({
+    page,
+  }) => {
+    const admin = adminClient();
+    if (!admin) {
+      test.skip(true, "Supabase service role is not configured.");
+      return;
+    }
+
+    const stamp = Date.now();
+    const vendorPrefix = `E2E-QE-OH-${stamp}`;
+    const overheadCategory = `E2E Fuel ${stamp}`;
+
+    await cleanupQuickCategoryRows(admin, {
+      categoryNames: [overheadCategory],
+      vendorPrefix,
+    });
+
+    try {
+      await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
+      await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
+      await waitForExpensesQuerySuccess(page);
+
+      await clickVisibleQuickExpenseButton(page);
+      let dialog = page.getByRole("dialog", { name: /Quick expense/i });
+      await expect(dialog).toBeVisible({ timeout: 15_000 });
+
+      if (
+        await dialog
+          .getByText(/Supabase not configured/i)
+          .isVisible()
+          .catch(() => false)
+      ) {
+        test.skip(true, "Browser Supabase client not configured (NEXT_PUBLIC_* env).");
+      }
+
+      const overheadVendor = `${vendorPrefix}-fuel`;
+      await dialog.locator("input[type='number']").fill("31.25");
+      await dialog.locator("#quick-expense-vendor").fill(overheadVendor);
+      await addCategoryFromQuickExpense(page, dialog, overheadCategory);
+      await expect(dialog.locator("#quick-expense-category-select")).toContainText(
+        overheadCategory
+      );
+      await dialog.locator("#quick-expense-project-select").click();
+      await page.getByRole("option", { name: "No project", exact: true }).click();
+      await expect(dialog.locator("#quick-expense-project-select")).toContainText(/No project/i);
+
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      await expect
+        .poll(
+          async () =>
+            /expense saved/i.test(await page.locator("body").innerText()) ? "done" : null,
+          { timeout: 120_000, intervals: [400] }
+        )
+        .toBe("done");
+      await expect(dialog).not.toBeVisible({ timeout: 30_000 });
+
+      const overheadSaved = await assertE2EExpenseVisibleInDatabase(overheadVendor);
+      expect(overheadSaved.status).toBe("reviewed");
+      expect(overheadSaved.project_id).toBeNull();
+      expect(overheadSaved.line_project_id).toBeNull();
+      expect(overheadSaved.line_category).toBe(overheadCategory);
+
+      await page.goto(E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, { waitUntil: "domcontentloaded" });
+      await waitForExpensesQuerySuccess(page);
+      await expect(expenseListRowById(page, overheadSaved.expenseId)).toBeVisible({
+        timeout: 30_000,
+      });
+
+      await clickVisibleQuickExpenseButton(page);
+      dialog = page.getByRole("dialog", { name: /Quick expense/i });
+      await expect(dialog).toBeVisible({ timeout: 15_000 });
+      const projectCostVendor = `${vendorPrefix}-materials`;
+      await dialog.locator("input[type='number']").fill("44.4");
+      await dialog.locator("#quick-expense-vendor").fill(projectCostVendor);
+      await dialog.locator("#quick-expense-category-select").click();
+      await page.getByRole("option", { name: "Materials", exact: true }).click();
+      await dialog.locator("#quick-expense-project-select").click();
+      await page.getByRole("option", { name: "No project", exact: true }).click();
+      await expect(dialog.locator("#quick-expense-project-select")).toContainText(/No project/i);
+
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      await expect(dialog.getByText(/Project Cost expenses require a project/i)).toBeVisible({
+        timeout: 10_000,
+      });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.locator("#quick-expense-vendor")).toHaveValue(projectCostVendor);
+      await expect(dialog.locator("input[type='number']")).toHaveValue("44.4");
+
+      await dialog.locator("#quick-expense-project-select").click();
+      await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
+      await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      await expect
+        .poll(
+          async () =>
+            /expense saved/i.test(await page.locator("body").innerText()) ? "done" : null,
+          { timeout: 120_000, intervals: [400] }
+        )
+        .toBe("done");
+
+      const projectCostSaved = await assertE2EExpenseVisibleInDatabase(projectCostVendor);
+      expect(projectCostSaved.status).toBe("reviewed");
+      expect(projectCostSaved.line_project_id).not.toBeNull();
+      expect(projectCostSaved.line_category).toBe("Materials");
+    } finally {
+      await cleanupQuickCategoryRows(admin, {
+        categoryNames: [overheadCategory],
+        vendorPrefix,
+      });
+    }
+  });
+
   test("upload shows attachment count, preview control, and saves", async ({ page }) => {
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });

@@ -55,6 +55,7 @@ import {
 import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
 import {
   deriveExpenseWorkflowStatus,
+  expenseCategoryRequiresProject,
   EXPENSE_COMMON_ITEM_NONE,
   EXPENSE_PROJECT_SELECT_NONE,
 } from "@/lib/expense-workflow-status";
@@ -275,6 +276,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const dateInputRef = React.useRef<HTMLInputElement>(null);
   const formRef = React.useRef<HTMLFormElement>(null);
   const formScrollRef = React.useRef<HTMLDivElement>(null);
+  const projectChoiceTouchedRef = React.useRef(false);
   /** Extra bottom padding when the on-screen keyboard reduces visual viewport (iOS Safari). */
   const [keyboardBottomInset, setKeyboardBottomInset] = React.useState(0);
 
@@ -459,6 +461,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setNotes("");
     setProjectSearch("");
     setProjectId("");
+    projectChoiceTouchedRef.current = false;
     setPaymentAccountId("");
     setPaymentAccountRows([]);
     paymentChoiceTouchedRef.current = false;
@@ -598,6 +601,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
 
   React.useEffect(() => {
     if (projectId) return;
+    if (projectChoiceTouchedRef.current) return;
     try {
       const last = window.localStorage.getItem(LAST_PROJECT_KEY) ?? "";
       if (last && projects.some((p) => p.id === last)) setProjectId(last);
@@ -943,6 +947,16 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       "";
     if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
       setError("Amount must be greater than 0.");
+      return;
+    }
+    if (expenseCategoryRequiresProject(category) && !projectId.trim()) {
+      setError("Project Cost expenses require a project. Choose No project only for Overhead.");
+      toast({
+        title: "Missing project",
+        description:
+          "Project Cost expenses must be assigned to a project. Choose No project only for Overhead.",
+        variant: "error",
+      });
       return;
     }
     const sameDay = expenses.filter(
@@ -1324,9 +1338,10 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                     <Select
                       disabled={saving}
                       value={projectId.trim() ? projectId : EXPENSE_PROJECT_SELECT_NONE}
-                      onValueChange={(v) =>
-                        setProjectId(v === EXPENSE_PROJECT_SELECT_NONE ? "" : v)
-                      }
+                      onValueChange={(v) => {
+                        projectChoiceTouchedRef.current = true;
+                        setProjectId(v === EXPENSE_PROJECT_SELECT_NONE ? "" : v);
+                      }}
                     >
                       <SelectTrigger
                         id="quick-expense-project-select"
