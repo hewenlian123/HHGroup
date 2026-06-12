@@ -19,6 +19,7 @@ import {
   expenseHasCategoryForWorkflow,
   expenseHasRequiredProjectForWorkflow,
   expenseNeedsReviewFromDb,
+  expenseSourceTypeIsWorkerReimbursement,
 } from "@/lib/expense-workflow-status";
 import {
   isInboxUploadExpenseReference,
@@ -33,7 +34,7 @@ import {
 import { ExpenseBulkActionBar } from "./expense-bulk-action-bar";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
-type InboxIssueId = "receipt" | "project" | "category" | "duplicate";
+type InboxIssueId = "receipt" | "project" | "category" | "worker" | "duplicate";
 
 type InboxIssue = {
   id: InboxIssueId;
@@ -136,16 +137,22 @@ function inboxProjectIssueRequired(expense: Expense): boolean {
   return !expenseHasRequiredProjectForWorkflow(expense);
 }
 
+function inboxWorkerIssueRequired(expense: Expense): boolean {
+  return expenseSourceTypeIsWorkerReimbursement(expense.sourceType) && !expense.workerId;
+}
+
 function buildInboxIssues({
   missingReceipt,
   missingProject,
   missingCategory,
+  missingWorker,
   duplicate,
   rowTotal,
 }: {
   missingReceipt: boolean;
   missingProject: boolean;
   missingCategory: boolean;
+  missingWorker: boolean;
   duplicate: boolean;
   rowTotal: number;
 }): InboxIssue[] {
@@ -169,6 +176,13 @@ function buildInboxIssues({
       id: "category",
       label: "Missing category",
       detail: "Choose a category so the expense can be classified.",
+    });
+  }
+  if (missingWorker) {
+    issues.push({
+      id: "worker",
+      label: "Missing worker",
+      detail: "Select a worker before approving this reimbursement expense.",
     });
   }
   if (duplicate) {
@@ -754,11 +768,13 @@ function DesktopRows({
                   const missingReceipt = getExpenseReceiptItems(row).length === 0;
                   const missingProject = inboxProjectIssueRequired(row);
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
+                  const missingWorker = inboxWorkerIssueRequired(row);
                   const showDupHint = dupIds.has(row.id);
                   const issues = buildInboxIssues({
                     missingReceipt,
                     missingProject,
                     missingCategory,
+                    missingWorker,
                     duplicate: showDupHint,
                     rowTotal,
                   });
@@ -1062,11 +1078,13 @@ function MobileRows({
                   const missingReceipt = getExpenseReceiptItems(row).length === 0;
                   const missingProject = inboxProjectIssueRequired(row);
                   const missingCategory = !expenseHasCategoryForWorkflow(row);
+                  const missingWorker = inboxWorkerIssueRequired(row);
                   const showDupHint = dupIds.has(row.id);
                   const issues = buildInboxIssues({
                     missingReceipt,
                     missingProject,
                     missingCategory,
+                    missingWorker,
                     duplicate: showDupHint,
                     rowTotal,
                   });

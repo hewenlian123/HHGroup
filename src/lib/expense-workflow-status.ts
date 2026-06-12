@@ -224,6 +224,22 @@ export function expenseHasPaymentMethodForWorkflow(expense: Expense): boolean {
   return pm !== "" && pm !== "—";
 }
 
+export function expenseSourceTypeIsWorkerReimbursement(
+  sourceType: Expense["sourceType"] | string | null | undefined
+): boolean {
+  const v = String(sourceType ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  return v === "reimbursement" || v === "worker_reimbursement" || v === "reimburse";
+}
+
+export function expenseHasWorkerForWorkflow(
+  expense: Pick<Expense, "workerId"> | { workerId?: string | null }
+): boolean {
+  return String(expense.workerId ?? "").trim() !== "";
+}
+
 /** Status written when user marks an expense done from Inbox (`reviewed`; legacy `done` if present). */
 export function expenseIsArchivedDoneDbStatus(status: string | undefined | null): boolean {
   const s = String(status ?? "")
@@ -251,9 +267,13 @@ export function validateMarkDoneRequiresProjectAndCategory(
 export function validateApproveInboxUploadDraft(
   expense: Expense,
   costAllocation?: ExpenseCostAllocation | null
-): "project" | "category" | "payment" | null {
+): "project" | "category" | "payment" | "worker" | null {
   if (!expenseHasCategoryForWorkflow(expense)) return "category";
   if (!expenseHasRequiredProjectForWorkflow(expense, costAllocation)) return "project";
+  if (expenseSourceTypeIsWorkerReimbursement(expense.sourceType)) {
+    if (!expenseHasWorkerForWorkflow(expense)) return "worker";
+    return null;
+  }
   const pa = (expense.paymentAccountId ?? "").trim();
   if (!pa) return "payment";
   return null;

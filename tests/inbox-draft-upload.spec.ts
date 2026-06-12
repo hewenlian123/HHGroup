@@ -5,7 +5,11 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { E2E_PRESERVED_PROJECT_ID, E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
+import {
+  E2E_PRESERVED_PROJECT_ID,
+  E2E_PRESERVED_PROJECT_LABEL,
+  E2E_PRESERVED_WORKER_ID,
+} from "./e2e-cleanup-db";
 import {
   attachmentPreviewModal,
   E2E_FINANCIAL_EXPENSES_ARCHIVE_URL,
@@ -167,6 +171,7 @@ async function cleanupInboxOcrDraft(admin: SupabaseClient, referenceNo: string):
 }
 
 const TECHNICAL_RECEIPT_REF_RE = /\b(?:INBOX-UP-[a-f0-9]{12,}|sha256|[a-f0-9]{14,})\b/i;
+const E2E_PRESERVED_WORKER_LABEL = "[E2E] Seed Worker";
 
 async function expectCleanExpenseRow(row: import("@playwright/test").Locator): Promise<void> {
   const rowText = await row.innerText();
@@ -175,7 +180,9 @@ async function expectCleanExpenseRow(row: import("@playwright/test").Locator): P
   expect(rowText).not.toMatch(/INBOX-UP-/i);
 
   const secondaryLine = ((await row.locator("p").nth(1).textContent()) ?? "").trim();
-  expect(secondaryLine).toMatch(/^(?:ACH|Amex|Bank|Card|Cash|Check|Credit Card|Debit Card|Other)$/);
+  expect(secondaryLine).toMatch(
+    /^(?:ACH|Amex|Bank|Card|Cash|Check|Credit Card|Debit Card|Other|—)$/
+  );
   expect(secondaryLine).not.toMatch(/receipt upload/i);
 }
 
@@ -308,7 +315,11 @@ test.describe("Inbox draft upload receipt", () => {
         .locator("xpath=following::div[contains(@class,'grid')][1]");
       await classificationGrid.locator('button[role="combobox"]').nth(1).click();
       await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
-      await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(expenseDialog, page));
+      await expenseDialog.locator("#edit-expense-payment-source-select").click();
+      await page.getByRole("option", { name: "Worker reimbursement", exact: true }).click();
+
+      await expenseDialog.locator("#edit-expense-worker-select").click();
+      await page.getByRole("option", { name: E2E_PRESERVED_WORKER_LABEL, exact: true }).click();
 
       await expenseDialog.getByRole("button", { name: /^Save$/ }).click();
       await expect(expenseDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({
@@ -337,6 +348,7 @@ test.describe("Inbox draft upload receipt", () => {
         timeout: 90_000,
       });
       await waitForExpensesQuerySuccess(page, 90_000);
+      await expensesVendorSearch(page).fill("Lowe's");
       const archiveRow = page.locator(`.exp-row[data-expense-id="${draftId}"]`).first();
       await expect(archiveRow).toBeVisible({ timeout: 60_000 });
       await expect(archiveRow).toContainText("Lowe's");
@@ -476,7 +488,29 @@ test.describe("Inbox draft upload receipt", () => {
       await expenseDialog.locator("#edit-expense-category-select").click();
       await page.getByRole("option", { name: "Other", exact: true }).click();
 
-      await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(expenseDialog, page));
+      await expenseDialog.locator("#edit-expense-payment-source-select").click();
+      await page.getByRole("option", { name: "Worker reimbursement", exact: true }).click();
+      await expect(expenseDialog.locator("#edit-expense-payment-source-select")).toContainText(
+        "Worker reimbursement",
+        { timeout: 15_000 }
+      );
+
+      await expenseDialog.locator("#edit-expense-worker-select").click();
+      await page.getByRole("option", { name: E2E_PRESERVED_WORKER_LABEL, exact: true }).click();
+      await expect(expenseDialog.locator("#edit-expense-worker-select")).toContainText(
+        E2E_PRESERVED_WORKER_LABEL,
+        { timeout: 15_000 }
+      );
+
+      await dialogPaymentAccountSelect(expenseDialog, page).click();
+      await page
+        .locator('[role="listbox"]')
+        .last()
+        .getByRole("option", { name: "—", exact: true })
+        .click();
+      await expect(dialogPaymentAccountSelect(expenseDialog, page)).toContainText("—", {
+        timeout: 15_000,
+      });
 
       await expenseDialog.getByRole("button", { name: /^Save$/ }).click();
       await expect(expenseDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({
@@ -501,17 +535,28 @@ test.describe("Inbox draft upload receipt", () => {
           async () => {
             const { data: expense, error } = await admin
               .from("expenses")
-              .select("status,project_id")
+              .select("status,project_id,source_type,worker_id,payment_account_id")
               .eq("reference_no", uploadedInboxRef!)
               .maybeSingle();
             if (error) throw new Error(`load overhead approved expense failed: ${error.message}`);
-            return `${String((expense as { status?: string | null } | null)?.status ?? "")}|${String(
-              (expense as { project_id?: string | null } | null)?.project_id ?? ""
-            )}`;
+            const row = expense as {
+              status?: string | null;
+              project_id?: string | null;
+              source_type?: string | null;
+              worker_id?: string | null;
+              payment_account_id?: string | null;
+            } | null;
+            return [
+              String(row?.status ?? ""),
+              String(row?.project_id ?? ""),
+              String(row?.source_type ?? ""),
+              String(row?.worker_id ?? ""),
+              String(row?.payment_account_id ?? ""),
+            ].join("|");
           },
           { timeout: 60_000, intervals: [500, 1000] }
         )
-        .toBe("approved|");
+        .toBe(`approved||reimbursement|${E2E_PRESERVED_WORKER_ID}|`);
 
       const { data: line, error: lineError } = await admin
         .from("expense_lines")

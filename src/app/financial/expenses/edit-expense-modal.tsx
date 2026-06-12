@@ -57,6 +57,7 @@ import {
   expenseCostAllocationFromProjectId,
   expenseCostAllocationRequiresProject,
   expenseNeedsReviewFromDb,
+  expenseSourceTypeIsWorkerReimbursement,
   expenseStatusUiLabel,
   preserveConfirmedExpenseStatusOnCompleteSave,
   EXPENSE_COST_ALLOCATION_OVERHEAD,
@@ -434,6 +435,14 @@ export function EditExpenseModal({
         title: "Missing project",
         description:
           "Project Cost expenses must be assigned to a project. Choose Overhead only for company expenses.",
+        variant: "error",
+      });
+      return;
+    }
+    if (expenseSourceTypeIsWorkerReimbursement(sourceType) && !workerId) {
+      toast({
+        title: "Missing worker",
+        description: "Worker reimbursement expenses must be assigned to a worker.",
         variant: "error",
       });
       return;

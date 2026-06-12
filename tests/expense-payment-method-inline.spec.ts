@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
+import { E2E_PRESERVED_PROJECT_LABEL, E2E_PRESERVED_WORKER_ID } from "./e2e-cleanup-db";
 import {
   assertE2EExpenseVisibleInDatabase,
   clickVisibleQuickExpenseButton,
@@ -10,6 +10,8 @@ import {
   waitForQuickExpenseProjectLabel,
   waitForVisibleQuickExpenseButton,
 } from "./e2e-expenses-helpers";
+
+const E2E_PRESERVED_WORKER_LABEL = "[E2E] Seed Worker";
 
 /** AppShell is `ssr: false`; `main` is absent until the client chunk loads — anchor on list UI instead. */
 async function waitForExpensesListShell(page: Page, timeoutMs = 150_000): Promise<void> {
@@ -213,6 +215,78 @@ test.describe("Expense inbox payment method (preview modal)", () => {
     }
 
     await expect(rowAfter).toContainText(targetMethod, { timeout: 15_000 });
+  });
+
+  test("worker reimbursement edit saves without a payment account when worker is selected", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+
+    const vendorMark = `E2E-WR-EDIT-${Date.now()}`;
+    const snap = await createReviewedQuickExpense(page, vendorMark, "4.03");
+
+    await gotoArchivedExpenseListReady(page, 90_000);
+    await expensesVendorSearch(page).fill(vendorMark);
+    const row = expenseListRowById(page, snap.expenseId);
+    await expect(row).toBeVisible({ timeout: 60_000 });
+    await row.click();
+
+    const previewDlg = page.getByRole("dialog", { name: /^Expense$/ });
+    await expect(previewDlg).toBeVisible({ timeout: 15_000 });
+    await previewDlg.getByRole("button", { name: "Edit", exact: true }).click();
+    const editDlg = page.getByRole("dialog", { name: /Edit expense/i });
+    await expect(editDlg).toBeVisible({ timeout: 15_000 });
+
+    await editDlg.locator("#edit-expense-cost-allocation-select").click();
+    await page
+      .locator('[role="listbox"]')
+      .last()
+      .getByRole("option", { name: "Overhead", exact: true })
+      .click();
+
+    await editDlg.locator("#edit-expense-payment-source-select").click();
+    await page
+      .locator('[role="listbox"]')
+      .last()
+      .getByRole("option", { name: "Worker reimbursement", exact: true })
+      .click();
+
+    await editDlg.locator("#edit-expense-payment-select").click();
+    await page
+      .locator('[role="listbox"]')
+      .last()
+      .getByRole("option", { name: "—", exact: true })
+      .click();
+
+    await editDlg.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByText("Missing worker").first()).toBeVisible({ timeout: 15_000 });
+    await expect(editDlg).toBeVisible();
+
+    await editDlg.locator("#edit-expense-worker-select").click();
+    await page
+      .locator('[role="listbox"]')
+      .last()
+      .getByRole("option", { name: E2E_PRESERVED_WORKER_LABEL, exact: true })
+      .click();
+
+    await editDlg.getByRole("button", { name: "Save", exact: true }).click();
+    await expect(page.getByText("Saved", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (supabaseUrl && serviceKey) {
+      const sb = createClient(supabaseUrl, serviceKey);
+      const { data, error } = await sb
+        .from("expenses")
+        .select("source_type,worker_id,payment_account_id,project_id")
+        .eq("id", snap.expenseId)
+        .maybeSingle();
+      expect(error, error ? JSON.stringify(error) : "").toBeNull();
+      expect(data?.source_type).toBe("reimbursement");
+      expect(data?.worker_id).toBe(E2E_PRESERVED_WORKER_ID);
+      expect(data?.payment_account_id ?? null).toBeNull();
+      expect(data?.project_id ?? null).toBeNull();
+    }
   });
 
   test("quick add payment method from edit modal becomes selected", async ({ page }) => {

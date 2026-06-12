@@ -27,9 +27,10 @@ function apiError(status: number, message: string, detail?: string): NextRespons
   return NextResponse.json({ ok: false, message }, { status, headers: NO_CACHE_HEADERS });
 }
 
-function gateMessage(gate: "project" | "category" | "payment"): string {
+function gateMessage(gate: "project" | "category" | "payment" | "worker"): string {
   if (gate === "project") return "Choose a project before approving this Inbox draft.";
   if (gate === "category") return "Choose a category before approving this Inbox draft.";
+  if (gate === "worker") return "Choose a worker before approving this reimbursement draft.";
   return "Choose a payment account before approving this Inbox draft.";
 }
 

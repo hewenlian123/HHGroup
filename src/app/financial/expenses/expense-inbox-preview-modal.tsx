@@ -54,6 +54,7 @@ import {
   expenseHasCategoryForWorkflow,
   expenseHasRequiredProjectForWorkflow,
   expenseNeedsReviewFromDb,
+  expenseSourceTypeIsWorkerReimbursement,
   expenseStatusUiLabel,
   preserveConfirmedExpenseStatusOnCompleteSave,
   validateApproveInboxUploadDraft,
@@ -633,6 +634,14 @@ export function ExpenseInboxPreviewModal({
       });
       return;
     }
+    if (expenseSourceTypeIsWorkerReimbursement(sourceType) && !workerId) {
+      toast({
+        title: "Missing worker",
+        description: "Worker reimbursement expenses must be assigned to a worker.",
+        variant: "error",
+      });
+      return;
+    }
     flushSync(() => setSaving(true));
     try {
       const paId = paymentAccountId.trim() || null;
@@ -705,6 +714,14 @@ export function ExpenseInboxPreviewModal({
         });
         return;
       }
+      if (gate === "worker") {
+        toast({
+          title: "Choose a worker first",
+          description: "Tap Edit, set worker, then save — then you can approve.",
+          variant: "default",
+        });
+        return;
+      }
     }
     flushSync(() => setMarkBusy(true));
     try {
@@ -739,6 +756,8 @@ export function ExpenseInboxPreviewModal({
   const missingProject = !expenseHasRequiredProjectForWorkflow(expense);
   const missingCategory = !expenseHasCategoryForWorkflow(expense);
   const missingReceipt = receiptItems.length === 0;
+  const missingWorker =
+    expenseSourceTypeIsWorkerReimbursement(expense.sourceType) && !expense.workerId;
 
   const projectRadixValue =
     projectId && String(projectId).trim() !== "" ? projectId : EXPENSE_PROJECT_SELECT_NONE;
@@ -781,6 +800,9 @@ export function ExpenseInboxPreviewModal({
                   ) : null}
                   {missingCategory ? (
                     <span className={PREVIEW_WARNING_CHIP}>Missing category</span>
+                  ) : null}
+                  {missingWorker ? (
+                    <span className={PREVIEW_WARNING_CHIP}>Missing worker</span>
                   ) : null}
                   {missingReceipt ? (
                     <span className={PREVIEW_WARNING_CHIP}>Missing receipt</span>

@@ -4,6 +4,7 @@ import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
+import { expenseSourceTypeIsWorkerReimbursement } from "@/lib/expense-workflow-status";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -278,6 +279,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     Object.prototype.hasOwnProperty.call(body, "category") ||
     Object.prototype.hasOwnProperty.call(body, "amount");
   if (Object.keys(patch).length === 0) return apiError(400, "No expense fields to update.");
+
+  if (
+    Object.prototype.hasOwnProperty.call(body, "sourceType") &&
+    expenseSourceTypeIsWorkerReimbursement(patch.source_type as string | null | undefined) &&
+    !String(patch.worker_id ?? "").trim()
+  ) {
+    return apiError(400, "Choose a worker before saving this reimbursement expense.");
+  }
 
   const { data, error } = await supabase
     .from("expenses")

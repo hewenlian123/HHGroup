@@ -1267,6 +1267,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         hotToast.error("Please select a payment account before approving");
         return;
       }
+      if (gate === "worker") {
+        hotToast.error("Please select a worker before approving reimbursement");
+        return;
+      }
       if (inboxRef && String(expense.status ?? "").toLowerCase() === "approved") {
         hotToast.error("Already approved");
         return;
@@ -1535,6 +1539,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         }
         if (gate === "payment") {
           hotToast.error("Please select a payment account before approving");
+          return;
+        }
+        if (gate === "worker") {
+          hotToast.error("Please select a worker before approving reimbursement");
           return;
         }
         if (inboxRef && String(current).toLowerCase() === "approved") {
