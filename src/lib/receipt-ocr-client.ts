@@ -6,6 +6,8 @@
 export type ReceiptOcrResult = {
   vendor_name: string;
   total_amount: number;
+  /** Parsed sales/use tax when visible. Display/debug only; not persisted to expense totals. */
+  tax_amount?: number;
   purchase_date: string;
   items?: Array<{ name?: string; amount?: number }>;
   ocr_status?: "ok" | "fallback";
@@ -28,6 +30,9 @@ export type AmountRuleDiagnostic = {
   reason: string;
   line?: string;
 };
+
+const OCR_MAX_EDGE = 1800;
+const OCR_JPEG_QUALITY = 0.88;
 
 function minFieldConfidence(a: FieldConfidence, b?: FieldConfidence): FieldConfidence {
   const rank: Record<FieldConfidence, number> = { low: 0, medium: 1, high: 2 };
@@ -98,6 +103,223 @@ function mapItemCategory(text: string): string[] {
   return dedupeItems(hits);
 }
 
+async function readExifOrientation(file: File): Promise<number> {
+  if (!/jpe?g/i.test(file.type) && !/\.jpe?g$/i.test(file.name)) return 1;
+  try {
+    const buf = await file.slice(0, 256 * 1024).arrayBuffer();
+    const view = new DataView(buf);
+    if (view.byteLength < 12 || view.getUint16(0, false) !== 0xffd8) return 1;
+
+    let offset = 2;
+    while (offset + 4 < view.byteLength) {
+      if (view.getUint8(offset) !== 0xff) break;
+      const marker = view.getUint8(offset + 1);
+      const size = view.getUint16(offset + 2, false);
+      if (size < 2) break;
+      if (marker === 0xe1 && offset + 4 + size <= view.byteLength) {
+        const exifStart = offset + 4;
+        const exifHeader = String.fromCharCode(
+          view.getUint8(exifStart),
+          view.getUint8(exifStart + 1),
+          view.getUint8(exifStart + 2),
+          view.getUint8(exifStart + 3)
+        );
+        if (exifHeader !== "Exif") break;
+        const tiff = exifStart + 6;
+        const endian = view.getUint16(tiff, false);
+        const little = endian === 0x4949;
+        if (!little && endian !== 0x4d4d) return 1;
+        const firstIfdOffset = view.getUint32(tiff + 4, little);
+        const ifd = tiff + firstIfdOffset;
+        if (ifd + 2 > view.byteLength) return 1;
+        const entries = view.getUint16(ifd, little);
+        for (let i = 0; i < entries; i += 1) {
+          const entry = ifd + 2 + i * 12;
+          if (entry + 12 > view.byteLength) break;
+          const tag = view.getUint16(entry, little);
+          if (tag === 0x0112) {
+            const orientation = view.getUint16(entry + 8, little);
+            return orientation >= 1 && orientation <= 8 ? orientation : 1;
+          }
+        }
+      }
+      offset += 2 + size;
+    }
+  } catch {
+    return 1;
+  }
+  return 1;
+}
+
+function orientationSwapsDimensions(orientation: number): boolean {
+  return orientation >= 5 && orientation <= 8;
+}
+
+function drawBitmapWithOrientation(
+  ctx: CanvasRenderingContext2D,
+  bitmap: ImageBitmap,
+  orientation: number,
+  width: number,
+  height: number
+) {
+  const drawW = orientationSwapsDimensions(orientation) ? height : width;
+  const drawH = orientationSwapsDimensions(orientation) ? width : height;
+
+  switch (orientation) {
+    case 2:
+      ctx.translate(width, 0);
+      ctx.scale(-1, 1);
+      break;
+    case 3:
+      ctx.translate(width, height);
+      ctx.rotate(Math.PI);
+      break;
+    case 4:
+      ctx.translate(0, height);
+      ctx.scale(1, -1);
+      break;
+    case 5:
+      ctx.rotate(0.5 * Math.PI);
+      ctx.scale(1, -1);
+      break;
+    case 6:
+      ctx.translate(width, 0);
+      ctx.rotate(0.5 * Math.PI);
+      break;
+    case 7:
+      ctx.translate(width, height);
+      ctx.rotate(0.5 * Math.PI);
+      ctx.scale(-1, 1);
+      break;
+    case 8:
+      ctx.translate(0, height);
+      ctx.rotate(-0.5 * Math.PI);
+      break;
+    default:
+      break;
+  }
+
+  ctx.drawImage(bitmap, 0, 0, bitmap.width, bitmap.height, 0, 0, drawW, drawH);
+}
+
+function percentileFromHistogram(hist: Uint32Array, total: number, percentile: number): number {
+  const target = Math.max(0, Math.min(total - 1, Math.floor(total * percentile)));
+  let seen = 0;
+  for (let i = 0; i < hist.length; i += 1) {
+    seen += hist[i] ?? 0;
+    if (seen >= target) return i;
+  }
+  return 255;
+}
+
+function enhanceCanvasForOcr(ctx: CanvasRenderingContext2D, width: number, height: number) {
+  const image = ctx.getImageData(0, 0, width, height);
+  const { data } = image;
+  const totalPixels = width * height;
+  const hist = new Uint32Array(256);
+  const gray = new Uint8ClampedArray(totalPixels);
+
+  for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
+    const lum = Math.round(data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114);
+    gray[p] = lum;
+    hist[lum] += 1;
+  }
+
+  const low = percentileFromHistogram(hist, totalPixels, 0.01);
+  const high = percentileFromHistogram(hist, totalPixels, 0.99);
+  const spread = Math.max(32, high - low);
+  const normalized = new Uint8ClampedArray(totalPixels);
+
+  for (let p = 0, i = 0; p < totalPixels; p += 1, i += 4) {
+    const stretched = ((gray[p] - low) / spread) * 255;
+    const contrasted = (stretched - 128) * 1.12 + 136;
+    const value = Math.max(0, Math.min(255, Math.round(contrasted)));
+    normalized[p] = value;
+    data[i] = value;
+    data[i + 1] = value;
+    data[i + 2] = value;
+  }
+
+  if (totalPixels <= 4_000_000 && width > 2 && height > 2) {
+    for (let y = 1; y < height - 1; y += 1) {
+      for (let x = 1; x < width - 1; x += 1) {
+        const idx = y * width + x;
+        const sharpened =
+          normalized[idx] * 5 -
+          normalized[idx - 1] -
+          normalized[idx + 1] -
+          normalized[idx - width] -
+          normalized[idx + width];
+        const value = Math.max(0, Math.min(255, Math.round(sharpened)));
+        const di = idx * 4;
+        data[di] = value;
+        data[di + 1] = value;
+        data[di + 2] = value;
+      }
+    }
+  }
+
+  ctx.putImageData(image, 0, 0);
+}
+
+async function bitmapFromFileWithoutAutoOrientation(file: File): Promise<{
+  bitmap: ImageBitmap;
+  manualOrientationSafe: boolean;
+}> {
+  try {
+    const bitmap = await createImageBitmap(file, {
+      imageOrientation: "none",
+    } as ImageBitmapOptions);
+    return { bitmap, manualOrientationSafe: true };
+  } catch {
+    const bitmap = await createImageBitmap(file);
+    return { bitmap, manualOrientationSafe: false };
+  }
+}
+
+export async function prepareImageFileForReceiptOcr(file: File): Promise<File> {
+  if (!file.type.startsWith("image/") || file.type === "image/svg+xml") return file;
+
+  let bitmap: ImageBitmap | null = null;
+  try {
+    const orientation = await readExifOrientation(file);
+    const loaded = await bitmapFromFileWithoutAutoOrientation(file);
+    bitmap = loaded.bitmap;
+    const safeOrientation = loaded.manualOrientationSafe ? orientation : 1;
+    const rawW = bitmap.width;
+    const rawH = bitmap.height;
+    const orientedW = orientationSwapsDimensions(safeOrientation) ? rawH : rawW;
+    const orientedH = orientationSwapsDimensions(safeOrientation) ? rawW : rawH;
+    const scale = Math.min(1, OCR_MAX_EDGE / Math.max(orientedW, orientedH));
+    const width = Math.max(1, Math.round(orientedW * scale));
+    const height = Math.max(1, Math.round(orientedH * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return file;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    drawBitmapWithOrientation(ctx, bitmap, safeOrientation, width, height);
+    enhanceCanvasForOcr(ctx, width, height);
+
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", OCR_JPEG_QUALITY)
+    );
+    if (!blob || blob.size === 0) return file;
+    const baseName = file.name.replace(/\.[^.]+$/, "") || "receipt";
+    return new File([blob], `${baseName}-ocr.jpg`, {
+      type: "image/jpeg",
+      lastModified: file.lastModified || Date.now(),
+    });
+  } catch {
+    return file;
+  } finally {
+    bitmap?.close();
+  }
+}
+
 async function fileToDataUrl(file: File): Promise<string> {
   const objectUrl = URL.createObjectURL(file);
   try {
@@ -127,6 +349,29 @@ function isSubtotalOrTaxLine(line: string): boolean {
   return /\b(subtotal|sub-total|tax\s*:|sales\s*tax|vat|gst)\b/i.test(line);
 }
 
+function isNonFinalAmountLine(line: string): boolean {
+  return /\b(total\s+savings?|you\s+saved|discount|coupon|rebate|change\s+due|cash\s+back|tendered|auth(?:orization)?|approval|total\s+items?|items\s+sold|quantity|qty)\b/i.test(
+    line
+  );
+}
+
+function parseMoneyCandidates(line: string): Array<{ raw: string; amount: number }> {
+  const matches = line.match(/\$?\s*\d{1,4}(?:,\d{3})*(?:\.\d{2,3})?/g) ?? [];
+  const out: Array<{ raw: string; amount: number }> = [];
+  for (const raw of matches) {
+    const normalized = raw.replace(/[$,\s]/g, "");
+    const n = Number(normalized);
+    const isYearLike = /^\d{4}$/.test(normalized) && n >= 1900 && n <= 2100;
+    if (isYearLike) continue;
+    const hasDollar = raw.includes("$");
+    const hasDecimal = normalized.includes(".");
+    // OCR often emits IDs as 4-digit integers in amount-ish lines.
+    if (!hasDollar && !hasDecimal && n >= 1000) continue;
+    if (Number.isFinite(n) && n > 0) out.push({ raw: raw.trim(), amount: n });
+  }
+  return out;
+}
+
 function pickLikelyAmount(text: string): number {
   const lines = text
     .split(/\r?\n/)
@@ -135,15 +380,8 @@ function pickLikelyAmount(text: string): number {
   let best = 0;
   for (const line of lines) {
     if (isSubtotalOrTaxLine(line)) continue;
-    const nums = line.match(/\$?\s*\d{1,4}(?:,\d{3})*(?:\.\d{2})?/g) ?? [];
-    const parsed = nums
-      .map((raw) => {
-        const normalized = raw.replace(/[$,\s]/g, "");
-        const n = Number(normalized);
-        const isYearLike = /^\d{4}$/.test(normalized) && n >= 1900 && n <= 2100;
-        return isYearLike ? 0 : n;
-      })
-      .filter((n) => Number.isFinite(n) && n > 0);
+    if (isNonFinalAmountLine(line)) continue;
+    const parsed = parseMoneyCandidates(line).map((c) => c.amount);
     if (parsed.length === 0) continue;
     const lineBest = Math.max(...parsed);
     if (
@@ -156,7 +394,28 @@ function pickLikelyAmount(text: string): number {
   return best;
 }
 
-export function parseDateFromText(text: string): string | null {
+export function parseTaxAmountFromText(text: string): number | null {
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  for (const line of lines) {
+    if (!/\b(sales\s*tax|tax|ge\s*tax|g\.?e\.?t\.?|vat|gst)\b/i.test(line)) continue;
+    if (/\bsubtotal|total\b/i.test(line) && !/\btax\b/i.test(line)) continue;
+    const candidates = parseMoneyCandidates(line);
+    if (!candidates.length) continue;
+    const currencyCandidate = [...candidates].reverse().find((c) => c.raw.includes("$"));
+    const selected = currencyCandidate ?? candidates[candidates.length - 1]!;
+    const tax = sanitizeNumericAmount(selected.amount);
+    if (tax != null) return tax;
+  }
+  return null;
+}
+
+export function parseDateFromTextDetailed(text: string): {
+  iso: string | null;
+  confidence: FieldConfidence;
+} {
   const lines = text.split(/\r?\n/).map((l) => l.trim());
   const labeled = lines.find((line) =>
     /\b(date|purchase|purchased|sale|transaction|invoice)\b/i.test(line)
@@ -167,7 +426,7 @@ export function parseDateFromText(text: string): string | null {
     const y = m1[1];
     const mo = m1[2].padStart(2, "0");
     const d = m1[3].padStart(2, "0");
-    return `${y}-${mo}-${d}`;
+    return { iso: `${y}-${mo}-${d}`, confidence: labeled ? "high" : "medium" };
   }
   const m2 = hay.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{4})\b/);
   if (m2) {
@@ -176,7 +435,10 @@ export function parseDateFromText(text: string): string | null {
     const y = m2[3];
     const month = a > 12 ? b : a;
     const day = a > 12 ? a : b;
-    return `${y}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return {
+      iso: `${y}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+      confidence: labeled ? "high" : "medium",
+    };
   }
   // M/D/YY or MM-DD-YY (2-digit year)
   const m3 = hay.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{2})\b/);
@@ -188,10 +450,17 @@ export function parseDateFromText(text: string): string | null {
     const month = a > 12 ? b : a;
     const day = a > 12 ? a : b;
     if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-      return `${String(y)}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+      return {
+        iso: `${String(y)}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+        confidence: labeled ? "high" : "medium",
+      };
     }
   }
-  return null;
+  return { iso: null, confidence: "low" };
+}
+
+export function parseDateFromText(text: string): string | null {
+  return parseDateFromTextDetailed(text).iso;
 }
 
 function pickLikelyVendor(text: string): string {
@@ -258,18 +527,9 @@ function parseVendorSpecificAmount(text: string, vendor: string): number {
   for (const line of lines) {
     if (isSubtotalOrTaxLine(line)) continue;
     if (/\bsubtotal\b/i.test(line)) continue;
+    if (isNonFinalAmountLine(line)) continue;
     if (!rules.some((r) => r.test(line))) continue;
-    const nums = line.match(/\$?\s*\d{1,4}(?:,\d{3})*(?:\.\d{2})?/g) ?? [];
-    for (const raw of nums) {
-      const normalized = raw.replace(/[$,\s]/g, "");
-      const n = Number(normalized);
-      const isYearLike = /^\d{4}$/.test(normalized) && n >= 1900 && n <= 2100;
-      if (isYearLike) continue;
-      const hasDollar = raw.includes("$");
-      const hasDecimal = normalized.includes(".");
-      if (!hasDollar && !hasDecimal && n >= 1000) continue;
-      if (Number.isFinite(n) && n > 0) candidates.push(n);
-    }
+    candidates.push(...parseMoneyCandidates(line).map((c) => c.amount));
   }
   return candidates.length ? Math.max(...candidates) : 0;
 }
@@ -300,51 +560,53 @@ export function parseAmountProduction(
     .filter(Boolean);
   const matchedRules: string[] = [];
   const diagnostics: AmountRuleDiagnostic[] = [];
-  const strictPatterns = [
-    /\bgrand\s+total\b/i,
-    /\btotal\b/i,
-    /\bamount\s+due\b/i,
-    /\bbalance\s+due\b/i,
-    /\bamount\s+paid\b/i,
-    /\bfuel\s+total\b/i,
+  const labelRules = [
+    { name: "amount-due", score: 100, pattern: /\b(amount\s+due|balance\s+due|total\s+due)\b/i },
+    { name: "grand-total", score: 96, pattern: /\bgrand\s+total\b/i },
+    { name: "fuel-total", score: 94, pattern: /\bfuel\s+total\b/i },
+    { name: "final-total", score: 90, pattern: /\b(total|order\s+total|sale\s+total)\b/i },
+    { name: "amount-paid", score: 82, pattern: /\bamount\s+paid\b/i },
   ];
-  const labeled: number[] = [];
+  const labeled: Array<{ amount: number; score: number; line: string; rule: string; raw: string }> =
+    [];
   for (const line of lines) {
-    if (isSubtotalOrTaxLine(line)) continue;
-    if (/\bsubtotal\b/i.test(line)) continue;
-    const hit = strictPatterns.some((p) => p.test(line));
-    if (!hit) continue;
-    matchedRules.push(`label:${line}`);
-    const nums = line.match(/\$?\s*\d{1,4}(?:,\d{3})*(?:\.\d{2})?/g) ?? [];
-    for (const raw of nums) {
-      const normalized = raw.replace(/[$,\s]/g, "");
-      const n = Number(normalized);
-      const isYearLike = /^\d{4}$/.test(normalized) && n >= 1900 && n <= 2100;
-      if (isYearLike) {
-        diagnostics.push({ kind: "rejected", value: raw.trim(), reason: "year-like", line });
-        continue;
-      }
-      const hasDollar = raw.includes("$");
-      const hasDecimal = normalized.includes(".");
-      // OCR often emits IDs as 4-digit integers in total lines (e.g. 9681).
-      if (!hasDollar && !hasDecimal && n >= 1000) {
-        diagnostics.push({
-          kind: "rejected",
-          value: raw.trim(),
-          reason: "id-like integer without decimal/currency",
-          line,
-        });
-        continue;
-      }
-      if (Number.isFinite(n) && n > 0) {
-        labeled.push(n);
-        diagnostics.push({
-          kind: "accepted",
-          value: raw.trim(),
-          reason: "strict label match",
-          line,
-        });
-      }
+    if (isSubtotalOrTaxLine(line) || /\bsubtotal\b/i.test(line)) {
+      diagnostics.push({ kind: "rejected", reason: "subtotal/tax label", line });
+      continue;
+    }
+    if (isNonFinalAmountLine(line)) {
+      diagnostics.push({ kind: "rejected", reason: "non-final amount label", line });
+      continue;
+    }
+    const rule = labelRules.find((r) => r.pattern.test(line));
+    if (!rule) continue;
+    matchedRules.push(`label:${rule.name}:${line}`);
+    const candidates = parseMoneyCandidates(line);
+    if (!candidates.length) {
+      diagnostics.push({ kind: "rejected", reason: "label without usable money", line });
+      continue;
+    }
+    const selected = candidates[candidates.length - 1]!;
+    labeled.push({
+      amount: selected.amount,
+      score: rule.score,
+      line,
+      rule: rule.name,
+      raw: selected.raw,
+    });
+    diagnostics.push({
+      kind: "accepted",
+      value: selected.raw,
+      reason: `strict label match: ${rule.name}`,
+      line,
+    });
+    for (const skipped of candidates.slice(0, -1)) {
+      diagnostics.push({
+        kind: "rejected",
+        value: skipped.raw,
+        reason: "earlier value on selected amount line",
+        line,
+      });
     }
   }
   const vendorSpecific = parseVendorSpecificAmount(text, vendor);
@@ -355,7 +617,9 @@ export function parseAmountProduction(
       reason: `vendor-specific rule matched: ${vendor}`,
     });
   }
-  const labeledBest = labeled.length ? Math.max(...labeled) : 0;
+  const labeledBest = labeled.length
+    ? [...labeled].sort((a, b) => b.score - a.score || b.amount - a.amount)[0]!.amount
+    : 0;
   if (Math.max(labeledBest, vendorSpecific) > 0) {
     diagnostics.push({
       kind: "meta",
@@ -398,12 +662,13 @@ async function runLocalBrowserOcr(file: File): Promise<ReceiptOcrResult | null> 
     if (!text.trim()) return null;
     const known = detectKnownVendor(text);
     const parsedAmount = parseAmountProduction(text, known ?? pickLikelyVendor(text));
-    const parsedDate = parseDateFromText(text);
+    const parsedDate = parseDateFromTextDetailed(text);
     const today = new Date().toISOString().slice(0, 10);
     return {
       vendor_name: known ?? pickLikelyVendor(text),
       total_amount: parsedAmount.amount,
-      purchase_date: clampPurchaseDate(parsedDate ?? "") ?? today,
+      tax_amount: parseTaxAmountFromText(text) ?? undefined,
+      purchase_date: clampPurchaseDate(parsedDate.iso ?? "") ?? today,
       items: [],
       ocr_status: "ok",
       ocr_reason: "local_browser_ocr",
@@ -411,7 +676,7 @@ async function runLocalBrowserOcr(file: File): Promise<ReceiptOcrResult | null> 
       confidence: {
         vendor: known ? "high" : "medium",
         amount: parsedAmount.confidence,
-        date: parsedDate ? "medium" : "low",
+        date: parsedDate.iso ? parsedDate.confidence : "low",
       },
     };
   } catch {
@@ -436,6 +701,7 @@ export async function runReceiptOcrForImageFile(
   file: File,
   options?: { localTimeoutMs?: number }
 ): Promise<{ result: ReceiptOcrResult; source: OcrSource }> {
+  const ocrFile = await prepareImageFileForReceiptOcr(file);
   let ocr: ReceiptOcrResult = {
     vendor_name: "Unknown",
     total_amount: 0,
@@ -444,7 +710,8 @@ export async function runReceiptOcrForImageFile(
   let source: OcrSource = "cloud";
   try {
     const form = new FormData();
-    form.append("file", file);
+    form.append("file", ocrFile);
+    if (ocrFile !== file) form.append("ocr_preprocessed", "1");
     const res = await fetch("/api/ocr-receipt", { method: "POST", body: form });
     if (res.ok) ocr = await res.json();
     else source = "manual";
@@ -455,7 +722,7 @@ export async function runReceiptOcrForImageFile(
     ocr.ocr_status === "fallback" ||
     ((ocr.vendor_name || "Unknown") === "Unknown" && (Number(ocr.total_amount) || 0) <= 0);
   if (cloudFailed) {
-    const local = await runLocalBrowserOcrWithTimeout(file, options?.localTimeoutMs ?? 8000);
+    const local = await runLocalBrowserOcrWithTimeout(ocrFile, options?.localTimeoutMs ?? 8000);
     if (local) {
       ocr = local;
       source = "local";
@@ -473,6 +740,7 @@ export type MergedReceiptOcr = {
   sanitizedAmount: number | null;
   clampedPurchase: string | null;
   finalDateSuggestion: string;
+  detectedTaxAmount: number | null;
   todayStr: string;
   vendorConfidence: FieldConfidence;
   amountConfidence: FieldConfidence;
@@ -512,12 +780,18 @@ export function mergeReceiptOcrResults(
     pickLikelyVendor(mergedText);
   let finalVendor = sanitizeVendorCandidate(bestKnownVendor || "Unknown");
   const amountFromRules = parseAmountProduction(mergedText, finalVendor);
-  const dateFromRules = parseDateFromText(mergedText);
+  const dateFromRules = parseDateFromTextDetailed(mergedText);
+  const detectedTaxAmount =
+    parseTaxAmountFromText(mergedText) ??
+    ocrResults
+      .map((r) => sanitizeNumericAmount(Number(r.result.tax_amount)))
+      .find((n): n is number => n != null) ??
+    null;
   const todayStr = new Date().toISOString().slice(0, 10);
   const purchaseFromOcr =
     ocrResults.find((r) => r.result.purchase_date)?.result.purchase_date ?? "";
   const clampedPurchase =
-    clampPurchaseDate((dateFromRules ?? "").slice(0, 10)) ||
+    clampPurchaseDate((dateFromRules.iso ?? "").slice(0, 10)) ||
     clampPurchaseDate(purchaseFromOcr.slice(0, 10)) ||
     null;
   const finalDateSuggestion = clampedPurchase ?? todayStr;
@@ -570,13 +844,15 @@ export function mergeReceiptOcrResults(
   let vendorConfidence: FieldConfidence =
     finalVendor !== "Unknown" && finalVendor !== "Needs Review" ? "high" : "low";
   let amountConfidence = amountFromRules.confidence;
-  let dateConfidence: FieldConfidence = clampedPurchase ? "medium" : "low";
+  let dateConfidence: FieldConfidence = clampedPurchase ? dateFromRules.confidence : "low";
 
   for (const r of ocrResults) {
     const oc = r.result.confidence;
     if (oc?.vendor) vendorConfidence = minFieldConfidence(vendorConfidence, oc.vendor);
     if (oc?.amount) amountConfidence = minFieldConfidence(amountConfidence, oc.amount);
-    if (oc?.date) dateConfidence = minFieldConfidence(dateConfidence, oc.date);
+    if (oc?.date && dateConfidence !== "low") {
+      dateConfidence = minFieldConfidence(dateConfidence, oc.date);
+    }
   }
   if (clampedPurchase && dateConfidence === "low") {
     dateConfidence = "medium";
@@ -604,6 +880,7 @@ export function mergeReceiptOcrResults(
     sanitizedAmount,
     clampedPurchase,
     finalDateSuggestion,
+    detectedTaxAmount,
     todayStr,
     vendorConfidence,
     amountConfidence,

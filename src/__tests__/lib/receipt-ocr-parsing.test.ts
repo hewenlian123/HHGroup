@@ -3,6 +3,7 @@ import {
   detectKnownVendor,
   parseDateFromText,
   parseAmountProduction,
+  parseTaxAmountFromText,
   mergeReceiptOcrResults,
   type ReceiptOcrResult,
 } from "@/lib/receipt-ocr-client";
@@ -54,6 +55,20 @@ Thank you for shopping
     expect(r.amount).not.toBe(9.02);
   });
 
+  it("parseAmountProduction ignores Total Savings when selecting final total", () => {
+    const text = `
+THE HOME DEPOT #1701
+Transaction Date: 6/8/26
+SUBTOTAL $112.34
+SALES TAX $9.02
+TOTAL $121.36
+TOTAL SAVINGS $140.00
+`;
+    const r = parseAmountProduction(text, "Home Depot");
+    expect(r.amount).toBe(121.36);
+    expect(r.amount).not.toBe(140);
+  });
+
   it("parseAmountProduction Costco fixture: GRAND TOTAL beats SUBTOTAL + TAX", () => {
     const text = `
 COSTCO WHOLESALE #1081
@@ -101,6 +116,16 @@ TOTAL $29.40
     expect(r.amount).toBe(29.4);
   });
 
+  it("parseTaxAmountFromText extracts tax without using subtotal or total", () => {
+    const text = `
+LOWE'S #2891
+SUBTOTAL $45.00
+SALES TAX $3.60
+AMOUNT DUE $48.60
+`;
+    expect(parseTaxAmountFromText(text)).toBe(3.6);
+  });
+
   it("mergeReceiptOcrResults sets needsReview when field confidence is not all high", () => {
     const ocr: ReceiptOcrResult = {
       vendor_name: "Home Depot",
@@ -130,5 +155,21 @@ TOTAL $29.40
     expect(merged.amountConfidence).toBe("high");
     expect(merged.dateConfidence).toBe("medium");
     expect(merged.needsReview).toBe(true);
+  });
+
+  it("mergeReceiptOcrResults autofills date only when receipt text has a clear date label", () => {
+    const ocr: ReceiptOcrResult = {
+      vendor_name: "Lowe's",
+      total_amount: 48.6,
+      purchase_date: "2026-06-09",
+      raw_text: "LOWES HOME IMPROVEMENT\nDATE 06/09/2026\nAMOUNT DUE $48.60",
+      confidence: { vendor: "high", amount: "high", date: "high" },
+    };
+    const merged = mergeReceiptOcrResults([{ result: ocr, source: "cloud" }], {
+      inferCategory: () => "Materials",
+    });
+    expect(merged.dateConfidence).toBe("high");
+    expect(merged.autoFillDate).toBe(true);
+    expect(merged.detectedTaxAmount).toBeNull();
   });
 });

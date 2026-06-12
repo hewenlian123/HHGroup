@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 export type ReceiptOcrResult = {
   vendor_name: string;
   total_amount: number;
+  tax_amount?: number;
   purchase_date: string;
   items?: Array<{ name?: string; amount?: number }>;
   ocr_status?: "ok" | "fallback";
@@ -17,6 +18,8 @@ export type ReceiptOcrResult = {
 };
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+type FieldConfidence = "high" | "medium" | "low";
 
 function fallbackResult(reason?: string): ReceiptOcrResult {
   return {
@@ -57,6 +60,113 @@ function parseJsonLoose(raw: string): Record<string, unknown> | null {
     }
     return null;
   }
+}
+
+function sanitizeMoney(value: unknown): number | null {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0 || n > 9_999_999) return null;
+  const rounded = Math.round(n * 100) / 100;
+  if (rounded >= 1900 && rounded <= 2100 && Number.isInteger(rounded)) return null;
+  return rounded;
+}
+
+function normalizeKnownVendor(raw: string): string | null {
+  const t = (raw ?? "").toLowerCase();
+  if (/\b(the\s+)?home\s+depot\b/.test(t)) return "Home Depot";
+  if (/\blowe'?s?\b/.test(t) || /\blowes\b/.test(t)) return "Lowe's";
+  if (/\bcostco\b/.test(t)) return "Costco";
+  if (/\bwalmart\b/.test(t)) return "Walmart";
+  if (/\bcity\s+mill\b/.test(t)) return "City Mill";
+  if (/\bhardware\s+hawaii\b/.test(t)) return "Hardware Hawaii";
+  if (/\b(shell|chevron|exxon|mobil|texaco|sunoco|76)\b/.test(t))
+    return raw.trim() || "Gas station";
+  return null;
+}
+
+function sanitizeVendor(raw: unknown, rawText: string): string {
+  const known = normalizeKnownVendor(rawText) ?? normalizeKnownVendor(String(raw ?? ""));
+  if (known) return known;
+  const text = String(raw ?? "").trim();
+  if (!text || text.length < 3 || !/[A-Za-z]/.test(text)) return "Unknown";
+  return text.slice(0, 80);
+}
+
+function parseMoneyCandidates(line: string): Array<{ raw: string; amount: number }> {
+  const matches = line.match(/\$?\s*\d{1,4}(?:,\d{3})*(?:\.\d{2,3})?/g) ?? [];
+  const out: Array<{ raw: string; amount: number }> = [];
+  for (const raw of matches) {
+    const normalized = raw.replace(/[$,\s]/g, "");
+    const n = Number(normalized);
+    const isYearLike = /^\d{4}$/.test(normalized) && n >= 1900 && n <= 2100;
+    if (isYearLike) continue;
+    const hasDollar = raw.includes("$");
+    const hasDecimal = normalized.includes(".");
+    if (!hasDollar && !hasDecimal && n >= 1000) continue;
+    const amount = sanitizeMoney(n);
+    if (amount != null) out.push({ raw: raw.trim(), amount });
+  }
+  return out;
+}
+
+function isSubtotalOrTaxLine(line: string): boolean {
+  return /\b(subtotal|sub-total|tax\s*:|sales\s*tax|vat|gst)\b/i.test(line);
+}
+
+function isNonFinalAmountLine(line: string): boolean {
+  return /\b(total\s+savings?|you\s+saved|discount|coupon|rebate|change\s+due|cash\s+back|tendered|auth(?:orization)?|approval|total\s+items?|items\s+sold|quantity|qty)\b/i.test(
+    line
+  );
+}
+
+function parseTotalFromText(text: string): number | null {
+  const labelRules = [
+    { score: 100, pattern: /\b(amount\s+due|balance\s+due|total\s+due)\b/i },
+    { score: 96, pattern: /\bgrand\s+total\b/i },
+    { score: 94, pattern: /\bfuel\s+total\b/i },
+    { score: 90, pattern: /\b(total|order\s+total|sale\s+total)\b/i },
+    { score: 82, pattern: /\bamount\s+paid\b/i },
+  ];
+  const candidates: Array<{ score: number; amount: number }> = [];
+  for (const line of text.split(/\r?\n/).map((l) => l.trim())) {
+    if (!line || isSubtotalOrTaxLine(line) || isNonFinalAmountLine(line)) continue;
+    const rule = labelRules.find((r) => r.pattern.test(line));
+    if (!rule) continue;
+    const amounts = parseMoneyCandidates(line);
+    if (!amounts.length) continue;
+    candidates.push({ score: rule.score, amount: amounts[amounts.length - 1]!.amount });
+  }
+  if (!candidates.length) return null;
+  return candidates.sort((a, b) => b.score - a.score || b.amount - a.amount)[0]!.amount;
+}
+
+function parseTaxFromText(text: string): number | null {
+  for (const line of text.split(/\r?\n/).map((l) => l.trim())) {
+    if (!/\b(sales\s*tax|tax|ge\s*tax|g\.?e\.?t\.?|vat|gst)\b/i.test(line)) continue;
+    const amounts = parseMoneyCandidates(line);
+    if (!amounts.length) continue;
+    const currency = [...amounts].reverse().find((a) => a.raw.includes("$"));
+    return (currency ?? amounts[amounts.length - 1]!).amount;
+  }
+  return null;
+}
+
+function clampDate(raw: unknown): string | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(raw ?? "").trim());
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  const dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
+  if (y < 2000) return null;
+  const endToday = new Date();
+  endToday.setHours(23, 59, 59, 999);
+  if (dt > endToday) return null;
+  return `${m[1]}-${m[2]}-${m[3]}`;
+}
+
+function normalizeConfidence(raw: unknown): FieldConfidence {
+  return raw === "high" || raw === "medium" || raw === "low" ? raw : "low";
 }
 
 export async function POST(request: NextRequest) {
@@ -112,12 +222,14 @@ export async function POST(request: NextRequest) {
                 text: `Extract receipt information from this image. Reply with ONLY a JSON object (no markdown, no code block) with these exact keys:
 vendor_name (string, merchant/store name),
 total_amount (number, FINAL amount paid — prefer labels: Total, Grand Total, Balance Due, Amount Paid; NEVER use Subtotal, Tax alone, or partial lines),
+tax_amount (optional number, sales/use tax if a tax line is visible; otherwise null),
 purchase_date (string, YYYY-MM-DD if visible else null),
 items (optional array of { name: string, amount: number } for line items),
 payment_method (optional string: cash | card | debit | credit | unknown — infer from receipt if visible),
-raw_text (string, short OCR text dump: store/title/total/date lines),
+raw_text (string, short OCR text dump containing exact visible store/title/date/subtotal/tax/total/amount due lines),
 confidence (object with vendor, amount, date each one of: high | medium | low),
-If something is not visible use: vendor_name "Unknown", total_amount 0, purchase_date null.`,
+If something is not visible use: vendor_name "Unknown", total_amount 0, tax_amount null, purchase_date null.
+Do not infer a date, tax, or total from low-confidence text.`,
               },
               {
                 type: "image_url",
@@ -158,52 +270,35 @@ If something is not visible use: vendor_name "Unknown", total_amount 0, purchase
     if (!parsed) {
       return NextResponse.json(fallbackResult("Invalid OCR JSON"));
     }
+    const rawText = typeof parsed.raw_text === "string" ? parsed.raw_text : "";
+    const rawTotal = parseTotalFromText(rawText);
+    const parsedTotal = sanitizeMoney(parsed.total_amount);
+    const rawTax = parseTaxFromText(rawText);
+    const parsedTax = sanitizeMoney(parsed.tax_amount);
+    const confidenceRaw =
+      typeof parsed.confidence === "object" && parsed.confidence
+        ? (parsed.confidence as Record<string, unknown>)
+        : {};
+    const amountFromRaw = rawTotal != null;
+    const taxAmount = rawTax ?? parsedTax ?? undefined;
+    const purchaseDate = clampDate(parsed.purchase_date) ?? today();
     const result: ReceiptOcrResult = {
-      vendor_name: typeof parsed.vendor_name === "string" ? parsed.vendor_name : "Unknown",
-      total_amount: Number(parsed.total_amount) || 0,
-      purchase_date:
-        typeof parsed.purchase_date === "string" && parsed.purchase_date
-          ? parsed.purchase_date.slice(0, 10)
-          : today(),
+      vendor_name: sanitizeVendor(parsed.vendor_name, rawText),
+      total_amount: rawTotal ?? parsedTotal ?? 0,
+      tax_amount: taxAmount,
+      purchase_date: purchaseDate,
       items: Array.isArray(parsed.items)
         ? (parsed.items as Array<{ name?: string; amount?: number }>)
         : [],
       ocr_status: "ok",
-      raw_text: typeof parsed.raw_text === "string" ? parsed.raw_text : "",
+      raw_text: rawText,
       payment_method:
         typeof parsed.payment_method === "string" ? parsed.payment_method.trim() : undefined,
-      confidence:
-        typeof parsed.confidence === "object" && parsed.confidence
-          ? {
-              vendor:
-                (parsed.confidence as Record<string, unknown>).vendor === "high" ||
-                (parsed.confidence as Record<string, unknown>).vendor === "medium" ||
-                (parsed.confidence as Record<string, unknown>).vendor === "low"
-                  ? ((parsed.confidence as Record<string, unknown>).vendor as
-                      | "high"
-                      | "medium"
-                      | "low")
-                  : "low",
-              amount:
-                (parsed.confidence as Record<string, unknown>).amount === "high" ||
-                (parsed.confidence as Record<string, unknown>).amount === "medium" ||
-                (parsed.confidence as Record<string, unknown>).amount === "low"
-                  ? ((parsed.confidence as Record<string, unknown>).amount as
-                      | "high"
-                      | "medium"
-                      | "low")
-                  : "low",
-              date:
-                (parsed.confidence as Record<string, unknown>).date === "high" ||
-                (parsed.confidence as Record<string, unknown>).date === "medium" ||
-                (parsed.confidence as Record<string, unknown>).date === "low"
-                  ? ((parsed.confidence as Record<string, unknown>).date as
-                      | "high"
-                      | "medium"
-                      | "low")
-                  : "low",
-            }
-          : { vendor: "low", amount: "low", date: "low" },
+      confidence: {
+        vendor: normalizeConfidence(confidenceRaw.vendor),
+        amount: amountFromRaw ? "high" : normalizeConfidence(confidenceRaw.amount),
+        date: normalizeConfidence(confidenceRaw.date),
+      },
     };
     return NextResponse.json(result);
   } catch (e) {

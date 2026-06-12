@@ -55,9 +55,12 @@ import {
 import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
 import {
   deriveExpenseWorkflowStatus,
-  expenseCategoryRequiresProject,
+  expenseCostAllocationRequiresProject,
+  EXPENSE_COST_ALLOCATION_OVERHEAD,
+  EXPENSE_COST_ALLOCATION_PROJECT_COST,
   EXPENSE_COMMON_ITEM_NONE,
   EXPENSE_PROJECT_SELECT_NONE,
+  type ExpenseCostAllocation,
 } from "@/lib/expense-workflow-status";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
@@ -115,7 +118,7 @@ type OcrDebugInfo = {
   fallbackTriggered: boolean;
   cloud: Array<{ status?: string; reason?: string; confidence?: unknown }>;
   rawText: string;
-  parsed: { vendor: string; amount: number; date: string };
+  parsed: { vendor: string; amount: number; taxAmount?: number | null; date: string };
   parsedItems: string[];
   matchedRules: string[];
   amountDiagnostics: AmountRuleDiagnostic[];
@@ -225,6 +228,9 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const [notes, setNotes] = React.useState("");
   const [projectSearch, setProjectSearch] = React.useState("");
   const [projectId, setProjectId] = React.useState<string>("");
+  const [costAllocation, setCostAllocation] = React.useState<ExpenseCostAllocation>(
+    EXPENSE_COST_ALLOCATION_OVERHEAD
+  );
   const [paymentAccountId, setPaymentAccountId] = React.useState("");
   const [paymentAccountRows, setPaymentAccountRows] = React.useState<PaymentAccountRow[]>([]);
   const paymentChoiceTouchedRef = React.useRef(false);
@@ -432,6 +438,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       setVendorName("Unknown");
       setAmount("");
       setCategory("Other");
+      setCostAllocation(EXPENSE_COST_ALLOCATION_OVERHEAD);
       setOcrSuggestions(null);
       if (msg) {
         setError(msg);
@@ -461,6 +468,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setNotes("");
     setProjectSearch("");
     setProjectId("");
+    setCostAllocation(EXPENSE_COST_ALLOCATION_OVERHEAD);
     projectChoiceTouchedRef.current = false;
     setPaymentAccountId("");
     setPaymentAccountRows([]);
@@ -604,8 +612,13 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     if (projectChoiceTouchedRef.current) return;
     try {
       const last = window.localStorage.getItem(LAST_PROJECT_KEY) ?? "";
-      if (last && projects.some((p) => p.id === last)) setProjectId(last);
-      else if (suggestedProjectId) setProjectId(suggestedProjectId);
+      if (last && projects.some((p) => p.id === last)) {
+        setProjectId(last);
+        setCostAllocation(EXPENSE_COST_ALLOCATION_PROJECT_COST);
+      } else if (suggestedProjectId) {
+        setProjectId(suggestedProjectId);
+        setCostAllocation(EXPENSE_COST_ALLOCATION_PROJECT_COST);
+      }
     } catch {
       // ignore
     }
@@ -656,6 +669,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         parsed: {
           vendor: merged.finalVendor,
           amount: merged.sanitizedAmount ?? 0,
+          taxAmount: merged.detectedTaxAmount,
           date: merged.finalDateSuggestion,
         },
         parsedItems: merged.finalItems,
@@ -949,7 +963,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       setError("Amount must be greater than 0.");
       return;
     }
-    if (expenseCategoryRequiresProject(category) && !projectId.trim()) {
+    if (expenseCostAllocationRequiresProject(costAllocation) && !projectId.trim()) {
       setError("Project Cost expenses require a project. Choose No project only for Overhead.");
       toast({
         title: "Missing project",
@@ -1033,7 +1047,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         receiptUrl: firstPublic || undefined,
         sourceType: slotsToSave.length > 0 ? "receipt_upload" : "company",
         category,
-        initialStatus: deriveExpenseWorkflowStatus(projectId || null, category),
+        initialStatus: deriveExpenseWorkflowStatus(projectId || null, category, costAllocation),
         notes: (() => {
           const userNotes = notes.trim();
           const itemsPart = `Items: ${dedupeItems(recognizedItems).join(", ")}`;
@@ -1131,6 +1145,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           setAmount("");
           setDate(new Date().toISOString().slice(0, 10));
           setCategory("Other");
+          setCostAllocation(EXPENSE_COST_ALLOCATION_OVERHEAD);
           paymentChoiceTouchedRef.current = false;
           setPaymentAccountId(
             paymentAccountRows.length > 0 ? pickDefaultPaymentAccountId(paymentAccountRows, "") : ""
@@ -1326,6 +1341,35 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                 </div>
 
                 <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
+                  <label className={FIELD_LABEL}>Classification</label>
+                  <Select
+                    disabled={saving}
+                    value={costAllocation}
+                    onValueChange={(v) => {
+                      const next = v as ExpenseCostAllocation;
+                      setCostAllocation(next);
+                      if (next === EXPENSE_COST_ALLOCATION_OVERHEAD) {
+                        projectChoiceTouchedRef.current = true;
+                        setProjectId("");
+                      }
+                    }}
+                  >
+                    <SelectTrigger
+                      id="quick-expense-cost-allocation-select"
+                      className={cn(SELECT_TRIGGER, "text-xs")}
+                    >
+                      <SelectValue placeholder="Classification" />
+                    </SelectTrigger>
+                    <SelectContent {...selectPopperContentProps}>
+                      <SelectItem value={EXPENSE_COST_ALLOCATION_OVERHEAD}>Overhead</SelectItem>
+                      <SelectItem value={EXPENSE_COST_ALLOCATION_PROJECT_COST}>
+                        Project Cost
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
                   <label className={FIELD_LABEL}>Project</label>
                   <div className="flex flex-col gap-2">
                     <Input
@@ -1340,7 +1384,12 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       value={projectId.trim() ? projectId : EXPENSE_PROJECT_SELECT_NONE}
                       onValueChange={(v) => {
                         projectChoiceTouchedRef.current = true;
-                        setProjectId(v === EXPENSE_PROJECT_SELECT_NONE ? "" : v);
+                        if (v === EXPENSE_PROJECT_SELECT_NONE) {
+                          setProjectId("");
+                        } else {
+                          setProjectId(v);
+                          setCostAllocation(EXPENSE_COST_ALLOCATION_PROJECT_COST);
+                        }
                       }}
                     >
                       <SelectTrigger

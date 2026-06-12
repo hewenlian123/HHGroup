@@ -16,6 +16,55 @@ const PNG_1X1 = Buffer.from(
   "base64"
 );
 
+async function receiptOcrPngBytes(page: import("@playwright/test").Page, runId: string) {
+  const receipt = await page.context().newPage();
+  try {
+    await receipt.setViewportSize({ width: 640, height: 900 });
+    await receipt.setContent(
+      `<!doctype html>
+      <html>
+        <head>
+          <style>
+            body { margin: 0; background: #f3f4f6; font-family: Arial, sans-serif; }
+            .wrap { padding: 42px; }
+            .receipt { background: #fff; color: #111; padding: 34px; width: 480px; box-shadow: 0 12px 28px rgba(0,0,0,.18); }
+            .center { text-align: center; }
+            .brand { font-size: 34px; font-weight: 900; letter-spacing: .08em; }
+            .small { font-size: 18px; line-height: 1.35; }
+            .line { border-top: 2px dashed #222; margin: 20px 0; }
+            .row { display: flex; justify-content: space-between; gap: 18px; font-size: 20px; line-height: 1.55; }
+            .total { font-size: 30px; font-weight: 900; margin-top: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="wrap">
+            <div class="receipt">
+              <div class="center brand">LOWE'S</div>
+              <div class="center small">HOME IMPROVEMENT RECEIPT</div>
+              <div class="center small">Store 2345 Honolulu HI</div>
+              <div class="line"></div>
+              <div class="small">Date: 06/10/2026</div>
+              <div class="small">Receipt: QUICK-OCR-E2E-${runId}</div>
+              <div class="line"></div>
+              <div class="row"><span>Electrical Wire</span><span>$28.99</span></div>
+              <div class="row"><span>Outlet Box</span><span>$9.00</span></div>
+              <div class="row"><span>Sales Tax</span><span>$4.38</span></div>
+              <div class="line"></div>
+              <div class="row total"><span>TOTAL</span><span>$42.37</span></div>
+              <div class="small">Paid with AMEX card</div>
+              <div class="small">Thank you for shopping Lowe's</div>
+            </div>
+          </div>
+        </body>
+      </html>`,
+      { waitUntil: "load" }
+    );
+    return (await receipt.screenshot({ fullPage: true })) as Buffer;
+  } finally {
+    await receipt.close();
+  }
+}
+
 function adminClient(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -158,6 +207,88 @@ test.describe("Quick Expense: upload and save", () => {
     await expect(dataRow).not.toContainText("Overhead");
   });
 
+  test("receipt OCR autofills Lowe's fields before save", async ({ page }) => {
+    const admin = adminClient();
+    if (!admin) {
+      test.skip(true, "Supabase service role is not configured.");
+      return;
+    }
+
+    const runId = `${Date.now()}`;
+    const vendorPrefix = `E2E-QE-OCR-${runId}`;
+    await cleanupQuickCategoryRows(admin, {
+      categoryNames: [],
+      vendorPrefix,
+    });
+
+    try {
+      await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
+      await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
+      await waitForExpensesQuerySuccess(page);
+
+      await clickVisibleQuickExpenseButton(page);
+      const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+      await expect(dialog).toBeVisible({ timeout: 15_000 });
+
+      if (
+        await dialog
+          .getByText(/Supabase not configured/i)
+          .isVisible()
+          .catch(() => false)
+      ) {
+        test.skip(true, "Browser Supabase client not configured (NEXT_PUBLIC_* env).");
+      }
+
+      await dialog.locator('input[type="file"]').setInputFiles({
+        name: `quick-ocr-${runId}.png`,
+        mimeType: "image/png",
+        buffer: await receiptOcrPngBytes(page, runId),
+      });
+
+      await expect(dialog.locator("#quick-expense-vendor")).toHaveValue("Lowe's", {
+        timeout: 150_000,
+      });
+      await expect(dialog.locator("input[type='number']")).toHaveValue("42.37");
+      await expect(dialog.locator("input[type='date']")).toHaveValue("2026-06-10");
+      await expect(dialog.locator("#quick-expense-category-select")).toContainText("Materials");
+
+      const savedVendor = `${vendorPrefix}-lowes`;
+      await dialog.locator("#quick-expense-vendor").fill(savedVendor);
+      await dialog.locator("#quick-expense-project-select").click();
+      await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
+      await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
+
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      await expect
+        .poll(
+          async () =>
+            /expense saved/i.test(await page.locator("body").innerText()) ? "done" : null,
+          { timeout: 120_000, intervals: [400] }
+        )
+        .toBe("done");
+
+      const saved = await assertE2EExpenseVisibleInDatabase(savedVendor);
+      const { data: line, error: lineError } = await admin
+        .from("expense_lines")
+        .select("amount,category")
+        .eq("expense_id", saved.expenseId)
+        .limit(1)
+        .maybeSingle();
+      if (lineError) throw new Error(`Quick OCR line check failed: ${lineError.message}`);
+      expect(
+        Number((line as { amount?: number | string | null } | null)?.amount ?? 0).toFixed(2)
+      ).toBe("42.37");
+      expect(String((line as { category?: string | null } | null)?.category ?? "")).toBe(
+        "Materials"
+      );
+    } finally {
+      await cleanupQuickCategoryRows(admin, {
+        categoryNames: [],
+        vendorPrefix,
+      });
+    }
+  });
+
   test("overhead can save without project, while project cost requires project", async ({
     page,
   }) => {
@@ -169,10 +300,9 @@ test.describe("Quick Expense: upload and save", () => {
 
     const stamp = Date.now();
     const vendorPrefix = `E2E-QE-OH-${stamp}`;
-    const overheadCategory = `E2E Fuel ${stamp}`;
 
     await cleanupQuickCategoryRows(admin, {
-      categoryNames: [overheadCategory],
+      categoryNames: [],
       vendorPrefix,
     });
 
@@ -197,10 +327,11 @@ test.describe("Quick Expense: upload and save", () => {
       const overheadVendor = `${vendorPrefix}-fuel`;
       await dialog.locator("input[type='number']").fill("31.25");
       await dialog.locator("#quick-expense-vendor").fill(overheadVendor);
-      await addCategoryFromQuickExpense(page, dialog, overheadCategory);
-      await expect(dialog.locator("#quick-expense-category-select")).toContainText(
-        overheadCategory
-      );
+      await dialog.locator("#quick-expense-category-select").click();
+      await page.getByRole("option", { name: "Other", exact: true }).click();
+      await expect(dialog.locator("#quick-expense-category-select")).toContainText("Other");
+      await dialog.locator("#quick-expense-cost-allocation-select").click();
+      await page.getByRole("option", { name: "Overhead", exact: true }).click();
       await dialog.locator("#quick-expense-project-select").click();
       await page.getByRole("option", { name: "No project", exact: true }).click();
       await expect(dialog.locator("#quick-expense-project-select")).toContainText(/No project/i);
@@ -219,7 +350,7 @@ test.describe("Quick Expense: upload and save", () => {
       expect(overheadSaved.status).toBe("reviewed");
       expect(overheadSaved.project_id).toBeNull();
       expect(overheadSaved.line_project_id).toBeNull();
-      expect(overheadSaved.line_category).toBe(overheadCategory);
+      expect(overheadSaved.line_category).toBe("Other");
 
       await page.goto(E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, { waitUntil: "domcontentloaded" });
       await waitForExpensesQuerySuccess(page);
@@ -235,6 +366,8 @@ test.describe("Quick Expense: upload and save", () => {
       await dialog.locator("#quick-expense-vendor").fill(projectCostVendor);
       await dialog.locator("#quick-expense-category-select").click();
       await page.getByRole("option", { name: "Materials", exact: true }).click();
+      await dialog.locator("#quick-expense-cost-allocation-select").click();
+      await page.getByRole("option", { name: "Project Cost", exact: true }).click();
       await dialog.locator("#quick-expense-project-select").click();
       await page.getByRole("option", { name: "No project", exact: true }).click();
       await expect(dialog.locator("#quick-expense-project-select")).toContainText(/No project/i);
@@ -265,7 +398,7 @@ test.describe("Quick Expense: upload and save", () => {
       expect(projectCostSaved.line_category).toBe("Materials");
     } finally {
       await cleanupQuickCategoryRows(admin, {
-        categoryNames: [overheadCategory],
+        categoryNames: [],
         vendorPrefix,
       });
     }
