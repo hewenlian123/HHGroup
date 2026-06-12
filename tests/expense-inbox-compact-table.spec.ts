@@ -547,22 +547,23 @@ test.describe("Expense inbox compact table", () => {
       await expect(popover).not.toContainText("Missing project");
       await page.keyboard.press("Escape");
 
-      const missingProjectRow = expenseListRowById(page, seeded.ids.missingProject);
-      await expect(missingProjectRow).toBeVisible();
-      await expect(missingProjectRow.getByTestId("expense-inbox-issues")).toHaveText("⚠");
-      const nonIssueText = await missingProjectRow.locator("td").evaluateAll((cells) =>
+      const unassignedMaterialsRow = expenseListRowById(page, seeded.ids.missingProject);
+      await expect(unassignedMaterialsRow).toBeVisible();
+      await expect(unassignedMaterialsRow.getByTestId("expense-inbox-issues")).toHaveText("⚠");
+      const nonIssueText = await unassignedMaterialsRow.locator("td").evaluateAll((cells) =>
         cells
           .filter((_, index) => index !== 6)
           .map((cell) => cell.textContent ?? "")
           .join(" ")
       );
       expect(nonIssueText).not.toMatch(/Missing project/);
-      await missingProjectRow
+      await unassignedMaterialsRow
         .getByTestId("expense-inbox-issues")
         .getByRole("button", { name: /issue/i })
         .click();
       popover = page.getByTestId("expense-inbox-issue-popover").last();
-      await expect(popover).toContainText("Missing project");
+      await expect(popover).toContainText("Missing receipt");
+      await expect(popover).not.toContainText("Missing project");
       await page.keyboard.press("Escape");
 
       const duplicateIssueCell = expenseListRowById(page, seeded.ids.duplicateA).getByTestId(

@@ -49,15 +49,19 @@ import {
 } from "@/lib/inbox-upload-constants";
 import {
   deriveExpenseWorkflowStatus,
-  expenseCategoryRequiresProject,
+  expenseCostAllocationFromProjectId,
+  expenseCostAllocationRequiresProject,
   expenseHasCategoryForWorkflow,
   expenseHasRequiredProjectForWorkflow,
   expenseNeedsReviewFromDb,
   expenseStatusUiLabel,
   preserveConfirmedExpenseStatusOnCompleteSave,
   validateApproveInboxUploadDraft,
+  EXPENSE_COST_ALLOCATION_OVERHEAD,
+  EXPENSE_COST_ALLOCATION_PROJECT_COST,
   EXPENSE_PROJECT_SELECT_NONE,
   EXPENSE_WORKER_SELECT_NONE,
+  type ExpenseCostAllocation,
 } from "@/lib/expense-workflow-status";
 import {
   getExpenseDisplayAttachments,
@@ -237,6 +241,9 @@ export function ExpenseInboxPreviewModal({
   const [vendorName, setVendorName] = React.useState("");
   const [amount, setAmount] = React.useState("");
   const [projectId, setProjectId] = React.useState<string | null>(null);
+  const [costAllocation, setCostAllocation] = React.useState<ExpenseCostAllocation>(
+    EXPENSE_COST_ALLOCATION_OVERHEAD
+  );
   const [workerId, setWorkerId] = React.useState<string | null>(null);
   const [category, setCategory] = React.useState("Other");
   const [notes, setNotes] = React.useState("");
@@ -297,7 +304,9 @@ export function ExpenseInboxPreviewModal({
     if (!expense) return;
     setVendorName(expense.vendorName ?? "");
     setAmount(String(getExpenseTotal(expense)));
-    setProjectId(expense.lines[0]?.projectId ?? expense.headerProjectId ?? null);
+    const nextProjectId = expense.lines[0]?.projectId ?? expense.headerProjectId ?? null;
+    setProjectId(nextProjectId);
+    setCostAllocation(expenseCostAllocationFromProjectId(nextProjectId));
     setWorkerId(expense.workerId ?? null);
     setCategory(expense.lines[0]?.category ?? "Other");
     setNotes(stripInboxUploadNoiseFromText(expense.notes ?? ""));
@@ -615,7 +624,7 @@ export function ExpenseInboxPreviewModal({
       toast({ title: "Invalid amount", variant: "error" });
       return;
     }
-    if (expenseCategoryRequiresProject(category) && !projectId) {
+    if (expenseCostAllocationRequiresProject(costAllocation) && !projectId) {
       toast({
         title: "Missing project",
         description:
@@ -635,7 +644,7 @@ export function ExpenseInboxPreviewModal({
       const pm = paymentMethod.trim() || (await defaultPaymentMethodName()) || "Cash";
       let workflowStatus = preserveConfirmedExpenseStatusOnCompleteSave(
         expense.status,
-        deriveExpenseWorkflowStatus(projectId, category || "Other")
+        deriveExpenseWorkflowStatus(projectId, category || "Other", costAllocation)
       );
       /* INBOX-UP drafts must stay in the Inbox pool until explicit Approve — DB `reviewed` removes them from Inbox. */
       if (
@@ -671,7 +680,7 @@ export function ExpenseInboxPreviewModal({
   const handleMarkReviewed = async () => {
     if (!expense || markBusy) return;
     if (isInboxUploadExpenseReference(expense.referenceNo)) {
-      const gate = validateApproveInboxUploadDraft(expense);
+      const gate = validateApproveInboxUploadDraft(expense, costAllocation);
       if (gate === "project") {
         toast({
           title: "Choose a project first",
@@ -709,7 +718,9 @@ export function ExpenseInboxPreviewModal({
     if (!expense) return;
     setVendorName(expense.vendorName ?? "");
     setAmount(String(getExpenseTotal(expense)));
-    setProjectId(expense.lines[0]?.projectId ?? expense.headerProjectId ?? null);
+    const nextProjectId = expense.lines[0]?.projectId ?? expense.headerProjectId ?? null;
+    setProjectId(nextProjectId);
+    setCostAllocation(expenseCostAllocationFromProjectId(nextProjectId));
     setWorkerId(expense.workerId ?? null);
     setCategory(expense.lines[0]?.category ?? "Other");
     setNotes(stripInboxUploadNoiseFromText(expense.notes ?? ""));
@@ -988,15 +999,48 @@ export function ExpenseInboxPreviewModal({
               <ModalSection title="Classification">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
+                    <label className={FIELD_LABEL}>Classification</label>
+                    <Select
+                      value={costAllocation}
+                      disabled={saving}
+                      onValueChange={(v) => {
+                        const next = v as ExpenseCostAllocation;
+                        setCostAllocation(next);
+                        if (next === EXPENSE_COST_ALLOCATION_OVERHEAD) setProjectId(null);
+                      }}
+                    >
+                      <SelectTrigger
+                        id="edit-expense-cost-allocation-select"
+                        className={SELECT_TRIGGER_CLASS}
+                      >
+                        <SelectValue placeholder="Classification" />
+                      </SelectTrigger>
+                      <SelectContent {...selectPopperContentProps}>
+                        <SelectItem value={EXPENSE_COST_ALLOCATION_OVERHEAD}>Overhead</SelectItem>
+                        <SelectItem value={EXPENSE_COST_ALLOCATION_PROJECT_COST}>
+                          Project Cost
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
                     <label className={FIELD_LABEL}>Project</label>
                     <Select
                       value={projectRadixValue}
                       disabled={saving}
-                      onValueChange={(v) =>
-                        setProjectId(v === EXPENSE_PROJECT_SELECT_NONE ? null : v)
-                      }
+                      onValueChange={(v) => {
+                        if (v === EXPENSE_PROJECT_SELECT_NONE) {
+                          setProjectId(null);
+                        } else {
+                          setProjectId(v);
+                          setCostAllocation(EXPENSE_COST_ALLOCATION_PROJECT_COST);
+                        }
+                      }}
                     >
-                      <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                      <SelectTrigger
+                        id="edit-expense-project-select"
+                        className={SELECT_TRIGGER_CLASS}
+                      >
                         <SelectValue placeholder="Project" />
                       </SelectTrigger>
                       <SelectContent {...selectPopperContentProps}>
@@ -1037,7 +1081,10 @@ export function ExpenseInboxPreviewModal({
                         setWorkerId(v === EXPENSE_WORKER_SELECT_NONE ? null : v)
                       }
                     >
-                      <SelectTrigger className={SELECT_TRIGGER_CLASS}>
+                      <SelectTrigger
+                        id="edit-expense-worker-select"
+                        className={SELECT_TRIGGER_CLASS}
+                      >
                         <SelectValue placeholder="Worker" />
                       </SelectTrigger>
                       <SelectContent {...selectPopperContentProps}>
@@ -1064,6 +1111,7 @@ export function ExpenseInboxPreviewModal({
                       value={(sourceType ?? "company") as NonNullable<Expense["sourceType"]>}
                       onValueChange={(v) => setSourceType(v)}
                       disabled={saving}
+                      id="edit-expense-payment-source-select"
                       className={SELECT_TRIGGER_CLASS}
                     />
                   </div>

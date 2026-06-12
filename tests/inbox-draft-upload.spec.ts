@@ -192,6 +192,15 @@ async function fetchCanonicalExpenseCost(
   return Number(j.canonical?.expenseCost ?? NaN);
 }
 
+async function openUploadReceiptDialog(page: Page) {
+  await page
+    .getByRole("button", { name: /upload receipt/i })
+    .filter({ visible: true })
+    .first()
+    .click();
+  return page.getByRole("dialog");
+}
+
 test.describe("Inbox draft upload receipt", () => {
   test.describe.configure({ timeout: 300_000, retries: 0, mode: "serial" });
 
@@ -247,8 +256,7 @@ test.describe("Inbox draft upload receipt", () => {
 
     let uploadedInboxRef: string | null = null;
     try {
-      await page.getByRole("button", { name: /upload receipt/i }).click();
-      const dialog = page.getByRole("dialog");
+      const dialog = await openUploadReceiptDialog(page);
       await expect(dialog.getByRole("heading", { name: /upload receipt/i })).toBeVisible({
         timeout: 15_000,
       });
@@ -298,7 +306,7 @@ test.describe("Inbox draft upload receipt", () => {
       const classificationGrid = expenseDialog
         .getByRole("heading", { name: "Classification" })
         .locator("xpath=following::div[contains(@class,'grid')][1]");
-      await classificationGrid.locator('button[role="combobox"]').first().click();
+      await classificationGrid.locator('button[role="combobox"]').nth(1).click();
       await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
       await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(expenseDialog, page));
 
@@ -416,8 +424,7 @@ test.describe("Inbox draft upload receipt", () => {
 
     let uploadedInboxRef: string | null = null;
     try {
-      await page.getByRole("button", { name: /upload receipt/i }).click();
-      const dialog = page.getByRole("dialog");
+      const dialog = await openUploadReceiptDialog(page);
       await expect(dialog.getByRole("heading", { name: /upload receipt/i })).toBeVisible({
         timeout: 15_000,
       });
@@ -615,8 +622,7 @@ test.describe("Inbox draft upload receipt", () => {
     let uploadedInboxRef: string | undefined;
 
     try {
-      await page.getByRole("button", { name: /upload receipt/i }).click();
-      const dialog = page.getByRole("dialog");
+      const dialog = await openUploadReceiptDialog(page);
       await expect(dialog.getByRole("heading", { name: /upload receipt/i })).toBeVisible({
         timeout: 15_000,
       });
@@ -678,9 +684,12 @@ test.describe("Inbox draft upload receipt", () => {
         .getByRole("heading", { name: "Classification" })
         .locator("xpath=following::div[contains(@class,'grid')][1]");
       await classificationGrid.locator('button[role="combobox"]').first().click();
-      await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
+      await page.getByRole("option", { name: "Project Cost", exact: true }).click();
 
       await classificationGrid.locator('button[role="combobox"]').nth(1).click();
+      await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
+
+      await expenseDialog.locator("#edit-expense-category-select").click();
       await page.getByRole("option", { name: "Materials", exact: true }).click();
 
       await expenseDialog.locator("#edit-expense-payment-method-select").click();
@@ -787,8 +796,7 @@ test.describe("Inbox draft upload receipt", () => {
 
       await page.goto(E2E_FINANCIAL_INBOX_URL, { waitUntil: "domcontentloaded", timeout: 90_000 });
       await waitForExpensesQuerySuccess(page, 90_000);
-      await page.getByRole("button", { name: /upload receipt/i }).click();
-      const dialog2 = page.getByRole("dialog");
+      const dialog2 = await openUploadReceiptDialog(page);
       await dialog2.locator('input[type="file"][multiple]').setInputFiles(filePayload);
       await expect(dialog2.getByText(/Selected receipts/i)).toBeVisible({ timeout: 15_000 });
       await dialog2.getByRole("button", { name: /Confirm Upload \(1\)/ }).click();

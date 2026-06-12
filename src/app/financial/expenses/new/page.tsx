@@ -38,9 +38,12 @@ import {
 import { createBrowserClient } from "@/lib/supabase";
 import {
   deriveExpenseWorkflowStatus,
-  expenseCategoryRequiresProject,
+  expenseCostAllocationRequiresProject,
+  EXPENSE_COST_ALLOCATION_OVERHEAD,
+  EXPENSE_COST_ALLOCATION_PROJECT_COST,
   EXPENSE_ACCOUNT_SELECT_NONE,
   EXPENSE_PROJECT_SELECT_NONE,
+  type ExpenseCostAllocation,
 } from "@/lib/expense-workflow-status";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
@@ -59,6 +62,7 @@ const selectPopperContentProps = {
 
 type LineForm = {
   id: string;
+  costAllocation: ExpenseCostAllocation;
   projectId: string | null;
   category: string;
   memo: string;
@@ -68,6 +72,7 @@ type LineForm = {
 function newLine(): LineForm {
   return {
     id: `l-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    costAllocation: EXPENSE_COST_ALLOCATION_OVERHEAD,
     projectId: null,
     category: "Other",
     memo: "",
@@ -243,7 +248,7 @@ export default function NewExpensePage() {
       return false;
     }
     const projectCostLine = effectiveLines.find(
-      (line) => expenseCategoryRequiresProject(line.category) && !line.projectId
+      (line) => expenseCostAllocationRequiresProject(line.costAllocation) && !line.projectId
     );
     if (projectCostLine) {
       toast({
@@ -298,7 +303,11 @@ export default function NewExpensePage() {
       }
       const head = effectiveLines[0];
       await updateExpenseForReview(created.id, {
-        status: deriveExpenseWorkflowStatus(head?.projectId ?? null, head?.category ?? ""),
+        status: deriveExpenseWorkflowStatus(
+          head?.projectId ?? null,
+          head?.category ?? "",
+          head?.costAllocation ?? EXPENSE_COST_ALLOCATION_OVERHEAD
+        ),
       });
       toast({ title: "Created", description: "Expense created.", variant: "success" });
       router.push("/financial/expenses");
@@ -383,7 +392,44 @@ export default function NewExpensePage() {
               {!showSplitLines ? (
                 <>
                   <div className="space-y-2 md:col-span-2 lg:col-span-3">
-                    <div className="grid gap-4 md:grid-cols-3">
+                    <div className="grid gap-4 md:grid-cols-4">
+                      <div className="space-y-2">
+                        <label className={FIELD_LABEL}>Classification</label>
+                        <Select
+                          disabled={loading}
+                          value={lines[0]?.costAllocation ?? EXPENSE_COST_ALLOCATION_OVERHEAD}
+                          onValueChange={(v) => {
+                            const next = v as ExpenseCostAllocation;
+                            setLines((prev) => {
+                              const row = prev[0] ?? newLine();
+                              const rest = prev.slice(1);
+                              return [
+                                {
+                                  ...row,
+                                  costAllocation: next,
+                                  projectId:
+                                    next === EXPENSE_COST_ALLOCATION_OVERHEAD
+                                      ? null
+                                      : row.projectId,
+                                },
+                                ...rest,
+                              ];
+                            });
+                          }}
+                        >
+                          <SelectTrigger className={SELECT_TRIGGER}>
+                            <SelectValue placeholder="Classification" />
+                          </SelectTrigger>
+                          <SelectContent {...selectPopperContentProps}>
+                            <SelectItem value={EXPENSE_COST_ALLOCATION_OVERHEAD}>
+                              Overhead
+                            </SelectItem>
+                            <SelectItem value={EXPENSE_COST_ALLOCATION_PROJECT_COST}>
+                              Project Cost
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div className="space-y-2">
                         <label className={FIELD_LABEL}>Project</label>
                         <Select
@@ -398,7 +444,16 @@ export default function NewExpensePage() {
                             setLines((prev) => {
                               const row = prev[0] ?? newLine();
                               const rest = prev.slice(1);
-                              return [{ ...row, projectId: proj }, ...rest];
+                              return [
+                                {
+                                  ...row,
+                                  projectId: proj,
+                                  costAllocation: proj
+                                    ? EXPENSE_COST_ALLOCATION_PROJECT_COST
+                                    : row.costAllocation,
+                                },
+                                ...rest,
+                              ];
                             });
                           }}
                         >
@@ -656,7 +711,10 @@ export default function NewExpensePage() {
 
               <div className="space-y-3">
                 {lines.map((l, idx) => (
-                  <div key={l.id} className="grid gap-3 md:grid-cols-[1fr_160px_160px_140px_36px]">
+                  <div
+                    key={l.id}
+                    className="grid gap-3 md:grid-cols-[1fr_140px_160px_160px_140px_36px]"
+                  >
                     <Input
                       value={l.memo}
                       onChange={(e) =>
@@ -669,6 +727,35 @@ export default function NewExpensePage() {
                     />
                     <Select
                       disabled={loading}
+                      value={l.costAllocation}
+                      onValueChange={(v) => {
+                        const next = v as ExpenseCostAllocation;
+                        setLines((prev) =>
+                          prev.map((x) =>
+                            x.id === l.id
+                              ? {
+                                  ...x,
+                                  costAllocation: next,
+                                  projectId:
+                                    next === EXPENSE_COST_ALLOCATION_OVERHEAD ? null : x.projectId,
+                                }
+                              : x
+                          )
+                        );
+                      }}
+                    >
+                      <SelectTrigger className={cn(SELECT_TRIGGER, "text-xs")}>
+                        <SelectValue placeholder="Classification" />
+                      </SelectTrigger>
+                      <SelectContent {...selectPopperContentProps}>
+                        <SelectItem value={EXPENSE_COST_ALLOCATION_OVERHEAD}>Overhead</SelectItem>
+                        <SelectItem value={EXPENSE_COST_ALLOCATION_PROJECT_COST}>
+                          Project Cost
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select
+                      disabled={loading}
                       value={
                         l.projectId && String(l.projectId).trim() !== ""
                           ? l.projectId
@@ -677,7 +764,17 @@ export default function NewExpensePage() {
                       onValueChange={(v) => {
                         const proj = v === EXPENSE_PROJECT_SELECT_NONE ? null : v;
                         setLines((prev) =>
-                          prev.map((x) => (x.id === l.id ? { ...x, projectId: proj } : x))
+                          prev.map((x) =>
+                            x.id === l.id
+                              ? {
+                                  ...x,
+                                  projectId: proj,
+                                  costAllocation: proj
+                                    ? EXPENSE_COST_ALLOCATION_PROJECT_COST
+                                    : x.costAllocation,
+                                }
+                              : x
+                          )
                         );
                       }}
                     >

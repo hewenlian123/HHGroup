@@ -54,12 +54,16 @@ import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-prefer
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import {
   deriveExpenseWorkflowStatus,
-  expenseCategoryRequiresProject,
+  expenseCostAllocationFromProjectId,
+  expenseCostAllocationRequiresProject,
   expenseNeedsReviewFromDb,
   expenseStatusUiLabel,
   preserveConfirmedExpenseStatusOnCompleteSave,
+  EXPENSE_COST_ALLOCATION_OVERHEAD,
+  EXPENSE_COST_ALLOCATION_PROJECT_COST,
   EXPENSE_PROJECT_SELECT_NONE,
   EXPENSE_WORKER_SELECT_NONE,
+  type ExpenseCostAllocation,
 } from "@/lib/expense-workflow-status";
 import { defaultPaymentMethodName } from "@/lib/expense-options-db";
 import { cn } from "@/lib/utils";
@@ -158,6 +162,9 @@ export function EditExpenseModal({
   const [vendorName, setVendorName] = React.useState("");
   const [amount, setAmount] = React.useState("");
   const [projectId, setProjectId] = React.useState<string | null>(null);
+  const [costAllocation, setCostAllocation] = React.useState<ExpenseCostAllocation>(
+    EXPENSE_COST_ALLOCATION_OVERHEAD
+  );
   const [workerId, setWorkerId] = React.useState<string | null>(null);
   const [category, setCategory] = React.useState("Other");
   const [notes, setNotes] = React.useState("");
@@ -197,7 +204,9 @@ export function EditExpenseModal({
     if (expense) {
       setVendorName(expense.vendorName ?? "");
       setAmount(String(getExpenseTotal(expense)));
-      setProjectId(expense.lines[0]?.projectId ?? expense.headerProjectId ?? null);
+      const nextProjectId = expense.lines[0]?.projectId ?? expense.headerProjectId ?? null;
+      setProjectId(nextProjectId);
+      setCostAllocation(expenseCostAllocationFromProjectId(nextProjectId));
       setWorkerId(expense.workerId ?? null);
       setCategory(expense.lines[0]?.category ?? "Other");
       setNotes(stripInboxUploadNoiseFromText(expense.notes ?? ""));
@@ -420,7 +429,7 @@ export function EditExpenseModal({
       toast({ title: "Invalid amount", variant: "error" });
       return;
     }
-    if (expenseCategoryRequiresProject(category) && !projectId) {
+    if (expenseCostAllocationRequiresProject(costAllocation) && !projectId) {
       toast({
         title: "Missing project",
         description:
@@ -445,7 +454,7 @@ export function EditExpenseModal({
           "Cash";
         const workflowStatus = preserveConfirmedExpenseStatusOnCompleteSave(
           expense.status,
-          deriveExpenseWorkflowStatus(projectId, category || "Other")
+          deriveExpenseWorkflowStatus(projectId, category || "Other", costAllocation)
         );
         onSave({
           expenseId: expense.id,
@@ -527,15 +536,45 @@ export function EditExpenseModal({
                     />
                   </div>
                   <div className="space-y-1.5">
+                    <label className={FIELD_LABEL}>Classification</label>
+                    <Select
+                      value={costAllocation}
+                      disabled={saving}
+                      onValueChange={(v) => {
+                        const next = v as ExpenseCostAllocation;
+                        setCostAllocation(next);
+                        if (next === EXPENSE_COST_ALLOCATION_OVERHEAD) setProjectId(null);
+                      }}
+                    >
+                      <SelectTrigger
+                        id="edit-expense-cost-allocation-select"
+                        className={SELECT_TRIGGER}
+                      >
+                        <SelectValue placeholder="Classification" />
+                      </SelectTrigger>
+                      <SelectContent {...selectPopperContentProps}>
+                        <SelectItem value={EXPENSE_COST_ALLOCATION_OVERHEAD}>Overhead</SelectItem>
+                        <SelectItem value={EXPENSE_COST_ALLOCATION_PROJECT_COST}>
+                          Project Cost
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
                     <label className={FIELD_LABEL}>Project</label>
                     <Select
                       value={projectRadixValue}
                       disabled={saving}
-                      onValueChange={(v) =>
-                        setProjectId(v === EXPENSE_PROJECT_SELECT_NONE ? null : v)
-                      }
+                      onValueChange={(v) => {
+                        if (v === EXPENSE_PROJECT_SELECT_NONE) {
+                          setProjectId(null);
+                        } else {
+                          setProjectId(v);
+                          setCostAllocation(EXPENSE_COST_ALLOCATION_PROJECT_COST);
+                        }
+                      }}
                     >
-                      <SelectTrigger className={SELECT_TRIGGER}>
+                      <SelectTrigger id="edit-expense-project-select" className={SELECT_TRIGGER}>
                         <SelectValue placeholder="Project" />
                       </SelectTrigger>
                       <SelectContent {...selectPopperContentProps}>
@@ -615,7 +654,7 @@ export function EditExpenseModal({
                         setWorkerId(v === EXPENSE_WORKER_SELECT_NONE ? null : v)
                       }
                     >
-                      <SelectTrigger className={SELECT_TRIGGER}>
+                      <SelectTrigger id="edit-expense-worker-select" className={SELECT_TRIGGER}>
                         <SelectValue placeholder="Worker" />
                       </SelectTrigger>
                       <SelectContent {...selectPopperContentProps}>
@@ -642,6 +681,7 @@ export function EditExpenseModal({
                       value={(sourceType ?? "company") as NonNullable<Expense["sourceType"]>}
                       onValueChange={(v) => setSourceType(v)}
                       disabled={saving}
+                      id="edit-expense-payment-source-select"
                       className={SELECT_TRIGGER}
                     />
                   </div>
@@ -652,7 +692,7 @@ export function EditExpenseModal({
                       className="flex h-10 w-full items-center justify-start gap-2 rounded-sm border-border/60 px-3 py-0 text-sm font-normal"
                     >
                       {(() => {
-                        const w = deriveExpenseWorkflowStatus(projectId, category);
+                        const w = deriveExpenseWorkflowStatus(projectId, category, costAllocation);
                         return (
                           <>
                             <span

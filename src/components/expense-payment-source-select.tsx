@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 export type ExpensePaymentSourceSelectProps = {
   value: NonNullable<Expense["sourceType"]>;
   onValueChange: (next: NonNullable<Expense["sourceType"]>) => void;
+  id?: string;
   disabled?: boolean;
   className?: string;
 };
@@ -23,6 +24,7 @@ export type ExpensePaymentSourceSelectProps = {
 export function ExpensePaymentSourceSelect({
   value,
   onValueChange,
+  id,
   disabled,
   className,
 }: ExpensePaymentSourceSelectProps) {
@@ -81,6 +83,7 @@ export function ExpensePaymentSourceSelect({
       onValueChange={(v) => onValueChange(v as NonNullable<Expense["sourceType"]>)}
     >
       <SelectTrigger
+        id={id}
         className={cn("h-10 rounded-sm border-border/60 text-sm [&>span]:line-clamp-1", className)}
         aria-busy={loading}
       >

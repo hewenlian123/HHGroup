@@ -24,6 +24,11 @@ export const EXPENSE_COMMON_ITEM_NONE = "__hh_common_item_none__";
 /** Radix Select sentinel: no GL / payment source account picked yet. */
 export const EXPENSE_ACCOUNT_SELECT_NONE = "__hh_acct_none__";
 
+export type ExpenseCostAllocation = "overhead" | "project_cost";
+
+export const EXPENSE_COST_ALLOCATION_OVERHEAD: ExpenseCostAllocation = "overhead";
+export const EXPENSE_COST_ALLOCATION_PROJECT_COST: ExpenseCostAllocation = "project_cost";
+
 /**
  * Needs Review: pending / null / empty / needs_review / draft.
  * Done: reviewed / approved / paid / reimbursed / done (+ reimbursable treated as done).
@@ -53,14 +58,58 @@ export function expenseStatusUiLabel(status: string | undefined): "Needs Review"
 
 export function deriveExpenseWorkflowStatus(
   projectId: string | null | undefined,
-  category: string | null | undefined
+  category: string | null | undefined,
+  costAllocation?: ExpenseCostAllocation | null
 ): "reviewed" | "needs_review" {
   const hasProject = projectId != null && String(projectId).trim() !== "";
   const cat = (category ?? "").trim();
   const hasCategory = cat !== "" && cat !== "—";
   if (!hasCategory) return "needs_review";
-  if (expenseCategoryRequiresProject(cat) && !hasProject) return "needs_review";
+  if (
+    expenseCostAllocationRequiresProject(
+      costAllocation ?? expenseCostAllocationFromProjectId(projectId)
+    ) &&
+    !hasProject
+  ) {
+    return "needs_review";
+  }
   return "reviewed";
+}
+
+export function normalizeExpenseCostAllocation(
+  value: string | null | undefined
+): ExpenseCostAllocation {
+  const v = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+  if (
+    v === "project" ||
+    v === "project_cost" ||
+    v === "projectcost" ||
+    v === "job_cost" ||
+    v === "jobcost"
+  ) {
+    return EXPENSE_COST_ALLOCATION_PROJECT_COST;
+  }
+  return EXPENSE_COST_ALLOCATION_OVERHEAD;
+}
+
+export function expenseCostAllocationFromProjectId(
+  projectId: string | null | undefined
+): ExpenseCostAllocation {
+  return projectId != null && String(projectId).trim() !== ""
+    ? EXPENSE_COST_ALLOCATION_PROJECT_COST
+    : EXPENSE_COST_ALLOCATION_OVERHEAD;
+}
+
+export function expenseCostAllocationRequiresProject(
+  costAllocation: ExpenseCostAllocation | string | null | undefined
+): boolean {
+  return normalizeExpenseCostAllocation(costAllocation) === EXPENSE_COST_ALLOCATION_PROJECT_COST;
 }
 
 function normalizeExpenseCategory(value: string | null | undefined): string {
@@ -74,8 +123,7 @@ function normalizeExpenseCategory(value: string | null | undefined): string {
 }
 
 /**
- * Categories that are normally company overhead and do not need a project allocation.
- * This is workflow classification only; project cost math still keys strictly on project_id.
+ * Legacy display heuristic only. Project-required validation must use explicit cost allocation.
  */
 export function expenseCategoryLooksOverhead(category: string | null | undefined): boolean {
   const c = normalizeExpenseCategory(category);
@@ -97,14 +145,13 @@ export function expenseCategoryLooksOverhead(category: string | null | undefined
 }
 
 /**
- * Project-cost categories must carry a real project. Unknown categories default to Project Cost
- * so new job-specific categories do not silently become overhead.
+ * Deprecated compatibility helper. Project-required validation must use explicit cost allocation.
  */
 export function expenseCategoryRequiresProject(category: string | null | undefined): boolean {
   const c = normalizeExpenseCategory(category);
   if (!c || c === "—") return false;
-  if (expenseCategoryLooksOverhead(c)) return false;
-  return true;
+  void c;
+  return false;
 }
 
 /**
@@ -144,12 +191,27 @@ export function expenseHasProjectForWorkflow(expense: Expense): boolean {
   return expenseEffectiveProjectId(expense) != null;
 }
 
-export function expenseRequiresProjectForWorkflow(expense: Expense): boolean {
-  return expenseCategoryRequiresProject(expense.lines[0]?.category ?? "");
+export function expenseCostAllocationFromExpense(expense: Expense): ExpenseCostAllocation {
+  return expenseCostAllocationFromProjectId(expenseEffectiveProjectId(expense));
 }
 
-export function expenseHasRequiredProjectForWorkflow(expense: Expense): boolean {
-  return !expenseRequiresProjectForWorkflow(expense) || expenseHasProjectForWorkflow(expense);
+export function expenseRequiresProjectForWorkflow(
+  expense: Expense,
+  costAllocation?: ExpenseCostAllocation | null
+): boolean {
+  return expenseCostAllocationRequiresProject(
+    costAllocation ?? expenseCostAllocationFromExpense(expense)
+  );
+}
+
+export function expenseHasRequiredProjectForWorkflow(
+  expense: Expense,
+  costAllocation?: ExpenseCostAllocation | null
+): boolean {
+  return (
+    !expenseRequiresProjectForWorkflow(expense, costAllocation) ||
+    expenseHasProjectForWorkflow(expense)
+  );
 }
 
 export function expenseHasCategoryForWorkflow(expense: Expense): boolean {
@@ -175,10 +237,11 @@ export function expenseIsArchivedDoneDbStatus(status: string | undefined | null)
  * Returns which gate failed, or null if OK.
  */
 export function validateMarkDoneRequiresProjectAndCategory(
-  expense: Expense
+  expense: Expense,
+  costAllocation?: ExpenseCostAllocation | null
 ): "project" | "category" | null {
   if (!expenseHasCategoryForWorkflow(expense)) return "category";
-  if (!expenseHasRequiredProjectForWorkflow(expense)) return "project";
+  if (!expenseHasRequiredProjectForWorkflow(expense, costAllocation)) return "project";
   return null;
 }
 
@@ -186,10 +249,11 @@ export function validateMarkDoneRequiresProjectAndCategory(
  * Inbox upload → Approve: require project, category, and payment account on file-backed drafts (`INBOX-UP-` ref).
  */
 export function validateApproveInboxUploadDraft(
-  expense: Expense
+  expense: Expense,
+  costAllocation?: ExpenseCostAllocation | null
 ): "project" | "category" | "payment" | null {
   if (!expenseHasCategoryForWorkflow(expense)) return "category";
-  if (!expenseHasRequiredProjectForWorkflow(expense)) return "project";
+  if (!expenseHasRequiredProjectForWorkflow(expense, costAllocation)) return "project";
   const pa = (expense.paymentAccountId ?? "").trim();
   if (!pa) return "payment";
   return null;

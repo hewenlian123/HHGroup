@@ -120,24 +120,26 @@ describe("expenseMatchesInboxPool", () => {
 });
 
 describe("expense project requirement workflow", () => {
-  it("derives overhead without project as reviewed", () => {
-    expect(deriveExpenseWorkflowStatus(null, "Fuel")).toBe("reviewed");
-    expect(deriveExpenseWorkflowStatus(null, "Office supplies")).toBe("reviewed");
+  it("uses explicit overhead cost allocation, not category, to allow no-project expenses", () => {
+    expect(deriveExpenseWorkflowStatus(null, "Materials", "overhead")).toBe("reviewed");
+    expect(deriveExpenseWorkflowStatus(null, "Fuel", "overhead")).toBe("reviewed");
   });
 
-  it("keeps project cost categories in review until a project is selected", () => {
-    expect(deriveExpenseWorkflowStatus(null, "Materials")).toBe("needs_review");
-    expect(deriveExpenseWorkflowStatus("proj-1", "Materials")).toBe("reviewed");
+  it("uses explicit project-cost allocation, not category, to require a project", () => {
+    expect(deriveExpenseWorkflowStatus(null, "Fuel", "project_cost")).toBe("needs_review");
+    expect(deriveExpenseWorkflowStatus(null, "Materials", "project_cost")).toBe("needs_review");
+    expect(deriveExpenseWorkflowStatus("proj-1", "Fuel", "project_cost")).toBe("reviewed");
   });
 
-  it("allows inbox upload overhead approval without project but blocks project cost", () => {
+  it("allows overhead approval without project regardless of payment source or worker", () => {
     expect(
       validateApproveInboxUploadDraft(
         mockExpense({
           referenceNo: "INBOX-UP-test",
           paymentAccountId: "pay-1",
-          lines: [{ id: "l1", projectId: null, category: "Fuel", amount: 1, memo: null }],
-        })
+          lines: [{ id: "l1", projectId: null, category: "Materials", amount: 1, memo: null }],
+        }),
+        "overhead"
       )
     ).toBeNull();
 
@@ -145,9 +147,38 @@ describe("expense project requirement workflow", () => {
       validateApproveInboxUploadDraft(
         mockExpense({
           referenceNo: "INBOX-UP-test",
+          sourceType: "reimbursement",
+          workerId: "worker-1",
           paymentAccountId: "pay-1",
           lines: [{ id: "l1", projectId: null, category: "Materials", amount: 1, memo: null }],
-        })
+        }),
+        "overhead"
+      )
+    ).toBeNull();
+  });
+
+  it("blocks project-cost approval without project regardless of payment source or worker", () => {
+    expect(
+      validateApproveInboxUploadDraft(
+        mockExpense({
+          referenceNo: "INBOX-UP-test",
+          paymentAccountId: "pay-1",
+          lines: [{ id: "l1", projectId: null, category: "Fuel", amount: 1, memo: null }],
+        }),
+        "project_cost"
+      )
+    ).toBe("project");
+
+    expect(
+      validateApproveInboxUploadDraft(
+        mockExpense({
+          referenceNo: "INBOX-UP-test",
+          sourceType: "reimbursement",
+          workerId: "worker-1",
+          paymentAccountId: "pay-1",
+          lines: [{ id: "l1", projectId: null, category: "Fuel", amount: 1, memo: null }],
+        }),
+        "project_cost"
       )
     ).toBe("project");
   });
