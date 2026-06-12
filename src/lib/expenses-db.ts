@@ -1255,6 +1255,260 @@ export async function createQuickExpenseWithClient(
 
 const REIMBURSEMENT_CATEGORY = "reimbursement";
 
+type ExpenseWorkerReimbursementBridgeResult = {
+  reimbursementId: string | null;
+  created: boolean;
+  skippedReason?:
+    | "not_worker_reimbursement"
+    | "missing_worker"
+    | "missing_amount"
+    | "expense_not_found";
+};
+
+type ExpenseWorkerReimbursementSourceRow = {
+  id: string;
+  worker_id?: string | null;
+  project_id?: string | null;
+  amount?: number | null;
+  total?: number | null;
+  vendor?: string | null;
+  vendor_name?: string | null;
+  notes?: string | null;
+  receipt_url?: string | null;
+  source?: string | null;
+  source_id?: string | null;
+  source_type?: string | null;
+  expense_date?: string | null;
+};
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function workerReimbursementSourceTypeFromRow(row: ExpenseWorkerReimbursementSourceRow): boolean {
+  const sourceType = expenseSourceTypeForDatabase(row.source_type);
+  if (sourceType === "reimbursement") return true;
+  return String(row.source ?? "").trim() === WORKER_REIMBURSEMENT_SOURCE;
+}
+
+type ExpenseReimbursementLineBridge = {
+  projectId: string | null;
+  amount: number | null;
+};
+
+async function firstExpenseLineForWorkerReimbursementBridge(
+  c: SupabaseClient,
+  expenseId: string
+): Promise<ExpenseReimbursementLineBridge> {
+  const { data, error } = await c
+    .from("expense_lines")
+    .select("project_id, amount, total")
+    .eq("expense_id", expenseId)
+    .limit(1);
+  if (error) {
+    if (isMissingTable(error) || isMissingColumn(error)) return { projectId: null, amount: null };
+    throw new Error(error.message ?? "Failed to load expense line project.");
+  }
+  const row =
+    (data?.[0] as
+      | {
+          project_id?: string | null;
+          amount?: number | string | null;
+          total?: number | string | null;
+        }
+      | undefined) ?? null;
+  const projectId = row?.project_id ? String(row.project_id) : null;
+  const amount = Number(row?.amount ?? row?.total);
+  return { projectId, amount: Number.isFinite(amount) && amount > 0 ? amount : null };
+}
+
+async function existingWorkerReimbursementById(
+  c: SupabaseClient,
+  reimbursementId: string
+): Promise<{ id: string } | null> {
+  if (!UUID_RE.test(reimbursementId)) return null;
+  const { data, error } = await c
+    .from("worker_reimbursements")
+    .select("id")
+    .eq("id", reimbursementId)
+    .maybeSingle();
+  if (error) {
+    if (isMissingTable(error) || isMissingColumn(error)) return null;
+    throw new Error(error.message ?? "Failed to load linked worker reimbursement.");
+  }
+  return data as { id: string } | null;
+}
+
+async function existingWorkerReimbursementByReceiptUrl(
+  c: SupabaseClient,
+  params: { workerId: string; receiptUrl: string | null | undefined }
+): Promise<{ id: string } | null> {
+  const receiptUrl = String(params.receiptUrl ?? "").trim();
+  if (!receiptUrl) return null;
+  const { data, error } = await c
+    .from("worker_reimbursements")
+    .select("id")
+    .eq("worker_id", params.workerId)
+    .eq("receipt_url", receiptUrl)
+    .limit(1);
+  if (error) {
+    if (isMissingTable(error) || isMissingColumn(error)) return null;
+    throw new Error(error.message ?? "Failed to load receipt-linked worker reimbursement.");
+  }
+  return ((data ?? []) as { id: string }[])[0] ?? null;
+}
+
+async function linkExpenseToWorkerReimbursement(
+  c: SupabaseClient,
+  expenseId: string,
+  reimbursementId: string
+): Promise<void> {
+  const fullPatch = {
+    source: WORKER_REIMBURSEMENT_SOURCE,
+    source_id: reimbursementId,
+    source_type: "reimbursement",
+  };
+  let res = await c.from("expenses").update(fullPatch).eq("id", expenseId);
+  if (!res.error) return;
+  if (errorSuggestsMissingNamedColumn(res.error, "source_type")) {
+    const { source_type, ...withoutSourceType } = fullPatch;
+    void source_type;
+    res = await c.from("expenses").update(withoutSourceType).eq("id", expenseId);
+  }
+  if (res.error && errorSuggestsMissingNamedColumn(res.error, "source_id")) {
+    res = await c
+      .from("expenses")
+      .update({ source: WORKER_REIMBURSEMENT_SOURCE })
+      .eq("id", expenseId);
+  }
+  if (res.error && errorSuggestsMissingNamedColumn(res.error, "source")) {
+    return;
+  }
+  if (res.error) throw new Error(res.error.message ?? "Failed to link expense reimbursement.");
+}
+
+async function insertWorkerReimbursementForExpense(
+  c: SupabaseClient,
+  row: ExpenseWorkerReimbursementSourceRow,
+  projectId: string | null,
+  amount: number
+): Promise<{ id: string }> {
+  const vendor =
+    String(row.vendor_name ?? "").trim() ||
+    String(row.vendor ?? "").trim() ||
+    "Worker Reimbursement";
+  const notes = String(row.notes ?? "").trim();
+  const description = notes || `${vendor} · Company reimbursement`;
+  const receiptUrl = String(row.receipt_url ?? "").trim() || null;
+  const reimbursementDate =
+    typeof row.expense_date === "string" && /^\d{4}-\d{2}-\d{2}/.test(row.expense_date)
+      ? row.expense_date.slice(0, 10)
+      : new Date().toISOString().slice(0, 10);
+
+  const fullInsert = {
+    worker_id: row.worker_id,
+    project_id: projectId,
+    vendor,
+    amount,
+    description,
+    receipt_url: receiptUrl,
+    status: "pending",
+    reimbursement_date: reimbursementDate,
+  };
+  const attempts: Record<string, unknown>[] = [
+    fullInsert,
+    (() => {
+      const { reimbursement_date, ...withoutDate } = fullInsert;
+      void reimbursement_date;
+      return withoutDate;
+    })(),
+    (() => {
+      const { reimbursement_date, vendor: _vendor, ...legacy } = fullInsert;
+      void reimbursement_date;
+      void _vendor;
+      return legacy;
+    })(),
+    {
+      worker_id: row.worker_id,
+      project_id: projectId,
+      amount,
+      description,
+      receipt_url: receiptUrl,
+      status: "pending",
+    },
+    {
+      worker_id: row.worker_id,
+      project_id: projectId,
+      amount,
+      notes: description,
+      receipt_url: receiptUrl,
+    },
+  ];
+
+  let lastError = "";
+  for (const payload of attempts) {
+    const { data, error } = await c
+      .from("worker_reimbursements")
+      .insert(payload)
+      .select("id")
+      .single();
+    if (!error && data?.id) return { id: String(data.id) };
+    lastError = error?.message ?? "";
+    if (error && !isMissingColumn(error)) break;
+  }
+  throw new Error(lastError || "Failed to create worker reimbursement from expense.");
+}
+
+/**
+ * Company-side expense reimbursements become payable only after they are bridged into
+ * worker_reimbursements, which is the Worker Detail / Balance / Pay Center source of truth.
+ */
+export async function ensureWorkerReimbursementForApprovedExpense(
+  expenseId: string,
+  explicitClient?: SupabaseClient
+): Promise<ExpenseWorkerReimbursementBridgeResult> {
+  const c = client(explicitClient);
+  const { data, error } = await c
+    .from("expenses")
+    .select(
+      "id, worker_id, project_id, amount, total, vendor, vendor_name, notes, receipt_url, source, source_id, source_type, expense_date"
+    )
+    .eq("id", expenseId)
+    .maybeSingle();
+  if (error) throw new Error(error.message ?? "Failed to load approved expense.");
+  if (!data) return { reimbursementId: null, created: false, skippedReason: "expense_not_found" };
+
+  const row = data as ExpenseWorkerReimbursementSourceRow;
+  if (!workerReimbursementSourceTypeFromRow(row)) {
+    return { reimbursementId: null, created: false, skippedReason: "not_worker_reimbursement" };
+  }
+  const workerId = String(row.worker_id ?? "").trim();
+  if (!workerId) return { reimbursementId: null, created: false, skippedReason: "missing_worker" };
+
+  const linkedId = String(row.source_id ?? "").trim();
+  if (linkedId) {
+    const existing = await existingWorkerReimbursementById(c, linkedId);
+    if (existing) return { reimbursementId: existing.id, created: false };
+  }
+
+  const receiptLinked = await existingWorkerReimbursementByReceiptUrl(c, {
+    workerId,
+    receiptUrl: row.receipt_url,
+  });
+  if (receiptLinked) {
+    await linkExpenseToWorkerReimbursement(c, expenseId, receiptLinked.id);
+    return { reimbursementId: receiptLinked.id, created: false };
+  }
+
+  const line = await firstExpenseLineForWorkerReimbursementBridge(c, expenseId);
+  const amount = line.amount ?? Number(row.amount ?? row.total);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { reimbursementId: null, created: false, skippedReason: "missing_amount" };
+  }
+  const projectId = String(row.project_id ?? "").trim() || line.projectId;
+  const created = await insertWorkerReimbursementForExpense(c, row, projectId || null, amount);
+  await linkExpenseToWorkerReimbursement(c, expenseId, created.id);
+  return { reimbursementId: created.id, created: true };
+}
+
 /** Create an expense + one line for a paid worker reimbursement. Prevents duplicates by reference_no or source/source_id.
  * Stores reimbursement.project_id and reimbursement.worker_id on the expense so the list can show project and worker. */
 export async function createExpenseFromPaidReimbursement(

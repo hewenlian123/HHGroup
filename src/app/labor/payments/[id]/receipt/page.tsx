@@ -1,13 +1,15 @@
 import { notFound } from "next/navigation";
 import { WorkerPaymentReceiptBody } from "@/components/labor/worker-payment-receipt-body";
 import { WorkerPaymentReceiptScreen } from "./receipt-screen-client";
-import { getProjectById, getWorkerById, getWorkerPaymentById } from "@/lib/data";
+import { getProjectById, getWorkerById } from "@/lib/data";
 import { getWorkerPaymentReceiptPayload } from "@/lib/worker-payment-receipt-data";
 import { computeWorkerPaymentReceiptNo } from "@/lib/worker-payment-receipt-no";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { getWorkerPaymentByIdWithClient } from "@/lib/worker-payments-db";
 
 export default async function WorkerPaymentReceiptPage({
   params,
@@ -16,9 +18,11 @@ export default async function WorkerPaymentReceiptPage({
 }) {
   const { id } = await params;
 
-  let payment: Awaited<ReturnType<typeof getWorkerPaymentById>> | null = null;
+  let payment: Awaited<ReturnType<typeof getWorkerPaymentByIdWithClient>> | null = null;
   try {
-    payment = await getWorkerPaymentById(id);
+    const supabase = getServerSupabaseInternalNoStore();
+    if (!supabase) throw new Error("Supabase is not configured.");
+    payment = await getWorkerPaymentByIdWithClient(supabase, id);
   } catch (e) {
     logServerPageDataError(`labor/payments/${id}/receipt`, e);
     return (

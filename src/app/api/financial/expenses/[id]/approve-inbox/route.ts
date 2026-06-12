@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuthenticatedUser } from "@/lib/auth-boundary";
-import { getExpenseById } from "@/lib/expenses-db";
+import { ensureWorkerReimbursementForApprovedExpense, getExpenseById } from "@/lib/expenses-db";
 import {
   expenseNeedsReviewFromDb,
   validateApproveInboxUploadDraft,
@@ -67,6 +67,16 @@ export async function POST(
     .update({ status: "approved" })
     .eq("id", expenseId);
   if (error) return apiError(500, "Could not approve Inbox draft.", error.message);
+
+  try {
+    await ensureWorkerReimbursementForApprovedExpense(expenseId, supabase);
+  } catch (bridgeError) {
+    return apiError(
+      500,
+      "Inbox draft approved, but worker reimbursement could not be created.",
+      bridgeError instanceof Error ? bridgeError.message : String(bridgeError)
+    );
+  }
 
   const updated = await getExpenseById(expenseId, supabase);
   if (!updated) return apiError(500, "Inbox draft approved, but the expense could not reload.");
