@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/select";
 import {
   getExpenseTotal,
-  deleteExpense,
   getPaymentAccounts,
   updateExpenseReceiptUrl,
   updateExpenseForReview,
@@ -195,6 +194,22 @@ async function approveInboxDraftViaApi(expenseId: string): Promise<Expense> {
     throw new Error(body?.message || "Failed to approve Inbox draft.");
   }
   return body.expense;
+}
+
+async function deleteExpenseViaApi(expenseId: string): Promise<void> {
+  const response = await fetch(`/api/expenses/${encodeURIComponent(expenseId)}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  });
+  let body: ExpenseApiResponse | null = null;
+  try {
+    body = (await response.json()) as ExpenseApiResponse;
+  } catch {
+    body = null;
+  }
+  if (!response.ok || !body?.ok) {
+    throw new Error(body?.message || "Failed to delete expense.");
+  }
 }
 
 const QuickExpenseModal = dynamic(
@@ -1368,12 +1383,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       });
       void (async () => {
         try {
-          const ok = await deleteExpense(expense.id);
-          if (!ok) {
-            setExpenses(prev);
-            toast({ title: "Delete failed", variant: "error" });
-            return;
-          }
+          await deleteExpenseViaApi(expense.id);
           queryClient.setQueriesData<Expense[]>({ queryKey: [...expensesQueryKeyRoot] }, (old) =>
             Array.isArray(old) ? old.filter((e) => e.id !== expense.id) : old
           );
@@ -1413,9 +1423,13 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               emptyExpensesRef.current?.focus({ preventScroll: true });
             }
           });
-        } catch {
+        } catch (error) {
           setExpenses(prev);
-          toast({ title: "Delete failed", variant: "error" });
+          toast({
+            title: "Delete failed",
+            description: error instanceof Error ? error.message : "Failed to delete expense.",
+            variant: "error",
+          });
         } finally {
           setDeletingExpenseId(null);
         }
@@ -1781,12 +1795,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             if (a.url?.startsWith("blob:")) URL.revokeObjectURL(a.url);
           });
           setExpenses((list) => list.filter((e) => e.id !== id));
-          const deleted = await deleteExpense(id);
-          if (!deleted) {
-            setExpenses(prev);
-            toast({ title: "Delete failed", variant: "error" });
-            return false;
-          }
+          await deleteExpenseViaApi(id);
           queryClient.setQueriesData<Expense[]>({ queryKey: [...expensesQueryKeyRoot] }, (old) =>
             Array.isArray(old) ? old.filter((e) => e.id !== id) : old
           );
@@ -1805,9 +1814,13 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           toast({ title: `Deleted ${ok} expense${ok !== 1 ? "s" : ""}`, variant: "success" });
         }
         return true;
-      } catch {
+      } catch (error) {
         setExpenses(prev);
-        toast({ title: "Delete failed", variant: "error" });
+        toast({
+          title: "Delete failed",
+          description: error instanceof Error ? error.message : "Failed to delete expense.",
+          variant: "error",
+        });
         return false;
       } finally {
         setBulkBusy(false);

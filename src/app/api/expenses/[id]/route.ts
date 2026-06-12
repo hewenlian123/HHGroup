@@ -2,9 +2,13 @@ import { NextResponse } from "next/server";
 import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
+  getServerSupabaseAdmin,
   getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
-import { expenseSourceTypeIsWorkerReimbursement } from "@/lib/expense-workflow-status";
+import {
+  expenseIsArchivedDoneDbStatus,
+  expenseSourceTypeIsWorkerReimbursement,
+} from "@/lib/expense-workflow-status";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -85,6 +89,17 @@ function slugKey(value: string): string {
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
   return slug || crypto.randomUUID().slice(0, 12);
+}
+
+function isSafeTestExpenseVendor(value: string | null | undefined): boolean {
+  const vendor = String(value ?? "").trim();
+  return (
+    vendor.startsWith("ZZ-E2E-") ||
+    vendor.startsWith("E2E-") ||
+    vendor.startsWith("ZZ-PROD-WR-SMOKE-") ||
+    vendor.startsWith("ZZ-PROD-DELETE-SMOKE-") ||
+    /^SmokeVendor[-_]/i.test(vendor)
+  );
 }
 
 function linePatchToDb(patch: ExpenseLinePatch): Record<string, unknown> {
@@ -344,6 +359,95 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 
   return NextResponse.json({ ok: true, expense: data }, { headers: NO_CACHE_HEADERS });
+}
+
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireAuthenticatedUser(request);
+  if (!guard.ok) return guard.response;
+
+  const { id } = await params;
+  if (!id?.trim()) return apiError(400, "Missing expense id.");
+
+  const supabase = getServerSupabaseAdmin();
+  if (!supabase) {
+    return apiError(
+      503,
+      "Expense delete is not configured on the server. Add SUPABASE_SERVICE_ROLE_KEY as a server-only environment variable."
+    );
+  }
+
+  const { data: expense, error: loadError } = await supabase
+    .from("expenses")
+    .select("id, vendor_name, vendor, status")
+    .eq("id", id)
+    .maybeSingle();
+  if (loadError) {
+    console.error("[expenses/:id] delete load failed", loadError);
+    return apiError(500, loadError.message ?? "Failed to load expense before delete.");
+  }
+  if (!expense) return apiError(404, "Expense not found or already deleted.");
+
+  const vendorLabel = expense.vendor_name ?? expense.vendor ?? null;
+  const isTestExpense = isSafeTestExpenseVendor(vendorLabel);
+  if (expenseIsArchivedDoneDbStatus(expense.status) && !isTestExpense) {
+    return apiError(
+      409,
+      "Reviewed or approved expenses cannot be hard-deleted from the list. Use a void/archive workflow or contact an admin."
+    );
+  }
+
+  const { error: attachmentsError } = await supabase
+    .from("attachments")
+    .delete()
+    .eq("entity_type", "expense")
+    .eq("entity_id", id);
+  if (attachmentsError && !isMissingTable(attachmentsError)) {
+    console.error("[expenses/:id] attachment metadata delete failed", attachmentsError);
+    return apiError(500, attachmentsError.message ?? "Failed to delete expense attachments.");
+  }
+
+  const { error: expenseAttachmentsError } = await supabase
+    .from("expense_attachments")
+    .delete()
+    .eq("expense_id", id);
+  if (expenseAttachmentsError && !isMissingTable(expenseAttachmentsError)) {
+    console.error("[expenses/:id] expense attachment delete failed", expenseAttachmentsError);
+    return apiError(
+      500,
+      expenseAttachmentsError.message ?? "Failed to delete expense attachment metadata."
+    );
+  }
+
+  const { data: deleted, error: deleteError } = await supabase
+    .from("expenses")
+    .delete()
+    .eq("id", id)
+    .select("id");
+  if (deleteError) {
+    console.error("[expenses/:id] delete failed", deleteError);
+    const message = deleteError.message ?? "Failed to delete expense.";
+    if (/foreign key|violates foreign key|referential/i.test(message)) {
+      return apiError(
+        409,
+        "This expense cannot be deleted because it is referenced by another record."
+      );
+    }
+    return apiError(500, message);
+  }
+
+  if (!deleted || deleted.length === 0)
+    return apiError(404, "Expense not found or already deleted.");
+  return NextResponse.json(
+    {
+      ok: true,
+      rowsDeleted: deleted.length,
+      expense: {
+        id: expense.id,
+        vendorName: vendorLabel,
+      },
+    },
+    { headers: NO_CACHE_HEADERS }
+  );
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
