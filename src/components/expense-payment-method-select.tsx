@@ -4,19 +4,13 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ExpenseSearchableSelect } from "@/components/expense-searchable-select";
 import { pickerItemsByStoredName } from "@/lib/expense-options-db";
 import { useToast } from "@/components/toast/toast-provider";
 import { cn } from "@/lib/utils";
@@ -111,6 +105,7 @@ export function ExpensePaymentMethodSelect({
     : value.trim()
       ? value
       : (selectItems[0]?.value ?? "");
+  const fallbackLabel = knownValues.has(value) ? undefined : value.trim() || undefined;
 
   const handleCreate = async () => {
     const trimmed = newName.trim();
@@ -152,36 +147,34 @@ export function ExpensePaymentMethodSelect({
 
   return (
     <>
-      <Select
+      <ExpenseSearchableSelect
         value={radixValue}
-        disabled={disabled || loading}
+        disabled={disabled}
+        loading={loading}
+        options={selectItems.map((it) => ({
+          value: it.value,
+          label: it.label,
+          searchText: it.value,
+        }))}
+        actions={[
+          {
+            value: ADD_NEW_VALUE,
+            label: "+ Add new",
+            searchText: "add new payment method",
+            onSelect: () => setAddOpen(true),
+          },
+        ]}
+        fallbackLabel={fallbackLabel}
+        placeholder="Method"
+        emptyText="No matching payment methods"
+        searchPlaceholder="Search payment methods…"
+        id={id}
+        className={cn("h-10 rounded-sm border-border/60 text-sm [&>span]:line-clamp-1", className)}
+        aria-label="Payment method"
         onValueChange={(v) => {
-          if (v === ADD_NEW_VALUE) {
-            setAddOpen(true);
-            return;
-          }
           onValueChange(v);
         }}
-      >
-        <SelectTrigger
-          id={id}
-          className={cn(
-            "h-10 rounded-sm border-border/60 text-sm [&>span]:line-clamp-1",
-            className
-          )}
-          aria-busy={loading}
-        >
-          <SelectValue placeholder="Method" />
-        </SelectTrigger>
-        <SelectContent position="popper" sideOffset={4} className="z-[200] max-h-56">
-          {selectItems.map((it) => (
-            <SelectItem key={`${it.value}-${it.archived ? "a" : "x"}`} value={it.value}>
-              {it.label}
-            </SelectItem>
-          ))}
-          <SelectItem value={ADD_NEW_VALUE}>+ Add new</SelectItem>
-        </SelectContent>
-      </Select>
+      />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-sm rounded-sm border-border/60">

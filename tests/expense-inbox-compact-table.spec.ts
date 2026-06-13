@@ -409,6 +409,19 @@ async function gotoCompactExpenses(page: Page, prefix: string) {
   await expensesVendorSearch(page).fill(prefix);
 }
 
+function collectPageErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") errors.push(msg.text());
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+  return errors;
+}
+
+function unexpectedPageErrors(errors: readonly string[]): string[] {
+  return errors.filter((message) => !message.includes("net::ERR_NAME_NOT_RESOLVED"));
+}
+
 async function expectCompactRowHeight(row: Locator) {
   const box = await row.boundingBox();
   expect(box, "expense row should have a layout box").not.toBeNull();
@@ -449,6 +462,39 @@ async function expectHeaderCellsAligned(table: Locator, row: Locator) {
   }
 }
 
+async function expectNoPageHorizontalOverflow(page: Page, maxWidth: number) {
+  const scrollWide = await page.evaluate(() => document.documentElement.scrollWidth);
+  expect(scrollWide).toBeLessThanOrEqual(maxWidth + 2);
+}
+
+async function expectDesktopTableScrollPolished(page: Page) {
+  const scroll = page.locator(".expense-compact-table-scroll").first();
+  await expect(scroll).toBeVisible({ timeout: 15_000 });
+  const metrics = await scroll.evaluate((el) => {
+    const style = window.getComputedStyle(el);
+    return {
+      clientWidth: el.clientWidth,
+      overflowX: style.overflowX,
+      scrollbarColor: style.scrollbarColor,
+      scrollbarWidth: style.scrollbarWidth,
+      scrollWidth: el.scrollWidth,
+    };
+  });
+  expect(metrics.overflowX).toBe("auto");
+  expect(metrics.scrollbarWidth).toBe("thin");
+  expect(metrics.scrollbarColor).not.toBe("auto");
+  expect(metrics.scrollWidth - metrics.clientWidth).toBeLessThanOrEqual(2);
+}
+
+async function expectCompactLayoutNoHorizontalOverflow(page: Page, maxWidth: number) {
+  const table = page.locator("main table").first();
+  const tableVisible = (await table.count()) > 0 && (await table.isVisible().catch(() => false));
+  if (tableVisible) {
+    await expectDesktopTableScrollPolished(page);
+  }
+  await expectNoPageHorizontalOverflow(page, maxWidth);
+}
+
 test.describe("Expense inbox compact table", () => {
   test.describe.configure({ timeout: 180_000, retries: 0 });
 
@@ -460,6 +506,7 @@ test.describe("Expense inbox compact table", () => {
       test.skip(true, "Supabase service role is not configured.");
       return;
     }
+    const pageErrors = collectPageErrors(page);
 
     let seeded: SeededCompactRows | null = null;
     try {
@@ -483,6 +530,8 @@ test.describe("Expense inbox compact table", () => {
       ]) {
         await expect(table.getByRole("columnheader", { name: header })).toBeVisible();
       }
+      await expectDesktopTableScrollPolished(page);
+      await expectNoPageHorizontalOverflow(page, 1440);
 
       const receiptRow = expenseListRowById(page, seeded.ids.receipt);
       await expect(receiptRow).toBeVisible({ timeout: 60_000 });
@@ -579,6 +628,14 @@ test.describe("Expense inbox compact table", () => {
       await expect(popover.getByRole("button", { name: /Dismiss/i })).toHaveCount(3);
       await page.keyboard.press("Escape");
 
+      await page.setViewportSize({ width: 1100, height: 844 });
+      await gotoCompactInbox(page, seeded.prefix);
+      await expectCompactLayoutNoHorizontalOverflow(page, 1100);
+
+      await page.setViewportSize({ width: 1024, height: 844 });
+      await gotoCompactInbox(page, seeded.prefix);
+      await expectCompactLayoutNoHorizontalOverflow(page, 1024);
+
       await page.setViewportSize({ width: 390, height: 844 });
       await gotoCompactInbox(page, seeded.prefix);
       const mobileReceiptRow = expenseListRowById(page, seeded.ids.receipt);
@@ -597,9 +654,9 @@ test.describe("Expense inbox compact table", () => {
       expect(mobileActionDisplay.width).toBeGreaterThanOrEqual(44);
       expect(mobileActionDisplay.height).toBeGreaterThanOrEqual(44);
       expect(mobileActionDisplay.opacity).toBeGreaterThan(0);
-      const scrollWide = await page.evaluate(() => document.documentElement.scrollWidth);
-      expect(scrollWide).toBeLessThanOrEqual(392);
+      await expectNoPageHorizontalOverflow(page, 390);
       await expect(expenseListRowById(page, seeded.ids.noReceipt)).not.toContainText("No receipt");
+      expect(unexpectedPageErrors(pageErrors)).toEqual([]);
     } finally {
       await cleanupCompactRows(admin, seeded);
     }
@@ -613,6 +670,7 @@ test.describe("Expense inbox compact table", () => {
       test.skip(true, "Supabase service role is not configured.");
       return;
     }
+    const pageErrors = collectPageErrors(page);
 
     let seeded: SeededCompactRows | null = null;
     try {
@@ -622,6 +680,7 @@ test.describe("Expense inbox compact table", () => {
       await gotoCompactExpenses(page, seeded.prefix);
 
       const table = page.locator("main table").first();
+      await expectCompactLayoutNoHorizontalOverflow(page, 1440);
       const archiveReceiptRow = expenseListRowById(page, seeded.ids.archiveReceipt);
       await expect(archiveReceiptRow).toBeVisible({ timeout: 60_000 });
       await expectHeaderCellsAligned(table, archiveReceiptRow);
@@ -783,8 +842,8 @@ test.describe("Expense inbox compact table", () => {
       await expect(mobileRow).toBeVisible({ timeout: 60_000 });
       await expect(mobileRow.locator(":scope > div > span.rounded-full")).toHaveCount(0);
       await expect(mobileRow.getByRole("button", { name: /row actions/i })).toHaveCount(1);
-      const scrollWide = await page.evaluate(() => document.documentElement.scrollWidth);
-      expect(scrollWide).toBeLessThanOrEqual(392);
+      await expectNoPageHorizontalOverflow(page, 390);
+      expect(unexpectedPageErrors(pageErrors)).toEqual([]);
     } finally {
       await cleanupCompactRows(admin, seeded);
     }

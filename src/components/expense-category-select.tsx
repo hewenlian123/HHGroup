@@ -4,19 +4,13 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ExpenseSearchableSelect } from "@/components/expense-searchable-select";
 import { addExpenseCategory } from "@/lib/data";
 import { pickerItemsByStoredName, type ExpenseOptionPickerItem } from "@/lib/expense-options-db";
 import { useToast } from "@/components/toast/toast-provider";
@@ -117,6 +111,7 @@ export function ExpenseCategorySelect({
     : value.trim() && preserveArchivedValue
       ? value
       : (items[0]?.value ?? "");
+  const fallbackLabel = knownValues.has(value) ? undefined : value.trim() || undefined;
 
   const handleCreate = async () => {
     const trimmed = newName.trim();
@@ -174,38 +169,39 @@ export function ExpenseCategorySelect({
 
   return (
     <>
-      <Select
+      <ExpenseSearchableSelect
         value={radixValue}
-        disabled={disabled || loading}
+        disabled={disabled}
+        loading={loading}
+        options={items.map((item) => ({
+          value: item.value,
+          label: item.label,
+          searchText: item.value,
+        }))}
+        actions={[
+          {
+            value: ADD_NEW_VALUE,
+            label: "+ Add new category",
+            searchText: "add new category",
+            onSelect: () => setAddOpen(true),
+          },
+        ]}
+        fallbackLabel={fallbackLabel}
+        placeholder="Category"
+        emptyText="No matching categories"
+        searchPlaceholder="Search categories…"
+        id={id}
+        className={cn("h-9", className)}
+        aria-label="Category"
+        autoFocus={autoFocus}
+        onKeyDown={onKeyDown}
+        data-queue-row-id={dataQueueRowId}
+        data-queue-field={dataQueueField}
         onValueChange={(v) => {
           if (!v.trim()) return;
-          if (v === ADD_NEW_VALUE) {
-            setAddOpen(true);
-            return;
-          }
           onValueChange(v);
         }}
-      >
-        <SelectTrigger
-          id={id}
-          className={cn("h-9", className)}
-          aria-busy={loading}
-          data-queue-row-id={dataQueueRowId}
-          data-queue-field={dataQueueField}
-          autoFocus={autoFocus}
-          onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLButtonElement>}
-        >
-          <SelectValue placeholder="Category" />
-        </SelectTrigger>
-        <SelectContent>
-          {items.map((item) => (
-            <SelectItem key={`${item.value}-${item.archived ? "a" : "x"}`} value={item.value}>
-              {item.label}
-            </SelectItem>
-          ))}
-          <SelectItem value={ADD_NEW_VALUE}>+ Add new category</SelectItem>
-        </SelectContent>
-      </Select>
+      />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-sm rounded-sm border-border/60">

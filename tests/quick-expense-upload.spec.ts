@@ -249,7 +249,7 @@ test.describe("Quick Expense: upload and save", () => {
         timeout: 150_000,
       });
       await expect(dialog.locator("input[type='number']")).toHaveValue("42.37");
-      await expect(dialog.locator("input[type='date']")).toHaveValue("2026-06-10");
+      await expect(dialog.locator("#quick-expense-date")).toContainText("06/10/2026");
       await expect(dialog.locator("#quick-expense-category-select")).toContainText("Materials");
 
       const savedVendor = `${vendorPrefix}-lowes`;
@@ -531,7 +531,7 @@ test.describe("Quick Expense: upload and save", () => {
       await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
       await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
       const paymentBefore = await dialog.locator("#quick-expense-payment-select").innerText();
-      const dateBefore = await dialog.locator("input[type='date']").inputValue();
+      const dateBefore = (await dialog.locator("#quick-expense-date").innerText()).trim();
 
       const categoryDialog = await addCategoryFromQuickExpense(page, dialog, newCategory);
       await expect(categoryDialog).not.toBeVisible({ timeout: 15_000 });
@@ -546,7 +546,7 @@ test.describe("Quick Expense: upload and save", () => {
       await expect(dialog.locator("#quick-expense-payment-select")).toContainText(
         paymentBefore.trim()
       );
-      await expect(dialog.locator("input[type='date']")).toHaveValue(dateBefore);
+      await expect(dialog.locator("#quick-expense-date")).toContainText(dateBefore);
 
       await dialog.locator("#quick-expense-category-select").click();
       await page.getByRole("option", { name: "Other", exact: true }).click();

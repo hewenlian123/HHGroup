@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { CreatableSelect } from "@/components/ui/creatable-select";
+import { ExpenseDatePicker } from "@/components/expense-date-picker";
 import { ExpensePaymentMethodSelect } from "@/components/expense-payment-method-select";
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -526,11 +527,11 @@ export function ExpenseDetailClient({ id }: { id: string }) {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                   Date
                 </p>
-                <Input
-                  type="date"
+                <ExpenseDatePicker
+                  id="expense-detail-date"
                   value={expense.expense_date ?? new Date().toISOString().slice(0, 10)}
-                  onChange={(e) =>
-                    setExpense((prev) => (prev ? { ...prev, expense_date: e.target.value } : prev))
+                  onChange={(nextDate) =>
+                    setExpense((prev) => (prev ? { ...prev, expense_date: nextDate } : prev))
                   }
                 />
               </div>

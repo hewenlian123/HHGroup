@@ -1,13 +1,7 @@
 "use client";
 
 import * as React from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { ExpenseSearchableSelect } from "@/components/expense-searchable-select";
 import type { Expense } from "@/lib/data";
 import { pickerItemsPaymentSource } from "@/lib/expense-options-db";
 import { useToast } from "@/components/toast/toast-provider";
@@ -75,27 +69,26 @@ export function ExpensePaymentSourceSelect({
   const radixValue = knownValues.has(normalized)
     ? normalized
     : (items[0]?.value ?? normalized ?? "company");
+  const fallbackLabel = items.find((item) => item.value === radixValue)?.label ?? radixValue;
 
   return (
-    <Select
+    <ExpenseSearchableSelect
       value={radixValue}
-      disabled={disabled || loading}
+      disabled={disabled}
+      loading={loading}
+      options={items.map((it) => ({
+        value: it.value,
+        label: it.label,
+        searchText: it.value,
+      }))}
+      fallbackLabel={fallbackLabel}
+      placeholder="Payment source"
+      emptyText="No matching sources"
+      searchPlaceholder="Search payment sources…"
+      id={id}
+      className={cn("h-10 rounded-sm border-border/60 text-sm [&>span]:line-clamp-1", className)}
+      aria-label="Payment source"
       onValueChange={(v) => onValueChange(v as NonNullable<Expense["sourceType"]>)}
-    >
-      <SelectTrigger
-        id={id}
-        className={cn("h-10 rounded-sm border-border/60 text-sm [&>span]:line-clamp-1", className)}
-        aria-busy={loading}
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent position="popper" sideOffset={4} className="z-[200] max-h-56">
-        {items.map((it) => (
-          <SelectItem key={`${it.value}-${it.archived ? "a" : "x"}`} value={it.value}>
-            {it.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    />
   );
 }

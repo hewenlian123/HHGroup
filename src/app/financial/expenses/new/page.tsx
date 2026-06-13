@@ -9,14 +9,9 @@ import { Button } from "@/components/ui/button";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
+import { ExpenseDatePicker } from "@/components/expense-date-picker";
+import { ExpenseSearchableSelect } from "@/components/expense-searchable-select";
 import { CreatableSelect } from "@/components/ui/creatable-select";
 import { useToast } from "@/components/toast/toast-provider";
 import {
@@ -53,12 +48,6 @@ type ProjectOption = { id: string; name: string | null };
 const FIELD_LABEL = "text-xs uppercase tracking-wide text-muted-foreground";
 const CONTROL_CLASS = "h-10 rounded-sm border-border/60 text-sm";
 const SELECT_TRIGGER = cn(CONTROL_CLASS, "[&>span]:line-clamp-1");
-
-const selectPopperContentProps = {
-  position: "popper" as const,
-  sideOffset: 4,
-  className: "z-[200] max-h-[min(280px,var(--radix-select-content-available-height))]",
-};
 
 type LineForm = {
   id: string;
@@ -381,12 +370,11 @@ export default function NewExpensePage() {
               </div>
               <div className="space-y-2">
                 <label className={FIELD_LABEL}>Date</label>
-                <Input
-                  type="date"
+                <ExpenseDatePicker
+                  id="new-expense-date"
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  onChange={setDate}
                   className={CONTROL_CLASS}
-                  required
                 />
               </div>
               {!showSplitLines ? (
@@ -395,9 +383,26 @@ export default function NewExpensePage() {
                     <div className="grid gap-4 md:grid-cols-4">
                       <div className="space-y-2">
                         <label className={FIELD_LABEL}>Classification</label>
-                        <Select
+                        <ExpenseSearchableSelect
+                          id="new-expense-cost-allocation-select"
                           disabled={loading}
                           value={lines[0]?.costAllocation ?? EXPENSE_COST_ALLOCATION_OVERHEAD}
+                          className={SELECT_TRIGGER}
+                          placeholder="Classification"
+                          searchPlaceholder="Search classification…"
+                          emptyText="No matching classifications"
+                          options={[
+                            {
+                              value: EXPENSE_COST_ALLOCATION_OVERHEAD,
+                              label: "Overhead",
+                              searchText: "company overhead",
+                            },
+                            {
+                              value: EXPENSE_COST_ALLOCATION_PROJECT_COST,
+                              label: "Project Cost",
+                              searchText: "project cost",
+                            },
+                          ]}
                           onValueChange={(v) => {
                             const next = v as ExpenseCostAllocation;
                             setLines((prev) => {
@@ -416,29 +421,34 @@ export default function NewExpensePage() {
                               ];
                             });
                           }}
-                        >
-                          <SelectTrigger className={SELECT_TRIGGER}>
-                            <SelectValue placeholder="Classification" />
-                          </SelectTrigger>
-                          <SelectContent {...selectPopperContentProps}>
-                            <SelectItem value={EXPENSE_COST_ALLOCATION_OVERHEAD}>
-                              Overhead
-                            </SelectItem>
-                            <SelectItem value={EXPENSE_COST_ALLOCATION_PROJECT_COST}>
-                              Project Cost
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                        />
                       </div>
                       <div className="space-y-2">
                         <label className={FIELD_LABEL}>Project</label>
-                        <Select
+                        <ExpenseSearchableSelect
+                          id="new-expense-project-select"
                           disabled={loading}
                           value={
                             lines[0]?.projectId && String(lines[0].projectId).trim() !== ""
                               ? lines[0]!.projectId!
                               : EXPENSE_PROJECT_SELECT_NONE
                           }
+                          className={SELECT_TRIGGER}
+                          placeholder="Project"
+                          searchPlaceholder="Search projects…"
+                          emptyText="No matching projects"
+                          options={[
+                            {
+                              value: EXPENSE_PROJECT_SELECT_NONE,
+                              label: "Overhead",
+                              searchText: "no project overhead unassigned",
+                            },
+                            ...projects.map((p) => ({
+                              value: p.id,
+                              label: p.name ?? p.id,
+                              searchText: p.id,
+                            })),
+                          ]}
                           onValueChange={(v) => {
                             const proj = v === EXPENSE_PROJECT_SELECT_NONE ? null : v;
                             setLines((prev) => {
@@ -456,23 +466,12 @@ export default function NewExpensePage() {
                               ];
                             });
                           }}
-                        >
-                          <SelectTrigger className={SELECT_TRIGGER}>
-                            <SelectValue placeholder="Project" />
-                          </SelectTrigger>
-                          <SelectContent {...selectPopperContentProps}>
-                            <SelectItem value={EXPENSE_PROJECT_SELECT_NONE}>Overhead</SelectItem>
-                            {projects.map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.name ?? p.id}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        />
                       </div>
                       <div className="space-y-2">
                         <label className={FIELD_LABEL}>Category</label>
                         <ExpenseCategorySelect
+                          id="new-expense-category-select"
                           value={lines[0]?.category ?? "Other"}
                           preserveArchivedValue={false}
                           onValueChange={(v) => {
@@ -489,6 +488,7 @@ export default function NewExpensePage() {
                       <div className="space-y-2">
                         <label className={FIELD_LABEL}>Payment</label>
                         <PaymentAccountSelect
+                          id="new-expense-payment-select"
                           value={paymentAccountId}
                           onValueChange={(id) => {
                             paymentChoiceTouchedRef.current = true;
@@ -533,24 +533,27 @@ export default function NewExpensePage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <label className={FIELD_LABEL}>Payment source</label>
-                  <Select
+                  <ExpenseSearchableSelect
+                    id="new-expense-payment-source-select"
                     value={accountId.trim() ? accountId : EXPENSE_ACCOUNT_SELECT_NONE}
+                    className={SELECT_TRIGGER}
+                    placeholder="Select payment source"
+                    searchPlaceholder="Search payment sources…"
+                    emptyText="No matching payment sources"
+                    options={[
+                      {
+                        value: EXPENSE_ACCOUNT_SELECT_NONE,
+                        label: "Select payment source",
+                        searchText: "none no payment source",
+                      },
+                      ...accounts.map((acc) => ({
+                        value: acc.id,
+                        label: acc.lastFour ? `${acc.name} •••• ${acc.lastFour}` : acc.name,
+                        searchText: `${acc.id} ${acc.name} ${acc.lastFour ?? ""}`,
+                      })),
+                    ]}
                     onValueChange={(v) => setAccountId(v === EXPENSE_ACCOUNT_SELECT_NONE ? "" : v)}
-                  >
-                    <SelectTrigger className={SELECT_TRIGGER}>
-                      <SelectValue placeholder="Select payment source" />
-                    </SelectTrigger>
-                    <SelectContent {...selectPopperContentProps}>
-                      <SelectItem value={EXPENSE_ACCOUNT_SELECT_NONE}>
-                        Select payment source
-                      </SelectItem>
-                      {accounts.map((acc) => (
-                        <SelectItem key={acc.id} value={acc.id}>
-                          {acc.lastFour ? `${acc.name} •••• ${acc.lastFour}` : acc.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className={FIELD_LABEL}>Reference #</label>
@@ -725,9 +728,25 @@ export default function NewExpensePage() {
                       className={CONTROL_CLASS}
                       placeholder="Memo / description"
                     />
-                    <Select
+                    <ExpenseSearchableSelect
                       disabled={loading}
                       value={l.costAllocation}
+                      className={cn(SELECT_TRIGGER, "text-xs")}
+                      placeholder="Classification"
+                      searchPlaceholder="Search classification…"
+                      emptyText="No matching classifications"
+                      options={[
+                        {
+                          value: EXPENSE_COST_ALLOCATION_OVERHEAD,
+                          label: "Overhead",
+                          searchText: "company overhead",
+                        },
+                        {
+                          value: EXPENSE_COST_ALLOCATION_PROJECT_COST,
+                          label: "Project Cost",
+                          searchText: "project cost",
+                        },
+                      ]}
                       onValueChange={(v) => {
                         const next = v as ExpenseCostAllocation;
                         setLines((prev) =>
@@ -743,24 +762,30 @@ export default function NewExpensePage() {
                           )
                         );
                       }}
-                    >
-                      <SelectTrigger className={cn(SELECT_TRIGGER, "text-xs")}>
-                        <SelectValue placeholder="Classification" />
-                      </SelectTrigger>
-                      <SelectContent {...selectPopperContentProps}>
-                        <SelectItem value={EXPENSE_COST_ALLOCATION_OVERHEAD}>Overhead</SelectItem>
-                        <SelectItem value={EXPENSE_COST_ALLOCATION_PROJECT_COST}>
-                          Project Cost
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Select
+                    />
+                    <ExpenseSearchableSelect
                       disabled={loading}
                       value={
                         l.projectId && String(l.projectId).trim() !== ""
                           ? l.projectId
                           : EXPENSE_PROJECT_SELECT_NONE
                       }
+                      className={cn(SELECT_TRIGGER, "text-xs")}
+                      placeholder="Project"
+                      searchPlaceholder="Search projects…"
+                      emptyText="No matching projects"
+                      options={[
+                        {
+                          value: EXPENSE_PROJECT_SELECT_NONE,
+                          label: "Overhead",
+                          searchText: "no project overhead unassigned",
+                        },
+                        ...projects.map((p) => ({
+                          value: p.id,
+                          label: p.name ?? p.id,
+                          searchText: p.id,
+                        })),
+                      ]}
                       onValueChange={(v) => {
                         const proj = v === EXPENSE_PROJECT_SELECT_NONE ? null : v;
                         setLines((prev) =>
@@ -777,19 +802,7 @@ export default function NewExpensePage() {
                           )
                         );
                       }}
-                    >
-                      <SelectTrigger className={cn(SELECT_TRIGGER, "text-xs")}>
-                        <SelectValue placeholder="Project" />
-                      </SelectTrigger>
-                      <SelectContent {...selectPopperContentProps}>
-                        <SelectItem value={EXPENSE_PROJECT_SELECT_NONE}>Overhead</SelectItem>
-                        {projects.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name ?? p.id}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                     <ExpenseCategorySelect
                       value={l.category}
                       preserveArchivedValue={false}

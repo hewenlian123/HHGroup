@@ -28,6 +28,10 @@ function toYmd(d: Date): string {
 export type FinanceDatePickerProps = {
   value: string;
   onChange: (nextYmd: string) => void;
+  id?: string;
+  ariaLabel?: string;
+  displayFormat?: string;
+  placeholder?: string;
   disabled?: boolean;
   className?: string;
   /** When true, renders a 44px trigger for mobile. */
@@ -43,6 +47,10 @@ export type FinanceDatePickerProps = {
 export function FinanceDatePicker({
   value,
   onChange,
+  id,
+  ariaLabel = "Choose date",
+  displayFormat = "MMM dd \u00b7 yyyy",
+  placeholder = "Select date",
   disabled,
   className,
   size = "sm",
@@ -53,7 +61,7 @@ export function FinanceDatePicker({
   const isGlass = appearance === "glass";
   const [open, setOpen] = React.useState(false);
   const selected = React.useMemo(() => ymdToLocalDate(value), [value]);
-  const label = selected ? format(selected, "MMM dd \u00b7 yyyy") : "Select date";
+  const label = selected ? format(selected, displayFormat) : placeholder;
   const [month, setMonth] = React.useState<Date>(() => selected ?? new Date());
 
   React.useEffect(() => {
@@ -74,6 +82,7 @@ export function FinanceDatePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
+          id={id}
           type="button"
           disabled={disabled}
           className={cn(
@@ -85,7 +94,7 @@ export function FinanceDatePicker({
             disabled && "pointer-events-none opacity-60",
             className
           )}
-          aria-label="Choose date"
+          aria-label={ariaLabel}
         >
           <span className="truncate tabular-nums">{label}</span>
           <CalendarDays
@@ -97,6 +106,7 @@ export function FinanceDatePicker({
       <PopoverContent
         align="start"
         sideOffset={8}
+        data-finance-date-picker-content="true"
         className={cn(
           "z-[130] p-3",
           "w-[280px] max-w-[calc(100vw-16px)]",

@@ -10,13 +10,6 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   deleteExpenseAttachment,
@@ -49,6 +42,8 @@ import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import { ExpensePaymentMethodSelect } from "@/components/expense-payment-method-select";
 import { ExpensePaymentSourceSelect } from "@/components/expense-payment-source-select";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
+import { ExpenseDatePicker } from "@/components/expense-date-picker";
+import { ExpenseSearchableSelect } from "@/components/expense-searchable-select";
 import type { PaymentAccountRow } from "@/lib/data";
 import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-preferences";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
@@ -112,12 +107,6 @@ type WorkerOption = { id: string; name: string };
 const FIELD_LABEL = "text-xs uppercase tracking-wide text-muted-foreground";
 const INPUT_ROW = "h-10 rounded-sm border-border/60 text-sm";
 const SELECT_TRIGGER = "h-10 rounded-sm border-border/60 text-sm [&>span]:line-clamp-1";
-
-const selectPopperContentProps = {
-  position: "popper" as const,
-  sideOffset: 4,
-  className: "z-[200] max-h-[min(280px,var(--radix-select-content-available-height))]",
-};
 
 export type ExpenseReviewSavePatch = {
   expenseId: string;
@@ -536,44 +525,65 @@ export function EditExpenseModal({
                   </div>
                   <div className="space-y-1.5">
                     <label className={FIELD_LABEL}>Date</label>
-                    <Input
-                      type="date"
+                    <ExpenseDatePicker
+                      id="edit-expense-date"
                       value={expenseDate}
-                      onChange={(e) => setExpenseDate(e.target.value)}
+                      onChange={setExpenseDate}
                       className={INPUT_ROW}
                       disabled={saving}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <label className={FIELD_LABEL}>Classification</label>
-                    <Select
+                    <ExpenseSearchableSelect
+                      id="edit-expense-cost-allocation-select"
                       value={costAllocation}
                       disabled={saving}
+                      className={SELECT_TRIGGER}
+                      placeholder="Classification"
+                      searchPlaceholder="Search classification…"
+                      emptyText="No matching classifications"
+                      options={[
+                        {
+                          value: EXPENSE_COST_ALLOCATION_OVERHEAD,
+                          label: "Overhead",
+                          searchText: "company overhead",
+                        },
+                        {
+                          value: EXPENSE_COST_ALLOCATION_PROJECT_COST,
+                          label: "Project Cost",
+                          searchText: "project cost",
+                        },
+                      ]}
                       onValueChange={(v) => {
                         const next = v as ExpenseCostAllocation;
                         setCostAllocation(next);
                         if (next === EXPENSE_COST_ALLOCATION_OVERHEAD) setProjectId(null);
                       }}
-                    >
-                      <SelectTrigger
-                        id="edit-expense-cost-allocation-select"
-                        className={SELECT_TRIGGER}
-                      >
-                        <SelectValue placeholder="Classification" />
-                      </SelectTrigger>
-                      <SelectContent {...selectPopperContentProps}>
-                        <SelectItem value={EXPENSE_COST_ALLOCATION_OVERHEAD}>Overhead</SelectItem>
-                        <SelectItem value={EXPENSE_COST_ALLOCATION_PROJECT_COST}>
-                          Project Cost
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <label className={FIELD_LABEL}>Project</label>
-                    <Select
+                    <ExpenseSearchableSelect
+                      id="edit-expense-project-select"
                       value={projectRadixValue}
                       disabled={saving}
+                      className={SELECT_TRIGGER}
+                      placeholder="Project"
+                      searchPlaceholder="Search projects…"
+                      emptyText="No matching projects"
+                      options={[
+                        {
+                          value: EXPENSE_PROJECT_SELECT_NONE,
+                          label: "Overhead",
+                          searchText: "no project overhead unassigned",
+                        },
+                        ...projects.map((p) => ({
+                          value: p.id,
+                          label: p.name ?? p.id,
+                          searchText: p.id,
+                        })),
+                      ]}
                       onValueChange={(v) => {
                         if (v === EXPENSE_PROJECT_SELECT_NONE) {
                           setProjectId(null);
@@ -582,19 +592,7 @@ export function EditExpenseModal({
                           setCostAllocation(EXPENSE_COST_ALLOCATION_PROJECT_COST);
                         }
                       }}
-                    >
-                      <SelectTrigger id="edit-expense-project-select" className={SELECT_TRIGGER}>
-                        <SelectValue placeholder="Project" />
-                      </SelectTrigger>
-                      <SelectContent {...selectPopperContentProps}>
-                        <SelectItem value={EXPENSE_PROJECT_SELECT_NONE}>Overhead</SelectItem>
-                        {projects.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name ?? p.id}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
@@ -656,25 +654,30 @@ export function EditExpenseModal({
                   </div>
                   <div className="space-y-1.5">
                     <label className={FIELD_LABEL}>Worker</label>
-                    <Select
+                    <ExpenseSearchableSelect
+                      id="edit-expense-worker-select"
                       value={workerRadixValue}
                       disabled={saving}
+                      className={SELECT_TRIGGER}
+                      placeholder="Worker"
+                      searchPlaceholder="Search workers…"
+                      emptyText="No matching workers"
+                      options={[
+                        {
+                          value: EXPENSE_WORKER_SELECT_NONE,
+                          label: "—",
+                          searchText: "none no worker",
+                        },
+                        ...workers.map((w) => ({
+                          value: w.id,
+                          label: w.name,
+                          searchText: w.id,
+                        })),
+                      ]}
                       onValueChange={(v) =>
                         setWorkerId(v === EXPENSE_WORKER_SELECT_NONE ? null : v)
                       }
-                    >
-                      <SelectTrigger id="edit-expense-worker-select" className={SELECT_TRIGGER}>
-                        <SelectValue placeholder="Worker" />
-                      </SelectTrigger>
-                      <SelectContent {...selectPopperContentProps}>
-                        <SelectItem value={EXPENSE_WORKER_SELECT_NONE}>—</SelectItem>
-                        {workers.map((w) => (
-                          <SelectItem key={w.id} value={w.id}>
-                            {w.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">

@@ -37,7 +37,9 @@ import { useToast } from "@/components/toast/toast-provider";
 import { uiActionLog, uiActionMark } from "@/lib/ui-action-perf";
 import { MatchStatusBadge } from "@/components/base";
 import { ExpenseCategorySelect } from "@/components/expense-category-select";
+import { ExpenseDatePicker } from "@/components/expense-date-picker";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
+import { ExpenseSearchableSelect } from "@/components/expense-searchable-select";
 import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-panel";
 import {
   type AmountRuleDiagnostic,
@@ -226,7 +228,6 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const [date, setDate] = React.useState(new Date().toISOString().slice(0, 10));
   const [category, setCategory] = React.useState("Other");
   const [notes, setNotes] = React.useState("");
-  const [projectSearch, setProjectSearch] = React.useState("");
   const [projectId, setProjectId] = React.useState<string>("");
   const [costAllocation, setCostAllocation] = React.useState<ExpenseCostAllocation>(
     EXPENSE_COST_ALLOCATION_OVERHEAD
@@ -279,7 +280,6 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   const manualVendorNameRef = React.useRef("");
   const vendorInputRef = React.useRef<HTMLInputElement>(null);
   const amountInputRef = React.useRef<HTMLInputElement>(null);
-  const dateInputRef = React.useRef<HTMLInputElement>(null);
   const formRef = React.useRef<HTMLFormElement>(null);
   const formScrollRef = React.useRef<HTMLDivElement>(null);
   const projectChoiceTouchedRef = React.useRef(false);
@@ -466,7 +466,6 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     setDate(new Date().toISOString().slice(0, 10));
     setCategory("Other");
     setNotes("");
-    setProjectSearch("");
     setProjectId("");
     setCostAllocation(EXPENSE_COST_ALLOCATION_OVERHEAD);
     projectChoiceTouchedRef.current = false;
@@ -594,18 +593,13 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   }, [debugToolsEnabled, open]);
 
   const projectOptions = React.useMemo(() => {
-    const sorted = [...projects].sort((a, b) => {
+    return [...projects].sort((a, b) => {
       const aActive = (a.status ?? "").toLowerCase() === "active" ? 0 : 1;
       const bActive = (b.status ?? "").toLowerCase() === "active" ? 0 : 1;
       if (aActive !== bActive) return aActive - bActive;
       return (a.name ?? "").localeCompare(b.name ?? "");
     });
-    const q = projectSearch.trim().toLowerCase();
-    if (!q) return sorted;
-    return sorted.filter(
-      (p) => (p.name ?? "").toLowerCase().includes(q) || p.id.toLowerCase().includes(q)
-    );
-  }, [projectSearch, projects]);
+  }, [projects]);
 
   React.useEffect(() => {
     if (projectId) return;
@@ -1342,9 +1336,26 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
 
                 <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
                   <label className={FIELD_LABEL}>Classification</label>
-                  <Select
-                    disabled={saving}
+                  <ExpenseSearchableSelect
+                    id="quick-expense-cost-allocation-select"
                     value={costAllocation}
+                    disabled={saving}
+                    className={cn(SELECT_TRIGGER, "text-xs")}
+                    placeholder="Classification"
+                    searchPlaceholder="Search classification…"
+                    emptyText="No matching classifications"
+                    options={[
+                      {
+                        value: EXPENSE_COST_ALLOCATION_OVERHEAD,
+                        label: "Overhead",
+                        searchText: "company overhead",
+                      },
+                      {
+                        value: EXPENSE_COST_ALLOCATION_PROJECT_COST,
+                        label: "Project Cost",
+                        searchText: "project cost",
+                      },
+                    ]}
                     onValueChange={(v) => {
                       const next = v as ExpenseCostAllocation;
                       setCostAllocation(next);
@@ -1353,35 +1364,32 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                         setProjectId("");
                       }
                     }}
-                  >
-                    <SelectTrigger
-                      id="quick-expense-cost-allocation-select"
-                      className={cn(SELECT_TRIGGER, "text-xs")}
-                    >
-                      <SelectValue placeholder="Classification" />
-                    </SelectTrigger>
-                    <SelectContent {...selectPopperContentProps}>
-                      <SelectItem value={EXPENSE_COST_ALLOCATION_OVERHEAD}>Overhead</SelectItem>
-                      <SelectItem value={EXPENSE_COST_ALLOCATION_PROJECT_COST}>
-                        Project Cost
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                  />
                 </div>
 
                 <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
                   <label className={FIELD_LABEL}>Project</label>
                   <div className="flex flex-col gap-2">
-                    <Input
-                      value={projectSearch}
-                      onChange={(e) => setProjectSearch(e.target.value)}
-                      className={cn("text-xs", FIELD_INPUT_CLASS)}
-                      placeholder="Search…"
-                      disabled={saving}
-                    />
-                    <Select
+                    <ExpenseSearchableSelect
+                      id="quick-expense-project-select"
                       disabled={saving}
                       value={projectId.trim() ? projectId : EXPENSE_PROJECT_SELECT_NONE}
+                      className={cn(SELECT_TRIGGER, "text-xs")}
+                      placeholder="No project"
+                      searchPlaceholder="Search projects…"
+                      emptyText="No matching projects"
+                      options={[
+                        {
+                          value: EXPENSE_PROJECT_SELECT_NONE,
+                          label: "No project",
+                          searchText: "overhead none unassigned",
+                        },
+                        ...projectOptions.map((p) => ({
+                          value: p.id,
+                          label: p.name ?? p.id,
+                          searchText: p.id,
+                        })),
+                      ]}
                       onValueChange={(v) => {
                         projectChoiceTouchedRef.current = true;
                         if (v === EXPENSE_PROJECT_SELECT_NONE) {
@@ -1391,22 +1399,7 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                           setCostAllocation(EXPENSE_COST_ALLOCATION_PROJECT_COST);
                         }
                       }}
-                    >
-                      <SelectTrigger
-                        id="quick-expense-project-select"
-                        className={cn(SELECT_TRIGGER, "text-xs")}
-                      >
-                        <SelectValue placeholder="No project" />
-                      </SelectTrigger>
-                      <SelectContent {...selectPopperContentProps}>
-                        <SelectItem value={EXPENSE_PROJECT_SELECT_NONE}>No project</SelectItem>
-                        {projectOptions.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name ?? p.id}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
                   </div>
                   {projectId && projectId === suggestedProjectId ? (
                     <div className="flex flex-wrap items-center gap-2">
@@ -1444,13 +1437,12 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                 </div>
                 <div className={cn(FIELD_GROUP, "min-w-0 w-full md:col-span-2")}>
                   <label className={FIELD_LABEL}>Date</label>
-                  <Input
-                    ref={dateInputRef}
-                    type="date"
+                  <ExpenseDatePicker
+                    id="quick-expense-date"
                     value={date}
-                    onChange={(e) => {
+                    onChange={(nextDate) => {
                       ocrFieldTouchedRef.current.date = true;
-                      setDate(e.target.value);
+                      setDate(nextDate);
                     }}
                     className={cn(
                       "min-h-[48px] w-full min-w-0 max-md:h-12",

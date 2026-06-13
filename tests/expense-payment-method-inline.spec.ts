@@ -100,7 +100,7 @@ test.describe("Expense inbox payment method (preview modal)", () => {
   /** Cold `next dev` + Quick modal + reloads need headroom beyond a single 180s gate. */
   test.describe.configure({ timeout: 300_000 });
 
-  test("updates row after save from modal and persists after reload", async ({ page }) => {
+  test("updates payment method from modal and persists after reload", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
 
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -182,7 +182,12 @@ test.describe("Expense inbox payment method (preview modal)", () => {
     await previewDlg.getByRole("button", { name: "Close", exact: true }).last().click();
     await expect(previewDlg).not.toBeVisible({ timeout: 15_000 });
 
-    await expect(row).toContainText(targetMethod);
+    await expect
+      .poll(() => paymentMethodForExpense(snap.expenseId), {
+        timeout: 30_000,
+        intervals: [500, 1000, 2000],
+      })
+      .toBe(targetMethod);
 
     await expect(page.getByRole("dialog", { name: /Edit expense/i })).not.toBeVisible();
     expect(page.url().split("#")[0]).toBe(urlBefore.split("#")[0]);
@@ -214,7 +219,12 @@ test.describe("Expense inbox payment method (preview modal)", () => {
       ).toBe(targetMethod);
     }
 
-    await expect(rowAfter).toContainText(targetMethod, { timeout: 15_000 });
+    await expect
+      .poll(() => paymentMethodForExpense(snap.expenseId), {
+        timeout: 30_000,
+        intervals: [500, 1000, 2000],
+      })
+      .toBe(targetMethod);
   });
 
   test("worker reimbursement edit saves without a payment account when worker is selected", async ({

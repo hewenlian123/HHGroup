@@ -545,16 +545,26 @@ export type ExpenseListBulkActionsApi = {
 
 const InboxCtx = React.createContext<ExpenseInboxApi | null>(null);
 
+const DESKTOP_TABLE_MIN_WIDTH_PX = 960;
+
 /** Avoid duplicate row refs: desktop table vs mobile list only one mounts. */
-function useDesktopTableLayout(): boolean {
-  const [desktop, setDesktop] = React.useState(true);
+function useDesktopTableLayout(containerRef: React.RefObject<HTMLElement | null>): boolean {
+  const [desktop, setDesktop] = React.useState(false);
   React.useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
-    const apply = () => setDesktop(mq.matches);
+    const apply = () => {
+      const width = containerRef.current?.clientWidth ?? 0;
+      setDesktop(width >= DESKTOP_TABLE_MIN_WIDTH_PX);
+    };
     apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", apply);
+      return () => window.removeEventListener("resize", apply);
+    }
+    const observer = new ResizeObserver(apply);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [containerRef]);
   return desktop;
 }
 
@@ -865,35 +875,35 @@ function DesktopRows({
                           </div>
                         </div>
                       </td>
-                      <td className="w-[156px] shrink-0">
+                      <td className="w-36 shrink-0">
                         <span className={projectTextClass} title={projLabel}>
                           {projLabel}
                         </span>
                       </td>
-                      <td className="w-[104px] shrink-0">
+                      <td className="w-24 shrink-0">
                         <span className={categoryTextClass} title={catLabel}>
                           {catLabel}
                         </span>
                       </td>
-                      <td className="w-[108px] shrink-0">
+                      <td className="w-24 shrink-0">
                         <span className={sourceClass} title={expensePaymentSourceDisplayLabel(row)}>
                           {expensePaymentSourceDisplayLabel(row)}
                         </span>
                       </td>
-                      <td className="w-[86px] shrink-0 whitespace-nowrap">
+                      <td className="w-[82px] shrink-0 whitespace-nowrap">
                         <ExpenseReceiptCell
                           row={row}
                           onReceiptPreview={() => a.openReceiptPreview(row)}
                           onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
                         />
                       </td>
-                      <td className="w-16 shrink-0 text-center">
+                      <td className="w-14 shrink-0 text-center">
                         <ExpenseIssuesCell expenseId={row.id} issues={issues} />
                       </td>
-                      <td className="w-[112px] shrink-0 whitespace-nowrap">
+                      <td className="w-[104px] shrink-0 whitespace-nowrap">
                         <ExpenseStatusCell status={status} />
                       </td>
-                      <td className="w-[96px] shrink-0 whitespace-nowrap text-right tabular-nums">
+                      <td className="w-[90px] shrink-0 whitespace-nowrap text-right tabular-nums">
                         <NeoAmount
                           tone="expense"
                           className={cn(triageLayout ? "text-[15px] leading-none" : "text-sm")}
@@ -901,7 +911,7 @@ function DesktopRows({
                           {formatCurrency(-rowTotal)}
                         </NeoAmount>
                       </td>
-                      <td className="w-11 shrink-0 text-right">
+                      <td className="w-10 shrink-0 !px-1 text-right">
                         <RowActionsMenu row={row} />
                       </td>
                     </tr>
@@ -1248,7 +1258,8 @@ export function ExpenseInboxTransactionList({
   bulkActions?: ExpenseListBulkActionsApi;
 }) {
   const dupIds = possibleDuplicateIds ?? new Set<string>();
-  const desktopLayout = useDesktopTableLayout();
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const desktopLayout = useDesktopTableLayout(rootRef);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
   const selectionAnchorRef = React.useRef<string | null>(null);
   const longPressTimerRef = React.useRef<number | null>(null);
@@ -1413,7 +1424,10 @@ export function ExpenseInboxTransactionList({
 
   return (
     <InboxCtx.Provider value={api}>
-      <div className="flex min-w-0 flex-col pb-[max(0.35rem,env(safe-area-inset-bottom,0px))]">
+      <div
+        ref={rootRef}
+        className="flex min-w-0 flex-col pb-[max(0.35rem,env(safe-area-inset-bottom,0px))]"
+      >
         {bulkActions && showSelectionUi ? (
           <ExpenseBulkActionBar
             selectedCount={selectedIds.size}
@@ -1440,35 +1454,39 @@ export function ExpenseInboxTransactionList({
         {desktopLayout ? (
           <NeoTable
             className="rounded-none border-0 shadow-none"
-            scrollClassName="bg-[var(--neo-surface-raised)]"
-            tableClassName="min-w-[1080px] table-fixed text-sm"
+            scrollClassName="expense-compact-table-scroll bg-[var(--neo-surface-raised)]"
+            tableClassName="min-w-[960px] table-fixed text-sm"
           >
             <colgroup>
               <col className="w-[82px]" />
               <col />
-              <col className="w-[156px]" />
+              <col className="w-36" />
+              <col className="w-24" />
+              <col className="w-24" />
+              <col className="w-[82px]" />
+              <col className="w-14" />
               <col className="w-[104px]" />
-              <col className="w-[108px]" />
-              <col className="w-[86px]" />
-              <col className="w-[64px]" />
-              <col className="w-[112px]" />
-              <col className="w-[96px]" />
-              <col className="w-11" />
+              <col className="w-[90px]" />
+              <col className="w-10" />
             </colgroup>
             <thead>
               <tr>
                 <th className={cn(tableRawThClass, "w-[82px] shrink-0")}>Date</th>
                 <th className={tableRawThClass}>Merchant</th>
-                <th className={cn(tableRawThClass, "w-[156px] shrink-0")}>Project</th>
-                <th className={cn(tableRawThClass, "w-[104px] shrink-0")}>Category</th>
-                <th className={cn(tableRawThClass, "w-[108px] shrink-0")}>Source</th>
-                <th className={cn(tableRawThClass, "w-[86px] shrink-0")}>Receipt</th>
-                <th className={cn(tableRawThClass, "w-16 shrink-0")}>Issues</th>
-                <th className={cn(tableRawThClass, "w-[112px] shrink-0")}>Status</th>
-                <th className={cn(tableRawThClass, "w-[96px] shrink-0 text-right tabular-nums")}>
+                <th className={cn(tableRawThClass, "w-36 shrink-0")}>Project</th>
+                <th className={cn(tableRawThClass, "w-24 shrink-0")}>Category</th>
+                <th className={cn(tableRawThClass, "w-24 shrink-0")}>Source</th>
+                <th className={cn(tableRawThClass, "w-[82px] shrink-0")}>Receipt</th>
+                <th className={cn(tableRawThClass, "w-14 shrink-0")}>Issues</th>
+                <th className={cn(tableRawThClass, "w-[104px] shrink-0")}>Status</th>
+                <th className={cn(tableRawThClass, "w-[90px] shrink-0 text-right tabular-nums")}>
                   Amount
                 </th>
-                <th className={cn(tableRawThClass, "w-11 shrink-0 px-1 text-right")}>Actions</th>
+                <th
+                  className={cn(tableRawThClass, "w-10 shrink-0 overflow-hidden px-1 text-right")}
+                >
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>

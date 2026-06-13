@@ -30,6 +30,31 @@
   color: var(--exp-primary);
 }
 
+.expenses-ui .expense-compact-table-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-color: rgb(127 136 146 / 0.3) transparent;
+  scrollbar-width: thin;
+}
+
+.expenses-ui .expense-compact-table-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.expenses-ui .expense-compact-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.expenses-ui .expense-compact-table-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(127 136 146 / 0.26);
+}
+
+.expenses-ui .expense-compact-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgb(182 189 197 / 0.36);
+}
+
 /* Row motion: Tailwind `transition-all` on `<li.exp-row>` (hover lift/shadow, active scale) */
 
 .expenses-ui .exp-btn-primary {

@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ExpenseSearchableSelect } from "@/components/expense-searchable-select";
 import {
   addPaymentAccount,
   getPaymentAccountsForExpensePicker,
@@ -141,48 +142,65 @@ export function PaymentAccountSelect({
 
   const selectedKnown = Boolean(value && accounts.some((a) => a.id === value));
   const radixValue = !value || value === "" ? EMPTY_VALUE : value;
+  const accountOptions = React.useMemo(
+    () => [
+      { value: EMPTY_VALUE, label: "—", searchText: "none no payment account" },
+      ...accounts.map((account) => ({
+        value: account.id,
+        label: account.archived ? `${account.name} (Archived)` : account.name,
+        searchText: account.name,
+      })),
+      ...(value && !selectedKnown && value !== ""
+        ? [
+            {
+              value,
+              label: (fallbackDisplayName ?? "").trim() || "Account",
+              searchText: fallbackDisplayName ?? value,
+            },
+          ]
+        : []),
+    ],
+    [accounts, fallbackDisplayName, selectedKnown, value]
+  );
+  const fallbackLabel =
+    value && !selectedKnown && value !== ""
+      ? (fallbackDisplayName ?? "").trim() || "Account"
+      : undefined;
 
   return (
     <>
-      <Select
+      <ExpenseSearchableSelect
         value={radixValue}
-        disabled={disabled || loading}
+        disabled={disabled}
+        loading={loading}
+        options={accountOptions}
+        actions={[
+          {
+            value: ADD_NEW_VALUE,
+            label: "+ Add new account",
+            searchText: "add new account payment",
+            onSelect: () => setAddOpen(true),
+          },
+        ]}
+        fallbackLabel={fallbackLabel}
+        placeholder="Payment account"
+        emptyText="No matching accounts"
+        searchPlaceholder="Search payment accounts…"
+        id={id}
+        className={cn("h-10 max-md:h-10 max-md:min-h-10 [&>span]:line-clamp-1", className)}
+        aria-label="Payment account"
+        autoFocus={autoFocus}
+        onKeyDown={onKeyDown}
+        data-queue-row-id={dataQueueRowId}
+        data-queue-field={dataQueueField}
         onValueChange={(v) => {
-          if (v === ADD_NEW_VALUE) {
-            setAddOpen(true);
-            return;
-          }
           if (v === EMPTY_VALUE) {
             onValueChange("");
             return;
           }
           onValueChange(v);
         }}
-      >
-        <SelectTrigger
-          id={id}
-          className={cn("h-10 max-md:h-10 max-md:min-h-10 [&>span]:line-clamp-1", className)}
-          aria-busy={loading}
-          data-queue-row-id={dataQueueRowId}
-          data-queue-field={dataQueueField}
-          autoFocus={autoFocus}
-          onKeyDown={onKeyDown as React.KeyboardEventHandler<HTMLButtonElement>}
-        >
-          <SelectValue placeholder="Payment account" />
-        </SelectTrigger>
-        <SelectContent position="popper" sideOffset={4} className="max-h-56">
-          <SelectItem value={EMPTY_VALUE}>—</SelectItem>
-          {accounts.map((a) => (
-            <SelectItem key={a.id} value={a.id}>
-              {a.archived ? `${a.name} (Archived)` : a.name}
-            </SelectItem>
-          ))}
-          {value && !selectedKnown && value !== "" ? (
-            <SelectItem value={value}>{(fallbackDisplayName ?? "").trim() || "Account"}</SelectItem>
-          ) : null}
-          <SelectItem value={ADD_NEW_VALUE}>+ Add new account</SelectItem>
-        </SelectContent>
-      </Select>
+      />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="max-w-sm rounded-sm border-border/60">
