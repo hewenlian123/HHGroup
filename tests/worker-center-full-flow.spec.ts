@@ -376,6 +376,10 @@ test.describe("Worker Center full local flow", () => {
     const laborRow = page.locator("tr", { hasText: "$650.00" }).first();
     await expect(laborRow).toBeVisible({ timeout: 30_000 });
     await laborRow.locator('input[type="checkbox"]').check();
+    const reimbursementRow = page.locator("tr", { hasText: REIMB_VENDOR }).first();
+    await expect(reimbursementRow).toBeVisible({ timeout: 30_000 });
+    await reimbursementRow.locator('input[type="checkbox"]').check();
+    await expect(page.getByText("1 item · $35.00")).toBeVisible({ timeout: 30_000 });
     await page
       .getByRole("button", { name: /^Pay Selected$/i })
       .first()
@@ -383,7 +387,11 @@ test.describe("Worker Center full local flow", () => {
     const payDialog = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(payDialog).toBeVisible();
     await expect(payDialog.getByText("Selected labor", { exact: true }).first()).toBeVisible();
-    await expect(payDialog.getByText("Open reimbursements", { exact: true })).toBeVisible();
+    await expect(
+      payDialog.getByText("Selected reimbursements", { exact: true }).first()
+    ).toBeVisible();
+    await expect(payDialog.getByText(REIMB_VENDOR).first()).toBeVisible();
+    await expect(payDialog.getByText("$35.00").first()).toBeVisible();
     await expect(payDialog.getByText("$635.00").first()).toBeVisible();
 
     const payPost = page.waitForResponse(
