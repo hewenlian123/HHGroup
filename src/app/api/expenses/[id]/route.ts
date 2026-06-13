@@ -9,6 +9,7 @@ import {
   expenseIsArchivedDoneDbStatus,
   expenseSourceTypeIsWorkerReimbursement,
 } from "@/lib/expense-workflow-status";
+import { syncExpenseHeaderAmountFromLinesWithClient } from "@/lib/expenses-db";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -487,6 +488,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         .maybeSingle();
       if (error) throw error;
       if (!data) return apiError(404, "Expense line not found.");
+      if (Object.prototype.hasOwnProperty.call(patch, "amount")) {
+        await syncExpenseHeaderAmountFromLinesWithClient(supabase, id, {
+          lineId,
+          amount: patch.amount as number,
+        });
+      }
       return NextResponse.json({ ok: true, line: data }, { headers: NO_CACHE_HEADERS });
     }
 
@@ -501,6 +508,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         .select("id");
       if (error) throw error;
       if (!data || data.length === 0) return apiError(404, "Expense line not found.");
+      await syncExpenseHeaderAmountFromLinesWithClient(supabase, id);
       return NextResponse.json({ ok: true }, { headers: NO_CACHE_HEADERS });
     }
 

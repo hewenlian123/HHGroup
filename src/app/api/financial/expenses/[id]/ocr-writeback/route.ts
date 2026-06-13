@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuthenticatedUser } from "@/lib/auth-boundary";
-import { getExpenseById } from "@/lib/expenses-db";
+import { getExpenseById, syncExpenseHeaderAmountFromLinesWithClient } from "@/lib/expenses-db";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
@@ -256,6 +256,20 @@ export async function POST(
       .eq("id", line.id)
       .eq("expense_id", expenseId);
     if (error) return apiError(500, "Could not save receipt OCR line fields.", error.message);
+    if (lineUpdates.amount != null) {
+      try {
+        await syncExpenseHeaderAmountFromLinesWithClient(supabase, expenseId, {
+          lineId: line.id,
+          amount: lineUpdates.amount as number,
+        });
+      } catch (syncError) {
+        return apiError(
+          500,
+          "Could not sync receipt OCR amount to the expense header.",
+          syncError instanceof Error ? syncError.message : undefined
+        );
+      }
+    }
   }
 
   const updated = await getExpenseById(expenseId, supabase);

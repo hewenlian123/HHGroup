@@ -81,6 +81,17 @@ export type ExpenseListFetchOptions = {
   includeLinkedBankTx?: boolean;
 };
 
+export type ExpenseHeaderAmountLineInput = {
+  id?: string | null;
+  amount?: number | string | null;
+  total?: number | string | null;
+};
+
+export type ExpenseHeaderAmountLineOverride = {
+  lineId?: string | null;
+  amount?: number | string | null;
+};
+
 export function isDefaultExpenseListSort(sort: ExpenseListSort): boolean {
   return sort.field === "date" && sort.order === "desc";
 }
@@ -125,6 +136,43 @@ function client(explicitClient?: SupabaseClient) {
   const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
+}
+
+function nullableMoney(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = typeof value === "string" ? Number(value.trim()) : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function roundCurrency(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+export function computeExpenseHeaderAmountFromLines(
+  lines: ExpenseHeaderAmountLineInput[],
+  override?: ExpenseHeaderAmountLineOverride | null
+): number | null {
+  if (lines.length === 0) return null;
+
+  let sawAmount = false;
+  const sum = lines.reduce((total, line) => {
+    const overrideAmount =
+      override?.lineId && line.id === override.lineId ? nullableMoney(override.amount) : null;
+    const lineAmount = overrideAmount ?? nullableMoney(line.amount) ?? nullableMoney(line.total);
+    if (lineAmount == null) return total;
+    sawAmount = true;
+    return total + lineAmount;
+  }, 0);
+
+  return sawAmount ? roundCurrency(sum) : null;
+}
+
+export function buildExpenseHeaderAmountPatchFromLines(
+  lines: ExpenseHeaderAmountLineInput[],
+  override?: ExpenseHeaderAmountLineOverride | null
+): { amount: number; total: number } | null {
+  const amount = computeExpenseHeaderAmountFromLines(lines, override);
+  return amount == null ? null : { amount, total: amount };
 }
 
 const PAYMENT_METHOD_LIST_HYDRATE_CHUNK = 120;
@@ -519,6 +567,67 @@ function isMissingColumn(err: { message?: string } | null): boolean {
     /could not find the '[^']+' column of '[^']+' in the schema cache/i.test(m) ||
     /column.*not.*schema cache/i.test(m)
   );
+}
+
+async function updateExpenseHeaderAmountPatch(
+  c: SupabaseClient,
+  expenseId: string,
+  patch: { amount: number; total: number }
+): Promise<void> {
+  const update = async (payload: Record<string, number>) =>
+    c.from("expenses").update(payload).eq("id", expenseId).select("id").maybeSingle();
+
+  const primary = await update(patch);
+  if (!primary.error) return;
+  if (!isMissingColumn(primary.error)) {
+    throw new Error(primary.error.message ?? "Failed to sync expense header amount.");
+  }
+
+  const candidates: Record<string, number>[] = [];
+  if (!errorSuggestsMissingNamedColumn(primary.error, "amount")) {
+    candidates.push({ amount: patch.amount });
+  }
+  if (!errorSuggestsMissingNamedColumn(primary.error, "total")) {
+    candidates.push({ total: patch.total });
+  }
+  if (candidates.length === 0) {
+    candidates.push({ amount: patch.amount }, { total: patch.total });
+  }
+
+  for (const candidate of candidates) {
+    const result = await update(candidate);
+    if (!result.error) return;
+    if (!isMissingColumn(result.error)) {
+      throw new Error(result.error.message ?? "Failed to sync expense header amount.");
+    }
+  }
+}
+
+export async function syncExpenseHeaderAmountFromLinesWithClient(
+  c: SupabaseClient,
+  expenseId: string,
+  override?: ExpenseHeaderAmountLineOverride | null
+): Promise<number | null> {
+  const { data, error } = await c
+    .from("expense_lines")
+    .select("id,amount,total")
+    .eq("expense_id", expenseId);
+  if (error) {
+    throw new Error(error.message ?? "Failed to load expense lines for header sync.");
+  }
+
+  const patch = buildExpenseHeaderAmountPatchFromLines(
+    ((data ?? []) as ExpenseHeaderAmountLineInput[]).map((line) => ({
+      id: line.id,
+      amount: line.amount,
+      total: line.total,
+    })),
+    override
+  );
+  if (!patch) return null;
+
+  await updateExpenseHeaderAmountPatch(c, expenseId, patch);
+  return patch.amount;
 }
 
 /** Only strip a specific column from UPDATE when the error clearly refers to that column (not any "schema cache" string). */
@@ -1953,6 +2062,16 @@ export async function updateExpenseForReview(
           .update(lineUpdates)
           .eq("id", (firstLine as { id: string }).id)
           .eq("expense_id", expenseId);
+        if (lineUpdates.amount != null) {
+          try {
+            await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId, {
+              lineId: (firstLine as { id: string }).id,
+              amount: lineUpdates.amount as number,
+            });
+          } catch {
+            return null;
+          }
+        }
       }
     }
   }
