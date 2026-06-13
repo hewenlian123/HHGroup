@@ -57,6 +57,40 @@ export default function nextConfig(phase) {
         },
       ];
     },
+    async redirects() {
+      return [
+        {
+          source: "/workers/summary",
+          destination: "/reports/workforce?tab=overview",
+          permanent: false,
+        },
+        {
+          source: "/labor/payroll",
+          destination: "/reports/workforce?tab=payroll",
+          permanent: false,
+        },
+        {
+          source: "/labor/payroll-summary",
+          destination: "/reports/workforce?tab=payroll",
+          permanent: false,
+        },
+        {
+          source: "/labor/worker-balances",
+          destination: "/reports/workforce?tab=balances",
+          permanent: false,
+        },
+        {
+          source: "/labor/payments",
+          destination: "/reports/workforce?tab=payments",
+          permanent: false,
+        },
+        {
+          source: "/labor/advances",
+          destination: "/reports/workforce?tab=advances",
+          permanent: false,
+        },
+      ];
+    },
     eslint: {
       ignoreDuringBuilds: true,
     },

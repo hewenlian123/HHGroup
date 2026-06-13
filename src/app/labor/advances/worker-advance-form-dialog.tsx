@@ -11,6 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 type WorkerOption = { id: string; name: string };
 type ProjectOption = { id: string; name: string };
@@ -39,7 +40,7 @@ function createInitialFormValues(initialValues?: FormValues): FormValues {
     workerId: "",
     projectId: null,
     amount: "",
-    advanceDate: new Date().toISOString().slice(0, 10),
+    advanceDate: workerRateLocalYmd(),
     notes: "",
     ...(initialValues ?? {}),
   };

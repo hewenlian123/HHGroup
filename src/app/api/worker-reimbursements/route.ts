@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
-import type { WorkerReimbursement } from "@/lib/worker-reimbursements-db";
+import type {
+  WorkerReimbursement,
+  WorkerReimbursementStatus,
+} from "@/lib/worker-reimbursements-db";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 /** Force fresh list so status updates appear immediately */
 export const dynamic = "force-dynamic";
@@ -16,6 +20,12 @@ function reimbDisplayDate(r: Record<string, unknown>): string {
 }
 
 function fromRow(r: Record<string, unknown>): WorkerReimbursement {
+  const statusRaw = String(r.status ?? "").toLowerCase();
+  const status: WorkerReimbursementStatus =
+    statusRaw === "approved" || statusRaw === "paid" || statusRaw === "settled"
+      ? statusRaw
+      : "pending";
+
   return {
     id: r.id as string,
     workerId: r.worker_id as string,
@@ -26,7 +36,7 @@ function fromRow(r: Record<string, unknown>): WorkerReimbursement {
     amount: Number(r.amount) || 0,
     description: (r.description as string | null) ?? null,
     receiptUrl: (r.receipt_url as string | null) ?? null,
-    status: String(r.status ?? "").toLowerCase() === "paid" ? "paid" : "pending",
+    status,
     reimbursementDate: reimbDisplayDate(r),
     createdAt: String(r.created_at ?? ""),
     paidAt: r.paid_at != null ? String(r.paid_at) : null,
@@ -85,7 +95,7 @@ export async function GET(req: Request) {
         r.vendor = withVendorName.vendor_name;
       return fromRow(r);
     });
-    const list = all.filter((r) => r.status === "pending");
+    const list = all;
 
     const workerIds = Array.from(new Set(list.map((r) => r.workerId).filter(Boolean))) as string[];
     const projectIds = Array.from(
@@ -163,7 +173,7 @@ export async function POST(req: Request) {
       typeof body.reimbursementDate === "string" ? body.reimbursementDate.trim().slice(0, 10) : "";
     const reimbursement_date = /^\d{4}-\d{2}-\d{2}$/.test(reimbDateRaw)
       ? reimbDateRaw
-      : new Date().toISOString().slice(0, 10);
+      : workerRateLocalYmd();
 
     const payloadBase: Record<string, unknown> = {
       worker_id: workerId,

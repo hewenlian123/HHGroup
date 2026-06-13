@@ -18,6 +18,7 @@ import {
   type WorkerAdvanceOption,
 } from "@/components/labor/worker-advance-selector";
 import type { WorkerPayment } from "@/lib/worker-payments-db";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 const METHODS = ["Cash", "Check", "Bank Transfer", "Zelle", "Other"] as const;
 
@@ -72,7 +73,7 @@ function readPendingFinalize(workerId: string): PendingFinalize | null {
       paymentDate:
         typeof parsed.paymentDate === "string"
           ? parsed.paymentDate
-          : (parsed.payment?.paymentDate ?? new Date().toISOString().slice(0, 10)),
+          : (parsed.payment?.paymentDate ?? workerRateLocalYmd()),
       paymentMethod:
         typeof parsed.paymentMethod === "string"
           ? parsed.paymentMethod
@@ -117,7 +118,7 @@ export function PayWorkerModal({
 }: Props) {
   const [projects, setProjects] = React.useState<Awaited<ReturnType<typeof getProjects>>>([]);
   const [projectId, setProjectId] = React.useState<string>("");
-  const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [paymentDate, setPaymentDate] = React.useState(() => workerRateLocalYmd());
   const [amount, setAmount] = React.useState(() =>
     defaultAmount ? String(defaultAmount.toFixed(2)) : ""
   );
@@ -146,7 +147,7 @@ export function PayWorkerModal({
 
   const reset = React.useCallback(() => {
     setProjectId("");
-    setPaymentDate(new Date().toISOString().slice(0, 10));
+    setPaymentDate(workerRateLocalYmd());
     setAmount(defaultAmount ? String(defaultAmount.toFixed(2)) : "");
     setMethod(METHODS[0]);
     setNotes("");

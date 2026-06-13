@@ -58,7 +58,12 @@ import {
   NeoToolbar,
 } from "@/components/base";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
+import {
+  safeWorkerReturnPath,
+  workerDetailPathWithReturnTo,
+  workerDetailReturnPath,
+  workforceReportsReturnPath,
+} from "@/lib/worker-return-path";
 
 function todayLocalISODate(): string {
   const d = new Date();
@@ -68,7 +73,7 @@ function todayLocalISODate(): string {
   return `${y}-${m}-${day}`;
 }
 
-const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "paid"];
+const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "approved", "paid", "settled"];
 
 const rbPageVars = {
   "--rb-page": "#08090C",
@@ -186,6 +191,12 @@ function ReimbursementStatusChip({
 }) {
   if (status === "paid") {
     return <NeoStatus label="Paid" variant="success" />;
+  }
+  if (status === "settled") {
+    return <NeoStatus label="Settled" variant="success" />;
+  }
+  if (status === "approved") {
+    return <NeoStatus label="Approved" variant="warning" />;
   }
   if (hasReceipt) {
     return (
@@ -322,6 +333,13 @@ export default function WorkerReimbursementsPage() {
     sourceWorkerId ? workerDetailReturnPath(sourceWorkerId, "receipts") : "/workers"
   );
   const returnLabel = sourceWorkerId ? "Back to Worker" : "Back to Worker Center";
+  const workerDetailHref = React.useCallback(
+    (workerId: string) =>
+      pathname.startsWith("/reports/workforce")
+        ? workerDetailPathWithReturnTo(workerId, workforceReportsReturnPath("reimbursements"))
+        : `/workers/${encodeURIComponent(workerId)}`,
+    [pathname]
+  );
   const sourceWorkerName = sourceWorkerId ? workerById.get(sourceWorkerId) : null;
 
   const filtered = React.useMemo(() => {
@@ -364,8 +382,8 @@ export default function WorkerReimbursementsPage() {
   }, [rows, query, workerById, projectById, sort]);
 
   const reimbursementStats = React.useMemo(() => {
-    const pending = rows.filter((r) => r.status === "pending");
-    const paid = rows.filter((r) => r.status === "paid");
+    const pending = rows.filter((r) => r.status === "pending" || r.status === "approved");
+    const paid = rows.filter((r) => r.status === "paid" || r.status === "settled");
     const pendingTotal = pending.reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const paidTotal = paid.reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const missingReceipt = pending.filter((r) => !hasReceiptUrl(r)).length;
@@ -712,8 +730,12 @@ export default function WorkerReimbursementsPage() {
             align="end"
             className="min-w-[10rem] border-[color:var(--rb-border)] bg-[var(--rb-elevated)] text-[color:var(--rb-text)] shadow-[0_20px_44px_rgb(0_0_0_/_0.36)]"
           >
+            <DropdownMenuItem onSelect={() => router.push(workerDetailHref(r.workerId))}>
+              Open Worker
+            </DropdownMenuItem>
             {r.status === "pending" && (
               <>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem disabled={isBusy} onSelect={() => openPayModal(r)}>
                   {isBusy ? "…" : "Mark as Paid"}
                 </DropdownMenuItem>

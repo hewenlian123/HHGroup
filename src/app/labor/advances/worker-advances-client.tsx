@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import { PageHeader } from "@/components/page-header";
@@ -37,7 +37,13 @@ import { WorkerAdvanceFormDialog } from "./worker-advance-form-dialog";
 import { WorkerAdvanceActionsMenu } from "./worker-advance-actions-menu";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
-import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
+import {
+  safeWorkerReturnPath,
+  workerDetailPathWithReturnTo,
+  workerDetailReturnPath,
+  workforceReportsReturnPath,
+} from "@/lib/worker-return-path";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 type WorkerOption = { id: string; name: string };
 type ProjectOption = { id: string; name: string };
@@ -109,6 +115,7 @@ function AdvanceStatusChip({ status }: { status: AdvanceRow["status"] }) {
 
 export function WorkerAdvancesClient({ workers, projects }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const sourceWorkerId = searchParams.get("workerId")?.trim() ?? "";
   const returnHref = safeWorkerReturnPath(
@@ -117,6 +124,13 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
   );
   const returnLabel = sourceWorkerId ? "Back to Worker" : "Back to Worker Center";
   const shouldReturnToSource = Boolean(searchParams.get("returnTo") || sourceWorkerId);
+  const workerDetailHref = React.useCallback(
+    (workerId: string) =>
+      pathname.startsWith("/reports/workforce")
+        ? workerDetailPathWithReturnTo(workerId, workforceReportsReturnPath("advances"))
+        : `/workers/${encodeURIComponent(workerId)}`,
+    [pathname]
+  );
   const [workerOptions, setWorkerOptions] = React.useState<WorkerOption[]>(workers);
   const [rows, setRows] = React.useState<AdvanceRow[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -314,8 +328,8 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
     const next = new URLSearchParams(searchParams.toString());
     next.delete("new");
     const query = next.toString();
-    router.replace(query ? `/labor/advances?${query}` : "/labor/advances", { scroll: false });
-  }, [router, searchParams]);
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   const closeEditor = () => {
     setEditorOpen(false);
@@ -935,6 +949,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       <WorkerAdvanceActionsMenu
                         advance={row}
                         layout="mobile"
+                        onOpenWorker={() => router.push(workerDetailHref(row.workerId))}
                         onEdit={() => openEdit(row)}
                         onMarkDeducted={() => handleMarkDeducted(row)}
                         onDelete={() => handleDelete(row)}
@@ -1116,6 +1131,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                       <WorkerAdvanceActionsMenu
                         advance={row}
                         layout="desktop"
+                        onOpenWorker={() => router.push(workerDetailHref(row.workerId))}
                         onEdit={() => openEdit(row)}
                         onMarkDeducted={() => handleMarkDeducted(row)}
                         onDelete={() => handleDelete(row)}
@@ -1150,7 +1166,7 @@ export function WorkerAdvancesClient({ workers, projects }: Props) {
                   workerId: initialCreateWorkerId,
                   projectId: null,
                   amount: "",
-                  advanceDate: new Date().toISOString().slice(0, 10),
+                  advanceDate: workerRateLocalYmd(),
                   notes: "",
                 }
               : undefined

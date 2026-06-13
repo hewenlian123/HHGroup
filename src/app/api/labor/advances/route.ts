@@ -5,6 +5,7 @@ import {
   getServerSupabaseInternal,
 } from "@/lib/supabase-server";
 import { mapWorkerAdvanceRowsForApi, type WorkerAdvanceSelectRow } from "@/lib/worker-advances-db";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,7 @@ export async function POST(request: Request) {
     const amount = Number(body.amount);
     const advanceDate = body.advanceDate
       ? String(body.advanceDate).slice(0, 10)
-      : new Date().toISOString().slice(0, 10);
+      : workerRateLocalYmd();
     const notes = body.notes ? String(body.notes).trim() : null;
 
     if (!workerId) {

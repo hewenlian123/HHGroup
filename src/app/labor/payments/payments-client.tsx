@@ -3,6 +3,7 @@
 import * as React from "react";
 import { startTransition } from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { FilterBar } from "@/components/filter-bar";
 import { Card } from "@/components/ui/card";
@@ -19,6 +20,8 @@ import { hhNeoFocusRevealOverlay, hhNeoFocusRevealPanel } from "@/lib/motion-sys
 import { amountClass, TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
+import { workerDetailPathWithReturnTo, workforceReportsReturnPath } from "@/lib/worker-return-path";
 
 type PayRunRow = {
   workerId: string;
@@ -40,12 +43,14 @@ type PayRunRow = {
 function last7DaysStart(): string {
   const d = new Date();
   d.setDate(d.getDate() - 6);
-  return d.toISOString().slice(0, 10);
+  return workerRateLocalYmd(d);
 }
 
 export default function LaborPaymentsClient() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [startDate, setStartDate] = React.useState(last7DaysStart);
-  const [endDate, setEndDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = React.useState(() => workerRateLocalYmd());
   const [projectId, setProjectId] = React.useState("");
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -54,9 +59,16 @@ export default function LaborPaymentsClient() {
   const [paymentMethods, setPaymentMethods] = React.useState<string[]>(["ACH"]);
   const [expandedWorkerId, setExpandedWorkerId] = React.useState<string | null>(null);
   const [message, setMessage] = React.useState<string | null>(null);
+  const workerDetailHref = React.useCallback(
+    (workerId: string) =>
+      pathname.startsWith("/reports/workforce")
+        ? workerDetailPathWithReturnTo(workerId, workforceReportsReturnPath("payments"))
+        : `/workers/${encodeURIComponent(workerId)}`,
+    [pathname]
+  );
 
   const [modalWorkerId, setModalWorkerId] = React.useState<string | null>(null);
-  const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [paymentDate, setPaymentDate] = React.useState(() => workerRateLocalYmd());
   const [amount, setAmount] = React.useState(0);
   const [method, setMethod] = React.useState("ACH");
   const [memo, setMemo] = React.useState("");
@@ -114,7 +126,7 @@ export default function LaborPaymentsClient() {
   const openModal = (workerId: string, balance: number) => {
     setModalWorkerId(workerId);
     setAmount(Math.max(0, balance));
-    setPaymentDate(new Date().toISOString().slice(0, 10));
+    setPaymentDate(workerRateLocalYmd());
     setMemo("");
     setModalWarning(null);
   };
@@ -386,6 +398,10 @@ export default function LaborPaymentsClient() {
                           appearance="list"
                           ariaLabel={`Actions for ${row.workerName}`}
                           actions={[
+                            {
+                              label: "Open Worker",
+                              onClick: () => router.push(workerDetailHref(row.workerId)),
+                            },
                             {
                               label: expandedWorkerId === row.workerId ? "Hide History" : "History",
                               onClick: () =>

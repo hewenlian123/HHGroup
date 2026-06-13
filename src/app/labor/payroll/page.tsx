@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import {
   Users,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/formatters";
+import { workerDetailPathWithReturnTo, workforceReportsReturnPath } from "@/lib/worker-return-path";
 
 type Row = PayrollSummaryComputeRow;
 
@@ -145,6 +146,7 @@ function formatLocalDateYYYYMMDD(date: Date): string {
 
 export default function PayrollSummaryPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { toast } = useToast();
   const today = formatLocalDateYYYYMMDD(new Date());
   const startOfMonth = new Date();
@@ -173,6 +175,13 @@ export default function PayrollSummaryPage() {
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [receiptPaymentId, setReceiptPaymentId] = React.useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = React.useState(false);
+  const workerDetailHref = React.useCallback(
+    (workerId: string) =>
+      pathname.startsWith("/reports/workforce")
+        ? workerDetailPathWithReturnTo(workerId, workforceReportsReturnPath("payroll"))
+        : `/workers/${encodeURIComponent(workerId)}`,
+    [pathname]
+  );
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -552,7 +561,7 @@ export default function PayrollSummaryPage() {
                   <button
                     type="button"
                     className="flex min-w-0 flex-1 items-start gap-3 text-left"
-                    onClick={() => router.push(`/workers/${r.workerId}`)}
+                    onClick={() => router.push(workerDetailHref(r.workerId))}
                   >
                     <span
                       className={cn(
@@ -576,7 +585,10 @@ export default function PayrollSummaryPage() {
                       appearance="list"
                       ariaLabel={`Actions for ${r.workerName}`}
                       actions={[
-                        { label: "View", onClick: () => router.push(`/workers/${r.workerId}`) },
+                        {
+                          label: "Open Worker",
+                          onClick: () => router.push(workerDetailHref(r.workerId)),
+                        },
                         { label: "Edit", onClick: () => router.push("/workers") },
                         {
                           label: "Delete",
@@ -816,11 +828,11 @@ export default function PayrollSummaryPage() {
                       tabIndex={0}
                       role="link"
                       aria-label={`Open ${r.workerName}`}
-                      onClick={() => router.push(`/workers/${r.workerId}`)}
+                      onClick={() => router.push(workerDetailHref(r.workerId))}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          router.push(`/workers/${r.workerId}`);
+                          router.push(workerDetailHref(r.workerId));
                         }
                       }}
                     >
@@ -914,8 +926,8 @@ export default function PayrollSummaryPage() {
                             ariaLabel={`Actions for ${r.workerName}`}
                             actions={[
                               {
-                                label: "View",
-                                onClick: () => router.push(`/workers/${r.workerId}`),
+                                label: "Open Worker",
+                                onClick: () => router.push(workerDetailHref(r.workerId)),
                               },
                               {
                                 label: "Monthly Report",

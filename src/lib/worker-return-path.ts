@@ -1,4 +1,12 @@
 export type WorkerReturnTab = "receipts" | "advances" | "payments" | "statements";
+export type WorkforceReturnTab =
+  | "overview"
+  | "payroll"
+  | "balances"
+  | "payments"
+  | "advances"
+  | "reimbursements"
+  | "statements";
 
 export function workerDetailReturnPath(workerId: string, tab: WorkerReturnTab): string {
   return `/workers/${encodeURIComponent(workerId)}?tab=${tab}`;
@@ -6,6 +14,14 @@ export function workerDetailReturnPath(workerId: string, tab: WorkerReturnTab): 
 
 export function encodeWorkerReturnPath(workerId: string, tab: WorkerReturnTab): string {
   return encodeURIComponent(workerDetailReturnPath(workerId, tab));
+}
+
+export function workforceReportsReturnPath(tab: WorkforceReturnTab): string {
+  return `/reports/workforce?tab=${encodeURIComponent(tab)}`;
+}
+
+export function workerDetailPathWithReturnTo(workerId: string, returnTo: string): string {
+  return `/workers/${encodeURIComponent(workerId)}?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
 export function safeWorkerReturnPath(

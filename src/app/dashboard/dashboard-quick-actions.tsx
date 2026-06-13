@@ -1,5 +1,14 @@
 import Link from "next/link";
-import { FileText, FolderKanban, ReceiptText, UsersRound } from "lucide-react";
+import {
+  ArrowLeftRight,
+  CircleDollarSign,
+  FileText,
+  FolderKanban,
+  HandCoins,
+  ReceiptText,
+  UsersRound,
+  WalletCards,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -7,12 +16,30 @@ const actions = [
   { label: "Create invoice", href: "/financial/invoices/new", icon: FileText, primary: true },
   { label: "Review receipts", href: "/financial/inbox", icon: ReceiptText },
   { label: "Projects", href: "/projects", icon: FolderKanban },
-  { label: "Labor", href: "/labor", icon: UsersRound },
+  { label: "Pay Worker", href: "/workers", icon: UsersRound },
+  {
+    label: "Workers Ready To Pay",
+    href: "/reports/workforce?tab=payroll",
+    icon: CircleDollarSign,
+  },
+  { label: "Payroll Due", href: "/reports/workforce?tab=payroll", icon: WalletCards },
+  { label: "Outstanding Advances", href: "/reports/workforce?tab=advances", icon: HandCoins },
+  {
+    label: "Pending Reimbursements",
+    href: "/reports/workforce?tab=reimbursements",
+    icon: ReceiptText,
+  },
+  { label: "Labor", href: "/labor", icon: ArrowLeftRight },
 ];
 
 export function DashboardQuickActions({ className }: { className?: string }) {
   return (
-    <div className={cn("dashboard-quick-actions grid grid-cols-2 gap-2 sm:flex", className)}>
+    <div
+      className={cn(
+        "dashboard-quick-actions grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end",
+        className
+      )}
+    >
       {actions.map((action) => {
         const Icon = action.icon;
         return (

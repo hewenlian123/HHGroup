@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,7 @@ import { NeoAmount, NeoMobileCard, NeoStatus, NeoTable, NeoToolbar } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { formatCurrency } from "@/lib/formatters";
+import { workerDetailPathWithReturnTo, workforceReportsReturnPath } from "@/lib/worker-return-path";
 
 type WorkerBalanceRow = {
   workerId: string;
@@ -90,6 +92,7 @@ function BalanceStatusChip({ balance }: { balance: number }) {
 }
 
 export default function WorkerBalancesPage() {
+  const pathname = usePathname();
   const [rows, setRows] = React.useState<WorkerBalanceRow[]>([]);
   const [initialLoading, setInitialLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -100,6 +103,13 @@ export default function WorkerBalancesPage() {
   const [deleteBusy, setDeleteBusy] = React.useState(false);
   const [filtersOpen, setFiltersOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
+  const workerDetailHref = React.useCallback(
+    (workerId: string) =>
+      pathname.startsWith("/reports/workforce")
+        ? workerDetailPathWithReturnTo(workerId, workforceReportsReturnPath("balances"))
+        : `/workers/${encodeURIComponent(workerId)}`,
+    [pathname]
+  );
 
   const load = React.useCallback(async () => {
     const gen = ++fetchGenRef.current;
@@ -471,7 +481,7 @@ export default function WorkerBalancesPage() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <Link
-                        href={`/labor/workers/${r.workerId}/balance`}
+                        href={workerDetailHref(r.workerId)}
                         title={r.workerName}
                         className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-normal text-[var(--neo-text-primary)] hover:underline"
                       >
@@ -535,7 +545,7 @@ export default function WorkerBalancesPage() {
                       className="h-11 min-h-[44px] flex-1 rounded-sm shadow-none"
                       asChild
                     >
-                      <Link href={`/labor/workers/${r.workerId}/balance`}>Open detail</Link>
+                      <Link href={workerDetailHref(r.workerId)}>Open Worker</Link>
                     </Button>
                     {r.deletable ? (
                       <Button
@@ -657,7 +667,7 @@ export default function WorkerBalancesPage() {
                       </span>
                       <div className="min-w-0">
                         <Link
-                          href={`/labor/workers/${r.workerId}/balance`}
+                          href={workerDetailHref(r.workerId)}
                           title={r.workerName}
                           className="line-clamp-2 text-[13px] font-semibold leading-snug tracking-tight text-zinc-900 hover:underline dark:text-foreground"
                         >

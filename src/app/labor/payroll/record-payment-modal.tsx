@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { recordPaymentAction } from "./actions";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 const METHODS = ["Cash", "Check", "Bank"] as const;
 
@@ -16,7 +17,7 @@ type Props = {
 };
 
 export function RecordPaymentModal({ open, onOpenChange, workerId, onSuccess }: Props) {
-  const [paymentDate, setPaymentDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [paymentDate, setPaymentDate] = React.useState(() => workerRateLocalYmd());
   const [amount, setAmount] = React.useState("");
   const [method, setMethod] = React.useState<string>("Cash");
   const [note, setNote] = React.useState("");
@@ -24,7 +25,7 @@ export function RecordPaymentModal({ open, onOpenChange, workerId, onSuccess }: 
   const [busy, setBusy] = React.useState(false);
 
   const reset = React.useCallback(() => {
-    setPaymentDate(new Date().toISOString().slice(0, 10));
+    setPaymentDate(workerRateLocalYmd());
     setAmount("");
     setMethod("Cash");
     setNote("");

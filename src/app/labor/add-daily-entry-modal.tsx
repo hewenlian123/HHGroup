@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { VirtualScrollList } from "@/components/ui/virtual-scroll-list";
 import { cn } from "@/lib/utils";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker, getDefaultClassNames } from "react-day-picker";
 
@@ -550,7 +551,7 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
 
 export function AddDailyEntryModal({ open, onOpenChange, onSuccess }: Props) {
   const [projectId, setProjectId] = React.useState("");
-  const [workDate, setWorkDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [workDate, setWorkDate] = React.useState(() => workerRateLocalYmd());
   const [projects, setProjects] = React.useState<LaborProjectOption[]>([]);
   const [workers, setWorkers] = React.useState<LaborWorker[]>([]);
   const [workerSearch, setWorkerSearch] = React.useState("");

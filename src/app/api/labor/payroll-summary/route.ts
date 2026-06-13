@@ -12,6 +12,7 @@ import { getWorkerReimbursements } from "@/lib/worker-reimbursements-db";
 import { getWorkerInvoices } from "@/lib/worker-invoices-db";
 import { getWorkerPaymentsWithClient } from "@/lib/worker-payments-db";
 import { getWorkerAdvances } from "@/lib/worker-advances-db";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 import {
   buildPayrollSummaryRows,
   mergePayrollLaborEntries,
@@ -44,10 +45,10 @@ export async function GET(request: Request) {
   const supabase = getServerSupabaseInternalNoStore();
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = workerRateLocalYmd();
   const startOfMonth = new Date();
   startOfMonth.setDate(1);
-  const defaultFrom = startOfMonth.toISOString().slice(0, 10);
+  const defaultFrom = workerRateLocalYmd(startOfMonth);
 
   const { searchParams } = new URL(request.url);
   const fromDate = safeDate(searchParams.get("fromDate"), defaultFrom);

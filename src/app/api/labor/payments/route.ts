@@ -4,6 +4,7 @@ import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternal,
 } from "@/lib/supabase-server";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const { searchParams } = new URL(request.url);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = workerRateLocalYmd();
   const startDate = searchParams.get("startDate")?.slice(0, 10) ?? today;
   const endDate = searchParams.get("endDate")?.slice(0, 10) ?? today;
   const projectId = searchParams.get("projectId")?.trim() ?? "";
@@ -266,7 +267,7 @@ export async function POST(request: Request) {
     const workerId = typeof body.workerId === "string" ? body.workerId.trim() : "";
     const amount = safeNumber(body.amount);
     const method = typeof body.method === "string" ? body.method.trim() : "";
-    const today = new Date().toISOString().slice(0, 10);
+    const today = workerRateLocalYmd();
     const paymentDate = normalizeDate(body.paymentDate, today);
     const startDate = normalizeDate(body.startDate, paymentDate);
     const endDate = normalizeDate(body.endDate, paymentDate);

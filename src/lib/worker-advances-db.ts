@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 /** API row shape for labor/advances pages (names joined in app — avoids brittle PostgREST embeds). */
 export type WorkerAdvanceApiRow = {
@@ -162,7 +163,7 @@ export async function createWorkerAdvance(input: CreateWorkerAdvanceInput): Prom
     worker_id: input.workerId,
     project_id: input.projectId ?? null,
     amount: amt,
-    advance_date: (input.advanceDate ?? new Date().toISOString().slice(0, 10)).slice(0, 10),
+    advance_date: (input.advanceDate ?? workerRateLocalYmd()).slice(0, 10),
     notes: input.notes?.trim() || null,
   };
 

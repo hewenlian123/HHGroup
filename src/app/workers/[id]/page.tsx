@@ -7,11 +7,12 @@ import { useParams, useSearchParams } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { getWorkerInvoices, type WorkerInvoice } from "@/lib/data";
+import { getWorkerInvoices, type WorkerInvoice, type WorkerReimbursement } from "@/lib/data";
 import type { Worker } from "@/lib/labor-db";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { formatLaborEntrySessionLabel } from "@/lib/daily-labor-db";
 import {
+  ArrowLeft,
   AlertTriangle,
   CalendarPlus,
   ChevronRight,
@@ -26,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { formatDate } from "@/lib/formatters";
 import { workerRateLocalYmd } from "@/lib/worker-rate-date";
-import { encodeWorkerReturnPath } from "@/lib/worker-return-path";
+import { encodeWorkerReturnPath, safeWorkerReturnPath } from "@/lib/worker-return-path";
 
 type WorkerRateHistoryView = {
   id: string;
@@ -182,6 +183,26 @@ function workerStatusLabel(balance: number): string {
   if (balance > 0.005) return "Ready to pay";
   if (balance < -0.005) return "Overpaid";
   return "Settled";
+}
+
+function workforceReturnLabel(returnTo: string): string | null {
+  try {
+    const parsed = new URL(returnTo, "http://hh.local");
+    if (parsed.pathname !== "/reports/workforce") return null;
+    const tab = parsed.searchParams.get("tab");
+    const labels: Record<string, string> = {
+      payroll: "Back to Workforce Payroll",
+      balances: "Back to Workforce Balances",
+      payments: "Back to Workforce Payments",
+      advances: "Back to Workforce Advances",
+      reimbursements: "Back to Workforce Reimbursements",
+      statements: "Back to Workforce Statements",
+      overview: "Back to Workforce Overview",
+    };
+    return labels[tab ?? "overview"] ?? "Back to Workforce";
+  } catch {
+    return null;
+  }
 }
 
 function entryEarned(
@@ -441,6 +462,7 @@ export default function WorkerDashboardPage() {
   const [balanceDetail, setBalanceDetail] = React.useState<WorkerBalanceDetail | null>(null);
   const [advances, setAdvances] = React.useState<WorkerAdvanceRow[]>([]);
   const [receipts, setReceipts] = React.useState<WorkerReceiptRow[]>([]);
+  const [reimbursementLedger, setReimbursementLedger] = React.useState<WorkerReimbursement[]>([]);
   const [workerInvoices, setWorkerInvoices] = React.useState<WorkerInvoice[]>([]);
   const [detailMessage, setDetailMessage] = React.useState<string | null>(null);
 
@@ -495,13 +517,16 @@ export default function WorkerDashboardPage() {
       let balanceJson: WorkerBalanceDetail | null = null;
       let invoicesAllForWorker: WorkerInvoice[] = [];
       try {
-        const [balanceResponse, advancesResponse, receiptsResponse, invoicesAll] =
+        const [balanceResponse, advancesResponse, receiptsResponse, ledgerResponse, invoicesAll] =
           await Promise.all([
             fetch(`/api/labor/workers/${id}/balance`, { cache: "no-store" }).catch(() => null),
             fetch(`/api/labor/advances?workerId=${encodeURIComponent(id)}&status=active`, {
               cache: "no-store",
             }).catch(() => null),
             fetch("/api/worker-receipts", { cache: "no-store" }).catch(() => null),
+            fetch(`/api/worker-reimbursements/ledger/${encodeURIComponent(id)}`, {
+              cache: "no-store",
+            }).catch(() => null),
             getWorkerInvoices().catch(() => [] as WorkerInvoice[]),
           ]);
 
@@ -530,12 +555,20 @@ export default function WorkerDashboardPage() {
           )
         );
 
+        const ledgerJson = ledgerResponse?.ok
+          ? ((await ledgerResponse.json().catch(() => null)) as {
+              reimbursements?: WorkerReimbursement[];
+            } | null)
+          : null;
+        setReimbursementLedger(ledgerJson?.reimbursements ?? []);
+
         invoicesAllForWorker = invoicesAll.filter((invoice) => invoice.workerId === id);
         setWorkerInvoices(invoicesAllForWorker);
       } catch (e) {
         setBalanceDetail(null);
         setAdvances([]);
         setReceipts([]);
+        setReimbursementLedger([]);
         setWorkerInvoices([]);
         setDetailMessage(
           e instanceof Error ? e.message : "Some worker detail data failed to load."
@@ -553,8 +586,8 @@ export default function WorkerDashboardPage() {
 
       const start = new Date();
       start.setDate(1);
-      const from = start.toISOString().slice(0, 10);
-      const to = new Date().toISOString().slice(0, 10);
+      const from = ymdLocal(start);
+      const to = workerRateLocalYmd();
       try {
         const payments = balanceJson?.payments ?? [];
         let labor = 0;
@@ -587,6 +620,7 @@ export default function WorkerDashboardPage() {
       setBalanceDetail(null);
       setAdvances([]);
       setReceipts([]);
+      setReimbursementLedger([]);
       setWorkerInvoices([]);
     }
   }, [id]);
@@ -611,6 +645,15 @@ export default function WorkerDashboardPage() {
       ? raw
       : "overview";
   }, [searchParams]);
+
+  const returnToPath = React.useMemo(
+    () => safeWorkerReturnPath(searchParams.get("returnTo"), ""),
+    [searchParams]
+  );
+  const returnToLabel = React.useMemo(
+    () => (returnToPath ? workforceReturnLabel(returnToPath) : null),
+    [returnToPath]
+  );
 
   const targetedWorkEntryId = React.useMemo(() => {
     return (
@@ -665,10 +708,12 @@ export default function WorkerDashboardPage() {
   }, [receipts]);
 
   const recentReimbursements = React.useMemo(() => {
-    return [...(balanceDetail?.reimbursements ?? [])]
-      .sort((a, b) => b.date.localeCompare(a.date))
+    return [...reimbursementLedger]
+      .sort((a, b) =>
+        (b.reimbursementDate || b.createdAt).localeCompare(a.reimbursementDate || a.createdAt)
+      )
       .slice(0, 5);
-  }, [balanceDetail]);
+  }, [reimbursementLedger]);
 
   const recentPayments = React.useMemo(() => {
     return [...(balanceDetail?.payments ?? [])]
@@ -879,9 +924,10 @@ export default function WorkerDashboardPage() {
         description="Worker Center detail — work, receipts, advances, payments, statements, and rate history."
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/workers">
+            <Link href={returnToPath || "/workers"}>
               <Button variant="outline" size="sm" className="rounded-sm">
-                Back
+                {returnToPath ? <ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden /> : null}
+                {returnToLabel ?? "Back"}
               </Button>
             </Link>
             <Link href={`/workers/${id}/edit`}>
@@ -1404,9 +1450,9 @@ export default function WorkerDashboardPage() {
 
           <DetailSection
             title="Reimbursements"
-            description="Pending and paid reimbursements from the worker balance ledger."
+            description="Full worker reimbursement ledger. Net-to-pay still uses open items only."
           >
-            {(balanceDetail?.reimbursements ?? []).length === 0 ? (
+            {reimbursementLedger.length === 0 ? (
               <EmptyPanel>No worker reimbursements yet.</EmptyPanel>
             ) : (
               <div className="overflow-x-auto">
@@ -1431,16 +1477,23 @@ export default function WorkerDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {(balanceDetail?.reimbursements ?? []).map((r) => (
+                    {reimbursementLedger.map((r) => (
                       <tr key={r.id} className="border-b border-border/40">
                         <td className="px-2 py-1.5 tabular-nums text-muted-foreground">
-                          {formatDate(r.date)}
+                          {formatDate(r.reimbursementDate || r.createdAt)}
                         </td>
                         <td className="px-2 py-1.5 font-medium">{r.vendor ?? "—"}</td>
                         <td className="px-2 py-1.5 text-muted-foreground">
                           {r.projectName ?? "—"}
                         </td>
-                        <td className="px-2 py-1.5 text-muted-foreground">{r.status}</td>
+                        <td className="px-2 py-1.5 text-muted-foreground capitalize">
+                          {r.status}
+                          {r.paidAt ? (
+                            <span className="ml-1 text-xs tabular-nums text-muted-foreground/80">
+                              {formatDate(r.paidAt, "compact")}
+                            </span>
+                          ) : null}
+                        </td>
                         <td className="px-2 py-1.5 text-right font-medium tabular-nums">
                           {fmtUsd(r.amount)}
                         </td>

@@ -7,8 +7,9 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
-export type WorkerReimbursementStatus = "pending" | "paid";
+export type WorkerReimbursementStatus = "pending" | "approved" | "paid" | "settled";
 
 export type WorkerReimbursement = {
   id: string;
@@ -125,7 +126,9 @@ async function enrichNames(
 
 function normaliseStatus(s: unknown): WorkerReimbursementStatus {
   const v = String(s ?? "").toLowerCase();
+  if (v === "approved") return "approved";
   if (v === "paid") return "paid";
+  if (v === "settled") return "settled";
   return "pending";
 }
 
@@ -307,8 +310,7 @@ export async function getWorkerReimbursementsByWorkerId(
 export async function insertWorkerReimbursement(
   draft: WorkerReimbursementDraft
 ): Promise<WorkerReimbursement> {
-  const dateStr =
-    draft.reimbursementDate?.trim().slice(0, 10) || new Date().toISOString().slice(0, 10);
+  const dateStr = draft.reimbursementDate?.trim().slice(0, 10) || workerRateLocalYmd();
   const baseInsert: Record<string, unknown> = {
     worker_id: draft.workerId,
     project_id: draft.projectId ?? null,

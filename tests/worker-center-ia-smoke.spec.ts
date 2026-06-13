@@ -51,23 +51,18 @@ async function cleanupWorkerByName(page: Page, name: string, fallbackId?: string
 }
 
 test.describe("Worker Center IA smoke", () => {
-  test("sidebar People section keeps Worker Center IA primary entries", async ({ page }) => {
+  test("sidebar Directory section keeps only directory entity entries", async ({ page }) => {
     await expectPageLoad(page, "/workers", /^Worker Center$/i);
 
     const sidebar = page.locator("[data-app-sidebar]").first();
-    for (const label of [
-      "Customers",
-      "Worker Center",
-      "Payroll Summary",
-      "Vendors",
-      "Subcontractors",
-    ]) {
+    for (const label of ["Customers", "Workers", "Vendors", "Subcontractors"]) {
       await expect(sidebar.getByText(label, { exact: true })).toBeVisible({ timeout: 10_000 });
     }
 
     for (const legacyLabel of [
-      "Workers",
+      "Worker Center",
       "Worker Summary",
+      "Payroll Summary",
       "Worker Balances",
       "Worker Payments",
       "Worker Advances",
@@ -94,7 +89,14 @@ test.describe("Worker Center IA smoke", () => {
     await expect(page.getByRole("heading", { name: /Labor Entries/i })).toBeVisible({
       timeout: 30_000,
     });
-    await expectPageLoad(page, "/labor/payroll", /^Payroll Summary$/i);
+    await expectPageLoad(page, "/labor/payroll", /^Workforce Reports$/i);
+    const url = new URL(page.url());
+    expect(url.pathname).toBe("/reports/workforce");
+    expect(url.searchParams.get("tab")).toBe("payroll");
+    await expect(page.getByRole("tab", { name: /^Payroll$/i })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
   });
 
   test("mobile worker detail has no horizontal page overflow", async ({ page }) => {

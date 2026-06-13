@@ -14,6 +14,7 @@ import {
   laborEntryPaymentIdMapFromWorkerPayments,
   type LaborPayrollSettlementMode,
 } from "@/lib/labor-balance-shared";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 export const dynamic = "force-dynamic";
 
@@ -112,7 +113,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ message: "Payment method is required" }, { status: 400 });
   }
 
-  const paymentDate = (body.payment_date ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
+  const paymentDate = (body.payment_date ?? workerRateLocalYmd()).slice(0, 10);
   const notes = typeof body.notes === "string" ? body.notes.trim() || null : null;
   const advanceDeductionAmount = Number(body.advance_deduction_amount ?? 0);
   if (!Number.isFinite(advanceDeductionAmount) || advanceDeductionAmount < 0) {

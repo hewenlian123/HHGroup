@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
 import { safeWorkerReturnPath, workerDetailReturnPath } from "@/lib/worker-return-path";
+import { workerRateLocalYmd } from "@/lib/worker-rate-date";
 
 type LaborEntryRow = {
   id: string;
@@ -394,7 +395,7 @@ export default function WorkerBalanceDetailPage() {
   const [message, setMessage] = React.useState<string | null>(null);
 
   const [payModalOpen, setPayModalOpen] = React.useState(false);
-  const [payDate, setPayDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [payDate, setPayDate] = React.useState(() => workerRateLocalYmd());
   const [payNotes, setPayNotes] = React.useState("");
   const [selectedLaborIds, setSelectedLaborIds] = React.useState<Set<string>>(new Set());
   const [selectedReimbIds, setSelectedReimbIds] = React.useState<Set<string>>(new Set());
@@ -407,7 +408,7 @@ export default function WorkerBalanceDetailPage() {
   const [receiptPaymentId, setReceiptPaymentId] = React.useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = React.useState(false);
   const [lastPaymentMonth, setLastPaymentMonth] = React.useState<string | null>(null);
-  const statementMonth = lastPaymentMonth ?? new Date().toISOString().slice(0, 7);
+  const statementMonth = lastPaymentMonth ?? workerRateLocalYmd().slice(0, 7);
   const statementHref = workerId
     ? `/worker/${encodeURIComponent(workerId)}/monthly-report?month=${encodeURIComponent(
         statementMonth
@@ -646,7 +647,7 @@ export default function WorkerBalanceDetailPage() {
     const initialTotal = totalPaymentAmount;
     const initialAdvanceDeduction = buildAdvancePlan(advances, initialTotal).amount;
     const initialCashTotal = Math.max(0, roundMoney(initialTotal - initialAdvanceDeduction));
-    setPayDate(new Date().toISOString().slice(0, 10));
+    setPayDate(workerRateLocalYmd());
     setPayNotes("");
     setPayError(null);
     setLastPaymentMonth(null);

@@ -26,10 +26,8 @@ export const OWNER_NAV_PREFETCH_ROUTES = [
   "/financial/bank",
   "/financial/owner",
   "/reports",
+  "/reports/workforce",
   "/labor",
-  "/labor/payments",
-  "/labor/worker-balances",
-  "/labor/payroll",
   "/settings",
   "/system-health",
 ] as const;
