@@ -1,6 +1,6 @@
 /**
- * Worker Payment Receipt — US Letter, optimized to fit ~30 labor rows on one printed page.
- * Priority: density in print; screen slightly relaxed for preview/PDF capture.
+ * Worker Payment Receipt — compact on screen, A4 only for print/PDF output.
+ * Priority: dense formal receipt output without forcing preview into page height.
  */
 
 .receipt-print-shell {
@@ -8,19 +8,33 @@
 }
 
 .receipt.receipt-container {
-  max-width: 8.5in;
+  width: min(100%, 794px);
+  max-width: 794px;
+  height: auto;
+  min-height: auto;
+  aspect-ratio: auto;
   margin-left: auto;
   margin-right: auto;
   padding: 20px 20px;
   background: #fff;
   color: #111;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   font-size: 12px;
   line-height: 1.3;
   letter-spacing: -0.01em;
   border: none;
   box-shadow: none;
   border-radius: 0;
+}
+
+.receipt-main {
+  flex: 0 0 auto;
+}
+
+.receipt-bottom {
+  margin-top: 10px;
 }
 
 /* ─── Header (compact) ─── */
@@ -206,8 +220,20 @@
   table-layout: fixed;
 }
 
+.receipt-table--labor .receipt-col-date {
+  width: 24%;
+}
+
 .receipt-table--labor .receipt-col-project {
-  width: 50%;
+  width: 38%;
+}
+
+.receipt-table--labor .receipt-col-session {
+  width: 22%;
+}
+
+.receipt-table--labor .receipt-col-amount {
+  width: 16%;
 }
 
 .receipt-table thead th {
@@ -244,6 +270,13 @@
 .receipt-table--labor tbody td:nth-child(2) {
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.receipt-table--labor tbody td:first-child,
+.receipt-table--labor tbody td:nth-child(3) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .receipt-table tbody td:first-child {
@@ -383,15 +416,89 @@
   page-break-inside: avoid;
 }
 
-/* Whole receipt: one print flow (no internal breaks) */
-.receipt.receipt-container {
+.receipt-bottom {
   break-inside: avoid;
   page-break-inside: avoid;
 }
 
+.receipt-pdf-capture.receipt.receipt-container {
+  width: 190mm !important;
+  max-width: 190mm !important;
+  min-height: calc(277mm - 1px) !important;
+  aspect-ratio: auto !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+.receipt-pdf-capture .receipt-main {
+  flex: 1 1 auto !important;
+}
+
+.receipt-pdf-capture .receipt-bottom {
+  margin-top: auto !important;
+}
+
+.receipt-pdf-capture .receipt-signature {
+  margin-top: 0 !important;
+}
+
 @media screen and (max-width: 560px) {
   .receipt.receipt-container {
-    padding: 16px 18px;
+    padding: 14px 12px;
+  }
+
+  .receipt-doc-header {
+    gap: 8px !important;
+  }
+
+  .receipt-doc-header > div {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .receipt-doc-header > div:last-child {
+    text-align: left !important;
+  }
+
+  .receipt-doc-header .tabular-nums {
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .receipt-table--labor .receipt-col-date {
+    width: 24%;
+  }
+
+  .receipt-table--labor .receipt-col-project {
+    width: 28%;
+  }
+
+  .receipt-table--labor .receipt-col-session {
+    width: 16%;
+  }
+
+  .receipt-table--labor .receipt-col-amount {
+    width: 32%;
+  }
+
+  .receipt-table thead th {
+    padding-right: 2px;
+    padding-left: 2px;
+    font-size: 8px;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+  }
+
+  .receipt-table tbody td {
+    padding-right: 2px;
+    padding-left: 2px;
+    font-size: 10px;
   }
 
   .receipt-meta-grid {
@@ -434,7 +541,7 @@
   }
 }
 
-/* ═══ Print: maximum density (~30 labor rows / Letter) ═══ */
+/* ═══ Print: maximum density (~30 labor rows / A4) ═══ */
 @media print {
   html,
   body {
@@ -449,8 +556,8 @@
   }
 
   @page {
-    size: letter portrait;
-    margin: 0;
+    size: A4 portrait;
+    margin: 10mm;
   }
 
   .receipt-print-shell {
@@ -461,7 +568,11 @@
   .receipt.receipt-container {
     width: 100% !important;
     max-width: none !important;
-    padding: 10px !important;
+    min-height: calc(297mm - 20mm) !important;
+    aspect-ratio: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
     margin: 0 !important;
     border: none !important;
     outline: none !important;
@@ -469,6 +580,16 @@
     border-radius: 0 !important;
     font-size: 10px !important;
     line-height: 1.2 !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  .receipt-main {
+    flex: 1 1 auto !important;
+  }
+
+  .receipt-bottom {
+    margin-top: auto !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
@@ -613,7 +734,7 @@
   }
 
   .receipt-signature {
-    margin-top: 6px !important;
+    margin-top: 0 !important;
     gap: 14px !important;
     flex-wrap: nowrap !important;
   }

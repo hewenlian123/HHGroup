@@ -1,5 +1,5 @@
 /**
- * Client-side PDF export for worker payment receipts (US Letter, portrait).
+ * Client-side PDF export for worker payment receipts (A4, portrait).
  * Uses html2pdf.js — no new window, no navigation.
  */
 
@@ -27,22 +27,43 @@ export async function downloadWorkerPaymentReceiptPdf(
 ): Promise<void> {
   const html2pdf = (await import("html2pdf.js")).default;
   const filename = workerPaymentReceiptPdfFilename(receiptNo);
+  const wrapper = document.createElement("div");
+  const captureElement = element.cloneNode(true) as HTMLElement;
+  const a4MarginPt = 28.35; // 10mm in PDF points.
+  captureElement.classList.add("receipt-pdf-capture");
+  wrapper.style.position = "fixed";
+  wrapper.style.left = "-10000px";
+  wrapper.style.top = "0";
+  wrapper.style.width = "190mm";
+  wrapper.style.background = "#ffffff";
+  wrapper.style.pointerEvents = "none";
+  captureElement.style.width = "190mm";
+  captureElement.style.maxWidth = "190mm";
+  captureElement.style.minHeight = "calc(277mm - 1px)";
+  captureElement.style.aspectRatio = "auto";
+  captureElement.style.margin = "0";
+  wrapper.appendChild(captureElement);
+  document.body.appendChild(wrapper);
 
-  await html2pdf()
-    .set({
-      // US Letter margins ~0.4in; unit matches jsPDF
-      margin: [0.4, 0.4, 0.4, 0.4],
-      filename,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: {
-        scale: 2.75,
-        useCORS: true,
-        logging: false,
-        letterRendering: true,
-        backgroundColor: "#ffffff",
-      },
-      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
-    })
-    .from(element)
-    .save();
+  try {
+    await html2pdf()
+      .set({
+        // A4 page with 10mm printable margins; the capture clone uses the matching 190mm width.
+        margin: [a4MarginPt, a4MarginPt, a4MarginPt, a4MarginPt],
+        filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: {
+          scale: 2.75,
+          useCORS: true,
+          logging: false,
+          letterRendering: true,
+          backgroundColor: "#ffffff",
+        },
+        jsPDF: { unit: "pt", format: "a4", orientation: "portrait" },
+      })
+      .from(captureElement)
+      .save();
+  } finally {
+    wrapper.remove();
+  }
 }

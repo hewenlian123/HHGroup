@@ -19,6 +19,9 @@ export type ReceiptLaborLine = {
   projectName: string | null;
   session: string;
   amount: number;
+  dateLabel?: string;
+  sessionLabel?: string;
+  sourceLineCount?: number;
 };
 
 export type ReceiptReimbLine = {
@@ -66,11 +69,186 @@ function mergeLaborRowsById(rows: LaborRowRaw[]): LaborRowRaw[] {
   for (const r of rows) {
     if (r?.id) byId.set(r.id, r);
   }
-  return Array.from(byId.values()).sort((a, b) => {
-    const da = (a.work_date ?? "").slice(0, 10);
-    const db = (b.work_date ?? "").slice(0, 10);
-    return db.localeCompare(da);
-  });
+  return Array.from(byId.values());
+}
+
+function receiptDateSortValue(iso: string): string | null {
+  const date = iso.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
+}
+
+function receiptLaborSessionRank(session: string): number | null {
+  const s = session.trim().toLowerCase();
+  if (s === "full day" || s === "full_day") return 0;
+  if (s === "morning" || s === "am" || s === "half day (am)") return 1;
+  if (s === "afternoon" || s === "pm" || s === "half day (pm)") return 2;
+  if (s === "ot" || s === "overtime") return 3;
+  return null;
+}
+
+function receiptLaborSessionKind(session: string): "full" | "am" | "pm" | "ot" | null {
+  const s = session.trim().toLowerCase();
+  if (s === "full day" || s === "full_day") return "full";
+  if (s === "morning" || s === "am" || s === "half day (am)") return "am";
+  if (s === "afternoon" || s === "pm" || s === "half day (pm)") return "pm";
+  if (s === "ot" || s === "overtime") return "ot";
+  return null;
+}
+
+function sortReceiptLaborLines(lines: ReceiptLaborLine[]): ReceiptLaborLine[] {
+  return lines
+    .map((line, index) => ({ line, index }))
+    .sort((a, b) => {
+      const da = receiptDateSortValue(a.line.workDate);
+      const db = receiptDateSortValue(b.line.workDate);
+      if (da && db && da !== db) return da.localeCompare(db);
+      if (da && !db) return -1;
+      if (!da && db) return 1;
+
+      if (da && db) {
+        const sa = receiptLaborSessionRank(a.line.session);
+        const sb = receiptLaborSessionRank(b.line.session);
+        if (sa != null && sb != null && sa !== sb) return sa - sb;
+      }
+
+      return a.index - b.index;
+    })
+    .map(({ line }) => line);
+}
+
+const receiptLaborFullDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "2-digit",
+  year: "numeric",
+});
+
+const receiptLaborMonthDayFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "2-digit",
+});
+
+type ReceiptDateParts = {
+  ymd: string;
+  year: number;
+  month: number;
+  day: number;
+  utcDay: number;
+  localDate: Date;
+};
+
+function receiptLaborDateParts(iso: string): ReceiptDateParts | null {
+  const ymd = receiptDateSortValue(iso);
+  if (!ymd) return null;
+  const [, yy, mm, dd] = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd) ?? [];
+  const year = Number(yy);
+  const month = Number(mm);
+  const day = Number(dd);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  const localDate = new Date(year, month - 1, day);
+  if (Number.isNaN(localDate.getTime())) return null;
+  return {
+    ymd,
+    year,
+    month,
+    day,
+    utcDay: Math.floor(Date.UTC(year, month - 1, day) / 86_400_000),
+    localDate,
+  };
+}
+
+function receiptLaborDateLabel(startIso: string, endIso: string): string {
+  const start = receiptLaborDateParts(startIso);
+  const end = receiptLaborDateParts(endIso);
+  if (!start || !end) return startIso || endIso || "—";
+  if (start.ymd === end.ymd) return receiptLaborFullDateFormatter.format(start.localDate);
+  const startLabel =
+    start.year === end.year
+      ? receiptLaborMonthDayFormatter.format(start.localDate)
+      : receiptLaborFullDateFormatter.format(start.localDate);
+  return `${startLabel}–${receiptLaborFullDateFormatter.format(end.localDate)}`;
+}
+
+function receiptLaborSingleSessionLabel(session: string): string {
+  const kind = receiptLaborSessionKind(session);
+  if (kind === "full") return "Full day";
+  if (kind === "am") return "Half day (AM)";
+  if (kind === "pm") return "Half day (PM)";
+  if (kind === "ot") return "OT";
+  return session;
+}
+
+function receiptLaborGroupedSessionLabel(session: string, count: number): string {
+  const kind = receiptLaborSessionKind(session);
+  if (count <= 1 || !kind) return receiptLaborSingleSessionLabel(session);
+  if (kind === "full") return `${count} days`;
+  if (kind === "am") return `${count} AM sessions`;
+  if (kind === "pm") return `${count} PM sessions`;
+  return `${count} OT sessions`;
+}
+
+function receiptLaborAmountKey(amount: number): number | null {
+  return Number.isFinite(amount) ? Math.round(amount * 100) : null;
+}
+
+function canGroupReceiptLaborLine(
+  prev: ReceiptLaborLine,
+  prevEndWorkDate: string,
+  prevDailyAmountKey: number | null,
+  next: ReceiptLaborLine
+): boolean {
+  const prevStart = receiptLaborDateParts(prevEndWorkDate);
+  const nextStart = receiptLaborDateParts(next.workDate);
+  if (!prevStart || !nextStart) return false;
+  if (nextStart.utcDay !== prevStart.utcDay + 1) return false;
+
+  const project = prev.projectName?.trim();
+  if (!project || project !== next.projectName?.trim()) return false;
+
+  const prevSession = receiptLaborSessionKind(prev.session);
+  if (!prevSession || prevSession !== receiptLaborSessionKind(next.session)) return false;
+
+  const nextAmount = receiptLaborAmountKey(next.amount);
+  return prevDailyAmountKey != null && prevDailyAmountKey === nextAmount;
+}
+
+/**
+ * Display-only grouping for Worker Payment Receipt labor rows.
+ * Raw labor_entries stay one row per day; only the receipt payload is grouped.
+ */
+export function groupReceiptLaborLinesForDisplay(lines: ReceiptLaborLine[]): ReceiptLaborLine[] {
+  const sorted = sortReceiptLaborLines(lines);
+  const groups: Array<{
+    dailyAmountKey: number | null;
+    endWorkDate: string;
+    line: ReceiptLaborLine;
+  }> = [];
+
+  for (const line of sorted) {
+    const last = groups[groups.length - 1];
+    if (last && canGroupReceiptLaborLine(last.line, last.endWorkDate, last.dailyAmountKey, line)) {
+      const count = (last.line.sourceLineCount ?? 1) + 1;
+      last.line.id = `${last.line.id}..${line.id}`;
+      last.line.amount += line.amount;
+      last.line.dateLabel = receiptLaborDateLabel(last.line.workDate, line.workDate);
+      last.line.sessionLabel = receiptLaborGroupedSessionLabel(last.line.session, count);
+      last.line.sourceLineCount = count;
+      last.endWorkDate = line.workDate;
+      continue;
+    }
+
+    groups.push({
+      dailyAmountKey: receiptLaborAmountKey(line.amount),
+      endWorkDate: line.workDate,
+      line: {
+        ...line,
+        dateLabel: receiptLaborDateLabel(line.workDate, line.workDate),
+        sessionLabel: receiptLaborSingleSessionLabel(line.session),
+        sourceLineCount: 1,
+      },
+    });
+  }
+
+  return groups.map((group) => group.line);
 }
 
 /** Try sparse columns first (no project_* / total / AM-PM ids), then richer shapes. */
@@ -179,17 +357,19 @@ export async function getWorkerPaymentReceiptPayload(
     laborRaw = await loadLaborRows();
   }
 
-  const laborLines: ReceiptLaborLine[] = laborRaw.map((r) => {
-    const pid = r.project_id ?? r.project_am_id ?? r.project_pm_id ?? null;
-    const session = laborSessionLabel({ morning: r.morning, afternoon: r.afternoon }) ?? "—";
-    return {
-      id: r.id,
-      workDate: (r.work_date ?? "").slice(0, 10),
-      projectName: pid ? (projectNameById.get(pid) ?? null) : null,
-      session,
-      amount: Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.total) || 0,
-    };
-  });
+  const laborLines: ReceiptLaborLine[] = groupReceiptLaborLinesForDisplay(
+    laborRaw.map((r) => {
+      const pid = r.project_id ?? r.project_am_id ?? r.project_pm_id ?? null;
+      const session = laborSessionLabel({ morning: r.morning, afternoon: r.afternoon }) ?? "—";
+      return {
+        id: r.id,
+        workDate: (r.work_date ?? "").slice(0, 10),
+        projectName: pid ? (projectNameById.get(pid) ?? null) : null,
+        session,
+        amount: Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.total) || 0,
+      };
+    })
+  );
 
   const laborSubtotal = laborLines.reduce((s, x) => s + x.amount, 0);
 

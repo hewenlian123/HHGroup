@@ -66,7 +66,7 @@ function buildWebServerEnv(): Record<string, string> {
  * Local full suite: `npm run test:local` runs chromium + chromium-payments + chromium-delete-mutations (see package.json).
  */
 const ignorePaymentAndDeleteMutations = [
-  /worker-payment.*\.spec\.ts$/,
+  /worker-payment(?!-receipt-output).*\.spec\.ts$/,
   /delete-flows-mutations\.spec\.ts$/,
 ];
 
