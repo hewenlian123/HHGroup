@@ -23,6 +23,7 @@ import * as subcontractorsDb from "../subcontractors-db";
 import * as subcontractsDb from "../subcontracts-db";
 import * as subcontractBillsDb from "../subcontract-bills-db";
 import * as subcontractPaymentsDb from "../subcontract-payments-db";
+import * as subcontractDeductionsDb from "../subcontract-deductions-db";
 import * as subcontractPaymentScheduleDb from "../subcontract-payment-schedule-db";
 import * as documentsDb from "../documents-db";
 import * as projectTasksDb from "../project-tasks-db";
@@ -150,6 +151,11 @@ export type {
   SubcontractDraft,
 } from "../subcontracts-db";
 export type { SubcontractBillRow, SubcontractBillDraft } from "../subcontract-bills-db";
+export type {
+  SubcontractDeductionInput,
+  SubcontractDeductionOption,
+  SubcontractDeductionRow,
+} from "../subcontract-deductions-db";
 export type {
   SubcontractPaymentScheduleDraft,
   CreateApBillFromScheduleResult,
@@ -1754,6 +1760,22 @@ export async function getPaymentsBySubcontractIds(
   return subcontractPaymentsDb.getPaymentsBySubcontractIds(subcontractIds);
 }
 
+export async function getSubcontractDeductionsBySubcontractIds(
+  subcontractIds: string[],
+  explicitClient?: import("@supabase/supabase-js").SupabaseClient
+): Promise<import("../subcontract-deductions-db").SubcontractDeductionRow[]> {
+  return subcontractDeductionsDb.getSubcontractDeductionsBySubcontractIds(
+    subcontractIds,
+    explicitClient
+  );
+}
+
+export async function getSubcontractDeductionOptions(): Promise<
+  import("../subcontract-deductions-db").SubcontractDeductionOption[]
+> {
+  return subcontractDeductionsDb.getSubcontractDeductionOptions();
+}
+
 export async function recordSubcontractPayment(
   input: Parameters<typeof subcontractPaymentsDb.recordSubcontractPayment>[0]
 ): Promise<void> {
@@ -1856,9 +1878,10 @@ export function getExpenseTotal(expense: Expense): number {
 }
 
 export async function createExpense(
-  payload: Partial<Omit<Expense, "id" | "attachments" | "lines">> & {
+  payload: Partial<Omit<Expense, "id" | "attachments" | "lines" | "subcontractDeduction">> & {
     attachments?: import("../expenses-db").ExpenseAttachment[];
     lines?: Array<Omit<ExpenseLine, "id">>;
+    subcontractDeduction?: import("../subcontract-deductions-db").SubcontractDeductionInput | null;
   }
 ): Promise<Expense> {
   const lines = payload.lines?.length
@@ -1886,6 +1909,7 @@ export async function createExpense(
     accountId: payload.accountId ?? undefined,
     lines: lines ?? [{ projectId: null, category: "Other", amount: 0 }],
     linkedBankTxId: payload.linkedBankTxId,
+    subcontractDeduction: payload.subcontractDeduction ?? null,
   });
 }
 

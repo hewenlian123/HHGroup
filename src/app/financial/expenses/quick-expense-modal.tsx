@@ -23,6 +23,7 @@ import {
   type Expense,
   type ExpenseAttachment,
   type PaymentAccountRow,
+  type SubcontractDeductionOption,
 } from "@/lib/data";
 import {
   pickDefaultPaymentAccountId,
@@ -40,6 +41,7 @@ import { ExpenseCategorySelect } from "@/components/expense-category-select";
 import { ExpenseDatePicker } from "@/components/expense-date-picker";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import { ExpenseSearchableSelect } from "@/components/expense-searchable-select";
+import { ExpenseSubcontractDeductionFields } from "@/components/expense-subcontract-deduction-fields";
 import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-panel";
 import {
   type AmountRuleDiagnostic,
@@ -80,6 +82,14 @@ type QuickExpenseSavePayload = {
   projectId?: string | null;
   paymentAccountId?: string | null;
   attachments?: ExpenseAttachment[];
+  subcontractDeduction?: {
+    enabled: boolean;
+    subcontractId: string | null;
+    subcontractorId: string | null;
+    projectId: string | null;
+    amount: number;
+    note?: string | null;
+  } | null;
 };
 
 async function saveQuickExpenseViaApi(payload: QuickExpenseSavePayload): Promise<Expense> {
@@ -174,10 +184,18 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
   projects: Array<{ id: string; name: string | null; status?: string | null }>;
+  subcontractDeductionOptions: SubcontractDeductionOption[];
   expenses: Expense[];
 };
 
-export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, expenses }: Props) {
+export function QuickExpenseModal({
+  open,
+  onOpenChange,
+  onSuccess,
+  projects,
+  subcontractDeductionOptions,
+  expenses,
+}: Props) {
   const { toast } = useToast();
   const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -234,6 +252,10 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   );
   const [paymentAccountId, setPaymentAccountId] = React.useState("");
   const [paymentAccountRows, setPaymentAccountRows] = React.useState<PaymentAccountRow[]>([]);
+  const [deductFromSubcontractor, setDeductFromSubcontractor] = React.useState(false);
+  const [deductionSubcontractId, setDeductionSubcontractId] = React.useState("");
+  const [deductionAmount, setDeductionAmount] = React.useState("");
+  const [deductionNote, setDeductionNote] = React.useState("");
   const paymentChoiceTouchedRef = React.useRef(false);
   /** When true for a field, OCR must not overwrite user input. */
   const ocrFieldTouchedRef = React.useRef({
@@ -439,6 +461,10 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       setAmount("");
       setCategory("Other");
       setCostAllocation(EXPENSE_COST_ALLOCATION_OVERHEAD);
+      setDeductFromSubcontractor(false);
+      setDeductionSubcontractId("");
+      setDeductionAmount("");
+      setDeductionNote("");
       setOcrSuggestions(null);
       if (msg) {
         setError(msg);
@@ -471,6 +497,10 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
     projectChoiceTouchedRef.current = false;
     setPaymentAccountId("");
     setPaymentAccountRows([]);
+    setDeductFromSubcontractor(false);
+    setDeductionSubcontractId("");
+    setDeductionAmount("");
+    setDeductionNote("");
     paymentChoiceTouchedRef.current = false;
     setOcrSource("none");
     setFieldConfidence({ vendor: "low", amount: "low", date: "low" });
@@ -497,6 +527,15 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
   React.useEffect(() => {
     if (!open) resetState();
   }, [open, resetState]);
+
+  React.useEffect(() => {
+    if (!deductFromSubcontractor) return;
+    if (deductionAmount.trim()) return;
+    const n = Number(amount);
+    if (Number.isFinite(n) && n > 0) {
+      setDeductionAmount(String(Math.round(n * 100) / 100));
+    }
+  }, [amount, deductFromSubcontractor, deductionAmount]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -967,6 +1006,39 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
       });
       return;
     }
+    const selectedDeductionOption = subcontractDeductionOptions.find(
+      (option) => option.subcontractId === deductionSubcontractId
+    );
+    const deductionAmountValue = Number(deductionAmount);
+    if (deductFromSubcontractor) {
+      if (!projectId.trim()) {
+        setError("Choose a project before deducting from a subcontractor.");
+        toast({
+          title: "Missing project",
+          description: "A subcontractor deduction must be tied to a project expense.",
+          variant: "error",
+        });
+        return;
+      }
+      if (!selectedDeductionOption) {
+        setError("Choose a subcontractor for this deduction.");
+        toast({
+          title: "Missing subcontractor",
+          description: "Choose which subcontractor payable this expense should reduce.",
+          variant: "error",
+        });
+        return;
+      }
+      if (!Number.isFinite(deductionAmountValue) || deductionAmountValue <= 0) {
+        setError("Deduction amount must be greater than 0.");
+        toast({
+          title: "Invalid deduction",
+          description: "Deduction amount must be greater than 0.",
+          variant: "error",
+        });
+        return;
+      }
+    }
     const sameDay = expenses.filter(
       (e) => (e.date ?? "") === (date || new Date().toISOString().slice(0, 10))
     );
@@ -1051,6 +1123,17 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
         })(),
         projectId: projectId || null,
         paymentAccountId: effectivePaymentAccountId || null,
+        subcontractDeduction:
+          deductFromSubcontractor && selectedDeductionOption
+            ? {
+                enabled: true,
+                subcontractId: selectedDeductionOption.subcontractId,
+                subcontractorId: selectedDeductionOption.subcontractorId,
+                projectId: projectId || null,
+                amount: deductionAmountValue,
+                note: deductionNote.trim() || null,
+              }
+            : null,
         attachments: attachmentsToSave,
       });
       toast({
@@ -1140,6 +1223,10 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
           setDate(new Date().toISOString().slice(0, 10));
           setCategory("Other");
           setCostAllocation(EXPENSE_COST_ALLOCATION_OVERHEAD);
+          setDeductFromSubcontractor(false);
+          setDeductionSubcontractId("");
+          setDeductionAmount("");
+          setDeductionNote("");
           paymentChoiceTouchedRef.current = false;
           setPaymentAccountId(
             paymentAccountRows.length > 0 ? pickDefaultPaymentAccountId(paymentAccountRows, "") : ""
@@ -1450,6 +1537,24 @@ export function QuickExpenseModal({ open, onOpenChange, onSuccess, projects, exp
                       fieldConfidence.date !== "high" && "border-amber-500/50"
                     )}
                     disabled={saving || !supabase}
+                  />
+                </div>
+                <div className="min-w-0 md:col-span-4">
+                  <ExpenseSubcontractDeductionFields
+                    idPrefix="quick-expense-subcontract-deduction"
+                    enabled={deductFromSubcontractor}
+                    onEnabledChange={setDeductFromSubcontractor}
+                    projectId={projectId || null}
+                    subcontractId={deductionSubcontractId}
+                    onSubcontractIdChange={setDeductionSubcontractId}
+                    amount={deductionAmount}
+                    onAmountChange={setDeductionAmount}
+                    note={deductionNote}
+                    onNoteChange={setDeductionNote}
+                    options={subcontractDeductionOptions}
+                    disabled={saving}
+                    triggerClassName={cn(SELECT_TRIGGER, "text-xs")}
+                    inputClassName={FIELD_INPUT_CLASS}
                   />
                 </div>
               </div>

@@ -7,6 +7,10 @@ export type SubcontractPaymentFinancialInput = {
   amount: number;
 };
 
+export type SubcontractDeductionFinancialInput = {
+  amount: number;
+};
+
 export type SubcontractScheduleFinancialInput = {
   amount: number;
   status?: string | null;
@@ -25,8 +29,10 @@ export type SubcontractFinancialSummary = {
   contractAmount: number;
   scheduledAmount: number;
   billedToDate: number;
+  materialDeductions: number;
   paidToDate: number;
   apOutstanding: number;
+  netPayable: number;
   remainingContract: number;
 };
 
@@ -41,6 +47,11 @@ export type SubcontractorBillFinancialInput = SubcontractBillFinancialInput & {
 
 export type SubcontractorPaymentFinancialInput = SubcontractPaymentFinancialInput & {
   subcontractId: string;
+};
+
+export type SubcontractorDeductionFinancialInput = SubcontractDeductionFinancialInput & {
+  subcontractId?: string | null;
+  subcontractorId?: string | null;
 };
 
 export type SubcontractorScheduleFinancialInput = SubcontractScheduleFinancialInput & {
@@ -80,6 +91,7 @@ export function summarizeSubcontractFinancials(input: {
   contractAmount: number;
   bills?: SubcontractBillFinancialInput[];
   payments?: SubcontractPaymentFinancialInput[];
+  deductions?: SubcontractDeductionFinancialInput[];
   scheduleItems?: SubcontractScheduleFinancialInput[];
   apBills?: SubcontractApBillFinancialInput[];
   remainingBasis?: "billed" | "scheduledOrBilled";
@@ -110,7 +122,10 @@ export function summarizeSubcontractFinancials(input: {
           .reduce((sum, bill) => sum + money(bill.paidAmount), 0)
       )
     : money((input.payments ?? []).reduce((sum, payment) => sum + money(payment.amount), 0));
-  const apOutstanding = useApBills
+  const materialDeductions = money(
+    (input.deductions ?? []).reduce((sum, deduction) => sum + money(deduction.amount), 0)
+  );
+  const grossOutstanding = useApBills
     ? money(
         linkedApBills
           .filter((bill) => apBillCountsAsBilled(bill.status))
@@ -122,6 +137,8 @@ export function summarizeSubcontractFinancials(input: {
           }, 0)
       )
     : money(Math.max(0, billedToDate - paidToDate));
+  const netPayable = money(Math.max(0, billedToDate - materialDeductions - paidToDate));
+  const apOutstanding = money(Math.max(0, grossOutstanding - materialDeductions));
   const remainingBase =
     input.remainingBasis === "scheduledOrBilled"
       ? Math.max(scheduledAmount, billedToDate)
@@ -132,8 +149,10 @@ export function summarizeSubcontractFinancials(input: {
     contractAmount,
     scheduledAmount,
     billedToDate,
+    materialDeductions,
     paidToDate,
     apOutstanding,
+    netPayable,
     remainingContract,
   };
 }
@@ -142,6 +161,7 @@ export function summarizeSubcontractorFinancials(input: {
   contracts: SubcontractorContractFinancialInput[];
   bills?: SubcontractorBillFinancialInput[];
   payments?: SubcontractorPaymentFinancialInput[];
+  deductions?: SubcontractorDeductionFinancialInput[];
   scheduleItems?: SubcontractorScheduleFinancialInput[];
   apBills?: SubcontractorApBillFinancialInput[];
   remainingBasis?: "billed" | "scheduledOrBilled";
@@ -155,6 +175,9 @@ export function summarizeSubcontractorFinancials(input: {
     contractAmount,
     bills: (input.bills ?? []).filter((bill) => subcontractIds.has(bill.subcontractId)),
     payments: (input.payments ?? []).filter((payment) => subcontractIds.has(payment.subcontractId)),
+    deductions: (input.deductions ?? []).filter(
+      (deduction) => deduction.subcontractId != null && subcontractIds.has(deduction.subcontractId)
+    ),
     scheduleItems: (input.scheduleItems ?? []).filter((item) =>
       subcontractIds.has(item.subcontractId)
     ),

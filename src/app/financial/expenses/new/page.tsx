@@ -20,11 +20,14 @@ import {
   getVendors,
   getAccounts,
   getPaymentAccounts,
+  getSubcontractDeductionOptions,
   updateExpenseReceiptUrl,
   updateExpenseForReview,
   type PaymentAccountRow,
+  type SubcontractDeductionOption,
 } from "@/lib/data";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
+import { ExpenseSubcontractDeductionFields } from "@/components/expense-subcontract-deduction-fields";
 import {
   pickDefaultPaymentAccountId,
   persistLastExpensePaymentAccountId,
@@ -110,6 +113,9 @@ export default function NewExpensePage() {
 
   const [projects, setProjects] = React.useState<ProjectOption[]>([]);
   const [vendors, setVendors] = React.useState<string[]>([]);
+  const [subcontractDeductionOptions, setSubcontractDeductionOptions] = React.useState<
+    SubcontractDeductionOption[]
+  >([]);
 
   const [date, setDate] = React.useState(() => new Date().toISOString().slice(0, 10));
   const [vendorName, setVendorName] = React.useState("");
@@ -128,6 +134,10 @@ export default function NewExpensePage() {
   >([]);
   const [paymentAccountRows, setPaymentAccountRows] = React.useState<PaymentAccountRow[]>([]);
   const [paymentAccountId, setPaymentAccountId] = React.useState("");
+  const [deductFromSubcontractor, setDeductFromSubcontractor] = React.useState(false);
+  const [deductionSubcontractId, setDeductionSubcontractId] = React.useState("");
+  const [deductionAmount, setDeductionAmount] = React.useState("");
+  const [deductionNote, setDeductionNote] = React.useState("");
   const paymentChoiceTouchedRef = React.useRef(false);
 
   const supabase = React.useMemo(() => {
@@ -140,16 +150,18 @@ export default function NewExpensePage() {
     setLoading(true);
     setError(null);
     try {
-      const [p, v, accs, payAccs] = await Promise.all([
+      const [p, v, accs, payAccs, deductionOptions] = await Promise.all([
         getProjects(),
         getVendors(),
         getAccounts().catch(() => []),
         getPaymentAccounts().catch(() => [] as PaymentAccountRow[]),
+        getSubcontractDeductionOptions().catch(() => [] as SubcontractDeductionOption[]),
       ]);
       setProjects(p as unknown as ProjectOption[]);
       setVendors(v);
       setAccounts(accs);
       setPaymentAccountRows(payAccs);
+      setSubcontractDeductionOptions(deductionOptions);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load lookups.");
     } finally {
@@ -184,6 +196,13 @@ export default function NewExpensePage() {
     () => effectiveLines.reduce((s, l) => s + safeAmount(l.amount), 0),
     [effectiveLines]
   );
+  const primaryProjectId = effectiveLines.find((line) => line.projectId)?.projectId ?? null;
+
+  React.useEffect(() => {
+    if (!deductFromSubcontractor) return;
+    if (deductionAmount.trim()) return;
+    if (total > 0) setDeductionAmount(String(Math.round(total * 100) / 100));
+  }, [deductFromSubcontractor, deductionAmount, total]);
 
   const receiptPreviewUrl = React.useMemo(() => {
     if (!receiptFile) return null;
@@ -248,6 +267,36 @@ export default function NewExpensePage() {
       });
       return false;
     }
+    const selectedDeductionOption = subcontractDeductionOptions.find(
+      (option) => option.subcontractId === deductionSubcontractId
+    );
+    const deductionAmountValue = Number(deductionAmount);
+    if (deductFromSubcontractor) {
+      if (!primaryProjectId) {
+        toast({
+          title: "Missing project",
+          description: "A subcontractor deduction must be tied to a project expense.",
+          variant: "error",
+        });
+        return false;
+      }
+      if (!selectedDeductionOption) {
+        toast({
+          title: "Missing subcontractor",
+          description: "Choose which subcontractor payable this expense should reduce.",
+          variant: "error",
+        });
+        return false;
+      }
+      if (!Number.isFinite(deductionAmountValue) || deductionAmountValue <= 0) {
+        toast({
+          title: "Invalid deduction",
+          description: "Deduction amount must be greater than 0.",
+          variant: "error",
+        });
+        return false;
+      }
+    }
     return true;
   };
 
@@ -272,6 +321,14 @@ export default function NewExpensePage() {
           memo: l.memo.trim() || null,
           amount: safeAmount(l.amount),
         })),
+        subcontractDeduction: deductFromSubcontractor
+          ? {
+              subcontractId: deductionSubcontractId,
+              projectId: primaryProjectId,
+              amount: Number(deductionAmount),
+              note: deductionNote.trim() || null,
+            }
+          : null,
       });
       if (receiptFile && supabase) {
         const path = `receipts/${created.id}/${receiptFile.name}`;
@@ -504,6 +561,24 @@ export default function NewExpensePage() {
                   </div>
                 </>
               ) : null}
+              <div className="space-y-2 md:col-span-2">
+                <ExpenseSubcontractDeductionFields
+                  idPrefix="new-expense-subcontract-deduction"
+                  enabled={deductFromSubcontractor}
+                  onEnabledChange={setDeductFromSubcontractor}
+                  projectId={primaryProjectId}
+                  subcontractId={deductionSubcontractId}
+                  onSubcontractIdChange={setDeductionSubcontractId}
+                  amount={deductionAmount}
+                  onAmountChange={setDeductionAmount}
+                  note={deductionNote}
+                  onNoteChange={setDeductionNote}
+                  options={subcontractDeductionOptions}
+                  disabled={loading || saving}
+                  triggerClassName={SELECT_TRIGGER}
+                  inputClassName={CONTROL_CLASS}
+                />
+              </div>
             </div>
           </section>
 

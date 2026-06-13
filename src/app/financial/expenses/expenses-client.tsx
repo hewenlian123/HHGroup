@@ -67,10 +67,13 @@ import {
   expensesQueryKeyRoot,
   fetchExpenseCategories,
   fetchExpenses,
+  fetchSubcontractDeductionOptions,
   fetchWorkers,
+  subcontractDeductionOptionsQueryKey,
   type ExpenseListSort,
   workersQueryKey,
 } from "@/lib/queries/expenses";
+import type { SubcontractDeductionOption } from "@/lib/data";
 import { fetchFinancialProjects, financialProjectsQueryKey } from "@/lib/queries/receiptQueue";
 import { isDefaultExpenseListSort } from "@/lib/expenses-db";
 import { cn } from "@/lib/utils";
@@ -136,6 +139,14 @@ type ExpenseReviewApiPayload = {
   sourceType: Expense["sourceType"];
   paymentAccountId: string | null;
   paymentMethod: string;
+  subcontractDeduction?: {
+    enabled: boolean;
+    subcontractId: string | null;
+    subcontractorId: string | null;
+    projectId: string | null;
+    amount: number;
+    note?: string | null;
+  } | null;
 };
 
 type ExpenseApiResponse = {
@@ -163,6 +174,7 @@ async function saveExpenseReviewViaApi(payload: ExpenseReviewApiPayload): Promis
       sourceType: payload.sourceType,
       paymentAccountId: payload.paymentAccountId,
       paymentMethod: payload.paymentMethod,
+      subcontractDeduction: payload.subcontractDeduction,
     }),
   });
   let body: ExpenseApiResponse | null = null;
@@ -280,6 +292,21 @@ function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense
     paymentMethod: p.paymentMethod !== undefined ? p.paymentMethod : e.paymentMethod,
     lines: nextLines,
     headerProjectId: p.projectId,
+    subcontractDeduction: p.subcontractDeduction?.enabled
+      ? {
+          id: e.subcontractDeduction?.id ?? `optimistic-deduction-${p.expenseId}`,
+          expense_id: p.expenseId,
+          project_id: p.subcontractDeduction.projectId,
+          subcontractor_id: p.subcontractDeduction.subcontractorId ?? "",
+          subcontract_id: p.subcontractDeduction.subcontractId,
+          amount: p.subcontractDeduction.amount,
+          note: p.subcontractDeduction.note ?? null,
+          created_at: e.subcontractDeduction?.created_at ?? new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }
+      : p.subcontractDeduction === null
+        ? null
+        : e.subcontractDeduction,
   };
 }
 
@@ -548,6 +575,13 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     [queryClient]
   );
   const [workers, setWorkers] = React.useState<WorkerRow[]>(() => readCachedWorkers() ?? []);
+  const [subcontractDeductionOptions, setSubcontractDeductionOptions] = React.useState<
+    SubcontractDeductionOption[]
+  >(
+    () =>
+      queryClient.getQueryData<SubcontractDeductionOption[]>(subcontractDeductionOptionsQueryKey) ??
+      []
+  );
   const [expenses, setExpenses] = React.useState<Expense[]>(
     () => queryClient.getQueryData<Expense[]>(buildExpensesQueryKey(readStoredExpenseSort())) ?? []
   );
@@ -586,6 +620,13 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const { data: workersQueryData } = useQuery({
     queryKey: workersQueryKey,
     queryFn: fetchWorkers,
+    placeholderData: keepPreviousData,
+    staleTime: expenseListQueryStaleMs,
+    refetchOnMount: false,
+  });
+  const { data: subcontractDeductionOptionsQueryData } = useQuery({
+    queryKey: subcontractDeductionOptionsQueryKey,
+    queryFn: fetchSubcontractDeductionOptions,
     placeholderData: keepPreviousData,
     staleTime: expenseListQueryStaleMs,
     refetchOnMount: false,
@@ -630,6 +671,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     if (workersQueryData === undefined) return;
     setWorkers(workersQueryData as WorkerRow[]);
   }, [workersQueryData]);
+  React.useLayoutEffect(() => {
+    if (subcontractDeductionOptionsQueryData === undefined) return;
+    setSubcontractDeductionOptions(subcontractDeductionOptionsQueryData);
+  }, [subcontractDeductionOptionsQueryData]);
 
   const bundleWaiting = expensesQueryPending && expensesQueryData === undefined;
   const showExpensesSkeleton = useDelayedPending(bundleWaiting && !expensesQueryError);
@@ -1213,6 +1258,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           sourceType: payload.sourceType,
           paymentAccountId: payload.paymentAccountId,
           paymentMethod: pmTrim,
+          subcontractDeduction: payload.subcontractDeduction,
         });
         let final: Expense = merged;
         if (pmTrim) final = { ...final, paymentMethod: pmTrim };
@@ -2578,6 +2624,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             onOpenChange={setQuickExpenseOpen}
             onSuccess={refresh}
             projects={safeProjects}
+            subcontractDeductionOptions={subcontractDeductionOptions}
             expenses={expensesForListing}
           />
         ) : null}
@@ -2597,6 +2644,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             enterMode={previewEnterMode}
             projects={safeProjects}
             workers={workers}
+            subcontractDeductionOptions={subcontractDeductionOptions}
             projectNameById={projectNameById}
             supabase={supabase}
             setCategoriesList={setCategoriesList}

@@ -17,6 +17,7 @@ import {
   getBillsBySubcontractIds,
   getPaymentScheduleBySubcontractIds,
   getPaymentsBySubcontractIds,
+  getSubcontractDeductionsBySubcontractIds,
   type SubcontractorRow,
 } from "@/lib/data";
 import { SubcontractorW9 } from "./subcontractor-w9";
@@ -59,6 +60,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
   let contracts: Awaited<ReturnType<typeof getSubcontractsBySubcontractor>> = [];
   let bills: Awaited<ReturnType<typeof getBillsBySubcontractIds>> = [];
   let payments: Awaited<ReturnType<typeof getPaymentsBySubcontractIds>> = [];
+  let deductions: Awaited<ReturnType<typeof getSubcontractDeductionsBySubcontractIds>> = [];
   let paymentSchedule: Awaited<ReturnType<typeof getPaymentScheduleBySubcontractIds>> = [];
   let linkedApBills: Awaited<ReturnType<typeof getApBillsBySubcontractIds>> = [];
   let dataLoadWarning: string | null = null;
@@ -66,9 +68,10 @@ export default async function SubcontractorDetailPage({ params }: Props) {
     contracts = await getSubcontractsBySubcontractor(id);
     const subcontractIds = contracts.map((c) => c.id);
     const supabase = getServerSupabaseInternalNoStore();
-    [bills, payments, paymentSchedule, linkedApBills] = await Promise.all([
+    [bills, payments, deductions, paymentSchedule, linkedApBills] = await Promise.all([
       getBillsBySubcontractIds(subcontractIds),
       getPaymentsBySubcontractIds(subcontractIds),
+      getSubcontractDeductionsBySubcontractIds(subcontractIds, supabase ?? undefined),
       getPaymentScheduleBySubcontractIds(subcontractIds, supabase ?? undefined).catch(() => []),
       getApBillsBySubcontractIds(subcontractIds, supabase ?? undefined).catch(() => []),
     ]);
@@ -102,6 +105,9 @@ export default async function SubcontractorDetailPage({ params }: Props) {
       payments: payments
         .filter((payment) => payment.subcontract_id === c.id)
         .map((payment) => ({ amount: payment.amount })),
+      deductions: deductions
+        .filter((deduction) => deduction.subcontract_id === c.id)
+        .map((deduction) => ({ amount: deduction.amount })),
       remainingBasis: "scheduledOrBilled",
     });
     return { ...c, summary };
@@ -134,6 +140,11 @@ export default async function SubcontractorDetailPage({ params }: Props) {
     payments: payments.map((payment) => ({
       subcontractId: payment.subcontract_id,
       amount: payment.amount,
+    })),
+    deductions: deductions.map((deduction) => ({
+      subcontractId: deduction.subcontract_id,
+      subcontractorId: deduction.subcontractor_id,
+      amount: deduction.amount,
     })),
     remainingBasis: "scheduledOrBilled",
   });
@@ -225,16 +236,21 @@ export default async function SubcontractorDetailPage({ params }: Props) {
         </div>
       </NeoPanel>
 
-      <NeoPanel bodyClassName="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-6">
+      <NeoPanel bodyClassName="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-7">
         {[
           { label: "Contract Amount", value: summary.contractAmount, tone: "neutral" as const },
           { label: "Scheduled", value: summary.scheduledAmount, tone: "neutral" as const },
-          { label: "Billed To Date", value: summary.billedToDate, tone: "neutral" as const },
-          { label: "Paid To Date", value: summary.paidToDate, tone: "income" as const },
+          { label: "Bills", value: summary.billedToDate, tone: "neutral" as const },
           {
-            label: "AP Outstanding",
-            value: summary.apOutstanding,
-            tone: summary.apOutstanding > 0 ? ("expense" as const) : ("neutral" as const),
+            label: "Material Deductions",
+            value: summary.materialDeductions,
+            tone: "expense" as const,
+          },
+          { label: "Payments Made", value: summary.paidToDate, tone: "income" as const },
+          {
+            label: "Net Payable",
+            value: summary.netPayable,
+            tone: summary.netPayable > 0 ? ("expense" as const) : ("neutral" as const),
           },
           {
             label: "Remaining Contract",
@@ -254,7 +270,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
       </NeoPanel>
 
       <NeoPanel title="Contracts" bodyClassName="p-0">
-        <NeoTable className="border-0 shadow-none" tableClassName="min-w-[1080px]">
+        <NeoTable className="border-0 shadow-none" tableClassName="min-w-[1180px]">
           <thead>
             <tr className="border-b border-[var(--neo-border)]">
               <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
@@ -276,7 +292,10 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                 Paid To Date
               </th>
               <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
-                AP Outstanding
+                Deductions
+              </th>
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
+                Net Payable
               </th>
               <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Remaining Contract
@@ -286,7 +305,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
           <tbody>
             {contractRows.length === 0 ? (
               <tr className="border-b border-[var(--neo-border)]">
-                <td colSpan={8} className="py-6 px-3">
+                <td colSpan={9} className="py-6 px-3">
                   <EmptyState
                     title="No contracts"
                     description="No contract records for this subcontractor."
@@ -323,8 +342,13 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                       <NeoAmount tone="income">${fmtUsd(c.summary.paidToDate)}</NeoAmount>
                     </td>
                     <td className="py-1.5 px-3 text-right tabular-nums">
-                      <NeoAmount tone={c.summary.apOutstanding > 0 ? "expense" : "neutral"}>
-                        ${fmtUsd(c.summary.apOutstanding)}
+                      <NeoAmount tone={c.summary.materialDeductions > 0 ? "expense" : "neutral"}>
+                        ${fmtUsd(c.summary.materialDeductions)}
+                      </NeoAmount>
+                    </td>
+                    <td className="py-1.5 px-3 text-right tabular-nums">
+                      <NeoAmount tone={c.summary.netPayable > 0 ? "expense" : "neutral"}>
+                        ${fmtUsd(c.summary.netPayable)}
                       </NeoAmount>
                     </td>
                     <td className="py-1.5 px-3 text-right tabular-nums">

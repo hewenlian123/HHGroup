@@ -43,8 +43,10 @@ function fmtUsdCompact(value: number): string {
   return value.toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
+    notation: "compact",
+    compactDisplay: "short",
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 1,
   });
 }
 
@@ -247,7 +249,7 @@ test.describe("Bills project linkage and AP outstanding", () => {
 
       await page.goto(`${BASE}/financial/owner`);
       await expect(page.locator("body")).toContainText(
-        new RegExp(`AP\\s+${escapeRegExp(fmtUsd(afterCreate.outstanding))}`),
+        new RegExp(`AP\\s+${escapeRegExp(fmtUsdCompact(afterCreate.outstanding))}`),
         { timeout: LOAD_MS }
       );
 

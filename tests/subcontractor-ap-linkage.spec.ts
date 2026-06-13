@@ -113,6 +113,17 @@ async function addPaymentViaUi(
   await page.reload({ waitUntil: "domcontentloaded" });
 }
 
+async function approveBillViaUi(page: Page, billId: string): Promise<void> {
+  await page.goto(`${BASE}/bills/${billId}`, { waitUntil: "domcontentloaded", timeout: LOAD_MS });
+  await page.getByRole("button", { name: /^Approve$/ }).click();
+  await expect(page.getByText("Pending", { exact: true }).first()).toBeVisible({
+    timeout: LOAD_MS,
+  });
+  await expect(page.getByRole("button", { name: /^Add payment$/ })).toBeVisible({
+    timeout: LOAD_MS,
+  });
+}
+
 test.describe("subcontractor Phase 2 AP linkage", () => {
   test.describe.configure({ timeout: 240_000 });
 
@@ -224,6 +235,8 @@ test.describe("subcontractor Phase 2 AP linkage", () => {
       });
       await expect(page.getByRole("link", { name: fixture.subcontractorName })).toBeVisible();
       await expect(page.getByText(fmtUsd(300)).first()).toBeVisible();
+
+      await approveBillViaUi(page, billId);
 
       await addPaymentViaUi(page, billId, {
         amount: "125",

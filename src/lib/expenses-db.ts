@@ -12,6 +12,12 @@ import { deriveExpenseWorkflowStatus } from "@/lib/expense-workflow-status";
 import { defaultPaymentMethodName, publicSchemaItemAvailable } from "@/lib/expense-options-db";
 import { isConfirmedExpenseStatus } from "@/lib/project-expense-cost-status";
 import { stripInboxUploadNoiseFromText } from "@/lib/inbox-upload-constants";
+import type { SubcontractDeductionRow } from "@/lib/subcontract-deductions-db";
+import {
+  getSubcontractDeductionsByExpenseIds,
+  replaceSubcontractDeductionForExpense,
+  type SubcontractDeductionInput,
+} from "@/lib/subcontract-deductions-db";
 
 export type ExpenseAttachment = {
   id: string;
@@ -65,6 +71,8 @@ export type Expense = {
   headerProjectId?: string | null;
   /** company | reimbursement | receipt_upload | bank_import */
   sourceType?: "company" | "reimbursement" | "receipt_upload" | "bank_import";
+  /** Optional company-paid material deduction against a subcontractor payable. */
+  subcontractDeduction?: SubcontractDeductionRow | null;
 };
 
 /** List sort for `/financial/expenses` (Supabase + stable in-memory pass). */
@@ -500,7 +508,8 @@ async function toExpense(
   lines: ExpenseLineRow[],
   attachments: ExpenseAttachment[],
   linkedBankTxId: string | null,
-  paymentAccountNames?: Map<string, string>
+  paymentAccountNames?: Map<string, string>,
+  subcontractDeduction?: SubcontractDeductionRow | null
 ): Promise<Expense> {
   const status = normalizeExpenseStatus(row.status);
   const paId = row.payment_account_id ?? null;
@@ -535,6 +544,7 @@ async function toExpense(
         ? String(row.project_id)
         : undefined,
     sourceType: deriveSourceType(row),
+    subcontractDeduction: subcontractDeduction ?? null,
   };
 }
 
@@ -807,13 +817,23 @@ export async function getExpenses(
     options.includeLinkedBankTx === false
       ? new Map<string, string>()
       : await fetchLinkedBankTxIdMap(c, expenseIds);
+  const deductionsByExpenseId = await getSubcontractDeductionsByExpenseIds(expenseIds, c);
   const result: Expense[] = [];
   for (const row of rowModels) {
     const r = row;
     const lines = linesByExpenseId.get(r.id) ?? [];
     const attachments = await getAttachments(r.id, explicitClient);
     const linkedBankTxId = linkedBankTxIdByExpenseId.get(r.id) ?? null;
-    result.push(await toExpense(r, lines, attachments, linkedBankTxId, paymentNameMap));
+    result.push(
+      await toExpense(
+        r,
+        lines,
+        attachments,
+        linkedBankTxId,
+        paymentNameMap,
+        deductionsByExpenseId.get(r.id) ?? null
+      )
+    );
   }
   return result;
 }
@@ -904,7 +924,15 @@ export async function getExpenseById(
   const lines = (lineRows ?? []) as ExpenseLineRow[];
   const attachments = await getAttachments(expenseId, explicitClient);
   const linkedBankTxId = await getLinkedBankTxId(expenseId, explicitClient);
-  return toExpense(row, lines, attachments, linkedBankTxId, paymentNameMap);
+  const deductionsByExpenseId = await getSubcontractDeductionsByExpenseIds([expenseId], c);
+  return toExpense(
+    row,
+    lines,
+    attachments,
+    linkedBankTxId,
+    paymentNameMap,
+    deductionsByExpenseId.get(expenseId) ?? null
+  );
 }
 
 /** Distinct card names used for a given payment method (e.g. "Credit Card", "Debit Card"). For creatable select options. */
@@ -941,6 +969,7 @@ export async function createExpense(payload: {
     amount: number;
   }>;
   linkedBankTxId?: string | null;
+  subcontractDeduction?: SubcontractDeductionInput | null;
 }): Promise<Expense> {
   const c = client();
   const date = payload.date?.slice(0, 10) ?? new Date().toISOString().slice(0, 10);
@@ -1098,6 +1127,18 @@ export async function createExpense(payload: {
   }
 
   if (!firstId) throw new Error("Failed to create expense: no id returned.");
+
+  if (payload.subcontractDeduction) {
+    await replaceSubcontractDeductionForExpense(
+      firstId,
+      {
+        ...payload.subcontractDeduction,
+        projectId: payload.subcontractDeduction.projectId ?? lines[0]?.projectId ?? null,
+        amount: payload.subcontractDeduction.amount ?? totalAmount,
+      },
+      c
+    );
+  }
 
   const cardNameValue = payload.cardName?.trim() || null;
   const updatePayload: Record<string, unknown> = {

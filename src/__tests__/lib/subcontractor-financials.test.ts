@@ -41,6 +41,22 @@ describe("subcontractor financial summaries", () => {
     expect(summary.remainingContract).toBe(1050);
   });
 
+  it("subtracts material deductions from subcontractor net payable", () => {
+    const summary = summarizeSubcontractFinancials({
+      contractAmount: 12000,
+      bills: [{ amount: 10000, status: "Approved" }],
+      deductions: [{ amount: 1000 }],
+      payments: [{ amount: 2500 }],
+    });
+
+    expect(summary.billedToDate).toBe(10000);
+    expect(summary.materialDeductions).toBe(1000);
+    expect(summary.paidToDate).toBe(2500);
+    expect(summary.netPayable).toBe(6500);
+    expect(summary.apOutstanding).toBe(6500);
+    expect(summary.remainingContract).toBe(2000);
+  });
+
   it("uses linked AP bills as canonical and does not double-count legacy subcontract bills", () => {
     const summary = summarizeSubcontractFinancials({
       contractAmount: 1000,

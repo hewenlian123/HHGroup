@@ -16,6 +16,7 @@ import {
   isPaymentMethodDisabled,
   type Expense,
   type ExpenseAttachment,
+  type SubcontractDeductionOption,
 } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
 import {
@@ -32,6 +33,7 @@ import { ExpensePaymentMethodSelect } from "@/components/expense-payment-method-
 import { ExpensePaymentSourceSelect } from "@/components/expense-payment-source-select";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import { ExpenseSearchableSelect } from "@/components/expense-searchable-select";
+import { ExpenseSubcontractDeductionFields } from "@/components/expense-subcontract-deduction-fields";
 import type { PaymentAccountRow } from "@/lib/data";
 import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-preferences";
 import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
@@ -184,6 +186,7 @@ type Props = {
   enterMode?: "preview" | "edit";
   projects: ProjectOption[];
   workers: WorkerOption[];
+  subcontractDeductionOptions: SubcontractDeductionOption[];
   projectNameById: Map<string, string>;
   supabase: SupabaseClient | null;
   setCategoriesList: React.Dispatch<React.SetStateAction<string[]>>;
@@ -209,6 +212,7 @@ export function ExpenseInboxPreviewModal({
   enterMode = "preview",
   projects,
   workers,
+  subcontractDeductionOptions,
   projectNameById,
   supabase,
   setCategoriesList,
@@ -242,6 +246,10 @@ export function ExpenseInboxPreviewModal({
   const [paymentMethod, setPaymentMethod] = React.useState("");
   const [paymentAccountId, setPaymentAccountId] = React.useState("");
   const [paymentAccountsLocal, setPaymentAccountsLocal] = React.useState<PaymentAccountRow[]>([]);
+  const [deductFromSubcontractor, setDeductFromSubcontractor] = React.useState(false);
+  const [deductionSubcontractId, setDeductionSubcontractId] = React.useState("");
+  const [deductionAmount, setDeductionAmount] = React.useState("");
+  const [deductionNote, setDeductionNote] = React.useState("");
   const [attachments, setAttachments] = React.useState<ExpenseAttachment[]>([]);
   const [thumbById, setThumbById] = React.useState<Record<string, string | null>>({});
   const [previewPmArchived, setPreviewPmArchived] = React.useState(false);
@@ -304,8 +312,20 @@ export function ExpenseInboxPreviewModal({
     setSourceType(expense.sourceType ?? "company");
     setPaymentMethod((expense.paymentMethod ?? "").trim());
     setPaymentAccountId(expense.paymentAccountId ?? "");
+    const deduction = expense.subcontractDeduction;
+    setDeductFromSubcontractor(Boolean(deduction));
+    setDeductionSubcontractId(deduction?.subcontract_id ?? "");
+    setDeductionAmount(deduction ? String(deduction.amount) : "");
+    setDeductionNote(deduction?.note ?? "");
     setAttachments(getExpenseDisplayAttachments(expense));
   }, [expense]);
+
+  React.useEffect(() => {
+    if (!deductFromSubcontractor) return;
+    if (deductionAmount.trim()) return;
+    const n = Number(amount);
+    if (Number.isFinite(n) && n > 0) setDeductionAmount(String(Math.round(n * 100) / 100));
+  }, [amount, deductFromSubcontractor, deductionAmount]);
 
   React.useEffect(() => {
     const pm = expense?.paymentMethod?.trim();
@@ -631,6 +651,36 @@ export function ExpenseInboxPreviewModal({
       });
       return;
     }
+    const selectedDeductionOption = subcontractDeductionOptions.find(
+      (option) => option.subcontractId === deductionSubcontractId
+    );
+    const deductionAmountValue = Number(deductionAmount);
+    if (deductFromSubcontractor) {
+      if (!projectId) {
+        toast({
+          title: "Missing project",
+          description: "A subcontractor deduction must be tied to a project expense.",
+          variant: "error",
+        });
+        return;
+      }
+      if (!selectedDeductionOption) {
+        toast({
+          title: "Missing subcontractor",
+          description: "Choose which subcontractor payable this expense should reduce.",
+          variant: "error",
+        });
+        return;
+      }
+      if (!Number.isFinite(deductionAmountValue) || deductionAmountValue <= 0) {
+        toast({
+          title: "Invalid deduction",
+          description: "Deduction amount must be greater than 0.",
+          variant: "error",
+        });
+        return;
+      }
+    }
     flushSync(() => setSaving(true));
     try {
       const paId = paymentAccountId.trim() || null;
@@ -666,6 +716,16 @@ export function ExpenseInboxPreviewModal({
         paymentAccountId: paId,
         paymentAccountName: paName,
         paymentMethod: pm,
+        subcontractDeduction: deductFromSubcontractor
+          ? {
+              enabled: true,
+              subcontractId: selectedDeductionOption?.subcontractId ?? null,
+              subcontractorId: selectedDeductionOption?.subcontractorId ?? null,
+              projectId: projectId || null,
+              amount: deductionAmountValue,
+              note: deductionNote.trim() || null,
+            }
+          : null,
       });
       if (saved) {
         setMode("preview");
@@ -734,6 +794,11 @@ export function ExpenseInboxPreviewModal({
     setSourceType(expense.sourceType ?? "company");
     setPaymentMethod((expense.paymentMethod ?? "").trim());
     setPaymentAccountId(expense.paymentAccountId ?? "");
+    const deduction = expense.subcontractDeduction;
+    setDeductFromSubcontractor(Boolean(deduction));
+    setDeductionSubcontractId(deduction?.subcontract_id ?? "");
+    setDeductionAmount(deduction ? String(deduction.amount) : "");
+    setDeductionNote(deduction?.note ?? "");
     setAttachments(getExpenseDisplayAttachments(expense));
     setMode("preview");
   };
@@ -1135,6 +1200,25 @@ export function ExpenseInboxPreviewModal({
                     />
                   </div>
                 </div>
+              </ModalSection>
+
+              <ModalSection title="Subcontract deduction">
+                <ExpenseSubcontractDeductionFields
+                  idPrefix="inbox-preview-subcontract-deduction"
+                  enabled={deductFromSubcontractor}
+                  onEnabledChange={setDeductFromSubcontractor}
+                  projectId={projectId}
+                  subcontractId={deductionSubcontractId}
+                  onSubcontractIdChange={setDeductionSubcontractId}
+                  amount={deductionAmount}
+                  onAmountChange={setDeductionAmount}
+                  note={deductionNote}
+                  onNoteChange={setDeductionNote}
+                  options={subcontractDeductionOptions}
+                  disabled={saving}
+                  triggerClassName={SELECT_TRIGGER_CLASS}
+                  inputClassName={INPUT_CLASS}
+                />
               </ModalSection>
 
               <ModalSection title="Payment">

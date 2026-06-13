@@ -10,6 +10,12 @@ import {
   expenseSourceTypeIsWorkerReimbursement,
 } from "@/lib/expense-workflow-status";
 import { syncExpenseHeaderAmountFromLinesWithClient } from "@/lib/expenses-db";
+import {
+  getSubcontractDeductionByExpenseId,
+  getSubcontractDeductionOptions,
+  replaceSubcontractDeductionForExpense,
+  type SubcontractDeductionInput,
+} from "@/lib/subcontract-deductions-db";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -127,6 +133,23 @@ function linePatchToDb(patch: ExpenseLinePatch): Record<string, unknown> {
   return payload;
 }
 
+function normalizeSubcontractDeduction(
+  value: unknown
+): SubcontractDeductionInput | null | undefined {
+  if (value === undefined) return undefined;
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  if (row.enabled === false) return null;
+  return {
+    subcontractId: stringOrNull(row.subcontractId),
+    subcontractorId: stringOrNull(row.subcontractorId),
+    projectId: stringOrNull(row.projectId),
+    amount:
+      typeof row.amount === "number" || typeof row.amount === "string" ? row.amount : undefined,
+    note: stringOrNull(row.note),
+  };
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const guard = await requireAuthenticatedUser(request);
   if (!guard.ok) return guard.response;
@@ -145,6 +168,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     optionCategoriesRes,
     optionPaymentMethodsRes,
     attachmentsRes,
+    deductionRes,
+    subcontractOptionsRes,
   ] = await Promise.all([
     supabase.from("expenses").select("*").eq("id", id).maybeSingle(),
     supabase.from("expense_lines").select("*").eq("expense_id", id),
@@ -188,6 +213,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       .eq("entity_type", "expense")
       .eq("entity_id", id)
       .order("created_at", { ascending: false }),
+    getSubcontractDeductionByExpenseId(id, supabase).catch(() => null),
+    getSubcontractDeductionOptions(supabase).catch(() => []),
   ]);
 
   if (expRes.error) {
@@ -228,6 +255,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
             ? []
             : (pmRes.data ?? []),
       attachments: attachmentsRes.error ? [] : (attachmentsRes.data ?? []),
+      subcontractDeduction: deductionRes,
+      subcontractDeductionOptions: subcontractOptionsRes,
     },
     { headers: NO_CACHE_HEADERS }
   );
@@ -294,7 +323,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     Object.prototype.hasOwnProperty.call(body, "projectId") ||
     Object.prototype.hasOwnProperty.call(body, "category") ||
     Object.prototype.hasOwnProperty.call(body, "amount");
-  if (Object.keys(patch).length === 0) return apiError(400, "No expense fields to update.");
+  const subcontractDeductionPatch = normalizeSubcontractDeduction(body.subcontractDeduction);
+  if (Object.keys(patch).length === 0 && subcontractDeductionPatch === undefined) {
+    return apiError(400, "No expense fields to update.");
+  }
 
   if (
     Object.prototype.hasOwnProperty.call(body, "sourceType") &&
@@ -304,17 +336,21 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return apiError(400, "Choose a worker before saving this reimbursement expense.");
   }
 
-  const { data, error } = await supabase
-    .from("expenses")
-    .update(patch)
-    .eq("id", id)
-    .select("*")
-    .maybeSingle();
-  if (error) {
-    console.error("[expenses/:id] update failed", error);
-    return apiError(500, "Failed to save expense.");
+  let data: unknown = null;
+  if (Object.keys(patch).length > 0) {
+    const result = await supabase
+      .from("expenses")
+      .update(patch)
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+    if (result.error) {
+      console.error("[expenses/:id] update failed", result.error);
+      return apiError(500, "Failed to save expense.");
+    }
+    if (!result.data) return apiError(404, "Expense not found.");
+    data = result.data;
   }
-  if (!data) return apiError(404, "Expense not found.");
 
   if (hasLinePatch) {
     const linePatch: Record<string, unknown> = {};
@@ -356,6 +392,35 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         return apiError(500, "Failed to save expense line.");
       }
       if (!updatedLine) return apiError(404, "Expense line not found.");
+    }
+  }
+
+  if (subcontractDeductionPatch !== undefined) {
+    const effectiveProjectId =
+      subcontractDeductionPatch?.projectId ??
+      (Object.prototype.hasOwnProperty.call(body, "projectId")
+        ? stringOrNull(body.projectId)
+        : null);
+    const effectiveAmount =
+      subcontractDeductionPatch?.amount ??
+      (Object.prototype.hasOwnProperty.call(body, "amount") ? Number(body.amount) : undefined);
+    try {
+      await replaceSubcontractDeductionForExpense(
+        id,
+        subcontractDeductionPatch
+          ? {
+              ...subcontractDeductionPatch,
+              projectId: effectiveProjectId,
+              amount: effectiveAmount,
+            }
+          : null,
+        supabase
+      );
+    } catch (error) {
+      return apiError(
+        400,
+        error instanceof Error ? error.message : "Failed to save subcontract deduction."
+      );
     }
   }
 

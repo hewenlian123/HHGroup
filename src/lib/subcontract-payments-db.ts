@@ -4,6 +4,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import { getSubcontractDeductionsBySubcontractIds } from "@/lib/subcontract-deductions-db";
 
 export type SubcontractPaymentRow = {
   id: string;
@@ -77,6 +78,59 @@ function isMissingFunction(err: { message?: string } | null): boolean {
   return /could not find the function|schema cache/i.test(m);
 }
 
+function subcontractBillCountsAsPayable(status: string | null | undefined): boolean {
+  const normalized = (status ?? "").trim().toLowerCase();
+  return (
+    normalized === "approved" ||
+    normalized === "paid" ||
+    normalized === "partial" ||
+    normalized === "partially paid"
+  );
+}
+
+function money(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
+}
+
+async function assertSubcontractPaymentWithinNetPayable(
+  c: ReturnType<typeof client>,
+  input: { subcontract_id: string; amount: number }
+): Promise<void> {
+  const subcontractId = input.subcontract_id.trim();
+  const paymentAmount = money(input.amount);
+  if (!subcontractId || !(paymentAmount > 0)) return;
+  const [
+    { data: billRows, error: billError },
+    { data: paymentRows, error: paymentError },
+    deductions,
+  ] = await Promise.all([
+    c.from("subcontract_bills").select("amount, status").eq("subcontract_id", subcontractId),
+    c.from("subcontract_payments").select("amount").eq("subcontract_id", subcontractId),
+    getSubcontractDeductionsBySubcontractIds([subcontractId]),
+  ]);
+  if (billError) throw new Error(billError.message ?? "Failed to load subcontract bills.");
+  if (paymentError) throw new Error(paymentError.message ?? "Failed to load subcontract payments.");
+
+  const billed = ((billRows ?? []) as Array<{ amount?: number; status?: string | null }>)
+    .filter((bill) => subcontractBillCountsAsPayable(bill.status))
+    .reduce((sum, bill) => sum + money(bill.amount), 0);
+  const paid = ((paymentRows ?? []) as Array<{ amount?: number }>).reduce(
+    (sum, payment) => sum + money(payment.amount),
+    0
+  );
+  const deductionTotal = deductions.reduce((sum, deduction) => sum + money(deduction.amount), 0);
+  const netPayable = money(Math.max(0, billed - deductionTotal - paid));
+  if (paymentAmount - netPayable > 0.009) {
+    throw new Error(
+      `Payment exceeds net payable. Net payable is $${netPayable.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}.`
+    );
+  }
+}
+
 export async function recordSubcontractPayment(input: {
   subcontract_id: string;
   bill_id: string;
@@ -86,6 +140,7 @@ export async function recordSubcontractPayment(input: {
   note?: string | null;
 }): Promise<void> {
   const c = client();
+  await assertSubcontractPaymentWithinNetPayable(c, input);
   const { error } = await c.rpc("record_subcontract_payment", {
     p_subcontract_id: input.subcontract_id,
     p_bill_id: input.bill_id,

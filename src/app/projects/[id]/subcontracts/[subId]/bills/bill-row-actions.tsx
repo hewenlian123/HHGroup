@@ -25,10 +25,16 @@ export function BillRowActions({
   projectId,
   subcontractId,
   bill,
+  materialDeductions = 0,
+  paymentsMade = 0,
+  netPayable = bill.amount,
 }: {
   projectId: string;
   subcontractId: string;
   bill: SubcontractBillRow;
+  materialDeductions?: number;
+  paymentsMade?: number;
+  netPayable?: number;
 }) {
   const router = useRouter();
   const [editOpen, setEditOpen] = React.useState(false);
@@ -55,6 +61,11 @@ export function BillRowActions({
 
   const isDraft = bill.status === "Pending";
   const isApproved = bill.status === "Approved";
+  const fmtUsd = React.useCallback(
+    (n: number) =>
+      n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    []
+  );
 
   const handleEditSave = async () => {
     if (busy) return;
@@ -107,6 +118,10 @@ export function BillRowActions({
     const num = parseFloat(paymentAmount);
     if (!Number.isFinite(num) || num <= 0) {
       setError("Enter a valid payment amount.");
+      return;
+    }
+    if (num - netPayable > 0.009) {
+      setError(`Payment exceeds net payable ($${fmtUsd(netPayable)}).`);
       return;
     }
     setBusy(true);
@@ -175,7 +190,9 @@ export function BillRowActions({
           </Button>
         </>
       ) : null}
-      {error ? <span className="text-xs text-red-600 dark:text-red-400">{error}</span> : null}
+      {error && !editOpen && !payOpen ? (
+        <span className="text-xs text-red-600 dark:text-red-400">{error}</span>
+      ) : null}
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-sm">
@@ -222,6 +239,11 @@ export function BillRowActions({
                 className="mt-1 h-9"
               />
             </div>
+            {error ? (
+              <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+                {error}
+              </p>
+            ) : null}
           </div>
           <DialogFooter>
             <Button
@@ -247,6 +269,24 @@ export function BillRowActions({
             <DialogTitle>Record payment</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 py-2">
+            <div className="grid grid-cols-2 gap-2 rounded-md border border-border/60 bg-muted/20 p-3 text-xs">
+              <div>
+                <p className="text-muted-foreground">Bill amount</p>
+                <p className="font-mono tabular-nums">${fmtUsd(bill.amount)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Material deductions</p>
+                <p className="font-mono tabular-nums">${fmtUsd(materialDeductions)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Payments made</p>
+                <p className="font-mono tabular-nums">${fmtUsd(paymentsMade)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Net payable</p>
+                <p className="font-mono font-semibold tabular-nums">${fmtUsd(netPayable)}</p>
+              </div>
+            </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Payment date</label>
               <Input
@@ -261,6 +301,7 @@ export function BillRowActions({
               <label className="text-xs font-medium text-muted-foreground">Amount</label>
               <Input
                 type="number"
+                aria-label="Payment amount"
                 step="0.01"
                 min="0"
                 value={paymentAmount}
@@ -286,6 +327,11 @@ export function BillRowActions({
                 className="mt-1 h-9"
               />
             </div>
+            {error ? (
+              <p className="text-xs text-red-600 dark:text-red-400" role="alert">
+                {error}
+              </p>
+            ) : null}
           </div>
           <DialogFooter>
             <Button

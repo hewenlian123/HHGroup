@@ -1,4 +1,11 @@
-import { getExpenses, getExpenseCategories, getWorkers, type Expense } from "@/lib/data";
+import {
+  getExpenses,
+  getExpenseCategories,
+  getSubcontractDeductionOptions,
+  getWorkers,
+  type Expense,
+  type SubcontractDeductionOption,
+} from "@/lib/data";
 import { defaultExpenseListSort, type ExpenseListSort } from "@/lib/expenses-db";
 
 export type { ExpenseListSort };
@@ -26,6 +33,8 @@ export const expenseCategoriesQueryKey = ["expense_categories"] as const;
 
 export const workersQueryKey = ["workers"] as const;
 
+export const subcontractDeductionOptionsQueryKey = ["subcontract_deduction_options"] as const;
+
 export async function fetchExpenseCategories(): Promise<string[]> {
   return getExpenseCategories();
 }
@@ -33,6 +42,10 @@ export async function fetchExpenseCategories(): Promise<string[]> {
 export async function fetchWorkers(): Promise<{ id: string; name: string }[]> {
   const rows = await getWorkers();
   return rows as { id: string; name: string }[];
+}
+
+export async function fetchSubcontractDeductionOptions(): Promise<SubcontractDeductionOption[]> {
+  return getSubcontractDeductionOptions();
 }
 
 export { defaultExpenseListSort };

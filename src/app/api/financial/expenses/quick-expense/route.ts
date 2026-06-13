@@ -10,6 +10,10 @@ import {
   type Expense,
   type ExpenseAttachment,
 } from "@/lib/expenses-db";
+import {
+  replaceSubcontractDeductionForExpense,
+  type SubcontractDeductionInput,
+} from "@/lib/subcontract-deductions-db";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -35,6 +39,7 @@ type QuickExpenseRequest = {
   paymentAccountId?: unknown;
   referenceNo?: unknown;
   attachments?: unknown;
+  subcontractDeduction?: unknown;
 };
 
 function apiError(status: number, message: string): NextResponse {
@@ -86,6 +91,20 @@ function normalizeAttachments(value: unknown): ExpenseAttachment[] {
     .filter((item): item is ExpenseAttachment => Boolean(item));
 }
 
+function normalizeSubcontractDeduction(value: unknown): SubcontractDeductionInput | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  if (row.enabled === false) return null;
+  return {
+    subcontractId: optionalString(row.subcontractId),
+    subcontractorId: optionalString(row.subcontractorId),
+    projectId: optionalString(row.projectId),
+    amount:
+      typeof row.amount === "number" || typeof row.amount === "string" ? row.amount : undefined,
+    note: optionalString(row.note),
+  };
+}
+
 export async function POST(request: Request) {
   const guard = await requireAuthenticatedUser(request);
   if (!guard.ok) return guard.response;
@@ -120,6 +139,20 @@ export async function POST(request: Request) {
       paymentAccountId: optionalString(body.paymentAccountId),
       referenceNo: optionalString(body.referenceNo),
     });
+
+    const deduction = normalizeSubcontractDeduction(body.subcontractDeduction);
+    if (deduction) {
+      const savedDeduction = await replaceSubcontractDeductionForExpense(
+        expense.id,
+        {
+          ...deduction,
+          projectId: deduction.projectId ?? optionalString(body.projectId),
+          amount: deduction.amount ?? totalAmount,
+        },
+        supabase
+      );
+      expense = { ...expense, subcontractDeduction: savedDeduction };
+    }
 
     for (const attachment of normalizeAttachments(body.attachments)) {
       expense = (await addExpenseAttachmentWithClient(supabase, expense.id, attachment)) ?? expense;

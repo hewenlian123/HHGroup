@@ -43,8 +43,10 @@ function fmtUsdCompact(value: number): string {
   return value.toLocaleString("en-US", {
     style: "currency",
     currency: "USD",
+    notation: "compact",
+    compactDisplay: "short",
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    maximumFractionDigits: 1,
   });
 }
 
@@ -196,10 +198,21 @@ async function addPaymentViaUi(
   await page.reload({ waitUntil: "domcontentloaded" });
 }
 
+async function approveBillViaUi(page: Page, billId: string): Promise<void> {
+  await page.goto(`${BASE}/bills/${billId}`, { waitUntil: "domcontentloaded", timeout: LOAD_MS });
+  await page.getByRole("button", { name: /^Approve$/ }).click();
+  await expect(page.getByText("Pending", { exact: true }).first()).toBeVisible({
+    timeout: LOAD_MS,
+  });
+  await expect(page.getByRole("button", { name: /^Add payment$/ })).toBeVisible({
+    timeout: LOAD_MS,
+  });
+}
+
 async function expectOwnerPendingAp(page: Page, outstanding: number): Promise<void> {
   await page.goto(`${BASE}/financial/owner`);
   await expect(page.locator("body")).toContainText(
-    new RegExp(`AP\\s+${escapeRegExp(fmtUsd(outstanding))}`),
+    new RegExp(`AP\\s+${escapeRegExp(fmtUsdCompact(outstanding))}`),
     { timeout: LOAD_MS }
   );
 }
@@ -294,6 +307,7 @@ test.describe("Bills/AP payment flow", () => {
         vendors: [fullVendor],
       });
 
+      await approveBillViaUi(page, fullBillId);
       await addPaymentViaUi(page, fullBillId, {
         amount: "100",
         method: "Cash",
@@ -334,6 +348,7 @@ test.describe("Bills/AP payment flow", () => {
       expect(num(partialUnpaid.paid_amount)).toBe(0);
       expect(num(partialUnpaid.balance_amount)).toBe(100);
 
+      await approveBillViaUi(page, partialBillId);
       await addPaymentViaUi(page, partialBillId, {
         amount: "40",
         method: "Check",

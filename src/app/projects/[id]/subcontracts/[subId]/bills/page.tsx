@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
-import { getSubcontractById, getBillsBySubcontract } from "@/lib/data";
+import {
+  getSubcontractById,
+  getBillsBySubcontract,
+  getPaymentsBySubcontractIds,
+  getSubcontractDeductionsBySubcontractIds,
+} from "@/lib/data";
 import { AddBillButton } from "./add-bill-button";
 import { ApproveBillButton } from "./approve-bill-button";
 import { BillRowActions } from "./bill-row-actions";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
+import { subcontractBillCountsAsBilled } from "@/lib/subcontractor-financials";
+import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -16,12 +23,24 @@ type Props = { params: Promise<{ id: string; subId: string }> };
 
 export default async function SubcontractBillsPage({ params }: Props) {
   const { id: projectId, subId } = await params;
-  const [subcontract, bills] = await Promise.all([
+  const supabase = getServerSupabaseInternalNoStore();
+  const [subcontract, bills, payments, deductions] = await Promise.all([
     getSubcontractById(subId),
     getBillsBySubcontract(subId),
+    getPaymentsBySubcontractIds([subId]),
+    getSubcontractDeductionsBySubcontractIds([subId], supabase ?? undefined),
   ]);
 
   if (!subcontract || subcontract.project_id !== projectId) notFound();
+  const billedToDate = bills
+    .filter((bill) => subcontractBillCountsAsBilled(bill.status))
+    .reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
+  const paymentsMade = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+  const materialDeductions = deductions.reduce(
+    (sum, deduction) => sum + Number(deduction.amount || 0),
+    0
+  );
+  const netPayable = Math.max(0, billedToDate - materialDeductions - paymentsMade);
 
   return (
     <PageLayout
@@ -139,10 +158,20 @@ export default async function SubcontractBillsPage({ params }: Props) {
                                 projectId={projectId}
                                 subcontractId={subId}
                                 bill={r}
+                                materialDeductions={materialDeductions}
+                                paymentsMade={paymentsMade}
+                                netPayable={netPayable}
                               />
                             </div>
                           ) : (
-                            <BillRowActions projectId={projectId} subcontractId={subId} bill={r} />
+                            <BillRowActions
+                              projectId={projectId}
+                              subcontractId={subId}
+                              bill={r}
+                              materialDeductions={materialDeductions}
+                              paymentsMade={paymentsMade}
+                              netPayable={netPayable}
+                            />
                           )}
                         </td>
                       </tr>
