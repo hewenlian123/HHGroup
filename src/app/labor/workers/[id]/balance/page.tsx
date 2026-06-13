@@ -81,6 +81,14 @@ type LaborMonthGroup = {
   amount: number;
 };
 
+type ReimbursementMonthGroup = {
+  key: string;
+  label: string;
+  entries: ReimbursementRow[];
+  entryCount: number;
+  amount: number;
+};
+
 type Summary = {
   laborOwed: number;
   reimbursements: number;
@@ -335,6 +343,23 @@ function groupLaborByMonth(entries: LaborEntryRow[]): LaborMonthGroup[] {
     .sort((a, b) => b.key.localeCompare(a.key));
 }
 
+function groupReimbursementsByMonth(entries: ReimbursementRow[]): ReimbursementMonthGroup[] {
+  const byMonth = new Map<string, ReimbursementRow[]>();
+  for (const entry of entries) {
+    const key = monthKeyForDate(entry.date);
+    byMonth.set(key, [...(byMonth.get(key) ?? []), entry]);
+  }
+  return [...byMonth.entries()]
+    .map(([key, rows]) => ({
+      key,
+      label: monthLabel(key),
+      entries: rows,
+      entryCount: rows.length,
+      amount: rows.reduce((sum, entry) => sum + entry.amount, 0),
+    }))
+    .sort((a, b) => b.key.localeCompare(a.key));
+}
+
 function buildAdvancePlan(rows: AdvanceRow[], payableTotal: number) {
   let remainingCents = Math.max(0, Math.round(payableTotal * 100));
   const selected: AdvanceRow[] = [];
@@ -374,6 +399,7 @@ export default function WorkerBalanceDetailPage() {
   const [selectedLaborIds, setSelectedLaborIds] = React.useState<Set<string>>(new Set());
   const [selectedReimbIds, setSelectedReimbIds] = React.useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = React.useState<Set<string>>(new Set());
+  const [expandedReimbMonths, setExpandedReimbMonths] = React.useState<Set<string>>(new Set());
   const [paySubmitting, setPaySubmitting] = React.useState(false);
   const [payError, setPayError] = React.useState<string | null>(null);
   const [laborPayrollMode, setLaborPayrollMode] =
@@ -459,17 +485,30 @@ export default function WorkerBalanceDetailPage() {
     [reimbursements]
   );
   const laborGroups = React.useMemo(() => groupLaborByMonth(unpaidLabor), [unpaidLabor]);
+  const reimbGroups = React.useMemo(() => groupReimbursementsByMonth(unpaidReimb), [unpaidReimb]);
   const selectedLaborEntries = React.useMemo(
     () => unpaidLabor.filter((entry) => selectedLaborIds.has(entry.id)),
     [selectedLaborIds, unpaidLabor]
+  );
+  const selectedReimbursements = React.useMemo(
+    () => unpaidReimb.filter((row) => selectedReimbIds.has(row.id)),
+    [selectedReimbIds, unpaidReimb]
   );
   const selectedLaborTotal = React.useMemo(
     () => selectedLaborEntries.reduce((sum, entry) => sum + entry.amount, 0),
     [selectedLaborEntries]
   );
+  const selectedReimbursementTotal = React.useMemo(
+    () => selectedReimbursements.reduce((sum, entry) => sum + entry.amount, 0),
+    [selectedReimbursements]
+  );
   const selectedLaborMonthKeys = React.useMemo(
     () => new Set(selectedLaborEntries.map((entry) => monthKeyForDate(entry.date))),
     [selectedLaborEntries]
+  );
+  const selectedReimbMonthKeys = React.useMemo(
+    () => new Set(selectedReimbursements.map((entry) => monthKeyForDate(entry.date))),
+    [selectedReimbursements]
   );
   const selectedLaborMonthLabels = React.useMemo(() => {
     return laborGroups
@@ -481,6 +520,16 @@ export default function WorkerBalanceDetailPage() {
         return `${group.label}${selectedCount < group.entryCount ? " (partial)" : ""}`;
       });
   }, [laborGroups, selectedLaborIds, selectedLaborMonthKeys]);
+  const selectedReimbMonthLabels = React.useMemo(() => {
+    return reimbGroups
+      .filter((group) => selectedReimbMonthKeys.has(group.key))
+      .map((group) => {
+        const selectedCount = group.entries.filter((entry) =>
+          selectedReimbIds.has(entry.id)
+        ).length;
+        return `${group.label}${selectedCount < group.entryCount ? " (partial)" : ""}`;
+      });
+  }, [reimbGroups, selectedReimbIds, selectedReimbMonthKeys]);
   const isPartialMonthPayment = React.useMemo(
     () =>
       laborGroups.some((group) => {
@@ -491,6 +540,17 @@ export default function WorkerBalanceDetailPage() {
       }),
     [laborGroups, selectedLaborIds]
   );
+  const isPartialReimbursementMonthPayment = React.useMemo(
+    () =>
+      reimbGroups.some((group) => {
+        const selectedCount = group.entries.filter((entry) =>
+          selectedReimbIds.has(entry.id)
+        ).length;
+        return selectedCount > 0 && selectedCount < group.entryCount;
+      }),
+    [reimbGroups, selectedReimbIds]
+  );
+  const hasPaySelection = selectedLaborEntries.length > 0 || selectedReimbursements.length > 0;
 
   React.useEffect(() => {
     setSelectedLaborIds((prev) => {
@@ -519,22 +579,19 @@ export default function WorkerBalanceDetailPage() {
     });
   }, [laborGroups]);
 
-  const totalPaymentAmount = React.useMemo(() => {
-    let s = selectedLaborTotal;
-    unpaidReimb.forEach((r) => {
-      if (selectedReimbIds.has(r.id)) s += r.amount;
+  React.useEffect(() => {
+    setExpandedReimbMonths((prev) => {
+      const valid = new Set(reimbGroups.map((group) => group.key));
+      const next = new Set([...prev].filter((key) => valid.has(key)));
+      if (next.size === 0 && reimbGroups[0]) next.add(reimbGroups[0].key);
+      return next;
     });
-    return s;
-  }, [selectedLaborTotal, unpaidReimb, selectedReimbIds]);
-  const includedReimbursementTotal = React.useMemo(
-    () =>
-      unpaidReimb.reduce(
-        (sum, reimbursement) =>
-          selectedReimbIds.has(reimbursement.id) ? sum + reimbursement.amount : sum,
-        0
-      ),
-    [selectedReimbIds, unpaidReimb]
-  );
+  }, [reimbGroups]);
+
+  const totalPaymentAmount = React.useMemo(() => {
+    return selectedLaborTotal + selectedReimbursementTotal;
+  }, [selectedLaborTotal, selectedReimbursementTotal]);
+  const includedReimbursementTotal = selectedReimbursementTotal;
   const advancePlan = React.useMemo(
     () => buildAdvancePlan(advances, totalPaymentAmount),
     [advances, totalPaymentAmount]
@@ -585,11 +642,10 @@ export default function WorkerBalanceDetailPage() {
   }, [splitRows, splitTotal, netPaymentAmount]);
 
   const openPayModal = () => {
-    const initialReimbIds = new Set(unpaidReimb.map((r) => r.id));
-    const initialTotal = selectedLaborTotal + unpaidReimb.reduce((s, r) => s + r.amount, 0);
+    if (!hasPaySelection) return;
+    const initialTotal = totalPaymentAmount;
     const initialAdvanceDeduction = buildAdvancePlan(advances, initialTotal).amount;
     const initialCashTotal = Math.max(0, roundMoney(initialTotal - initialAdvanceDeduction));
-    setSelectedReimbIds(initialReimbIds);
     setPayDate(new Date().toISOString().slice(0, 10));
     setPayNotes("");
     setPayError(null);
@@ -733,8 +789,9 @@ export default function WorkerBalanceDetailPage() {
     });
   };
 
-  const clearLaborSelection = () => {
+  const clearPaySelection = () => {
     setSelectedLaborIds(new Set());
+    setSelectedReimbIds(new Set());
   };
 
   const toggleReimb = (id: string) => {
@@ -746,15 +803,30 @@ export default function WorkerBalanceDetailPage() {
     });
   };
 
+  const toggleReimbMonthExpanded = (key: string) => {
+    setExpandedReimbMonths((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleReimbMonthSelection = (group: ReimbursementMonthGroup) => {
+    setSelectedReimbIds((prev) => {
+      const next = new Set(prev);
+      const allSelected = group.entries.every((entry) => next.has(entry.id));
+      for (const entry of group.entries) {
+        if (allSelected) next.delete(entry.id);
+        else next.add(entry.id);
+      }
+      return next;
+    });
+  };
+
   const handlePaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      !workerId ||
-      selectedLaborEntries.length === 0 ||
-      totalPaymentAmount <= 0 ||
-      netPaymentAmount <= 0
-    )
-      return;
+    if (!workerId || !hasPaySelection || totalPaymentAmount <= 0 || netPaymentAmount <= 0) return;
     if (splitRows.length > 1) {
       setPayError("Split payments need backend support before saving.");
       return;
@@ -842,7 +914,7 @@ export default function WorkerBalanceDetailPage() {
               size="sm"
               className={neoPrimaryButton}
               onClick={openPayModal}
-              disabled={loading || selectedLaborEntries.length === 0}
+              disabled={loading || !hasPaySelection}
             >
               <SubmitSpinner loading={paySubmitting} className="mr-2" />
               {paySubmitting ? "Saving…" : "Pay Selected"}
@@ -1086,15 +1158,37 @@ export default function WorkerBalanceDetailPage() {
 
             <div className="sticky bottom-3 z-20 rounded-2xl border border-[var(--neo-border)] bg-[rgb(15_17_20_/_0.94)] px-4 py-3 shadow-[0_18px_42px_rgb(0_0_0_/_0.34)] backdrop-blur supports-[backdrop-filter]:bg-[rgb(15_17_20_/_0.82)]">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
-                    Selected labor
-                  </p>
-                  <p className="mt-0.5 text-sm font-medium text-[var(--neo-text-primary)]">
-                    {selectedLaborEntries.length}{" "}
-                    {selectedLaborEntries.length === 1 ? "entry" : "entries"} ·{" "}
-                    <span className="tabular-nums">{formatCurrency(selectedLaborTotal)}</span>
-                  </p>
+                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                      Selected labor
+                    </p>
+                    <p className="mt-0.5 text-sm font-medium text-[var(--neo-text-primary)]">
+                      {selectedLaborEntries.length}{" "}
+                      {selectedLaborEntries.length === 1 ? "entry" : "entries"} ·{" "}
+                      <span className="tabular-nums">{formatCurrency(selectedLaborTotal)}</span>
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                      Selected reimb.
+                    </p>
+                    <p className="mt-0.5 text-sm font-medium text-[var(--neo-text-primary)]">
+                      {selectedReimbursements.length}{" "}
+                      {selectedReimbursements.length === 1 ? "item" : "items"} ·{" "}
+                      <span className="tabular-nums">
+                        {formatCurrency(selectedReimbursementTotal)}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                      Estimated cash
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold tabular-nums text-[var(--neo-gold-soft)]">
+                      {formatCurrency(netPaymentAmount)}
+                    </p>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
                   <Button
@@ -1102,8 +1196,8 @@ export default function WorkerBalanceDetailPage() {
                     variant="outline"
                     size="sm"
                     className={neoSecondaryButton}
-                    onClick={clearLaborSelection}
-                    disabled={selectedLaborEntries.length === 0}
+                    onClick={clearPaySelection}
+                    disabled={!hasPaySelection}
                   >
                     Clear
                   </Button>
@@ -1112,7 +1206,7 @@ export default function WorkerBalanceDetailPage() {
                     size="sm"
                     className={neoPrimaryButton}
                     onClick={openPayModal}
-                    disabled={selectedLaborEntries.length === 0}
+                    disabled={!hasPaySelection}
                   >
                     Pay Selected
                   </Button>
@@ -1122,108 +1216,178 @@ export default function WorkerBalanceDetailPage() {
 
             <LedgerSection
               title="Reimbursements"
-              description="Expense reimbursements tied to this worker’s balance."
+              description="Open reimbursements available for the next worker payment."
             >
-              <div className="px-4 py-3 md:hidden">
-                {reimbursements.length === 0 ? (
-                  <EmptyLedgerState
-                    title="No reimbursements"
-                    subtitle="Reimbursements will appear here."
-                  />
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {reimbursements.map((r) => {
-                      const isPaid = String(r.status).toLowerCase() === "paid";
-                      const tone = isPaid ? "success" : "warning";
-                      return (
-                        <div
-                          key={r.id}
-                          className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-base)] px-3 py-3 shadow-[var(--neo-shadow-control)]"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className={LEDGER_DATE_CLASS}>
-                                {formatLedgerDate(r.date, "compact")}
-                              </p>
-                              <p className="mt-0.5 text-sm font-medium text-[var(--neo-text-primary)]">
-                                {r.vendor ?? <Dash />} · {r.projectName ?? r.projectId ?? <Dash />}
-                              </p>
-                              <div className="mt-2 flex flex-wrap items-center gap-2">
-                                <span
-                                  className={cn(
-                                    statusChipClass(tone),
-                                    "px-2 py-0.5 text-[11px] leading-none rounded-sm"
-                                  )}
-                                >
-                                  {r.status}
-                                </span>
+              {reimbGroups.length === 0 ? (
+                <EmptyLedgerState
+                  title="No open reimbursements"
+                  subtitle="Paid reimbursements are available from Payments and Statements."
+                />
+              ) : (
+                <div className="divide-y divide-[var(--neo-border)]">
+                  {reimbGroups.map((group) => {
+                    const expanded = expandedReimbMonths.has(group.key);
+                    const selectedCount = group.entries.filter((entry) =>
+                      selectedReimbIds.has(entry.id)
+                    ).length;
+                    const allSelected = selectedCount === group.entryCount;
+                    const partiallySelected = selectedCount > 0 && !allSelected;
+                    return (
+                      <section
+                        key={group.key}
+                        data-testid={`worker-balance-reimbursement-month-${group.key}`}
+                      >
+                        <div className="flex flex-col gap-3 bg-[var(--neo-surface-base)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                          <button
+                            type="button"
+                            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-3 rounded-lg text-left transition-colors duration-150 hover:text-[var(--neo-gold-soft)]"
+                            onClick={() => toggleReimbMonthExpanded(group.key)}
+                            aria-expanded={expanded}
+                          >
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-secondary)]">
+                              <ChevronDown
+                                className={cn(
+                                  "h-4 w-4 transition-transform duration-150",
+                                  expanded ? "rotate-0" : "-rotate-90"
+                                )}
+                                aria-hidden
+                              />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold text-[var(--neo-text-primary)]">
+                                {group.label}
+                              </span>
+                              <span className="mt-0.5 block text-xs text-[var(--neo-text-secondary)]">
+                                {group.entryCount}{" "}
+                                {group.entryCount === 1 ? "reimbursement" : "reimbursements"} ·{" "}
+                                {formatCurrency(group.amount)}
+                              </span>
+                            </span>
+                          </button>
+                          <label className="flex min-h-[44px] items-center justify-between gap-3 rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-xs font-semibold text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-control)] sm:justify-start">
+                            <input
+                              type="checkbox"
+                              checked={allSelected}
+                              ref={(node) => {
+                                if (node) node.indeterminate = partiallySelected;
+                              }}
+                              onChange={() => toggleReimbMonthSelection(group)}
+                              className={neoCheckboxClass}
+                              aria-label={`${allSelected ? "Unselect" : "Select"} ${
+                                group.label
+                              } reimbursements`}
+                            />
+                            <span>{allSelected ? "Unselect month" : "Select month"}</span>
+                          </label>
+                        </div>
+
+                        {expanded ? (
+                          <>
+                            <div className="px-4 pb-3 md:hidden">
+                              <div className="flex flex-col gap-2">
+                                {group.entries.map((r) => (
+                                  <label
+                                    key={r.id}
+                                    className="flex min-h-[64px] items-start gap-3 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 shadow-[var(--neo-shadow-control)]"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedReimbIds.has(r.id)}
+                                      onChange={() => toggleReimb(r.id)}
+                                      className={cn(neoCheckboxClass, "mt-1")}
+                                      aria-label={`Select ${formatLedgerDate(
+                                        r.date,
+                                        "compact"
+                                      )} reimbursement`}
+                                    />
+                                    <span className="min-w-0 flex-1">
+                                      <span className={LEDGER_DATE_CLASS}>
+                                        {formatLedgerDate(r.date, "compact")}
+                                      </span>
+                                      <span className="mt-0.5 block text-sm font-medium text-[var(--neo-text-primary)]">
+                                        {r.vendor ?? "—"} · {r.projectName ?? r.projectId ?? "—"}
+                                      </span>
+                                      <span className="mt-2 inline-flex">
+                                        <span
+                                          className={cn(
+                                            statusChipClass("warning"),
+                                            "rounded-sm px-2 py-0.5 text-[11px] leading-none"
+                                          )}
+                                        >
+                                          {r.status}
+                                        </span>
+                                      </span>
+                                    </span>
+                                    <span className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
+                                      {formatCurrency(r.amount)}
+                                    </span>
+                                  </label>
+                                ))}
                               </div>
                             </div>
-                            <div className="shrink-0 text-right">
-                              <p className="text-sm font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
-                                {formatCurrency(r.amount)}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
 
-              <div className="hidden md:block">
-                {reimbursements.length === 0 ? (
-                  <EmptyLedgerState
-                    title="No reimbursements"
-                    subtitle="Reimbursements will appear here."
-                  />
-                ) : (
-                  <div className="airtable-table-scroll overflow-x-auto">
-                    <table className="w-full min-w-[860px] border-collapse text-sm">
-                      <thead>
-                        <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
-                          <th className={cn(ledgerHeaderCell, "pl-4")}>Date</th>
-                          <th className={ledgerHeaderCell}>Vendor</th>
-                          <th className={ledgerHeaderCell}>Project</th>
-                          <th className={ledgerHeaderCellRight}>Amount</th>
-                          <th className={cn(ledgerHeaderCell, "pr-4")}>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {reimbursements.map((r) => {
-                          const isPaid = String(r.status).toLowerCase() === "paid";
-                          const tone = isPaid ? "success" : "warning";
-                          return (
-                            <tr key={r.id} className={ledgerRow}>
-                              <td className={cn(ledgerCell, "pl-4")}>
-                                <span className={LEDGER_DATE_CLASS}>
-                                  {formatLedgerDate(r.date)}
-                                </span>
-                              </td>
-                              <td className={ledgerCell}>{r.vendor ?? <Dash />}</td>
-                              <td className={ledgerCell}>
-                                {r.projectName ?? r.projectId ?? <Dash />}
-                              </td>
-                              <td className={ledgerAmountCell}>{formatCurrency(r.amount)}</td>
-                              <td className="py-2.5 pr-4 align-middle">
-                                <span
-                                  className={cn(
-                                    statusChipClass(tone),
-                                    "px-2 py-0.5 text-[11px] leading-none rounded-sm"
-                                  )}
-                                >
-                                  {r.status}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
+                            <div className="hidden md:block">
+                              <div className="airtable-table-scroll overflow-x-auto">
+                                <table className="w-full min-w-[760px] border-collapse text-sm">
+                                  <thead>
+                                    <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                                      <th className={cn(ledgerHeaderCell, "w-12 pl-4")}>Select</th>
+                                      <th className={ledgerHeaderCell}>Date</th>
+                                      <th className={ledgerHeaderCell}>Vendor</th>
+                                      <th className={ledgerHeaderCell}>Project</th>
+                                      <th className={ledgerHeaderCell}>Status</th>
+                                      <th className={cn(ledgerHeaderCellRight, "pr-4")}>Amount</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {group.entries.map((r) => (
+                                      <tr key={r.id} className={ledgerRow}>
+                                        <td className="py-2.5 pl-4 pr-3 align-middle">
+                                          <input
+                                            type="checkbox"
+                                            checked={selectedReimbIds.has(r.id)}
+                                            onChange={() => toggleReimb(r.id)}
+                                            className={neoCheckboxClass}
+                                            aria-label={`Select ${formatLedgerDate(
+                                              r.date
+                                            )} reimbursement`}
+                                          />
+                                        </td>
+                                        <td className={ledgerCell}>
+                                          <span className={LEDGER_DATE_CLASS}>
+                                            {formatLedgerDate(r.date)}
+                                          </span>
+                                        </td>
+                                        <td className={ledgerCell}>{r.vendor ?? <Dash />}</td>
+                                        <td className={ledgerCell}>
+                                          {r.projectName ?? r.projectId ?? <Dash />}
+                                        </td>
+                                        <td className="py-2.5 pr-3 align-middle">
+                                          <span
+                                            className={cn(
+                                              statusChipClass("warning"),
+                                              "rounded-sm px-2 py-0.5 text-[11px] leading-none"
+                                            )}
+                                          >
+                                            {r.status}
+                                          </span>
+                                        </td>
+                                        <td className={cn(ledgerAmountCell, "pr-4")}>
+                                          {formatCurrency(r.amount)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </>
+                        ) : null}
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
             </LedgerSection>
 
             <LedgerSection title="Payments" description="Recorded payments made to this worker.">
@@ -1342,10 +1506,35 @@ export default function WorkerBalanceDetailPage() {
               </div>
             </div>
 
+            <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                    Selected reimbursements
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-[var(--neo-text-primary)]">
+                    {selectedReimbursements.length}{" "}
+                    {selectedReimbursements.length === 1 ? "item" : "items"} ·{" "}
+                    {selectedReimbMonthLabels.length > 0
+                      ? selectedReimbMonthLabels.join(", ")
+                      : "No reimbursement selected"}
+                  </p>
+                  {isPartialReimbursementMonthPayment ? (
+                    <p className="mt-1 text-xs font-medium text-[var(--neo-gold-soft)]">
+                      Partial reimbursement month
+                    </p>
+                  ) : null}
+                </div>
+                <p className="shrink-0 text-sm font-semibold tabular-nums tracking-normal text-[var(--neo-text-primary)]">
+                  {formatCurrency(selectedReimbursementTotal)}
+                </p>
+              </div>
+            </div>
+
             {unpaidReimb.length > 0 && (
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-[var(--neo-text-tertiary)] mb-2">
-                  Open reimbursements
+                  Reimbursements
                 </p>
                 <div className="max-h-40 overflow-y-auto rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] shadow-[var(--neo-shadow-control)]">
                   {unpaidReimb.map((r) => (

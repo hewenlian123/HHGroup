@@ -378,10 +378,14 @@ test.describe("Worker payment consistency", () => {
       .click();
     const again = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(again).toBeVisible();
-    await expect(
-      again.locator("label").filter({ hasText: "$30.00" }).locator('input[type="checkbox"]')
-    ).toBeChecked();
+    const remainingReimbursement = again
+      .locator("label")
+      .filter({ hasText: "$30.00" })
+      .locator('input[type="checkbox"]');
+    await expect(remainingReimbursement).not.toBeChecked();
     await expect(again.getByText("$50.00")).toHaveCount(0);
+    await expect(totalAmount(again)).toHaveText("$75.00");
+    await remainingReimbursement.check();
     await expect(totalAmount(again)).toHaveText("$105.00");
     await again.getByRole("button", { name: "Cancel" }).click();
     await expect(again).not.toBeVisible();
@@ -414,6 +418,12 @@ test.describe("Worker payment consistency", () => {
     const afterRefresh = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(afterRefresh).toBeVisible();
     await expect(afterRefresh.getByText("$50.00")).toHaveCount(0);
+    await expect(totalAmount(afterRefresh)).toHaveText("$75.00");
+    await afterRefresh
+      .locator("label")
+      .filter({ hasText: "$30.00" })
+      .locator('input[type="checkbox"]')
+      .check();
     await expect(totalAmount(afterRefresh)).toHaveText("$105.00");
     await afterRefresh.getByRole("button", { name: "Cancel" }).click();
   });
