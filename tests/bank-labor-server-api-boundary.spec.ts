@@ -61,6 +61,11 @@ function compactDateLabel(ymd: string): string {
   );
 }
 
+function dateInputDisplay(ymd: string): string {
+  const [year, month, day] = ymd.split("-").map(Number);
+  return `${String(month ?? 1).padStart(2, "0")}/${String(day ?? 1).padStart(2, "0")}/${year}`;
+}
+
 async function expectJsonMessage(
   response: { json(): Promise<unknown> },
   pattern: RegExp
@@ -389,7 +394,7 @@ test.describe("bank and labor server API boundary", () => {
         .click();
       const fullDayDialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
       await expect(fullDayDialog).toBeVisible({ timeout: 30_000 });
-      await fullDayDialog.locator('input[type="date"]').fill(fullDayDate);
+      await fullDayDialog.getByTestId("add-daily-entry-date-input").fill(fullDayDate);
       const fullDayWorkerRow = fullDayDialog
         .getByRole("row")
         .filter({ hasText: `[E2E] Duplicate Guard Worker ${tag}` })
@@ -506,7 +511,7 @@ test.describe("bank and labor server API boundary", () => {
         .click();
       const hiddenDialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
       await expect(hiddenDialog).toBeVisible({ timeout: 30_000 });
-      await hiddenDialog.locator('input[type="date"]').fill(hiddenDate);
+      await hiddenDialog.getByTestId("add-daily-entry-date-input").fill(hiddenDate);
       const hiddenWorkerRow = hiddenDialog
         .getByRole("row")
         .filter({ hasText: `[E2E] Duplicate Guard Worker ${tag}` })
@@ -639,7 +644,7 @@ test.describe("bank and labor server API boundary", () => {
       await expect(dialog).toBeVisible({ timeout: 30_000 });
 
       const projectSelect = dialog.locator("select").first();
-      const dateInput = dialog.locator('input[type="date"]');
+      const dateInput = dialog.getByTestId("add-daily-entry-date-input");
       const optionalInputs = dialog.locator('input[placeholder="Optional"]');
       const costCodeInput = optionalInputs.nth(0);
       const notesInput = optionalInputs.nth(1);
@@ -651,7 +656,7 @@ test.describe("bank and labor server API boundary", () => {
       await costCodeInput.fill(`CC-${tag}`);
       await notesInput.fill(`notes ${tag}`);
       await expect(projectSelect).toHaveValue(project!.id);
-      await expect(dateInput).toHaveValue(dateA);
+      await expect(dateInput).toHaveValue(dateInputDisplay(dateA));
       await dialog.getByRole("button", { name: /^Save$/i }).click();
       await expect(dialog.getByText("Select at least one worker with AM or PM.")).toBeVisible();
 
@@ -667,7 +672,7 @@ test.describe("bank and labor server API boundary", () => {
       const dateBOptionsResponse = waitForLaborOptionsForDate(dateB);
       await dateInput.fill(dateB);
       await dateBOptionsResponse;
-      await expect(dateInput).toHaveValue(dateB);
+      await expect(dateInput).toHaveValue(dateInputDisplay(dateB));
       workerRow = dialog.getByRole("row").filter({ hasText: workerName }).first();
       await expect(workerRow).toContainText("AM already entered", { timeout: 30_000 });
       await expect(workerRow.getByRole("button", { name: "AM" })).toBeDisabled();
@@ -789,7 +794,7 @@ test.describe("bank and labor server API boundary", () => {
         .click();
       const dialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
       await expect(dialog).toBeVisible({ timeout: 30_000 });
-      await dialog.locator('input[type="date"]').fill(workDate);
+      await dialog.getByTestId("add-daily-entry-date-input").fill(workDate);
 
       const projectSelect = dialog.locator("select").first();
       const searchInput = dialog.getByLabel("Search workers");
@@ -941,7 +946,7 @@ test.describe("bank and labor server API boundary", () => {
       await expect(dialog).toBeVisible({ timeout: 30_000 });
 
       let projectSelect = dialog.locator("select").first();
-      let dateInput = dialog.locator('input[type="date"]');
+      let dateInput = dialog.getByTestId("add-daily-entry-date-input");
       let searchInput = dialog.getByLabel("Search workers");
       const optionalInputs = dialog.locator('input[placeholder="Optional"]');
       const costCodeInput = optionalInputs.nth(0);
@@ -1006,7 +1011,7 @@ test.describe("bank and labor server API boundary", () => {
       await costCodeInput.fill("FLOW-COST-CODE");
       await notesInput.fill("flow notes stay after date change");
       await expect(projectSelect).toHaveValue(project!.id);
-      await expect(dateInput).toHaveValue(dateA);
+      await expect(dateInput).toHaveValue(dateInputDisplay(dateA));
 
       let workerBRow = dialog.getByRole("row").filter({ hasText: workerBName }).first();
       let workerCRow = dialog.getByRole("row").filter({ hasText: workerCName }).first();
@@ -1021,7 +1026,7 @@ test.describe("bank and labor server API boundary", () => {
       const dateBOptionsResponse = waitForLaborOptionsForDate(dateB);
       await dateInput.fill(dateB);
       await dateBOptionsResponse;
-      await expect(dateInput).toHaveValue(dateB);
+      await expect(dateInput).toHaveValue(dateInputDisplay(dateB));
       workerBRow = dialog.getByRole("row").filter({ hasText: workerBName }).first();
       workerCRow = dialog.getByRole("row").filter({ hasText: workerCName }).first();
       await expect(workerBRow.getByLabel(`Overtime hours for ${workerBName}`)).toHaveValue("");
@@ -1113,7 +1118,7 @@ test.describe("bank and labor server API boundary", () => {
       dialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
       await expect(dialog).toBeVisible({ timeout: 30_000 });
       projectSelect = dialog.locator("select").first();
-      dateInput = dialog.locator('input[type="date"]');
+      dateInput = dialog.getByTestId("add-daily-entry-date-input");
       searchInput = dialog.getByLabel("Search workers");
       await dateInput.fill(dateB);
       await projectSelect.selectOption(project!.id);
@@ -1166,7 +1171,7 @@ test.describe("bank and labor server API boundary", () => {
       dialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
       await expect(dialog).toBeVisible({ timeout: 30_000 });
       const hiddenDateOptionsResponse = waitForLaborOptionsForDate(hiddenDate);
-      await dialog.locator('input[type="date"]').fill(hiddenDate);
+      await dialog.getByTestId("add-daily-entry-date-input").fill(hiddenDate);
       await hiddenDateOptionsResponse;
       await dialog.locator("select").first().selectOption(project!.id);
       searchInput = dialog.getByLabel("Search workers");
@@ -1185,7 +1190,7 @@ test.describe("bank and labor server API boundary", () => {
       dialog = page.getByRole("dialog", { name: /Add Daily Entry/i });
       await expect(dialog).toBeVisible({ timeout: 30_000 });
       const mobileDateOptionsResponse = waitForLaborOptionsForDate(mobileDate);
-      await dialog.locator('input[type="date"]').fill(mobileDate);
+      await dialog.getByTestId("add-daily-entry-date-input").fill(mobileDate);
       await mobileDateOptionsResponse;
       await dialog.locator("select").first().selectOption(project!.id);
       searchInput = dialog.getByLabel("Search workers");

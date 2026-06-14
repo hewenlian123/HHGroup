@@ -380,7 +380,7 @@ async function addDailyEntryViaUi(
   opts: { date: string; session: "full" | "half"; note: string }
 ) {
   const dialog = await openAddDailyEntryFromWorker(page);
-  await dialog.locator('input[type="date"]').fill(opts.date);
+  await dialog.getByTestId("add-daily-entry-date-input").fill(opts.date);
   await expect(dialog.locator("select").first()).toContainText(PROJECT_NAME, { timeout: 30_000 });
   await dialog.locator("select").first().selectOption(PROJECT_ID);
   const workerRow = dialog.getByRole("row").filter({ hasText: WORKER_NAME }).first();

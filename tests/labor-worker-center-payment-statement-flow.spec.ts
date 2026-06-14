@@ -299,7 +299,7 @@ async function saveDailyEntry(params: {
   const dialog = await openAddDailyDialog(page);
   await waitForProjectOption(dialog, projectId);
   await dialog.locator("select").first().selectOption(projectId);
-  await dialog.locator('input[type="date"]').fill(workDate);
+  await dialog.getByTestId("add-daily-entry-date-input").fill(workDate);
   const row = await workerRowInDailyDialog(page, dialog, workerName);
   if (morning) await row.getByRole("button", { name: /^AM$/ }).click();
   if (afternoon) await row.getByRole("button", { name: /^PM$/ }).click();
@@ -387,7 +387,7 @@ async function expectDuplicateSessionUiBlocked(page: Page, projectId: string, wo
   const dialog = await openAddDailyDialog(page);
   await waitForProjectOption(dialog, projectId);
   await dialog.locator("select").first().selectOption(projectId);
-  await dialog.locator('input[type="date"]').fill(workDate);
+  await dialog.getByTestId("add-daily-entry-date-input").fill(workDate);
   const row = await workerRowInDailyDialog(page, dialog);
   await expect(row).toContainText(/Already has full day|AM already entered/i);
   await expect(row.getByRole("button", { name: /^AM$/ })).toBeDisabled();
@@ -403,7 +403,7 @@ async function expectMorningBlockedAfternoonAllowed(
   const dialog = await openAddDailyDialog(page);
   await waitForProjectOption(dialog, projectId);
   await dialog.locator("select").first().selectOption(projectId);
-  await dialog.locator('input[type="date"]').fill(workDate);
+  await dialog.getByTestId("add-daily-entry-date-input").fill(workDate);
   const row = await workerRowInDailyDialog(page, dialog);
   await expect(row).toContainText("AM already entered");
   await expect(row.getByRole("button", { name: /^AM$/ })).toBeDisabled();

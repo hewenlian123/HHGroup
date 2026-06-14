@@ -751,7 +751,7 @@ async function createLaborEntry(
   const dialog = page.getByRole("dialog", { name: /^Add Daily Entry$/i });
   await expect(dialog).toBeVisible({ timeout: 20_000 });
   await selectNativeOptionByLabel(dialog.locator("select").first(), params.projectName);
-  await dialog.locator('input[type="date"]').fill(todayLocalISO());
+  await dialog.getByTestId("add-daily-entry-date-input").fill(todayLocalISO());
 
   const workerRow = dialog.locator('[role="row"]').filter({ hasText: params.workerName }).first();
   const scroller = dialog.locator("div.overflow-y-auto, div.overflow-auto").first();

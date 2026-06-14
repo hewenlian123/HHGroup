@@ -144,7 +144,7 @@ async function createLaborEntry(page: Page) {
 
   const selects = dialog.locator("select");
   await selectByLabelOrFirst(selects.nth(0), E2E_PRESERVED_PROJECT_LABEL);
-  await dialog.locator('input[type="date"]').fill(todayLocalISO());
+  await dialog.getByTestId("add-daily-entry-date-input").fill(todayLocalISO());
 
   const workerRow = await findDailyWorkerRow(page, dialog, workerName);
   await workerRow.getByRole("button", { name: /^AM$/ }).click();
@@ -196,7 +196,7 @@ async function createDeductedAdvance(page: Page) {
   await selectWorker(dialog.locator("select").nth(0));
   await selectByLabelOrFirst(dialog.locator("select").nth(1), E2E_PRESERVED_PROJECT_LABEL);
   await dialog.locator('input[type="number"]').fill("25");
-  await dialog.locator('input[type="date"]').fill(todayLocalISO());
+  await dialog.getByTestId("add-daily-entry-date-input").fill(todayLocalISO());
   await dialog.getByPlaceholder("Optional").fill(`advance ${RUN}`);
 
   const created = page.waitForResponse(

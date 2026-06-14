@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { VirtualScrollList } from "@/components/ui/virtual-scroll-list";
 import { cn } from "@/lib/utils";
 import { workerRateLocalYmd } from "@/lib/worker-rate-date";
@@ -115,6 +115,39 @@ function toYmd(d: Date): string {
   return `${yy}-${mm}-${dd}`;
 }
 
+function formatDateInput(ymd: string): string {
+  const date = ymdToLocalDate(ymd);
+  if (!date) return "";
+  return `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(
+    2,
+    "0"
+  )}/${date.getFullYear()}`;
+}
+
+function parseDateInput(value: string): string | null {
+  const text = value.trim();
+  if (!text) return "";
+
+  const ymd = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text);
+  const mdy = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text);
+  const parts = ymd
+    ? { year: Number(ymd[1]), month: Number(ymd[2]), day: Number(ymd[3]) }
+    : mdy
+      ? { year: Number(mdy[3]), month: Number(mdy[1]), day: Number(mdy[2]) }
+      : null;
+  if (!parts) return null;
+
+  const date = new Date(parts.year, parts.month - 1, parts.day);
+  if (
+    date.getFullYear() !== parts.year ||
+    date.getMonth() !== parts.month - 1 ||
+    date.getDate() !== parts.day
+  ) {
+    return null;
+  }
+  return toYmd(date);
+}
+
 function computeRegularPay(dailyRate: number, morning: boolean, afternoon: boolean): number {
   return morning && afternoon ? dailyRate : morning || afternoon ? dailyRate / 2 : 0;
 }
@@ -205,6 +238,13 @@ function AddDailyEntryDateField({
   const [open, setOpen] = React.useState(false);
   const selected = React.useMemo(() => ymdToLocalDate(value), [value]);
   const [month, setMonth] = React.useState<Date>(() => selected ?? new Date());
+  const [draft, setDraft] = React.useState(() => formatDateInput(value));
+  const [editing, setEditing] = React.useState(false);
+
+  React.useEffect(() => {
+    if (editing) return;
+    setDraft(formatDateInput(value));
+  }, [editing, value]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -223,37 +263,79 @@ function AddDailyEntryDateField({
   const chooseToday = React.useCallback(() => {
     const today = new Date();
     onChange(toYmd(today));
+    setDraft(formatDateInput(toYmd(today)));
     setMonth(today);
     setOpen(false);
   }, [onChange]);
 
+  const commitDraft = React.useCallback(() => {
+    const parsed = parseDateInput(draft);
+    setEditing(false);
+    if (parsed == null) {
+      setDraft(formatDateInput(value));
+      return;
+    }
+    onChange(parsed);
+    setDraft(formatDateInput(parsed));
+  }, [draft, onChange, value]);
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <div className="relative">
-        <Input
-          type="date"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className={cn(
-            fieldClass,
-            "pr-11 tabular-nums [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0"
-          )}
-          required
-        />
-        <PopoverTrigger asChild>
+      <PopoverAnchor asChild>
+        <div className="relative">
+          <Input
+            id="add-daily-entry-date"
+            data-testid="add-daily-entry-date-input"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            aria-label="Work Date"
+            placeholder="MM/DD/YYYY"
+            value={draft}
+            onFocus={() => {
+              setEditing(true);
+              setOpen(true);
+            }}
+            onClick={() => setOpen(true)}
+            onChange={(e) => {
+              const nextDraft = e.target.value;
+              setDraft(nextDraft);
+              const parsed = parseDateInput(nextDraft);
+              if (parsed != null) onChange(parsed);
+            }}
+            onBlur={commitDraft}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitDraft();
+                setOpen(false);
+              }
+              if (e.key === "Escape") {
+                setEditing(false);
+                setDraft(formatDateInput(value));
+                setOpen(false);
+              }
+            }}
+            className={cn(fieldClass, "pr-11 tabular-nums")}
+            required
+          />
           <button
             type="button"
             aria-label="Open date picker"
+            aria-expanded={open}
+            data-testid="add-daily-entry-date-button"
+            onClick={() => setOpen(true)}
             className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.035] text-[var(--neo-text-secondary)] transition-colors hover:border-white/[0.14] hover:bg-white/[0.07] hover:text-[var(--neo-text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] max-md:h-9 max-md:w-9"
           >
             <CalendarDays className="h-4 w-4" aria-hidden />
           </button>
-        </PopoverTrigger>
-      </div>
+        </div>
+      </PopoverAnchor>
       <PopoverContent
         align="start"
         sideOffset={8}
         collisionPadding={12}
+        data-testid="add-daily-entry-date-popover"
         className="z-[140] w-[min(300px,calc(100vw-24px))] rounded-2xl border border-[rgba(190,198,210,0.16)] bg-[#111318] p-3 text-[#F6F7FA] shadow-[0_24px_58px_rgba(0,0,0,0.46),inset_0_1px_0_rgba(255,255,255,0.055)]"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
@@ -264,21 +346,27 @@ function AddDailyEntryDateField({
           onMonthChange={setMonth}
           onSelect={(d) => {
             if (!d) return;
-            onChange(toYmd(d));
+            const next = toYmd(d);
+            onChange(next);
+            setDraft(formatDateInput(next));
+            setEditing(false);
             setOpen(false);
           }}
           classNames={{
             ...rdp,
+            root: cn(rdp.root, "relative"),
             months: cn(rdp.months, "gap-2"),
+            month: cn(rdp.month, "relative space-y-2"),
+            month_grid: cn(rdp.month_grid, "mx-auto"),
             month_caption: cn(
               rdp.month_caption,
-              "flex min-h-8 items-center justify-between gap-2 px-0.5 py-0"
+              "flex min-h-8 items-center justify-center px-14 py-0 text-center"
             ),
             caption_label: cn(
               rdp.caption_label,
               "flex items-center justify-center text-sm font-semibold leading-none text-[#F6F7FA]"
             ),
-            nav: cn(rdp.nav, "items-center gap-1"),
+            nav: cn(rdp.nav, "absolute right-0 top-0 flex h-8 items-center gap-1"),
             button_previous: cn(
               rdp.button_previous,
               "flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent text-[#BAC2CA] transition-colors hover:bg-white/[0.07] hover:text-white"
@@ -321,6 +409,7 @@ function AddDailyEntryDateField({
                 disabled={!value}
                 onClick={() => {
                   onChange("");
+                  setDraft("");
                   setOpen(false);
                 }}
               >
