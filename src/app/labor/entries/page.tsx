@@ -110,6 +110,13 @@ type LaborEntryEditDraft = DailyLaborEntryDraft & {
   overtime_amount: number;
 };
 
+function baseCostFromStoredTotal(cost: number, overtimeAmount: number): number {
+  const total = Math.max(0, Number(cost) || 0);
+  const overtime = Math.max(0, Number(overtimeAmount) || 0);
+  if (overtime <= 0) return total;
+  return total > overtime ? total - overtime : total;
+}
+
 const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
   row,
   isSelected,
@@ -120,8 +127,10 @@ const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
   onOpenEdit,
   onDelete,
 }: LaborEntryRowProps) {
-  const rate = row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
+  const overtimeAmount = row.overtime_amount ?? parseLaborOvertimeAmountFromNotes(row.notes);
   const cost = row.cost_amount ?? 0;
+  const baseCost = baseCostFromStoredTotal(cost, overtimeAmount);
+  const rate = row.hours > 0 && row.cost_amount != null ? baseCost / row.hours : null;
   const visibleNotes = stripLaborOvertimeHoursFromNotes(row.notes);
   return (
     <tr
@@ -165,7 +174,12 @@ const LaborEntryTableRow = React.memo(function LaborEntryTableRow({
           listTableAmountCellClassName
         )}
       >
-        ${cost.toFixed(2)}
+        <div>${cost.toFixed(2)}</div>
+        {overtimeAmount > 0 ? (
+          <div className="mt-0.5 text-[11px] font-normal text-muted-foreground">
+            incl OT ${overtimeAmount.toFixed(2)}
+          </div>
+        ) : null}
       </td>
       <td className="py-1.5 px-3">
         <StatusBadge
@@ -461,6 +475,18 @@ function DailyEntriesPageInner() {
     }
   };
 
+  const editBasePay = React.useMemo(() => {
+    if (!editEntry || !editDraft) return 0;
+    const dailyRate = Number(editEntry.daily_rate_snapshot);
+    const hours = Number(editDraft.hours) || 0;
+    if (Number.isFinite(dailyRate) && dailyRate > 0) return Math.max(0, dailyRate * hours);
+    const originalOt =
+      editEntry.overtime_amount ?? parseLaborOvertimeAmountFromNotes(editEntry.notes);
+    return baseCostFromStoredTotal(Number(editEntry.cost_amount) || 0, originalOt);
+  }, [editDraft, editEntry]);
+  const editOvertimePay = Math.max(0, Number(editDraft?.overtime_amount) || 0);
+  const editTotalPay = editBasePay + editOvertimePay;
+
   return (
     <PageLayout
       className={cn("dark", mobileListPagePaddingClass, "max-md:!gap-3")}
@@ -752,9 +778,11 @@ function DailyEntriesPageInner() {
               );
               const payrollLocked = payrollStatus === "paid";
               const rowLocked = row.status === "Locked" || payrollLocked;
+              const overtimeAmount =
+                row.overtime_amount ?? parseLaborOvertimeAmountFromNotes(row.notes);
               const cost = row.cost_amount ?? 0;
-              const rate =
-                row.hours > 0 && row.cost_amount != null ? row.cost_amount / row.hours : null;
+              const baseCost = baseCostFromStoredTotal(cost, overtimeAmount);
+              const rate = row.hours > 0 && row.cost_amount != null ? baseCost / row.hours : null;
               const visibleNotes = stripLaborOvertimeHoursFromNotes(row.notes);
               return (
                 <div key={row.id} className="flex min-h-[48px] flex-col gap-2 py-2.5">
@@ -788,6 +816,9 @@ function DailyEntriesPageInner() {
                         <span>{row.hours}h</span>
                         <span>{rate != null ? `$${rate.toFixed(2)}/h` : "—"}</span>
                         <span className="font-medium text-foreground">${cost.toFixed(2)}</span>
+                        {overtimeAmount > 0 ? (
+                          <span>incl OT ${overtimeAmount.toFixed(2)}</span>
+                        ) : null}
                       </div>
                       <div className="mt-1.5">
                         <StatusBadge
@@ -1017,6 +1048,30 @@ function DailyEntriesPageInner() {
                     }
                     className="mt-1 h-9 text-sm"
                   />
+                </div>
+              </div>
+              <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+                <div className="grid grid-cols-3 gap-3 text-sm tabular-nums">
+                  <div>
+                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                      Base Pay
+                    </p>
+                    <p className="mt-1 font-semibold text-foreground">${editBasePay.toFixed(2)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                      Overtime
+                    </p>
+                    <p className="mt-1 font-semibold text-foreground">
+                      ${editOvertimePay.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                      Total
+                    </p>
+                    <p className="mt-1 font-semibold text-foreground">${editTotalPay.toFixed(2)}</p>
+                  </div>
                 </div>
               </div>
               <div>

@@ -425,7 +425,8 @@ const AddDailyEntryWorkerRow = React.memo(function AddDailyEntryWorkerRow({
   );
 
   const rate = workerDailyRate(worker) ?? 0;
-  const total = computeRegularPay(rate, morning, afternoon);
+  const baseTotal = computeRegularPay(rate, morning, afternoon);
+  const total = baseTotal + Math.max(0, Number(otAmount) || 0);
 
   return (
     <div

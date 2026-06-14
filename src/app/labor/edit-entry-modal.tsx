@@ -21,7 +21,6 @@ import {
 import { ChevronDown } from "lucide-react";
 
 export type LaborSession = "morning" | "afternoon" | "full_day";
-type EditLaborSession = LaborSession | "overtime";
 
 function sessionFromFlags(morning: unknown, afternoon: unknown): LaborSession {
   const m = morning === true;
@@ -44,6 +43,18 @@ export function sessionLabel(session: LaborSession): string {
   return "Full Day";
 }
 
+function baseAmountFromStoredTotal(storedTotal: number, overtimeAmount: number): number {
+  const total = Math.max(0, Number(storedTotal) || 0);
+  const overtime = Math.max(0, Number(overtimeAmount) || 0);
+  if (overtime <= 0) return total;
+  return total > overtime ? total - overtime : total;
+}
+
+function basePayForSession(session: LaborSession, dailyRate: number, fallback: number): number {
+  if (!Number.isFinite(dailyRate) || dailyRate <= 0) return fallback;
+  return session === "full_day" ? dailyRate : dailyRate / 2;
+}
+
 export function EditEntryModal(props: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -57,8 +68,7 @@ export function EditEntryModal(props: {
 
   const [projectId, setProjectId] = React.useState<string>("");
   const [workDate, setWorkDate] = React.useState<string>("");
-  const [baseSession, setBaseSession] = React.useState<LaborSession>("full_day");
-  const [session, setSession] = React.useState<EditLaborSession>("full_day");
+  const [session, setSession] = React.useState<LaborSession>("full_day");
   const [costAmount, setCostAmount] = React.useState<string>("");
   const [hours, setHours] = React.useState<string>("");
   const [overtimeHours, setOvertimeHours] = React.useState<string>("");
@@ -76,9 +86,10 @@ export function EditEntryModal(props: {
       entry.overtime_hours ?? parseLaborOvertimeHoursFromNotes(entry.notes);
     const entryOvertimeAmount =
       entry.overtime_amount ?? parseLaborOvertimeAmountFromNotes(entry.notes);
-    setBaseSession(entrySession);
-    setSession(entryOvertimeHours > 0 || entryOvertimeAmount > 0 ? "overtime" : entrySession);
-    setCostAmount(String(entry.cost_amount != null ? Number(entry.cost_amount) : 0));
+    setSession(entrySession);
+    const storedTotal = entry.cost_amount != null ? Number(entry.cost_amount) : 0;
+    const baseAmount = baseAmountFromStoredTotal(storedTotal, Number(entryOvertimeAmount || 0));
+    setCostAmount(String(baseAmount));
     setHours(String(entry.hours != null ? Number(entry.hours) : 0));
     setOvertimeHours(String(entryOvertimeHours));
     setOvertimeAmount(String(entryOvertimeAmount));
@@ -87,16 +98,16 @@ export function EditEntryModal(props: {
     setError(null);
   }, [open, entry]);
 
-  const isOvertimeMode = session === "overtime";
-  const sessionForSave: LaborSession = session === "overtime" ? baseSession : session;
   const dailyRate = Number(entry?.daily_rate_snapshot ?? NaN);
-  const sessionCost = Number(costAmount);
+  const basePay = Math.max(0, Number(costAmount) || 0);
+  const overtimeFixedPay = Math.max(0, Number(overtimeAmount) || 0);
+  const totalPay = basePay + overtimeFixedPay;
   const rateSummary = Number.isFinite(dailyRate)
     ? formatCurrency(dailyRate)
     : formatCurrency(entry?.cost_amount ?? null);
-  const sessionCostSummary = Number.isFinite(sessionCost)
-    ? formatCurrency(sessionCost)
-    : formatCurrency(entry?.cost_amount ?? null);
+  const basePaySummary = formatCurrency(basePay);
+  const overtimePaySummary = formatCurrency(overtimeFixedPay);
+  const totalPaySummary = formatCurrency(totalPay);
 
   const handleSave = async () => {
     if (!entry) return;
@@ -106,7 +117,7 @@ export function EditEntryModal(props: {
     }
     const amt = Number(costAmount);
     if (!Number.isFinite(amt) || amt < 0) {
-      setError("Enter a valid cost amount.");
+      setError("Enter a valid base pay.");
       return;
     }
     const hrs = Number(hours);
@@ -114,17 +125,15 @@ export function EditEntryModal(props: {
       setError("Enter valid hours.");
       return;
     }
-    const ot = isOvertimeMode ? Number(overtimeHours || 0) : 0;
-    const otAmount = isOvertimeMode ? Number(overtimeAmount || 0) : 0;
-    if (isOvertimeMode) {
-      if (!Number.isFinite(ot) || ot < 0) {
-        setError("Enter valid overtime hours.");
-        return;
-      }
-      if (!Number.isFinite(otAmount) || otAmount < 0) {
-        setError("Enter a valid overtime fixed amount.");
-        return;
-      }
+    const ot = Number(overtimeHours || 0);
+    const otAmount = Number(overtimeAmount || 0);
+    if (!Number.isFinite(ot) || ot < 0) {
+      setError("Enter valid overtime hours.");
+      return;
+    }
+    if (!Number.isFinite(otAmount) || otAmount < 0) {
+      setError("Enter a valid overtime fixed amount.");
+      return;
     }
     setBusy(true);
     setError(null);
@@ -138,7 +147,7 @@ export function EditEntryModal(props: {
           workerId: entry.worker_id,
           workDate,
           projectId: projectId || null,
-          session: sessionForSave,
+          session,
           costAmount: amt,
           hours: hrs,
           overtimeHours: ot,
@@ -198,70 +207,75 @@ export function EditEntryModal(props: {
               data-testid="labor-edit-session"
               value={session}
               onChange={(e) => {
-                const nextSession = e.target.value as EditLaborSession;
-                if (nextSession !== "overtime") setBaseSession(nextSession);
+                const nextSession = e.target.value as LaborSession;
                 setSession(nextSession);
+                setCostAmount(String(basePayForSession(nextSession, dailyRate, basePay)));
               }}
               className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
             >
               <option value="full_day">Full Day</option>
-              <option value="morning">Half Day</option>
-              <option value="afternoon">Half Day (PM)</option>
-              <option value="overtime">Overtime</option>
+              <option value="morning">Morning</option>
+              <option value="afternoon">Afternoon</option>
             </select>
           </div>
           <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                  Rate
+                  Base Pay
                 </p>
                 <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
-                  {rateSummary}
+                  {basePaySummary}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+                  Overtime
+                </p>
+                <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
+                  {overtimePaySummary}
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
-                  Session Cost
+                  Total
                 </p>
                 <p className="mt-1 text-sm font-semibold tabular-nums text-foreground">
-                  {sessionCostSummary}
+                  {totalPaySummary}
                 </p>
               </div>
             </div>
             <p className="mt-2 text-[11px] leading-4 text-muted-foreground">
-              Saved as the entry total unless adjusted in Advanced.
+              Daily rate: {rateSummary}. Overtime is added on top of the base session pay.
             </p>
           </div>
-          {isOvertimeMode ? (
-            <div className="grid grid-cols-1 gap-3 rounded-lg border border-border/60 bg-muted/10 p-3 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">Overtime Hours</label>
-                <Input
-                  aria-label="Overtime Hours"
-                  value={overtimeHours}
-                  onChange={(e) => setOvertimeHours(e.target.value)}
-                  className="h-9 tabular-nums"
-                  inputMode="decimal"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-medium text-muted-foreground">
-                  Overtime Fixed Amount
-                </label>
-                <Input
-                  aria-label="Overtime Fixed Amount"
-                  value={overtimeAmount}
-                  onChange={(e) => setOvertimeAmount(e.target.value)}
-                  className="h-9 tabular-nums"
-                  inputMode="decimal"
-                />
-              </div>
-              <p className="text-[11px] leading-4 text-muted-foreground sm:col-span-2">
-                Overtime is tracked separately. Fixed amount is entered manually.
-              </p>
+          <div className="grid grid-cols-1 gap-3 rounded-lg border border-border/60 bg-muted/10 p-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">Overtime Hours</label>
+              <Input
+                aria-label="Overtime Hours"
+                value={overtimeHours}
+                onChange={(e) => setOvertimeHours(e.target.value)}
+                className="h-9 tabular-nums"
+                inputMode="decimal"
+              />
             </div>
-          ) : null}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">
+                Overtime Fixed Amount
+              </label>
+              <Input
+                aria-label="Overtime Fixed Amount"
+                value={overtimeAmount}
+                onChange={(e) => setOvertimeAmount(e.target.value)}
+                className="h-9 tabular-nums"
+                inputMode="decimal"
+              />
+            </div>
+            <p className="text-[11px] leading-4 text-muted-foreground sm:col-span-2">
+              Overtime is tracked separately. Fixed amount is entered manually.
+            </p>
+          </div>
           <div className="space-y-2">
             <label className="text-xs font-medium text-muted-foreground">Notes (optional)</label>
             <Input
@@ -291,10 +305,10 @@ export function EditEntryModal(props: {
               <div className="grid grid-cols-1 gap-3 border-t border-border/60 p-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-muted-foreground">
-                    Override Entry Amount
+                    Override Base Pay
                   </label>
                   <Input
-                    aria-label="Override Entry Amount"
+                    aria-label="Override Base Pay"
                     value={costAmount}
                     onChange={(e) => setCostAmount(e.target.value)}
                     className="h-9 tabular-nums"

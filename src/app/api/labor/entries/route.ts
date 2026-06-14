@@ -79,6 +79,17 @@ function safeNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function positiveNumber(v: unknown): number {
+  return Math.max(0, safeNumber(v));
+}
+
+function baseAmountFromStoredTotal(storedTotal: unknown, overtimeAmount: unknown): number {
+  const total = positiveNumber(storedTotal);
+  const ot = positiveNumber(overtimeAmount);
+  if (ot <= 0) return total;
+  return total > ot ? total - ot : total;
+}
+
 function safeString(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
@@ -272,7 +283,9 @@ async function updateSessionEntry(
 
   const { data: current, error: curErr } = await supabase
     .from("labor_entries")
-    .select("id, worker_id, work_date, morning, afternoon, status, daily_rate_snapshot, notes")
+    .select(
+      "id, worker_id, work_date, morning, afternoon, status, daily_rate_snapshot, notes, cost_amount"
+    )
     .eq("id", id)
     .maybeSingle();
   if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
@@ -286,6 +299,7 @@ async function updateSessionEntry(
     status?: string | null;
     daily_rate_snapshot?: number | null;
     notes?: string | null;
+    cost_amount?: number | null;
   };
   if (row.status === "Locked") throw new Error("Cannot edit a locked labor entry.");
 
@@ -303,20 +317,29 @@ async function updateSessionEntry(
 
   const flags = toSessionFlags(session);
   const hours = safeNumber(body.hours);
-  const amount = safeNumber(body.costAmount ?? body.cost_amount);
   const hasOvertime = hasLaborOvertimeInput(body as Record<string, unknown>);
+  const previousOtAmount = parseLaborOvertimeAmountFromNotes(row.notes);
+  const existingBaseAmount = baseAmountFromStoredTotal(row.cost_amount, previousOtAmount);
+  const hasCostAmountInput =
+    Object.prototype.hasOwnProperty.call(body, "costAmount") ||
+    Object.prototype.hasOwnProperty.call(body, "cost_amount");
+  const baseAmount = hasCostAmountInput
+    ? positiveNumber(body.costAmount ?? body.cost_amount)
+    : existingBaseAmount;
   const otHours = hasLaborOvertimeHoursInput(body as Record<string, unknown>)
     ? readLaborOvertimeHoursInput(body)
     : parseLaborOvertimeHoursFromNotes(row.notes);
   const otAmount = hasLaborOvertimeAmountInput(body as Record<string, unknown>)
     ? readLaborOvertimeAmountInput(body)
     : parseLaborOvertimeAmountFromNotes(row.notes);
+  const totalAmount = baseAmount + otAmount;
   const snapshot = await buildLaborEntryRateSnapshotWithClient(supabase, {
     workerId: row.worker_id,
     workDate: normalizedWorkDate,
     hours,
     morning: flags.morning,
     afternoon: flags.afternoon,
+    otAmount,
     existingDailyRateSnapshot: row.daily_rate_snapshot,
   });
   const notesSource = Object.prototype.hasOwnProperty.call(body, "notes") ? body.notes : row.notes;
@@ -324,7 +347,7 @@ async function updateSessionEntry(
     project_id: safeString(body.projectId ?? body.project_id) || null,
     work_date: normalizedWorkDate,
     hours,
-    cost_amount: amount,
+    cost_amount: totalAmount,
     notes: hasOvertime
       ? mergeLaborOvertimeIntoNotes(notesSource, { hours: otHours, amount: otAmount })
       : safeString(notesSource) || null,
@@ -332,8 +355,8 @@ async function updateSessionEntry(
     afternoon: flags.afternoon,
     days_worked: snapshot.days_worked,
     daily_rate_snapshot: snapshot.daily_rate_snapshot,
-    amount_snapshot: amount,
-    labor_cost_snapshot: amount,
+    amount_snapshot: totalAmount,
+    labor_cost_snapshot: totalAmount,
   };
   if (snapshot.rate_history_id) payload.rate_history_id = snapshot.rate_history_id;
 
@@ -398,6 +421,7 @@ async function updateDailyEntry(
     workerId,
     workDate,
     hours,
+    otAmount,
     existingDailyRateSnapshot:
       workerChanged || dateChanged || body.recalculateWithEffectiveRate === true
         ? undefined
@@ -626,6 +650,7 @@ export async function POST(request: Request) {
       workerId: payload.worker_id,
       workDate: payload.work_date,
       hours: payload.hours,
+      otAmount: readLaborOvertimeAmountInput(body),
     });
     const { data, error } = await supabase
       .from("labor_entries")
@@ -668,6 +693,7 @@ export async function PATCH(request: Request) {
         workerId: payload.worker_id,
         workDate: payload.work_date,
         hours: payload.hours,
+        otAmount: readLaborOvertimeAmountInput(body),
       });
       const { data: updated, error } = await supabase
         .from("labor_entries")

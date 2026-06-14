@@ -12,7 +12,10 @@ import {
   changeWorkerDailyRateWithClient,
   ensureInitialWorkerRateHistoryWithClient,
 } from "@/lib/worker-rate-history-db";
-import { mergeLaborOvertimeIntoNotes } from "@/lib/labor-overtime-notes";
+import {
+  mergeLaborOvertimeIntoNotes,
+  parseLaborOvertimeAmountFromNotes,
+} from "@/lib/labor-overtime-notes";
 
 const LABOR_ENTRIES_COLS = "id, worker_id, project_id, work_date, hours, cost_code, notes" as const;
 const LABOR_ENTRIES_COLS_NO_PROJECT = "id, worker_id, work_date, hours, cost_code, notes" as const;
@@ -672,6 +675,7 @@ export async function insertDailyLaborEntriesWithClient(
       hours,
       morning: r.morning,
       afternoon: r.afternoon,
+      otAmount,
     });
     payloads.push({
       worker_id: r.workerId,
@@ -807,6 +811,7 @@ export async function upsertLaborEntry(
     hours,
     morning: entry.morning,
     afternoon: entry.afternoon,
+    otAmount: parseLaborOvertimeAmountFromNotes(entry.notes),
   });
   const payload = {
     worker_id: entry.workerId,

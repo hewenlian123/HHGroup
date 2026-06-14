@@ -662,7 +662,7 @@ test.describe("bank and labor server API boundary", () => {
       await workerRow.getByRole("button", { name: "PM" }).click();
       await workerRow.getByLabel(`Overtime hours for ${workerName}`).fill("1.5");
       await workerRow.getByLabel(`Overtime fixed amount for ${workerName}`).fill("60");
-      await expect(workerRow).toContainText("$200.00");
+      await expect(workerRow).toContainText("$260.00");
 
       const dateBOptionsResponse = waitForLaborOptionsForDate(dateB);
       await dateInput.fill(dateB);
@@ -1016,7 +1016,7 @@ test.describe("bank and labor server API boundary", () => {
       await expect(workerBRow).toContainText("$290.00");
       await workerBRow.getByLabel(`Overtime hours for ${workerBName}`).fill("1.5");
       await workerBRow.getByLabel(`Overtime fixed amount for ${workerBName}`).fill("60");
-      await expect(workerBRow).toContainText("$290.00");
+      await expect(workerBRow).toContainText("$350.00");
 
       const dateBOptionsResponse = waitForLaborOptionsForDate(dateB);
       await dateInput.fill(dateB);
@@ -1038,6 +1038,9 @@ test.describe("bank and labor server API boundary", () => {
       await expect(workerBRow).toContainText("$145.00");
       await workerBRow.getByRole("button", { name: "PM" }).click();
       await expect(workerBRow).toContainText("$290.00");
+      await workerBRow.getByLabel(`Overtime hours for ${workerBName}`).fill("1.5");
+      await workerBRow.getByLabel(`Overtime fixed amount for ${workerBName}`).fill("60");
+      await expect(workerBRow).toContainText("$350.00");
       await workerCRow.getByRole("button", { name: "AM" }).click();
       await expect(workerCRow).toContainText("$125.00");
 
@@ -1059,10 +1062,12 @@ test.describe("bank and labor server API boundary", () => {
       expect(savedRows ?? []).toHaveLength(2);
       const savedB = savedRows!.find((entry) => entry.worker_id === workerB.id)!;
       const savedC = savedRows!.find((entry) => entry.worker_id === workerC.id)!;
-      expect(Number(savedB.cost_amount)).toBeCloseTo(290, 2);
+      expect(Number(savedB.cost_amount)).toBeCloseTo(350, 2);
       expect(Number(savedB.daily_rate_snapshot)).toBeCloseTo(290, 2);
-      expect(Number(savedB.amount_snapshot)).toBeCloseTo(290, 2);
-      expect(Number(savedB.labor_cost_snapshot)).toBeCloseTo(290, 2);
+      expect(Number(savedB.amount_snapshot)).toBeCloseTo(350, 2);
+      expect(Number(savedB.labor_cost_snapshot)).toBeCloseTo(350, 2);
+      expect(savedB.notes).toContain("ot_hours=1.5");
+      expect(savedB.notes).toContain("ot_amount=60");
       expect(savedB).toMatchObject({ morning: true, afternoon: true, cost_code: "FLOW-COST-CODE" });
       expect(Number(savedC.cost_amount)).toBeCloseTo(125, 2);
       expect(Number(savedC.daily_rate_snapshot)).toBeCloseTo(250, 2);
@@ -1093,10 +1098,11 @@ test.describe("bank and labor server API boundary", () => {
         .getByRole("button")
         .filter({ hasText: compactDateLabel(dateB) })
         .first();
-      await expect(dateRow).toContainText("$415.00", { timeout: 30_000 });
+      await expect(dateRow).toContainText("$475.00", { timeout: 30_000 });
       await dateRow.click();
       await expect(dailyEntries).toContainText(workerBName);
-      await expect(dailyEntries).toContainText("$290.00");
+      await expect(dailyEntries).toContainText("$350.00");
+      await expect(dailyEntries).toContainText("Full Day + OT");
       await expect(dailyEntries).toContainText(workerCName);
       await expect(dailyEntries).toContainText("$125.00");
 
@@ -1269,8 +1275,8 @@ test.describe("bank and labor server API boundary", () => {
       expect(createdWithOvertimeError).toBeNull();
       expect(createdWithOvertime?.notes).toContain("ot_hours=1.5");
       expect(createdWithOvertime?.notes).toContain("ot_amount=60");
-      expect(Number(createdWithOvertime?.cost_amount)).toBe(50);
-      expect(Number(createdWithOvertime?.labor_cost_snapshot)).toBe(50);
+      expect(Number(createdWithOvertime?.cost_amount)).toBe(110);
+      expect(Number(createdWithOvertime?.labor_cost_snapshot)).toBe(110);
       expect(Number.isFinite(Number(createdWithOvertime?.cost_amount))).toBe(true);
       expect(Number.isFinite(Number(createdWithOvertime?.labor_cost_snapshot))).toBe(true);
 
@@ -1330,8 +1336,8 @@ test.describe("bank and labor server API boundary", () => {
       expect(editedEntry?.notes).toContain("boundary edit");
       expect(editedEntry?.notes).toContain("ot_hours=2");
       expect(editedEntry?.notes).toContain("ot_amount=60");
-      expect(Number(editedEntry?.cost_amount)).toBe(100);
-      expect(Number(editedEntry?.labor_cost_snapshot)).toBe(100);
+      expect(Number(editedEntry?.cost_amount)).toBe(160);
+      expect(Number(editedEntry?.labor_cost_snapshot)).toBe(160);
       expect(Number.isFinite(Number(editedEntry?.labor_cost_snapshot))).toBe(true);
 
       const joinedResponse = await context.request.get(
@@ -1351,6 +1357,7 @@ test.describe("bank and labor server API boundary", () => {
       const joinedEntry = joinedBody.entries?.find((entry) => entry.id === entryId);
       expect(joinedEntry?.overtime_hours).toBe(2);
       expect(joinedEntry?.overtime_amount).toBe(60);
+      expect(Number(joinedEntry?.cost_amount)).toBe(160);
       expect(Number.isFinite(Number(joinedEntry?.cost_amount))).toBe(true);
 
       const defaultGetResponse = await context.request.get(
@@ -1413,17 +1420,19 @@ test.describe("bank and labor server API boundary", () => {
       }
       await expect(laborDialog).toBeVisible({ timeout: 10_000 });
       await expect(laborDialog.getByTestId("labor-edit-session")).toHaveValue("full_day");
-      await expect(laborDialog.getByLabel("Overtime Hours")).toHaveCount(0);
-      await expect(laborDialog.getByLabel("Overtime Fixed Amount")).toHaveCount(0);
+      await expect(laborDialog.getByLabel("Overtime Hours")).toBeVisible();
+      await expect(laborDialog.getByLabel("Overtime Fixed Amount")).toBeVisible();
+      await expect(laborDialog.getByLabel("Overtime Hours")).toHaveValue("0");
+      await expect(laborDialog.getByLabel("Overtime Fixed Amount")).toHaveValue("0");
       await expect(laborDialog.getByTestId("labor-edit-advanced-toggle")).toHaveAttribute(
         "aria-expanded",
         "false"
       );
-      await expect(laborDialog.getByLabel("Override Entry Amount")).toHaveCount(0);
+      await expect(laborDialog.getByLabel("Override Base Pay")).toHaveCount(0);
 
       await laborDialog.getByTestId("labor-edit-session").selectOption("morning");
-      await expect(laborDialog.getByLabel("Overtime Hours")).toHaveCount(0);
-      await laborDialog.getByTestId("labor-edit-session").selectOption("overtime");
+      await expect(laborDialog.getByLabel("Overtime Hours")).toBeVisible();
+      await laborDialog.getByTestId("labor-edit-session").selectOption("full_day");
       await expect(laborDialog.getByLabel("Overtime Hours")).toBeVisible();
       await expect(laborDialog.getByLabel("Overtime Fixed Amount")).toBeVisible();
       await laborDialog.getByLabel("Overtime Hours").fill("2");
@@ -1438,7 +1447,7 @@ test.describe("bank and labor server API boundary", () => {
         await laborEditButton.evaluate((node) => (node as HTMLButtonElement).click());
       }
       await expect(laborDialog).toBeVisible({ timeout: 10_000 });
-      await expect(laborDialog.getByTestId("labor-edit-session")).toHaveValue("overtime");
+      await expect(laborDialog.getByTestId("labor-edit-session")).toHaveValue("full_day");
       await expect(laborDialog.getByLabel("Overtime Hours")).toHaveValue("2");
       await expect(laborDialog.getByLabel("Overtime Fixed Amount")).toHaveValue("60");
       await laborPage.setViewportSize({ width: 390, height: 844 });

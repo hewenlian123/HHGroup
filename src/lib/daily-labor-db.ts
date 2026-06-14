@@ -197,7 +197,14 @@ export function formatLaborEntrySessionLabel(
   const otAmount = parseOtAmountFromNotes(n);
   const ot = otAmount > 0 ? 0 : parseOtHoursFromNotes(n);
   const otRate = daily > 0 ? (daily / 8) * 1.5 : 0;
-  const baseCost = ot > 0 && otRate > 0 ? Math.max(0, cost - ot * otRate) : cost;
+  const baseCost =
+    otAmount > 0
+      ? cost > otAmount
+        ? Math.max(0, cost - otAmount)
+        : cost
+      : ot > 0 && otRate > 0
+        ? Math.max(0, cost - ot * otRate)
+        : cost;
 
   if (daily > 0 && amountMatchesDailyWage(baseCost, daily)) return "Full";
   if (half > 0 && amountMatchesDailyWage(baseCost, half)) return "Half";
@@ -722,6 +729,7 @@ export async function insertDailyLaborEntries(
       workerId: r.worker_id,
       workDate: date,
       hours,
+      otAmount: parseLaborOvertimeAmountFromNotes(r.notes),
     });
     payloads.push({
       worker_id: r.worker_id,
@@ -823,6 +831,7 @@ export async function updateDailyLaborEntry(
     workerId: draft.worker_id,
     workDate,
     hours,
+    otAmount: parseLaborOvertimeAmountFromNotes(draft.notes),
     existingDailyRateSnapshot: workerChanged ? undefined : currentRow?.daily_rate_snapshot,
   });
   const payload = {
@@ -871,7 +880,7 @@ export async function updateLaborEntry(
   const c = client();
   const { data: current, error: curErr } = await c
     .from("labor_entries")
-    .select("id, worker_id, work_date, notes, status")
+    .select("id, worker_id, work_date, notes, status, cost_amount")
     .eq("id", entryId)
     .maybeSingle();
   if (curErr) throw new Error(curErr.message ?? "Failed to load labor entry.");
@@ -882,6 +891,14 @@ export async function updateLaborEntry(
   const workerId = (current as { worker_id: string }).worker_id;
   const workDate = (current as { work_date: string }).work_date;
   const existingNotes = ((current as { notes?: string | null }).notes ?? "") as string;
+  const existingOtAmount = parseLaborOvertimeAmountFromNotes(existingNotes);
+  const existingBaseAmount = Math.max(
+    0,
+    existingOtAmount > 0 &&
+      (Number((current as { cost_amount?: number | null }).cost_amount) || 0) > existingOtAmount
+      ? (Number((current as { cost_amount?: number | null }).cost_amount) || 0) - existingOtAmount
+      : Number((current as { cost_amount?: number | null }).cost_amount) || 0
+  );
 
   const session = updates.session ?? parseSessionFromNotes(existingNotes);
   if (session) {
@@ -895,10 +912,18 @@ export async function updateLaborEntry(
 
   const payload: Record<string, unknown> = {};
   if (updates.project_id !== undefined) payload.project_id = updates.project_id ?? null;
-  if (updates.amount !== undefined) payload.cost_amount = Number(updates.amount) || 0;
 
   const ot = updates.overtime_hours;
   const otAmount = updates.overtime_amount;
+  if (updates.amount !== undefined || otAmount !== undefined) {
+    const baseAmount =
+      updates.amount !== undefined ? Math.max(0, Number(updates.amount) || 0) : existingBaseAmount;
+    const fixedOtAmount =
+      otAmount !== undefined ? Math.max(0, Number(otAmount) || 0) : existingOtAmount;
+    payload.cost_amount = baseAmount + fixedOtAmount;
+    payload.amount_snapshot = baseAmount + fixedOtAmount;
+    payload.labor_cost_snapshot = baseAmount + fixedOtAmount;
+  }
   if (session || ot !== undefined || otAmount !== undefined) {
     const tokens = existingNotes
       .split(/\s+/)

@@ -107,6 +107,15 @@ function parseDayTypeAndOt(notes: string | null): {
   };
 }
 
+function hasFixedOvertimeAmount(notes: string | null): boolean {
+  const match = /ot_amount=([\d.]+)/i.exec(notes ?? "");
+  return match ? Number(match[1]) > 0 : false;
+}
+
+function sessionLabelWithOvertime(session: LaborSession, notes: string | null): string {
+  return hasFixedOvertimeAmount(notes) ? `${sessionLabel(session)} + OT` : sessionLabel(session);
+}
+
 function getMonthRange(ym: string): { dateFrom: string; dateTo: string } {
   const [y, m] = ym.split("-").map(Number);
   const dateFrom = `${ym}-01`;
@@ -882,7 +891,7 @@ export default function LaborPageClient() {
                                               sessionBadgeClass(session)
                                             )}
                                           >
-                                            {sessionLabel(session)}
+                                            {sessionLabelWithOvertime(session, e.notes)}
                                           </span>
                                         </td>
                                         <td className="py-2 px-3 text-right">
@@ -940,7 +949,7 @@ export default function LaborPageClient() {
                                                 sessionBadgeClass(session)
                                               )}
                                             >
-                                              {sessionLabel(session)}
+                                              {sessionLabelWithOvertime(session, e.notes)}
                                             </span>
                                           </div>
                                           <div className="mt-0.5 text-xs text-muted-foreground truncate">
@@ -1408,7 +1417,7 @@ export default function LaborPageClient() {
                                       sessionBadgeClass(session)
                                     )}
                                   >
-                                    {sessionLabel(session)}
+                                    {sessionLabelWithOvertime(session, e.notes)}
                                   </span>
                                 </td>
                                 <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">

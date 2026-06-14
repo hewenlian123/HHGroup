@@ -1,10 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { laborEntryPaymentIdMapFromWorkerPayments } from "@/lib/labor-balance-shared";
+import { parseLaborOvertimeAmountFromNotes } from "@/lib/labor-overtime-notes";
 import { normalizeWorkerRateDate } from "@/lib/worker-rate-date";
 
 export { normalizeWorkerRateDate } from "@/lib/worker-rate-date";
-
-const OT_MULTIPLIER = 1.5;
 
 export type WorkerRateHistory = {
   id: string;
@@ -271,7 +270,8 @@ async function loadRateApplyCandidatesWithClient(
     const daysWorked = daysWorkedForRateApply(row);
     if (daysWorked == null || daysWorked <= 0) continue;
     const oldAmount = roundMoney(amountSnapshotForRateApply(row));
-    const newAmount = roundMoney(history.dailyRate * daysWorked);
+    const overtimeAmount = parseLaborOvertimeAmountFromNotes(row.notes);
+    const newAmount = roundMoney(history.dailyRate * daysWorked + overtimeAmount);
     candidates.push({
       id,
       daysWorked,
@@ -386,10 +386,13 @@ export function daysWorkedFromLaborInput(input: {
   return rawHours <= 2 ? rawHours : rawHours / 8;
 }
 
-export function laborCostFromDailyRate(dailyRate: number, daysWorked: number, otHours = 0): number {
+export function laborCostFromDailyRate(
+  dailyRate: number,
+  daysWorked: number,
+  fixedOvertimeAmount = 0
+): number {
   const basePay = Math.max(0, safeNumber(dailyRate)) * Math.max(0, safeNumber(daysWorked));
-  const otPay =
-    Math.max(0, safeNumber(otHours)) * (Math.max(0, safeNumber(dailyRate)) / 8) * OT_MULTIPLIER;
+  const otPay = Math.max(0, safeNumber(fixedOvertimeAmount));
   return basePay + otPay;
 }
 
@@ -401,7 +404,9 @@ export async function buildLaborEntryRateSnapshotWithClient(
     hours?: unknown;
     morning?: unknown;
     afternoon?: unknown;
-    otHours?: unknown;
+    /** Manual fixed overtime amount. Overtime hours are informational and never auto-price OT. */
+    otAmount?: unknown;
+    fixedOvertimeAmount?: unknown;
     existingDailyRateSnapshot?: unknown;
   }
 ): Promise<LaborEntryRateSnapshot> {
@@ -417,7 +422,7 @@ export async function buildLaborEntryRateSnapshotWithClient(
   const amount = laborCostFromDailyRate(
     effective.dailyRate,
     daysWorked,
-    safeNumber(params.otHours)
+    safeNumber(params.otAmount ?? params.fixedOvertimeAmount)
   );
   return {
     days_worked: daysWorked,
