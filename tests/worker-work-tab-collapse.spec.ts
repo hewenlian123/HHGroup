@@ -9,13 +9,14 @@ import {
 } from "./e2e-supabase-url-guard";
 
 const BASE = (process.env.E2E_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
-const PREFIX = "LOCAL-WORK-TAB-COLLAPSE-QA-DELETE-ME";
+const PREFIX = "LOCAL-WORKER-WORKTAB-OT-QA-DELETE-ME";
 const RUN = Date.now();
 const ids = {
   worker: randomUUID(),
   project: randomUUID(),
-  mayFull: randomUUID(),
-  mayHalf: randomUUID(),
+  mayFirstFull: randomUUID(),
+  maySecondOt: randomUUID(),
+  mayThirdFull: randomUUID(),
   aprilFull: randomUUID(),
 };
 const workerName = `${PREFIX} Worker ${RUN}`;
@@ -99,44 +100,61 @@ async function seedWorkerWork(client: SupabaseClient): Promise<void> {
       name: workerName,
       role: "QA",
       phone: "555-0199",
-      half_day_rate: 200,
-      daily_rate: 400,
+      half_day_rate: 100,
+      daily_rate: 200,
       status: "active",
       notes: PREFIX,
     },
   ]);
   await upsertFirstSuccess(client, "labor_workers", [
-    { id: ids.worker, name: workerName, active: true, rate: 400, type: "QA" },
+    { id: ids.worker, name: workerName, active: true, rate: 200, type: "QA" },
     { id: ids.worker, name: workerName },
   ]);
   const laborRows = [
     {
-      id: ids.mayFull,
+      id: ids.mayThirdFull,
       worker_id: ids.worker,
       project_id: ids.project,
-      work_date: "2026-05-20",
+      work_date: "2026-05-03",
       hours: 1,
       cost_code: "QA",
-      notes: `${PREFIX} may full day_type=full_day`,
+      notes: `${PREFIX} may 03 full day_type=full_day`,
       cost_amount: 200,
       status: "Draft",
       daily_rate_snapshot: 200,
+      days_worked: 1,
       amount_snapshot: 200,
       labor_cost_snapshot: 200,
     },
     {
-      id: ids.mayHalf,
+      id: ids.maySecondOt,
       worker_id: ids.worker,
       project_id: ids.project,
-      work_date: "2026-05-21",
-      hours: 0.5,
+      work_date: "2026-05-02",
+      hours: 1,
       cost_code: "QA",
-      notes: `${PREFIX} may half day_type=half_day`,
-      cost_amount: 100,
+      notes: `${PREFIX} may 02 full overtime day_type=full_day ot_amount=200`,
+      cost_amount: 400,
       status: "Draft",
       daily_rate_snapshot: 200,
-      amount_snapshot: 100,
-      labor_cost_snapshot: 100,
+      days_worked: 1,
+      amount_snapshot: 400,
+      labor_cost_snapshot: 400,
+    },
+    {
+      id: ids.mayFirstFull,
+      worker_id: ids.worker,
+      project_id: ids.project,
+      work_date: "2026-05-01",
+      hours: 1,
+      cost_code: "QA",
+      notes: `${PREFIX} may 01 full day_type=full_day`,
+      cost_amount: 200,
+      status: "Draft",
+      daily_rate_snapshot: 200,
+      days_worked: 1,
+      amount_snapshot: 200,
+      labor_cost_snapshot: 200,
     },
     {
       id: ids.aprilFull,
@@ -203,12 +221,21 @@ test.describe("Worker detail Work tab month collapse", () => {
     const aprilToggle = april.getByRole("button", { name: /Apr 2026/i });
     await expect(mayToggle).toHaveAttribute("aria-expanded", "true");
     await expect(aprilToggle).toHaveAttribute("aria-expanded", "false");
-    await expect(may).toContainText("1.5 days");
-    await expect(may).toContainText("$300.00");
+    await expect(may).toContainText("3 days");
+    await expect(may).toContainText("$800.00");
     await expect(may).toContainText("1 project");
-    await expect(may.getByTestId("worker-work-entry-row")).toHaveCount(2);
-    await expect(may).toContainText("$100.00");
-    await expect(may).not.toContainText("$600.00");
+    const mayRows = may.getByTestId("worker-work-entry-row");
+    await expect(mayRows).toHaveCount(3);
+    await expect(mayRows.nth(0).locator("td").nth(0)).toHaveText("May 01, 2026");
+    await expect(mayRows.nth(0).locator("td").nth(2)).toHaveText("Full");
+    await expect(mayRows.nth(0).locator("td").nth(3)).toHaveText("$200.00");
+    await expect(mayRows.nth(1).locator("td").nth(0)).toHaveText("May 02, 2026");
+    await expect(mayRows.nth(1).locator("td").nth(2)).toHaveText("Full + OT $200");
+    await expect(mayRows.nth(1).locator("td").nth(3)).toHaveText("$400.00");
+    await expect(mayRows.nth(2).locator("td").nth(0)).toHaveText("May 03, 2026");
+    await expect(mayRows.nth(2).locator("td").nth(2)).toHaveText("Full");
+    await expect(mayRows.nth(2).locator("td").nth(3)).toHaveText("$200.00");
+    await expect(may).not.toContainText("$1,000.00");
     await expect(april.getByText(/Apr 15, 2026/i)).not.toBeVisible();
 
     await page.getByRole("button", { name: /^Expand all$/i }).click();
@@ -236,11 +263,14 @@ test.describe("Worker detail Work tab month collapse", () => {
     await expect(page.getByTestId("worker-work-month-groups")).toBeVisible({
       timeout: 30_000,
     });
-    await expect(page.getByTestId("worker-work-entry-card")).toHaveCount(2);
-    await expect(page.getByTestId("worker-work-month-2026-05")).toContainText("1.5 days");
+    await expect(page.getByTestId("worker-work-entry-card")).toHaveCount(3);
+    await expect(page.getByTestId("worker-work-month-2026-05")).toContainText("3 days");
     await expect(
-      page.getByTestId("worker-work-entry-card").filter({ hasText: "Half" })
-    ).toContainText("0.5 days");
+      page.getByTestId("worker-work-entry-card").filter({ hasText: "May 2" })
+    ).toContainText("Full + OT $200");
+    await expect(
+      page.getByTestId("worker-work-entry-card").filter({ hasText: "May 2" })
+    ).toContainText("$400.00");
     await expectNoHorizontalOverflow(page);
     const monthToggleHeight = await page
       .getByTestId("worker-work-month-2026-05")

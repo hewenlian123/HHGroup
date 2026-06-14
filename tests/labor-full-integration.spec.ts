@@ -196,7 +196,7 @@ async function createDeductedAdvance(page: Page) {
   await selectWorker(dialog.locator("select").nth(0));
   await selectByLabelOrFirst(dialog.locator("select").nth(1), E2E_PRESERVED_PROJECT_LABEL);
   await dialog.locator('input[type="number"]').fill("25");
-  await dialog.getByTestId("add-daily-entry-date-input").fill(todayLocalISO());
+  await dialog.locator('input[type="date"]').fill(todayLocalISO());
   await dialog.getByPlaceholder("Optional").fill(`advance ${RUN}`);
 
   const created = page.waitForResponse(
@@ -229,9 +229,10 @@ async function openWorkerBalanceFromList(page: Page) {
   const link = page.getByRole("link", { name: new RegExp(`^${escapeRegex(workerName)}$`) }).first();
   await expect(link).toBeVisible({ timeout: 30_000 });
   await link.click();
-  await page.waitForURL(/\/labor\/workers\/[^/?#]+\/balance(?:[?#].*)?$/, { timeout: 30_000 });
+  await page.waitForURL(/\/workers\/[^/?#]+(?:[?#].*)?$/, { timeout: 30_000 });
   await waitForStablePage(page);
-  workerId = new URL(page.url()).pathname.split("/").filter(Boolean).at(-2) ?? workerId;
+  workerId = new URL(page.url()).pathname.split("/").filter(Boolean).pop() ?? workerId;
+  await goto(page, `/labor/workers/${workerId}/balance`);
 }
 
 function escapeRegex(value: string) {
@@ -262,14 +263,49 @@ function totalPaymentAmount(dialog: Locator) {
   return dialog.locator("dl").filter({ hasText: "Total Payment Amount" }).locator("dd").last();
 }
 
-async function payLaborOnly(page: Page) {
-  await page.getByRole("button", { name: /^Pay Worker$/i }).click();
+async function selectOpenPayable(page: Page, sectionName: RegExp, amountText: string) {
+  const section = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: sectionName }) })
+    .first();
+  await expect(section).toBeVisible({ timeout: 30_000 });
+
+  const tableCheckbox = section
+    .locator("tbody tr:visible")
+    .filter({ hasText: amountText })
+    .getByRole("checkbox")
+    .first();
+  if (await tableCheckbox.isVisible().catch(() => false)) {
+    await tableCheckbox.check();
+    return;
+  }
+
+  const cardCheckbox = section
+    .locator("label:visible")
+    .filter({ hasText: amountText })
+    .getByRole("checkbox")
+    .first();
+  await expect(cardCheckbox).toBeVisible({ timeout: 30_000 });
+  await cardCheckbox.check();
+}
+
+async function openSelectedPaymentModal(page: Page) {
+  await page
+    .getByRole("button", { name: /^Pay Selected$/i })
+    .first()
+    .click();
   const dialog = page.getByRole("dialog", { name: /^Pay Worker$/i });
   await expect(dialog).toBeVisible({ timeout: 20_000 });
+  return dialog;
+}
 
-  await expect(itemLabel(dialog, "$200.00")).toBeVisible();
+async function payLaborOnly(page: Page) {
+  await selectOpenPayable(page, /^Labor Entries$/i, "$200.00");
+  const dialog = await openSelectedPaymentModal(page);
+
+  await expect(dialog).toContainText("1 entry");
+  await expect(dialog).toContainText("$200.00");
   await expect(itemLabel(dialog, "$30.00")).toBeVisible();
-  await itemLabel(dialog, "$30.00").locator('input[type="checkbox"]').uncheck();
   await expect(totalPaymentAmount(dialog)).toContainText("$200.00");
   await dialog.getByPlaceholder("Optional notes").fill(paymentNote);
 
@@ -291,10 +327,9 @@ async function payLaborOnly(page: Page) {
 }
 
 async function verifyOnlyReimbursementSelectable(page: Page) {
-  await page.getByRole("button", { name: /^Pay Worker$/i }).click();
-  const dialog = page.getByRole("dialog", { name: /^Pay Worker$/i });
-  await expect(dialog).toBeVisible({ timeout: 20_000 });
-  await expect(itemLabel(dialog, "$200.00")).toHaveCount(0);
+  await selectOpenPayable(page, /^Reimbursements$/i, "$30.00");
+  const dialog = await openSelectedPaymentModal(page);
+  await expect(dialog).not.toContainText("$200.00");
   await expect(itemLabel(dialog, "$30.00")).toBeVisible();
   await expect(totalPaymentAmount(dialog)).toContainText("$30.00");
   await dialog.getByRole("button", { name: /^Cancel$/i }).click();

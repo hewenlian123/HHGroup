@@ -12,6 +12,10 @@ import type { Worker } from "@/lib/labor-db";
 import type { LaborEntryWithJoins } from "@/lib/daily-labor-db";
 import { formatLaborEntrySessionLabel } from "@/lib/daily-labor-db";
 import {
+  parseLaborOvertimeAmountFromNotes,
+  parseLaborOvertimeHoursFromNotes,
+} from "@/lib/labor-overtime-notes";
+import {
   ArrowLeft,
   AlertTriangle,
   CalendarPlus,
@@ -132,6 +136,15 @@ function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
+function fmtUsdCompact(n: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: Number.isInteger(n) ? 0 : 2,
     maximumFractionDigits: 2,
   }).format(n);
 }
@@ -280,6 +293,11 @@ function fmtDayLabel(n: number): string {
   return `${fmtDays(rounded)} ${Math.abs(rounded - 1) < 0.005 ? "day" : "days"}`;
 }
 
+function fmtHourLabel(n: number): string {
+  const rounded = Math.round(n * 100) / 100;
+  return `${fmtDays(rounded)}h`;
+}
+
 function fmtCountLabel(n: number, singular: string, plural = `${singular}s`): string {
   return `${n} ${n === 1 ? singular : plural}`;
 }
@@ -301,7 +319,7 @@ function buildWorkMonthGroups(entries: LaborEntryWithJoins[], rates?: EntryDayFa
       earned: v.earned,
       entries: entries
         .filter((entry) => monthKeyFromDate(entry.work_date) === monthKey)
-        .sort((a, b) => b.work_date.localeCompare(a.work_date) || b.id.localeCompare(a.id)),
+        .sort((a, b) => a.work_date.localeCompare(b.work_date) || a.id.localeCompare(b.id)),
       projectCount: new Set(
         entries
           .filter((entry) => monthKeyFromDate(entry.work_date) === monthKey)
@@ -916,6 +934,23 @@ export default function WorkerDashboardPage() {
       morning: entry.morning,
       afternoon: entry.afternoon,
     });
+  const sessionLabelWithOvertimeForEntry = (entry: LaborEntryWithJoins) => {
+    const base = sessionLabelForEntry(entry);
+    const overtimeAmount = Number(
+      entry.overtime_amount ?? parseLaborOvertimeAmountFromNotes(entry.notes)
+    );
+    const overtimeHours = Number(
+      entry.overtime_hours ?? parseLaborOvertimeHoursFromNotes(entry.notes)
+    );
+    const prefix = base && base !== "—" ? `${base} + ` : "";
+    if (Number.isFinite(overtimeAmount) && overtimeAmount > 0) {
+      return `${prefix}OT ${fmtUsdCompact(overtimeAmount)}`;
+    }
+    if (Number.isFinite(overtimeHours) && overtimeHours > 0) {
+      return `${prefix}OT ${fmtHourLabel(overtimeHours)}`;
+    }
+    return base;
+  };
 
   return (
     <div className="dark neo-page-on-graphite mx-auto flex w-full max-w-[430px] flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:max-w-[460px] md:max-w-6xl md:gap-5 md:p-6">
@@ -1324,7 +1359,7 @@ export default function WorkerDashboardPage() {
                                         {entry.project_name ?? "—"}
                                       </td>
                                       <td className="px-3 py-2 text-[var(--neo-text-secondary)]">
-                                        {sessionLabelForEntry(entry)}
+                                        {sessionLabelWithOvertimeForEntry(entry)}
                                       </td>
                                       <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--neo-text-primary)]">
                                         {fmtUsd(entryEarned(entry))}
@@ -1360,7 +1395,7 @@ export default function WorkerDashboardPage() {
                                     </p>
                                   </div>
                                   <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[var(--neo-text-tertiary)]">
-                                    <span>{sessionLabelForEntry(entry)}</span>
+                                    <span>{sessionLabelWithOvertimeForEntry(entry)}</span>
                                     <span>
                                       {fmtDayLabel(
                                         entryDaysWorked(entry, {

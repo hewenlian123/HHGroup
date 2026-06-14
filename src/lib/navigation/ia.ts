@@ -410,6 +410,7 @@ const HH_PROJECT_OS_MOBILE_ROUTE_OWNERS = [
       "/labor/payments",
       "/labor/advances",
       "/labor/worker-balances",
+      "/labor/worker-invoices",
     ],
   },
   {

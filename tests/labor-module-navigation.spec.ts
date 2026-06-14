@@ -5,6 +5,7 @@ const LABOR_SECTION_STORAGE = {
   PROJECTS: true,
   FINANCIAL: true,
   PEOPLE: true,
+  REPORTS: true,
   DOCUMENTS: true,
   SETTINGS: true,
 };
@@ -12,10 +13,12 @@ const LABOR_SECTION_STORAGE = {
 type LaborRoute = {
   label: string;
   path: string;
+  expectedPath?: string;
   heading: RegExp;
   activeLabel?: string;
   bottomNavLabel: string;
   action?: LaborAction;
+  skipRowsOrEmptyState?: boolean;
 };
 
 type LaborAction =
@@ -55,21 +58,29 @@ const laborRoutes: LaborRoute[] = [
   {
     label: "Worker Balances",
     path: "/labor/worker-balances",
-    heading: /^(Worker Balances|Balances)$/i,
-    bottomNavLabel: "People",
+    expectedPath: "/reports/workforce",
+    heading: /^Workforce Reports$/i,
+    activeLabel: "Workforce",
+    bottomNavLabel: "Reports",
+    skipRowsOrEmptyState: true,
   },
   {
     label: "Worker Payments",
     path: "/labor/payments",
-    heading: /^Worker Payments$/i,
-    bottomNavLabel: "People",
+    expectedPath: "/reports/workforce",
+    heading: /^Workforce Reports$/i,
+    activeLabel: "Workforce",
+    bottomNavLabel: "Reports",
+    skipRowsOrEmptyState: true,
   },
   {
     label: "Worker Advances",
     path: "/labor/advances",
-    heading: /^(Worker Advances|Advances)$/i,
-    bottomNavLabel: "People",
-    action: { kind: "dialog", button: /^Create Advance$/i, dialog: /^Create Advance$/i },
+    expectedPath: "/reports/workforce",
+    heading: /^Workforce Reports$/i,
+    activeLabel: "Workforce",
+    bottomNavLabel: "Reports",
+    skipRowsOrEmptyState: true,
   },
   {
     label: "Worker Receipts",
@@ -81,7 +92,7 @@ const laborRoutes: LaborRoute[] = [
     label: "Worker Invoices",
     path: "/labor/worker-invoices",
     heading: /^Worker Invoices$/i,
-    bottomNavLabel: "People",
+    bottomNavLabel: "Reports",
     action: {
       kind: "inline",
       button: /^New Invoice$/i,
@@ -92,9 +103,11 @@ const laborRoutes: LaborRoute[] = [
   {
     label: "Payroll Summary",
     path: "/labor/payroll",
-    heading: /^Payroll Summary$/i,
-    activeLabel: "Payroll Summary",
-    bottomNavLabel: "People",
+    expectedPath: "/reports/workforce",
+    heading: /^Workforce Reports$/i,
+    activeLabel: "Workforce",
+    bottomNavLabel: "Reports",
+    skipRowsOrEmptyState: true,
   },
 ];
 
@@ -126,7 +139,7 @@ function navLink(page: Page, label: string): Locator {
 async function ensureOsSectionsOpen(page: Page) {
   const sidebar = visibleSidebar(page);
   await expect(sidebar).toBeVisible({ timeout: 20_000 });
-  for (const label of ["PROJECTS", "FINANCIAL", "PEOPLE", "DOCUMENTS"]) {
+  for (const label of ["PROJECTS", "FINANCIAL", "DIRECTORY", "REPORTS", "DOCUMENTS"]) {
     const sectionButton = sidebar.getByRole("button", { name: new RegExp(`^${label}$`) }).first();
     if (await sectionButton.isVisible().catch(() => false)) {
       const expanded = await sectionButton.getAttribute("aria-expanded");
@@ -149,7 +162,9 @@ async function expectNoVisibleAppError(page: Page) {
 
 async function waitForRouteReady(page: Page, route: LaborRoute) {
   await page.waitForLoadState("domcontentloaded");
-  await expect(page).toHaveURL(routeUrlPattern(route.path), { timeout: 30_000 });
+  await expect(page).toHaveURL(routeUrlPattern(route.expectedPath ?? route.path), {
+    timeout: 30_000,
+  });
 
   const main = appMain(page);
   await expect(main).toBeVisible({ timeout: 30_000 });
@@ -300,7 +315,7 @@ test.describe("Labor module navigation compatibility", () => {
     await expect(visibleSidebar(page).getByText("AP", { exact: true })).toBeVisible({
       timeout: 10_000,
     });
-    for (const restoredLabel of ["Time Entries", "Worker Center", "Payroll Summary"]) {
+    for (const restoredLabel of ["Time Entries", "Workers", "Workforce"]) {
       await expect(visibleSidebar(page).getByText(restoredLabel, { exact: true })).toBeVisible({
         timeout: 10_000,
       });
@@ -310,7 +325,7 @@ test.describe("Labor module navigation compatibility", () => {
         await page.goto(route.path);
         await waitForRouteReady(page, route);
         if (route.activeLabel) await expectActiveSidebarItem(page, route.activeLabel);
-        await expectRowsOrEmptyState(page, route);
+        if (!route.skipRowsOrEmptyState) await expectRowsOrEmptyState(page, route);
         await smokeMainAction(page, route);
         await expectNoVisibleAppError(page);
       });
