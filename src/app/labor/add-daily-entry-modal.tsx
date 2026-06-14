@@ -360,13 +360,13 @@ function AddDailyEntryDateField({
             month_grid: cn(rdp.month_grid, "mx-auto"),
             month_caption: cn(
               rdp.month_caption,
-              "flex min-h-8 items-center justify-center px-14 py-0 text-center"
+              "pointer-events-none flex min-h-8 items-center justify-center px-14 py-0 text-center"
             ),
             caption_label: cn(
               rdp.caption_label,
               "flex items-center justify-center text-sm font-semibold leading-none text-[#F6F7FA]"
             ),
-            nav: cn(rdp.nav, "absolute right-0 top-0 flex h-8 items-center gap-1"),
+            nav: cn(rdp.nav, "absolute right-0 top-0 z-10 flex h-8 items-center gap-1"),
             button_previous: cn(
               rdp.button_previous,
               "flex h-8 w-8 items-center justify-center rounded-md border-0 bg-transparent text-[#BAC2CA] transition-colors hover:bg-white/[0.07] hover:text-white"
