@@ -73,6 +73,30 @@ function MaterialSelectionDocumentStyles() {
           color-scheme: light;
         }
 
+        [data-app-sidebar],
+        [data-app-main-column] > header,
+        .neo-command-bar,
+        .no-print {
+          display: none !important;
+        }
+
+        .app-shell,
+        .hh-app-shell,
+        .neo-app-shell,
+        [data-app-main-column],
+        [data-app-scroll-root] {
+          display: block !important;
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          height: auto !important;
+          min-height: 0 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          overflow: visible !important;
+          background: #fff !important;
+        }
+
         .material-selection-a4-shell {
           width: 210mm !important;
           min-height: 297mm !important;
@@ -90,10 +114,6 @@ function MaterialSelectionDocumentStyles() {
           box-shadow: none !important;
           border: none !important;
           overflow: visible !important;
-        }
-
-        .no-print {
-          display: none !important;
         }
 
         .material-selection-a4-page section,
