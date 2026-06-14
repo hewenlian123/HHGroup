@@ -12,7 +12,6 @@ import {
   hhNeoFocusRevealOverlay,
 } from "@/lib/motion-system";
 import type { WorkerPaymentReceiptPreviewDto } from "@/lib/worker-payment-receipt-preview-dto";
-import { downloadWorkerPaymentReceiptPdf } from "@/lib/worker-payment-receipt-pdf";
 import { cn } from "@/lib/utils";
 import "@/styles/worker-payment-receipt-print.css";
 import "./worker-payment-receipt-preview-modal.css";
@@ -30,8 +29,6 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
   const [data, setData] = React.useState<WorkerPaymentReceiptPreviewDto | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [pdfBusy, setPdfBusy] = React.useState(false);
-  const receiptExportRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (!open || !paymentId) {
@@ -80,43 +77,6 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
     };
   }, [open, paymentId]);
 
-  React.useEffect(() => {
-    if (!open) {
-      document.documentElement.classList.remove("print-worker-receipt-preview");
-    }
-  }, [open]);
-
-  const handleDownloadPdf = React.useCallback(async () => {
-    if (!data?.receiptNo) return;
-    const root = receiptExportRef.current;
-    const el = (root?.querySelector(".receipt-container") as HTMLElement | null) ?? root;
-    if (!el) return;
-    setPdfBusy(true);
-    try {
-      await downloadWorkerPaymentReceiptPdf(el, data.receiptNo);
-    } catch (e) {
-      console.error("[receipt-pdf]", e);
-    } finally {
-      setPdfBusy(false);
-    }
-  }, [data?.receiptNo]);
-
-  const handlePrint = React.useCallback(() => {
-    const root = document.documentElement;
-    root.classList.add("print-worker-receipt-preview");
-    const t = window.setTimeout(
-      () => root.classList.remove("print-worker-receipt-preview"),
-      10_000
-    );
-    const cleanup = () => {
-      window.clearTimeout(t);
-      root.classList.remove("print-worker-receipt-preview");
-      window.removeEventListener("afterprint", cleanup);
-    };
-    window.addEventListener("afterprint", cleanup);
-    window.print();
-  }, []);
-
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
@@ -134,8 +94,8 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
           )}
         >
           <DialogPrimitive.Description className="sr-only">
-            Worker payment receipt preview. Print from here or download PDF without leaving this
-            page.
+            Worker payment receipt preview. Open the clean print view or download a server-generated
+            PDF.
           </DialogPrimitive.Description>
           <div className="modal-header flex shrink-0 flex-col gap-3 border-b border-white/[0.08] bg-[var(--neo-surface-raised)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <DialogPrimitive.Title className="text-sm font-semibold text-[var(--neo-text-primary)]">
@@ -161,25 +121,46 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
                 </Button>
               ) : null}
               <Button
-                type="button"
                 size="sm"
                 variant="outline"
                 className={cn(receiptPreviewButtonClass, "gap-1")}
-                onClick={handlePrint}
+                disabled={!paymentId}
+                asChild={Boolean(paymentId)}
               >
-                <Printer className="h-3.5 w-3.5" />
-                Print
+                {paymentId ? (
+                  <Link
+                    href={`/receipt/print/${encodeURIComponent(paymentId)}?autoprint=1`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
+                    Print
+                  </Link>
+                ) : (
+                  <>
+                    <Printer className="h-3.5 w-3.5" />
+                    Print
+                  </>
+                )}
               </Button>
               <Button
-                type="button"
                 size="sm"
                 variant="outline"
                 className={cn(receiptPreviewButtonClass, "gap-1")}
-                disabled={!data?.receiptNo || pdfBusy}
-                onClick={() => void handleDownloadPdf()}
+                disabled={!data?.receiptNo || !paymentId}
+                asChild={Boolean(data?.receiptNo && paymentId)}
               >
-                <Download className="h-3.5 w-3.5" />
-                {pdfBusy ? "Generating…" : "Download PDF"}
+                {data?.receiptNo && paymentId ? (
+                  <a href={`/api/receipt/${encodeURIComponent(paymentId)}/pdf`} download>
+                    <Download className="h-3.5 w-3.5" />
+                    Download PDF
+                  </a>
+                ) : (
+                  <>
+                    <Download className="h-3.5 w-3.5" />
+                    Download PDF
+                  </>
+                )}
               </Button>
               <DialogPrimitive.Close asChild>
                 <Button
@@ -201,7 +182,7 @@ export function WorkerPaymentReceiptPreviewModal({ paymentId, open, onOpenChange
             ) : error ? (
               <p className="py-12 text-center text-sm text-destructive">{error}</p>
             ) : data ? (
-              <div ref={receiptExportRef} className="receipt-pdf-export-root">
+              <div className="receipt-pdf-export-root">
                 <WorkerPaymentReceiptDocument data={data} />
               </div>
             ) : null}

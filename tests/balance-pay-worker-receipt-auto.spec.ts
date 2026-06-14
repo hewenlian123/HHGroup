@@ -2,7 +2,8 @@
  * Worker Balance → Pay Worker → receipt preview opens; receipt content + PDF download.
  * Runs under default Playwright project `chromium` (not worker-payment*.spec.ts).
  */
-import { test, expect } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 
 import { E2E_PRESERVED_WORKER_ID } from "./e2e-cleanup-db";
 import { resetAndEnsureE2EPaymentSeedFromEnv } from "./e2e-reset-worker-payroll";
@@ -12,6 +13,34 @@ import {
 } from "./payment-e2e-helpers";
 
 const WORKER_NAME = (process.env.E2E_WORKER_NAME ?? "[E2E] Seed Worker").trim();
+
+function totalAmount(dialog: Locator) {
+  return dialog
+    .locator("dt")
+    .filter({ hasText: "Total Payment Amount" })
+    .locator("xpath=following-sibling::dd[1]");
+}
+
+async function addPaymentSplit(page: Page, dialog: Locator, totalText: string) {
+  const confirm = dialog.getByRole("button", { name: "Confirm Payment" });
+  if (await confirm.isEnabled().catch(() => false)) return;
+  const amount = totalText.replace(/[^0-9.-]/g, "");
+  await dialog.getByRole("button", { name: /Add payment/i }).click();
+  const splitDialog = page.getByRole("dialog", { name: /Add payment/i });
+  await expect(splitDialog).toBeVisible({ timeout: 30_000 });
+  const method = splitDialog.locator("select").first();
+  if ((await method.locator("option", { hasText: "Cash" }).count()) > 0) {
+    await method.selectOption("Cash");
+  }
+  await splitDialog.locator('input[type="number"]').fill(amount);
+  const reference = splitDialog.getByPlaceholder(/Check #|Optional/i);
+  if (await reference.isVisible().catch(() => false)) {
+    await reference.fill("E2E Cash");
+  }
+  await splitDialog.getByRole("button", { name: /^Save$/i }).click();
+  await expect(splitDialog).not.toBeVisible({ timeout: 30_000 });
+  await expect(confirm).toBeEnabled({ timeout: 30_000 });
+}
 
 test.describe("Worker balance — pay worker → receipt auto", () => {
   test.describe.configure({ timeout: 120_000 });
@@ -39,22 +68,35 @@ test.describe("Worker balance — pay worker → receipt auto", () => {
     ) {
       test.skip(true, "Backend / Supabase unavailable.");
     }
-    await expect(page.getByRole("button", { name: "Pay Worker" })).toBeEnabled({ timeout: 60_000 });
-
-    await page.getByRole("button", { name: "Pay Worker" }).click();
+    const legacyPayWorker = page.getByRole("button", { name: "Pay Worker" });
+    if (await legacyPayWorker.isVisible().catch(() => false)) {
+      await expect(legacyPayWorker).toBeEnabled({ timeout: 60_000 });
+      await legacyPayWorker.click();
+    } else {
+      const reimbursementItem = page
+        .getByRole("checkbox", { name: /Select .* reimbursement/i })
+        .first();
+      const payableItem = (await reimbursementItem.isVisible().catch(() => false))
+        ? reimbursementItem
+        : page.getByRole("checkbox", { name: /Select .* (labor entry|reimbursement)/i }).first();
+      if (!(await payableItem.isVisible({ timeout: 60_000 }).catch(() => false))) {
+        test.skip(true, "No payable labor/reimbursement rows available in preserved E2E seed.");
+      }
+      await payableItem.check();
+      const paySelected = page.getByRole("button", { name: "Pay Selected" }).last();
+      await expect(paySelected).toBeEnabled({ timeout: 60_000 });
+      await paySelected.click();
+    }
     const dialog = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(dialog).toBeVisible();
 
-    const totalRow = dialog
-      .locator("p.text-sm.font-semibold")
-      .filter({ hasText: "Total Payment Amount" });
-    const totalText = (await totalRow.locator("span.tabular-nums").textContent())?.trim() ?? "";
+    const totalText = (await totalAmount(dialog).textContent())?.trim() ?? "";
     test.skip(
       totalText === "$0.00" || totalText === "",
       "Payment total is zero; ensure E2E seed labor/reimb exist."
     );
 
-    await dialog.getByPlaceholder(/Check|ACH|Cash/i).fill("E2E Cash");
+    await addPaymentSplit(page, dialog, totalText);
 
     const payPost = page.waitForResponse(
       (r) =>
@@ -94,10 +136,14 @@ test.describe("Worker balance — pay worker → receipt auto", () => {
     ).toBeVisible();
 
     const dl = page.waitForEvent("download", { timeout: 120_000 });
-    await receiptPreview.getByRole("button", { name: /Download PDF/i }).click();
+    await receiptPreview.getByRole("link", { name: /Download PDF/i }).click({ force: true });
     const download = await dl;
     expect(download.suggestedFilename().toLowerCase().endsWith(".pdf")).toBe(true);
     expect(download.suggestedFilename()).toMatch(/^Receipt-/);
+    const path = await download.path();
+    expect(path).toBeTruthy();
+    const pdfBytes = await readFile(path!);
+    expect(pdfBytes.subarray(0, 4).toString("latin1")).toBe("%PDF");
 
     await expect(page.locator("body")).not.toContainText(
       /Application error|Internal Server Error/i

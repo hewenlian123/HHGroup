@@ -5,14 +5,11 @@ import Link from "next/link";
 import { ReceiptActions } from "./receipt-actions";
 
 type Props = {
-  receiptNo: string;
   paymentId: string;
   children: React.ReactNode;
 };
 
-export function WorkerPaymentReceiptScreen({ receiptNo, paymentId, children }: Props) {
-  const exportRef = React.useRef<HTMLDivElement>(null);
-
+export function WorkerPaymentReceiptScreen({ paymentId, children }: Props) {
   return (
     <div className="receipt-print-shell min-h-screen bg-white text-zinc-900">
       <div className="mx-auto max-w-[8.5in] px-3 py-4 print:px-0 print:py-0">
@@ -23,9 +20,9 @@ export function WorkerPaymentReceiptScreen({ receiptNo, paymentId, children }: P
           >
             Back
           </Link>
-          <ReceiptActions paymentId={paymentId} receiptNo={receiptNo} exportRef={exportRef} />
+          <ReceiptActions paymentId={paymentId} />
         </div>
-        <div ref={exportRef}>{children}</div>
+        <div>{children}</div>
       </div>
     </div>
   );

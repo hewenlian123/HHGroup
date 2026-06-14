@@ -52,34 +52,46 @@ test.describe("Worker payment → receipt labor lines", () => {
     await workerLink.click();
     await page.waitForLoadState("domcontentloaded");
 
-    await expect(page.getByRole("heading", { name: /Labor Entries/i })).toBeVisible({
-      timeout: 15_000,
-    });
+    const profilePayWorker = page.getByRole("link", { name: /^Pay Worker$/i });
+    if (await profilePayWorker.isVisible().catch(() => false)) {
+      await profilePayWorker.click();
+      await page.waitForLoadState("domcontentloaded");
+    }
 
-    await page.getByRole("button", { name: "Pay Worker" }).click();
+    const legacyPayWorker = page.getByRole("button", { name: "Pay Worker" });
+    if (await legacyPayWorker.isVisible().catch(() => false)) {
+      await legacyPayWorker.click();
+    } else {
+      const laborSelection = page
+        .getByRole("checkbox", { name: /Select .* labor entries/i })
+        .first();
+      test.skip(
+        !(await laborSelection.isVisible().catch(() => false)),
+        "No unpaid labor entries available to select."
+      );
+      await laborSelection.check();
+      const paySelected = page.getByRole("button", { name: /^Pay Selected$/i }).last();
+      await expect(paySelected).toBeEnabled({ timeout: 30_000 });
+      await paySelected.click();
+    }
     const dialog = page.getByRole("dialog", { name: /Pay Worker/i });
     await expect(dialog).toBeVisible();
 
-    const hasLaborBlock = await dialog
-      .getByText("Unpaid labor entries")
-      .isVisible()
-      .catch(() => false);
+    await expect(dialog.getByText("Selected labor", { exact: true }).first()).toBeVisible();
+    const totalText =
+      (await dialog
+        .locator("dt")
+        .filter({ hasText: "Total Payment Amount" })
+        .locator("xpath=following-sibling::dd[1]")
+        .textContent()) ?? "";
     test.skip(
-      !hasLaborBlock,
-      "No unpaid labor entries block in modal (nothing to assert on receipt)."
-    );
-
-    await expect(dialog.locator('label input[type="checkbox"]').first()).toBeVisible();
-    const totalRow = dialog
-      .locator("p.text-sm.font-semibold")
-      .filter({ hasText: "Total Payment Amount" });
-    const totalText = (await totalRow.locator("span.tabular-nums").textContent())?.trim() ?? "";
-    test.skip(
-      totalText === "$0.00" || totalText === "",
+      totalText.trim() === "$0.00" || totalText.trim() === "",
       "Payment total is zero; select items or add unpaid labor."
     );
 
-    await dialog.getByPlaceholder(/Check|ACH|Cash/i).fill("E2E Cash");
+    await expect(dialog.getByRole("button", { name: "Confirm Payment" })).toBeEnabled({
+      timeout: 30_000,
+    });
     const payPost = page.waitForResponse(
       (r) =>
         r.url().includes("/api/labor/workers/") &&

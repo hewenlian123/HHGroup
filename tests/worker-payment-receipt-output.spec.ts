@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
@@ -336,6 +336,11 @@ function pdfPageSizePoints(path: string): { width: number; height: number } {
   return { width: Number(m[1]), height: Number(m[2]) };
 }
 
+function countPdfPages(buffer: Buffer): number {
+  const text = buffer.toString("latin1");
+  return text.match(/\/Type\s*\/Page\b/g)?.length ?? 0;
+}
+
 test.describe("Worker payment receipt output", () => {
   test.describe.configure({ timeout: 180_000 });
 
@@ -440,53 +445,62 @@ test.describe("Worker payment receipt output", () => {
       true
     );
 
-    const pdfCaptureMetrics = await dialog.locator(".receipt-container").evaluate((el) => {
-      const clone = el.cloneNode(true) as HTMLElement;
-      clone.classList.add("receipt-pdf-capture");
-      clone.style.position = "absolute";
-      clone.style.left = "-10000px";
-      clone.style.top = "0";
-      document.body.appendChild(clone);
-      try {
-        const paper = clone.getBoundingClientRect();
-        const bottom = clone.querySelector(".receipt-bottom")?.getBoundingClientRect();
-        const styles = window.getComputedStyle(clone);
-        return {
-          minHeight: Number.parseFloat(styles.minHeight),
-          display: styles.display,
-          flexDirection: styles.flexDirection,
-          trailingBlank: bottom ? paper.bottom - bottom.bottom : Number.NaN,
-        };
-      } finally {
-        clone.remove();
-      }
-    });
-    expect(pdfCaptureMetrics.minHeight).toBeGreaterThan(1000);
-    expect(pdfCaptureMetrics.display).toBe("flex");
-    expect(pdfCaptureMetrics.flexDirection).toBe("column");
-    expect(pdfCaptureMetrics.trailingBlank).toBeLessThan(8);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(dialog).toBeVisible();
+    const hasHorizontalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth + 4
+    );
+    expect(hasHorizontalOverflow).toBe(false);
+    await page.setViewportSize({ width: 1280, height: 900 });
 
-    const pdfDownload = page.waitForEvent("download", { timeout: 120_000 });
-    await dialog.getByRole("button", { name: /Download PDF/i }).click();
-    const downloadedPdf = await pdfDownload;
+    const pdfLink = dialog.getByRole("link", { name: /Download PDF/i });
+    await expect(pdfLink).toHaveAttribute(
+      "href",
+      `/api/receipt/${encodeURIComponent(PAYMENT_ID)}/pdf`
+    );
+
+    const pdfResponse = await page.request.get(
+      `/api/receipt/${encodeURIComponent(PAYMENT_ID)}/pdf`
+    );
+    expect(
+      pdfResponse.ok(),
+      `server receipt PDF failed: ${pdfResponse.status()} ${await pdfResponse.text()}`
+    ).toBe(true);
+    expect(pdfResponse.headers()["content-type"] ?? "").toContain("application/pdf");
+    const pdfBytes = await pdfResponse.body();
+    expect(pdfBytes.subarray(0, 4).toString("latin1")).toBe("%PDF");
     const pdfPath = testInfo.outputPath("worker-payment-receipt-a4.pdf");
-    await downloadedPdf.saveAs(pdfPath);
+    writeFileSync(pdfPath, pdfBytes);
+    expect(countPdfPages(pdfBytes)).toBe(1);
     const size = pdfPageSizePoints(pdfPath);
-    expect(size.width).toBeCloseTo(595.28, 1);
-    expect(size.height).toBeCloseTo(841.89, 1);
+    // Chromium may round the A4 MediaBox by a few tenths of a point.
+    expect(Math.abs(size.width - 595.28)).toBeLessThan(1);
+    expect(Math.abs(size.height - 841.89)).toBeLessThan(1);
 
-    await page.evaluate(() => {
-      window.print = () => {
-        document.body.setAttribute("data-worker-receipt-print-called", "true");
-      };
+    const printLink = dialog.getByRole("link", { name: /^Print$/i });
+    await expect(printLink).toHaveAttribute(
+      "href",
+      `/receipt/print/${encodeURIComponent(PAYMENT_ID)}?autoprint=1`
+    );
+    const popupPromise = page.waitForEvent("popup");
+    await printLink.click();
+    const printPage = await popupPromise;
+    await printPage.waitForLoadState("domcontentloaded");
+    await expect(printPage).toHaveURL(
+      new RegExp(
+        `/receipt/print/${PAYMENT_ID.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\?autoprint=1`
+      )
+    );
+    await expect(printPage.getByTestId("worker-payment-receipt-document")).toBeVisible({
+      timeout: 30_000,
     });
-    await dialog.getByRole("button", { name: /^Print$/i }).click();
-    await expect(page.locator("html")).toHaveClass(/print-worker-receipt-preview/);
-    await expect(page.locator("body")).toHaveAttribute("data-worker-receipt-print-called", "true");
-    await page.emulateMedia({ media: "print" });
-    await expectReceiptRows(dialog);
+    await expectReceiptRows(printPage.locator("body"));
+    await expect(printPage.locator("body")).not.toContainText("Receipt preview");
+    await expect(printPage.locator("body")).not.toContainText("Download PDF");
+    await expect(printPage.locator("body")).not.toContainText(/^Print$/);
 
-    const printMetrics = await dialog.locator(".receipt-container").evaluate((el) => {
+    await printPage.emulateMedia({ media: "print" });
+    const printMetrics = await printPage.locator(".receipt-container").evaluate((el) => {
       const paper = el.getBoundingClientRect();
       const bottom = el.querySelector(".receipt-bottom")?.getBoundingClientRect();
       const styles = window.getComputedStyle(el);
@@ -501,7 +515,7 @@ test.describe("Worker payment receipt output", () => {
     expect(printMetrics.display).toBe("flex");
     expect(printMetrics.flexDirection).toBe("column");
     expect(printMetrics.trailingBlank).toBeLessThan(8);
-    await page.emulateMedia({ media: "screen" });
+    await printPage.close();
 
     await expectNoReceiptConsoleErrors(page, consoleErrors, pageErrors);
   });

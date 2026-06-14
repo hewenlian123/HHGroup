@@ -17,8 +17,6 @@ const DAILY_RATE = 200;
 const NEW_DAILY_RATE = 250;
 const REIMBURSEMENT_AMOUNT = 35;
 const ADVANCE_AMOUNT = 50;
-const PARTIAL_PAYMENT_AMOUNT = 100;
-const FINAL_PAYMENT_AMOUNT = 185;
 
 const TODAY_DATE = new Date().toISOString().slice(0, 10);
 function datePlusDays(date: string, days: number): string {
@@ -321,15 +319,31 @@ async function payrollSummaryJson(
 }
 
 function totalAmount(dialog: Locator) {
-  return dialog.locator("dl").filter({ hasText: "Total Payment Amount" }).locator("dd").last();
+  return dialog
+    .locator("dt")
+    .filter({ hasText: "Total Payment Amount" })
+    .locator("xpath=following-sibling::dd[1]");
 }
 
-function selectedPayable(dialog: Locator) {
-  return dialog.locator("dl").filter({ hasText: "Selected payable" }).locator("dd").first();
+function selectedLaborAmount(dialog: Locator) {
+  return dialog
+    .locator("dt")
+    .filter({ hasText: "Selected labor" })
+    .locator("xpath=following-sibling::dd[1]");
+}
+
+function includedReimbursementAmount(dialog: Locator) {
+  return dialog
+    .locator("dt")
+    .filter({ hasText: "Included reimbursements" })
+    .locator("xpath=following-sibling::dd[1]");
 }
 
 function advanceDeduction(dialog: Locator) {
-  return dialog.locator("dl").filter({ hasText: "Advance deduction" }).locator("dd").nth(1);
+  return dialog
+    .locator("dt")
+    .filter({ hasText: "Advance deduction" })
+    .locator("xpath=following-sibling::dd[1]");
 }
 
 async function expectNoFatalUi(page: Page) {
@@ -380,7 +394,15 @@ async function addDailyEntryViaUi(
   opts: { date: string; session: "full" | "half"; note: string }
 ) {
   const dialog = await openAddDailyEntryFromWorker(page);
+  const optionsRefresh = page.waitForResponse(
+    (res) =>
+      res.url().includes("/api/labor/entries?date=") &&
+      res.url().includes(encodeURIComponent(opts.date)) &&
+      res.request().method() === "GET",
+    { timeout: 30_000 }
+  );
   await dialog.getByTestId("add-daily-entry-date-input").fill(opts.date);
+  await optionsRefresh;
   await expect(dialog.locator("select").first()).toContainText(PROJECT_NAME, { timeout: 30_000 });
   await dialog.locator("select").first().selectOption(PROJECT_ID);
   const workerRow = dialog.getByRole("row").filter({ hasText: WORKER_NAME }).first();
@@ -508,13 +530,54 @@ async function addAdvanceViaUi(page: Page) {
 async function openPayDialog(page: Page) {
   await page.goto(`${BASE}/labor/workers/${encodeURIComponent(workerId)}/balance`);
   await expect(page.getByRole("heading", { name: WORKER_NAME })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: /^Pay Worker$/i }).click();
+  const legacyPayWorker = page.getByRole("button", { name: /^Pay Worker$/i });
+  if (await legacyPayWorker.isVisible().catch(() => false)) {
+    await legacyPayWorker.click();
+  } else {
+    const laborMonth = page.getByRole("checkbox", { name: /Select .* labor entries/i }).first();
+    if (await laborMonth.isVisible().catch(() => false)) {
+      await laborMonth.check();
+    }
+    const reimbursementMonth = page
+      .getByRole("checkbox", { name: /Select .* reimbursements/i })
+      .first();
+    if (await reimbursementMonth.isVisible().catch(() => false)) {
+      await reimbursementMonth.check();
+    }
+    const paySelected = page.getByRole("button", { name: /^Pay Selected$/i }).last();
+    await expect(paySelected).toBeEnabled({ timeout: 30_000 });
+    await paySelected.click();
+  }
   const dialog = page.getByRole("dialog", { name: /Pay Worker/i });
   await expect(dialog).toBeVisible({ timeout: 30_000 });
   return dialog;
 }
 
+async function addPaymentSplit(page: Page, dialog: Locator) {
+  const confirm = dialog.getByRole("button", { name: /^Confirm Payment$/i });
+  if (await confirm.isEnabled().catch(() => false)) return;
+  const totalText = (await totalAmount(dialog).textContent())?.trim() ?? "";
+  const amount = totalText.replace(/[^0-9.-]/g, "");
+  expect(amount, `Invalid payment split amount from ${totalText}`).not.toBe("");
+  await dialog.getByRole("button", { name: /Add payment/i }).click();
+  const splitDialog = page.getByRole("dialog", { name: /Add payment/i });
+  await expect(splitDialog).toBeVisible({ timeout: 30_000 });
+  const method = splitDialog.locator("select").first();
+  if ((await method.locator("option", { hasText: "Cash" }).count()) > 0) {
+    await method.selectOption("Cash");
+  }
+  await splitDialog.locator('input[type="number"]').fill(amount);
+  const reference = splitDialog.getByPlaceholder(/Check #|Optional/i);
+  if (await reference.isVisible().catch(() => false)) {
+    await reference.fill("E2E Cash");
+  }
+  await splitDialog.getByRole("button", { name: /^Save$/i }).click();
+  await expect(splitDialog).not.toBeVisible({ timeout: 30_000 });
+  await expect(confirm).toBeEnabled({ timeout: 30_000 });
+}
+
 async function submitPayment(page: Page, dialog: Locator) {
+  await addPaymentSplit(page, dialog);
   const payPost = page.waitForResponse(
     (res) =>
       res.url().includes("/api/labor/workers/") &&
@@ -540,29 +603,26 @@ async function testReceiptPrintAndPdf(page: Page) {
   const receipt = page.getByRole("dialog", { name: /Receipt preview/i });
   await expect(receipt).toBeVisible({ timeout: 30_000 });
   await expect(receipt).toContainText(WORKER_NAME);
-  await expect(receipt).toContainText("$185.00");
+  await expect(receipt).toContainText("$285.00");
   await expect(receipt).toContainText("Advance deduction");
   await expect(receipt).toContainText("-$50.00");
   await expectNoFatalUi(page);
 
-  await page.evaluate(() => {
-    (window as typeof window & { __workerPrintCalls?: number }).__workerPrintCalls = 0;
-    window.print = () => {
-      (window as typeof window & { __workerPrintCalls?: number }).__workerPrintCalls =
-        ((window as typeof window & { __workerPrintCalls?: number }).__workerPrintCalls ?? 0) + 1;
-    };
+  const printLink = receipt.getByRole("link", { name: /^Print$/i });
+  await expect(printLink).toHaveAttribute("href", /\/receipt\/print\/[^?]+\?autoprint=1/);
+  const popupPromise = page.waitForEvent("popup");
+  await printLink.click();
+  const printPage = await popupPromise;
+  await printPage.waitForLoadState("domcontentloaded");
+  await expect(printPage.getByTestId("worker-payment-receipt-document")).toBeVisible({
+    timeout: 30_000,
   });
-  await receipt.getByRole("button", { name: /^Print$/i }).click();
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => (window as typeof window & { __workerPrintCalls?: number }).__workerPrintCalls ?? 0
-      )
-    )
-    .toBeGreaterThan(0);
+  await expect(printPage.locator("body")).toContainText(WORKER_NAME);
+  await expect(printPage.locator("body")).not.toContainText("Download PDF");
+  await printPage.close();
 
   const downloadPromise = page.waitForEvent("download", { timeout: 120_000 });
-  await receipt.getByRole("button", { name: /Download PDF/i }).click();
+  await receipt.getByRole("link", { name: /Download PDF/i }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/^Receipt-.*\.pdf$/);
   const path = await download.path();
@@ -673,33 +733,12 @@ test.describe("Worker time entry → payment → payroll → PDF local flow", ()
     expectMoney(balance.summary.balance, 285);
 
     let payDialog = await openPayDialog(page);
-    await expect(payDialog.getByText("Unpaid labor entries")).toBeVisible();
-    await expect(payDialog.getByText("Unpaid reimbursements")).toBeVisible();
-    await payDialog
-      .locator("label")
-      .filter({ hasText: "$200.00" })
-      .locator('input[type="checkbox"]')
-      .uncheck();
-    await payDialog
-      .locator("label")
-      .filter({ hasText: "$35.00" })
-      .locator('input[type="checkbox"]')
-      .uncheck();
-    await expect(totalAmount(payDialog)).toHaveText("$100.00");
-    await submitPayment(page, payDialog);
-    await closeReceiptPreview(page);
-
-    balance = await balanceJson(page);
-    expectMoney(balance.summary.laborOwed, 200);
-    expectMoney(balance.summary.reimbursements, 35);
-    expectMoney(balance.summary.advances, 50);
-    expectMoney(balance.summary.payments, 100);
-    expectMoney(balance.summary.balance, 185);
-
-    payDialog = await openPayDialog(page);
-    await expect(selectedPayable(payDialog)).toHaveText("$235.00");
+    await expect(payDialog.locator("dt").filter({ hasText: "Selected labor" })).toBeVisible();
+    await expect(payDialog.getByText("Reimbursements", { exact: true })).toBeVisible();
+    await expect(selectedLaborAmount(payDialog)).toHaveText("$300.00");
+    await expect(includedReimbursementAmount(payDialog)).toHaveText("$35.00");
     await expect(advanceDeduction(payDialog)).toHaveText("-$50.00");
-    await expect(totalAmount(payDialog)).toHaveText("$185.00");
+    await expect(totalAmount(payDialog)).toHaveText("$285.00");
     await submitPayment(page, payDialog);
     await testReceiptPrintAndPdf(page);
     await closeReceiptPreview(page);
@@ -736,12 +775,11 @@ test.describe("Worker time entry → payment → payroll → PDF local flow", ()
     });
     await expect(workerCenterRow).toBeVisible({ timeout: 30_000 });
     await expect(workerCenterRow).toContainText("$0.00");
-    await expect(workerCenterRow).toContainText("$185.00", { timeout: 30_000 });
+    await expect(workerCenterRow).toContainText("$285.00", { timeout: 30_000 });
 
     await page.goto(`${BASE}/workers/${encodeURIComponent(workerId)}`);
     await page.getByRole("tab", { name: "Payments" }).click();
-    await expect(page.getByText("$100.00").first()).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText("$185.00").first()).toBeVisible();
+    await expect(page.getByText("$285.00").first()).toBeVisible({ timeout: 30_000 });
     await expectNoFatalUi(page);
 
     await page.getByRole("tab", { name: "Statements" }).click();

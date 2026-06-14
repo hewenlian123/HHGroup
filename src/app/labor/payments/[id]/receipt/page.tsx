@@ -72,7 +72,7 @@ export default async function WorkerPaymentReceiptPage({
   return (
     <>
       <SetBreadcrumbEntityTitle label={receiptNo} />
-      <WorkerPaymentReceiptScreen receiptNo={receiptNo} paymentId={payment.id}>
+      <WorkerPaymentReceiptScreen paymentId={payment.id}>
         <WorkerPaymentReceiptBody
           company={company}
           receiptNo={receiptNo}
