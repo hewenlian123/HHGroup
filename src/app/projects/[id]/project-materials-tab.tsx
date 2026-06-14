@@ -174,7 +174,7 @@ export function ProjectMaterialsTab({
       <div className="airtable-table-wrap airtable-table-wrap--ruled">
         {rows.length === 0 ? (
           <div className="py-10 text-center text-sm text-muted-foreground">
-            No selections yet. Add one from the catalog.
+            No selections yet. Add one for this project.
           </div>
         ) : (
           <div className="airtable-table-scroll">
@@ -261,9 +261,7 @@ export function ProjectMaterialsTab({
         <DialogContent className="max-w-lg rounded-sm border-border/60 p-6">
           <DialogHeader>
             <DialogTitle className="text-base font-semibold">Add Selection</DialogTitle>
-            <DialogDescription>
-              Select a material from the catalog or enter details.
-            </DialogDescription>
+            <DialogDescription>Select a saved material or enter details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
@@ -276,9 +274,7 @@ export function ProjectMaterialsTab({
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">
-                Material from catalog
-              </label>
+              <label className="text-xs font-medium text-muted-foreground">Saved material</label>
               <select
                 value={form.material_id}
                 onChange={(e) => {
@@ -310,7 +306,7 @@ export function ProjectMaterialsTab({
               <Input
                 value={form.material_name}
                 onChange={(e) => setForm((p) => ({ ...p, material_name: e.target.value }))}
-                placeholder="Filled from catalog or type"
+                placeholder="Filled from saved material or type"
                 className="mt-1 h-9 rounded-sm border-border/60"
               />
             </div>

@@ -515,13 +515,13 @@ async function main() {
     })
   );
 
-  // ── 14. material_catalog ───────────────────────────────────────────────────
+  // ── 14. material selections ────────────────────────────────────────────────
   results.push(
     await runTest("material_catalog", async () => {
       const page = await browser.newPage();
       page.setDefaultTimeout(WAIT_TIMEOUT);
       try {
-        await smokeTestModulePage(page, "/materials/catalog", "Material");
+        await smokeTestModulePage(page, "/materials", "Material Selections");
       } finally {
         await page.close();
       }

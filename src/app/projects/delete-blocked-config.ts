@@ -19,7 +19,7 @@ export const DELETE_BLOCKED_RELATED_CONFIG: {
   { key: "bills", label: "Bills", viewPath: "/bills" },
   { key: "worker_receipts", label: "Worker Receipts", viewPath: "/labor/receipts" },
   { key: "subcontracts", label: "Subcontracts", viewPath: "/projects" },
-  { key: "materials", label: "Materials", viewPath: "/materials/catalog" },
+  { key: "materials", label: "Materials", viewPath: "/materials" },
   { key: "activity_logs", label: "Activity logs" },
   { key: "estimates", label: "Estimates" },
   { key: "commitments", label: "Commitments" },

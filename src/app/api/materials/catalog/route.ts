@@ -6,7 +6,7 @@ export async function GET() {
     const materials = await getMaterialCatalog();
     return NextResponse.json({ ok: true as const, materials });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to load material catalog.";
+    const message = e instanceof Error ? e.message : "Failed to load materials.";
     return NextResponse.json({ ok: false as const, message }, { status: 500 });
   }
 }

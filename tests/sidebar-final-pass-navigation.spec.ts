@@ -138,7 +138,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Tasks",
       "Punch List",
       "Schedule",
-      "Material Catalog",
+      "Material Selections",
       "Overview",
       "Owner Dashboard",
       "AR",
@@ -216,7 +216,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/tasks", active: "Tasks" },
       { path: "/punch-list", active: "Punch List" },
       { path: "/schedule", active: "Schedule" },
-      { path: "/materials/catalog", active: "Material Catalog" },
+      { path: "/materials", active: "Material Selections" },
       { path: "/financial", active: "Overview" },
       { path: "/financial/owner", active: "Owner Dashboard" },
       { path: "/financial/ar", active: "AR" },
@@ -289,7 +289,9 @@ test.describe("HH Project OS sidebar final pass", () => {
     await page.getByRole("button", { name: /^Open menu$/i }).click();
     await ensureAllSectionsOpen(page);
     await expect(visibleSidebar(page).getByText("Admin Center", { exact: true })).toBeVisible();
-    await expect(visibleSidebar(page).getByText("Material Catalog", { exact: true })).toBeVisible();
+    await expect(
+      visibleSidebar(page).getByText("Material Selections", { exact: true })
+    ).toBeVisible();
     await expect(visibleSidebar(page).getByText("Receipt Uploads", { exact: true })).toBeVisible();
     await expect(visibleSidebar(page).getByText("Worker Receipts", { exact: true })).toBeVisible();
     await expect(visibleSidebar(page).getByText("Cash Flow", { exact: true })).toBeVisible();
@@ -305,7 +307,7 @@ test.describe("HH Project OS sidebar final pass", () => {
     const dialog = await openCommandPalette(page);
 
     for (const item of [
-      { query: "material catalog", label: "Go to Material Catalog" },
+      { query: "material selections", label: "Go to Material Selections" },
       { query: "punch list", label: "Go to Punch List" },
       { query: "receipt inbox", label: "Go to Receipt Inbox" },
       { query: "upload receipt", label: "Go to Receipt Uploads" },
@@ -338,7 +340,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/bills", title: "Financial › AP › Bills" },
       { path: "/financial/vendors", title: "People › Vendors" },
       { path: "/labor/payroll", title: "People › Payroll Summary" },
-      { path: "/materials/catalog", title: "Projects › Material Catalog" },
+      { path: "/materials", title: "Projects › Material Selections" },
       { path: "/dashboard/cashflow", title: "Financial › Cash › Cash Flow" },
       { path: "/reports", title: "Reports" },
       { path: "/system-health", title: "Settings › Admin Center › System Health" },

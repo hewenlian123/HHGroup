@@ -32,7 +32,7 @@ const FULL_SYSTEM_DISPLAY_NAMES: Record<string, string> = {
   schedule_crud: "Schedule CRUD",
   site_photos_crud: "Site Photos CRUD",
   inspection_log_crud: "Inspection Log CRUD",
-  material_catalog_crud: "Material Catalog CRUD",
+  material_catalog_crud: "Material Selections Data CRUD",
 };
 
 export type RunAllTestRow = {

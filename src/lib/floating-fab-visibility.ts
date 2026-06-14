@@ -22,7 +22,7 @@ export function shouldHideFloatingQuickActionFab(pathname: string | null | undef
     "/schedule",
     "/site-photos",
     "/inspection-log",
-    "/materials/catalog",
+    "/materials",
     "/labor",
     "/financial/invoices",
     "/financial/payments",

@@ -1373,7 +1373,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // ── 15. Material Catalog CRUD ──────────────────────────────────────────────
+  // ── 15. Material selections data CRUD ─────────────────────────────────────
   if (run("material_catalog_crud")) {
     log("material_catalog_crud", "start");
     const steps: string[] = [];
@@ -1389,17 +1389,17 @@ export async function POST(req: Request) {
           createErr ? tableMissingMessage("material_catalog", createErr) : "Create failed"
         );
       catalogId = (created as { id: string }).id;
-      steps.push("material catalog item created");
+      steps.push("material selection data item created");
       const { error: fetchErr } = await c
         .from("material_catalog")
         .select("id")
         .eq("id", catalogId)
         .maybeSingle();
       if (fetchErr) throw new Error(`Read failed: ${(fetchErr as { message?: string })?.message}`);
-      steps.push("material catalog read ok");
+      steps.push("material selection data read ok");
       await c.from("material_catalog").delete().eq("id", catalogId);
       catalogId = null;
-      steps.push("material catalog item deleted");
+      steps.push("material selection data item deleted");
       tests.push({ name: "material_catalog_crud", ok: true, steps });
     } catch (e) {
       if (catalogId) await safeDelete("material_catalog", catalogId);

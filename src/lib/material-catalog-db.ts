@@ -53,7 +53,7 @@ export async function getMaterialCatalog(): Promise<MaterialCatalogRow[]> {
     .select(COLS)
     .order("category")
     .order("material_name");
-  if (error) throw new Error(error.message ?? "Failed to load material catalog.");
+  if (error) throw new Error(error.message ?? "Failed to load materials.");
   return (data ?? []).map((r) => toRow(r as Record<string, unknown>));
 }
 

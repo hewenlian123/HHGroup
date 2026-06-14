@@ -31,8 +31,8 @@ const flows: Flow[] = [
   },
   { name: "Inspection Log: add record", path: "/inspection-log", submitText: /create|save|add/i },
   {
-    name: "Material Catalog: add material",
-    path: "/materials/catalog",
+    name: "Material Selections: create selection",
+    path: "/materials/new",
     submitText: /create|save|add/i,
   },
 
