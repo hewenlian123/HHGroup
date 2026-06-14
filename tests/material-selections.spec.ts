@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import { expect, test, type Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
@@ -20,8 +22,6 @@ const OPEN_SECTIONS = {
 
 const TEST_PREFIX = "[E2E] Material Selection";
 const E2E_PRESERVED_CUSTOMER_LABEL = "[E2E] Test Customer";
-const TINY_PNG_DATA_URL =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=";
 
 function adminClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -99,6 +99,7 @@ async function addMaterialItem(
     color?: string;
     finish?: string;
     imageUrl?: string;
+    uploadImage?: boolean;
     notes?: string;
     status?: string;
   }
@@ -115,6 +116,13 @@ async function addMaterialItem(
   if (item.color) await dialog.getByLabel("Color").fill(item.color);
   if (item.finish) await dialog.getByLabel("Finish").fill(item.finish);
   if (item.imageUrl) await dialog.getByLabel("Image URL").fill(item.imageUrl);
+  if (item.uploadImage) {
+    await dialog
+      .locator('input[type="file"]')
+      .setInputFiles(path.resolve(process.cwd(), "public/logo.png"));
+    await expect(dialog.getByText("Image attached")).toBeVisible({ timeout: 30_000 });
+    await expect(dialog.getByLabel("Image URL")).toHaveValue(/\/api\/materials\/photo\?path=/);
+  }
   if (item.notes) await dialog.getByLabel("Item notes").fill(item.notes);
   if (item.status) await dialog.getByLabel("Item status").selectOption(item.status);
   await dialog.getByRole("button", { name: "Save Item" }).click();
@@ -170,7 +178,7 @@ test.describe("Material Selections", () => {
       size: "24x48",
       color: "White",
       finish: "Matte",
-      imageUrl: TINY_PNG_DATA_URL,
+      uploadImage: true,
       notes: "Primary shower wall tile.",
       status: "selected",
     });
@@ -205,6 +213,10 @@ test.describe("Material Selections", () => {
     await expect(document).toContainText("White Porcelain 24x48");
     await expect(document).toContainText("Blue Mosaic");
     await expect(document.getByRole("img", { name: "White Porcelain 24x48" })).toBeVisible();
+    await expect(document.getByRole("img", { name: "White Porcelain 24x48" })).toHaveAttribute(
+      "src",
+      /\/api\/materials\/photo\?path=/
+    );
     await expect(document).toContainText("Customer Signature / Date");
     await expect(document).toContainText("Contractor Signature / Date");
     await expect(document).toContainText(

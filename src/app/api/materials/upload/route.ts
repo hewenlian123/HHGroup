@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
+import { ensureMaterialImagesBucket, MATERIAL_IMAGES_BUCKET } from "@/lib/material-images-storage";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
-const BUCKET = "material-images";
 const PREFIX = "selections";
 
 export async function POST(req: Request) {
@@ -31,7 +31,8 @@ export async function POST(req: Request) {
 
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const path = `${PREFIX}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
+    await ensureMaterialImagesBucket(supabase);
+    const { error } = await supabase.storage.from(MATERIAL_IMAGES_BUCKET).upload(path, file, {
       contentType: file.type || "image/jpeg",
       upsert: false,
     });
