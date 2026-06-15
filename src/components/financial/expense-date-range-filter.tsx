@@ -118,7 +118,7 @@ function formatRangeSpanLabel(startYmd: string, endYmd: string): string {
 }
 
 export function formatExpenseDateFilterTrigger(value: ExpenseDateFilterValue): string {
-  if (value.kind === "all") return "All dates";
+  if (value.kind === "all") return "All time";
   const pl = presetLabel(value.preset);
   if (pl && value.preset !== "custom") return pl;
   return formatRangeSpanLabel(value.start, value.end);
@@ -235,7 +235,7 @@ export function ExpenseDateRangeFilter({
         {panel === "menu" ? (
           <div className="py-1.5">
             <button type="button" className={MENU_ITEM} onClick={applyAll}>
-              All dates
+              All time
             </button>
             <button type="button" className={MENU_ITEM} onClick={() => applyPreset("today")}>
               Today

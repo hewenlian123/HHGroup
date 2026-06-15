@@ -88,6 +88,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  computePresetRange,
   ExpenseDateRangeFilter,
   expenseDateInFilter,
   type ExpenseDateFilterValue,
@@ -329,6 +330,12 @@ function normalizedVendorLabel(vendor: string): string {
 
 /** Radix Select cannot use `""` as a value — map “all / placeholder” filters to this sentinel. */
 const EXPENSE_FILTER_ALL = "__hh_all__";
+
+function defaultExpenseDateFilterForPool(pool: "inbox" | "expenses"): ExpenseDateFilterValue {
+  if (pool !== "expenses") return { kind: "all" };
+  const { start, end } = computePresetRange("thisMonth");
+  return { kind: "range", start, end, preset: "thisMonth" };
+}
 
 function expenseHasReceipt(e: Expense): boolean {
   return getExpenseReceiptItems(e).length > 0;
@@ -694,9 +701,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   }, [searchInput]);
   const [projectFilter, setProjectFilter] = React.useState("");
   const [categoryFilter, setCategoryFilter] = React.useState("");
-  const [expenseDateFilter, setExpenseDateFilter] = React.useState<ExpenseDateFilterValue>({
-    kind: "all",
-  });
+  const [expenseDateFilter, setExpenseDateFilter] = React.useState<ExpenseDateFilterValue>(() =>
+    defaultExpenseDateFilterForPool(pool)
+  );
   const [sourceTypeFilter, setSourceTypeFilter] = React.useState("");
   const [activeExpenseId, setActiveExpenseId] = React.useState<string | null>(null);
   const rowElsRef = React.useRef<Record<string, HTMLTableRowElement | HTMLLIElement | null>>({});

@@ -61,6 +61,13 @@ async function cleanupCompactRows(admin: SupabaseClient, seeded: SeededCompactRo
   }
 }
 
+function localYmd(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 async function seedCompactRows(admin: SupabaseClient): Promise<SeededCompactRows> {
   const prefix = `E2E-COMPACT-${Date.now().toString(36).toUpperCase()}`;
   const projectId = randomUUID();
@@ -78,7 +85,7 @@ async function seedCompactRows(admin: SupabaseClient): Promise<SeededCompactRows
     archiveDuplicateB: randomUUID(),
     archiveInternalPayment: randomUUID(),
   };
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localYmd(new Date());
   const longProjectName = "E2E Compact Long Project Name With A Very Specific Truncation Tail";
 
   const projectInsert = await admin.from("projects").insert({
