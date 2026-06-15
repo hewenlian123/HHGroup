@@ -31,6 +31,11 @@ import {
   writeDateGroupExpandedMap,
   type ExpenseDateGroup,
 } from "@/lib/expense-list-date-groups";
+import {
+  getExpenseHeaderLineMismatch,
+  type ExpenseHeaderLineMismatch,
+  type ExpenseIssueFocus,
+} from "@/lib/expense-header-line-mismatch";
 import { ExpenseBulkActionBar } from "./expense-bulk-action-bar";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 
@@ -326,6 +331,45 @@ function ExpenseIssuesCell({
   );
 }
 
+function ExpenseHeaderLineMismatchIssueCell({
+  mismatch,
+  onReviewIssue,
+  touch = false,
+}: {
+  mismatch: ExpenseHeaderLineMismatch;
+  onReviewIssue: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  touch?: boolean;
+}) {
+  return (
+    <div
+      data-testid="expense-header-line-mismatch-issue"
+      className={cn(
+        "w-full rounded-lg border border-[rgb(184_137_45_/_0.26)] bg-[rgb(184_137_45_/_0.075)] px-2 py-1.5 text-left shadow-[inset_2px_0_0_rgb(184_137_45_/_0.65)]",
+        touch && "px-2.5 py-2"
+      )}
+    >
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-snug text-[var(--neo-text-secondary)]">
+        <span className="font-semibold text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
+          Header: <span className="tabular-nums">{formatCurrency(mismatch.headerTotal)}</span>
+        </span>
+        <span className="tabular-nums">Lines: {formatCurrency(mismatch.linesTotal)}</span>
+        <span className="tabular-nums">Diff: {formatCurrency(mismatch.absDifference)}</span>
+      </div>
+      <button
+        type="button"
+        data-testid="expense-review-issue-button"
+        className={cn(
+          "mt-1 inline-flex h-7 items-center rounded-md border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-2 text-[11px] font-medium text-[var(--neo-gold)] transition-colors duration-150 hover:bg-[rgb(184_137_45_/_0.18)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)] dark:text-[var(--neo-gold-soft)]",
+          touch && "h-11 min-h-11"
+        )}
+        onClick={onReviewIssue}
+      >
+        Review issue
+      </button>
+    </div>
+  );
+}
+
 /** Strip inbox dedupe tokens / noise from vendor strings for display only (does not change stored data). */
 function expenseVendorDisplayRaw(raw: string | undefined | null): string {
   return stripInboxUploadNoiseFromText(String(raw ?? "")).trim();
@@ -512,6 +556,12 @@ export type ExpenseInboxApi = {
   dateGroupPool: "inbox" | "expenses";
   /** Expand every date group (search / filters active) */
   autoExpandDateGroups: boolean;
+  /** Date keys that must stay expanded for a System Health focus target. */
+  forceExpandedDateKeys?: ReadonlySet<string> | null;
+  /** System Health issue context for one focused expense row. */
+  expenseIssueFocus?: ExpenseIssueFocus | null;
+  /** Expense row id focused from System Health. */
+  focusedExpenseId?: string | null;
   activeExpenseId: string | null;
   setActiveExpenseId: (id: string | null) => void;
   rowElsRef: React.MutableRefObject<Record<string, HTMLTableRowElement | HTMLLIElement | null>>;
@@ -744,7 +794,9 @@ function DesktopRows({
   return (
     <>
       {dateChunks.map((chunk, chunkIdx) => {
+        const forceExpanded = a.forceExpandedDateKeys?.has(chunk.dateKey) ?? false;
         const expanded =
+          forceExpanded ||
           autoExpandDateGroups ||
           (expandedByDate[chunk.dateKey] !== undefined
             ? expandedByDate[chunk.dateKey]
@@ -765,7 +817,7 @@ function DesktopRows({
             <DateGroupDesktopHeader
               chunk={chunk}
               expanded={expanded}
-              autoExpand={autoExpandDateGroups}
+              autoExpand={autoExpandDateGroups || forceExpanded}
               onToggle={() => onToggleDateKey(chunk.dateKey, chunkIdx)}
               groupSelect={groupSelect}
             />
@@ -788,6 +840,10 @@ function DesktopRows({
                     duplicate: showDupHint,
                     rowTotal,
                   });
+                  const headerLineMismatch = getExpenseHeaderLineMismatch(
+                    row,
+                    a.expenseIssueFocus?.expenseId === row.id ? a.expenseIssueFocus.issue : null
+                  );
                   const vendorRaw = row.vendorName ?? "";
                   const vendorClean = expenseVendorDisplayRaw(vendorRaw);
                   const vendorTitle = inboxPrimaryVendorTitle(vendorClean);
@@ -796,11 +852,13 @@ function DesktopRows({
                   const uploadHighlight =
                     !!row.referenceNo && (a.highlightReferenceNos?.has(row.referenceNo) ?? false);
                   const isInboxUploadDraft = isInboxUploadExpenseReference(row.referenceNo);
+                  const systemHealthFocused = a.focusedExpenseId === row.id;
 
                   return (
                     <tr
                       key={`desk-${row.id}`}
                       data-expense-id={row.id}
+                      data-system-health-focus={systemHealthFocused ? "true" : undefined}
                       data-inbox-upload-draft={isInboxUploadDraft ? "" : undefined}
                       ref={(el) => {
                         a.rowElsRef.current[row.id] = el;
@@ -814,6 +872,8 @@ function DesktopRows({
                         a.listView === "unreviewed" &&
                           a.activeExpenseId === row.id &&
                           "ring-1 ring-inset ring-amber-400/35 dark:ring-amber-500/30",
+                        systemHealthFocused &&
+                          "bg-[rgb(184_137_45_/_0.08)] shadow-[inset_4px_0_0_rgb(184_137_45_/_0.82),inset_0_0_0_1px_rgb(184_137_45_/_0.26)]",
                         rowSelected &&
                           (triageLayout
                             ? "bg-[rgb(184_137_45_/_0.09)] shadow-[inset_3px_0_0_0_var(--neo-gold)] ring-1 ring-inset ring-[rgb(184_137_45_/_0.28)]"
@@ -897,8 +957,24 @@ function DesktopRows({
                           onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
                         />
                       </td>
-                      <td className="w-14 shrink-0 text-center">
-                        <ExpenseIssuesCell expenseId={row.id} issues={issues} />
+                      <td
+                        className={cn(
+                          "w-[190px] shrink-0",
+                          headerLineMismatch ? "text-left" : "text-center"
+                        )}
+                      >
+                        {headerLineMismatch ? (
+                          <ExpenseHeaderLineMismatchIssueCell
+                            mismatch={headerLineMismatch}
+                            onReviewIssue={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              a.openExpensePreview(row);
+                            }}
+                          />
+                        ) : (
+                          <ExpenseIssuesCell expenseId={row.id} issues={issues} />
+                        )}
                       </td>
                       <td className="w-[104px] shrink-0 whitespace-nowrap">
                         <ExpenseStatusCell status={status} />
@@ -1054,7 +1130,9 @@ function MobileRows({
   return (
     <>
       {dateChunks.map((chunk, chunkIdx) => {
+        const forceExpanded = a.forceExpandedDateKeys?.has(chunk.dateKey) ?? false;
         const expanded =
+          forceExpanded ||
           autoExpandDateGroups ||
           (expandedByDate[chunk.dateKey] !== undefined
             ? expandedByDate[chunk.dateKey]
@@ -1075,7 +1153,7 @@ function MobileRows({
             <DateGroupMobileHeader
               chunk={chunk}
               expanded={expanded}
-              autoExpand={autoExpandDateGroups}
+              autoExpand={autoExpandDateGroups || forceExpanded}
               onToggle={() => onToggleDateKey(chunk.dateKey, chunkIdx)}
               groupSelect={groupSelect}
             />
@@ -1098,6 +1176,10 @@ function MobileRows({
                     duplicate: showDupHint,
                     rowTotal,
                   });
+                  const headerLineMismatch = getExpenseHeaderLineMismatch(
+                    row,
+                    a.expenseIssueFocus?.expenseId === row.id ? a.expenseIssueFocus.issue : null
+                  );
                   const vendorRaw = row.vendorName ?? "";
                   const vendorClean = expenseVendorDisplayRaw(vendorRaw);
                   const vendorTitle = inboxPrimaryVendorTitle(vendorClean);
@@ -1107,11 +1189,13 @@ function MobileRows({
                   const uploadHighlight =
                     !!row.referenceNo && (a.highlightReferenceNos?.has(row.referenceNo) ?? false);
                   const isInboxUploadDraft = isInboxUploadExpenseReference(row.referenceNo);
+                  const systemHealthFocused = a.focusedExpenseId === row.id;
 
                   return (
                     <NeoMobileCard asChild selected={rowSelected} key={row.id}>
                       <li
                         data-expense-id={row.id}
+                        data-system-health-focus={systemHealthFocused ? "true" : undefined}
                         data-inbox-upload-draft={isInboxUploadDraft ? "" : undefined}
                         ref={(el) => {
                           a.rowElsRef.current[row.id] = el;
@@ -1126,6 +1210,8 @@ function MobileRows({
                           a.listView === "unreviewed" &&
                             a.activeExpenseId === row.id &&
                             "ring-1 ring-inset ring-amber-400/35 dark:ring-amber-500/30",
+                          systemHealthFocused &&
+                            "bg-[rgb(184_137_45_/_0.08)] shadow-[inset_4px_0_0_rgb(184_137_45_/_0.82),inset_0_0_0_1px_rgb(184_137_45_/_0.26)]",
                           rowSelected &&
                             (triageLayout
                               ? "shadow-[inset_3px_0_0_0_var(--neo-gold)]"
@@ -1225,10 +1311,25 @@ function MobileRows({
                                 onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
                                 touch
                               />
-                              <ExpenseIssuesCell expenseId={row.id} issues={issues} touch />
+                              {headerLineMismatch ? null : (
+                                <ExpenseIssuesCell expenseId={row.id} issues={issues} touch />
+                              )}
                               <ExpenseStatusCell status={status} />
                               <RowActionsMenu row={row} />
                             </div>
+                            {headerLineMismatch ? (
+                              <div className="mt-2">
+                                <ExpenseHeaderLineMismatchIssueCell
+                                  mismatch={headerLineMismatch}
+                                  touch
+                                  onReviewIssue={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    a.openExpensePreview(row);
+                                  }}
+                                />
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       </li>
@@ -1366,6 +1467,10 @@ export function ExpenseInboxTransactionList({
     () => dateChunks.map((c) => `${c.dateKey}:${c.rows.map((r) => r.id).join(",")}`).join("|"),
     [dateChunks]
   );
+  const forceExpandedDateKeysIdentity = React.useMemo(
+    () => [...(api.forceExpandedDateKeys ?? [])].sort().join("|"),
+    [api.forceExpandedDateKeys]
+  );
   const [expandedByDate, setExpandedByDate] = React.useState<Record<string, boolean>>({});
 
   React.useEffect(() => {
@@ -1381,17 +1486,23 @@ export function ExpenseInboxTransactionList({
     setExpandedByDate(() => {
       const next: Record<string, boolean> = {};
       dateChunks.forEach((c, i) => {
-        if (fromLs[c.dateKey] !== undefined) next[c.dateKey] = fromLs[c.dateKey];
+        if (api.forceExpandedDateKeys?.has(c.dateKey)) next[c.dateKey] = true;
+        else if (fromLs[c.dateKey] !== undefined) next[c.dateKey] = fromLs[c.dateKey];
         else next[c.dateKey] = i === 0;
       });
       return next;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- dateChunks mirrored by dateChunksIdentity
-  }, [dateChunksIdentity, api.autoExpandDateGroups, api.dateGroupPool]);
+  }, [
+    dateChunksIdentity,
+    api.autoExpandDateGroups,
+    api.dateGroupPool,
+    forceExpandedDateKeysIdentity,
+  ]);
 
   const onToggleDateKey = React.useCallback(
     (dateKey: string, chunkIndex: number) => {
-      if (api.autoExpandDateGroups) return;
+      if (api.autoExpandDateGroups || api.forceExpandedDateKeys?.has(dateKey)) return;
       setExpandedByDate((prev) => {
         const current = prev[dateKey] !== undefined ? prev[dateKey]! : chunkIndex === 0;
         const nextVal = !current;
@@ -1399,7 +1510,7 @@ export function ExpenseInboxTransactionList({
         return { ...prev, [dateKey]: nextVal };
       });
     },
-    [api.autoExpandDateGroups, api.dateGroupPool]
+    [api.autoExpandDateGroups, api.dateGroupPool, api.forceExpandedDateKeys]
   );
 
   const toggleSelected = React.useCallback((id: string, checked: boolean) => {
@@ -1455,7 +1566,7 @@ export function ExpenseInboxTransactionList({
           <NeoTable
             className="rounded-none border-0 shadow-none"
             scrollClassName="expense-compact-table-scroll bg-[var(--neo-surface-raised)]"
-            tableClassName="min-w-[960px] table-fixed text-sm"
+            tableClassName="min-w-[1100px] table-fixed text-sm"
           >
             <colgroup>
               <col className="w-[82px]" />
@@ -1464,7 +1575,7 @@ export function ExpenseInboxTransactionList({
               <col className="w-24" />
               <col className="w-24" />
               <col className="w-[82px]" />
-              <col className="w-14" />
+              <col className="w-[190px]" />
               <col className="w-[104px]" />
               <col className="w-[90px]" />
               <col className="w-10" />
@@ -1477,7 +1588,7 @@ export function ExpenseInboxTransactionList({
                 <th className={cn(tableRawThClass, "w-24 shrink-0")}>Category</th>
                 <th className={cn(tableRawThClass, "w-24 shrink-0")}>Source</th>
                 <th className={cn(tableRawThClass, "w-[82px] shrink-0")}>Receipt</th>
-                <th className={cn(tableRawThClass, "w-14 shrink-0")}>Issues</th>
+                <th className={cn(tableRawThClass, "w-[190px] shrink-0")}>Issues</th>
                 <th className={cn(tableRawThClass, "w-[104px] shrink-0")}>Status</th>
                 <th className={cn(tableRawThClass, "w-[90px] shrink-0 text-right tabular-nums")}>
                   Amount

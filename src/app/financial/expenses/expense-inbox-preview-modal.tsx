@@ -67,6 +67,11 @@ import {
   resolveExpenseReceiptItemsPreviewUrlsWithCache,
   type ExpenseReceiptItem,
 } from "@/lib/expense-receipt-items";
+import {
+  getExpenseHeaderLineMismatch,
+  type ExpenseHeaderLineMismatch,
+  type ExpenseIssueFocus,
+} from "@/lib/expense-header-line-mismatch";
 import { buildReceiptPreviewShellFiles } from "@/lib/receipt-preview-shell-files";
 import { expenseAttachmentStorageDedupeKey } from "@/lib/expense-attachment-dedupe";
 import { ExpenseEditAttachmentsSection } from "./expense-edit-attachments-section";
@@ -178,6 +183,64 @@ function PreviewRow({ label, children }: { label: string; children: React.ReactN
   );
 }
 
+function HeaderLineMismatchPanel({
+  mismatch,
+  hasReceipt,
+  onViewReceipt,
+}: {
+  mismatch: ExpenseHeaderLineMismatch;
+  hasReceipt: boolean;
+  onViewReceipt: () => void;
+}) {
+  return (
+    <div
+      data-testid="expense-header-line-mismatch-panel"
+      className="rounded-xl border border-[rgb(184_137_45_/_0.26)] bg-[rgb(184_137_45_/_0.08)] p-3 shadow-[inset_3px_0_0_rgb(184_137_45_/_0.72)]"
+      role="status"
+    >
+      <p className="text-sm font-semibold text-[var(--neo-text-primary)]">
+        System Health found a header/line total mismatch.
+      </p>
+      <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        {(
+          [
+            ["Header total", mismatch.headerTotal],
+            ["Split lines total", mismatch.linesTotal],
+            ["Difference", mismatch.absDifference],
+          ] satisfies Array<[string, number]>
+        ).map(([label, value]) => (
+          <div
+            key={label}
+            className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 py-2"
+          >
+            <p className={FIELD_LABEL}>{label}</p>
+            <p className="mt-1 tabular-nums text-sm font-semibold text-[var(--neo-text-primary)]">
+              {formatCurrency(Number(value))}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex flex-col gap-2 text-xs leading-snug text-[var(--neo-text-secondary)] sm:flex-row sm:items-center sm:justify-between">
+        <p>
+          Review receipt. If receipt total matches lines, update header. If receipt total matches
+          header, adjust split lines.
+        </p>
+        {hasReceipt ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className={cn(PREVIEW_SECONDARY_BUTTON, "h-9 shrink-0")}
+            onClick={onViewReceipt}
+          >
+            View receipt
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 type Props = {
   expense: Expense | null;
   open: boolean;
@@ -203,6 +266,8 @@ type Props = {
   possibleDuplicate?: boolean;
   /** After attachment upload/remove in edit mode — sync list + React Query. */
   onAttachmentsUpdated?: (expense: Expense) => void;
+  /** System Health issue context for read-only diagnostic display. */
+  issueContext?: ExpenseIssueFocus | null;
 };
 
 export function ExpenseInboxPreviewModal({
@@ -221,6 +286,7 @@ export function ExpenseInboxPreviewModal({
   previewNav,
   possibleDuplicate = false,
   onAttachmentsUpdated,
+  issueContext = null,
 }: Props) {
   const { toast } = useToast();
   const { openPreview, patchPreview } = useAttachmentPreview();
@@ -812,6 +878,10 @@ export function ExpenseInboxPreviewModal({
   const missingReceipt = receiptItems.length === 0;
   const missingWorker =
     expenseSourceTypeIsWorkerReimbursement(expense.sourceType) && !expense.workerId;
+  const headerLineMismatch = getExpenseHeaderLineMismatch(
+    expense,
+    issueContext?.expenseId === expense.id ? issueContext.issue : null
+  );
 
   const projectRadixValue =
     projectId && String(projectId).trim() !== "" ? projectId : EXPENSE_PROJECT_SELECT_NONE;
@@ -863,6 +933,16 @@ export function ExpenseInboxPreviewModal({
                   ) : null}
                 </div>
               )}
+              {headerLineMismatch ? (
+                <HeaderLineMismatchPanel
+                  mismatch={headerLineMismatch}
+                  hasReceipt={receiptItems.length > 0}
+                  onViewReceipt={() => {
+                    const firstReceipt = receiptItems[0];
+                    if (firstReceipt) openReceiptItemPreview(firstReceipt);
+                  }}
+                />
+              ) : null}
               <ModalSection title="Basic info">
                 <div className={previewDivide}>
                   <PreviewRow label="Vendor">

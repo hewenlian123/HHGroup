@@ -69,6 +69,8 @@ export type Expense = {
   paymentAccountName?: string | null;
   /** Optional header-level project (expense_lines may also carry project per line). */
   headerProjectId?: string | null;
+  /** Header-level total from expenses.total, used for diagnostics/display only. */
+  headerTotal?: number | null;
   /** company | reimbursement | receipt_upload | bank_import */
   sourceType?: "company" | "reimbursement" | "receipt_upload" | "bank_import";
   /** Optional company-paid material deduction against a subcontractor payable. */
@@ -547,6 +549,7 @@ async function toExpense(
       row.project_id != null && String(row.project_id).trim() !== ""
         ? String(row.project_id)
         : undefined,
+    headerTotal: nullableMoney(row.total),
     sourceType: deriveSourceType(row),
     subcontractDeduction: subcontractDeduction ?? null,
   };

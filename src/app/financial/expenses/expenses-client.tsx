@@ -97,6 +97,10 @@ import {
   rememberExpenseVendorPaymentAccount,
 } from "@/lib/expense-payment-preferences";
 import { buildExpenseDateGroups } from "@/lib/expense-list-date-groups";
+import {
+  isExpenseHeaderLineMismatchIssue,
+  type ExpenseIssueFocus,
+} from "@/lib/expense-header-line-mismatch";
 import { expenseInboxDuplicateIdSet } from "@/lib/expense-inbox-dup";
 import {
   expenseHasCategoryForWorkflow,
@@ -698,6 +702,12 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const rowElsRef = React.useRef<Record<string, HTMLTableRowElement | HTMLLIElement | null>>({});
   const emptyExpensesRef = React.useRef<HTMLDivElement>(null);
   const listView: "all" | "unreviewed" = inboxMode ? "unreviewed" : "all";
+  const focusExpenseIdParam = (searchParams.get("focusExpenseId") ?? "").trim();
+  const issueParam = searchParams.get("issue");
+  const expenseIssueFocus = React.useMemo<ExpenseIssueFocus | null>(() => {
+    if (!focusExpenseIdParam || !isExpenseHeaderLineMismatchIssue(issueParam)) return null;
+    return { expenseId: focusExpenseIdParam, issue: issueParam };
+  }, [focusExpenseIdParam, issueParam]);
 
   React.useEffect(() => {
     if (!archiveMode) return;
@@ -905,6 +915,24 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     () => buildExpenseDateGroups(filteredSortedExpenses),
     [filteredSortedExpenses]
   );
+  const focusedExpense = React.useMemo(() => {
+    if (!expenseIssueFocus) return null;
+    return (
+      filteredSortedExpenses.find((expense) => expense.id === expenseIssueFocus.expenseId) ?? null
+    );
+  }, [expenseIssueFocus, filteredSortedExpenses]);
+  const focusedDateGroupIndex = React.useMemo(() => {
+    if (!expenseIssueFocus) return -1;
+    return allDateGroups.findIndex((group) =>
+      group.rows.some((expense) => expense.id === expenseIssueFocus.expenseId)
+    );
+  }, [allDateGroups, expenseIssueFocus]);
+  const focusedDateKey =
+    focusedDateGroupIndex >= 0 ? allDateGroups[focusedDateGroupIndex]?.dateKey : null;
+  const forcedExpandedDateKeys = React.useMemo(
+    () => (focusedDateKey ? new Set([focusedDateKey]) : null),
+    [focusedDateKey]
+  );
   const totalDateGroups = allDateGroups.length;
   const totalPages = Math.max(1, Math.ceil(totalDateGroups / pageSize));
   const curPage = Math.min(page, totalPages);
@@ -967,6 +995,24 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     },
     [router, searchParams, listPath]
   );
+
+  React.useEffect(() => {
+    if (!expenseIssueFocus || focusedDateGroupIndex < 0) return;
+    const targetPage = Math.floor(focusedDateGroupIndex / pageSize) + 1;
+    if (targetPage !== curPage) setPage(targetPage);
+  }, [curPage, expenseIssueFocus, focusedDateGroupIndex, pageSize, setPage]);
+
+  React.useEffect(() => {
+    const expenseId = expenseIssueFocus?.expenseId;
+    if (!expenseId) return;
+    const el = rowElsRef.current[expenseId];
+    if (!el) return;
+    const frame = window.requestAnimationFrame(() => {
+      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ block: "center", behavior: prefersReducedMotion ? "auto" : "smooth" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [expenseIssueFocus?.expenseId, listRowIdsKey]);
 
   const clearNarrowingFiltersForUploadHighlight = React.useCallback(() => {
     setSearchInput("");
@@ -1923,6 +1969,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     Boolean(categoryFilter) ||
     Boolean(sourceTypeFilter) ||
     expenseDateFilter.kind !== "all";
+  const focusedIssueNotFound = Boolean(
+    expenseIssueFocus && expensesQueryStatus === "success" && !focusedExpense
+  );
 
   /** Advanced filters only (tabs replace status dropdown). */
   const activeAdvancedFilterCount =
@@ -1963,6 +2012,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
   const previewPossibleDuplicate =
     previewExpenseLive != null && possibleDuplicateIds.has(previewExpenseLive.id);
+  const previewIssueFocus =
+    previewExpenseLive && expenseIssueFocus?.expenseId === previewExpenseLive.id
+      ? expenseIssueFocus
+      : null;
 
   const pageTitle = inboxMode ? "Inbox" : "Expenses";
   const pageDescription = inboxMode
@@ -2393,6 +2446,27 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   Enter: save · Shift+Enter: save only · Tab: field · ↑↓ row · D delete · Esc cancel
                 </p>
               ) : null}
+              {focusedIssueNotFound ? (
+                <div
+                  data-testid="expense-focus-not-found"
+                  className="mx-3 mt-3 flex items-start gap-2 rounded-lg border border-[rgb(184_137_45_/_0.28)] bg-[rgb(184_137_45_/_0.08)] px-3 py-2.5 text-sm text-[var(--neo-text-secondary)]"
+                  role="status"
+                >
+                  <AlertCircle
+                    className="mt-0.5 h-4 w-4 shrink-0 text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]"
+                    strokeWidth={1.75}
+                    aria-hidden
+                  />
+                  <div className="min-w-0">
+                    <p className="font-medium text-[var(--neo-text-primary)]">
+                      Expense issue not found on this page.
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--neo-text-secondary)]">
+                      Try clearing filters.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
               {showExpensesSkeleton && expenses.length === 0 ? (
                 <div className="border-t border-[var(--neo-border)] px-4 py-8 md:border-t-0">
                   <ExpensesListSkeleton rows={8} showStatCards={false} />
@@ -2544,6 +2618,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                         dateGroupPool: inboxMode ? "inbox" : "expenses",
                         autoExpandDateGroups:
                           hasNarrowingFilters || autoExpandDateGroupsForHighlight,
+                        forceExpandedDateKeys: forcedExpandedDateKeys,
+                        expenseIssueFocus,
+                        focusedExpenseId: expenseIssueFocus?.expenseId ?? null,
                         highlightReferenceNos: rowHighlightRefs,
                         activeExpenseId,
                         setActiveExpenseId,
@@ -2653,6 +2730,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             onAttachmentsUpdated={handlePreviewAttachmentsUpdated}
             previewNav={previewModalNav}
             possibleDuplicate={previewPossibleDuplicate}
+            issueContext={previewIssueFocus}
           />
         ) : null}
       </div>

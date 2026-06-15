@@ -227,10 +227,19 @@ function isVoidPaymentStatus(status: string): boolean {
   return VOID_PAYMENT_STATUSES.has(status);
 }
 
-function issueLink(module: DataQualityModule, id?: string): string | undefined {
+function issueLink(module: DataQualityModule, id?: string, issueCode?: string): string | undefined {
   if (!id) return undefined;
   if (module === "projects") return `/projects/${id}?tab=cost`;
-  if (module === "expenses") return `/financial/expenses/${id}`;
+  if (module === "expenses") {
+    if (issueCode === "expense_header_line_total_mismatch") {
+      const params = new URLSearchParams({
+        focusExpenseId: id,
+        issue: issueCode,
+      });
+      return `/financial/expenses?${params.toString()}`;
+    }
+    return `/financial/expenses/${id}`;
+  }
   if (module === "invoices") return `/financial/invoices/${id}`;
   if (module === "estimates") return `/estimates/${id}`;
   if (module === "labor") return "/labor/entries";
@@ -500,7 +509,7 @@ function checkExpenses(issues: IssueBag, expenses: UnknownRow[], expenseLines: U
         currentValue: headerAmount,
         expectedValue: lineSum,
         recommendedAction: "Review the expense detail and line items.",
-        link: issueLink("expenses", id),
+        link: issueLink("expenses", id, "expense_header_line_total_mismatch"),
       });
     }
 

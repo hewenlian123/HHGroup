@@ -504,15 +504,15 @@ test.describe("System Guardian command center", () => {
               status: "warning",
               checks: [
                 {
-                  id: "data-quality-expense_header_only_cost-expense-1",
+                  id: "data-quality-expense_header_line_total_mismatch-expense-1",
                   name: "Ferguson",
                   status: "warning",
                   type: "data-quality",
                   category: "actionRequired",
-                  page: "/financial/expenses/expense-1",
-                  message: "Expense has a header amount but no line items.",
-                  recommendedAction: "Confirm this header-only expense is intentional.",
-                  diagnosticCode: "expense_header_only_cost",
+                  page: "/financial/expenses?focusExpenseId=expense-1&issue=expense_header_line_total_mismatch",
+                  message: "Expense header amount does not match the sum of expense lines.",
+                  recommendedAction: "Review the expense detail and line items.",
+                  diagnosticCode: "expense_header_line_total_mismatch",
                 },
                 {
                   id: "data-quality-reimbursement_pending_committed-reimbursement-1",
@@ -564,10 +564,10 @@ test.describe("System Guardian command center", () => {
               entityType: "expense",
               entityId: "expense-1",
               entityName: "Ferguson",
-              issueCode: "expense_header_only_cost",
-              message: "Expense has a header amount but no line items.",
-              recommendedAction: "Confirm this header-only expense is intentional.",
-              link: "/financial/expenses/expense-1",
+              issueCode: "expense_header_line_total_mismatch",
+              message: "Expense header amount does not match the sum of expense lines.",
+              recommendedAction: "Review the expense detail and line items.",
+              link: "/financial/expenses?focusExpenseId=expense-1&issue=expense_header_line_total_mismatch",
             },
             {
               severity: "warning",
@@ -605,7 +605,7 @@ test.describe("System Guardian command center", () => {
     await expect(activeIssues.getByRole("link", { name: "Ferguson" })).toHaveCount(1);
     await expect(activeIssues.getByRole("link", { name: "Ferguson" })).toHaveAttribute(
       "href",
-      "/financial/expenses/expense-1"
+      "/financial/expenses?focusExpenseId=expense-1&issue=expense_header_line_total_mismatch"
     );
     await expect(activeIssues.locator('a[href="/labor/worker-balances"]')).toHaveCount(1);
     await expect(activeIssues.getByText("Also reported by: System QA").first()).toBeVisible();
