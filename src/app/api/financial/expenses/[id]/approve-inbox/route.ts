@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAuthenticatedUser } from "@/lib/auth-boundary";
-import { ensureWorkerReimbursementForApprovedExpense, getExpenseById } from "@/lib/expenses-db";
+import {
+  ensureWorkerReimbursementForApprovedExpense,
+  getExpenseById,
+  syncExpenseHeaderAmountFromLinesWithClient,
+} from "@/lib/expenses-db";
 import {
   expenseNeedsReviewFromDb,
   validateApproveInboxUploadDraft,
@@ -61,6 +65,16 @@ export async function POST(
 
   const gate = validateApproveInboxUploadDraft(current);
   if (gate) return apiError(409, gateMessage(gate));
+
+  try {
+    await syncExpenseHeaderAmountFromLinesWithClient(supabase, expenseId);
+  } catch (syncError) {
+    return apiError(
+      500,
+      "Could not sync Inbox draft amount before approval.",
+      syncError instanceof Error ? syncError.message : String(syncError)
+    );
+  }
 
   const { error } = await supabase
     .from("expenses")

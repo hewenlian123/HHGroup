@@ -10,6 +10,7 @@ import {
   expenseSourceTypeIsWorkerReimbursement,
 } from "@/lib/expense-workflow-status";
 import { syncExpenseHeaderAmountFromLinesWithClient } from "@/lib/expenses-db";
+import { isConfirmedExpenseStatus } from "@/lib/project-expense-cost-status";
 import {
   getSubcontractDeductionByExpenseId,
   getSubcontractDeductionOptions,
@@ -336,6 +337,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return apiError(400, "Choose a worker before saving this reimbursement expense.");
   }
 
+  const syncBeforeHeaderUpdate =
+    typeof patch.status === "string" &&
+    isConfirmedExpenseStatus(patch.status) &&
+    !Object.prototype.hasOwnProperty.call(body, "amount");
+  if (syncBeforeHeaderUpdate) {
+    try {
+      await syncExpenseHeaderAmountFromLinesWithClient(supabase, id);
+    } catch (error) {
+      console.error("[expenses/:id] pre-status header sync failed", error);
+      return apiError(500, "Failed to sync expense total before saving status.");
+    }
+  }
+
   let data: unknown = null;
   if (Object.keys(patch).length > 0) {
     const result = await supabase
@@ -392,6 +406,24 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         return apiError(500, "Failed to save expense line.");
       }
       if (!updatedLine) return apiError(404, "Expense line not found.");
+      if (Object.prototype.hasOwnProperty.call(linePatch, "amount")) {
+        try {
+          const syncedAmount = await syncExpenseHeaderAmountFromLinesWithClient(supabase, id, {
+            lineId: firstLine.id,
+            amount: linePatch.amount as number,
+          });
+          if (syncedAmount != null && data && typeof data === "object") {
+            data = {
+              ...(data as Record<string, unknown>),
+              amount: syncedAmount,
+              total: syncedAmount,
+            };
+          }
+        } catch (error) {
+          console.error("[expenses/:id] line amount header sync failed", error);
+          return apiError(500, "Failed to sync expense total.");
+        }
+      }
     }
   }
 

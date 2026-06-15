@@ -467,6 +467,10 @@ function normalizeExpenseStatus(s: string | null | undefined): NonNullable<Expen
   return expenseStatusForDatabase(s);
 }
 
+export function expenseStatusShouldSyncHeaderFromLines(status: string | null | undefined): boolean {
+  return isConfirmedExpenseStatus(status);
+}
+
 async function fetchPaymentAccountNameMap(
   ids: (string | null | undefined)[],
   explicitClient?: SupabaseClient
@@ -2024,6 +2028,7 @@ export async function updateExpenseForReview(
 ): Promise<Expense | null> {
   const c = client();
   const expUpdates: Record<string, unknown> = {};
+  let syncedHeaderAmount = false;
   if (patch.date != null) expUpdates.expense_date = patch.date.slice(0, 10);
   if (patch.vendorName != null) {
     expUpdates.vendor = patch.vendorName;
@@ -2043,6 +2048,18 @@ export async function updateExpenseForReview(
   if (patch.paymentMethod !== undefined) {
     const pm = patch.paymentMethod.trim();
     if (pm) expUpdates.payment_method = pm;
+  }
+  if (
+    patch.status != null &&
+    expenseStatusShouldSyncHeaderFromLines(patch.status) &&
+    patch.amount == null
+  ) {
+    try {
+      await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId);
+      syncedHeaderAmount = true;
+    } catch {
+      return null;
+    }
   }
   if (Object.keys(expUpdates).length > 0) {
     let res = await c.from("expenses").update(expUpdates).eq("id", expenseId);
@@ -2109,6 +2126,7 @@ export async function updateExpenseForReview(
               lineId: (firstLine as { id: string }).id,
               amount: lineUpdates.amount as number,
             });
+            syncedHeaderAmount = true;
           } catch {
             return null;
           }
@@ -2127,6 +2145,17 @@ export async function updateExpenseForReview(
       .eq("id", expenseId);
     if (hdrErr && !isMissingColumn(hdrErr)) {
       console.warn("[updateExpenseForReview] expenses.project_id update:", hdrErr.message);
+    }
+  }
+  if (
+    patch.status != null &&
+    expenseStatusShouldSyncHeaderFromLines(patch.status) &&
+    !syncedHeaderAmount
+  ) {
+    try {
+      await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId);
+    } catch {
+      return null;
     }
   }
   return getExpenseById(expenseId);
@@ -2153,10 +2182,15 @@ export async function updateExpenseStatus(
   status: NonNullable<Expense["status"]> | string
 ): Promise<Expense | null> {
   const c = client();
-  const { error } = await c
-    .from("expenses")
-    .update({ status: expenseStatusForDatabase(status) })
-    .eq("id", expenseId);
+  const nextStatus = expenseStatusForDatabase(status);
+  if (expenseStatusShouldSyncHeaderFromLines(nextStatus)) {
+    try {
+      await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId);
+    } catch {
+      return null;
+    }
+  }
+  const { error } = await c.from("expenses").update({ status: nextStatus }).eq("id", expenseId);
   if (error) {
     if (isMissingColumn(error)) return getExpenseById(expenseId);
     return null;
@@ -2206,6 +2240,13 @@ export async function addExpenseLine(
     memo: line.memo ?? null,
     amount: line.amount ?? 0,
   });
+  if (Number.isFinite(Number(line.amount)) && Number(line.amount) > 0) {
+    try {
+      await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId);
+    } catch {
+      return null;
+    }
+  }
   return getExpenseById(expenseId);
 }
 
@@ -2223,6 +2264,16 @@ export async function updateExpenseLine(
   if (patch.amount != null) updates.amount = patch.amount;
   if (Object.keys(updates).length > 0) {
     await c.from("expense_lines").update(updates).eq("id", lineId).eq("expense_id", expenseId);
+    if (Object.prototype.hasOwnProperty.call(updates, "amount")) {
+      try {
+        await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId, {
+          lineId,
+          amount: updates.amount as number,
+        });
+      } catch {
+        return null;
+      }
+    }
   }
   return getExpenseById(expenseId);
 }
@@ -2241,6 +2292,11 @@ export async function deleteExpenseLine(
       .eq("expense_id", expenseId);
   } else {
     await c.from("expense_lines").delete().eq("id", lineId).eq("expense_id", expenseId);
+    try {
+      await syncExpenseHeaderAmountFromLinesWithClient(c, expenseId);
+    } catch {
+      return null;
+    }
   }
   return getExpenseById(expenseId);
 }
