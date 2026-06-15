@@ -86,6 +86,7 @@ async function seedCompactRows(admin: SupabaseClient): Promise<SeededCompactRows
     archiveInternalPayment: randomUUID(),
   };
   const today = localYmd(new Date());
+  const yesterday = localYmd(new Date(Date.now() - 24 * 60 * 60 * 1000));
   const longProjectName = "E2E Compact Long Project Name With A Very Specific Truncation Tail";
 
   const projectInsert = await admin.from("projects").insert({
@@ -211,7 +212,7 @@ async function seedCompactRows(admin: SupabaseClient): Promise<SeededCompactRows
     },
     {
       id: ids.archiveNoDescription,
-      expense_date: today,
+      expense_date: yesterday,
       vendor_name: `HH ${prefix} Archive Metadata Vendor`,
       vendor: `HH ${prefix} Archive Metadata Vendor`,
       payment_method: "Cash",
@@ -502,6 +503,23 @@ async function expectCompactLayoutNoHorizontalOverflow(page: Page, maxWidth: num
   await expectNoPageHorizontalOverflow(page, maxWidth);
 }
 
+function dateGroupToggle(page: Page, index = 0) {
+  return page
+    .locator("button[aria-expanded]")
+    .filter({ hasText: /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun),/ })
+    .nth(index);
+}
+
+async function openDesktopFilters(page: Page) {
+  await page
+    .getByRole("button", { name: /Filters/i })
+    .last()
+    .click();
+  await expect(page.getByRole("button", { name: /^This month$/i })).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
 test.describe("Expense inbox compact table", () => {
   test.describe.configure({ timeout: 180_000, retries: 0 });
 
@@ -688,6 +706,36 @@ test.describe("Expense inbox compact table", () => {
 
       const table = page.locator("main table").first();
       await expectCompactLayoutNoHorizontalOverflow(page, 1440);
+      const firstGroupToggle = dateGroupToggle(page, 0);
+      await expect(firstGroupToggle).toHaveAttribute("aria-expanded", "true");
+      await expect(firstGroupToggle).toBeEnabled();
+      await firstGroupToggle.click();
+      await expect(firstGroupToggle).toHaveAttribute("aria-expanded", "false");
+      await expect(expenseListRowById(page, seeded.ids.archiveReceipt)).toBeHidden();
+
+      const secondGroupToggle = dateGroupToggle(page, 1);
+      await expect(secondGroupToggle).toHaveAttribute("aria-expanded", "false");
+      await secondGroupToggle.click();
+      await expect(secondGroupToggle).toHaveAttribute("aria-expanded", "true");
+      await expect(expenseListRowById(page, seeded.ids.archiveNoDescription)).toBeVisible();
+      await secondGroupToggle.click();
+      await expect(secondGroupToggle).toHaveAttribute("aria-expanded", "false");
+      await expect(expenseListRowById(page, seeded.ids.archiveNoDescription)).toBeHidden();
+      await secondGroupToggle.click();
+      await expect(secondGroupToggle).toHaveAttribute("aria-expanded", "true");
+      await firstGroupToggle.click();
+      await expect(firstGroupToggle).toHaveAttribute("aria-expanded", "true");
+
+      await openDesktopFilters(page);
+      await page.getByRole("button", { name: /^This month$/i }).click();
+      await page.getByRole("button", { name: /^All time$/i }).click();
+      const allTimeFirstGroupToggle = dateGroupToggle(page, 0);
+      await expect(allTimeFirstGroupToggle).toBeEnabled();
+      await allTimeFirstGroupToggle.click();
+      await expect(allTimeFirstGroupToggle).toHaveAttribute("aria-expanded", "false");
+      await allTimeFirstGroupToggle.click();
+      await expect(allTimeFirstGroupToggle).toHaveAttribute("aria-expanded", "true");
+
       const archiveReceiptRow = expenseListRowById(page, seeded.ids.archiveReceipt);
       await expect(archiveReceiptRow).toBeVisible({ timeout: 60_000 });
       await expectHeaderCellsAligned(table, archiveReceiptRow);
@@ -845,6 +893,18 @@ test.describe("Expense inbox compact table", () => {
 
       await page.setViewportSize({ width: 390, height: 844 });
       await gotoCompactExpenses(page, seeded.prefix);
+      const mobileFirstGroupToggle = dateGroupToggle(page, 0);
+      await expect(mobileFirstGroupToggle).toBeEnabled();
+      await mobileFirstGroupToggle.click();
+      await expect(mobileFirstGroupToggle).toHaveAttribute("aria-expanded", "false");
+      await expect(expenseListRowById(page, seeded.ids.archiveReceipt)).toBeHidden();
+      await mobileFirstGroupToggle.press("Enter");
+      await expect(mobileFirstGroupToggle).toHaveAttribute("aria-expanded", "true");
+      await mobileFirstGroupToggle.press(" ");
+      await expect(mobileFirstGroupToggle).toHaveAttribute("aria-expanded", "false");
+      await mobileFirstGroupToggle.press(" ");
+      await expect(mobileFirstGroupToggle).toHaveAttribute("aria-expanded", "true");
+
       const mobileRow = expenseListRowById(page, seeded.ids.archiveReceipt);
       await expect(mobileRow).toBeVisible({ timeout: 60_000 });
       await expect(mobileRow.locator(":scope > div > span.rounded-full")).toHaveCount(0);

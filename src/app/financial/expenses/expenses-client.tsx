@@ -2623,8 +2623,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       api={{
                         listView,
                         dateGroupPool: inboxMode ? "inbox" : "expenses",
-                        autoExpandDateGroups:
-                          hasNarrowingFilters || autoExpandDateGroupsForHighlight,
+                        autoExpandDateGroups: autoExpandDateGroupsForHighlight,
                         forceExpandedDateKeys: forcedExpandedDateKeys,
                         expenseIssueFocus,
                         focusedExpenseId: expenseIssueFocus?.expenseId ?? null,

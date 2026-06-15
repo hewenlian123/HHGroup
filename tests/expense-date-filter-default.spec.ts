@@ -39,6 +39,16 @@ function dateInPreviousMonth(): string {
   return toYmd(new Date(now.getFullYear(), now.getMonth() - 1, 15));
 }
 
+function dateGroupLabelFor(ymd: string): string {
+  const [year, month, day] = ymd.split("-").map((part) => Number(part));
+  return new Date(year, month - 1, day).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 async function cleanupDateFilterRows(admin: SupabaseClient, seeded: SeededDateFilterRows | null) {
   if (!seeded) return;
   const { data: rows, error } = await admin
@@ -154,6 +164,10 @@ async function openDesktopFilters(page: Page) {
   });
 }
 
+function dateGroupToggleByLabel(page: Page, label: string) {
+  return page.locator("button[aria-expanded]").filter({ hasText: label }).first();
+}
+
 test.describe("Expense list default date scope", () => {
   test.describe.configure({ timeout: 150_000, retries: 0 });
 
@@ -182,6 +196,16 @@ test.describe("Expense list default date scope", () => {
       await openDesktopFilters(page);
       await page.getByRole("button", { name: /^This month$/i }).click();
       await page.getByRole("button", { name: /^All time$/i }).click();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toBeHidden({ timeout: 15_000 });
+      const previousMonthGroupToggle = dateGroupToggleByLabel(
+        page,
+        dateGroupLabelFor(dateInPreviousMonth())
+      );
+      await expect(previousMonthGroupToggle).toBeVisible({ timeout: 60_000 });
+      await expect(previousMonthGroupToggle).toHaveAttribute("aria-expanded", "false");
+      await previousMonthGroupToggle.click();
+      await expect(previousMonthGroupToggle).toHaveAttribute("aria-expanded", "true");
       await expect(expenseListRow(page, seeded.previousMarker)).toBeVisible({ timeout: 60_000 });
 
       await page.setViewportSize({ width: 390, height: 844 });
