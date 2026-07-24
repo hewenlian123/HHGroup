@@ -116,6 +116,119 @@ function sessionLabelWithOvertime(session: LaborSession, notes: string | null): 
   return hasFixedOvertimeAmount(notes) ? `${sessionLabel(session)} + OT` : sessionLabel(session);
 }
 
+function entrySessionFromFlags(e: LaborEntryWithJoins): LaborSession {
+  const flags = e as LaborEntryWithJoins & { morning?: unknown; afternoon?: unknown };
+  const m = flags.morning === true;
+  const a = flags.afternoon === true;
+  if (m && a) return "full_day";
+  if (m && !a) return "morning";
+  if (!m && a) return "afternoon";
+  return "full_day";
+}
+
+function entryPayAmount(e: LaborEntryWithJoins): number {
+  return e.cost_amount != null ? Number(e.cost_amount) || 0 : 0;
+}
+
+function sessionSortValue(entry: LaborEntryWithJoins): number {
+  const session = entrySessionFromFlags(entry);
+  if (session === "morning") return 0;
+  if (session === "afternoon") return 1;
+  return 2;
+}
+
+function projectSummaryForEntries(entries: LaborEntryWithJoins[]): string {
+  const projects = new Map<string, string>();
+  for (const entry of entries) {
+    const id = entry.project_id ?? "__none__";
+    const name = entry.project_name ?? "—";
+    projects.set(id, name);
+  }
+  if (projects.size === 0) return "—";
+  if (projects.size === 1) return Array.from(projects.values())[0] ?? "—";
+  return `${projects.size} Projects`;
+}
+
+type DailyEntryDisplayRow =
+  | {
+      kind: "entry";
+      id: string;
+      sortIndex: number;
+      entry: LaborEntryWithJoins;
+    }
+  | {
+      kind: "group";
+      id: string;
+      sortIndex: number;
+      workerId: string;
+      workerName: string;
+      entries: LaborEntryWithJoins[];
+      projectSummary: string;
+      totalPay: number;
+      sessionSummary: string;
+    };
+
+function buildDailyEntryDisplayRows(entries: LaborEntryWithJoins[]): DailyEntryDisplayRow[] {
+  const halfDayByWorker = new Map<
+    string,
+    { firstIndex: number; entries: LaborEntryWithJoins[]; originalIndexById: Map<string, number> }
+  >();
+  const rows: DailyEntryDisplayRow[] = [];
+
+  entries.forEach((entry, index) => {
+    const session = entrySessionFromFlags(entry);
+    if (session === "full_day" || !entry.worker_id) {
+      rows.push({ kind: "entry", id: entry.id, sortIndex: index, entry });
+      return;
+    }
+
+    const existing = halfDayByWorker.get(entry.worker_id);
+    if (existing) {
+      existing.entries.push(entry);
+      existing.originalIndexById.set(entry.id, index);
+    } else {
+      halfDayByWorker.set(entry.worker_id, {
+        firstIndex: index,
+        entries: [entry],
+        originalIndexById: new Map([[entry.id, index]]),
+      });
+    }
+  });
+
+  for (const [workerId, group] of halfDayByWorker) {
+    if (group.entries.length === 1) {
+      const [entry] = group.entries;
+      if (entry) rows.push({ kind: "entry", id: entry.id, sortIndex: group.firstIndex, entry });
+      continue;
+    }
+
+    const sortedEntries = [...group.entries].sort((a, b) => {
+      const bySession = sessionSortValue(a) - sessionSortValue(b);
+      if (bySession !== 0) return bySession;
+      return (group.originalIndexById.get(a.id) ?? 0) - (group.originalIndexById.get(b.id) ?? 0);
+    });
+    const sessions = new Set(sortedEntries.map((entry) => entrySessionFromFlags(entry)));
+    const sessionSummary =
+      sessions.has("morning") && sessions.has("afternoon")
+        ? "Morning + Afternoon"
+        : sortedEntries.map((entry) => sessionLabel(entrySessionFromFlags(entry))).join(" + ");
+
+    rows.push({
+      kind: "group",
+      id: `worker-day:${workerId}:${sortedEntries.map((entry) => entry.id).join(":")}`,
+      sortIndex: group.firstIndex,
+      workerId,
+      workerName: sortedEntries[0]?.worker_name ?? "—",
+      entries: sortedEntries,
+      projectSummary: projectSummaryForEntries(sortedEntries),
+      totalPay: sortedEntries.reduce((sum, entry) => sum + entryPayAmount(entry), 0),
+      sessionSummary,
+    });
+  }
+
+  return rows.sort((a, b) => a.sortIndex - b.sortIndex);
+}
+
 function getMonthRange(ym: string): { dateFrom: string; dateTo: string } {
   const [y, m] = ym.split("-").map(Number);
   const dateFrom = `${ym}-01`;
@@ -302,6 +415,9 @@ export default function LaborPageClient() {
   const openAddEntryModal = React.useCallback(() => setModalOpen(true), []);
   useRegisterLaborOpenDailyEntry(openAddEntryModal);
   const [expandedDate, setExpandedDate] = React.useState<string | null>(null);
+  const [expandedDailyEntryGroups, setExpandedDailyEntryGroups] = React.useState<Set<string>>(
+    () => new Set()
+  );
   const [view, setView] = React.useState<"list" | "calendar">("list");
   const [selectedDayForDetail, setSelectedDayForDetail] = React.useState<string | null>(null);
   const [editOpen, setEditOpen] = React.useState(false);
@@ -309,13 +425,16 @@ export default function LaborPageClient() {
   const todayYmd = React.useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const sessionFromFlags = React.useCallback((e: LaborEntryWithJoins): LaborSession => {
-    const flags = e as LaborEntryWithJoins & { morning?: unknown; afternoon?: unknown };
-    const m = flags.morning === true;
-    const a = flags.afternoon === true;
-    if (m && a) return "full_day";
-    if (m && !a) return "morning";
-    if (!m && a) return "afternoon";
-    return "full_day";
+    return entrySessionFromFlags(e);
+  }, []);
+
+  const toggleDailyEntryGroup = React.useCallback((id: string) => {
+    setExpandedDailyEntryGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }, []);
 
   const openEdit = React.useCallback((e: LaborEntryWithJoins) => {
@@ -520,6 +639,7 @@ export default function LaborPageClient() {
                   onChange={(e) => {
                     setSelectedMonth(e.target.value);
                     setExpandedDate(null);
+                    setExpandedDailyEntryGroups(new Set());
                     setSelectedDayForDetail(null);
                   }}
                   className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[200px]"
@@ -540,6 +660,7 @@ export default function LaborPageClient() {
                   onChange={(e) => {
                     setProjectFilter(e.target.value);
                     setExpandedDate(null);
+                    setExpandedDailyEntryGroups(new Set());
                   }}
                   className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[220px]"
                 >
@@ -560,6 +681,7 @@ export default function LaborPageClient() {
                   onChange={(e) => {
                     setWorkerFilter(e.target.value);
                     setExpandedDate(null);
+                    setExpandedDailyEntryGroups(new Set());
                   }}
                   className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[220px]"
                 >
@@ -803,6 +925,7 @@ export default function LaborPageClient() {
                   .filter((d) => (entriesByDate.get(d) ?? []).length > 0)
                   .map((date) => {
                     const entries = entriesByDate.get(date) ?? [];
+                    const displayRows = buildDailyEntryDisplayRows(entries);
                     const totalPay = entries.reduce((s, e) => s + (e.cost_amount ?? 0), 0);
                     const isHighCost = totalPay > HIGH_COST_THRESHOLD;
                     const isExpanded = expandedDate === date;
@@ -811,6 +934,7 @@ export default function LaborPageClient() {
                         <button
                           type="button"
                           onClick={() => setExpandedDate((prev) => (prev === date ? null : date))}
+                          aria-expanded={isExpanded}
                           className={cn(
                             "flex w-full items-center justify-between gap-3 rounded-none px-3 py-2 text-left transition-colors duration-150 ease-out hover:bg-muted/25 active:bg-muted/40 dark:hover:bg-muted/25",
                             isExpanded && "bg-muted/25"
@@ -867,8 +991,128 @@ export default function LaborPageClient() {
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {entries.map((e) => {
-                                    const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                                  {displayRows.map((row) => {
+                                    if (row.kind === "group") {
+                                      const isGroupExpanded = expandedDailyEntryGroups.has(row.id);
+                                      return (
+                                        <React.Fragment key={row.id}>
+                                          <tr
+                                            className={cn(
+                                              listTableRowStaticClassName,
+                                              "border-b border-border/30 bg-muted/10"
+                                            )}
+                                          >
+                                            <td className="py-2 px-3 font-semibold text-foreground">
+                                              <button
+                                                type="button"
+                                                className="inline-flex min-h-9 max-w-full items-center gap-2 rounded-md pr-2 text-left transition-colors hover:text-[var(--neo-gold-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                                                onClick={() => toggleDailyEntryGroup(row.id)}
+                                                aria-expanded={isGroupExpanded}
+                                                aria-label={`${isGroupExpanded ? "Collapse" : "Expand"} ${row.workerName} session details`}
+                                              >
+                                                <ChevronRight
+                                                  className={cn(
+                                                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150",
+                                                    isGroupExpanded && "rotate-90"
+                                                  )}
+                                                  aria-hidden
+                                                />
+                                                <span className="truncate">{row.workerName}</span>
+                                              </button>
+                                            </td>
+                                            <td className="py-2 px-3 text-muted-foreground/80">
+                                              {row.projectSummary}
+                                            </td>
+                                            <td className="py-2 px-3">
+                                              <span className="inline-flex items-center rounded-full border border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-2 py-0.5 text-xs font-medium text-[var(--neo-text-primary)]">
+                                                {row.sessionSummary}
+                                              </span>
+                                            </td>
+                                            <td className="py-2 px-3 text-right">
+                                              <NeoAmount>
+                                                {row.totalPay > 0
+                                                  ? formatCurrency(row.totalPay)
+                                                  : "—"}
+                                              </NeoAmount>
+                                            </td>
+                                            <td className="py-2 px-3 text-right text-[11px] uppercase tracking-[0.12em] text-muted-foreground/60">
+                                              Details
+                                            </td>
+                                          </tr>
+                                          {isGroupExpanded
+                                            ? row.entries.map((child) => {
+                                                const childPay = entryPayAmount(child);
+                                                const childSession = sessionFromFlags(child);
+                                                return (
+                                                  <tr
+                                                    key={child.id}
+                                                    className="border-b border-border/30 bg-muted/[0.04] last:border-b-0"
+                                                  >
+                                                    <td className="py-2 px-3 pl-9 text-xs font-semibold text-muted-foreground">
+                                                      {sessionLabelWithOvertime(
+                                                        childSession,
+                                                        child.notes
+                                                      )}
+                                                    </td>
+                                                    <td className="py-2 px-3 text-muted-foreground/80">
+                                                      {child.project_name ?? "—"}
+                                                    </td>
+                                                    <td className="py-2 px-3">
+                                                      <span
+                                                        className={cn(
+                                                          "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                                                          sessionBadgeClass(childSession)
+                                                        )}
+                                                      >
+                                                        {sessionLabelWithOvertime(
+                                                          childSession,
+                                                          child.notes
+                                                        )}
+                                                      </span>
+                                                    </td>
+                                                    <td className="py-2 px-3 text-right">
+                                                      <NeoAmount>
+                                                        {childPay > 0
+                                                          ? formatCurrency(childPay)
+                                                          : "—"}
+                                                      </NeoAmount>
+                                                    </td>
+                                                    <td className="py-2 px-3 text-right">
+                                                      <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                          type="button"
+                                                          className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-emerald-700 hover:bg-emerald-50/60 hover:text-emerald-800"
+                                                          onClick={() => openEdit(child)}
+                                                          aria-label={`Edit ${sessionLabel(childSession)} entry for ${row.workerName}`}
+                                                        >
+                                                          <Pencil className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                          type="button"
+                                                          className="h-8 w-8 inline-flex items-center justify-center rounded-sm text-red-600 hover:text-red-700 hover:bg-red-50/60"
+                                                          onClick={() => void handleDelete(child)}
+                                                          aria-label={`Delete ${sessionLabel(childSession)} entry for ${row.workerName}`}
+                                                          disabled={workerMode}
+                                                          title={
+                                                            workerMode
+                                                              ? "Delete is available only on the main Labor page."
+                                                              : "Delete entry"
+                                                          }
+                                                        >
+                                                          <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                      </div>
+                                                    </td>
+                                                  </tr>
+                                                );
+                                              })
+                                            : null}
+                                        </React.Fragment>
+                                      );
+                                    }
+
+                                    const e = row.entry;
+                                    const pay = entryPayAmount(e);
                                     const session = sessionFromFlags(e);
                                     return (
                                       <tr
@@ -932,8 +1176,114 @@ export default function LaborPageClient() {
                               </table>
 
                               <div className="flex flex-col divide-y divide-border/60 md:hidden">
-                                {entries.map((e) => {
-                                  const pay = e.cost_amount != null ? Number(e.cost_amount) : 0;
+                                {displayRows.map((row) => {
+                                  if (row.kind === "group") {
+                                    const isGroupExpanded = expandedDailyEntryGroups.has(row.id);
+                                    return (
+                                      <div key={row.id} className="px-3 py-3">
+                                        <button
+                                          type="button"
+                                          className="flex min-h-11 w-full items-start justify-between gap-3 rounded-md text-left"
+                                          onClick={() => toggleDailyEntryGroup(row.id)}
+                                          aria-expanded={isGroupExpanded}
+                                          aria-label={`${isGroupExpanded ? "Collapse" : "Expand"} ${row.workerName} session details`}
+                                        >
+                                          <div className="flex min-w-0 items-start gap-2">
+                                            <ChevronRight
+                                              className={cn(
+                                                "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-150",
+                                                isGroupExpanded && "rotate-90"
+                                              )}
+                                              aria-hidden
+                                            />
+                                            <div className="min-w-0">
+                                              <div className="flex items-center gap-2">
+                                                <span className="truncate text-sm font-semibold text-foreground">
+                                                  {row.workerName}
+                                                </span>
+                                                <span className="inline-flex shrink-0 items-center rounded-full border border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--neo-text-primary)]">
+                                                  {row.sessionSummary}
+                                                </span>
+                                              </div>
+                                              <div className="mt-0.5 truncate text-xs text-muted-foreground">
+                                                {row.projectSummary}
+                                              </div>
+                                            </div>
+                                          </div>
+                                          <div className="shrink-0 text-right text-sm font-semibold tabular-nums text-foreground">
+                                            {row.totalPay > 0 ? formatCurrency(row.totalPay) : "—"}
+                                          </div>
+                                        </button>
+                                        {isGroupExpanded ? (
+                                          <div className="mt-3 space-y-2 border-l border-border/70 pl-3">
+                                            {row.entries.map((child) => {
+                                              const childPay = entryPayAmount(child);
+                                              const childSession = sessionFromFlags(child);
+                                              return (
+                                                <div
+                                                  key={child.id}
+                                                  className="rounded-md border border-border/50 bg-muted/[0.05] px-3 py-2"
+                                                >
+                                                  <div className="flex items-start justify-between gap-3">
+                                                    <div className="min-w-0">
+                                                      <span
+                                                        className={cn(
+                                                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                                                          sessionBadgeClass(childSession)
+                                                        )}
+                                                      >
+                                                        {sessionLabelWithOvertime(
+                                                          childSession,
+                                                          child.notes
+                                                        )}
+                                                      </span>
+                                                      <div className="mt-1 truncate text-xs text-muted-foreground">
+                                                        {child.project_name ?? "—"}
+                                                      </div>
+                                                    </div>
+                                                    <div className="shrink-0 text-right">
+                                                      <div className="text-sm font-semibold tabular-nums text-foreground">
+                                                        {childPay > 0
+                                                          ? formatCurrency(childPay)
+                                                          : "—"}
+                                                      </div>
+                                                      <div className="mt-1 flex items-center justify-end gap-2">
+                                                        <button
+                                                          type="button"
+                                                          className="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground active:scale-[0.98]"
+                                                          onClick={() => openEdit(child)}
+                                                          aria-label={`Edit ${sessionLabel(childSession)} entry for ${row.workerName}`}
+                                                        >
+                                                          <Pencil className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                          type="button"
+                                                          className="inline-flex h-11 w-11 items-center justify-center rounded-sm border border-border/70 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-destructive active:scale-[0.98]"
+                                                          onClick={() => void handleDelete(child)}
+                                                          aria-label={`Delete ${sessionLabel(childSession)} entry for ${row.workerName}`}
+                                                          disabled={workerMode}
+                                                          title={
+                                                            workerMode
+                                                              ? "Delete is available only on the main Labor page."
+                                                              : "Delete entry"
+                                                          }
+                                                        >
+                                                          <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  }
+
+                                  const e = row.entry;
+                                  const pay = entryPayAmount(e);
                                   const session = sessionFromFlags(e);
                                   return (
                                     <div key={e.id} className="px-3 py-3">
