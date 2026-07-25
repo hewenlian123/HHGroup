@@ -6,8 +6,15 @@ import {
 } from "@/lib/supabase-server";
 
 const BUCKET = "expense-attachments";
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
-const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
+const ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/pdf",
+]);
 
 function apiError(status: number, message: string): NextResponse {
   return NextResponse.json(
@@ -21,6 +28,8 @@ function safeExtension(file: File): string {
   if (mime === "image/jpeg") return "jpg";
   if (mime === "image/png") return "png";
   if (mime === "image/webp") return "webp";
+  if (mime === "image/heic") return "heic";
+  if (mime === "image/heif") return "heif";
   if (mime === "application/pdf") return "pdf";
   return "bin";
 }
@@ -39,9 +48,11 @@ export async function POST(req: Request) {
     const file = formData.get("file") as File | null;
     if (!(file instanceof File)) return apiError(400, "Receipt file is required.");
     if (file.size <= 0) return apiError(400, "Receipt file is empty.");
-    if (file.size > MAX_UPLOAD_BYTES) return apiError(400, "Receipt file is too large.");
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return apiError(400, "Receipt file is too large. Upload a file under 25 MB.");
+    }
     if (!ALLOWED_MIME_TYPES.has(file.type.toLowerCase())) {
-      return apiError(400, "Only JPEG, PNG, WebP, and PDF receipts are allowed.");
+      return apiError(400, "Only JPEG, PNG, WebP, HEIC, HEIF, and PDF receipts are allowed.");
     }
 
     const path = `quick-expense/${Date.now()}-${crypto.randomUUID()}.${safeExtension(file)}`;

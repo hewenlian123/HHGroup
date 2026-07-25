@@ -995,7 +995,7 @@ export function ReceiptQueueWorkspace() {
     async (
       rowId: string,
       file: File,
-      options?: { skipRefresh?: boolean; alreadyCompressed?: boolean }
+      options?: { skipRefresh?: boolean; ocrFile?: File }
     ): Promise<ProcessReceiptQueueResult | null> => {
       if (!supabase) return null;
       try {
@@ -1004,7 +1004,7 @@ export function ReceiptQueueWorkspace() {
           rowId,
           file,
           inferExpenseCategoryFromVendor,
-          { alreadyCompressed: options?.alreadyCompressed }
+          { ocrFile: options?.ocrFile }
         );
         return r;
       } catch (e) {
@@ -1148,29 +1148,32 @@ export function ReceiptQueueWorkspace() {
 
       try {
         if (mountedRef.current) setReceiptImagePreparing(true);
-        let compressedFiles: File[];
+        let preparedFiles: Array<{ raw: File; ocrFile: File }>;
         try {
-          compressedFiles = await Promise.all(
-            fileList.map((file) => compressImageFileForReceiptUpload(file))
+          preparedFiles = await Promise.all(
+            fileList.map(async (file) => ({
+              raw: file,
+              ocrFile: await compressImageFileForReceiptUpload(file),
+            }))
           );
         } finally {
           if (mountedRef.current) setReceiptImagePreparing(false);
         }
 
         const outcomes = await Promise.all(
-          compressedFiles.map(async (prepared) => {
+          preparedFiles.map(async ({ raw, ocrFile }) => {
             try {
               let qid: string;
               try {
-                qid = await insertReceiptQueueProcessing(supabase, prepared);
+                qid = await insertReceiptQueueProcessing(supabase, raw);
               } catch (e) {
                 const msg = e instanceof Error ? e.message : "Enqueue failed";
                 return { ok: false as const, detail: msg };
               }
               notifyReceiptQueueChanged();
-              const r = await runUploadForRow(qid, prepared, {
+              const r = await runUploadForRow(qid, raw, {
                 skipRefresh: true,
-                alreadyCompressed: true,
+                ocrFile,
               });
               if (r?.storageSaved) return { ok: true as const, rowId: qid };
               return {
@@ -1293,7 +1296,7 @@ export function ReceiptQueueWorkspace() {
               );
             });
           }
-          const r = await runUploadForRow(rowId, prepared, { alreadyCompressed: true });
+          const r = await runUploadForRow(rowId, file, { ocrFile: prepared });
           if (!mountedRef.current) return;
           if (r?.storageSaved) {
             focusQueueRowVendor(rowId);

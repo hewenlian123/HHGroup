@@ -98,9 +98,7 @@ export async function createInboxDraftFromReceiptFile(
     };
   }
 
-  const slot = await uploadReceiptToStorage(supabase, prepared, hash.slice(0, 12), {
-    alreadyCompressed: true,
-  });
+  const slot = await uploadReceiptToStorage(supabase, file, hash.slice(0, 12));
   const receiptUrl =
     slot.receiptsPublicUrl?.trim() ||
     (slot.previewUrl && !slot.previewUrl.startsWith("blob:") ? slot.previewUrl : null);
@@ -126,9 +124,9 @@ export async function createInboxDraftFromReceiptFile(
       ? [
           {
             id: crypto.randomUUID(),
-            fileName: prepared.name || "receipt",
-            mimeType: prepared.type || "image/jpeg",
-            size: prepared.size || 0,
+            fileName: slot.storedFileName || file.name || "receipt",
+            mimeType: slot.storedMimeType || file.type || "application/octet-stream",
+            size: slot.storedSize || file.size || 0,
             url: attachmentUrl,
             createdAt: new Date().toISOString(),
           },

@@ -41,6 +41,20 @@ function adminClient(): SupabaseClient | null {
   return createClient(url, key);
 }
 
+function receiptsBucketPathFromPublicUrl(raw: string | null | undefined): string | null {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  try {
+    const path = new URL(value).pathname;
+    const marker = "/storage/v1/object/public/receipts/";
+    const index = path.indexOf(marker);
+    if (index < 0) return null;
+    return decodeURIComponent(path.slice(index + marker.length));
+  } catch {
+    return null;
+  }
+}
+
 async function receiptOcrPngBytes(page: Page, runId: string): Promise<Buffer> {
   const receipt = await page.context().newPage();
   try {
@@ -148,9 +162,17 @@ async function loadInboxOcrDraft(
 async function cleanupInboxOcrDraft(admin: SupabaseClient, referenceNo: string): Promise<void> {
   const { data: expenses } = await admin
     .from("expenses")
-    .select("id")
+    .select("id,receipt_url")
     .eq("reference_no", referenceNo);
   const ids = (expenses ?? []).map((row) => String((row as { id: string }).id));
+  const receiptPaths = (expenses ?? [])
+    .map((row) =>
+      receiptsBucketPathFromPublicUrl((row as { receipt_url?: string | null }).receipt_url)
+    )
+    .filter((p): p is string => Boolean(p));
+  if (receiptPaths.length > 0) {
+    await admin.storage.from("receipts").remove(receiptPaths);
+  }
   for (const id of ids) {
     const { data: attachments } = await admin
       .from("attachments")
@@ -206,6 +228,16 @@ async function openUploadReceiptDialog(page: Page) {
     .first()
     .click();
   return page.getByRole("dialog");
+}
+
+async function showAllTimeExpenses(page: Page): Promise<void> {
+  await page.getByRole("button", { name: /Filters/i }).click();
+  await expect(page.getByRole("button", { name: /^This month$/i })).toBeVisible({
+    timeout: 15_000,
+  });
+  await page.getByRole("button", { name: /^This month$/i }).click();
+  await page.getByRole("button", { name: /^All time$/i }).click();
+  await waitForExpensesQuerySuccess(page, 90_000);
 }
 
 test.describe("Inbox draft upload receipt", () => {
@@ -290,6 +322,21 @@ test.describe("Inbox draft upload receipt", () => {
 
       if (writebackStatuses.length > 0) expect(writebackStatuses).toContain(200);
       expect(blockedWritebackResponses).toEqual([]);
+      const { data: attachments, error: attachmentError } = await admin
+        .from("attachments")
+        .select("file_name,mime_type,size_bytes,file_path")
+        .eq("entity_type", "expense")
+        .eq("entity_id", draftId);
+      if (attachmentError)
+        throw new Error(`Inbox OCR attachment check failed: ${attachmentError.message}`);
+      expect(attachments?.[0]).toMatchObject({
+        file_name: filePayload.name,
+        mime_type: "image/png",
+        size_bytes: filePayload.buffer.length,
+      });
+      expect(
+        String((attachments?.[0] as { file_path?: string } | undefined)?.file_path ?? "")
+      ).toMatch(/^quick-expense\/.+\.png$/i);
 
       await page.reload({ waitUntil: "domcontentloaded", timeout: 90_000 });
       await waitForExpensesQuerySuccess(page, 90_000);
@@ -348,6 +395,7 @@ test.describe("Inbox draft upload receipt", () => {
         timeout: 90_000,
       });
       await waitForExpensesQuerySuccess(page, 90_000);
+      await showAllTimeExpenses(page);
       await expensesVendorSearch(page).fill("Lowe's");
       const archiveRow = page.locator(`.exp-row[data-expense-id="${draftId}"]`).first();
       await expect(archiveRow).toBeVisible({ timeout: 60_000 });
@@ -583,6 +631,7 @@ test.describe("Inbox draft upload receipt", () => {
         timeout: 90_000,
       });
       await waitForExpensesQuerySuccess(page, 90_000);
+      await showAllTimeExpenses(page);
       await expensesVendorSearch(page).fill(vendorName);
       const archiveRow = expenseListRow(page, vendorName);
       await expect(archiveRow).toBeVisible({ timeout: 120_000 });
@@ -773,6 +822,7 @@ test.describe("Inbox draft upload receipt", () => {
         timeout: 90_000,
       });
       await waitForExpensesQuerySuccess(page, 90_000);
+      await showAllTimeExpenses(page);
       await expensesVendorSearch(page).fill(vendorName);
       const archiveRow = expenseListRow(page, vendorName);
       await expect(archiveRow).toBeVisible({ timeout: 120_000 });
@@ -820,6 +870,7 @@ test.describe("Inbox draft upload receipt", () => {
         timeout: 90_000,
       });
       await waitForExpensesQuerySuccess(page, 90_000);
+      await showAllTimeExpenses(page);
       await expensesVendorSearch(page).fill(vendorName);
       const archiveRowAfterClose = expenseListRow(page, vendorName);
       await expect(archiveRowAfterClose).toBeVisible({ timeout: 120_000 });

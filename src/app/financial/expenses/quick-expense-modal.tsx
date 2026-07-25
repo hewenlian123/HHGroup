@@ -229,13 +229,18 @@ export function QuickExpenseModal({
   const openAttachmentSlotsAt = React.useCallback(
     (initialIndex: number) => {
       if (attachmentSlots.length === 0) return;
-      const files = attachmentSlots.map((s) => ({
-        url: s.previewUrl,
-        fileName: s.displayName ?? s.pendingFile?.name ?? "Receipt",
-        fileType: (s.isPdf || s.pendingFile?.type === "application/pdf" ? "pdf" : "image") as
-          | "pdf"
-          | "image",
-      }));
+      const files = attachmentSlots.map((s) => {
+        const isPdf =
+          s.isPdf ||
+          s.storedMimeType === "application/pdf" ||
+          s.pendingFile?.type === "application/pdf";
+        const fileType: "pdf" | "image" = isPdf ? "pdf" : "image";
+        return {
+          url: s.previewUrl,
+          fileName: s.displayName ?? s.storedFileName ?? s.pendingFile?.name ?? "Receipt",
+          fileType,
+        };
+      });
       const ix = Math.max(0, Math.min(initialIndex, files.length - 1));
       openPreview(files, ix);
     },
@@ -387,9 +392,11 @@ export function QuickExpenseModal({
     async (clientId: string) => {
       if (!supabase || receiptPickLockRef.current) return;
       let fileToRetry: File | undefined;
+      let ocrFileToRetry: File | undefined;
       setAttachmentSlots((prev) => {
         const s = prev.find((x) => x.clientId === clientId);
         fileToRetry = s?.sourceFile ?? s?.pendingFile;
+        ocrFileToRetry = s?.ocrFile;
         if (!fileToRetry) return prev;
         return prev.map((x) =>
           x.clientId === clientId
@@ -403,10 +410,7 @@ export function QuickExpenseModal({
         const result = await uploadReceiptToStorage(
           supabase,
           fileToRetry,
-          `r-${clientId.slice(0, 8)}`,
-          {
-            alreadyCompressed: true,
-          }
+          `r-${clientId.slice(0, 8)}`
         );
         setAttachmentSlots((prev) =>
           dedupeExpenseReceiptUploadSlots(
@@ -425,6 +429,7 @@ export function QuickExpenseModal({
                   previewUrl: s.previewUrl,
                   revoke: s.revoke,
                   sourceFile: fileToRetry,
+                  ocrFile: ocrFileToRetry,
                   pendingFile: result.pendingFile,
                 };
               }
@@ -435,10 +440,17 @@ export function QuickExpenseModal({
                 attachmentPath: result.attachmentPath,
                 receiptsPublicUrl: result.receiptsPublicUrl,
                 revoke: result.revoke,
+                localPreviewUrl: undefined,
                 pendingFile: undefined,
                 uploadError: undefined,
                 uploadUiStatus: "uploaded",
                 sourceFile: fileToRetry,
+                ocrFile: ocrFileToRetry,
+                displayName: result.storedFileName ?? s.displayName,
+                storedFileName: result.storedFileName,
+                storedMimeType: result.storedMimeType,
+                storedSize: result.storedSize,
+                isPdf: result.storedMimeType === "application/pdf" || s.isPdf,
               };
             })
           )
@@ -736,7 +748,9 @@ export function QuickExpenseModal({
 
   const retryOcr = React.useCallback(async () => {
     if (receiptPickLockRef.current || saving || receiptPipelineBusy) return;
-    const imageSlots = attachmentSlots.filter((s) => s.sourceFile?.type?.startsWith("image/"));
+    const imageSlots = attachmentSlots.filter((s) =>
+      (s.ocrFile ?? s.sourceFile)?.type?.startsWith("image/")
+    );
     if (!imageSlots.length) {
       toast({
         title: "No receipt image",
@@ -752,8 +766,9 @@ export function QuickExpenseModal({
     try {
       const ocrResults: Array<{ result: ReceiptOcrResult; source: OcrSource }> = [];
       for (const s of imageSlots) {
-        if (s.sourceFile) {
-          ocrResults.push(await runReceiptOcrForImageFile(s.sourceFile, { localTimeoutMs: 8000 }));
+        const ocrFile = s.ocrFile ?? s.sourceFile;
+        if (ocrFile) {
+          ocrResults.push(await runReceiptOcrForImageFile(ocrFile, { localTimeoutMs: 8000 }));
         }
       }
       if (!ocrResults.length) return;
@@ -849,12 +864,19 @@ export function QuickExpenseModal({
       }
 
       const preparedList = await Promise.all(
-        workRaws.map((raw, i) =>
-          compressImageFileForReceiptUpload(raw).then((prepared) => ({
+        workRaws.map(async (raw, i) => {
+          let prepared = raw;
+          try {
+            prepared = await compressImageFileForReceiptUpload(raw);
+          } catch {
+            prepared = raw;
+          }
+          return {
             clientId: workClientIds[i]!,
+            raw,
             prepared,
-          }))
-        )
+          };
+        })
       );
 
       const qualityWarning = await assessImageQuality(preparedList[0]!.prepared);
@@ -866,18 +888,10 @@ export function QuickExpenseModal({
         prev.map((s) => {
           const hit = preparedList.find((p) => p.clientId === s.clientId);
           if (!hit) return s;
-          s.revoke?.();
-          const url = URL.createObjectURL(hit.prepared);
-          const pdf = isPdfFile(hit.prepared);
           return {
             ...s,
-            previewUrl: url,
-            localPreviewUrl: url,
-            displayName: hit.prepared.name,
-            isPdf: pdf,
-            sourceFile: hit.prepared,
+            ocrFile: hit.prepared,
             uploadUiStatus: "uploading",
-            revoke: () => URL.revokeObjectURL(url),
           };
         })
       );
@@ -915,10 +929,8 @@ export function QuickExpenseModal({
       let firstUploadErr: string | undefined;
       const runUploads = async () => {
         await Promise.all(
-          preparedList.map(async ({ clientId, prepared }) => {
-            const result = await uploadReceiptToStorage(supabase, prepared, clientId.slice(0, 8), {
-              alreadyCompressed: true,
-            });
+          preparedList.map(async ({ clientId, raw, prepared }) => {
+            const result = await uploadReceiptToStorage(supabase, raw, clientId.slice(0, 8));
             if (result.uploadError && !firstUploadErr) firstUploadErr = result.uploadError;
             setAttachmentSlots((prev) =>
               prev.map((s) => {
@@ -930,7 +942,8 @@ export function QuickExpenseModal({
                     uploadUiStatus: "failed",
                     previewUrl: s.previewUrl,
                     revoke: s.revoke,
-                    sourceFile: prepared,
+                    sourceFile: raw,
+                    ocrFile: prepared,
                     pendingFile: result.pendingFile,
                   };
                 }
@@ -941,10 +954,17 @@ export function QuickExpenseModal({
                   attachmentPath: result.attachmentPath,
                   receiptsPublicUrl: result.receiptsPublicUrl,
                   revoke: result.revoke,
+                  localPreviewUrl: undefined,
                   pendingFile: undefined,
                   uploadError: undefined,
                   uploadUiStatus: "uploaded",
-                  sourceFile: prepared,
+                  sourceFile: raw,
+                  ocrFile: prepared,
+                  displayName: result.storedFileName ?? s.displayName,
+                  storedFileName: result.storedFileName,
+                  storedMimeType: result.storedMimeType,
+                  storedSize: result.storedSize,
+                  isPdf: result.storedMimeType === "application/pdf" || s.isPdf,
                 };
               })
             );
@@ -1082,10 +1102,8 @@ export function QuickExpenseModal({
         slotsToSave = await Promise.all(
           slotsDeduped.map(async (s, i) => {
             if (s.pendingFile && !s.attachmentPath && !s.receiptsPublicUrl) {
-              const u = await uploadReceiptToStorage(supabase, s.pendingFile, `save-${i}`, {
-                alreadyCompressed: true,
-              });
-              return { ...u, pendingFile: undefined };
+              const u = await uploadReceiptToStorage(supabase, s.pendingFile, `save-${i}`);
+              return { ...s, ...u, localPreviewUrl: undefined, pendingFile: undefined };
             }
             return s;
           })
@@ -1099,9 +1117,18 @@ export function QuickExpenseModal({
         .filter((s) => s.attachmentPath)
         .map((s) => ({
           id: crypto.randomUUID(),
-          fileName: "receipt",
-          mimeType: "image/jpeg",
-          size: 0,
+          fileName:
+            s.displayName ??
+            s.storedFileName ??
+            s.sourceFile?.name ??
+            s.pendingFile?.name ??
+            "receipt",
+          mimeType:
+            s.storedMimeType ??
+            s.sourceFile?.type ??
+            s.pendingFile?.type ??
+            "application/octet-stream",
+          size: s.storedSize ?? s.sourceFile?.size ?? s.pendingFile?.size ?? 0,
           url: s.attachmentPath ?? "",
           createdAt: new Date().toISOString(),
         }));

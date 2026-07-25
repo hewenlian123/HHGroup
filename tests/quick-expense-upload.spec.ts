@@ -72,6 +72,20 @@ function adminClient(): SupabaseClient | null {
   return createClient(url, key);
 }
 
+function receiptsBucketPathFromPublicUrl(raw: string | null | undefined): string | null {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  try {
+    const path = new URL(value).pathname;
+    const marker = "/storage/v1/object/public/receipts/";
+    const index = path.indexOf(marker);
+    if (index < 0) return null;
+    return decodeURIComponent(path.slice(index + marker.length));
+  } catch {
+    return null;
+  }
+}
+
 async function cleanupQuickCategoryRows(
   admin: SupabaseClient,
   {
@@ -84,13 +98,37 @@ async function cleanupQuickCategoryRows(
 ) {
   const { data: expenses, error: expenseLoadError } = await admin
     .from("expenses")
-    .select("id")
+    .select("id,receipt_url")
     .or(`vendor_name.ilike.${vendorPrefix}%,vendor.ilike.${vendorPrefix}%`);
   if (expenseLoadError)
     throw new Error(`quick category cleanup load failed: ${expenseLoadError.message}`);
 
   const expenseIds = (expenses ?? []).map((row) => String((row as { id: string }).id));
   if (expenseIds.length > 0) {
+    const receiptPaths = (expenses ?? [])
+      .map((row) =>
+        receiptsBucketPathFromPublicUrl((row as { receipt_url?: string | null }).receipt_url)
+      )
+      .filter((p): p is string => Boolean(p));
+    if (receiptPaths.length > 0) {
+      await admin.storage.from("receipts").remove(receiptPaths);
+    }
+    const { data: attachmentRows } = await admin
+      .from("attachments")
+      .select("file_path")
+      .eq("entity_type", "expense")
+      .in("entity_id", expenseIds);
+    const attachmentPaths = (attachmentRows ?? [])
+      .map((row) => String((row as { file_path?: string | null }).file_path ?? ""))
+      .filter((p) => p.startsWith("quick-expense/"));
+    if (attachmentPaths.length > 0) {
+      await admin.storage.from("expense-attachments").remove(attachmentPaths);
+    }
+    await admin
+      .from("attachments")
+      .delete()
+      .eq("entity_type", "expense")
+      .in("entity_id", expenseIds);
     const lineDelete = await admin.from("expense_lines").delete().in("expense_id", expenseIds);
     if (lineDelete.error) {
       throw new Error(`quick category cleanup lines failed: ${lineDelete.error.message}`);
@@ -239,10 +277,12 @@ test.describe("Quick Expense: upload and save", () => {
         test.skip(true, "Browser Supabase client not configured (NEXT_PUBLIC_* env).");
       }
 
+      const receiptFileName = `quick-ocr-${runId}.png`;
+      const receiptBuffer = await receiptOcrPngBytes(page, runId);
       await dialog.locator('input[type="file"]').setInputFiles({
-        name: `quick-ocr-${runId}.png`,
+        name: receiptFileName,
         mimeType: "image/png",
-        buffer: await receiptOcrPngBytes(page, runId),
+        buffer: receiptBuffer,
       });
 
       await expect(dialog.locator("#quick-expense-vendor")).toHaveValue("Lowe's", {
@@ -281,6 +321,21 @@ test.describe("Quick Expense: upload and save", () => {
       expect(String((line as { category?: string | null } | null)?.category ?? "")).toBe(
         "Materials"
       );
+      const { data: attachments, error: attachmentError } = await admin
+        .from("attachments")
+        .select("file_name,mime_type,size_bytes,file_path")
+        .eq("entity_type", "expense")
+        .eq("entity_id", saved.expenseId);
+      if (attachmentError)
+        throw new Error(`Quick OCR attachment check failed: ${attachmentError.message}`);
+      expect(attachments?.[0]).toMatchObject({
+        file_name: receiptFileName,
+        mime_type: "image/png",
+        size_bytes: receiptBuffer.length,
+      });
+      expect(
+        String((attachments?.[0] as { file_path?: string } | undefined)?.file_path ?? "")
+      ).toMatch(/^quick-expense\/.+\.png$/i);
     } finally {
       await cleanupQuickCategoryRows(admin, {
         categoryNames: [],

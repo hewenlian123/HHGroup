@@ -22,10 +22,9 @@ export type ProcessReceiptQueueResult = {
 export async function uploadReceiptQueueFileOnly(
   supabase: BrowserSupabase,
   rowId: string,
-  file: File,
-  options?: { alreadyCompressed?: boolean }
+  file: File
 ): Promise<ProcessReceiptQueueResult> {
-  const slot = await uploadReceiptToStorage(supabase, file, rowId, options);
+  const slot = await uploadReceiptToStorage(supabase, file, rowId);
   const uploadFailed = !!(slot.uploadError && !slot.attachmentPath && !slot.receiptsPublicUrl);
   const storageSaved = Boolean(slot.attachmentPath || slot.receiptsPublicUrl);
   await updateReceiptQueueRow(supabase, rowId, {
@@ -131,10 +130,10 @@ export async function processReceiptQueueUpload(
   rowId: string,
   file: File,
   inferCategory: (vendor: string) => string,
-  options?: { alreadyCompressed?: boolean }
+  options?: { ocrFile?: File }
 ): Promise<ProcessReceiptQueueResult> {
-  const result = await uploadReceiptQueueFileOnly(supabase, rowId, file, options);
-  scheduleReceiptQueueOcr(supabase, rowId, file, inferCategory, () => {
+  const result = await uploadReceiptQueueFileOnly(supabase, rowId, file);
+  scheduleReceiptQueueOcr(supabase, rowId, options?.ocrFile ?? file, inferCategory, () => {
     notifyReceiptQueueChanged();
   });
   return result;

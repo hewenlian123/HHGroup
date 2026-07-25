@@ -1,5 +1,4 @@
 import { createBrowserClient } from "@/lib/supabase";
-import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
 
 type BrowserSupabase = NonNullable<ReturnType<typeof createBrowserClient>>;
 
@@ -27,6 +26,9 @@ export type ExpenseReceiptUploadSlot = {
   previewUrl: string;
   attachmentPath: string | null;
   receiptsPublicUrl: string | null;
+  storedFileName?: string;
+  storedMimeType?: string;
+  storedSize?: number;
   uploadError?: string;
   revoke?: () => void;
   pendingFile?: File;
@@ -37,17 +39,20 @@ export type ExpenseReceiptUploadSlot = {
   uploadUiStatus?: ReceiptSlotUploadUi;
   /** Same file used for retry when upload failed */
   sourceFile?: File;
+  /** OCR-prepared derivative. Never used for stored receipt preview. */
+  ocrFile?: File;
 };
 
 /** Browser upload for expense receipts (server route first, then expense-attachments, then receipts bucket). */
 export async function uploadReceiptToStorage(
   supabase: BrowserSupabase,
   file: File,
-  keySuffix: string,
-  options?: { alreadyCompressed?: boolean }
+  keySuffix: string
 ): Promise<ExpenseReceiptUploadSlot> {
-  const fileToUpload =
-    options?.alreadyCompressed === true ? file : await compressImageFileForReceiptUpload(file);
+  const fileToUpload = file;
+  const storedFileName = fileToUpload.name || "receipt";
+  const storedMimeType = fileToUpload.type || "application/octet-stream";
+  const storedSize = fileToUpload.size || 0;
 
   let serverUploadMessage: string | null = null;
   try {
@@ -80,6 +85,9 @@ export async function uploadReceiptToStorage(
         previewUrl: payload.signed_url || payload.public_url || fallbackBlob || "",
         attachmentPath: payload.path,
         receiptsPublicUrl: publicUrl,
+        storedFileName,
+        storedMimeType,
+        storedSize,
         revoke: fallbackBlob ? () => URL.revokeObjectURL(fallbackBlob) : undefined,
       };
     }
@@ -111,6 +119,9 @@ export async function uploadReceiptToStorage(
         previewUrl: signed.signedUrl,
         attachmentPath: expPath,
         receiptsPublicUrl,
+        storedFileName,
+        storedMimeType,
+        storedSize,
       };
     }
     const blob = URL.createObjectURL(fileToUpload);
@@ -118,6 +129,9 @@ export async function uploadReceiptToStorage(
       previewUrl: blob,
       attachmentPath: expPath,
       receiptsPublicUrl,
+      storedFileName,
+      storedMimeType,
+      storedSize,
       revoke: () => URL.revokeObjectURL(blob),
     };
   }
@@ -129,7 +143,14 @@ export async function uploadReceiptToStorage(
   if (!recErr) {
     const { data: pub } = supabase.storage.from("receipts").getPublicUrl(rPath);
     const u = pub.publicUrl;
-    return { previewUrl: u, attachmentPath: null, receiptsPublicUrl: u };
+    return {
+      previewUrl: u,
+      attachmentPath: null,
+      receiptsPublicUrl: u,
+      storedFileName,
+      storedMimeType,
+      storedSize,
+    };
   }
   const blob = URL.createObjectURL(fileToUpload);
   const detail = serverUploadMessage ? ` Server: ${serverUploadMessage}` : "";
@@ -137,6 +158,9 @@ export async function uploadReceiptToStorage(
     previewUrl: blob,
     attachmentPath: null,
     receiptsPublicUrl: null,
+    storedFileName,
+    storedMimeType,
+    storedSize,
     revoke: () => URL.revokeObjectURL(blob),
     pendingFile: fileToUpload,
     uploadError: `Upload to Supabase Storage failed (bucket/policy/session).${detail}`,

@@ -8,9 +8,16 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 const ATTACHMENT_BUCKET = "attachments";
-const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "application/pdf"]);
+const ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/pdf",
+]);
 
 const NO_CACHE_HEADERS: Record<string, string> = {
   "Cache-Control": "private, no-store, no-cache, max-age=0, must-revalidate",
@@ -40,6 +47,8 @@ function safeExtension(file: File): string {
   if (mime === "image/jpeg") return "jpg";
   if (mime === "image/png") return "png";
   if (mime === "image/webp") return "webp";
+  if (mime === "image/heic") return "heic";
+  if (mime === "image/heif") return "heif";
   if (mime === "application/pdf") return "pdf";
   return "bin";
 }
@@ -121,9 +130,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const file = form?.get("file");
   if (!(file instanceof File)) return apiError(400, "Attachment file is required.");
   if (file.size <= 0) return apiError(400, "Attachment file is empty.");
-  if (file.size > MAX_ATTACHMENT_BYTES) return apiError(400, "Attachment file is too large.");
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    return apiError(400, "Attachment file is too large. Upload a file under 25 MB.");
+  }
   if (!ALLOWED_MIME_TYPES.has(file.type.toLowerCase())) {
-    return apiError(400, "Only JPEG, PNG, WebP, and PDF attachments are allowed.");
+    return apiError(400, "Only JPEG, PNG, WebP, HEIC, HEIF, and PDF attachments are allowed.");
   }
 
   const fileName = safeFileName(file.name);
