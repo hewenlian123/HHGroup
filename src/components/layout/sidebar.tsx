@@ -567,7 +567,7 @@ export function Sidebar({
             "flex w-full items-center rounded-md text-sm font-medium text-zinc-300 transition-[background-color] duration-150 ease-out hover:bg-white/[0.05]",
             collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-2 px-2 py-1.5"
           )}
-          aria-label="Collapse sidebar"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? (

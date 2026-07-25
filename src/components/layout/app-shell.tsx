@@ -94,7 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <div className="app-shell hh-app-shell neo-app-shell flex min-h-0 overflow-hidden sm:gap-3 sm:p-3">
                 {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
                 <Sidebar
-                  className="hidden sm:flex shrink-0 transition-[width] duration-200"
+                  className="hidden shrink-0 sm:flex lg:transition-[width] lg:duration-200"
                   collapsed={isTabletNav ? !tabletSidebarExpanded : collapsed}
                   onToggleCollapsed={handleToggleSidebar}
                 />
@@ -104,7 +104,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     side="left"
                     className={cn(
                       "w-[210px] max-w-[85vw] p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
-                      "border-r border-white/[0.08] bg-[var(--neo-graphite-950)]"
+                      "border-r border-white/[0.08] bg-[var(--neo-graphite-950)]",
+                      "[&>button]:z-20 [&>button]:right-2 [&>button]:top-2"
                     )}
                   >
                     <SheetTitle className="sr-only">Navigation menu</SheetTitle>
