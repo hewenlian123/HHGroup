@@ -40,10 +40,10 @@ export function DashboardHudCard({
     >
       <span className="dashboard-hud-corner dashboard-hud-corner--tl" aria-hidden />
       <span className="dashboard-hud-corner dashboard-hud-corner--tr" aria-hidden />
-      <p className="text-[10px] font-semibold uppercase leading-none tracking-normal text-[var(--hud-muted)]">
+      <p className="text-[11px] font-semibold uppercase leading-none tracking-normal text-[var(--hud-muted)]">
         {label}
       </p>
-      <div className="mt-3 truncate text-[23px] font-semibold leading-none tracking-normal text-[var(--hud-text)] tabular-nums md:text-[28px]">
+      <div className="mt-3 whitespace-nowrap text-[23px] font-semibold leading-none tracking-normal text-[var(--hud-text)] tabular-nums md:text-[28px]">
         {value}
       </div>
       <p className="mt-3 line-clamp-2 min-h-[2rem] text-[12px] leading-snug text-[var(--hud-muted)]">

@@ -116,21 +116,21 @@ export function DashboardCommandHud({
     >
       <div className="dashboard-command-hud__grid" aria-hidden />
 
-      <div className="relative z-10 flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="relative z-10 grid min-w-0 gap-4 xl:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)] xl:items-start">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-normal text-[var(--hud-muted)]">
+          <p className="text-[11px] font-semibold uppercase tracking-normal text-[var(--hud-muted)]">
             HH Neo Operations OS
           </p>
-          <h2 className="mt-2 max-w-[34rem] text-[28px] font-semibold leading-tight tracking-normal text-[var(--hud-text)] md:text-[40px]">
+          <h1 className="mt-2 max-w-[34rem] text-[28px] font-semibold leading-tight tracking-normal text-[var(--hud-text)] md:text-[40px]">
             HH Command Center
-          </h2>
+          </h1>
           <p className="mt-2 max-w-[42rem] text-[13px] leading-relaxed text-[var(--hud-muted)] md:text-[14px]">
             Cash, project health, labor, AP, and owner action signals from the current dashboard
             feed.
           </p>
         </div>
-        <div className="flex shrink-0 flex-col gap-3 lg:items-end">
-          <div className="flex flex-wrap gap-2">
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap gap-2 xl:justify-end">
             <StatusPill tone="emerald">Live data</StatusPill>
             <StatusPill tone={actionPressure > 0 ? "alert" : "copper"}>
               {actionPressure} signals
@@ -140,22 +140,21 @@ export function DashboardCommandHud({
               <>
                 <Link
                   href="/settings/project-financial-review"
-                  className="inline-flex h-8 items-center rounded-full border border-rose-500/20 bg-rose-500/10 px-3 text-[10px] font-semibold uppercase tracking-normal text-rose-300 transition hover:border-rose-400/30 hover:bg-rose-500/15"
+                  className="inline-flex min-h-[44px] items-center rounded-full border border-rose-500/20 bg-rose-500/10 px-3 text-[11px] font-semibold uppercase leading-tight tracking-normal text-rose-300 transition hover:border-rose-400/30 hover:bg-rose-500/15"
                 >
                   Contract value review
                 </Link>
-                <span className="inline-flex min-h-8 items-center text-[10px] font-semibold uppercase tracking-normal text-rose-200/80">
+                <span className="inline-flex min-h-8 min-w-0 items-center text-wrap text-[11px] font-semibold uppercase leading-snug tracking-normal text-rose-200/80">
                   {contractReviewCount} contract checks · Projects need contract value review
                 </span>
               </>
             ) : null}
           </div>
-          <DashboardQuickActions />
         </div>
       </div>
 
       <div className="relative z-10 mt-5 grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(13rem,18rem)_minmax(24rem,1fr)_minmax(13rem,18rem)] xl:items-center">
-        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-1">
+        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
           <DashboardHudCard
             label="Cash velocity"
             value={formatCompactCurrency(cashIn)}
@@ -195,7 +194,7 @@ export function DashboardCommandHud({
           />
         </div>
 
-        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-3 xl:grid-cols-1">
+        <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-1">
           <DashboardHudCard
             label="Active projects"
             value={stats.activeProjects}
@@ -222,6 +221,8 @@ export function DashboardCommandHud({
           />
         </div>
       </div>
+
+      <DashboardQuickActions className="relative z-10 mt-3" />
 
       <div className="relative z-10 mt-3 grid min-w-0 grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1fr)_18rem]">
         <DashboardTelemetryRail
@@ -262,7 +263,7 @@ function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex h-8 items-center rounded-full border px-3 text-[10px] font-semibold uppercase tracking-normal",
+        "inline-flex h-8 items-center rounded-full border px-3 text-[11px] font-semibold uppercase tracking-normal",
         tone === "emerald" &&
           "border-[rgb(79_175_124_/_0.24)] bg-[rgb(79_175_124_/_0.10)] text-[var(--hud-emerald)]",
         tone === "alert" && "border-rose-500/20 bg-rose-500/10 text-rose-300",

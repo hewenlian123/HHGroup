@@ -36,7 +36,7 @@ export function DashboardQuickActions({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "dashboard-quick-actions grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end",
+        "dashboard-quick-actions grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5",
         className
       )}
     >
@@ -48,7 +48,7 @@ export function DashboardQuickActions({ className }: { className?: string }) {
             asChild
             variant={action.primary ? "default" : "outline"}
             className={cn(
-              "dashboard-action-button h-11 min-h-[44px] rounded-lg px-3 text-[12px] font-semibold tracking-normal",
+              "dashboard-action-button h-11 min-h-[44px] min-w-0 whitespace-normal rounded-lg px-3 text-[13px] font-semibold leading-tight tracking-normal",
               action.primary
                 ? "border border-[rgb(184_147_90_/_0.42)] bg-[var(--hud-gold)] text-[#07090D] shadow-none hover:bg-[var(--hud-gold-soft)]"
                 : "border-[var(--hud-line)] bg-[var(--hud-surface)] text-[var(--hud-text)] hover:border-[rgb(184_147_90_/_0.3)] hover:bg-[var(--hud-surface-muted)]"
@@ -56,7 +56,7 @@ export function DashboardQuickActions({ className }: { className?: string }) {
           >
             <Link href={action.href}>
               <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <span className="truncate">{action.label}</span>
+              <span className="min-w-0 text-wrap">{action.label}</span>
             </Link>
           </Button>
         );

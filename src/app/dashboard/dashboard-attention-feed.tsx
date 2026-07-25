@@ -22,7 +22,7 @@ export function DashboardAttentionFeed({
     <aside className={cn("dashboard-attention-feed min-w-0 rounded-xl p-4", className)}>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-normal text-[var(--hud-muted)]">
+          <p className="text-[11px] font-semibold uppercase tracking-normal text-[var(--hud-muted)]">
             Attention feed
           </p>
           <h2 className="mt-2 text-[1rem] font-semibold leading-tight text-[var(--hud-text)]">
@@ -59,12 +59,12 @@ export function DashboardAttentionFeed({
       )}
 
       <div className="mt-4 border-t border-[var(--hud-line)] pt-4">
-        <p className="text-[10px] font-semibold uppercase tracking-normal text-[var(--hud-muted)]">
+        <p className="text-[11px] font-semibold uppercase tracking-normal text-[var(--hud-muted)]">
           Latest movement
         </p>
         {activity ? (
           <div className="mt-3 min-w-0">
-            <p className="truncate text-[13px] font-semibold text-[var(--hud-text)]">
+            <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-[var(--hud-text)]">
               {activity.description}
             </p>
             <div className="mt-1 flex min-w-0 items-center justify-between gap-3 text-[12px] text-[var(--hud-muted)]">

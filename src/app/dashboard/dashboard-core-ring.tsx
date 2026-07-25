@@ -152,7 +152,7 @@ export function DashboardCoreRing({
 
       <div
         className={cn(
-          "dashboard-profit-core absolute left-1/2 top-1/2 w-[min(86%,24rem)] -translate-x-1/2 -translate-y-1/2 px-2 text-center",
+          "dashboard-profit-core absolute left-1/2 top-1/2 w-[min(94%,24rem)] -translate-x-1/2 -translate-y-1/2 px-2 text-center",
           {
             "dashboard-profit-core--positive": tone === "positive",
             "dashboard-profit-core--pressure": tone === "pressure",

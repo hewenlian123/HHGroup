@@ -93,7 +93,7 @@ export default defineConfig({
    * - `CI=true` (GitHub Actions): `next start` — requires a prior `next build`
    * - Otherwise: `next dev` — default for local/Cursor (`CI=1` is *not* treated as pipeline CI)
    * - `E2E_WEB_SERVER=dev` with `CI=true` forces `next dev` in CI if needed
-   * - Readiness uses `/financial/expenses` so a broken dev that only serves `/` is not treated as healthy
+   * - Readiness uses `/dashboard` so Dashboard's first compilation finishes before browser assertions begin
    *
    * Port is derived from E2E_BASE_URL (defaults to :3000).
    *
@@ -120,7 +120,7 @@ export default defineConfig({
           const command = useStart
             ? `PORT=${port} npm run start`
             : `npm run dev:safe -- -p ${port}`;
-          const readinessUrl = `${resolvedBase}/financial/expenses`;
+          const readinessUrl = `${resolvedBase}/dashboard`;
           const env = buildWebServerEnv();
           if (!useStart && !env.NEXT_DIST_DIR) {
             env.NEXT_DIST_DIR = ".next-e2e";
@@ -160,6 +160,15 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+      testIgnore: ignorePaymentAndDeleteMutations,
+    },
+    {
+      name: "webkit",
+      retries: 0,
+      use: {
+        ...devices["Desktop Safari"],
+        serviceWorkers: "block",
+      },
       testIgnore: ignorePaymentAndDeleteMutations,
     },
     {

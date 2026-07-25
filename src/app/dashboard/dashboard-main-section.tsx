@@ -66,10 +66,19 @@ export async function DashboardMainSection({
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[dashboard] primary data load failed", e);
-    dataLoadWarning =
-      msg.includes("Supabase is not configured") || msg.includes("not configured")
-        ? "Database connection is not configured. Check NEXT_PUBLIC_SUPABASE_URL and keys in the deployment environment."
-        : `Could not load dashboard data: ${msg}`;
+    if (msg.includes("Supabase is not configured") || msg.includes("not configured")) {
+      dataLoadWarning =
+        "Database connection is not configured. Check NEXT_PUBLIC_SUPABASE_URL and keys in the deployment environment.";
+    } else if (
+      /timed out acquiring connection|connection (?:refused|terminated)|fetch failed|ECONNREFUSED/i.test(
+        msg
+      )
+    ) {
+      dataLoadWarning =
+        "Dashboard data is temporarily unavailable. Live values are shown as safe fallbacks; retry when the local data service is available.";
+    } else {
+      dataLoadWarning = `Could not load dashboard data: ${msg}`;
+    }
   }
 
   let subcontractsDetails: Awaited<ReturnType<typeof getSubcontractsWithDetailsAll>> = [];

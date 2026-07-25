@@ -20,10 +20,10 @@ export function DashboardTelemetryRail({
 }) {
   return (
     <section className="dashboard-telemetry-shell relative min-w-0 rounded-xl p-4 md:p-5">
-      <p className="text-[10px] font-semibold uppercase tracking-normal text-[var(--hud-muted)]">
+      <p className="text-[11px] font-semibold uppercase tracking-normal text-[var(--hud-muted)]">
         Live telemetry
       </p>
-      <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3">
+      <div className="mt-4 grid min-w-0 grid-cols-1 gap-3 2xl:grid-cols-3">
         {items.map((item, index) => {
           const progress = Math.max(2, Math.min(100, Math.round(item.progress)));
           return (
@@ -37,10 +37,10 @@ export function DashboardTelemetryRail({
             >
               <div className="flex min-w-0 items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="truncate text-[10px] font-semibold uppercase tracking-normal text-[var(--hud-muted)]">
+                  <p className="text-wrap text-[11px] font-semibold uppercase leading-tight tracking-normal text-[var(--hud-muted)]">
                     {item.label}
                   </p>
-                  <p className="mt-2 truncate text-[22px] font-semibold leading-none tracking-normal text-[var(--hud-text)] tabular-nums">
+                  <p className="mt-2 whitespace-nowrap text-[22px] font-semibold leading-none tracking-normal text-[var(--hud-text)] tabular-nums">
                     {item.value}
                   </p>
                 </div>
