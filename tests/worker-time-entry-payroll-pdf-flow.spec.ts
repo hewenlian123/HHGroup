@@ -470,7 +470,7 @@ async function addReimbursementViaUi(page: Page) {
 
 async function uploadReceiptViaUi(page: Page) {
   await page.goto(`${BASE}/workers/${encodeURIComponent(workerId)}`);
-  await page.getByRole("link", { name: /Upload Receipt/i }).click();
+  await page.getByRole("link", { name: /Upload Worker Receipt/i }).click();
   await expect(page.getByRole("heading", { name: /Worker Receipt Upload/i })).toBeVisible({
     timeout: 30_000,
   });

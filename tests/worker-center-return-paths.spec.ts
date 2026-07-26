@@ -76,7 +76,7 @@ test.describe("Worker Center return paths", () => {
   test("worker detail quick actions expose clear back and cancel paths", async ({ page }) => {
     await goto(page, workerDetailPath());
 
-    await page.getByRole("link", { name: /^Upload Receipt$/i }).click();
+    await page.getByRole("link", { name: /^Upload Worker Receipt$/i }).click();
     await expect(page.getByRole("heading", { name: /^Worker Receipt Upload$/i })).toBeVisible({
       timeout: 30_000,
     });

@@ -2,12 +2,13 @@
  * Routes to warm on mobile for instant navigation (Bottom nav, FAB, idle).
  */
 import { HH_PROJECT_OS_MOBILE_NAV_ITEMS } from "@/lib/navigation/ia";
+import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 
 export const BOTTOM_NAV_ROUTES = HH_PROJECT_OS_MOBILE_NAV_ITEMS.map((item) => item.href);
 
 export const QUICK_ACTION_ROUTES = [
   "/site-photos/upload",
-  "/upload-receipt",
+  UPLOAD_RECEIPT_ACTION.href,
   "/projects/new",
   "/tasks/new",
   "/punch-list/new",
@@ -20,7 +21,7 @@ export const OWNER_NAV_PREFETCH_ROUTES = [
   "/dashboard",
   "/projects",
   "/financial",
-  "/financial/inbox",
+  UPLOAD_RECEIPT_ACTION.href,
   "/financial/expenses",
   "/financial/invoices",
   "/financial/bank",

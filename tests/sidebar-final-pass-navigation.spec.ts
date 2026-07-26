@@ -165,7 +165,6 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Documents",
       "Site Photos",
       "Inspection Log",
-      "Receipt Uploads",
       "Company",
       "Users",
       "Roles",
@@ -292,7 +291,6 @@ test.describe("HH Project OS sidebar final pass", () => {
     await expect(
       visibleSidebar(page).getByText("Material Selections", { exact: true })
     ).toBeVisible();
-    await expect(visibleSidebar(page).getByText("Receipt Uploads", { exact: true })).toBeVisible();
     await expect(visibleSidebar(page).getByText("Worker Receipts", { exact: true })).toBeVisible();
     await expect(visibleSidebar(page).getByText("Cash Flow", { exact: true })).toBeVisible();
     await expect(navLink(page, "Reports")).toBeVisible();
@@ -310,7 +308,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { query: "material selections", label: "Go to Material Selections" },
       { query: "punch list", label: "Go to Punch List" },
       { query: "receipt inbox", label: "Go to Receipt Inbox" },
-      { query: "upload receipt", label: "Go to Receipt Uploads" },
+      { query: "upload receipt", label: "Upload Receipt" },
       { query: "worker summary", label: "Go to Worker Summary" },
       { query: "worker balances", label: "Go to Worker Balances" },
       { query: "worker receipts", label: "Go to Worker Receipts" },

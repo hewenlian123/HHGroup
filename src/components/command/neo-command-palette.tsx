@@ -23,6 +23,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { hhNeoFocusRevealCommand, hhNeoFocusRevealOverlay } from "@/lib/motion-system";
+import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 import { HH_PROJECT_OS_COMMAND_ITEMS, type HhProjectOsIconKey } from "@/lib/navigation/ia";
 import { cn } from "@/lib/utils";
 
@@ -118,12 +119,17 @@ const COMMANDS: CommandDefinition[] = [
     icon: FileText,
   },
   {
+    ...UPLOAD_RECEIPT_ACTION,
+    group: "Create",
+    icon: Upload,
+  },
+  {
     id: "upload-expense",
     label: "Upload Expense",
     description: "Open expense entry for receipt-backed costs",
     href: "/financial/expenses/new",
     group: "Create",
-    keywords: ["new expense", "receipt", "upload receipt", "cost"],
+    keywords: ["new expense", "expense entry", "cost"],
     icon: Upload,
   },
 ];

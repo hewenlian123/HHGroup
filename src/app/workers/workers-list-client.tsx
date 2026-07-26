@@ -547,7 +547,7 @@ export function WorkersListClient({
         disabled: busy,
       },
       {
-        label: "Upload Receipt",
+        label: "Upload Worker Receipt",
         onClick: () =>
           router.push(
             `/upload-receipt?workerId=${encodeURIComponent(row.id)}&returnTo=${encodeWorkerReturnPath(row.id, "receipts")}`
@@ -887,7 +887,7 @@ export function WorkersListClient({
                   <Button asChild variant="outline" size="sm" className="h-8 shrink-0 rounded-sm">
                     <Link href={`/upload-receipt?workerId=${encodeURIComponent(r.id)}`}>
                       <Upload className="mr-1 h-3.5 w-3.5" aria-hidden />
-                      Receipt
+                      Upload Worker Receipt
                     </Link>
                   </Button>
                   <RowActionsMenu

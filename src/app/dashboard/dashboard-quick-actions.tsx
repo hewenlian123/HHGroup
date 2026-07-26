@@ -10,11 +10,12 @@ import {
   WalletCards,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 import { cn } from "@/lib/utils";
 
 const actions = [
   { label: "Create invoice", href: "/financial/invoices/new", icon: FileText, primary: true },
-  { label: "Review receipts", href: "/financial/inbox", icon: ReceiptText },
+  { ...UPLOAD_RECEIPT_ACTION, icon: ReceiptText },
   { label: "Projects", href: "/projects", icon: FolderKanban },
   { label: "Pay Worker", href: "/workers", icon: UsersRound },
   {

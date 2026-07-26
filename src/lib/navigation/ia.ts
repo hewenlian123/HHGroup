@@ -1,3 +1,5 @@
+import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
+
 export type HhProjectOsSectionKey =
   | "DASHBOARD"
   | "PROJECTS"
@@ -164,7 +166,7 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
       { href: "/bills", label: "Bills", icon: "bills", aliases: ["/financial/bills"] },
       { href: "/financial/expenses", label: "Expenses", icon: "expenses" },
       {
-        href: "/financial/inbox",
+        href: UPLOAD_RECEIPT_ACTION.href,
         label: "Receipt Inbox",
         icon: "receipts",
         badge: "expenseInbox",
@@ -242,7 +244,6 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
       { href: "/documents", label: "Documents", icon: "documents" },
       { href: "/site-photos", label: "Site Photos", icon: "photos" },
       { href: "/inspection-log", label: "Inspection Log", icon: "inspection" },
-      { href: "/upload-receipt", label: "Receipt Uploads", icon: "receipts" },
     ],
   },
   {
@@ -304,7 +305,7 @@ export const HH_PROJECT_OS_MOBILE_NAV_ITEMS = [
       "/financial/payments-received",
       "/financial/deposits",
       "/financial/expenses",
-      "/financial/inbox",
+      UPLOAD_RECEIPT_ACTION.href,
       "/financial/receipt-queue",
       "/financial/accounts",
       "/financial/bank",
@@ -339,7 +340,7 @@ export const HH_PROJECT_OS_MOBILE_NAV_ITEMS = [
     href: "/documents",
     label: "Documents",
     icon: "documents",
-    aliases: ["/projects/documents", "/site-photos", "/inspection-log", "/upload-receipt"],
+    aliases: ["/projects/documents", "/site-photos", "/inspection-log"],
   },
 ] as const satisfies readonly HhProjectOsNavItem[];
 
@@ -366,13 +367,7 @@ const HH_PROJECT_OS_MOBILE_ROUTE_OWNERS = [
   },
   {
     href: "/documents",
-    paths: [
-      "/documents",
-      "/projects/documents",
-      "/site-photos",
-      "/inspection-log",
-      "/upload-receipt",
-    ],
+    paths: ["/documents", "/projects/documents", "/site-photos", "/inspection-log"],
   },
   {
     href: "/financial",
@@ -388,7 +383,7 @@ const HH_PROJECT_OS_MOBILE_ROUTE_OWNERS = [
       "/financial/payments-received",
       "/financial/deposits",
       "/financial/expenses",
-      "/financial/inbox",
+      UPLOAD_RECEIPT_ACTION.href,
       "/financial/receipt-queue",
       "/financial/accounts",
       "/financial/bank",
@@ -650,14 +645,6 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
     icon: "inspection",
   },
   {
-    id: "go-receipt-uploads",
-    label: "Go to Receipt Uploads",
-    description: "Open receipt upload intake",
-    href: "/upload-receipt",
-    keywords: ["documents", "receipt upload", "upload receipt", "receipts", "expenses"],
-    icon: "receipts",
-  },
-  {
     id: "go-invoices",
     label: "Go to Invoices",
     description: "AR, invoice list, drafts, and balances",
@@ -701,7 +688,7 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
     id: "go-receipt-inbox",
     label: "Go to Receipt Inbox",
     description: "Open AP receipt intake",
-    href: "/financial/inbox",
+    href: UPLOAD_RECEIPT_ACTION.href,
     keywords: ["receipts", "receipt inbox", "expense inbox", "inbox", "ap"],
     icon: "receipts",
   },

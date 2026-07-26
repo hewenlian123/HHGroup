@@ -293,7 +293,7 @@ test.describe("Worker Center full local flow", () => {
     await expect(dailyDialog).not.toBeVisible({ timeout: 30_000 });
 
     await page.goto(`${BASE}/workers/${encodeURIComponent(createdWorkerId)}`);
-    await page.getByRole("link", { name: /Upload Receipt/i }).click();
+    await page.getByRole("link", { name: /Upload Worker Receipt/i }).click();
     await expect(page.getByRole("heading", { name: /Worker Receipt Upload/i })).toBeVisible({
       timeout: 30_000,
     });

@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { useLaborAddEntry } from "@/contexts/labor-add-entry-context";
 import { prefetchRoutes, QUICK_ACTION_ROUTES, runWhenIdle } from "@/lib/route-prefetch";
 import { shouldHideFloatingQuickActionFab } from "@/lib/floating-fab-visibility";
+import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 
 /**
  * FAB: mobile and tablet only (screen width < 1024px).
@@ -28,7 +29,7 @@ import { shouldHideFloatingQuickActionFab } from "@/lib/floating-fab-visibility"
  */
 const LINK_ACTIONS_TOP = [
   { label: "Upload Photo", href: "/site-photos/upload", icon: Camera },
-  { label: "Upload Receipt", href: "/upload-receipt", icon: Receipt },
+  { ...UPLOAD_RECEIPT_ACTION, icon: Receipt },
 ] as const;
 
 const LINK_ACTIONS_REST = [

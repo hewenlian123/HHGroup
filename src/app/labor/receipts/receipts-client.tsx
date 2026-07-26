@@ -493,7 +493,7 @@ export function ReceiptsClient({
               >
                 <Link href="/upload-receipt">
                   <Upload className="h-3.5 w-3.5" aria-hidden />
-                  Upload Receipt
+                  Upload Worker Receipt
                 </Link>
               </Button>
             }
@@ -502,7 +502,7 @@ export function ReceiptsClient({
 
         <MobileListHeader
           title="Receipt Uploads"
-          fab={<MobileFabPlus href="/upload-receipt" ariaLabel="Upload receipt" />}
+          fab={<MobileFabPlus href="/upload-receipt" ariaLabel="Upload Worker Receipt" />}
         />
 
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5 lg:gap-2">
@@ -763,7 +763,7 @@ export function ReceiptsClient({
                 Worker-submitted receipts will appear here for review.
               </p>
               <Button variant="outline" size="sm" className="mt-4 rounded-sm" asChild>
-                <Link href="/upload-receipt">Upload receipt</Link>
+                <Link href="/upload-receipt">Upload Worker Receipt</Link>
               </Button>
             </NeoMobileCard>
           ) : displayRows.length === 0 ? (
@@ -925,7 +925,7 @@ export function ReceiptsClient({
                     Worker-submitted receipts will appear here for review.
                   </p>
                   <Button variant="outline" size="sm" className="mt-4 rounded-sm" asChild>
-                    <Link href="/upload-receipt">Upload receipt</Link>
+                    <Link href="/upload-receipt">Upload Worker Receipt</Link>
                   </Button>
                 </td>
               </tr>

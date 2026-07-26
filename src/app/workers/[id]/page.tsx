@@ -1019,7 +1019,7 @@ export default function WorkerDashboardPage() {
           href={`/upload-receipt?workerId=${encodeURIComponent(id)}&returnTo=${encodeWorkerReturnPath(id, "receipts")}`}
           icon={Upload}
         >
-          Upload Receipt
+          Upload Worker Receipt
         </QuickActionLink>
         <QuickActionLink
           href={`/labor/reimbursements?workerId=${encodeURIComponent(id)}&new=1&returnTo=${encodeWorkerReturnPath(id, "receipts")}`}

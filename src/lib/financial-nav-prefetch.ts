@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { readStoredExpenseSort } from "@/lib/expense-list-sort-storage";
+import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 import {
   buildExpensesQueryKey,
   expenseCategoriesQueryKey,
@@ -85,8 +86,8 @@ export function prefetchFinancialRoute(
   if (
     href === "/financial/expenses" ||
     href.startsWith("/financial/expenses?") ||
-    href === "/financial/inbox" ||
-    href.startsWith("/financial/inbox?")
+    href === UPLOAD_RECEIPT_ACTION.href ||
+    href.startsWith(`${UPLOAD_RECEIPT_ACTION.href}?`)
   ) {
     void prefetchExpensesPageData(queryClient, supabase);
     return;

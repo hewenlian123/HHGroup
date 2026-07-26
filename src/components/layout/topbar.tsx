@@ -21,6 +21,7 @@ import { getCompanyInitials } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
 import { useBreadcrumbOverrides } from "@/contexts/breadcrumb-override-context";
 import { NeoKeyboardHint } from "@/components/command/neo-command-palette";
+import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 import { cn } from "@/lib/utils";
 
 /** Map path segments to breadcrumb display labels (for last segment, or section names). */
@@ -59,7 +60,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   "worker-invoices": "Worker Invoices",
   "payroll-summary": "Payroll Summary",
   payroll: "Payroll",
-  "upload-receipt": "Upload Receipt",
+  "upload-receipt": "Upload Worker Receipt",
   customers: "Customers",
   documents: "Documents",
   settings: "Settings",
@@ -108,7 +109,7 @@ const LOGICAL_BREADCRUMB_RULES = [
     labels: ["Reports", "Project Financial Review"],
   },
   { prefix: "/financial/vendors", labels: ["Directory", "Vendors"] },
-  { prefix: "/financial/inbox", labels: ["Financial", "AP", "Receipt Inbox"] },
+  { prefix: UPLOAD_RECEIPT_ACTION.href, labels: ["Financial", "AP", "Receipt Inbox"] },
   { prefix: "/financial/receipt-queue", labels: ["Financial", "AP", "Receipt Queue"] },
   { prefix: "/financial/expenses", labels: ["Financial", "AP", "Expenses"] },
   { prefix: "/financial/commissions", labels: ["Financial", "AP", "Commissions"] },
@@ -357,6 +358,9 @@ export function Topbar({
               <Link href="/financial/expenses/new">New Expense</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
+              <Link href={UPLOAD_RECEIPT_ACTION.href}>{UPLOAD_RECEIPT_ACTION.label}</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <Link href="/bills/new">New Bill</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
@@ -368,9 +372,6 @@ export function Topbar({
             </DropdownMenuLabel>
             <DropdownMenuItem asChild>
               <Link href="/labor/daily">Add Daily Entry</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/upload-receipt">Upload Worker Receipt</Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link href="/labor/payments">Worker Payment</Link>
