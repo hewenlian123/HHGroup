@@ -20,6 +20,7 @@ import {
   pickOrCreatePaymentInSelect,
   waitForExpensesQuerySuccess,
 } from "./e2e-expenses-helpers";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 
 /**
  * Dedupe is SHA-256 of the uploaded file after prep. PNG images compress to a deterministic JPEG,
@@ -242,6 +243,9 @@ async function showAllTimeExpenses(page: Page): Promise<void> {
 
 test.describe("Inbox draft upload receipt", () => {
   test.describe.configure({ timeout: 300_000, retries: 0, mode: "serial" });
+  test.beforeEach(async ({ page }) => {
+    await loginAsE2EOwner(page, E2E_FINANCIAL_INBOX_URL);
+  });
 
   test("image receipt OCR writes back extracted fields to Inbox draft via server API", async ({
     page,

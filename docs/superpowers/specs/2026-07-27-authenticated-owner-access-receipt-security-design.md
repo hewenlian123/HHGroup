@@ -44,7 +44,8 @@ Not included:
   unsafe if signup is accidentally enabled.
 - `supabase/config.toml` currently enables global and email signup, permits six-character
   passwords, and does not require secure password change.
-- `owner-access-mode.ts` treats an absent `HH_REQUIRE_LOGIN` as owner no-login mode.
+- The pre-rollout `owner-access-mode.ts` treated an absent `HH_REQUIRE_LOGIN` as owner
+  no-login mode without implementing an explicit production cutover switch.
 - `auth-boundary.ts` currently counts owner no-login and PIN-only sessions as authenticated.
 - `/login` unconditionally redirects to `/dashboard`; the existing PIN login form is not
   reachable.
@@ -100,15 +101,23 @@ must also be disabled in Supabase Auth settings before rollout.
 
 ### Production and local modes
 
-- Production always requires Supabase Auth, regardless of whether `HH_REQUIRE_LOGIN` is
-  missing.
-- The production target explicitly sets `HH_REQUIRE_LOGIN=1`.
-- Owner no-login is allowed only when all are true:
-  - runtime is not production;
+- `HH_REQUIRE_LOGIN=1` or `true` enables strict Supabase Auth.
+- `HH_REQUIRE_LOGIN=0` or `false` enables the temporary compatibility gate.
+- An unset or invalid value resolves to compatibility mode so an unreviewed configuration
+  cannot lock out production users; startup logs report only `unset` or `invalid`, never
+  the raw value.
+- The production target explicitly sets `HH_REQUIRE_LOGIN=1` only after verified owner
+  login and recovery.
+- Local no-login is allowed only when all are true:
+  - runtime is not production or preview;
+  - compatibility mode is active;
   - `HH_ALLOW_LOCAL_NO_LOGIN=1` is explicitly set;
   - the request is not a sensitive security or receipt route.
+- Receipt Viewer/Replace, Settings Security, password/PIN changes, and session management
+  always require a real owner/admin Supabase session.
 - No production-safety or client-supplied owner header authenticates an ordinary request.
 - The existing non-production test bypass remains test-only and is rejected in production.
+- Compatibility is temporary and must be removed after the production observation period.
 
 ### Server client boundaries
 
@@ -433,8 +442,11 @@ Rollback never deletes receipt objects or historical references.
 5. Do not drop cleanup or audit tables during emergency rollback; preserve evidence.
 6. Do not reverse path-only replacement rows. They remain readable by the compatibility
    normalizer.
-7. Re-enable owner no-login in production only as a last-resort code rollback, never as a
-   new environment fallback.
+7. Use the explicit temporary compatibility setting only as a time-limited application
+   rollback while strict sensitive routes remain authenticated; never create a second gate.
+8. Both checked-in companion scripts require explicit session confirmation, run inside an
+   open transaction, and are manual-only outside normal migrations. The legacy PIN cannot
+   be reconstructed automatically.
 
 ## 15. Production rollout order
 
@@ -447,7 +459,8 @@ Rollback never deletes receipt objects or historical references.
 4. Set owner role in `raw_app_meta_data` and verify the profile projection.
 5. Test password recovery before enforcing login.
 6. Apply Migration A.
-7. Deploy Auth-capable code with receipt Storage still in legacy read mode.
+7. Deploy Auth-capable code with `HH_REQUIRE_LOGIN=0` and receipt Storage still in legacy
+   read mode to an immutable verification URL.
 8. Verify login, refresh, all critical modules, logout, recovery, and rollback access on the
    deployment URL.
 9. Set `HH_REQUIRE_LOGIN=1`.
@@ -456,7 +469,8 @@ Rollback never deletes receipt objects or historical references.
 12. Verify multiple historical receipt forms through server-signed Viewer.
 13. Verify secure Replace and compensation using a controlled non-financial test expense.
 14. Verify Upload Receipt and OCR.
-15. Remove any temporary compatibility gate.
+15. After the observation period, remove the production/preview compatibility branch in a
+    separate verified patch.
 16. Retain the prior deployment and emergency Storage-policy rollback SQL until the
     observation window closes.
 

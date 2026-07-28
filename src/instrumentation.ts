@@ -3,9 +3,11 @@
  * Captures console.log/warn/error into the system log store for /system-logs.
  */
 import { captureConsole } from "@/lib/system-log-store";
+import { reportAuthRolloutConfig } from "@/lib/owner-access-mode";
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     captureConsole();
+    reportAuthRolloutConfig();
   }
 }

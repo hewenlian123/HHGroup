@@ -9,7 +9,7 @@ import {
   sessionIdFromAccessToken,
   TRUSTED_DEVICE_COOKIE,
 } from "@/lib/device-unlock-token";
-import { isOwnerInternalNoLoginEnabled } from "@/lib/owner-access-mode";
+import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
 
 const INTERNAL_ADMIN_SECRET_HEADER = "x-internal-admin-secret";
 const PRODUCTION_SAFETY_LOCK_HEADER = "x-hh-production-safety-lock";
@@ -35,7 +35,7 @@ const STRICT_AUTH_PREFIXES = [
   "/api/settings/security",
   "/api/auth/unlock",
   "/api/auth/lock",
-  "/api/financial/expenses",
+  "/api/financial/receipt-queue",
 ];
 
 const ADMIN_APP_PREFIXES = ["/admin"];
@@ -310,7 +310,7 @@ export async function middleware(request: NextRequest) {
 
   if (!publicPath) {
     const strict = requiresStrictSupabaseAuth(pathname);
-    if (!strict && isOwnerInternalNoLoginEnabled()) {
+    if (!strict && isCompatibilityAccessEnabled()) {
       authenticatedResponse = NextResponse.next();
     } else {
       const response = NextResponse.next();

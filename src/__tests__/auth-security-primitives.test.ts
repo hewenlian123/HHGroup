@@ -17,7 +17,7 @@ import { authorizedAppRole, isAuthorizedAppRole } from "@/lib/auth-role";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { normalizeAuthRedirect } from "@/lib/auth-redirect";
 import { validateSameOriginMutation } from "@/lib/auth-request-security";
-import { isOwnerInternalNoLoginEnabled } from "@/lib/owner-access-mode";
+import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
 import { validatePassword } from "@/lib/password-policy";
 
 const ORIGINAL_ENV = { ...process.env };
@@ -37,10 +37,11 @@ describe("authenticated owner-access security primitives", () => {
     process.env = { ...ORIGINAL_ENV };
   });
 
-  it("never enables owner no-login in production", () => {
+  it("never lets the local no-login flag override production strict mode", () => {
     expect(
-      isOwnerInternalNoLoginEnabled({
+      isCompatibilityAccessEnabled({
         runtime: "production",
+        requireLogin: "true",
         allowLocal: "1",
       })
     ).toBe(false);
@@ -48,14 +49,16 @@ describe("authenticated owner-access security primitives", () => {
 
   it("requires an explicit development-only owner no-login flag", () => {
     expect(
-      isOwnerInternalNoLoginEnabled({
+      isCompatibilityAccessEnabled({
         runtime: "development",
+        requireLogin: "false",
         allowLocal: "1",
       })
     ).toBe(true);
     expect(
-      isOwnerInternalNoLoginEnabled({
+      isCompatibilityAccessEnabled({
         runtime: "development",
+        requireLogin: "false",
         allowLocal: undefined,
       })
     ).toBe(false);

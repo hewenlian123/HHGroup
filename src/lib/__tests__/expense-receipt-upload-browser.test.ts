@@ -43,7 +43,7 @@ describe("uploadReceiptToStorage", () => {
     );
 
     expect(slot.previewUrl).toBe("https://signed.example/receipt.png");
-    expect(slot.receiptsPublicUrl).toBe("https://public.example/receipt.png");
+    expect(slot.receiptsPublicUrl).toBeNull();
     expect(slot.storedFileName).toBe("iphone-receipt.png");
     expect(slot.storedMimeType).toBe("image/png");
     expect(slot.storedSize).toBe(original.size);

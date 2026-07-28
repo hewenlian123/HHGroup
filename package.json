@@ -18,6 +18,7 @@
     "check:migration-order": "node scripts/check-migration-order.mjs",
     "check:schema-preflight": "node scripts/check-schema-preflight.mjs",
     "check:schema-preflight:strict": "SCHEMA_PREFLIGHT_RLS_MODE=strict node scripts/check-schema-preflight.mjs",
+    "check:rollback-sql": "node scripts/check-rollback-sql.mjs",
     "check:schema-vs-code": "node scripts/audit-schema-vs-code.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

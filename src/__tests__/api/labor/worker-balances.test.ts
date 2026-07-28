@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type MockSupabaseClient = { from: ReturnType<typeof createChained> } | null;
 let mockSupabaseGetter: () => MockSupabaseClient = () => null;
@@ -36,7 +36,13 @@ vi.mock("@/lib/supabase-server", async (importOriginal) => {
 describe("GET /api/labor/worker-balances", () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.stubEnv("HH_REQUIRE_LOGIN", "0");
+    vi.stubEnv("HH_ALLOW_LOCAL_NO_LOGIN", "1");
     mockSupabaseGetter = () => null;
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("returns 503 when Supabase is not configured", async () => {

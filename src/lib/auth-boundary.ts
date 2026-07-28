@@ -8,7 +8,7 @@ import {
   hasLocalTestAuthBypass,
   isProductionSafetyLocked,
 } from "@/lib/production-safety";
-import { isOwnerInternalNoLoginEnabled } from "@/lib/owner-access-mode";
+import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
 import { getSupabaseUserFromRequest } from "@/lib/supabase-server";
 
 type AuthBoundaryContext = {
@@ -61,7 +61,7 @@ export async function getRequestAuthContext(request: Request): Promise<AuthBound
   const hasInternalAdminAccess = hasInternalAdminSecret(request);
   const hasLocalTestBypass = hasLocalTestAuthBypass(request);
   const isProductionLocked = isProductionSafetyLocked(request);
-  const hasOwnerInternalNoLoginAccess = isOwnerInternalNoLoginEnabled();
+  const hasOwnerInternalNoLoginAccess = isCompatibilityAccessEnabled();
   const hasPinSession = false;
 
   const user = hasLocalTestBypass
