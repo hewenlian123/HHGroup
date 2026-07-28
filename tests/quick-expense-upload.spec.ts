@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import {
   E2E_FINANCIAL_EXPENSES_ARCHIVE_URL,
   assertE2EExpenseVisibleInDatabase,
@@ -160,6 +161,9 @@ async function addCategoryFromQuickExpense(
 
 test.describe("Quick Expense: upload and save", () => {
   test.describe.configure({ timeout: 120_000 });
+  test.beforeEach(async ({ page }) => {
+    await loginAsE2EOwner(page, "/financial/expenses");
+  });
 
   test("manual save binds project (not Overhead)", async ({ page }) => {
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });

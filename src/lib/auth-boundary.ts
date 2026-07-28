@@ -2,13 +2,13 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
+import { authorizedAppRole, type AuthorizedAppRole } from "@/lib/auth-role";
 import {
   hasInternalAdminSecret,
   hasLocalTestAuthBypass,
   isProductionSafetyLocked,
 } from "@/lib/production-safety";
 import { isOwnerInternalNoLoginEnabled } from "@/lib/owner-access-mode";
-import { isValidPinSession } from "@/lib/pin-auth";
 import { getSupabaseUserFromRequest } from "@/lib/supabase-server";
 
 type AuthBoundaryContext = {
@@ -23,8 +23,18 @@ type AuthBoundaryContext = {
   hasLocalTestBypass: boolean;
 };
 
-type GuardResult =
+export type GuardResult =
   | { ok: true; context: AuthBoundaryContext }
+  | { ok: false; response: NextResponse };
+
+export type StrictAuthContext = {
+  user: User;
+  email: string | null;
+  role: AuthorizedAppRole;
+};
+
+export type StrictGuardResult =
+  | { ok: true; context: StrictAuthContext }
   | { ok: false; response: NextResponse };
 
 type GuardOptions = {
@@ -36,18 +46,8 @@ const ADMIN_REQUIRED_MESSAGE = "Admin access required.";
 const MAINTENANCE_DISABLED_MESSAGE =
   "This maintenance endpoint is disabled in production. Run it in a non-production environment or provide authenticated admin/internal access.";
 
-function parseAdminEmails(): Set<string> {
-  return new Set(
-    (process.env.HH_ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean)
-  );
-}
-
 function userHasAdminRole(user: User | null): boolean {
-  const role = user?.app_metadata?.role;
-  return role === "owner" || role === "admin";
+  return authorizedAppRole(user) !== null;
 }
 
 function jsonError(status: number, message: string): NextResponse {
@@ -62,16 +62,13 @@ export async function getRequestAuthContext(request: Request): Promise<AuthBound
   const hasLocalTestBypass = hasLocalTestAuthBypass(request);
   const isProductionLocked = isProductionSafetyLocked(request);
   const hasOwnerInternalNoLoginAccess = isOwnerInternalNoLoginEnabled();
-  const hasPinSession = await isValidPinSession(request);
+  const hasPinSession = false;
 
   const user = hasLocalTestBypass
     ? null
     : await getSupabaseUserFromRequest(request).catch(() => null);
   const email = user?.email?.trim().toLowerCase() ?? null;
-  const adminEmails = parseAdminEmails();
-  const isAdminUser = Boolean(
-    user && (userHasAdminRole(user) || (email && adminEmails.has(email)))
-  );
+  const isAdminUser = userHasAdminRole(user);
 
   return {
     user,
@@ -81,14 +78,8 @@ export async function getRequestAuthContext(request: Request): Promise<AuthBound
     hasLocalTestBypass,
     hasPinSession,
     hasOwnerInternalNoLoginAccess,
-    isAuthenticated: Boolean(
-      user ||
-      hasPinSession ||
-      hasOwnerInternalNoLoginAccess ||
-      hasInternalAdminAccess ||
-      hasLocalTestBypass
-    ),
-    isAdmin: Boolean(hasInternalAdminAccess || hasLocalTestBypass || isAdminUser),
+    isAuthenticated: Boolean(user || hasOwnerInternalNoLoginAccess || hasLocalTestBypass),
+    isAdmin: Boolean(hasOwnerInternalNoLoginAccess || hasLocalTestBypass || isAdminUser),
   };
 }
 
@@ -97,9 +88,7 @@ export async function requireAuthenticatedUser(
   options: GuardOptions = {}
 ): Promise<GuardResult> {
   const context = await getRequestAuthContext(request);
-  if (!context.isProductionLocked && options.allowLocalBypass !== false) {
-    return { ok: true, context };
-  }
+  void options;
   if (context.isAuthenticated) return { ok: true, context };
   return { ok: false, response: jsonError(401, AUTH_REQUIRED_MESSAGE) };
 }
@@ -109,11 +98,30 @@ export async function requireAdminUser(
   options: GuardOptions = {}
 ): Promise<GuardResult> {
   const context = await getRequestAuthContext(request);
-  if (!context.isProductionLocked && options.allowLocalBypass !== false) {
-    return { ok: true, context };
-  }
+  void options;
   if (context.isAdmin) return { ok: true, context };
   return { ok: false, response: jsonError(403, ADMIN_REQUIRED_MESSAGE) };
+}
+
+export async function requireSupabaseOwnerOrAdmin(request: Request): Promise<StrictGuardResult> {
+  const user = await getSupabaseUserFromRequest(request).catch(() => null);
+  if (!user) {
+    return { ok: false, response: jsonError(401, AUTH_REQUIRED_MESSAGE) };
+  }
+
+  const role = authorizedAppRole(user);
+  if (!role) {
+    return { ok: false, response: jsonError(403, ADMIN_REQUIRED_MESSAGE) };
+  }
+
+  return {
+    ok: true,
+    context: {
+      user,
+      role,
+      email: user.email?.trim().toLowerCase() ?? null,
+    },
+  };
 }
 
 export async function requireInternalAdminAccess(

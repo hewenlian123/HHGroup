@@ -8,6 +8,7 @@ import {
   type AttachmentPreviewFileItem,
   type AttachmentPreviewFileType,
 } from "@/components/attachment-preview-modal";
+import type { ReceiptViewerPresentation } from "@/components/receipt-viewer/types";
 
 const RESET_DELAY_MS = 160;
 
@@ -32,6 +33,8 @@ type SessionOptions = {
   onDeleteCurrent?: (attachmentId: string) => Promise<void>;
   /** Retry resolving signed URLs after initial batch failure (receipt flows). */
   onRetrySignedUrlResolve?: () => void;
+  /** Optional specialized visual presentation; secure URL/session behavior stays shared. */
+  presentation?: ReceiptViewerPresentation;
 };
 
 export type AttachmentPreviewOpenMultiPayload = SessionOptions & {
@@ -94,6 +97,7 @@ type ModalState = {
   onRefreshPreviewUrl?: () => Promise<string | null>;
   onDeleteCurrent?: (attachmentId: string) => Promise<void>;
   onRetrySignedUrlResolve?: () => void;
+  presentation?: ReceiptViewerPresentation;
 };
 
 function emptyModalState(): ModalState {
@@ -130,6 +134,7 @@ function applySessionOptions(
   if (s.onDeleteCurrent !== undefined) base.onDeleteCurrent = s.onDeleteCurrent;
   if (s.onRetrySignedUrlResolve !== undefined)
     base.onRetrySignedUrlResolve = s.onRetrySignedUrlResolve;
+  if (s.presentation !== undefined) base.presentation = s.presentation;
 }
 
 type AttachmentPreviewContextValue = {
@@ -178,6 +183,7 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
   const [state, setState] = React.useState<ModalState>(() => emptyModalState());
   const onClosedRef = React.useRef<(() => void) | undefined>(undefined);
   const resetTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const returnFocusTargetRef = React.useRef<HTMLElement | null>(null);
 
   const clearResetTimer = React.useCallback(() => {
     if (resetTimerRef.current != null) {
@@ -201,6 +207,10 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
   const openPreviewImpl = React.useCallback(
     (payload: AttachmentPreviewOpenPayload) => {
       clearResetTimer();
+      returnFocusTargetRef.current =
+        typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
       let files: AttachmentPreviewFileItem[];
       let currentIndex: number;
       const base: ModalState = {
@@ -350,6 +360,7 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
       if (patch.onDeleteCurrent !== undefined) next.onDeleteCurrent = patch.onDeleteCurrent;
       if (patch.onRetrySignedUrlResolve !== undefined)
         next.onRetrySignedUrlResolve = patch.onRetrySignedUrlResolve;
+      if (patch.presentation !== undefined) next.presentation = patch.presentation;
 
       return next;
     });
@@ -406,6 +417,8 @@ export function AttachmentPreviewProvider({ children }: { children: React.ReactN
         onRefreshPreviewUrl={state.onRefreshPreviewUrl}
         onDeleteCurrent={state.onDeleteCurrent}
         onRetrySignedUrlResolve={state.onRetrySignedUrlResolve}
+        presentation={state.presentation}
+        returnFocusTarget={returnFocusTargetRef.current}
       />
     </AttachmentPreviewContext.Provider>
   );

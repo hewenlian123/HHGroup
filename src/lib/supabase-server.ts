@@ -8,6 +8,7 @@
 
 import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import type { NextRequest, NextResponse } from "next/server";
 
 function envUrl(): string | null {
   return process.env.NEXT_PUBLIC_SUPABASE_URL ?? null;
@@ -48,6 +49,19 @@ export function getServerSupabase(): SupabaseClient | null {
   const anon = envAnon();
   if (!url || !anon) return null;
   return createClient(url, anon, serverClientOptions());
+}
+
+export function createTransientSupabaseClient(): SupabaseClient | null {
+  const url = envUrl();
+  const anon = envAnon();
+  if (!url || !anon) return null;
+  return createClient(url, anon, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+  });
 }
 
 /**
@@ -134,6 +148,85 @@ export async function createServerSupabaseClient(): Promise<SupabaseClient | nul
   });
 }
 
+type RouteCookie = {
+  name: string;
+  value: string;
+};
+
+function requestCookies(request: Request | NextRequest): RouteCookie[] {
+  if ("cookies" in request) {
+    const cookieStore = request.cookies as { getAll?: () => RouteCookie[] };
+    if (typeof cookieStore.getAll === "function") {
+      return cookieStore.getAll();
+    }
+  }
+
+  const raw = request.headers.get("cookie");
+  if (!raw) return [];
+  return raw
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const separator = part.indexOf("=");
+      if (separator < 0) return { name: part, value: "" };
+      return {
+        name: part.slice(0, separator),
+        value: decodeURIComponent(part.slice(separator + 1)),
+      };
+    });
+}
+
+export function createRouteSupabaseClient(
+  request: Request | NextRequest,
+  response: NextResponse,
+  options: { persistent?: boolean } = {}
+): SupabaseClient | null {
+  const url = envUrl();
+  const anon = envAnon();
+  if (!url || !anon) return null;
+  const persistent = options.persistent === true;
+
+  return createServerClient(url, anon, {
+    cookies: {
+      getAll() {
+        return requestCookies(request);
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options: cookieOptions }) => {
+          const normalizedOptions = persistent
+            ? cookieOptions
+            : {
+                ...cookieOptions,
+                expires: undefined,
+                maxAge: undefined,
+              };
+          response.cookies.set(name, value, normalizedOptions);
+        });
+      },
+    },
+  });
+}
+
+function createRequestReadOnlySupabaseClient(
+  request: Request | NextRequest
+): SupabaseClient | null {
+  const url = envUrl();
+  const anon = envAnon();
+  if (!url || !anon) return null;
+
+  return createServerClient(url, anon, {
+    cookies: {
+      getAll() {
+        return requestCookies(request);
+      },
+      setAll() {
+        // A read-only request guard cannot attach refreshed cookies. Middleware owns refresh.
+      },
+    },
+  });
+}
+
 /**
  * Resolve the Supabase user for a Route Handler request.
  * 1) `Authorization: Bearer <access_token>` (browser session without SSR cookies)
@@ -157,7 +250,7 @@ export async function getSupabaseUserFromRequest(req: Request): Promise<User | n
     if (!error && user) return user;
   }
 
-  const cookieClient = await createServerSupabaseClient();
+  const cookieClient = createRequestReadOnlySupabaseClient(req);
   if (!cookieClient) return null;
   const {
     data: { user },

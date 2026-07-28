@@ -103,15 +103,21 @@ export function ExpenseEditAttachmentsSection({
             });
             continue;
           }
-          const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "file";
-          const filePath = `expenses/${expense.id}/${Date.now()}-${i}-${safeName}`;
-          const { error: upErr } = await supabase.storage
-            .from("expense-attachments")
-            .upload(filePath, file, {
-              contentType: file.type || undefined,
-              upsert: false,
-            });
-          if (upErr) throw upErr;
+          const uploadData = new FormData();
+          uploadData.set("file", file);
+          const uploadResponse = await fetch("/api/quick-expense/upload-attachment", {
+            method: "POST",
+            body: uploadData,
+            credentials: "same-origin",
+          });
+          const uploadBody = (await uploadResponse.json().catch(() => ({}))) as {
+            ok?: boolean;
+            path?: string;
+          };
+          if (!uploadResponse.ok || !uploadBody.ok || !uploadBody.path) {
+            throw new Error("Attachment upload failed.");
+          }
+          const filePath = uploadBody.path;
           const att = buildExpenseAttachmentForUpload(file, filePath);
           const next = await addExpenseAttachment(expense.id, att);
           if (next) {

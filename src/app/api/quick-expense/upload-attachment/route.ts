@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
-import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternalNoStore,
-} from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { validateSameOriginMutation } from "@/lib/auth-request-security";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "expense-attachments";
 const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
@@ -35,12 +33,14 @@ function safeExtension(file: File): string {
 }
 
 export async function POST(req: Request) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
+  const sameOrigin = validateSameOriginMutation(req);
+  if (!sameOrigin.ok) return apiError(sameOrigin.status, sameOrigin.message);
 
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = getServerSupabaseAdmin();
   if (!supabase) {
-    return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+    return apiError(503, "Receipt upload is unavailable.");
   }
 
   try {
@@ -62,7 +62,6 @@ export async function POST(req: Request) {
       upsert: false,
     });
     if (error) {
-      console.error("[quick-expense/upload-attachment] upload failed", error);
       return apiError(500, "Receipt upload failed.");
     }
 
@@ -75,8 +74,7 @@ export async function POST(req: Request) {
       },
       { headers: { "Cache-Control": "no-store" } }
     );
-  } catch (e) {
-    console.error("[quick-expense/upload-attachment] unexpected upload error", e);
+  } catch {
     return apiError(500, "Receipt upload failed.");
   }
 }

@@ -5,6 +5,7 @@ import type { FullConfig } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
 import { cleanupTestData } from "./e2e-cleanup-db";
+import { deleteE2EAuthUsers } from "./e2e-auth-owner";
 import { loadE2EProcessEnv } from "./e2e-load-env";
 
 export default async function globalTeardown(_config: FullConfig): Promise<void> {
@@ -35,4 +36,6 @@ export default async function globalTeardown(_config: FullConfig): Promise<void>
   const total = Object.values(deleted).reduce((a, b) => a + b, 0);
   // Always log so `npm run test:local` is easy to grep (`deleted: { ... }` or `deleted: (none)`).
   console.log("[global-teardown] deleted:", total > 0 ? deleted : "(none — no matching test rows)");
+  await deleteE2EAuthUsers();
+  console.log("[global-teardown] removed local E2E Auth users.");
 }

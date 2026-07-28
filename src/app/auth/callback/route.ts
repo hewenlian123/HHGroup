@@ -5,9 +5,9 @@ import { normalizeAuthRedirect } from "@/lib/auth-redirect";
 
 export const dynamic = "force-dynamic";
 
-function loginRedirect(requestUrl: URL, error: string): NextResponse {
+function loginRedirect(requestUrl: URL): NextResponse {
   const target = new URL("/login", requestUrl.origin);
-  target.searchParams.set("error", error);
+  target.searchParams.set("error", "invalid_or_expired_link");
   return NextResponse.redirect(target);
 }
 
@@ -15,23 +15,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const providerError =
-    requestUrl.searchParams.get("error_description") ?? requestUrl.searchParams.get("error");
+    requestUrl.searchParams.has("error_description") || requestUrl.searchParams.has("error");
   const redirectTo = normalizeAuthRedirect(
     requestUrl.searchParams.get("redirect") ?? requestUrl.searchParams.get("next")
   );
 
   if (providerError) {
-    return loginRedirect(requestUrl, providerError);
+    return loginRedirect(requestUrl);
   }
 
   if (!code) {
-    return loginRedirect(requestUrl, "Missing authentication code.");
+    return loginRedirect(requestUrl);
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!supabaseUrl || !anonKey) {
-    return loginRedirect(requestUrl, "Supabase Auth is not configured.");
+    return loginRedirect(requestUrl);
   }
 
   const target = new URL(redirectTo, requestUrl.origin);
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) {
-    return loginRedirect(requestUrl, error.message || "Authentication callback failed.");
+    return loginRedirect(requestUrl);
   }
 
   return response;

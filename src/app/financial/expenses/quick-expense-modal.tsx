@@ -1110,7 +1110,8 @@ export function QuickExpenseModal({
         );
         setAttachmentSlots(slotsToSave);
       }
-      const firstPublic = slotsToSave.find((s) => s.receiptsPublicUrl)?.receiptsPublicUrl ?? "";
+      const firstReceiptPath =
+        slotsToSave.find((slot) => slot.attachmentPath)?.attachmentPath ?? "";
       const hasStoragePath = slotsToSave.some((s) => s.attachmentPath);
 
       const attachmentsToSave: ExpenseAttachment[] = slotsToSave
@@ -1137,7 +1138,7 @@ export function QuickExpenseModal({
         date: date || new Date().toISOString().slice(0, 10),
         vendorName: effectiveVendorName || "Unknown",
         totalAmount,
-        receiptUrl: firstPublic || undefined,
+        receiptUrl: undefined,
         sourceType: slotsToSave.length > 0 ? "receipt_upload" : "company",
         category,
         initialStatus: deriveExpenseWorkflowStatus(projectId || null, category, costAllocation),
@@ -1172,7 +1173,7 @@ export function QuickExpenseModal({
       });
       if (
         slotsToSave.length > 0 &&
-        !firstPublic &&
+        !firstReceiptPath &&
         !hasStoragePath &&
         slotsToSave.some((s) => s.uploadError || s.pendingFile)
       ) {

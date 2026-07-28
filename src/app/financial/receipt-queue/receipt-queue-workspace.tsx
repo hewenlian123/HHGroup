@@ -73,47 +73,23 @@ import {
   scrollElementIntoViewNearest,
 } from "@/lib/list-flow";
 import { compressImageFileForReceiptUpload } from "@/lib/image-compress-browser";
-import { parseSupabaseStorageObjectUrl, resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
 
-/** Strip accidental bucket prefix from DB `storage_path` before signing. */
-function normalizeQueueStoragePath(raw: string): string {
-  const p = raw.trim().replace(/^\/+/, "");
-  const lower = p.toLowerCase();
-  if (lower.startsWith("expense-attachments/")) return p.slice("expense-attachments/".length);
-  if (lower.startsWith("receipts/")) return p.slice("receipts/".length);
-  return p;
-}
-
 async function resolveQueueReceiptPreviewUrl(
-  supabase: NonNullable<ReturnType<typeof createBrowserClient>>,
+  _supabase: NonNullable<ReturnType<typeof createBrowserClient>>,
   row: ReceiptQueueRow
 ): Promise<string | null> {
-  const pub = (row.receipt_public_url ?? "").trim();
-  const pathRaw = (row.storage_path ?? "").trim();
-  const urlCandidate = /^https?:\/\//i.test(pub)
-    ? pub
-    : pathRaw
-      ? normalizeQueueStoragePath(pathRaw)
-      : "";
-  if (!urlCandidate) return null;
-
-  const resolved = await resolvePreviewSignedUrl({
-    supabase,
-    rawUrlOrPath: urlCandidate,
-    ttlSec: 3600,
-    bucketCandidates: ["expense-attachments", "receipts"],
-  });
-  if (/^https?:\/\//i.test(resolved)) return resolved;
-
-  const parsed = /^https?:\/\//i.test(pub) ? parseSupabaseStorageObjectUrl(pub) : null;
-  const pathOnly = parsed?.path ?? (pathRaw ? normalizeQueueStoragePath(pathRaw) : "");
-  const bucket = parsed?.bucket ?? "receipts";
-  if (!pathOnly) return null;
-  const { data } = supabase.storage.from(bucket).getPublicUrl(pathOnly);
-  return data?.publicUrl ?? null;
+  const response = await fetch(
+    `/api/financial/receipt-queue/${encodeURIComponent(row.id)}/preview`,
+    { cache: "no-store", credentials: "same-origin" }
+  );
+  const body = (await response.json().catch(() => ({}))) as {
+    ok?: boolean;
+    signedUrl?: string;
+  };
+  return response.ok && body.ok && typeof body.signedUrl === "string" ? body.signedUrl : null;
 }
 
 /** When a refetch races replication, prefer non-empty server fields; otherwise keep prior UI state. */

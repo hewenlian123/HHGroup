@@ -99,9 +99,7 @@ export async function createInboxDraftFromReceiptFile(
   }
 
   const slot = await uploadReceiptToStorage(supabase, file, hash.slice(0, 12));
-  const receiptUrl =
-    slot.receiptsPublicUrl?.trim() ||
-    (slot.previewUrl && !slot.previewUrl.startsWith("blob:") ? slot.previewUrl : null);
+  const receiptUrl = slot.attachmentPath?.trim() || null;
   if (!receiptUrl || slot.uploadError) {
     return {
       ok: false,
@@ -115,7 +113,7 @@ export async function createInboxDraftFromReceiptFile(
     date: today,
     vendorName: "Unknown",
     totalAmount: 0.01,
-    receiptUrl,
+    receiptUrl: "",
     category: "Other",
     sourceType: "receipt_upload",
     initialStatus: "draft",

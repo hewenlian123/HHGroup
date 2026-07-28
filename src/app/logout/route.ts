@@ -1,33 +1,33 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createServerClient } from "@supabase/ssr";
+
 import { clearPinSession } from "@/lib/pin-auth";
+import { clearDeviceUnlockCookie, clearTrustedDeviceCookie } from "@/lib/device-unlock";
+import { createRouteSupabaseClient } from "@/lib/supabase-server";
+import { recordSecurityAudit } from "@/lib/security-audit";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const requestUrl = new URL(request.url);
-  const target = new URL("/dashboard", requestUrl.origin);
+  const target = new URL("/login", requestUrl.origin);
+  target.searchParams.set("message", "signed_out");
 
-  const response = NextResponse.redirect(target);
-  clearPinSession(response);
-
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !anonKey) return response;
-
-  const supabase = createServerClient(supabaseUrl, anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options);
-        });
-      },
-    },
+  const response = NextResponse.redirect(target, {
+    headers: { "Cache-Control": "no-store, max-age=0" },
   });
+  clearPinSession(response);
+  clearDeviceUnlockCookie(response);
+  clearTrustedDeviceCookie(response);
 
-  await supabase.auth.signOut().catch(() => undefined);
+  const supabase = createRouteSupabaseClient(request, response);
+  if (!supabase) return response;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+  await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+
+  if (user) {
+    await recordSecurityAudit({ eventType: "logout", userId: user.id });
+  }
   return response;
 }

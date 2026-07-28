@@ -14,6 +14,18 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InlineLoading, Skeleton } from "@/components/ui/skeleton";
+import { ReceiptViewerDialog } from "@/components/receipt-viewer/receipt-viewer-dialog";
+import {
+  type ReceiptViewerCanvasHandle,
+  type ReceiptViewerPresentation,
+  type ReceiptViewerTransformState,
+} from "@/components/receipt-viewer/types";
+import {
+  clampReceiptViewerPan,
+  getReceiptViewerTransformMetrics,
+  type ReceiptViewerTransformMetrics,
+} from "@/components/receipt-viewer/transform-metrics";
+import { useReceiptViewer } from "@/components/receipt-viewer/use-receipt-viewer";
 import { cn } from "@/lib/utils";
 import { preflightPreviewUrl, type PreviewUrlPreflightResult } from "@/lib/preview-url-preflight";
 
@@ -258,442 +270,809 @@ function cursorCenteredPan(
   };
 }
 
-function ZoomableImageFrame({
-  effectiveUrl,
-  imgPhase,
-  imgClassName,
-  onImgLoad,
-  onImgError,
-  onZoomPanChange,
-  showLoadingSkeleton = false,
-}: {
+type ReceiptImageCanvasProps = {
   effectiveUrl: string;
   imgPhase: "loading" | "ready" | "error";
   imgClassName: string;
   onImgLoad: (e: React.SyntheticEvent<HTMLImageElement>) => void;
   onImgError: () => void;
   onZoomPanChange?: (zoomed: boolean) => void;
+  onTransformStateChange?: (state: ReceiptViewerTransformState) => void;
   showLoadingSkeleton?: boolean;
-}) {
-  const [scale, setScale] = React.useState(1);
-  const [tx, setTx] = React.useState(0);
-  const [ty, setTy] = React.useState(0);
-  const [baseSize, setBaseSize] = React.useState({ w: 0, h: 0 });
-  const [containerSize, setContainerSize] = React.useState({ w: 0, h: 0 });
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [isInertia, setIsInertia] = React.useState(false);
-  const [snapTransition, setSnapTransition] = React.useState(false);
-  const [zoomIndicator, setZoomIndicator] = React.useState<string | null>(null);
-  const [zoomIndicatorOpaque, setZoomIndicatorOpaque] = React.useState(true);
+  viewerMode?: boolean;
+};
 
-  const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const imgRef = React.useRef<HTMLImageElement | null>(null);
-  const stateRef = React.useRef({ scale: 1, tx: 0, ty: 0 });
-  const pinchStartDist = React.useRef<number | null>(null);
-  const pinchStartScale = React.useRef(1);
-  const panStart = React.useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
-  const wheelAccumRef = React.useRef(0);
-  const wheelClientRef = React.useRef({ x: 0, y: 0 });
-  const wheelRafRef = React.useRef<number | null>(null);
-  const pointerDragRef = React.useRef<{
-    id: number;
-    lastX: number;
-    lastY: number;
-    lastT: number;
-    vx: number;
-    vy: number;
-  } | null>(null);
-  const inertiaRafRef = React.useRef<number | null>(null);
+const ReceiptImageCanvas = React.forwardRef<ReceiptViewerCanvasHandle, ReceiptImageCanvasProps>(
+  function ReceiptImageCanvas(
+    {
+      effectiveUrl,
+      imgPhase,
+      imgClassName,
+      onImgLoad,
+      onImgError,
+      onZoomPanChange,
+      onTransformStateChange,
+      showLoadingSkeleton = false,
+      viewerMode = false,
+    },
+    ref
+  ) {
+    const [scale, setScale] = React.useState(1);
+    const [tx, setTx] = React.useState(0);
+    const [ty, setTy] = React.useState(0);
+    const [rotation, setRotation] = React.useState(0);
+    const [baseSize, setBaseSize] = React.useState({ w: 0, h: 0 });
+    const [naturalSize, setNaturalSize] = React.useState({ w: 0, h: 0 });
+    const [containerSize, setContainerSize] = React.useState({ w: 0, h: 0 });
+    const [isDragging, setIsDragging] = React.useState(false);
+    const [isInertia, setIsInertia] = React.useState(false);
+    const [snapTransition, setSnapTransition] = React.useState(false);
+    const [zoomIndicator, setZoomIndicator] = React.useState<string | null>(null);
+    const [zoomIndicatorOpaque, setZoomIndicatorOpaque] = React.useState(true);
+    const [panIndicatorVisible, setPanIndicatorVisible] = React.useState(false);
 
-  React.useLayoutEffect(() => {
-    stateRef.current = { scale, tx, ty };
-  }, [scale, tx, ty]);
+    const containerRef = React.useRef<HTMLDivElement | null>(null);
+    const imgRef = React.useRef<HTMLImageElement | null>(null);
+    const stateRef = React.useRef({ scale: 1, tx: 0, ty: 0 });
+    const pinchStartDist = React.useRef<number | null>(null);
+    const pinchStartScale = React.useRef(1);
+    const panStart = React.useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
+    const touchTapStartRef = React.useRef<{ x: number; y: number; moved: boolean } | null>(null);
+    const lastTouchTapRef = React.useRef<{ x: number; y: number; at: number } | null>(null);
+    const wheelAccumRef = React.useRef(0);
+    const wheelClientRef = React.useRef({ x: 0, y: 0 });
+    const wheelRafRef = React.useRef<number | null>(null);
+    const pointerDragRef = React.useRef<{
+      id: number;
+      lastX: number;
+      lastY: number;
+      lastT: number;
+      vx: number;
+      vy: number;
+    } | null>(null);
+    const inertiaRafRef = React.useRef<number | null>(null);
+    const panIndicatorTimerRef = React.useRef<number | null>(null);
+    const mediaSessionRef = React.useRef(0);
+    const transformMetrics = React.useMemo(
+      () =>
+        getReceiptViewerTransformMetrics({
+          containerWidth: containerSize.w,
+          containerHeight: containerSize.h,
+          naturalWidth: viewerMode ? naturalSize.w : baseSize.w,
+          naturalHeight: viewerMode ? naturalSize.h : baseSize.h,
+          rotation,
+          zoom: scale,
+        }),
+      [
+        baseSize.h,
+        baseSize.w,
+        containerSize.h,
+        containerSize.w,
+        naturalSize.h,
+        naturalSize.w,
+        rotation,
+        scale,
+        viewerMode,
+      ]
+    );
+    const metricsRef = React.useRef<ReceiptViewerTransformMetrics>(transformMetrics);
 
-  React.useEffect(() => {
-    setScale(1);
-    setTx(0);
-    setTy(0);
-    pinchStartDist.current = null;
-    panStart.current = null;
-    pointerDragRef.current = null;
-    wheelAccumRef.current = 0;
-    if (wheelRafRef.current != null) {
-      cancelAnimationFrame(wheelRafRef.current);
-      wheelRafRef.current = null;
-    }
-    if (inertiaRafRef.current != null) {
-      cancelAnimationFrame(inertiaRafRef.current);
-      inertiaRafRef.current = null;
-    }
-    setIsInertia(false);
-    setIsDragging(false);
-  }, [effectiveUrl]);
+    React.useLayoutEffect(() => {
+      stateRef.current = { scale, tx, ty };
+    }, [scale, tx, ty]);
 
-  React.useEffect(() => {
-    onZoomPanChange?.(scale > ZOOM_MIN + 0.02 || Math.abs(tx) > 2 || Math.abs(ty) > 2);
-  }, [scale, tx, ty, onZoomPanChange]);
+    React.useLayoutEffect(() => {
+      metricsRef.current = transformMetrics;
+    }, [transformMetrics]);
 
-  const measureSizes = React.useCallback(() => {
-    const c = containerRef.current;
-    const im = imgRef.current;
-    if (c) {
-      setContainerSize({ w: c.clientWidth, h: c.clientHeight });
-    }
-    if (im && im.complete) {
-      setBaseSize({ w: im.offsetWidth, h: im.offsetHeight });
-    }
-  }, []);
-
-  React.useEffect(() => {
-    const c = containerRef.current;
-    if (!c || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => measureSizes());
-    ro.observe(c);
-    measureSizes();
-    return () => ro.disconnect();
-  }, [measureSizes, imgPhase, effectiveUrl]);
-
-  React.useEffect(() => {
-    if (imgPhase !== "ready") return;
-    setZoomIndicatorOpaque(true);
-    setZoomIndicator(`${Math.round(scale * 100)}%`);
-    const tFade = window.setTimeout(() => setZoomIndicatorOpaque(false), 750);
-    const tHide = window.setTimeout(() => setZoomIndicator(null), 1050);
-    return () => {
-      clearTimeout(tFade);
-      clearTimeout(tHide);
-    };
-  }, [scale, imgPhase]);
-
-  const cancelInertia = React.useCallback(() => {
-    if (inertiaRafRef.current != null) {
-      cancelAnimationFrame(inertiaRafRef.current);
-      inertiaRafRef.current = null;
-    }
-    setIsInertia(false);
-  }, []);
-
-  const applyPanScale = React.useCallback(
-    (nextScale: number, nextTx: number, nextTy: number) => {
-      const { w: cw, h: ch } = containerSize;
-      const { w: bw, h: bh } = baseSize;
-      let s = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, nextScale));
-      let nx = nextTx;
-      let ny = nextTy;
-      if (s <= ZOOM_MIN) {
-        s = ZOOM_MIN;
-        nx = 0;
-        ny = 0;
-      } else {
-        const cl = clampPan(nx, ny, s, cw, ch, bw, bh);
-        nx = cl.tx;
-        ny = cl.ty;
+    React.useEffect(() => {
+      mediaSessionRef.current += 1;
+      setScale(1);
+      setTx(0);
+      setTy(0);
+      setRotation(0);
+      setNaturalSize({ w: 0, h: 0 });
+      pinchStartDist.current = null;
+      panStart.current = null;
+      touchTapStartRef.current = null;
+      lastTouchTapRef.current = null;
+      pointerDragRef.current = null;
+      wheelAccumRef.current = 0;
+      if (wheelRafRef.current != null) {
+        cancelAnimationFrame(wheelRafRef.current);
+        wheelRafRef.current = null;
       }
-      stateRef.current = { scale: s, tx: nx, ty: ny };
-      setScale(s);
-      setTx(nx);
-      setTy(ny);
-    },
-    [containerSize, baseSize]
-  );
+      if (inertiaRafRef.current != null) {
+        cancelAnimationFrame(inertiaRafRef.current);
+        inertiaRafRef.current = null;
+      }
+      setIsInertia(false);
+      setIsDragging(false);
+      setPanIndicatorVisible(false);
+      if (panIndicatorTimerRef.current != null) {
+        window.clearTimeout(panIndicatorTimerRef.current);
+        panIndicatorTimerRef.current = null;
+      }
+    }, [effectiveUrl]);
 
-  const flushWheel = React.useCallback(() => {
-    wheelRafRef.current = null;
-    const dy = wheelAccumRef.current;
-    wheelAccumRef.current = 0;
-    if (dy === 0) return;
-    const el = containerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const { x: pcx, y: pcy } = wheelClientRef.current;
-    const zoomFactor = Math.exp(-dy * WHEEL_EXP);
-    const { scale: sc, tx: px, ty: py } = stateRef.current;
-    let nextScale = sc * zoomFactor;
-    nextScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, nextScale));
-    if (nextScale <= ZOOM_MIN) {
+    React.useEffect(() => {
+      onZoomPanChange?.(scale > ZOOM_MIN + 0.02 || Math.abs(tx) > 2 || Math.abs(ty) > 2);
+    }, [scale, tx, ty, onZoomPanChange]);
+
+    React.useEffect(() => {
+      onTransformStateChange?.({
+        ready: imgPhase === "ready",
+        zoomPercent: Math.round(scale * 100),
+        rotation,
+        zoomed: scale > ZOOM_MIN + 0.02 || Math.abs(tx) > 2 || Math.abs(ty) > 2,
+      });
+    }, [imgPhase, onTransformStateChange, rotation, scale, tx, ty]);
+
+    const measureSizes = React.useCallback(() => {
+      const c = containerRef.current;
+      const im = imgRef.current;
+      if (c) {
+        setContainerSize({ w: c.clientWidth, h: c.clientHeight });
+      }
+      if (im && im.complete) {
+        setBaseSize({ w: im.offsetWidth, h: im.offsetHeight });
+        if (im.naturalWidth > 0 && im.naturalHeight > 0) {
+          setNaturalSize({ w: im.naturalWidth, h: im.naturalHeight });
+        }
+      }
+    }, []);
+
+    React.useEffect(() => {
+      const c = containerRef.current;
+      if (!c || typeof ResizeObserver === "undefined") return;
+      const ro = new ResizeObserver(() => measureSizes());
+      ro.observe(c);
+      measureSizes();
+      return () => ro.disconnect();
+    }, [measureSizes, imgPhase, effectiveUrl]);
+
+    React.useEffect(() => {
+      if (imgPhase !== "ready") return;
+      setZoomIndicatorOpaque(true);
+      setZoomIndicator(`${Math.round(scale * 100)}%`);
+      const tFade = window.setTimeout(() => setZoomIndicatorOpaque(false), 750);
+      const tHide = window.setTimeout(() => setZoomIndicator(null), 1050);
+      return () => {
+        clearTimeout(tFade);
+        clearTimeout(tHide);
+      };
+    }, [scale, imgPhase]);
+
+    const cancelInertia = React.useCallback(() => {
+      if (inertiaRafRef.current != null) {
+        cancelAnimationFrame(inertiaRafRef.current);
+        inertiaRafRef.current = null;
+      }
+      setIsInertia(false);
+    }, []);
+
+    const hidePanIndicator = React.useCallback(() => {
+      if (panIndicatorTimerRef.current != null) {
+        window.clearTimeout(panIndicatorTimerRef.current);
+        panIndicatorTimerRef.current = null;
+      }
+      setPanIndicatorVisible(false);
+    }, []);
+
+    const showPanIndicator = React.useCallback(
+      (autoHide: boolean) => {
+        if (!viewerMode) return;
+        const metrics = metricsRef.current;
+        if (!metrics.overflowX && !metrics.overflowY) {
+          hidePanIndicator();
+          return;
+        }
+        setPanIndicatorVisible(true);
+        if (panIndicatorTimerRef.current != null) {
+          window.clearTimeout(panIndicatorTimerRef.current);
+          panIndicatorTimerRef.current = null;
+        }
+        if (autoHide) {
+          panIndicatorTimerRef.current = window.setTimeout(() => {
+            panIndicatorTimerRef.current = null;
+            setPanIndicatorVisible(false);
+          }, 850);
+        }
+      },
+      [hidePanIndicator, viewerMode]
+    );
+
+    React.useEffect(
+      () => () => {
+        if (panIndicatorTimerRef.current != null) {
+          window.clearTimeout(panIndicatorTimerRef.current);
+        }
+      },
+      []
+    );
+
+    const applyPanScale = React.useCallback(
+      (nextScale: number, nextTx: number, nextTy: number, nextRotation = rotation) => {
+        const { w: cw, h: ch } = containerSize;
+        const { w: bw, h: bh } = baseSize;
+        let s = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, nextScale));
+        let nx = nextTx;
+        let ny = nextTy;
+        if (viewerMode) {
+          const metrics = getReceiptViewerTransformMetrics({
+            containerWidth: cw,
+            containerHeight: ch,
+            naturalWidth: naturalSize.w,
+            naturalHeight: naturalSize.h,
+            rotation: nextRotation,
+            zoom: s,
+          });
+          metricsRef.current = metrics;
+          const clamped =
+            s <= ZOOM_MIN ? { tx: 0, ty: 0 } : clampReceiptViewerPan(metrics, nextTx, nextTy);
+          nx = clamped.tx;
+          ny = clamped.ty;
+        } else if (s <= ZOOM_MIN) {
+          s = ZOOM_MIN;
+          nx = 0;
+          ny = 0;
+        } else {
+          const cl = clampPan(nx, ny, s, cw, ch, bw, bh);
+          nx = cl.tx;
+          ny = cl.ty;
+        }
+        stateRef.current = { scale: s, tx: nx, ty: ny };
+        setScale(s);
+        setTx(nx);
+        setTy(ny);
+      },
+      [baseSize, containerSize, naturalSize, rotation, viewerMode]
+    );
+
+    React.useLayoutEffect(() => {
+      if (!viewerMode || naturalSize.w <= 0 || naturalSize.h <= 0) return;
+      const current = stateRef.current;
+      const clamped =
+        current.scale <= ZOOM_MIN
+          ? { tx: 0, ty: 0 }
+          : clampReceiptViewerPan(transformMetrics, current.tx, current.ty);
+      metricsRef.current = transformMetrics;
+      if (Math.abs(clamped.tx - current.tx) > 0.01 || Math.abs(clamped.ty - current.ty) > 0.01) {
+        stateRef.current = { ...current, tx: clamped.tx, ty: clamped.ty };
+        setTx(clamped.tx);
+        setTy(clamped.ty);
+      }
+      if (!transformMetrics.overflowX && !transformMetrics.overflowY) {
+        hidePanIndicator();
+      }
+    }, [hidePanIndicator, naturalSize.h, naturalSize.w, transformMetrics, viewerMode]);
+
+    const fitView = React.useCallback(() => {
+      cancelInertia();
+      hidePanIndicator();
+      setSnapTransition(true);
+      window.setTimeout(() => setSnapTransition(false), 180);
       applyPanScale(ZOOM_MIN, 0, 0);
-      return;
-    }
-    const p = cursorCenteredPan(pcx, pcy, cx, cy, px, py, sc, nextScale);
-    applyPanScale(nextScale, p.tx, p.ty);
-  }, [applyPanScale]);
+    }, [applyPanScale, cancelInertia, hidePanIndicator]);
 
-  const scheduleWheel = React.useCallback(() => {
-    if (wheelRafRef.current != null) return;
-    wheelRafRef.current = requestAnimationFrame(() => {
-      flushWheel();
-    });
-  }, [flushWheel]);
+    const resetView = React.useCallback(() => {
+      setRotation(0);
+      fitView();
+    }, [fitView]);
 
-  React.useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      cancelInertia();
-      wheelAccumRef.current += e.deltaY;
-      wheelClientRef.current = { x: e.clientX, y: e.clientY };
-      scheduleWheel();
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [scheduleWheel, cancelInertia]);
+    const rotateBy = React.useCallback(
+      (degrees: number) => {
+        cancelInertia();
+        setSnapTransition(true);
+        window.setTimeout(() => setSnapTransition(false), 180);
+        const next = (rotation + degrees) % 360;
+        const normalized = next < 0 ? next + 360 : next;
+        setRotation(normalized);
+        applyPanScale(ZOOM_MIN, 0, 0, normalized);
+        hidePanIndicator();
+      },
+      [applyPanScale, cancelInertia, hidePanIndicator, rotation]
+    );
 
-  const onImgLoadWrapped = React.useCallback(
-    (e: React.SyntheticEvent<HTMLImageElement>) => {
-      onImgLoad(e);
-      requestAnimationFrame(() => measureSizes());
-    },
-    [onImgLoad, measureSizes]
-  );
+    React.useImperativeHandle(
+      ref,
+      () => ({
+        zoomIn: () => {
+          cancelInertia();
+          const current = stateRef.current;
+          applyPanScale(Math.min(ZOOM_MAX, current.scale + 0.25), current.tx, current.ty);
+        },
+        zoomOut: () => {
+          cancelInertia();
+          const current = stateRef.current;
+          applyPanScale(Math.max(ZOOM_MIN, current.scale - 0.25), current.tx, current.ty);
+        },
+        fit: fitView,
+        reset: resetView,
+        rotateLeft: () => rotateBy(-90),
+        rotateRight: () => rotateBy(90),
+      }),
+      [applyPanScale, cancelInertia, fitView, resetView, rotateBy]
+    );
 
-  const onDoubleClick = React.useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      cancelInertia();
+    const flushWheel = React.useCallback(() => {
+      wheelRafRef.current = null;
+      const dy = wheelAccumRef.current;
+      wheelAccumRef.current = 0;
+      if (dy === 0) return;
       const el = containerRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const centerX = rect.left + rect.width / 2;
-      const centerY = rect.top + rect.height / 2;
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const { x: pcx, y: pcy } = wheelClientRef.current;
+      const zoomFactor = Math.exp(-dy * WHEEL_EXP);
       const { scale: sc, tx: px, ty: py } = stateRef.current;
-      setSnapTransition(true);
-      window.setTimeout(() => setSnapTransition(false), 220);
-      if (sc > ZOOM_MIN + 0.02) {
+      let nextScale = sc * zoomFactor;
+      nextScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, nextScale));
+      if (nextScale <= ZOOM_MIN) {
         applyPanScale(ZOOM_MIN, 0, 0);
+        hidePanIndicator();
         return;
       }
-      const nextScale = Math.min(2, ZOOM_MAX);
-      const p = cursorCenteredPan(e.clientX, e.clientY, centerX, centerY, px, py, sc, nextScale);
+      const p = cursorCenteredPan(pcx, pcy, cx, cy, px, py, sc, nextScale);
       applyPanScale(nextScale, p.tx, p.ty);
-    },
-    [applyPanScale, cancelInertia]
-  );
+      showPanIndicator(true);
+    }, [applyPanScale, hidePanIndicator, showPanIndicator]);
 
-  const onPointerDown = React.useCallback(
-    (e: React.PointerEvent) => {
-      if (e.pointerType !== "mouse" || e.button !== 0 || stateRef.current.scale <= ZOOM_MIN + 0.02)
-        return;
-      cancelInertia();
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-      setIsDragging(true);
-      const now = performance.now();
-      pointerDragRef.current = {
-        id: e.pointerId,
-        lastX: e.clientX,
-        lastY: e.clientY,
-        lastT: now,
-        vx: 0,
-        vy: 0,
+    const scheduleWheel = React.useCallback(() => {
+      if (wheelRafRef.current != null) return;
+      wheelRafRef.current = requestAnimationFrame(() => {
+        flushWheel();
+      });
+    }, [flushWheel]);
+
+    React.useEffect(() => {
+      const el = containerRef.current;
+      if (!el) return;
+      const onWheel = (e: WheelEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelInertia();
+        wheelAccumRef.current += e.deltaY;
+        wheelClientRef.current = { x: e.clientX, y: e.clientY };
+        scheduleWheel();
       };
-    },
-    [cancelInertia]
-  );
+      el.addEventListener("wheel", onWheel, { passive: false });
+      return () => el.removeEventListener("wheel", onWheel);
+    }, [scheduleWheel, cancelInertia]);
 
-  const onPointerMove = React.useCallback(
-    (e: React.PointerEvent) => {
-      if (e.pointerType !== "mouse") return;
-      const d = pointerDragRef.current;
-      if (!d || d.id !== e.pointerId) return;
-      const now = performance.now();
-      const dt = Math.max(1, now - d.lastT);
-      const dx = e.clientX - d.lastX;
-      const dy = e.clientY - d.lastY;
-      const rawVx = (dx / dt) * 16.67 * INERTIA_MULT;
-      const rawVy = (dy / dt) * 16.67 * INERTIA_MULT;
-      d.vx = d.vx * 0.45 + rawVx * 0.55;
-      d.vy = d.vy * 0.45 + rawVy * 0.55;
-      d.lastX = e.clientX;
-      d.lastY = e.clientY;
-      d.lastT = now;
-      const { scale: sc, tx: px, ty: py } = stateRef.current;
-      const nx = px + dx;
-      const ny = py + dy;
-      applyPanScale(sc, nx, ny);
-    },
-    [applyPanScale]
-  );
+    const onImgLoadWrapped = React.useCallback(
+      (e: React.SyntheticEvent<HTMLImageElement>) => {
+        const image = e.currentTarget;
+        if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+          setNaturalSize({ w: image.naturalWidth, h: image.naturalHeight });
+        }
+        const session = mediaSessionRef.current;
+        const reveal = () => {
+          if (mediaSessionRef.current !== session || image.src !== effectiveUrl) return;
+          onImgLoad(e);
+          requestAnimationFrame(() => measureSizes());
+        };
+        if (typeof image.decode === "function") {
+          void image
+            .decode()
+            .then(reveal)
+            .catch(() => {
+              if (image.complete && image.naturalWidth > 0) reveal();
+              else onImgError();
+            });
+        } else {
+          reveal();
+        }
+      },
+      [effectiveUrl, measureSizes, onImgError, onImgLoad]
+    );
 
-  const endPointerDrag = React.useCallback(
-    (e: React.PointerEvent) => {
-      if (e.pointerType !== "mouse") return;
-      const d = pointerDragRef.current;
-      if (!d || d.id !== e.pointerId) return;
-      try {
-        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {
-        /* ignore */
-      }
-      pointerDragRef.current = null;
-      setIsDragging(false);
-      const v = Math.hypot(d.vx, d.vy);
-      if (v < MIN_VEL) return;
-      setIsInertia(true);
-      let vx = d.vx;
-      let vy = d.vy;
-      const tick = () => {
-        vx *= FRICTION;
-        vy *= FRICTION;
-        if (Math.hypot(vx, vy) < MIN_VEL) {
-          inertiaRafRef.current = null;
-          setIsInertia(false);
+    const toggleZoomAt = React.useCallback(
+      (clientX: number, clientY: number) => {
+        cancelInertia();
+        const el = containerRef.current;
+        if (!el) return;
+        const rect = el.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const { scale: sc, tx: px, ty: py } = stateRef.current;
+        setSnapTransition(true);
+        window.setTimeout(() => setSnapTransition(false), 220);
+        if (sc > ZOOM_MIN + 0.02) {
+          applyPanScale(ZOOM_MIN, 0, 0);
+          hidePanIndicator();
           return;
         }
+        const nextScale = Math.min(2, ZOOM_MAX);
+        const p = cursorCenteredPan(clientX, clientY, centerX, centerY, px, py, sc, nextScale);
+        applyPanScale(nextScale, p.tx, p.ty);
+        showPanIndicator(true);
+      },
+      [applyPanScale, cancelInertia, hidePanIndicator, showPanIndicator]
+    );
+
+    const onDoubleClick = React.useCallback(
+      (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleZoomAt(e.clientX, e.clientY);
+      },
+      [toggleZoomAt]
+    );
+
+    const onPointerDown = React.useCallback(
+      (e: React.PointerEvent) => {
+        if (
+          e.pointerType !== "mouse" ||
+          e.button !== 0 ||
+          stateRef.current.scale <= ZOOM_MIN + 0.02 ||
+          (!metricsRef.current.overflowX && !metricsRef.current.overflowY)
+        )
+          return;
+        cancelInertia();
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        setIsDragging(true);
+        showPanIndicator(false);
+        const now = performance.now();
+        pointerDragRef.current = {
+          id: e.pointerId,
+          lastX: e.clientX,
+          lastY: e.clientY,
+          lastT: now,
+          vx: 0,
+          vy: 0,
+        };
+      },
+      [cancelInertia, showPanIndicator]
+    );
+
+    const onPointerMove = React.useCallback(
+      (e: React.PointerEvent) => {
+        if (e.pointerType !== "mouse") return;
+        const d = pointerDragRef.current;
+        if (!d || d.id !== e.pointerId) return;
+        const now = performance.now();
+        const dt = Math.max(1, now - d.lastT);
+        const dx = e.clientX - d.lastX;
+        const dy = e.clientY - d.lastY;
+        const rawVx = (dx / dt) * 16.67 * INERTIA_MULT;
+        const rawVy = (dy / dt) * 16.67 * INERTIA_MULT;
+        d.vx = d.vx * 0.45 + rawVx * 0.55;
+        d.vy = d.vy * 0.45 + rawVy * 0.55;
+        d.lastX = e.clientX;
+        d.lastY = e.clientY;
+        d.lastT = now;
         const { scale: sc, tx: px, ty: py } = stateRef.current;
-        applyPanScale(sc, px + vx, py + vy);
+        const nx = px + dx;
+        const ny = py + dy;
+        applyPanScale(sc, nx, ny);
+        showPanIndicator(false);
+      },
+      [applyPanScale, showPanIndicator]
+    );
+
+    const endPointerDrag = React.useCallback(
+      (e: React.PointerEvent) => {
+        if (e.pointerType !== "mouse") return;
+        const d = pointerDragRef.current;
+        if (!d || d.id !== e.pointerId) return;
+        try {
+          (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
+        pointerDragRef.current = null;
+        setIsDragging(false);
+        const v = Math.hypot(d.vx, d.vy);
+        if (v < MIN_VEL) {
+          showPanIndicator(true);
+          return;
+        }
+        setIsInertia(true);
+        let vx = d.vx;
+        let vy = d.vy;
+        const tick = () => {
+          vx *= FRICTION;
+          vy *= FRICTION;
+          if (Math.hypot(vx, vy) < MIN_VEL) {
+            inertiaRafRef.current = null;
+            setIsInertia(false);
+            showPanIndicator(true);
+            return;
+          }
+          const { scale: sc, tx: px, ty: py } = stateRef.current;
+          applyPanScale(sc, px + vx, py + vy);
+          inertiaRafRef.current = requestAnimationFrame(tick);
+        };
         inertiaRafRef.current = requestAnimationFrame(tick);
-      };
-      inertiaRafRef.current = requestAnimationFrame(tick);
-    },
-    [applyPanScale]
-  );
+      },
+      [applyPanScale, showPanIndicator]
+    );
 
-  const onTouchStart = React.useCallback(
-    (e: React.TouchEvent) => {
-      cancelInertia();
-      if (e.touches.length === 2) {
-        const [a, b] = [e.touches[0], e.touches[1]];
-        const dx = a.clientX - b.clientX;
-        const dy = a.clientY - b.clientY;
-        pinchStartDist.current = Math.hypot(dx, dy);
-        pinchStartScale.current = stateRef.current.scale;
+    const onTouchStart = React.useCallback(
+      (e: React.TouchEvent) => {
+        cancelInertia();
+        if (e.touches.length === 2) {
+          const [a, b] = [e.touches[0], e.touches[1]];
+          const dx = a.clientX - b.clientX;
+          const dy = a.clientY - b.clientY;
+          pinchStartDist.current = Math.hypot(dx, dy);
+          pinchStartScale.current = stateRef.current.scale;
+          panStart.current = null;
+          touchTapStartRef.current = null;
+          return;
+        }
+        if (e.touches.length === 1) {
+          const t = e.touches[0];
+          touchTapStartRef.current = { x: t.clientX, y: t.clientY, moved: false };
+          if (
+            stateRef.current.scale > ZOOM_MIN + 0.02 &&
+            (metricsRef.current.overflowX || metricsRef.current.overflowY)
+          ) {
+            const { tx: px, ty: py } = stateRef.current;
+            panStart.current = { x: t.clientX, y: t.clientY, tx: px, ty: py };
+            showPanIndicator(false);
+            e.stopPropagation();
+          }
+        }
+      },
+      [cancelInertia, showPanIndicator]
+    );
+
+    const onTouchMove = React.useCallback(
+      (e: React.TouchEvent) => {
+        if (e.touches.length === 1 && touchTapStartRef.current) {
+          const touch = e.touches[0];
+          if (
+            Math.hypot(
+              touch.clientX - touchTapStartRef.current.x,
+              touch.clientY - touchTapStartRef.current.y
+            ) > 8
+          ) {
+            touchTapStartRef.current.moved = true;
+          }
+        }
+        if (e.touches.length === 2 && pinchStartDist.current != null) {
+          const [a, b] = [e.touches[0], e.touches[1]];
+          const dx = a.clientX - b.clientX;
+          const dy = a.clientY - b.clientY;
+          const d = Math.hypot(dx, dy);
+          const ratio = d / pinchStartDist.current;
+          const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinchStartScale.current * ratio));
+          const { tx: px, ty: py } = stateRef.current;
+          applyPanScale(next, px, py);
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        if (
+          e.touches.length === 1 &&
+          panStart.current &&
+          stateRef.current.scale > ZOOM_MIN + 0.02
+        ) {
+          const t = e.touches[0];
+          const p = panStart.current;
+          if (Math.hypot(t.clientX - p.x, t.clientY - p.y) > 8 && touchTapStartRef.current) {
+            touchTapStartRef.current.moved = true;
+          }
+          const { scale: sc } = stateRef.current;
+          const nx = p.tx + (t.clientX - p.x);
+          const ny = p.ty + (t.clientY - p.y);
+          applyPanScale(sc, nx, ny);
+          showPanIndicator(false);
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      },
+      [applyPanScale, showPanIndicator]
+    );
+
+    const onTouchEnd = React.useCallback(
+      (e: React.TouchEvent) => {
+        const tapStart = touchTapStartRef.current;
+        if (
+          pinchStartDist.current == null &&
+          tapStart &&
+          !tapStart.moved &&
+          e.changedTouches.length === 1
+        ) {
+          const touch = e.changedTouches[0];
+          const now = Date.now();
+          const previous = lastTouchTapRef.current;
+          if (
+            previous &&
+            now - previous.at <= 320 &&
+            Math.hypot(touch.clientX - previous.x, touch.clientY - previous.y) <= 32
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            lastTouchTapRef.current = null;
+            toggleZoomAt(touch.clientX, touch.clientY);
+          } else {
+            lastTouchTapRef.current = { x: touch.clientX, y: touch.clientY, at: now };
+          }
+        }
+        pinchStartDist.current = null;
+        const { tx: px, ty: py, scale: sc } = stateRef.current;
+        if (sc > ZOOM_MIN + 0.02) {
+          applyPanScale(sc, px, py);
+        }
         panStart.current = null;
-        return;
-      }
-      if (e.touches.length === 1 && stateRef.current.scale > ZOOM_MIN + 0.02) {
-        const t = e.touches[0];
-        const { tx: px, ty: py } = stateRef.current;
-        panStart.current = { x: t.clientX, y: t.clientY, tx: px, ty: py };
-        e.stopPropagation();
-      }
-    },
-    [cancelInertia]
-  );
+        touchTapStartRef.current = null;
+        showPanIndicator(true);
+      },
+      [applyPanScale, showPanIndicator, toggleZoomAt]
+    );
 
-  const onTouchMove = React.useCallback(
-    (e: React.TouchEvent) => {
-      if (e.touches.length === 2 && pinchStartDist.current != null) {
-        const [a, b] = [e.touches[0], e.touches[1]];
-        const dx = a.clientX - b.clientX;
-        const dy = a.clientY - b.clientY;
-        const d = Math.hypot(dx, dy);
-        const ratio = d / pinchStartDist.current;
-        const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinchStartScale.current * ratio));
-        const { tx: px, ty: py } = stateRef.current;
-        applyPanScale(next, px, py);
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-      if (e.touches.length === 1 && panStart.current && stateRef.current.scale > ZOOM_MIN + 0.02) {
-        const t = e.touches[0];
-        const p = panStart.current;
-        const { scale: sc } = stateRef.current;
-        const nx = p.tx + (t.clientX - p.x);
-        const ny = p.ty + (t.clientY - p.y);
-        const cl = clampPan(nx, ny, sc, containerSize.w, containerSize.h, baseSize.w, baseSize.h);
-        applyPanScale(sc, cl.tx, cl.ty);
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    },
-    [applyPanScale, containerSize, baseSize]
-  );
+    const zoomed = scale > ZOOM_MIN + 0.02;
+    const transformTransition =
+      snapTransition && !isDragging && !isInertia ? "transform 0.16s ease-out" : "none";
 
-  const onTouchEnd = React.useCallback(() => {
-    pinchStartDist.current = null;
-    const { tx: px, ty: py, scale: sc } = stateRef.current;
-    if (sc > ZOOM_MIN + 0.02) {
-      const cl = clampPan(px, py, sc, containerSize.w, containerSize.h, baseSize.w, baseSize.h);
-      applyPanScale(sc, cl.tx, cl.ty);
-    }
-    panStart.current = null;
-  }, [containerSize, baseSize, applyPanScale]);
-
-  const zoomed = scale > ZOOM_MIN + 0.02;
-  const transformTransition =
-    snapTransition && !isDragging && !isInertia ? "transform 0.16s ease-out" : "none";
-
-  return (
-    <div
-      ref={containerRef}
-      data-testid="attachment-preview-viewport"
-      className={cn(
-        "relative flex shrink-0 touch-none items-center justify-center overflow-hidden",
-        PREVIEW_VIEWPORT_CLASS,
-        zoomed ? "cursor-grab active:cursor-grabbing" : ""
-      )}
-      style={{ touchAction: "none" }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endPointerDrag}
-      onPointerCancel={endPointerDrag}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchEnd}
-    >
-      {showLoadingSkeleton ? (
-        <Skeleton
-          data-testid="attachment-preview-viewport-skeleton"
-          className="pointer-events-none absolute inset-0 z-[2] rounded-sm bg-zinc-800/90"
-        />
-      ) : null}
-      {zoomIndicator ? (
-        <div
-          className={cn(
-            "pointer-events-none absolute left-1/2 top-3 z-[2] -translate-x-1/2 rounded-sm bg-black/55 px-2.5 py-1 text-xs font-medium tabular-nums text-zinc-100 transition-opacity duration-300 ease-out",
-            zoomIndicatorOpaque ? "opacity-100" : "opacity-0"
-          )}
-          aria-live="polite"
-        >
-          {zoomIndicator}
-        </div>
-      ) : null}
-      <div className="relative z-[1] h-full w-full rounded-sm bg-zinc-900/35 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_56px_-14px_rgba(0,0,0,0.72)] ring-1 ring-white/10">
-        <div
-          role="presentation"
-          onDoubleClick={onDoubleClick}
-          className="flex h-full w-full items-center justify-center overflow-hidden rounded-sm"
-          style={{
-            transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})`,
-            transformOrigin: "center center",
-            willChange: "transform",
-            transition: transformTransition,
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            ref={imgRef}
-            src={effectiveUrl}
-            alt=""
-            data-no-image-preview
-            decoding="async"
-            loading="eager"
-            draggable={false}
-            onLoad={onImgLoadWrapped}
-            onError={onImgError}
-            className={imgClassName}
+    return (
+      <div
+        ref={containerRef}
+        data-testid={viewerMode ? "receipt-viewer-canvas" : "attachment-preview-viewport"}
+        data-zoom={viewerMode ? Math.round(scale * 100) : undefined}
+        data-rotation={viewerMode ? rotation : undefined}
+        data-overflow-x={viewerMode ? String(transformMetrics.overflowX) : undefined}
+        data-overflow-y={viewerMode ? String(transformMetrics.overflowY) : undefined}
+        data-pan-x={viewerMode ? Math.round(tx * 100) / 100 : undefined}
+        data-pan-y={viewerMode ? Math.round(ty * 100) / 100 : undefined}
+        data-max-pan-x={viewerMode ? Math.round(transformMetrics.maxPanX * 100) / 100 : undefined}
+        data-max-pan-y={viewerMode ? Math.round(transformMetrics.maxPanY * 100) / 100 : undefined}
+        className={cn(
+          "relative flex shrink-0 touch-none items-center justify-center overflow-hidden",
+          viewerMode ? "h-full min-h-0 w-full max-w-none flex-1 shrink" : PREVIEW_VIEWPORT_CLASS,
+          zoomed ? "cursor-grab active:cursor-grabbing" : ""
+        )}
+        style={{ touchAction: "none" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endPointerDrag}
+        onPointerCancel={endPointerDrag}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchEnd}
+      >
+        {showLoadingSkeleton ? (
+          <Skeleton
+            data-testid="attachment-preview-viewport-skeleton"
+            className="pointer-events-none absolute inset-0 z-[2] rounded-sm bg-zinc-800/90"
           />
+        ) : null}
+        {zoomIndicator ? (
+          <div
+            className={cn(
+              "pointer-events-none absolute left-1/2 top-3 z-[2] -translate-x-1/2 rounded-sm bg-black/55 px-2.5 py-1 text-xs font-medium tabular-nums text-zinc-100 transition-opacity duration-300 ease-out",
+              zoomIndicatorOpaque ? "opacity-100" : "opacity-0"
+            )}
+            aria-live="polite"
+          >
+            {zoomIndicator}
+          </div>
+        ) : null}
+        {viewerMode && transformMetrics.overflowX ? (
+          <div
+            data-testid="receipt-pan-indicator-x"
+            data-visible={panIndicatorVisible ? "true" : "false"}
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute bottom-2 z-[3] h-[3px] rounded-full bg-zinc-500/65 transition-opacity duration-200 ease-out motion-reduce:transition-none",
+              panIndicatorVisible ? "opacity-100" : "opacity-0"
+            )}
+            style={{
+              width: `${Math.max(
+                24,
+                (containerSize.w / transformMetrics.renderedWidth) *
+                  Math.max(0, containerSize.w - 24)
+              )}px`,
+              left: `${(() => {
+                const track = Math.max(0, containerSize.w - 24);
+                const thumb = Math.max(
+                  24,
+                  (containerSize.w / transformMetrics.renderedWidth) * track
+                );
+                const progress =
+                  transformMetrics.maxPanX > 0
+                    ? (transformMetrics.maxPanX - tx) / (transformMetrics.maxPanX * 2)
+                    : 0.5;
+                return 12 + Math.max(0, Math.min(1, progress)) * Math.max(0, track - thumb);
+              })()}px`,
+            }}
+          />
+        ) : null}
+        {viewerMode && transformMetrics.overflowY ? (
+          <div
+            data-testid="receipt-pan-indicator-y"
+            data-visible={panIndicatorVisible ? "true" : "false"}
+            aria-hidden="true"
+            className={cn(
+              "pointer-events-none absolute right-2 z-[3] w-[3px] rounded-full bg-zinc-500/65 transition-opacity duration-200 ease-out motion-reduce:transition-none",
+              panIndicatorVisible ? "opacity-100" : "opacity-0"
+            )}
+            style={{
+              height: `${Math.max(
+                24,
+                (containerSize.h / transformMetrics.renderedHeight) *
+                  Math.max(0, containerSize.h - 24)
+              )}px`,
+              top: `${(() => {
+                const track = Math.max(0, containerSize.h - 24);
+                const thumb = Math.max(
+                  24,
+                  (containerSize.h / transformMetrics.renderedHeight) * track
+                );
+                const progress =
+                  transformMetrics.maxPanY > 0
+                    ? (transformMetrics.maxPanY - ty) / (transformMetrics.maxPanY * 2)
+                    : 0.5;
+                return 12 + Math.max(0, Math.min(1, progress)) * Math.max(0, track - thumb);
+              })()}px`,
+            }}
+          />
+        ) : null}
+        <div className="relative z-[1] h-full w-full rounded-sm bg-zinc-900/35 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_56px_-14px_rgba(0,0,0,0.72)] ring-1 ring-white/10">
+          <div
+            role="presentation"
+            onDoubleClick={onDoubleClick}
+            className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden rounded-sm"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              ref={imgRef}
+              src={effectiveUrl}
+              alt=""
+              data-no-image-preview
+              decoding="async"
+              loading="eager"
+              draggable={false}
+              onLoad={onImgLoadWrapped}
+              onError={onImgError}
+              className={imgClassName}
+              style={{
+                width: viewerMode && naturalSize.w > 0 ? `${naturalSize.w}px` : undefined,
+                height: viewerMode && naturalSize.h > 0 ? `${naturalSize.h}px` : undefined,
+                maxWidth: viewerMode ? "none" : undefined,
+                maxHeight: viewerMode ? "none" : undefined,
+                position: viewerMode ? "absolute" : undefined,
+                left: viewerMode ? "50%" : undefined,
+                top: viewerMode ? "50%" : undefined,
+                transform: viewerMode
+                  ? `translate3d(calc(-50% + ${tx}px), calc(-50% + ${ty}px), 0) scale(${transformMetrics.renderScale}) rotate(${rotation}deg)`
+                  : `translate3d(${tx}px, ${ty}px, 0) scale(${scale}) rotate(${rotation}deg)`,
+                transformOrigin: "center center",
+                willChange: "transform",
+                transition: transformTransition,
+              }}
+            />
+          </div>
         </div>
+        {imgPhase === "ready" && scale <= ZOOM_MIN + 0.02 ? (
+          <p className="pointer-events-none absolute bottom-1 left-1/2 z-[1] max-w-[90vw] -translate-x-1/2 rounded-sm bg-black/50 px-2.5 py-1 text-center text-[10px] leading-snug text-zinc-300/95">
+            <span className="md:hidden">Pinch to zoom · double-tap</span>
+            <span className="hidden md:inline">
+              Scroll wheel to zoom (cursor-centered) · double-click · drag when zoomed
+            </span>
+          </p>
+        ) : null}
       </div>
-      {imgPhase === "ready" && scale <= ZOOM_MIN + 0.02 ? (
-        <p className="pointer-events-none absolute bottom-1 left-1/2 z-[1] max-w-[90vw] -translate-x-1/2 rounded-sm bg-black/50 px-2.5 py-1 text-center text-[10px] leading-snug text-zinc-300/95">
-          <span className="md:hidden">Pinch to zoom · double-tap</span>
-          <span className="hidden md:inline">
-            Scroll wheel to zoom (cursor-centered) · double-click · drag when zoomed
-          </span>
-        </p>
-      ) : null}
-    </div>
-  );
-}
+    );
+  }
+);
+ReceiptImageCanvas.displayName = "ReceiptImageCanvas";
 
-function PdfPreviewFrame({ src, title }: { src: string; title: string }) {
+function PdfPreviewFrame({
+  src,
+  title,
+  viewerMode = false,
+}: {
+  src: string;
+  title: string;
+  viewerMode?: boolean;
+}) {
   const loadedRef = React.useRef(false);
   const [loaded, setLoaded] = React.useState(false);
   const [showFallback, setShowFallback] = React.useState(false);
@@ -712,7 +1091,7 @@ function PdfPreviewFrame({ src, title }: { src: string; title: string }) {
       data-testid="attachment-preview-viewport"
       className={cn(
         "relative flex shrink-0 flex-col rounded-sm bg-zinc-900/40 p-[1px] shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_56px_-14px_rgba(0,0,0,0.72)] ring-1 ring-white/10",
-        PREVIEW_VIEWPORT_CLASS
+        viewerMode ? "h-full min-h-0 w-full max-w-none" : PREVIEW_VIEWPORT_CLASS
       )}
     >
       <iframe
@@ -769,7 +1148,10 @@ function ReceiptPreviewImageArea({
   onDownload,
   defaultDownload,
   onZoomPanChange,
+  canvasRef,
+  onTransformStateChange,
   fastMotion,
+  viewerMode = false,
 }: {
   displayUrl: string;
   fileName: string;
@@ -779,7 +1161,10 @@ function ReceiptPreviewImageArea({
   onDownload?: () => void | Promise<void>;
   defaultDownload: () => void | Promise<void>;
   onZoomPanChange?: (zoomed: boolean) => void;
+  canvasRef?: React.Ref<ReceiptViewerCanvasHandle>;
+  onTransformStateChange?: (state: ReceiptViewerTransformState) => void;
   fastMotion: boolean;
+  viewerMode?: boolean;
 }) {
   const initialPreflight = isImmediatePreviewUrl(displayUrl) || isPreviewImageWarm(displayUrl);
   const [preflightPhase, setPreflightPhase] = React.useState<PreflightPhase>(
@@ -793,6 +1178,7 @@ function ReceiptPreviewImageArea({
   );
   const [retryKey, setRetryKey] = React.useState(0);
   const [localUrl, setLocalUrl] = React.useState(displayUrl);
+  const autoRefreshAttemptedRef = React.useRef(false);
   const onRefreshRef = React.useRef(onRefreshPreviewUrl);
   onRefreshRef.current = onRefreshPreviewUrl;
 
@@ -800,6 +1186,7 @@ function ReceiptPreviewImageArea({
     const warmed = isPreviewImageWarm(displayUrl);
     const local = isImmediatePreviewUrl(displayUrl);
     setLocalUrl(displayUrl);
+    autoRefreshAttemptedRef.current = false;
     setRetryKey(0);
     setImgPhase(warmed ? "ready" : "loading");
     setPreflightPhase(local || warmed ? "ok" : "checking");
@@ -871,6 +1258,9 @@ function ReceiptPreviewImageArea({
     preflightPhase === "error" && preflightResult != null && !preflightResult.ok;
   const previewStage =
     preflightPhase === "checking" ? "checking" : preflightHardFail ? "preflight-error" : imgPhase;
+  const previewViewportClass = viewerMode
+    ? "h-full min-h-0 w-full max-w-none"
+    : PREVIEW_VIEWPORT_CLASS;
 
   const failureActions = (
     <div className="flex flex-wrap items-center justify-center gap-2">
@@ -900,20 +1290,23 @@ function ReceiptPreviewImageArea({
 
   return (
     <div
-      className="flex w-full min-h-0 flex-1 flex-col items-stretch"
+      className={cn("flex w-full min-h-0 flex-1 flex-col items-stretch", viewerMode && "h-full")}
       data-testid="receipt-preview-image-area"
       data-preview-stage={previewStage}
     >
       <div
         data-testid="attachment-preview-viewport"
-        className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-4 overflow-hidden px-2 py-2"
+        className={cn(
+          "relative flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-4 overflow-hidden px-2 py-2",
+          viewerMode && "h-full"
+        )}
       >
         {preflightPhase === "checking" ? (
           <div
             data-testid="attachment-preview-viewport"
             className={cn(
               "relative flex shrink-0 items-center justify-center overflow-hidden",
-              PREVIEW_VIEWPORT_CLASS
+              previewViewportClass
             )}
             aria-busy
           >
@@ -926,7 +1319,7 @@ function ReceiptPreviewImageArea({
           <div
             className={cn(
               "flex flex-col items-center justify-center gap-3 px-4 text-center",
-              PREVIEW_VIEWPORT_CLASS
+              previewViewportClass
             )}
             data-testid="receipt-preview-preflight-error"
           >
@@ -968,7 +1361,7 @@ function ReceiptPreviewImageArea({
               <div
                 className={cn(
                   "flex flex-col items-center justify-center gap-3 px-4 text-center",
-                  PREVIEW_VIEWPORT_CLASS
+                  previewViewportClass
                 )}
                 data-testid="receipt-preview-img-error"
               >
@@ -989,16 +1382,22 @@ function ReceiptPreviewImageArea({
                 </Button>
               </div>
             ) : (
-              <ZoomableImageFrame
+              <ReceiptImageCanvas
+                ref={canvasRef}
                 effectiveUrl={effectiveUrl}
                 imgPhase={imgPhase}
                 onZoomPanChange={onZoomPanChange}
+                onTransformStateChange={onTransformStateChange}
                 showLoadingSkeleton={imgPhase === "loading"}
+                viewerMode={viewerMode}
                 imgClassName={cn(
-                  "h-full w-full select-none object-contain",
-                  fastMotion
-                    ? "transition-opacity duration-75 ease-out"
-                    : "transition-opacity duration-300 ease-out",
+                  "select-none object-contain",
+                  viewerMode ? "max-h-full max-w-full" : "h-full w-full",
+                  viewerMode
+                    ? "transition-[opacity,transform] duration-150 ease-out motion-reduce:transition-opacity motion-reduce:duration-75"
+                    : fastMotion
+                      ? "transition-opacity duration-75 ease-out"
+                      : "transition-opacity duration-300 ease-out",
                   imgPhase === "ready" ? "opacity-100" : "opacity-0"
                 )}
                 onImgLoad={() => {
@@ -1006,7 +1405,26 @@ function ReceiptPreviewImageArea({
                   setImgPhase("ready");
                 }}
                 onImgError={() => {
-                  setImgPhase("error");
+                  const refresh = onRefreshRef.current;
+                  if (!refresh || autoRefreshAttemptedRef.current) {
+                    setImgPhase("error");
+                    return;
+                  }
+                  autoRefreshAttemptedRef.current = true;
+                  setImgPhase("loading");
+                  void refresh()
+                    .then((next) => {
+                      const nextUrl = (next ?? "").trim();
+                      if (!nextUrl) {
+                        setImgPhase("error");
+                        return;
+                      }
+                      setLocalUrl(nextUrl);
+                      setRetryKey((value) => value + 1);
+                    })
+                    .catch(() => {
+                      setImgPhase("error");
+                    });
                 }}
               />
             )}
@@ -1055,6 +1473,10 @@ export type AttachmentPreviewModalProps = {
   onDeleteCurrent?: (attachmentId: string) => Promise<void>;
   /** Retry batch signed-URL resolution after failure. */
   onRetrySignedUrlResolve?: () => void;
+  /** Receipt-specific accessible presentation; omitted for the legacy generic attachment viewer. */
+  presentation?: ReceiptViewerPresentation;
+  /** Exact element that launched the preview. */
+  returnFocusTarget?: HTMLElement | null;
 };
 
 export function AttachmentPreviewModal({
@@ -1076,6 +1498,8 @@ export function AttachmentPreviewModal({
   onRefreshPreviewUrl,
   onDeleteCurrent,
   onRetrySignedUrlResolve,
+  presentation,
+  returnFocusTarget,
 }: AttachmentPreviewModalProps) {
   const [mounted, setMounted] = React.useState(false);
   const [navDirection, setNavDirection] = React.useState(1);
@@ -1083,6 +1507,12 @@ export function AttachmentPreviewModal({
   const [deleteBusy, setDeleteBusy] = React.useState(false);
   const fastPreviewMotion = useFastMobilePreviewMotion();
   const touchStartRef = React.useRef<{ x: number; y: number } | null>(null);
+  const {
+    controlsRef: viewerControlsRef,
+    transformState: viewerTransformState,
+    onTransformStateChange: setViewerTransformState,
+    resetSession: resetReceiptViewerSession,
+  } = useReceiptViewer();
 
   const itemCount = files.length;
   const safeIndex = itemCount === 0 ? 0 : ((currentIndex % itemCount) + itemCount) % itemCount;
@@ -1101,7 +1531,8 @@ export function AttachmentPreviewModal({
 
   React.useEffect(() => {
     setImageZoomed(false);
-  }, [safeIndex, fileUrl]);
+    resetReceiptViewerSession();
+  }, [safeIndex, fileUrl, resetReceiptViewerSession]);
 
   React.useEffect(() => setMounted(true), []);
 
@@ -1156,13 +1587,13 @@ export function AttachmentPreviewModal({
   }, [isOpen, onClose, itemCount, goNext, goPrev]);
 
   React.useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || presentation?.kind === "receipt") return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [isOpen]);
+  }, [isOpen, presentation?.kind]);
 
   const handleDownload = React.useCallback(() => {
     if (downloadBusy || !fileUrl || sessionIsLoading) return;
@@ -1219,6 +1650,122 @@ export function AttachmentPreviewModal({
   );
 
   if (!mounted) return null;
+
+  if (presentation?.kind === "receipt") {
+    const receiptMedia = sessionIsLoading ? (
+      <div
+        data-testid="attachment-preview-viewport"
+        className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden"
+        aria-busy
+      >
+        <Skeleton className="absolute inset-0 rounded-xl bg-zinc-800/80" />
+        <span className="sr-only">Loading preview</span>
+      </div>
+    ) : unsupported ? (
+      <div className="flex h-full w-full items-center justify-center px-5 text-center">
+        <p className="text-sm text-[var(--neo-canvas-text-tertiary)]">
+          Preview is not available for this file type.
+        </p>
+      </div>
+    ) : !fileUrl && pendingSignedUrl ? (
+      <div
+        data-testid="attachment-preview-viewport"
+        className="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden"
+        aria-busy
+      >
+        <Skeleton className="absolute inset-0 rounded-xl bg-zinc-800/80" />
+        <span className="sr-only">Loading receipt preview</span>
+      </div>
+    ) : !fileUrl && signedUrlResolveFailed ? (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-4 px-5 text-center">
+        <p className="text-sm text-[var(--neo-canvas-text-tertiary)]">Unable to load receipt</p>
+        {onRetrySignedUrlResolve ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="min-h-11 touch-manipulation border-white/15 bg-white/5 text-[var(--neo-canvas-text-primary)] hover:bg-white/10"
+            onClick={onRetrySignedUrlResolve}
+          >
+            <RefreshCw className="mr-2 h-4 w-4" aria-hidden />
+            Retry
+          </Button>
+        ) : null}
+      </div>
+    ) : !fileUrl ? (
+      <div className="flex h-full w-full items-center justify-center px-5 text-center">
+        <p className="text-sm text-[var(--neo-canvas-text-tertiary)]">Receipt not available.</p>
+      </div>
+    ) : fileType === "pdf" ? (
+      <PdfPreviewFrame src={fileUrl} title={fileName} viewerMode />
+    ) : (
+      <ReceiptPreviewImageArea
+        key={`${safeIndex}-${fileUrl}`}
+        displayUrl={fileUrl}
+        fileName={fileName}
+        mimeHint={mimeHint}
+        onRefreshPreviewUrl={onRefreshPreviewUrl}
+        downloadBusy={downloadBusy}
+        onDownload={onDownload}
+        defaultDownload={() => void downloadPreviewBlob(fileUrl, fileName)}
+        onZoomPanChange={setImageZoomed}
+        canvasRef={viewerControlsRef}
+        onTransformStateChange={setViewerTransformState}
+        fastMotion={false}
+        viewerMode
+      />
+    );
+
+    const replaceControl =
+      showReplace && replaceInputRef && onReplaceClick && onReplaceInputChange ? (
+        <>
+          <input
+            ref={replaceInputRef}
+            type="file"
+            className="hidden"
+            accept={replaceAccept}
+            capture="environment"
+            onChange={onReplaceInputChange}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-11 touch-manipulation border-white/15 bg-white/5 text-[var(--neo-canvas-text-primary)] hover:bg-white/10 lg:min-h-9"
+            disabled={replaceBusy}
+            onClick={onReplaceClick}
+          >
+            <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden />
+            {replaceBusy ? "Replacing…" : "Replace"}
+          </Button>
+        </>
+      ) : null;
+
+    return (
+      <ReceiptViewerDialog
+        isOpen={isOpen}
+        onClose={onClose}
+        returnFocusTarget={returnFocusTarget}
+        fileName={fileName}
+        attachmentLabel={itemCount > 1 ? `Attachment ${safeIndex + 1} of ${itemCount}` : null}
+        metadata={{ ...presentation.metadata, uploadFileName: fileName }}
+        media={receiptMedia}
+        controls={viewerControlsRef}
+        transformState={viewerTransformState}
+        onDownload={handleDownload}
+        downloadBusy={downloadBusy}
+        downloadDisabled={!fileUrl || sessionIsLoading || unsupported}
+        onPrevious={itemCount > 1 ? goPrev : undefined}
+        onNext={itemCount > 1 ? goNext : undefined}
+        footerTrailing={
+          <>
+            {extraFooter}
+            {replaceControl}
+          </>
+        }
+      />
+    );
+  }
 
   const primaryLabel = receiptViewerPrimaryLabel(fileName);
   const headerTitleAttr =

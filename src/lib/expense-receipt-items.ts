@@ -1,14 +1,17 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Expense, ExpenseAttachment } from "@/lib/expenses-db";
 import {
   collapseMirrorReceiptUrlAndExpenseAttachmentItems,
   dedupeExpenseAttachmentsByStorageKey,
   dedupeExpenseReceiptItemsByStorageKey,
 } from "@/lib/expense-attachment-dedupe";
-import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
-import { resolvePreviewSignedUrlWithMemoryCache } from "@/lib/receipt-preview-url-cache";
 
-export type ExpenseReceiptItem = { url: string; fileName: string };
+export type ExpenseReceiptItem = {
+  url: string;
+  fileName: string;
+  id?: string;
+  mimeType?: string;
+  referenceVersion?: string;
+};
 
 export const RECEIPT_URL_ATTACHMENT_ID_PREFIX = "receipt-url:";
 
@@ -122,52 +125,4 @@ export function expenseHasReceiptSignal(
 ): boolean {
   if ((receiptUrl ?? "").trim() !== "") return true;
   return attachmentCount > 0;
-}
-
-/** Resolve storage paths / non-http URLs to signed HTTPS for attachment preview modals. */
-export async function resolveExpenseReceiptItemsPreviewUrls(
-  items: ExpenseReceiptItem[],
-  supabase: SupabaseClient | null
-): Promise<ExpenseReceiptItem[]> {
-  if (!supabase) return items;
-  const next: ExpenseReceiptItem[] = [];
-  for (const item of items) {
-    const raw = (item.url ?? "").trim();
-    if (!raw || raw.startsWith("blob:")) {
-      next.push(item);
-      continue;
-    }
-    const urlOut = await resolvePreviewSignedUrl({
-      supabase,
-      rawUrlOrPath: raw,
-      ttlSec: 3600,
-      bucketCandidates: ["expense-attachments", "receipts"],
-    });
-    next.push(urlOut ? { ...item, url: urlOut } : item);
-  }
-  return next;
-}
-
-/** Same as `resolveExpenseReceiptItemsPreviewUrls` but uses the tab-session signed-URL cache + request dedupe. */
-export async function resolveExpenseReceiptItemsPreviewUrlsWithCache(
-  items: ExpenseReceiptItem[],
-  supabase: SupabaseClient | null
-): Promise<ExpenseReceiptItem[]> {
-  if (!supabase) return items;
-  const next: ExpenseReceiptItem[] = [];
-  for (const item of items) {
-    const raw = (item.url ?? "").trim();
-    if (!raw || raw.startsWith("blob:")) {
-      next.push(item);
-      continue;
-    }
-    const urlOut = await resolvePreviewSignedUrlWithMemoryCache({
-      supabase,
-      rawUrlOrPath: raw,
-      ttlSec: 3600,
-      bucketCandidates: ["expense-attachments", "receipts"],
-    });
-    next.push(urlOut ? { ...item, url: urlOut } : item);
-  }
-  return next;
 }

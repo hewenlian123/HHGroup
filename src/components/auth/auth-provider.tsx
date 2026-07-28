@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import type { User } from "@supabase/supabase-js";
+import { authorizedAppRole } from "@/lib/auth-role";
 import { createBrowserClient } from "@/lib/supabase";
 import {
   DEFAULT_ROLE_PERMISSIONS,
@@ -92,8 +93,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setPermissions(EMPTY_PERMS);
       return;
     }
-    const { data: sessionRes } = await supabase.auth.getSession();
-    const sessionUser = sessionRes.session?.user ?? null;
+    const {
+      data: { user: sessionUser },
+    } = await supabase.auth.getUser();
     setUser(sessionUser);
     if (!sessionUser) {
       setProfile(null);
@@ -103,16 +105,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    await supabase.rpc("upsert_my_profile");
     const { data: profileData } = await supabase
       .from("profiles")
       .select("id,email,role")
       .eq("id", sessionUser.id)
       .maybeSingle();
 
+    const authoritativeRole = authorizedAppRole(sessionUser);
     const profileRow = (profileData ?? null) as ProfileRow | null;
     setProfile(profileRow);
-    const currentRole: AppRole = profileRow?.role ?? "assistant";
+    if (!authoritativeRole) {
+      setRole(null);
+      setPermissions(EMPTY_PERMS);
+      setInitialized(true);
+      return;
+    }
+    const currentRole: AppRole = authoritativeRole;
     setRole(currentRole);
 
     if (currentRole === "owner") {

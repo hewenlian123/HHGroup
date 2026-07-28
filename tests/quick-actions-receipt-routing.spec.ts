@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 
 type ViewportCase = {
   name: "desktop" | "mobile" | "tablet";
@@ -15,7 +16,7 @@ const VIEWPORTS: readonly ViewportCase[] = [
 
 async function gotoDashboard(page: Page, viewport: ViewportCase): Promise<void> {
   await page.setViewportSize({ width: viewport.width, height: viewport.height });
-  await page.goto("/dashboard", { waitUntil: "domcontentloaded", timeout: 90_000 });
+  await loginAsE2EOwner(page, "/dashboard");
   await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 }
 
@@ -96,7 +97,7 @@ for (const viewport of VIEWPORTS) {
 test("labor keeps an explicitly named worker receipt upload entry point", async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/labor/receipts", { waitUntil: "domcontentloaded", timeout: 90_000 });
+  await loginAsE2EOwner(page, "/labor/receipts");
 
   const workerUpload = page
     .getByRole("link", {

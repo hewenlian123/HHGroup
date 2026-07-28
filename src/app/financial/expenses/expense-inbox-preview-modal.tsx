@@ -36,7 +36,6 @@ import { ExpenseSearchableSelect } from "@/components/expense-searchable-select"
 import { ExpenseSubcontractDeductionFields } from "@/components/expense-subcontract-deduction-fields";
 import type { PaymentAccountRow } from "@/lib/data";
 import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-preferences";
-import { resolvePreviewSignedUrl } from "@/lib/storage-signed-url";
 import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
 import { defaultPaymentMethodName, isPaymentAccountOptionActive } from "@/lib/expense-options-db";
 import { cn } from "@/lib/utils";
@@ -64,9 +63,12 @@ import {
 import {
   getExpenseDisplayAttachments,
   getExpenseReceiptItemsFromParts,
-  resolveExpenseReceiptItemsPreviewUrlsWithCache,
   type ExpenseReceiptItem,
 } from "@/lib/expense-receipt-items";
+import {
+  fetchExpenseReceiptManifest,
+  receiptApiItemToExpenseReceiptItem,
+} from "@/lib/expense-receipt-api-client";
 import {
   getExpenseHeaderLineMismatch,
   type ExpenseHeaderLineMismatch,
@@ -318,6 +320,7 @@ export function ExpenseInboxPreviewModal({
   const [deductionNote, setDeductionNote] = React.useState("");
   const [attachments, setAttachments] = React.useState<ExpenseAttachment[]>([]);
   const [thumbById, setThumbById] = React.useState<Record<string, string | null>>({});
+  const [secureReceiptItems, setSecureReceiptItems] = React.useState<ExpenseReceiptItem[]>([]);
   const [previewPmArchived, setPreviewPmArchived] = React.useState(false);
   const [previewCatArchived, setPreviewCatArchived] = React.useState(false);
   const [previewPaArchived, setPreviewPaArchived] = React.useState(false);
@@ -438,39 +441,6 @@ export function ExpenseInboxPreviewModal({
     setPreviewThumbSignedByDedupeKey({});
   }, [expenseId]);
 
-  React.useEffect(() => {
-    if (!open || !supabase || attachments.length === 0) {
-      setThumbById({});
-      return;
-    }
-    let alive = true;
-    void (async () => {
-      const next: Record<string, string | null> = {};
-      for (const att of attachments) {
-        if (!attachmentIsImage(att)) {
-          next[att.id] = null;
-          continue;
-        }
-        const raw = (att.url ?? "").trim();
-        if (!raw) {
-          next[att.id] = null;
-          continue;
-        }
-        const signed = await resolvePreviewSignedUrl({
-          supabase,
-          rawUrlOrPath: raw,
-          ttlSec: 3600,
-          bucketCandidates: ["expense-attachments", "receipts"],
-        });
-        next[att.id] = signed || null;
-      }
-      if (alive) setThumbById(next);
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [open, supabase, attachments]);
-
   const receiptItems = React.useMemo(() => {
     if (!expense) return [];
     return getExpenseReceiptItemsFromParts({
@@ -480,59 +450,76 @@ export function ExpenseInboxPreviewModal({
   }, [expense, attachments]);
 
   React.useEffect(() => {
-    if (!open || !supabase) {
-      setPreviewThumbSignedByDedupeKey({});
-      return;
-    }
-    const imageItems = receiptItems.filter((item) => {
-      const m = findAttachmentForReceiptItem(item, attachments);
-      return receiptItemIsImage(item, m);
-    });
-    if (imageItems.length === 0) {
+    if (!open || !expense) {
+      setSecureReceiptItems([]);
+      setThumbById({});
       setPreviewThumbSignedByDedupeKey({});
       return;
     }
     let alive = true;
-    void (async () => {
-      const next: Record<string, string | null> = {};
-      for (const item of imageItems) {
-        const k = expenseAttachmentStorageDedupeKey(item.url);
-        const raw = (item.url ?? "").trim();
-        if (!raw) {
-          next[k] = null;
-          continue;
-        }
-        const signed = await resolvePreviewSignedUrl({
-          supabase,
-          rawUrlOrPath: raw,
-          ttlSec: 3600,
-          bucketCandidates: ["expense-attachments", "receipts"],
+    void fetchExpenseReceiptManifest(expense.id)
+      .then((manifest) => {
+        if (!alive) return;
+        const secure = manifest.items.map(receiptApiItemToExpenseReceiptItem);
+        setSecureReceiptItems(secure);
+
+        const previewThumbs: Record<string, string | null> = {};
+        receiptItems.forEach((item, index) => {
+          previewThumbs[expenseAttachmentStorageDedupeKey(item.url)] = secure[index]?.url ?? null;
         });
-        next[k] = signed || null;
-      }
-      if (alive) setPreviewThumbSignedByDedupeKey(next);
-    })();
+        setPreviewThumbSignedByDedupeKey(previewThumbs);
+
+        const attachmentThumbs: Record<string, string | null> = {};
+        for (const attachment of attachments) {
+          const itemIndex = receiptItems.findIndex(
+            (item) =>
+              expenseAttachmentStorageDedupeKey(item.url) ===
+              expenseAttachmentStorageDedupeKey(attachment.url)
+          );
+          attachmentThumbs[attachment.id] =
+            itemIndex >= 0 ? (secure[itemIndex]?.url ?? null) : null;
+        }
+        setThumbById(attachmentThumbs);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setSecureReceiptItems([]);
+        setThumbById({});
+        setPreviewThumbSignedByDedupeKey({});
+      });
     return () => {
       alive = false;
     };
-  }, [open, supabase, receiptItems, attachments]);
+  }, [attachments, expense, open, receiptItems]);
 
-  const receiptItemsRef = React.useRef(receiptItems);
+  const receiptItemsRef = React.useRef(
+    secureReceiptItems.length > 0 ? secureReceiptItems : receiptItems
+  );
   React.useEffect(() => {
-    receiptItemsRef.current = receiptItems;
-  }, [receiptItems]);
+    receiptItemsRef.current = secureReceiptItems.length > 0 ? secureReceiptItems : receiptItems;
+  }, [receiptItems, secureReceiptItems]);
+
+  const refreshSecureReceiptItems = React.useCallback(async () => {
+    const currentExpense = expensePreviewRef.current;
+    if (!currentExpense) return [];
+    const manifest = await fetchExpenseReceiptManifest(currentExpense.id);
+    const secure = manifest.items.map(receiptApiItemToExpenseReceiptItem);
+    receiptItemsRef.current = secure;
+    setSecureReceiptItems(secure);
+    return secure;
+  }, []);
 
   const openAttachmentPreview = React.useCallback(
     (att: ExpenseAttachment) => {
-      if (!expense || !supabase) {
+      if (!expense) {
         toast({
           title: "Preview unavailable",
-          description: !supabase ? "Supabase is not configured." : "No expense loaded.",
+          description: "No expense loaded.",
           variant: "error",
         });
         return;
       }
-      const items = receiptItems;
+      const items = receiptItemsRef.current;
       if (items.length === 0) {
         toast({
           title: "Nothing to preview",
@@ -544,7 +531,7 @@ export function ExpenseInboxPreviewModal({
       const shellFiles = buildReceiptPreviewShellFiles(items);
       const initialIndex = Math.max(
         0,
-        items.findIndex(
+        receiptItems.findIndex(
           (x) =>
             expenseAttachmentStorageDedupeKey(x.url) === expenseAttachmentStorageDedupeKey(att.url)
         )
@@ -554,7 +541,7 @@ export function ExpenseInboxPreviewModal({
       const needsResolve = shellFiles.some((f) => f.pendingSignedUrl);
 
       const resolveAndPatch = () => {
-        void resolveExpenseReceiptItemsPreviewUrlsWithCache(receiptItemsRef.current, supabase)
+        void refreshSecureReceiptItems()
           .then((resolved) => {
             if (inboxPreviewSessionRef.current !== session) return;
             patchPreviewRef.current({
@@ -592,14 +579,7 @@ export function ExpenseInboxPreviewModal({
         },
         onRefreshPreviewUrl: async () => {
           if (inboxPreviewSessionRef.current !== session) return null;
-          const ex = expensePreviewRef.current;
-          const atts = attachmentsPreviewRef.current;
-          if (!ex || !supabase) return null;
-          const raws = getExpenseReceiptItemsFromParts({
-            receiptUrl: ex.receiptUrl,
-            attachments: atts,
-          });
-          const resolved = await resolveExpenseReceiptItemsPreviewUrlsWithCache(raws, supabase);
+          const resolved = await refreshSecureReceiptItems();
           patchPreviewRef.current({ files: receiptLineItemsToPreviewFiles(resolved) });
           const idx = inboxPreviewIndexRef.current;
           return (resolved[idx]?.url ?? "").trim() || null;
@@ -608,25 +588,25 @@ export function ExpenseInboxPreviewModal({
 
       if (needsResolve) resolveAndPatch();
     },
-    [expense, supabase, receiptItems, toast, openPreview]
+    [expense, openPreview, receiptItems, refreshSecureReceiptItems, toast]
   );
 
   const openReceiptItemPreview = React.useCallback(
     (item: { url: string; fileName: string }) => {
-      if (!expense || !supabase) {
+      if (!expense) {
         toast({
           title: "Preview unavailable",
-          description: !supabase ? "Supabase is not configured." : "No expense loaded.",
+          description: "No expense loaded.",
           variant: "error",
         });
         return;
       }
-      const items = receiptItems;
+      const items = receiptItemsRef.current;
       if (items.length === 0) return;
       const shellFiles = buildReceiptPreviewShellFiles(items);
       const initialIndex = Math.max(
         0,
-        items.findIndex(
+        receiptItems.findIndex(
           (x) =>
             expenseAttachmentStorageDedupeKey(x.url) === expenseAttachmentStorageDedupeKey(item.url)
         )
@@ -636,7 +616,7 @@ export function ExpenseInboxPreviewModal({
       const needsResolve = shellFiles.some((f) => f.pendingSignedUrl);
 
       const resolveAndPatch = () => {
-        void resolveExpenseReceiptItemsPreviewUrlsWithCache(receiptItemsRef.current, supabase)
+        void refreshSecureReceiptItems()
           .then((resolved) => {
             if (inboxPreviewSessionRef.current !== session) return;
             patchPreviewRef.current({
@@ -674,14 +654,7 @@ export function ExpenseInboxPreviewModal({
         },
         onRefreshPreviewUrl: async () => {
           if (inboxPreviewSessionRef.current !== session) return null;
-          const ex = expensePreviewRef.current;
-          const atts = attachmentsPreviewRef.current;
-          if (!ex || !supabase) return null;
-          const raws = getExpenseReceiptItemsFromParts({
-            receiptUrl: ex.receiptUrl,
-            attachments: atts,
-          });
-          const resolved = await resolveExpenseReceiptItemsPreviewUrlsWithCache(raws, supabase);
+          const resolved = await refreshSecureReceiptItems();
           patchPreviewRef.current({ files: receiptLineItemsToPreviewFiles(resolved) });
           const idx = inboxPreviewIndexRef.current;
           return (resolved[idx]?.url ?? "").trim() || null;
@@ -690,7 +663,7 @@ export function ExpenseInboxPreviewModal({
 
       if (needsResolve) resolveAndPatch();
     },
-    [expense, supabase, receiptItems, toast, openPreview]
+    [expense, openPreview, receiptItems, refreshSecureReceiptItems, toast]
   );
 
   const handleSave = async () => {
@@ -1081,7 +1054,7 @@ export function ExpenseInboxPreviewModal({
                               onClick={() => void openReceiptItemPreview(item)}
                               aria-label={ariaPreview}
                             >
-                              {/* eslint-disable-next-line @next/next/no-img-element -- signed URL from resolvePreviewSignedUrl */}
+                              {/* eslint-disable-next-line @next/next/no-img-element -- temporary URL from authenticated receipt API */}
                               <img
                                 src={thumbState}
                                 alt=""

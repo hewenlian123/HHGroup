@@ -1,5 +1,5 @@
 import { PageHeader, PageLayout } from "@/components/base";
-import { SecurityPinForm } from "./security-pin-form";
+import { SecurityClient } from "./security-client";
 
 export default function SettingsSecurityPage() {
   return (
@@ -9,11 +9,11 @@ export default function SettingsSecurityPage() {
       header={
         <PageHeader
           title="Security"
-          description="Manage the 4-digit app unlock PIN for ordinary HH Group workspace access."
+          description="Manage account credentials, session-bound Quick Unlock, and active sessions."
         />
       }
     >
-      <SecurityPinForm />
+      <SecurityClient />
     </PageLayout>
   );
 }

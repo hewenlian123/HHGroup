@@ -1,15 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createClientMock } = vi.hoisted(() => ({
+const { createClientMock, createSsrBrowserClientMock } = vi.hoisted(() => ({
   createClientMock: vi.fn((url: string, anonKey: string, options: unknown) => ({
     anonKey,
     options,
+    url,
+  })),
+  createSsrBrowserClientMock: vi.fn((url: string, anonKey: string) => ({
+    anonKey,
+    storage: "cookie",
     url,
   })),
 }));
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: createClientMock,
+}));
+
+vi.mock("@supabase/ssr", () => ({
+  createBrowserClient: createSsrBrowserClientMock,
 }));
 
 import { createBrowserClient } from "../supabase";
@@ -26,6 +35,7 @@ function testGlobal(): SupabaseTestGlobal {
 describe("createBrowserClient", () => {
   beforeEach(() => {
     createClientMock.mockClear();
+    createSsrBrowserClientMock.mockClear();
     delete testGlobal().__hhBrowserSupabaseClients;
   });
 
@@ -41,14 +51,12 @@ describe("createBrowserClient", () => {
     const second = createBrowserClient("https://example.supabase.co", "anon-key");
 
     expect(second).toBe(first);
-    expect(createClientMock).toHaveBeenCalledTimes(1);
-    expect(createClientMock.mock.calls[0]?.[2]).toMatchObject({
-      auth: {
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        persistSession: true,
-      },
-    });
+    expect(createSsrBrowserClientMock).toHaveBeenCalledTimes(1);
+    expect(createSsrBrowserClientMock).toHaveBeenCalledWith(
+      "https://example.supabase.co",
+      "anon-key"
+    );
+    expect(createClientMock).not.toHaveBeenCalled();
   });
 
   it("keeps separate browser clients for different Supabase credentials", () => {
@@ -58,7 +66,7 @@ describe("createBrowserClient", () => {
     const second = createBrowserClient("https://example.supabase.co", "other-key");
 
     expect(second).not.toBe(first);
-    expect(createClientMock).toHaveBeenCalledTimes(2);
+    expect(createSsrBrowserClientMock).toHaveBeenCalledTimes(2);
   });
 
   it("does not reuse clients while running outside the browser", () => {

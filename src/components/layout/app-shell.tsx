@@ -26,7 +26,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const modeParam = searchParams?.get("mode")?.toLowerCase() ?? "";
   const workerModeUrl =
     (pathname === "/labor/daily-entry" || pathname === "/labor/daily") && modeParam === "worker";
+  const authPage =
+    pathname === "/login" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname === "/unlock";
   const barePage =
+    authPage ||
     pathname === "/receipt" ||
     pathname === "/upload-receipt" ||
     pathname?.startsWith("/upload-receipt/") ||

@@ -1,6 +1,8 @@
 /**
  * Browser-side check that a preview URL is reachable (CORS permitting).
- * Used before showing receipt images; falls back from HEAD to a tiny ranged GET.
+ * Used before showing receipt images; falls back from any rejected HEAD to a
+ * tiny ranged GET. Supabase's signed-object endpoint may return HTTP 400 for
+ * HEAD even when the corresponding authenticated GET is valid.
  */
 export type PreviewUrlPreflightResult = {
   ok: boolean;
@@ -12,6 +14,13 @@ export type PreviewUrlPreflightResult = {
 export async function preflightPreviewUrl(url: string): Promise<PreviewUrlPreflightResult> {
   const trimmed = (url ?? "").trim();
   if (!trimmed) return { ok: false, method: "none", error: "empty_url" };
+  // Supabase's signed-object endpoint rejects HEAD and ranged GET requests in
+  // some Storage versions even though a normal image GET succeeds. The URL was
+  // issued by the authenticated server route, so let the real image request
+  // validate it and avoid downloading the receipt twice.
+  if (trimmed.includes("/storage/v1/object/sign/")) {
+    return { ok: true, method: "signed-object" };
+  }
 
   try {
     let res = await fetch(trimmed, {
@@ -21,7 +30,7 @@ export async function preflightPreviewUrl(url: string): Promise<PreviewUrlPrefli
       cache: "no-store",
     });
     let method = "HEAD";
-    if (res.status === 405 || res.status === 501) {
+    if (!res.ok) {
       res = await fetch(trimmed, {
         method: "GET",
         headers: { Range: "bytes=0-0" },

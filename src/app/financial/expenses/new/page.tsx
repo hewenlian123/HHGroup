@@ -33,7 +33,6 @@ import {
   persistLastExpensePaymentAccountId,
   rememberExpenseVendorPaymentAccount,
 } from "@/lib/expense-payment-preferences";
-import { createBrowserClient } from "@/lib/supabase";
 import {
   deriveExpenseWorkflowStatus,
   expenseCostAllocationRequiresProject,
@@ -139,12 +138,6 @@ export default function NewExpensePage() {
   const [deductionAmount, setDeductionAmount] = React.useState("");
   const [deductionNote, setDeductionNote] = React.useState("");
   const paymentChoiceTouchedRef = React.useRef(false);
-
-  const supabase = React.useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    return url && anon ? createBrowserClient(url, anon) : null;
-  }, []);
 
   const loadLookups = React.useCallback(async () => {
     setLoading(true);
@@ -330,17 +323,22 @@ export default function NewExpensePage() {
             }
           : null,
       });
-      if (receiptFile && supabase) {
-        const path = `receipts/${created.id}/${receiptFile.name}`;
-        const { error: uploadError } = await supabase.storage
-          .from("receipts")
-          .upload(path, receiptFile, {
-            contentType: receiptFile.type || "application/octet-stream",
-            upsert: true,
-          });
-        if (uploadError) throw new Error(uploadError.message);
-        const { data: urlData } = supabase.storage.from("receipts").getPublicUrl(path);
-        await updateExpenseReceiptUrl(created.id, urlData.publicUrl);
+      if (receiptFile) {
+        const uploadData = new FormData();
+        uploadData.set("file", receiptFile);
+        const uploadResponse = await fetch("/api/quick-expense/upload-attachment", {
+          method: "POST",
+          body: uploadData,
+          credentials: "same-origin",
+        });
+        const uploadBody = (await uploadResponse.json().catch(() => ({}))) as {
+          ok?: boolean;
+          path?: string;
+        };
+        if (!uploadResponse.ok || !uploadBody.ok || !uploadBody.path) {
+          throw new Error("Receipt upload failed.");
+        }
+        await updateExpenseReceiptUrl(created.id, uploadBody.path);
       }
       const pa = paymentAccountId.trim();
       if (pa) {
