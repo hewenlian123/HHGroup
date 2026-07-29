@@ -152,10 +152,14 @@ site_url = "http://127.0.0.1:3104"
 additional_redirect_urls = [
   "http://127.0.0.1:3000/auth/callback",
   "http://localhost:3000/auth/callback",
+  "http://127.0.0.1:3000/auth/recovery/callback",
+  "http://localhost:3000/auth/recovery/callback",
   "http://127.0.0.1:3000/reset-password",
   "http://localhost:3000/reset-password",
   "http://127.0.0.1:3104/auth/callback",
   "http://localhost:3104/auth/callback",
+  "http://127.0.0.1:3104/auth/recovery/callback",
+  "http://localhost:3104/auth/recovery/callback",
   "http://127.0.0.1:3104/reset-password",
   "http://localhost:3104/reset-password",
 ]

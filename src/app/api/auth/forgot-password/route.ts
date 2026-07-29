@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { validateSameOriginMutation } from "@/lib/auth-request-security";
+import { resolveServerAppOrigin } from "@/lib/server-app-origin";
 import { createRouteSupabaseClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -60,8 +61,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const supabase = createRouteSupabaseClient(request, response);
   if (!supabase) return accepted();
 
-  const callback = new URL("/auth/callback", request.url);
-  callback.searchParams.set("redirect", "/reset-password");
+  const callback = new URL("/auth/recovery/callback", resolveServerAppOrigin(request));
   await supabase.auth
     .resetPasswordForEmail(email, { redirectTo: callback.toString() })
     .catch(() => undefined);

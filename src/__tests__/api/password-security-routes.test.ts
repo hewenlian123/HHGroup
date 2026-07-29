@@ -5,6 +5,7 @@ const {
   adminUpdateUserMock,
   createRouteSupabaseClientMock,
   createTransientSupabaseClientMock,
+  getSessionMock,
   resetPasswordForEmailMock,
   signInWithPasswordMock,
   signOutMock,
@@ -12,6 +13,7 @@ const {
   adminUpdateUserMock: vi.fn(),
   createRouteSupabaseClientMock: vi.fn(),
   createTransientSupabaseClientMock: vi.fn(),
+  getSessionMock: vi.fn(),
   resetPasswordForEmailMock: vi.fn(),
   signInWithPasswordMock: vi.fn(),
   signOutMock: vi.fn(),
@@ -64,10 +66,15 @@ describe("password recovery and security routes", () => {
   beforeEach(() => {
     adminUpdateUserMock.mockReset().mockResolvedValue({ data: { user: {} }, error: null });
     resetPasswordForEmailMock.mockReset();
+    getSessionMock.mockReset().mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
     signInWithPasswordMock.mockReset();
     signOutMock.mockReset().mockResolvedValue({ error: null });
     createRouteSupabaseClientMock.mockReset().mockImplementation(() => ({
       auth: {
+        getSession: getSessionMock,
         resetPasswordForEmail: resetPasswordForEmailMock,
         signOut: signOutMock,
       },
@@ -103,7 +110,7 @@ describe("password recovery and security routes", () => {
     expect(JSON.stringify(missingBody)).not.toContain("User not found");
   });
 
-  it("uses an exact local callback and never forwards an arbitrary redirect", async () => {
+  it("uses the exact dedicated recovery callback and never forwards an arbitrary redirect", async () => {
     const { POST } = await import("@/app/api/auth/forgot-password/route");
     resetPasswordForEmailMock.mockResolvedValue({ error: null });
 
@@ -115,7 +122,25 @@ describe("password recovery and security routes", () => {
     );
 
     expect(resetPasswordForEmailMock).toHaveBeenCalledWith("owner@example.test", {
-      redirectTo: "http://localhost:3104/auth/callback?redirect=%2Freset-password",
+      redirectTo: "http://localhost:3104/auth/recovery/callback",
+    });
+  });
+
+  it("builds the recovery callback from the validated forwarded app host", async () => {
+    const { POST } = await import("@/app/api/auth/forgot-password/route");
+    resetPasswordForEmailMock.mockResolvedValue({ error: null });
+    const request = mutationRequest("/api/auth/forgot-password", {
+      email: "owner@example.test",
+    });
+    request.headers.set("host", "127.0.0.1:3104");
+    request.headers.set("origin", "http://127.0.0.1:3104");
+    request.headers.set("x-forwarded-host", "127.0.0.1:3104");
+    request.headers.set("x-forwarded-proto", "http");
+
+    await POST(request);
+
+    expect(resetPasswordForEmailMock).toHaveBeenCalledWith("owner@example.test", {
+      redirectTo: "http://127.0.0.1:3104/auth/recovery/callback",
     });
   });
 
@@ -188,7 +213,7 @@ describe("password recovery and security routes", () => {
     expect(signOutMock).not.toHaveBeenCalledWith({ scope: "global" });
   });
 
-  it("reset updates the recovery-session user and signs out globally", async () => {
+  it("does not treat an ordinary owner session as a password-recovery session", async () => {
     const { POST } = await import("@/app/api/auth/reset-password/route");
 
     const response = await POST(
@@ -198,14 +223,12 @@ describe("password recovery and security routes", () => {
       })
     );
 
-    expect(response.status).toBe(200);
-    expect(adminUpdateUserMock).toHaveBeenCalledWith("owner-id", {
-      password: "Reset-Password-2026!",
-    });
-    expect(signOutMock).toHaveBeenCalledWith({ scope: "global" });
+    expect(response.status).toBe(403);
+    expect(adminUpdateUserMock).not.toHaveBeenCalled();
+    expect(signOutMock).not.toHaveBeenCalledWith({ scope: "global" });
     expect(await response.json()).toMatchObject({
-      ok: true,
-      redirectTo: "/login?message=password_reset",
+      ok: false,
+      message: "Password recovery session is invalid or has expired.",
     });
   });
 

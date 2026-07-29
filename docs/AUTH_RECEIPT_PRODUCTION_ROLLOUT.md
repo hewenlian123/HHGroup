@@ -51,11 +51,14 @@ Complete all items before Migration A:
    authorized test. A settings-only inspection is not proof of delivery.
 3. Add these exact redirect destinations:
    - `<canonical-production-origin>/auth/callback`
+   - `<canonical-production-origin>/auth/recovery/callback`
    - `<canonical-production-origin>/reset-password`
-   - `<canonical-www-production-origin>/auth/callback` and
-     `<canonical-www-production-origin>/reset-password` only if `www` is an active
-     canonical entry point;
+   - `<canonical-www-production-origin>/auth/callback`,
+     `<canonical-www-production-origin>/auth/recovery/callback`, and
+     `<canonical-www-production-origin>/reset-password` only if `www` is an active canonical
+     entry point;
    - `https://<exact-vercel-verification-host>/auth/callback`
+   - `https://<exact-vercel-verification-host>/auth/recovery/callback`
    - `https://<exact-vercel-verification-host>/reset-password`
 4. Replace `<exact-vercel-verification-host>` with the immutable deployment hostname.
    Never use a wildcard, bare `*.vercel.app`, localhost, or a user-controlled return URL.

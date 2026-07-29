@@ -63,7 +63,20 @@ describe("authenticated owner-access migration contract", () => {
     expect(config).toMatch(/\[auth\.email\][\s\S]*?secure_password_change\s*=\s*true/i);
     expect(config).toContain("http://127.0.0.1:3104/auth/callback");
     expect(config).toContain("http://localhost:3104/auth/callback");
+    expect(config).toContain("http://127.0.0.1:3104/auth/recovery/callback");
+    expect(config).toContain("http://localhost:3104/auth/recovery/callback");
     expect(config).toContain("http://127.0.0.1:3104/reset-password");
     expect(config).toContain("http://localhost:3104/reset-password");
+  });
+
+  it("requires exact production and preview recovery callback allowlist entries", () => {
+    const runbook = readFileSync(
+      join(PROJECT_ROOT, "docs", "AUTH_RECEIPT_PRODUCTION_ROLLOUT.md"),
+      "utf8"
+    );
+
+    expect(runbook).toContain("<canonical-production-origin>/auth/recovery/callback");
+    expect(runbook).toContain("https://<exact-vercel-verification-host>/auth/recovery/callback");
+    expect(runbook).not.toContain("*/auth/recovery/callback");
   });
 });

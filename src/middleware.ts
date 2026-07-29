@@ -19,6 +19,7 @@ const PUBLIC_APP_PATHS = new Set([
   "/login",
   "/logout",
   "/auth/callback",
+  "/auth/recovery/callback",
   "/forgot-password",
   "/reset-password",
   "/offline",

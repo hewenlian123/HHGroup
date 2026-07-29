@@ -87,7 +87,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<AppRole, PermissionMap> = {
   },
 };
 
-export const PUBLIC_AUTH_ROUTES = new Set(["/login", "/auth/callback"]);
+export const PUBLIC_AUTH_ROUTES = new Set(["/login", "/auth/callback", "/auth/recovery/callback"]);
 
 export function requiredPermissionForPath(pathname: string): PermissionKey | null {
   if (pathname.startsWith("/financial")) return "finance.view";
