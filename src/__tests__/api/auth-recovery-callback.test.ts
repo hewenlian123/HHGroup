@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const {
@@ -98,6 +98,10 @@ function resetRequest(cookie?: string): NextRequest {
 }
 
 describe("password recovery callback", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(() => {
     process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "local-anon-key";
@@ -152,6 +156,28 @@ describe("password recovery callback", () => {
 
     expect(response.headers.get("location")).toBe("http://127.0.0.1:3104/reset-password");
     expect(response.headers.get("set-cookie") ?? "").toContain("hh_recovery_session=");
+  });
+
+  it("rejects a recovery callback delivered to a stale Preview host before code exchange", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL_URL", "hh-group-current-immutable-hhwilliamhe-4916s-projects.vercel.app");
+    const { GET } = await import("@/app/auth/recovery/callback/route");
+    const staleHost = "hh-group-stale-immutable-hhwilliamhe-4916s-projects.vercel.app";
+    const response = await GET(
+      new NextRequest(`https://${staleHost}/auth/recovery/callback?code=recovery-code`, {
+        headers: {
+          host: staleHost,
+          "x-forwarded-host": staleHost,
+          "x-forwarded-proto": "https",
+        },
+      })
+    );
+
+    expect(exchangeCodeForSessionMock).not.toHaveBeenCalled();
+    expect(response.headers.get("location")).toBe(
+      "https://hh-group-current-immutable-hhwilliamhe-4916s-projects.vercel.app/reset-password?error=invalid_or_expired_link"
+    );
+    expect(response.headers.get("set-cookie") ?? "").not.toContain("hh_recovery_session=");
   });
 
   it("does not trust a client-controlled recovery type on the normal callback", async () => {

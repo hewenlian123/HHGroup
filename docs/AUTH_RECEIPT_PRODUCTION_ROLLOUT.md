@@ -62,9 +62,19 @@ Complete all items before Migration A:
    - `https://<exact-vercel-verification-host>/reset-password`
 4. Replace `<exact-vercel-verification-host>` with the immutable deployment hostname.
    Never use a wildcard, bare `*.vercel.app`, localhost, or a user-controlled return URL.
-5. Confirm the server-only Production and Preview environment scopes contain the required
+5. Set the server-only `APP_URL` in Production to the canonical production origin. Preview
+   recovery is pinned to Vercel's deployment-specific `VERCEL_URL`; the application rejects
+   recovery requests and callbacks arriving through a stale deployment or branch alias.
+   Never configure `APP_URL` with a path, query, fragment, wildcard, or client-controlled
+   value.
+6. Confirm the server-only Production and Preview environment scopes contain the required
    Supabase/service and session-signing configuration. Set `HH_REQUIRE_LOGIN=0` explicitly
    for the compatibility deployment. Do not print or copy values into logs or reports.
+7. Initiate the recovery request and open the resulting one-time link in the same browser
+   profile on the same exact origin so the PKCE verifier cookie remains available. Do not
+   pre-open, preview, HEAD-check, or automate the link before the authorized verification.
+   After a newer immutable Preview is approved, remove obsolete Preview redirect entries
+   instead of leaving stale deployments as valid recovery targets.
 
 ## Create and verify the owner
 

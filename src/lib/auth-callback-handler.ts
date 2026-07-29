@@ -3,11 +3,11 @@ import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+import { resolveTrustedAuthAppOrigin } from "@/lib/auth-app-origin";
 import { createRecoverySessionToken, setRecoverySessionCookie } from "@/lib/auth-recovery-session";
 import { authorizedAppRole } from "@/lib/auth-role";
 import { normalizeAuthRedirect } from "@/lib/auth-redirect";
 import { sessionIdFromAccessToken } from "@/lib/device-unlock-token";
-import { resolveServerAppOrigin } from "@/lib/server-app-origin";
 
 type AuthCallbackKind = "login" | "recovery";
 
@@ -24,10 +24,20 @@ export async function handleAuthCallback(
   kind: AuthCallbackKind
 ): Promise<NextResponse> {
   const requestUrl = new URL(request.url);
-  const appOrigin =
-    request.headers.has("host") || request.headers.has("x-forwarded-host")
-      ? resolveServerAppOrigin(request)
-      : requestUrl.origin;
+  const trustedAppOrigin = resolveTrustedAuthAppOrigin(request);
+  if (!trustedAppOrigin) {
+    return NextResponse.json(
+      { ok: false, message: "This authentication link cannot be validated." },
+      {
+        status: 400,
+        headers: { "Cache-Control": "no-store, max-age=0" },
+      }
+    );
+  }
+  const appOrigin = trustedAppOrigin.origin;
+  if (!trustedAppOrigin.requestMatches) {
+    return invalidLinkRedirect(appOrigin, kind);
+  }
   const code = requestUrl.searchParams.get("code");
   const providerError =
     requestUrl.searchParams.has("error_description") || requestUrl.searchParams.has("error");

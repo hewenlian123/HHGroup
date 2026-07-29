@@ -77,6 +77,9 @@ describe("authenticated owner-access migration contract", () => {
 
     expect(runbook).toContain("<canonical-production-origin>/auth/recovery/callback");
     expect(runbook).toContain("https://<exact-vercel-verification-host>/auth/recovery/callback");
+    expect(runbook).toContain("server-only `APP_URL`");
+    expect(runbook).toContain("deployment-specific `VERCEL_URL`");
+    expect(runbook).toMatch(/same browser\s+profile/);
     expect(runbook).not.toContain("*/auth/recovery/callback");
   });
 });

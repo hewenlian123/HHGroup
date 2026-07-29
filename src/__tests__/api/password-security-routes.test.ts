@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 const {
@@ -63,6 +63,10 @@ function mutationRequest(path: string, body: Record<string, unknown>): NextReque
 }
 
 describe("password recovery and security routes", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(() => {
     adminUpdateUserMock.mockReset().mockResolvedValue({ data: { user: {} }, error: null });
     resetPasswordForEmailMock.mockReset();
@@ -142,6 +146,113 @@ describe("password recovery and security routes", () => {
     expect(resetPasswordForEmailMock).toHaveBeenCalledWith("owner@example.test", {
       redirectTo: "http://127.0.0.1:3104/auth/recovery/callback",
     });
+  });
+
+  it("refuses recovery requests from a stale Preview host", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL_URL", "hh-group-current-immutable-hhwilliamhe-4916s-projects.vercel.app");
+    const { POST } = await import("@/app/api/auth/forgot-password/route");
+    resetPasswordForEmailMock.mockResolvedValue({ error: null });
+    const staleOrigin = "https://hh-group-stale-immutable-hhwilliamhe-4916s-projects.vercel.app";
+    const request = new NextRequest(`${staleOrigin}/api/auth/forgot-password`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: new URL(staleOrigin).host,
+        origin: staleOrigin,
+        "sec-fetch-site": "same-origin",
+        "x-forwarded-for": "198.51.100.40",
+        "x-forwarded-host": new URL(staleOrigin).host,
+        "x-forwarded-proto": "https",
+      },
+      body: JSON.stringify({ email: "owner@example.test" }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(202);
+    expect(resetPasswordForEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("uses the server-owned immutable Preview origin for a matching request", async () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    vi.stubEnv("VERCEL_URL", "hh-group-current-immutable-hhwilliamhe-4916s-projects.vercel.app");
+    const { POST } = await import("@/app/api/auth/forgot-password/route");
+    resetPasswordForEmailMock.mockResolvedValue({ error: null });
+    const previewOrigin =
+      "https://hh-group-current-immutable-hhwilliamhe-4916s-projects.vercel.app";
+    const request = new NextRequest(`${previewOrigin}/api/auth/forgot-password`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: new URL(previewOrigin).host,
+        origin: previewOrigin,
+        "sec-fetch-site": "same-origin",
+        "x-forwarded-for": "198.51.100.41",
+        "x-forwarded-host": new URL(previewOrigin).host,
+        "x-forwarded-proto": "https",
+      },
+      body: JSON.stringify({ email: "owner@example.test" }),
+    });
+
+    await POST(request);
+
+    expect(resetPasswordForEmailMock).toHaveBeenCalledWith("owner@example.test", {
+      redirectTo: `${previewOrigin}/auth/recovery/callback`,
+    });
+  });
+
+  it("requires the explicit canonical APP_URL for production recovery", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("APP_URL", "https://hhprojectgroup.com");
+    const { POST } = await import("@/app/api/auth/forgot-password/route");
+    resetPasswordForEmailMock.mockResolvedValue({ error: null });
+    const request = new NextRequest("https://hhprojectgroup.com/api/auth/forgot-password", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: "hhprojectgroup.com",
+        origin: "https://hhprojectgroup.com",
+        "sec-fetch-site": "same-origin",
+        "x-forwarded-for": "198.51.100.42",
+        "x-forwarded-host": "hhprojectgroup.com",
+        "x-forwarded-proto": "https",
+      },
+      body: JSON.stringify({ email: "owner@example.test" }),
+    });
+
+    await POST(request);
+
+    expect(resetPasswordForEmailMock).toHaveBeenCalledWith("owner@example.test", {
+      redirectTo: "https://hhprojectgroup.com/auth/recovery/callback",
+    });
+  });
+
+  it("fails closed when the production APP_URL is invalid", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("APP_URL", "https://hhprojectgroup.com/unexpected-path");
+    const { POST } = await import("@/app/api/auth/forgot-password/route");
+    resetPasswordForEmailMock.mockResolvedValue({ error: null });
+    const request = new NextRequest("https://hhprojectgroup.com/api/auth/forgot-password", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        host: "hhprojectgroup.com",
+        origin: "https://hhprojectgroup.com",
+        "sec-fetch-site": "same-origin",
+        "x-forwarded-for": "198.51.100.43",
+        "x-forwarded-host": "hhprojectgroup.com",
+        "x-forwarded-proto": "https",
+      },
+      body: JSON.stringify({ email: "owner@example.test" }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(202);
+    expect(resetPasswordForEmailMock).not.toHaveBeenCalled();
   });
 
   it("rejects a weak or mismatched password before current-password verification", async () => {

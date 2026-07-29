@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { resolveTrustedAuthAppOrigin } from "@/lib/auth-app-origin";
 import { validateSameOriginMutation } from "@/lib/auth-request-security";
-import { resolveServerAppOrigin } from "@/lib/server-app-origin";
 import { createRouteSupabaseClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -57,11 +57,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   if (!email || email.length > 320 || !email.includes("@")) return accepted();
 
+  const appOrigin = resolveTrustedAuthAppOrigin(request);
+  if (!appOrigin?.requestMatches) return accepted();
+
   const response = accepted();
   const supabase = createRouteSupabaseClient(request, response);
   if (!supabase) return accepted();
 
-  const callback = new URL("/auth/recovery/callback", resolveServerAppOrigin(request));
+  const callback = new URL("/auth/recovery/callback", appOrigin.origin);
   await supabase.auth
     .resetPasswordForEmail(email, { redirectTo: callback.toString() })
     .catch(() => undefined);
