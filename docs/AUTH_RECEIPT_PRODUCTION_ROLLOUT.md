@@ -70,11 +70,26 @@ Complete all items before Migration A:
 6. Confirm the server-only Production and Preview environment scopes contain the required
    Supabase/service and session-signing configuration. Set `HH_REQUIRE_LOGIN=0` explicitly
    for the compatibility deployment. Do not print or copy values into logs or reports.
-7. Initiate the recovery request and open the resulting one-time link in the same browser
-   profile on the same exact origin so the PKCE verifier cookie remains available. Do not
-   pre-open, preview, HEAD-check, or automate the link before the authorized verification.
-   After a newer immutable Preview is approved, remove obsolete Preview redirect entries
-   instead of leaving stale deployments as valid recovery targets.
+7. Configure the hosted Supabase **Recovery OTP** email template before the controlled
+   delivery test:
+   - the button destination must be exactly `{{ .RedirectTo }}`;
+   - the message must display the one-time code with `{{ .Token }}`;
+   - it must not use `{{ .ConfirmationURL }}`, `{{ .TokenHash }}`, or place an Auth secret in
+     the URL;
+   - the hosted OTP expiry must be 3,600 seconds.
+8. The exact recovery callback opens a code-entry state and the server verifies the submitted
+   email and code with `verifyOtp({ type: "recovery" })`. Only an authenticated
+   owner/admin recovery session may receive the signed, HttpOnly recovery-purpose cookie and
+   continue to the fixed `/reset-password` route. A normal authenticated session must not
+   satisfy this recovery guard.
+9. Verify the newest message from the authorized sender in a second browser profile/device
+   as well as the initiating profile. Link prefetch is safe because the link contains no
+   secret and cannot consume the OTP; nevertheless, do not copy the code or email into logs,
+   screenshots, reports, URLs, or browser automation output. Verify expired, replayed, and
+   malformed codes produce the generic safe error state.
+10. After a newer immutable Preview is approved, remove obsolete Preview redirect entries
+    instead of leaving stale deployments as valid recovery targets. Retain the PKCE callback
+    compatibility path only for already-issued legacy links during the observation period.
 
 ## Create and verify the owner
 

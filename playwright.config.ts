@@ -70,7 +70,8 @@ const ignorePaymentAndDeleteMutations = [
   /delete-flows-mutations\.spec\.ts$/,
 ];
 
-const mobileSafariTests = /(?:dashboard-mobile-scroll|uploaded-receipt-preview-mobile)\.spec\.ts$/;
+const mobileSafariTests =
+  /(?:auth-recovery-routing|dashboard-mobile-scroll|uploaded-receipt-preview-mobile)\.spec\.ts$/;
 
 export default defineConfig({
   testDir: "./tests",

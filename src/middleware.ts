@@ -28,6 +28,7 @@ const PUBLIC_APP_PATHS = new Set([
 const PUBLIC_API_PATHS = new Set([
   "/api/auth/login",
   "/api/auth/forgot-password",
+  "/api/auth/recovery/verify",
   "/api/auth/reset-password",
 ]);
 

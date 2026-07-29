@@ -69,6 +69,24 @@ describe("authenticated owner-access migration contract", () => {
     expect(config).toContain("http://localhost:3104/reset-password");
   });
 
+  it("uses a prefetch-safe recovery OTP template without putting a secret in the link", () => {
+    const config = readFileSync(join(PROJECT_ROOT, "supabase", "config.toml"), "utf8");
+    const template = readFileSync(
+      join(PROJECT_ROOT, "supabase", "templates", "recovery.html"),
+      "utf8"
+    );
+
+    expect(config).toMatch(
+      /\[auth\.email\.template\.recovery\][\s\S]*?subject\s*=\s*"Reset Your Password"[\s\S]*?content_path\s*=\s*"\.\/supabase\/templates\/recovery\.html"/i
+    );
+    expect(config).toMatch(/\[auth\.email\][\s\S]*?otp_expiry\s*=\s*3600/i);
+    expect(template).toContain('href="{{ .RedirectTo }}"');
+    expect(template).toContain("{{ .Token }}");
+    expect(template).not.toContain("{{ .ConfirmationURL }}");
+    expect(template).not.toContain("{{ .TokenHash }}");
+    expect(template).not.toMatch(/access_token|refresh_token|localhost|\*/i);
+  });
+
   it("requires exact production and preview recovery callback allowlist entries", () => {
     const runbook = readFileSync(
       join(PROJECT_ROOT, "docs", "AUTH_RECEIPT_PRODUCTION_ROLLOUT.md"),
@@ -79,7 +97,12 @@ describe("authenticated owner-access migration contract", () => {
     expect(runbook).toContain("https://<exact-vercel-verification-host>/auth/recovery/callback");
     expect(runbook).toContain("server-only `APP_URL`");
     expect(runbook).toContain("deployment-specific `VERCEL_URL`");
-    expect(runbook).toMatch(/same browser\s+profile/);
+    expect(runbook).toContain("Recovery OTP");
+    expect(runbook).toContain("{{ .RedirectTo }}");
+    expect(runbook).toContain("{{ .Token }}");
+    expect(runbook).toContain("verifyOtp");
+    expect(runbook).toContain("3,600 seconds");
+    expect(runbook).not.toMatch(/same browser\s+profile/);
     expect(runbook).not.toContain("*/auth/recovery/callback");
   });
 });

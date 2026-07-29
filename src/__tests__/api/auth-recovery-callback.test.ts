@@ -7,12 +7,14 @@ const {
   getSessionMock,
   recordSecurityAuditMock,
   signOutMock,
+  verifyOtpMock,
 } = vi.hoisted(() => ({
   adminUpdateUserMock: vi.fn(),
   exchangeCodeForSessionMock: vi.fn(),
   getSessionMock: vi.fn(),
   recordSecurityAuditMock: vi.fn(),
   signOutMock: vi.fn(),
+  verifyOtpMock: vi.fn(),
 }));
 
 vi.mock("@supabase/ssr", () => ({
@@ -47,6 +49,7 @@ vi.mock("@/lib/supabase-server", () => ({
     auth: {
       getSession: getSessionMock,
       signOut: signOutMock,
+      verifyOtp: verifyOtpMock,
     },
   }),
   getServerSupabaseAdmin: () => ({
@@ -97,6 +100,22 @@ function resetRequest(cookie?: string): NextRequest {
   });
 }
 
+function verifyRequest(
+  body: Record<string, unknown>,
+  origin = "http://localhost:3104"
+): NextRequest {
+  return new NextRequest(`${origin}/api/auth/recovery/verify`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      host: new URL(origin).host,
+      origin,
+      "sec-fetch-site": "same-origin",
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 describe("password recovery callback", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -134,6 +153,105 @@ describe("password recovery callback", () => {
     });
     recordSecurityAuditMock.mockReset().mockResolvedValue(undefined);
     signOutMock.mockReset().mockResolvedValue({ error: null });
+    verifyOtpMock.mockReset().mockResolvedValue({
+      data: {
+        session: { access_token: accessToken() },
+        user: {
+          app_metadata: { role: "owner" },
+          email: "owner@example.test",
+          id: "owner-id",
+        },
+      },
+      error: null,
+    });
+  });
+
+  it("sends a trusted code-free recovery callback to OTP verification", async () => {
+    const { GET } = await import("@/app/auth/recovery/callback/route");
+
+    const response = await GET(recoveryCallbackRequest(""));
+
+    expect(response.headers.get("location")).toBe(
+      "http://localhost:3104/forgot-password?mode=verify"
+    );
+    expect(exchangeCodeForSessionMock).not.toHaveBeenCalled();
+    expect(response.headers.get("set-cookie") ?? "").not.toContain("hh_recovery_session=");
+  });
+
+  it("verifies a recovery OTP and binds reset authorization to the returned owner session", async () => {
+    const { POST } = await import("@/app/api/auth/recovery/verify/route");
+
+    const response = await POST(verifyRequest({ email: "owner@example.test", token: "123456" }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(verifyOtpMock).toHaveBeenCalledWith({
+      email: "owner@example.test",
+      token: "123456",
+      type: "recovery",
+    });
+    expect(body).toEqual({ ok: true, redirectTo: "/reset-password" });
+    expect(JSON.stringify(body)).not.toMatch(/owner@example|123456|token|session/i);
+    const cookie = response.headers.get("set-cookie") ?? "";
+    expect(cookie).toContain("hh_recovery_session=");
+    expect(cookie).toContain("HttpOnly");
+    expect(cookie).not.toContain("123456");
+  });
+
+  it("returns the same safe OTP error for invalid, expired, or replayed codes", async () => {
+    const { POST } = await import("@/app/api/auth/recovery/verify/route");
+    verifyOtpMock.mockResolvedValue({
+      data: { session: null, user: null },
+      error: { message: "otp_expired with provider detail" },
+    });
+
+    const response = await POST(verifyRequest({ email: "owner@example.test", token: "654321" }));
+    const body = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(body).toEqual({
+      ok: false,
+      message: "Recovery code is invalid or has expired.",
+    });
+    expect(JSON.stringify(body)).not.toMatch(/owner@example|654321|provider|otp_expired/i);
+    expect(response.headers.get("set-cookie") ?? "").not.toContain("hh_recovery_session=");
+  });
+
+  it("rejects recovery OTP sessions that are not authorized owners or admins", async () => {
+    const { POST } = await import("@/app/api/auth/recovery/verify/route");
+    verifyOtpMock.mockResolvedValue({
+      data: {
+        session: { access_token: accessToken() },
+        user: {
+          app_metadata: { role: "assistant" },
+          email: "assistant@example.test",
+          id: "assistant-id",
+        },
+      },
+      error: null,
+    });
+
+    const response = await POST(
+      verifyRequest({ email: "assistant@example.test", token: "123456" })
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("set-cookie") ?? "").not.toContain("hh_recovery_session=");
+  });
+
+  it("rejects cross-origin OTP verification before contacting Supabase", async () => {
+    const { POST } = await import("@/app/api/auth/recovery/verify/route");
+    const request = verifyRequest(
+      { email: "owner@example.test", token: "123456" },
+      "http://localhost:3104"
+    );
+    request.headers.set("origin", "https://evil.test");
+    request.headers.set("sec-fetch-site", "cross-site");
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(403);
+    expect(verifyOtpMock).not.toHaveBeenCalled();
   });
 
   it("marks a recovery callback and sends it to the reset form", async () => {
