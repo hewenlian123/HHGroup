@@ -12,14 +12,14 @@ if (fs.existsSync(envPath)) {
 
 const URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const SERVICE = (process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY)!;
 
 const anon = createClient(URL, ANON);
 const admin = createClient(URL, SERVICE);
 
 async function main() {
   console.log("URL:", URL);
-  console.log("SERVICE KEY prefix:", SERVICE?.substring(0, 20));
+  console.log("Server secret configured:", Boolean(SERVICE?.trim()));
 
   const { data: anonRows } = await anon.from("project_tasks").select("id, title").limit(5);
   console.log("ANON sees:", anonRows);

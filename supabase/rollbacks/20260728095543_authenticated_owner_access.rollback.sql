@@ -29,6 +29,7 @@ drop policy if exists attachments_update on public.attachments;
 drop policy if exists attachments_delete on public.attachments;
 
 grant select, insert, update, delete on table public.attachments to anon, authenticated;
+grant select, insert, update, delete on table public.subcontract_deductions to anon;
 
 create policy attachments_insert
 on public.attachments

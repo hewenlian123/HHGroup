@@ -33,7 +33,9 @@ export async function GET() {
 
   const urlEnv = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
   const hasAnonKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim());
+  const hasModernServerSecret = Boolean(process.env.SUPABASE_SECRET_KEY?.trim());
   const hasServiceRoleKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY?.trim());
+  const hasServerSecret = hasModernServerSecret || hasServiceRoleKey;
 
   const admin = getServerSupabaseAdmin();
   const fallback = getServerSupabase();
@@ -113,8 +115,8 @@ export async function GET() {
   } else {
     adminClientUnavailableReason = !urlEnv
       ? "missing NEXT_PUBLIC_SUPABASE_URL"
-      : !hasServiceRoleKey
-        ? "missing SUPABASE_SERVICE_ROLE_KEY (getServerSupabaseAdmin returns null)"
+      : !hasServerSecret
+        ? "missing SUPABASE_SECRET_KEY or temporary SUPABASE_SERVICE_ROLE_KEY fallback"
         : "unknown";
   }
 
@@ -126,13 +128,14 @@ export async function GET() {
         ? null
         : !urlEnv
           ? "NEXT_PUBLIC_SUPABASE_URL unset — same as upload-receipt/options 503"
-          : !hasAnonKey && !hasServiceRoleKey
-            ? "Need NEXT_PUBLIC_SUPABASE_ANON_KEY and/or SUPABASE_SERVICE_ROLE_KEY"
+          : !hasAnonKey && !hasServerSecret
+            ? "Need a publishable key and/or server-only Supabase secret"
             : "unknown",
     nodeEnv: process.env.NODE_ENV ?? "(unset)",
     nextPublicSupabaseHost: hostFromEnvUrl(urlEnv),
     hasNextPublicSupabaseUrl: Boolean(urlEnv),
     hasAnonKey,
+    hasModernServerSecret,
     hasServiceRoleKey,
     uploadReceiptOptionsResolvedWith: resolvedWith,
     workersCountViaOptionsRouteClient: workersCountOptionsClient,

@@ -29,7 +29,8 @@ const isLocalE2eBase = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?$/i.test(r
 
 /**
  * Env passed to `npm run dev` / `next start` when Playwright spawns the webServer.
- * Avoid forcing `SUPABASE_SERVICE_ROLE_KEY=""` — that overrides `.env.local` loaded by Next and makes API routes fall back to anon + RLS.
+ * Avoid forcing either server-secret variable to an empty string — that overrides `.env.local`
+ * loaded by Next and makes API routes fall back to the publishable key + RLS.
  *
  * Playwright types `webServer.env` as `Record<string, string>` (no undefined values); `ProcessEnv` is incompatible.
  */
@@ -44,6 +45,7 @@ function buildWebServerEnv(): Record<string, string> {
   const trimKeys = [
     "NEXT_PUBLIC_SUPABASE_URL",
     "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_SECRET_KEY",
     "SUPABASE_SERVICE_ROLE_KEY",
   ] as const;
   for (const key of trimKeys) {

@@ -41,6 +41,25 @@ Startup logs contain only resolved mode, normalized runtime, and configuration s
 must never contain environment values, credentials, cookies, tokens, email addresses,
 signed URLs, or secrets.
 
+## Modern Supabase key gate
+
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` temporarily remains the deployed compatibility variable
+  name, but its value must be a modern publishable key. It is public by design and must never
+  contain a legacy service-role or modern server secret.
+- `SUPABASE_SECRET_KEY` is the preferred server-only modern secret. Scope it only to the
+  Vercel environments that run privileged server routes and mark it Sensitive.
+- `SUPABASE_SERVICE_ROLE_KEY` is a temporary server-only fallback during the observation and
+  rollback period. Never place either server secret in a `NEXT_PUBLIC_*` variable.
+- Before disabling hosted legacy keys, inventory Vercel Preview/Production, GitHub Actions,
+  local verification, scripts, and integrations. Prove the modern publishable key and
+  `SUPABASE_SECRET_KEY` work on an immutable candidate.
+- Retain a reviewed emergency re-enable path. Disable hosted legacy keys only after the
+  canonical production alias runs the modern-key candidate; immediately verify owner Auth,
+  Receipt Viewer/Replace, Upload/OCR, and representative server-only operations.
+- If any persistent authorization or server failure appears, re-enable the affected legacy
+  key, restore the known-good deployment when needed, and verify service recovery before
+  continuing.
+
 ## Pre-deployment Auth gates
 
 Complete all items before Migration A:
@@ -68,8 +87,10 @@ Complete all items before Migration A:
    Never configure `APP_URL` with a path, query, fragment, wildcard, or client-controlled
    value.
 6. Confirm the server-only Production and Preview environment scopes contain the required
-   Supabase/service and session-signing configuration. Set `HH_REQUIRE_LOGIN=0` explicitly
-   for the compatibility deployment. Do not print or copy values into logs or reports.
+   modern Supabase publishable key, `SUPABASE_SECRET_KEY`, and session-signing configuration.
+   Keep `SUPABASE_SERVICE_ROLE_KEY` only as the temporary rollback fallback until the
+   modern-key production observation gate passes. Set `HH_REQUIRE_LOGIN=0` explicitly for
+   the compatibility deployment. Do not print or copy values into logs or reports.
 7. Configure the hosted Supabase **Recovery OTP** email template before the controlled
    delivery test:
    - the button destination must be exactly `{{ .RedirectTo }}`;
@@ -133,23 +154,28 @@ Use Supabase Admin tooling, not public signup:
 2. Verify Auth provider, disabled signup, exact redirects, SMTP delivery, owner confirmation,
    owner app metadata, and recovery.
 3. Set Preview and the planned compatibility deployment to `HH_REQUIRE_LOGIN=0`.
-4. Apply `20260728095543_authenticated_owner_access.sql` (Migration A).
-5. Deploy the Auth-capable application to an immutable Vercel verification URL without
+4. Verify an immutable candidate with the modern publishable key and
+   `SUPABASE_SECRET_KEY`. Do not disable hosted legacy keys while the canonical production
+   alias still runs a legacy-key build.
+5. Apply `20260728095543_authenticated_owner_access.sql` (Migration A).
+6. Deploy the Auth-capable application to an immutable Vercel verification URL without
    moving the production alias.
-6. Verify login, refresh, Dashboard, Finance, Labor, Settings, logout, recovery, and session
+7. Verify login, refresh, Dashboard, Finance, Labor, Settings, logout, recovery, and session
    persistence on that URL.
-7. Set `HH_REQUIRE_LOGIN=1` for the verification deployment and redeploy.
-8. Verify anonymous protected pages redirect to login and anonymous protected APIs return 401. Verify an authorized owner can still reach all critical modules.
-9. Apply `20260728105015_receipt_storage_security_phase1.sql` (Migration B).
-10. Verify multiple historical receipt reference forms, signed viewing, Download, Replace
+8. Set `HH_REQUIRE_LOGIN=1` for the verification deployment and redeploy.
+9. Verify anonymous protected pages redirect to login and anonymous protected APIs return 401. Verify an authorized owner can still reach all critical modules.
+10. Apply `20260728105015_receipt_storage_security_phase1.sql` (Migration B).
+11. Verify multiple historical receipt reference forms, signed viewing, Download, Replace
     compensation, Upload Receipt, OCR, refresh, and rapid receipt switching.
-11. Promote the verified deployment to `hhprojectgroup.com` only after every gate passes.
-12. Repeat strict anonymous/authenticated smoke checks on the production alias without
+12. Promote the verified deployment to `hhprojectgroup.com` only after every gate passes.
+13. Repeat strict anonymous/authenticated smoke checks on the production alias without
     creating permanent financial data.
-13. Observe Auth, receipt signing, Replace, and Storage errors for the approved observation
+14. Disable the hosted legacy keys only after the canonical alias has passed the modern-key
+    smoke tests. Immediately repeat Auth, server-secret, Receipt, Upload, and OCR checks.
+15. Observe Auth, receipt signing, Replace, and Storage errors for the approved observation
     period. Retain the prior deployment and both manual rollback files.
-14. Remove the compatibility production/preview branch in a separate tested patch. Keep
-    strict authentication as the only deployed mode.
+16. Remove the compatibility production/preview branch and legacy server-secret fallback in
+    a separate tested patch. Keep strict authentication as the only deployed mode.
 
 Migration B must never precede successful authenticated Viewer/Replace verification.
 

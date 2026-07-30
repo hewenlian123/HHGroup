@@ -30,12 +30,13 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const key =
+    process.env.SUPABASE_SECRET_KEY?.trim() ||
     process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
 
   if (!url || !key) {
     throw new Error(
-      "[global-setup] E2E seed required: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (recommended) or NEXT_PUBLIC_SUPABASE_ANON_KEY (.env.test / .env.local). See .env.test.example — or E2E_SKIP_DB_SEED=1 to skip."
+      "[global-setup] E2E seed required: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY (recommended), its temporary legacy fallback, or NEXT_PUBLIC_SUPABASE_ANON_KEY (.env.test / .env.local). See .env.test.example — or E2E_SKIP_DB_SEED=1 to skip."
     );
   }
 

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+
 export const PIN_SESSION_COOKIE = "hh_pin_session";
 
 const PIN_SETTINGS_KEY = "login_pin";
@@ -139,58 +141,37 @@ async function pbkdf2PinHash(pin: string, salt: string): Promise<string> {
   return bytesToBase64Url(new Uint8Array(bits));
 }
 
-function supabaseServiceConfig(): { url: string; key: string } | null {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() ?? "";
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "";
-  if (!url || !key) return null;
-  return { url: url.replace(/\/$/, ""), key };
-}
-
-function isMissingSettingsTableError(status: number, body: string): boolean {
+function isMissingSettingsTableError(error: { code?: string; message?: string }): boolean {
+  const detail = `${error.code ?? ""} ${error.message ?? ""}`;
   return (
-    status === 404 ||
-    body.includes("PGRST205") ||
-    body.includes("42P01") ||
-    /app_security_settings/i.test(body)
+    detail.includes("PGRST205") || detail.includes("42P01") || /app_security_settings/i.test(detail)
   );
 }
 
 async function fetchSupabasePinSettings(): Promise<PinSettings> {
-  const config = supabaseServiceConfig();
-  if (!config) {
+  const admin = getServerSupabaseAdmin();
+  if (!admin) {
     return {
       status: "unconfigured",
       message: "PIN settings require server Supabase service access.",
     };
   }
 
-  const response = await fetch(
-    `${config.url}/rest/v1/app_security_settings?key=eq.${encodeURIComponent(
-      PIN_SETTINGS_KEY
-    )}&select=pin_hash,pin_salt,session_version&limit=1`,
-    {
-      cache: "no-store",
-      headers: {
-        apikey: config.key,
-        Authorization: `Bearer ${config.key}`,
-        Accept: "application/json",
-      },
-    }
-  ).catch((error: unknown) => {
-    throw new Error(error instanceof Error ? error.message : "Failed to load PIN settings.");
-  });
-
-  const text = await response.text();
-  if (!response.ok) {
+  const { data, error } = await admin
+    .from("app_security_settings")
+    .select("pin_hash,pin_salt,session_version")
+    .eq("key", PIN_SETTINGS_KEY)
+    .limit(1);
+  if (error) {
     return {
       status: "unconfigured",
-      message: isMissingSettingsTableError(response.status, text)
+      message: isMissingSettingsTableError(error)
         ? "PIN settings table is not available."
         : "PIN settings are not available.",
     };
   }
 
-  const rows = JSON.parse(text || "[]") as Array<{
+  const rows = (data ?? []) as Array<{
     pin_hash?: string | null;
     pin_salt?: string | null;
     session_version?: number | null;
@@ -230,33 +211,24 @@ async function upsertSupabasePinSettings(input: {
   sessionVersion: number;
   updatedBy: string | null;
 }): Promise<SetPinResult> {
-  const config = supabaseServiceConfig();
-  if (!config) {
+  const admin = getServerSupabaseAdmin();
+  if (!admin) {
     return { ok: false, message: "Server Supabase service access is not configured." };
   }
 
-  const response = await fetch(`${config.url}/rest/v1/app_security_settings?on_conflict=key`, {
-    method: "POST",
-    cache: "no-store",
-    headers: {
-      apikey: config.key,
-      Authorization: `Bearer ${config.key}`,
-      "Content-Type": "application/json",
-      Prefer: "resolution=merge-duplicates,return=representation",
-    },
-    body: JSON.stringify({
+  const { error } = await admin.from("app_security_settings").upsert(
+    {
       key: PIN_SETTINGS_KEY,
       pin_hash: input.pinHash,
       pin_salt: input.pinSalt,
       session_version: input.sessionVersion,
       updated_at: new Date().toISOString(),
       updated_by: input.updatedBy,
-    }),
-  }).catch((error: unknown) => {
-    throw new Error(error instanceof Error ? error.message : "Failed to save PIN settings.");
-  });
+    },
+    { onConflict: "key" }
+  );
 
-  if (!response.ok) {
+  if (error) {
     return { ok: false, message: "Failed to save PIN settings." };
   }
 

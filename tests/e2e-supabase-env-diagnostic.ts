@@ -1,14 +1,4 @@
-/**
- * Safe Supabase env diagnostics for Playwright (no full secrets).
- * Call from global-setup or specs before sensitive E2E steps.
- */
-
-function maskKeySuffix(value: string | undefined, visiblePrefixLen = 8): string {
-  if (!value || value.trim() === "") return "(missing)";
-  const v = value.trim();
-  if (v.length <= visiblePrefixLen) return `${v.slice(0, 2)}…(${v.length} chars)`;
-  return `${v.slice(0, visiblePrefixLen)}…`;
-}
+/** Safe Supabase env diagnostics for Playwright. No key characters are returned. */
 
 function urlHost(url: string | undefined): string {
   if (!url?.trim()) return "(missing)";
@@ -21,27 +11,30 @@ function urlHost(url: string | undefined): string {
 
 export type E2ESupabaseEnvDiagnostic = {
   nextPublicSupabaseHost: string;
-  hasAnonKey: boolean;
-  anonKeyPrefix: string;
-  hasServiceRoleKey: boolean;
-  serviceRoleKeyPrefix: string;
-  /** True when URL + anon + service role are non-empty (matches typical Playwright DB seed requirements). */
+  hasPublishableKey: boolean;
+  hasServerSecret: boolean;
+  serverSecretSource: "modern" | "legacy-fallback" | "missing";
+  /** True when URL + publishable + server secret are non-empty. */
   looksReadyForAdminMutations: boolean;
 };
 
 export function getE2ESupabaseEnvDiagnostic(): E2ESupabaseEnvDiagnostic {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const sr = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const hasAnon = Boolean(anon?.trim());
-  const hasSr = Boolean(sr?.trim());
+  const publishable = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const modernSecret = process.env.SUPABASE_SECRET_KEY;
+  const legacySecret = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const hasPublishable = Boolean(publishable?.trim());
+  const hasServerSecret = Boolean(modernSecret?.trim() || legacySecret?.trim());
   return {
     nextPublicSupabaseHost: urlHost(url),
-    hasAnonKey: hasAnon,
-    anonKeyPrefix: maskKeySuffix(anon),
-    hasServiceRoleKey: hasSr,
-    serviceRoleKeyPrefix: maskKeySuffix(sr),
-    looksReadyForAdminMutations: Boolean(url?.trim()) && hasAnon && hasSr,
+    hasPublishableKey: hasPublishable,
+    hasServerSecret,
+    serverSecretSource: modernSecret?.trim()
+      ? "modern"
+      : legacySecret?.trim()
+        ? "legacy-fallback"
+        : "missing",
+    looksReadyForAdminMutations: Boolean(url?.trim()) && hasPublishable && hasServerSecret,
   };
 }
 

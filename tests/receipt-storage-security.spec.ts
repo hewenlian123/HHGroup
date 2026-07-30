@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
 import { createHash, randomUUID } from "node:crypto";
+import postgres from "postgres";
+import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 import { ensureE2EOwner, loginAsE2EOwner } from "./e2e-auth-owner";
 
 const TARGET_EXPENSE_ID = "81f1a961-b6ad-4a14-9ff1-1010d89f0101";
@@ -41,7 +43,8 @@ type ManifestBody = {
 
 function localAdmin(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const serviceRole =
+    process.env.SUPABASE_SECRET_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !serviceRole) {
     throw new Error("Local receipt-security E2E requires Supabase environment variables.");
   }
@@ -54,7 +57,28 @@ function localAdmin(): SupabaseClient {
   });
 }
 
-async function removeFixtureData(admin: SupabaseClient): Promise<void> {
+function localDatabase() {
+  const databaseUrl =
+    process.env.SUPABASE_DATABASE_URL?.trim() ??
+    process.env.DATABASE_URL?.trim() ??
+    process.env.SUPABASE_DB_URL?.trim();
+  if (!databaseUrl) {
+    throw new Error("Local receipt-security E2E requires the local Docker database URL.");
+  }
+  const parsed = new URL(databaseUrl);
+  if (
+    (parsed.hostname !== "localhost" && parsed.hostname !== "127.0.0.1") ||
+    parsed.port !== "54322"
+  ) {
+    throw new Error("Receipt-security fixture cleanup is restricted to local Docker Postgres.");
+  }
+  return postgres(databaseUrl, { max: 1, prepare: false });
+}
+
+async function removeFixtureData(
+  admin: SupabaseClient,
+  database: ReturnType<typeof postgres>
+): Promise<void> {
   const { data: cleanupRows } = await admin
     .from("receipt_storage_cleanup_candidates")
     .select("replacement_path")
@@ -63,10 +87,10 @@ async function removeFixtureData(admin: SupabaseClient): Promise<void> {
     .map((row) => String(row.replacement_path ?? ""))
     .filter(Boolean);
 
-  await admin
-    .from("receipt_storage_cleanup_candidates")
-    .delete()
-    .in("expense_id", [TARGET_EXPENSE_ID, OTHER_EXPENSE_ID]);
+  await database`
+    delete from public.receipt_storage_cleanup_candidates
+    where expense_id in (${TARGET_EXPENSE_ID}, ${OTHER_EXPENSE_ID})
+  `;
   await admin.from("attachments").delete().in("id", [TARGET_ATTACHMENT_ID, OTHER_ATTACHMENT_ID]);
   await admin.from("expense_lines").delete().in("id", [TARGET_LINE_ID, OTHER_LINE_ID]);
   await admin.from("expenses").delete().in("id", [TARGET_EXPENSE_ID, OTHER_EXPENSE_ID]);
@@ -78,10 +102,11 @@ async function removeFixtureData(admin: SupabaseClient): Promise<void> {
 test.describe.serial("private expense receipt Storage and Replace", () => {
   test.describe.configure({ timeout: 120_000 });
   const admin = localAdmin();
+  const database = localDatabase();
 
   test.beforeAll(async () => {
     await ensureE2EOwner();
-    await removeFixtureData(admin);
+    await removeFixtureData(admin, database);
 
     for (const path of [TARGET_PATH, OTHER_PATH]) {
       const upload = await admin.storage
@@ -90,7 +115,7 @@ test.describe.serial("private expense receipt Storage and Replace", () => {
       if (upload.error) throw new Error("Unable to create local receipt-security fixture.");
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = hawaiiTodayYmd();
     const expenses = await admin.from("expenses").insert([
       {
         id: TARGET_EXPENSE_ID,
@@ -159,7 +184,8 @@ test.describe.serial("private expense receipt Storage and Replace", () => {
   });
 
   test.afterAll(async () => {
-    await removeFixtureData(admin);
+    await removeFixtureData(admin, database);
+    await database.end({ timeout: 5 });
   });
 
   test("anonymous Viewer and Replace are denied", async ({ browser, baseURL }) => {

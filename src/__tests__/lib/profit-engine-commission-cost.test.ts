@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type FakeRow = Record<string, unknown>;
 type FakeData = Record<string, FakeRow[]>;
 
 let fakeData: FakeData = {};
+const globalFromSpy = vi.fn((table: string) => new FakeQuery(table));
 
 class FakeQuery {
   private filters: Array<(row: FakeRow) => boolean> = [];
@@ -68,13 +70,14 @@ class FakeQuery {
 
 vi.mock("@/lib/supabase", () => ({
   getSupabaseClient: () => ({
-    from: (table: string) => new FakeQuery(table),
+    from: globalFromSpy,
   }),
 }));
 
 describe("profit engine commission cost", () => {
   beforeEach(() => {
     vi.resetModules();
+    globalFromSpy.mockClear();
     fakeData = {
       project_commissions: [],
       commission_payments: [],
@@ -104,6 +107,28 @@ describe("profit engine commission cost", () => {
     expect(result.commissionCost).toBe(30);
     expect(result.actualCost).toBe(350);
     expect(result.profit).toBe(750);
+  });
+
+  it("uses the explicit server client for every single-project cost source", async () => {
+    fakeData = {
+      projects: [{ id: "project-1", budget: 1000 }],
+      project_change_orders: [],
+      subcontract_bills: [],
+      labor_entries: [],
+      expense_lines: [],
+      expenses: [],
+      commissions: [{ id: "commission-1", project_id: "project-1", commission_amount: 30 }],
+      project_commissions: [],
+    };
+    const explicitClient = {
+      from: (table: string) => new FakeQuery(table),
+    } as unknown as SupabaseClient;
+
+    const { getCanonicalProjectProfit } = await import("@/lib/profit-engine");
+    const result = await getCanonicalProjectProfit("project-1", explicitClient);
+
+    expect(result.commissionCost).toBe(30);
+    expect(globalFromSpy).not.toHaveBeenCalled();
   });
 
   it("includes accrued commission amount per project in batch profit", async () => {

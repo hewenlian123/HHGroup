@@ -192,6 +192,44 @@ begin
 end;
 $$;
 
+revoke all on function public.set_profiles_updated_at() from public;
+revoke all on function public.set_profiles_updated_at() from anon;
+revoke all on function public.set_profiles_updated_at() from authenticated;
+
+revoke all on function public.handle_new_auth_user() from public;
+revoke all on function public.handle_new_auth_user() from anon;
+revoke all on function public.handle_new_auth_user() from authenticated;
+
+revoke all on function public.upsert_my_profile() from public;
+revoke all on function public.upsert_my_profile() from anon;
+revoke all on function public.upsert_my_profile() from authenticated;
+grant execute on function public.upsert_my_profile() to authenticated;
+grant execute on function public.upsert_my_profile() to service_role;
+
+revoke all on function public.is_owner() from public;
+revoke all on function public.is_owner() from anon;
+revoke all on function public.is_owner() from authenticated;
+grant execute on function public.is_owner() to authenticated;
+grant execute on function public.is_owner() to service_role;
+
+revoke all on function public.is_owner_or_admin() from public;
+revoke all on function public.is_owner_or_admin() from anon;
+revoke all on function public.is_owner_or_admin() from authenticated;
+grant execute on function public.is_owner_or_admin() to authenticated;
+grant execute on function public.is_owner_or_admin() to service_role;
+
+revoke all on function public.get_my_permissions() from public;
+revoke all on function public.get_my_permissions() from anon;
+revoke all on function public.get_my_permissions() from authenticated;
+grant execute on function public.get_my_permissions() to authenticated;
+grant execute on function public.get_my_permissions() to service_role;
+
+revoke all on function public.has_perm(text) from public;
+revoke all on function public.has_perm(text) from anon;
+revoke all on function public.has_perm(text) from authenticated;
+grant execute on function public.has_perm(text) to authenticated;
+grant execute on function public.has_perm(text) to service_role;
+
 alter table public.profiles enable row level security;
 alter table public.role_permissions enable row level security;
 
@@ -344,24 +382,40 @@ revoke all on table public.attachments from anon;
 revoke insert, update, delete on table public.attachments from anon;
 grant select on table public.attachments to anon;
 grant select, insert, update, delete on table public.attachments to authenticated;
+grant select, insert, update, delete on table public.attachments to service_role;
+
+-- The original subcontract deduction migration created authenticated RLS policies
+-- without the matching table grants. Restore the intended access so expense list
+-- hydration remains usable under authenticated owner access. Preserve read-only
+-- compatibility until strict authentication is cut over, but remove legacy writes.
+revoke insert, update, delete on table public.subcontract_deductions from anon;
+grant select on table public.subcontract_deductions to anon;
+grant select, insert, update, delete on table public.subcontract_deductions to authenticated;
+grant select, insert, update, delete on table public.subcontract_deductions to service_role;
+
+-- These legacy cost-source migrations created RLS policies without service-role
+-- table grants. Production already has the grants; keep fresh/local databases
+-- aligned so server-only canonical financial reads and writes remain reliable.
+grant select, insert, update, delete on table public.subcontract_bills to service_role;
+grant select, insert, update, delete on table public.project_commissions to service_role;
 
 create policy attachments_insert_authenticated
 on public.attachments
 for insert
 to authenticated
-with check (auth.uid() is not null);
+with check (public.is_owner_or_admin());
 
 create policy attachments_update_authenticated
 on public.attachments
 for update
 to authenticated
-using (auth.uid() is not null)
-with check (auth.uid() is not null);
+using (public.is_owner_or_admin())
+with check (public.is_owner_or_admin());
 
 create policy attachments_delete_authenticated
 on public.attachments
 for delete
 to authenticated
-using (auth.uid() is not null);
+using (public.is_owner_or_admin());
 
 notify pgrst, 'reload schema';

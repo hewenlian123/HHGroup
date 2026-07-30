@@ -18,8 +18,10 @@ function envAnon(): string | null {
   return process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? null;
 }
 
-function envServiceRole(): string | null {
-  return process.env.SUPABASE_SERVICE_ROLE_KEY ?? null;
+function envServerSecret(): string | null {
+  return (
+    process.env.SUPABASE_SECRET_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null
+  );
 }
 
 const noStoreFetch: typeof fetch = (input, init) =>
@@ -71,9 +73,9 @@ export function createTransientSupabaseClient(): SupabaseClient | null {
  */
 export function getServerSupabaseAdmin(): SupabaseClient | null {
   const url = envUrl();
-  const service = envServiceRole();
-  if (!url || !service) return null;
-  return createClient(url, service, serverClientOptions());
+  const serverSecret = envServerSecret();
+  if (!url || !serverSecret) return null;
+  return createClient(url, serverSecret, serverClientOptions());
 }
 
 /**
@@ -91,14 +93,20 @@ export function getServerSupabaseInternal(): SupabaseClient | null {
 export function getServerSupabaseInternalNoStore(): SupabaseClient | null {
   const url = envUrl();
   if (!url) return null;
-  const service = envServiceRole();
-  if (service) return createClient(url, service, serverClientOptions(true));
+  const serverSecret = envServerSecret();
+  if (serverSecret) return createClient(url, serverSecret, serverClientOptions(true));
   const anon = envAnon();
   if (!anon) return null;
   return createClient(url, anon, serverClientOptions(true));
 }
 
 /** Matches reads from env — documented so ops/Vercel use one name only (never embed secrets in code). */
+export const SUPABASE_SERVER_SECRET_ENV_NAMES = [
+  "SUPABASE_SECRET_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+] as const;
+
+/** Temporary compatibility alias. Remove after the legacy-key observation period. */
 export const SUPABASE_SERVICE_ROLE_ENV_NAME = "SUPABASE_SERVICE_ROLE_KEY" as const;
 
 /**
@@ -106,7 +114,7 @@ export const SUPABASE_SERVICE_ROLE_ENV_NAME = "SUPABASE_SERVICE_ROLE_KEY" as con
  * Add secrets only in deployment env (e.g. Vercel → Environment Variables).
  */
 export const SUPABASE_MISSING_SERVER_ENV_MESSAGE =
-  "Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the server (e.g. Vercel). Optional: SUPABASE_SERVICE_ROLE_KEY is server-only and should be used only by explicit admin/internal routes.";
+  "Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the server (e.g. Vercel). Optional: SUPABASE_SECRET_KEY is server-only and should be used only by explicit admin/internal routes; SUPABASE_SERVICE_ROLE_KEY is a temporary legacy fallback.";
 
 /** PostgREST/Postgres errors that usually mean anon/session lacks privileges — hint service role on server. */
 export function appendLaborSettlementServiceRoleHint(message: string): string {
@@ -116,7 +124,7 @@ export function appendLaborSettlementServiceRoleHint(message: string): string {
       m
     )
   ) {
-    return `${message.trim()} Add SUPABASE_SERVICE_ROLE_KEY (server-only) in Vercel if writes must bypass RLS.`;
+    return `${message.trim()} Add SUPABASE_SECRET_KEY (server-only) in Vercel if writes must bypass RLS.`;
   }
   return message;
 }

@@ -37,7 +37,72 @@ describe("authenticated owner-access migration contract", () => {
       /revoke insert\s*,\s*update\s*,\s*delete on table public\.attachments from anon/i
     );
     expect(sql).toMatch(/grant select on table public\.attachments to anon/i);
+    expect(sql).toMatch(
+      /grant select\s*,\s*insert\s*,\s*update\s*,\s*delete on table public\.attachments to service_role/i
+    );
+    expect(sql).toMatch(
+      /grant select\s*,\s*insert\s*,\s*update\s*,\s*delete on table public\.subcontract_deductions to authenticated/i
+    );
+    expect(sql).toMatch(
+      /grant select\s*,\s*insert\s*,\s*update\s*,\s*delete on table public\.subcontract_deductions to service_role/i
+    );
+    expect(sql).toMatch(
+      /grant select\s*,\s*insert\s*,\s*update\s*,\s*delete on table public\.subcontract_bills to service_role/i
+    );
+    expect(sql).toMatch(
+      /grant select\s*,\s*insert\s*,\s*update\s*,\s*delete on table public\.project_commissions to service_role/i
+    );
+    expect(sql).toMatch(/grant select on table public\.subcontract_deductions to anon/i);
+    expect(sql).toMatch(
+      /revoke insert\s*,\s*update\s*,\s*delete on table public\.subcontract_deductions from anon/i
+    );
+    expect(sql).not.toMatch(/revoke all on table public\.subcontract_deductions from anon/i);
     expect(sql).not.toMatch(/delete\s+from\s+(storage\.objects|public\.expenses)/i);
+  });
+
+  it("limits attachment metadata mutations to owner or admin sessions", () => {
+    const sql = authMigrationSql();
+
+    expect(sql).toMatch(
+      /create policy attachments_insert_authenticated[\s\S]*?with check\s*\(\s*public\.is_owner_or_admin\(\)\s*\)/i
+    );
+    expect(sql).toMatch(
+      /create policy attachments_update_authenticated[\s\S]*?using\s*\(\s*public\.is_owner_or_admin\(\)\s*\)[\s\S]*?with check\s*\(\s*public\.is_owner_or_admin\(\)\s*\)/i
+    );
+    expect(sql).toMatch(
+      /create policy attachments_delete_authenticated[\s\S]*?using\s*\(\s*public\.is_owner_or_admin\(\)\s*\)/i
+    );
+    expect(sql).not.toMatch(
+      /create policy attachments_(?:insert|update|delete)_authenticated[\s\S]*?auth\.uid\(\)\s+is\s+not\s+null/i
+    );
+  });
+
+  it("revokes public and anonymous execution of security-definer functions", () => {
+    const sql = authMigrationSql();
+    const restrictedFunctions = [
+      "handle_new_auth_user()",
+      "upsert_my_profile()",
+      "is_owner()",
+      "is_owner_or_admin()",
+      "get_my_permissions()",
+      "has_perm(text)",
+    ];
+
+    for (const signature of restrictedFunctions) {
+      const escaped = signature.replace(/[()]/g, "\\$&");
+      expect(sql).toMatch(
+        new RegExp(`revoke all on function public\\.${escaped} from public`, "i")
+      );
+      expect(sql).toMatch(new RegExp(`revoke all on function public\\.${escaped} from anon`, "i"));
+    }
+
+    expect(sql).toMatch(
+      /grant execute on function public\.get_my_permissions\(\) to authenticated/i
+    );
+    expect(sql).toMatch(/grant execute on function public\.has_perm\(text\) to authenticated/i);
+    expect(sql).not.toMatch(
+      /grant execute on function public\.handle_new_auth_user\(\) to (?:anon|authenticated)/i
+    );
   });
 
   it("disables the legacy global PIN without rewriting business or receipt data", () => {

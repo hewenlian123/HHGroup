@@ -15,9 +15,16 @@ const HAWAII_LATE_EVENING_INSTANT = new Date("2026-07-30T08:30:00.000Z");
 const HAWAII_MONTH_END_INSTANT = new Date("2026-08-01T09:30:00.000Z");
 const HAWAII_YEAR_END_INSTANT = new Date("2027-01-01T09:30:00.000Z");
 
+function parseCurrencyText(value: string): number {
+  const parsed = Number(value.replace(/[^0-9.-]/g, ""));
+  if (!Number.isFinite(parsed)) throw new Error("Unable to parse the This Month summary.");
+  return parsed;
+}
+
 function adminClient(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const key =
+    process.env.SUPABASE_SECRET_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) return null;
   return createClient(url, key);
 }
@@ -68,6 +75,8 @@ test.describe("Quick Expense Hawaiʻi date boundary", () => {
       const vendorMark = `E2E-HST-DATE-${Date.now()}`;
       try {
         const dialog = await openQuickExpenseAtBoundary(page);
+        const monthSummary = page.getByText("This Month", { exact: true }).locator("..");
+        const monthTotalBefore = parseCurrencyText(await monthSummary.innerText());
         await expect(dialog.getByRole("button", { name: "Choose date" })).toContainText(
           "07/29/2026"
         );
@@ -99,8 +108,11 @@ test.describe("Quick Expense Hawaiʻi date boundary", () => {
         await expect(expenseListRowById(page, saved.expenseId)).toBeVisible({
           timeout: 30_000,
         });
-        const monthSummary = page.getByText("This Month", { exact: true }).locator("..");
-        await expect(monthSummary).toContainText("$37.29");
+        await expect
+          .poll(async () => parseCurrencyText(await monthSummary.innerText()), {
+            timeout: 15_000,
+          })
+          .toBeCloseTo(monthTotalBefore + 37.29, 2);
       } finally {
         await cleanupExpenseByVendor(admin, vendorMark);
       }

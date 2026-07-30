@@ -21,7 +21,7 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
   # Placeholders so `next build` can run without repo secrets when vars/secrets unset.
   NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.ci1wbGFjZWhvbGRlcg' }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_ci_placeholder_not_a_credential' }}
 
 jobs:
   ci:

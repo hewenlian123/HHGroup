@@ -1,6 +1,7 @@
 import type { SystemLogEntry } from "@/lib/system-log-store";
 
 const SECRET_ENV_KEYS = [
+  "SUPABASE_SECRET_KEY",
   "SUPABASE_SERVICE_ROLE_KEY",
   "SUPABASE_DATABASE_URL",
   "DATABASE_URL",
@@ -29,6 +30,7 @@ export function redactSensitiveText(value: unknown): string {
       /(service[_ -]?role|internal[_ -]?admin[_ -]?secret|db[_ -]?url)\s*[:=]\s*[^\s"'`<>)]+/gi,
       "$1=[redacted]"
     )
+    .replace(/\bsb_secret_[A-Za-z0-9._-]{8,}\b/g, "[redacted-token]")
     .replace(
       /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\b/g,
       "[redacted-token]"

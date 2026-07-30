@@ -33,7 +33,7 @@ function expectNoHistoricalDataMutation(sql: string): void {
 }
 
 describe("manual production rollback SQL contracts", () => {
-  it("Migration A rollback is guarded and restores only the captured attachment access", () => {
+  it("Migration A rollback is guarded and restores the captured compatibility access", () => {
     const sql = rollbackSql(MIGRATION_A_ROLLBACK);
     expectManualTransactionalGuard(sql, "ROLLBACK_AUTHENTICATED_OWNER_ACCESS_20260728095543");
     expectNoHistoricalDataMutation(sql);
@@ -42,6 +42,9 @@ describe("manual production rollback SQL contracts", () => {
       expect(sql).toContain(`policy ${policy}`);
     }
     expect(sql).toMatch(/to\s+anon\s*,\s*authenticated/i);
+    expect(sql).toMatch(
+      /grant select\s*,\s*insert\s*,\s*update\s*,\s*delete on table public\.subcontract_deductions to anon/i
+    );
     expect(sql).toMatch(/legacy PIN cannot be reconstructed automatically/i);
     expect(sql).not.toMatch(
       /\bdrop\s+(table|function).*?(app_user_security_settings|security_audit_events)/i

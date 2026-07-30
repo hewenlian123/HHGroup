@@ -416,10 +416,12 @@ export async function getCanonicalProjectProfit(
   // Expense cost via schema-aware helper (caches detection)
   const expenseCost = await getExpenseCostForProject(projectId, explicitClient);
 
-  const commissionCost = await getCommissionCostByProject(projectId).catch((err) => {
-    devLogFail("commissions", err);
-    return 0;
-  });
+  const commissionCost = await getCommissionCostByProject(projectId, explicitClient).catch(
+    (err) => {
+      devLogFail("commissions", err);
+      return 0;
+    }
+  );
 
   // Subcontract cost
   let subcontractCost = 0;

@@ -2,12 +2,13 @@
 
 ## 1. Environment variables (hosting, e.g. Vercel)
 
-| Variable                                  | Required              | Purpose                                                                                       |
-| ----------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_SUPABASE_URL`                | **Yes**               | Supabase project URL                                                                          |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY`           | **Yes**               | Client + cookie-based server reads                                                            |
-| `SUPABASE_SERVICE_ROLE_KEY`               | **Yes** for labor pay | Worker payment, delete payment, balance APIs that use `getServerSupabaseAdmin()` (RLS bypass) |
-| `SUPABASE_DATABASE_URL` or `DATABASE_URL` | Recommended           | Faster worker balances aggregation (SQL); schema repair scripts                               |
+| Variable                                  | Required                             | Purpose                                                                                                                   |
+| ----------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`                | **Yes**                              | Supabase project URL                                                                                                      |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY`           | **Yes**                              | Modern publishable key under the temporary compatibility name; client + cookie-based server reads                         |
+| `SUPABASE_SECRET_KEY`                     | **Yes** for privileged server routes | Preferred modern server-only key for Receipt, worker payment, delete, balance, and other `getServerSupabaseAdmin()` paths |
+| `SUPABASE_SERVICE_ROLE_KEY`               | Temporary fallback                   | Legacy rollback compatibility only; remove after the modern-key observation period                                        |
+| `SUPABASE_DATABASE_URL` or `DATABASE_URL` | Recommended                          | Faster worker balances aggregation (SQL); schema repair scripts                                                           |
 
 Never commit secrets. Copy from Supabase Dashboard → Project Settings.
 
@@ -44,4 +45,6 @@ Set `E2E_WORKER_NAME` to a worker that has unpaid labor if the default name is a
 3. **Delete payment** (payments history) → confirm labor returns to **unpaid** on balance without stale “paid” from `status` alone.
 4. **API smoke:** `GET /api/labor/worker-balances` returns JSON (no 500); requires service role + Supabase.
 
-If pay/delete returns 500 “Supabase service role not configured”, add `SUPABASE_SERVICE_ROLE_KEY` and redeploy.
+If pay/delete returns a Supabase server-access configuration error, add the server-only
+Sensitive `SUPABASE_SECRET_KEY` and redeploy the exact reviewed SHA. Use
+`SUPABASE_SERVICE_ROLE_KEY` only as the temporary legacy rollback fallback.

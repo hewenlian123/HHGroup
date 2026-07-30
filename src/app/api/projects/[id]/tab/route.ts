@@ -62,8 +62,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
   try {
     if (key === "financial") {
+      const supabase = getServerSupabaseInternalNoStore();
+      if (!supabase) return jsonError("Supabase is not configured.", 503);
       const [canonical, billingSummary] = await Promise.all([
-        getCanonicalProjectProfit(id),
+        getCanonicalProjectProfit(id, supabase),
         getProjectBillingSummary(id),
       ]);
       return NextResponse.json({ ok: true as const, key, canonical, billingSummary });
@@ -93,8 +95,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (key === "budget") {
+      const supabase = getServerSupabaseInternalNoStore();
+      if (!supabase) return jsonError("Supabase is not configured.", 503);
       const [canonical, billingSummary, sourceFromEstimate] = await Promise.all([
-        getCanonicalProjectProfit(id),
+        getCanonicalProjectProfit(id, supabase),
         getProjectBillingSummary(id),
         getSourceForProject(id),
       ]);
