@@ -221,6 +221,10 @@ export async function getRequestSessionId(request: NextRequest): Promise<string 
   const response = NextResponse.next();
   const supabase = createRouteSupabaseClient(request, response);
   if (!supabase) return null;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+  if (!user) return null;
   const { data: verifiedClaims } = await supabase.auth.getClaims().catch(() => ({ data: null }));
   const verifiedSessionId = verifiedClaims?.claims.session_id;
   if (typeof verifiedSessionId === "string" && verifiedSessionId) {
