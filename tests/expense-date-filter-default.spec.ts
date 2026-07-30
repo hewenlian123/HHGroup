@@ -7,6 +7,7 @@ import {
   expensesVendorSearch,
   waitForExpensesQuerySuccess,
 } from "./e2e-expenses-helpers";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 
 type SeededDateFilterRows = {
   prefix: string;
@@ -183,6 +184,7 @@ test.describe("Expense list default date scope", () => {
       seeded = await seedDateFilterRows(admin);
 
       await page.setViewportSize({ width: 1440, height: 900 });
+      await loginAsE2EOwner(page, E2E_FINANCIAL_EXPENSES_ARCHIVE_URL);
       await page.goto(E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, {
         waitUntil: "domcontentloaded",
         timeout: 90_000,

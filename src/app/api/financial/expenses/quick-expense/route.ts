@@ -14,6 +14,7 @@ import {
   replaceSubcontractDeductionForExpense,
   type SubcontractDeductionInput,
 } from "@/lib/subcontract-deductions-db";
+import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
 
   try {
     let expense = await createQuickExpenseWithClient(supabase, {
-      date: optionalString(body.date) ?? new Date().toISOString().slice(0, 10),
+      date: optionalString(body.date) ?? hawaiiTodayYmd(),
       vendorName,
       totalAmount,
       receiptUrl: optionalString(body.receiptUrl),

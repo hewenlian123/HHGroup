@@ -18,6 +18,7 @@ import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { formatCurrency } from "@/lib/formatters";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
+import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 
 type ExpenseRow = {
   id: string;
@@ -529,7 +530,7 @@ export function ExpenseDetailClient({ id }: { id: string }) {
                 </p>
                 <ExpenseDatePicker
                   id="expense-detail-date"
-                  value={expense.expense_date ?? new Date().toISOString().slice(0, 10)}
+                  value={expense.expense_date ?? hawaiiTodayYmd()}
                   onChange={(nextDate) =>
                     setExpense((prev) => (prev ? { ...prev, expense_date: nextDate } : prev))
                   }

@@ -67,6 +67,7 @@ import {
   type ExpenseCostAllocation,
 } from "@/lib/expense-workflow-status";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 
 type QuickExpenseAttachmentSlot = ExpenseReceiptUploadSlot;
 
@@ -248,7 +249,7 @@ export function QuickExpenseModal({
   );
   const [vendorName, setVendorName] = React.useState("");
   const [amount, setAmount] = React.useState("");
-  const [date, setDate] = React.useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = React.useState(() => hawaiiTodayYmd());
   const [category, setCategory] = React.useState("Other");
   const [notes, setNotes] = React.useState("");
   const [projectId, setProjectId] = React.useState<string>("");
@@ -468,7 +469,7 @@ export function QuickExpenseModal({
         for (const s of prev) s.revoke?.();
         return [];
       });
-      setDate(new Date().toISOString().slice(0, 10));
+      setDate(hawaiiTodayYmd());
       setVendorName("Unknown");
       setAmount("");
       setCategory("Other");
@@ -501,7 +502,7 @@ export function QuickExpenseModal({
     });
     setVendorName("");
     setAmount("");
-    setDate(new Date().toISOString().slice(0, 10));
+    setDate(hawaiiTodayYmd());
     setCategory("Other");
     setNotes("");
     setProjectId("");
@@ -1059,9 +1060,7 @@ export function QuickExpenseModal({
         return;
       }
     }
-    const sameDay = expenses.filter(
-      (e) => (e.date ?? "") === (date || new Date().toISOString().slice(0, 10))
-    );
+    const sameDay = expenses.filter((e) => (e.date ?? "") === (date || hawaiiTodayYmd()));
     const dup = sameDay.find((e) => {
       const sameVendor =
         normalizeVendor(e.vendorName ?? "") === normalizeVendor(effectiveVendorName);
@@ -1135,7 +1134,7 @@ export function QuickExpenseModal({
         }));
 
       const savedExpense = await saveQuickExpenseViaApi({
-        date: date || new Date().toISOString().slice(0, 10),
+        date: date || hawaiiTodayYmd(),
         vendorName: effectiveVendorName || "Unknown",
         totalAmount,
         receiptUrl: undefined,
@@ -1220,7 +1219,7 @@ export function QuickExpenseModal({
           parsed_result: {
             vendor: effectiveVendorName || "Unknown",
             amount: totalAmount,
-            date: date || new Date().toISOString().slice(0, 10),
+            date: date || hawaiiTodayYmd(),
             items: dedupeItems(recognizedItems),
             category,
             projectId: projectId || null,
@@ -1248,7 +1247,7 @@ export function QuickExpenseModal({
           setVendorName("");
           manualVendorNameRef.current = "";
           setAmount("");
-          setDate(new Date().toISOString().slice(0, 10));
+          setDate(hawaiiTodayYmd());
           setCategory("Other");
           setCostAllocation(EXPENSE_COST_ALLOCATION_OVERHEAD);
           setDeductFromSubcontractor(false);

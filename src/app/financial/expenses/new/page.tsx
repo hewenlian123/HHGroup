@@ -44,6 +44,7 @@ import {
 } from "@/lib/expense-workflow-status";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
+import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 
 type ProjectOption = { id: string; name: string | null };
 
@@ -116,7 +117,7 @@ export default function NewExpensePage() {
     SubcontractDeductionOption[]
   >([]);
 
-  const [date, setDate] = React.useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = React.useState(() => hawaiiTodayYmd());
   const [vendorName, setVendorName] = React.useState("");
   const [amountInput, setAmountInput] = React.useState("");
   const [accountId, setAccountId] = React.useState("");

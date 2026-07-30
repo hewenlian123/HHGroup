@@ -129,6 +129,7 @@ import {
 import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { OS, TYPO } from "@/lib/typography";
+import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
@@ -831,8 +832,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   );
 
   const summary = React.useMemo(() => {
-    const now = new Date();
-    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-`;
+    const ym = `${hawaiiTodayYmd().slice(0, 7)}-`;
     const basis = archiveMode ? archivedExpenses : expensesForListing;
     const monthTotal = basis
       .filter((e) => (e.date ?? "").startsWith(ym))

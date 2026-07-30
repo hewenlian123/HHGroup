@@ -1,21 +1,18 @@
 "use client";
 
 import * as React from "react";
-import {
-  endOfDay,
-  endOfMonth,
-  format,
-  startOfDay,
-  startOfMonth,
-  subDays,
-  subMonths,
-} from "date-fns";
+import { format, startOfDay } from "date-fns";
 import { DayPicker, type DateRange, getDefaultClassNames } from "react-day-picker";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatDateRange } from "@/lib/formatters";
+import {
+  addCalendarDaysYmd,
+  calendarMonthStartYmd,
+  hawaiiTodayYmd,
+} from "@/lib/hawaii-calendar-date";
 import { cn } from "@/lib/utils";
 
 import "react-day-picker/style.css";
@@ -55,43 +52,27 @@ export function computePresetRange(preset: Exclude<ExpenseDateFilterPreset, "all
   start: string;
   end: string;
 } {
-  const now = new Date();
-  let start: Date;
-  let end: Date;
+  const today = hawaiiTodayYmd();
   switch (preset) {
     case "today":
-      start = startOfDay(now);
-      end = endOfDay(now);
-      break;
+      return { start: today, end: today };
     case "yesterday": {
-      const y = subDays(now, 1);
-      start = startOfDay(y);
-      end = endOfDay(y);
-      break;
+      const yesterday = addCalendarDaysYmd(today, -1);
+      return { start: yesterday, end: yesterday };
     }
     case "last7":
-      start = startOfDay(subDays(now, 6));
-      end = endOfDay(now);
-      break;
+      return { start: addCalendarDaysYmd(today, -6), end: today };
     case "last30":
-      start = startOfDay(subDays(now, 29));
-      end = endOfDay(now);
-      break;
+      return { start: addCalendarDaysYmd(today, -29), end: today };
     case "thisMonth":
-      start = startOfMonth(now);
-      end = endOfDay(now);
-      break;
+      return { start: calendarMonthStartYmd(today), end: today };
     case "lastMonth": {
-      const ref = subMonths(now, 1);
-      start = startOfMonth(ref);
-      end = endOfMonth(ref);
-      break;
+      const end = addCalendarDaysYmd(calendarMonthStartYmd(today), -1);
+      return { start: calendarMonthStartYmd(end), end };
     }
     default:
-      start = startOfDay(now);
-      end = endOfDay(now);
+      return { start: today, end: today };
   }
-  return { start: toYmd(start), end: toYmd(end) };
 }
 
 function presetLabel(p: ExpenseDateFilterPreset): string | null {
@@ -148,7 +129,7 @@ export function ExpenseDateRangeFilter({
       : undefined
   );
   const [month, setMonth] = React.useState<Date>(() =>
-    value.kind === "range" ? ymdToLocalDate(value.start) : new Date()
+    value.kind === "range" ? ymdToLocalDate(value.start) : ymdToLocalDate(hawaiiTodayYmd())
   );
   const prevPanelRef = React.useRef<Panel>("menu");
 
@@ -270,6 +251,7 @@ export function ExpenseDateRangeFilter({
             <div className="expense-date-range-picker border-b border-[var(--neo-border)] p-2 sm:border-b-0 sm:border-r">
               <DayPicker
                 mode="range"
+                today={ymdToLocalDate(hawaiiTodayYmd())}
                 month={month}
                 onMonthChange={setMonth}
                 numberOfMonths={2}
