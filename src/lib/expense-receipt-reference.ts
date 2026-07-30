@@ -48,6 +48,22 @@ function parseStorageUrl(value: string): NormalizedReceiptLocation | null {
     return null;
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+  if (url.username || url.password) return null;
+
+  const configuredHost = (() => {
+    const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+    if (!configuredUrl) return "";
+    try {
+      return new URL(configuredUrl).host;
+    } catch {
+      return "";
+    }
+  })();
+  const isLocalHost = url.hostname === "127.0.0.1" || url.hostname === "localhost";
+  const isSupabaseHost = url.hostname === "supabase.co" || url.hostname.endsWith(".supabase.co");
+  if (!isLocalHost && !isSupabaseHost && (!configuredHost || url.host !== configuredHost)) {
+    return null;
+  }
 
   const objectIndex = url.pathname.indexOf(STORAGE_OBJECT_SEGMENT);
   if (objectIndex < 0) return null;
@@ -63,7 +79,8 @@ function parseStorageUrl(value: string): NormalizedReceiptLocation | null {
 
 /**
  * Converts historical receipt references into a private Storage bucket/path pair.
- * Query strings, fragments, signed tokens, unsupported buckets, and traversal are rejected.
+ * Query strings, fragments, and signed tokens are discarded. Unsupported hosts, buckets,
+ * case-mismatched bucket prefixes, malformed paths, and traversal are rejected.
  */
 export function normalizeReceiptLocation(raw: string): NormalizedReceiptLocation | null {
   const value = (raw ?? "").trim();
@@ -79,6 +96,9 @@ export function normalizeReceiptLocation(raw: string): NormalizedReceiptLocation
   if (explicitBucket) {
     const path = decodeSafePath(rest.join("/"));
     return path ? { bucket: explicitBucket, path } : null;
+  }
+  if (EXPENSE_RECEIPT_BUCKETS.some((bucket) => bucket.toLowerCase() === first?.toLowerCase())) {
+    return null;
   }
 
   // A bucket-like first segment is not treated as an expense-attachments path.

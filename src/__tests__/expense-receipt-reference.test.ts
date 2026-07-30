@@ -17,12 +17,24 @@ describe("expense receipt reference normalization", () => {
       { bucket: "receipts", path: "receipts/legacy.png" },
     ],
     [
+      "https://project-ref.supabase.co/storage/v1/object/public/receipts/receipts/current.png",
+      { bucket: "receipts", path: "receipts/current.png" },
+    ],
+    [
       "http://127.0.0.1:54321/storage/v1/object/sign/expense-attachments/folder/receipt%20one.jpg?token=secret",
       { bucket: "expense-attachments", path: "folder/receipt one.jpg" },
     ],
     [
       "http://127.0.0.1:54321/storage/v1/object/authenticated/expense-attachments/folder/a.pdf#fragment",
       { bucket: "expense-attachments", path: "folder/a.pdf" },
+    ],
+    [
+      "/expense-attachments/quick-expense/encoded%20receipt.jpg",
+      { bucket: "expense-attachments", path: "quick-expense/encoded receipt.jpg" },
+    ],
+    [
+      "receipts/receipts/folder/receipt.jpg",
+      { bucket: "receipts", path: "receipts/folder/receipt.jpg" },
     ],
   ])("normalizes %s without retaining URL tokens", (raw, expected) => {
     expect(normalizeReceiptLocation(raw)).toEqual(expected);
@@ -36,6 +48,9 @@ describe("expense receipt reference normalization", () => {
     "folder/../../receipt.jpg",
     "folder/%2e%2e/receipt.jpg",
     "folder\\receipt.jpg",
+    "Expense-Attachments/quick-expense/receipt.jpg",
+    "Receipts/receipts/legacy.jpg",
+    "https://evil.test/storage/v1/object/sign/expense-attachments/private/receipt.jpg?token=secret",
     "http://127.0.0.1:54321/storage/v1/object/public/other-bucket/receipt.jpg",
     "http://127.0.0.1:54321/storage/v1/object/public/receipts/%E0%A4%A",
   ])("rejects unsupported or unsafe reference %s", (raw) => {

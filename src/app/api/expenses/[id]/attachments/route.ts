@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { normalizeReceiptLocation } from "@/lib/expense-receipt-reference";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
@@ -98,18 +99,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const signed = await Promise.all(
       ((data ?? []) as AttachmentRow[]).map(async (row) => {
+        const location = normalizeReceiptLocation(row.file_path);
+        if (!location) return { row, signedUrl: "", signFailed: false };
         const { data: urlData, error: signError } = await supabase.storage
-          .from(ATTACHMENT_BUCKET)
-          .createSignedUrl(row.file_path, 60);
-        return { row, signedUrl: urlData?.signedUrl ?? "", signError };
+          .from(location.bucket)
+          .createSignedUrl(location.path, 60);
+        return { row, signedUrl: urlData?.signedUrl ?? "", signFailed: Boolean(signError) };
       })
     );
     if (!signed.some((item) => item.signedUrl)) {
-      console.error(
-        "[expenses/:id/attachments] signed url failed",
-        signed.find((item) => item.signError)?.signError
-      );
-      return apiError(500, "Unable to open attachment.");
+      console.warn("[expenses/:id/attachments] receipt unavailable", {
+        attachmentCount: signed.length,
+        signingFailureCount: signed.filter((item) => item.signFailed).length,
+      });
+      return apiError(404, "Original receipt file unavailable.");
     }
 
     return NextResponse.json(

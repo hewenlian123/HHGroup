@@ -182,6 +182,33 @@ test.describe.serial("private expense receipt Storage and Replace", () => {
     await context.close();
   });
 
+  test("historical path-only attachment opens from Expense detail through the canonical bucket", async ({
+    page,
+  }) => {
+    await loginAsE2EOwner(page, `/financial/expenses/${TARGET_EXPENSE_ID}`);
+    await expect(page.getByText("target-original.png", { exact: true })).toBeVisible();
+
+    const previewResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().endsWith(`/api/expenses/${TARGET_EXPENSE_ID}/attachments`)
+    );
+    await page.getByRole("button", { name: "Open", exact: true }).click();
+
+    const response = await previewResponse;
+    expect(response.status()).toBe(200);
+    const responseText = await response.text();
+    expect(responseText).not.toMatch(/file_path|rawReference|quick-expense|token=secret/i);
+
+    const preview = page.locator("[data-attachment-preview-modal]");
+    await expect(preview).toBeVisible();
+    const image = preview.locator("img");
+    await expect(image).toBeVisible();
+    await expect
+      .poll(() => image.evaluate((element) => (element as HTMLImageElement).naturalWidth))
+      .toBeGreaterThan(0);
+  });
+
   test("owner Viewer signs privately and UI Replace changes only the selected expense", async ({
     page,
   }) => {
