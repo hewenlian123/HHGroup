@@ -95,4 +95,50 @@ describe("request session binding", () => {
     await expect(getRequestSessionId(request, "different-user-id")).resolves.toBeNull();
     expect(getClaimsMock).toHaveBeenCalledWith(accessToken);
   });
+
+  it("decodes the session id only after Supabase verifies a bearer for the expected user", async () => {
+    const payload = Buffer.from(
+      JSON.stringify({
+        session_id: "verified-bearer-session-id",
+        sub: "owner-user-id",
+      })
+    ).toString("base64url");
+    const accessToken = `header.${payload}.signature`;
+    getClaimsMock.mockResolvedValue({ data: null, error: null });
+    getUserMock.mockImplementation(async (jwt?: string) => ({
+      data: {
+        user: jwt === accessToken ? { id: "owner-user-id" } : null,
+      },
+      error: null,
+    }));
+    const request = new NextRequest("http://localhost:3104/api/settings/security/pin", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    await expect(getRequestSessionId(request, "owner-user-id")).resolves.toBe(
+      "verified-bearer-session-id"
+    );
+    await expect(getRequestSessionId(request, "different-user-id")).resolves.toBeNull();
+    expect(getUserMock).toHaveBeenCalledWith(accessToken);
+  });
+
+  it("rejects a decodable bearer when Supabase cannot verify its user", async () => {
+    const payload = Buffer.from(
+      JSON.stringify({
+        session_id: "unverified-session-id",
+        sub: "owner-user-id",
+      })
+    ).toString("base64url");
+    const accessToken = `header.${payload}.signature`;
+    getClaimsMock.mockResolvedValue({ data: null, error: null });
+    getUserMock.mockResolvedValue({
+      data: { user: null },
+      error: new Error("invalid bearer"),
+    });
+    const request = new NextRequest("http://localhost:3104/api/settings/security/pin", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    await expect(getRequestSessionId(request, "owner-user-id")).resolves.toBeNull();
+  });
 });

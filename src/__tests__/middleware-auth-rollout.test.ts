@@ -1,5 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+
+const { createServerClientMock, getSessionMock, getUserMock, rpcMock } = vi.hoisted(() => ({
+  createServerClientMock: vi.fn(),
+  getSessionMock: vi.fn(),
+  getUserMock: vi.fn(),
+  rpcMock: vi.fn(),
+}));
+
+vi.mock("@supabase/ssr", () => ({
+  createServerClient: createServerClientMock,
+}));
 
 import { middleware } from "@/middleware";
 
@@ -22,6 +33,16 @@ describe("middleware Auth rollout behavior", () => {
     delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     delete process.env.HH_ALLOW_LOCAL_NO_LOGIN;
     delete process.env.HH_REQUIRE_LOGIN;
+    getUserMock.mockReset().mockResolvedValue({ data: { user: null } });
+    getSessionMock.mockReset().mockResolvedValue({ data: { session: null } });
+    rpcMock.mockReset().mockResolvedValue({ data: null, error: null });
+    createServerClientMock.mockReset().mockReturnValue({
+      auth: {
+        getSession: getSessionMock,
+        getUser: getUserMock,
+      },
+      rpc: rpcMock,
+    });
   });
 
   afterEach(() => {
@@ -95,6 +116,35 @@ describe("middleware Auth rollout behavior", () => {
 
     expect(response.status).toBe(307);
     expect(response.headers.get("location")).toContain("/login?redirect=");
+  });
+
+  it("lets a Supabase-verified owner bearer reach a sensitive API without Auth cookies", async () => {
+    process.env.HH_REQUIRE_LOGIN = "false";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.test";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = "publishable-test-key";
+    getUserMock.mockImplementation(async (accessToken?: string) => ({
+      data: {
+        user:
+          accessToken === "verified-owner-access-token"
+            ? {
+                app_metadata: { role: "owner" },
+                id: "owner-id",
+                user_metadata: {},
+              }
+            : null,
+      },
+    }));
+
+    const response = await middleware(
+      request("/api/settings/security/pin", {
+        method: "POST",
+        headers: { Authorization: "Bearer verified-owner-access-token" },
+      })
+    );
+
+    expect(getUserMock).toHaveBeenCalledWith("verified-owner-access-token");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
   it.each([`/api/financial/expenses/${EXPENSE_ID}/ocr-writeback`, "/api/ocr-receipt"])(

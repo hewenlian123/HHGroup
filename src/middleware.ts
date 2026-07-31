@@ -222,18 +222,28 @@ async function hasSupabaseSessionUser(
     },
   });
 
+  const authorization =
+    request.headers.get("authorization") ?? request.headers.get("Authorization");
+  const bearer = authorization?.startsWith("Bearer ")
+    ? authorization.slice(7).trim() || null
+    : null;
   const {
     data: { user },
-  } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+  } = await supabase.auth.getUser(bearer ?? undefined).catch(() => ({ data: { user: null } }));
   const {
     data: { session },
-  } = user
-    ? await supabase.auth.getSession().catch(() => ({ data: { session: null } }))
-    : { data: { session: null } };
+  } =
+    user && !bearer
+      ? await supabase.auth.getSession().catch(() => ({ data: { session: null } }))
+      : { data: { session: null } };
   return {
     authenticated: Boolean(user),
     authorized: authorizedAppRole(user) !== null,
-    sessionId: session?.access_token ? sessionIdFromAccessToken(session.access_token) : null,
+    sessionId: bearer
+      ? sessionIdFromAccessToken(bearer)
+      : session?.access_token
+        ? sessionIdFromAccessToken(session.access_token)
+        : null,
     supabase,
     userId: user?.id ?? null,
   };

@@ -63,27 +63,50 @@ test.describe.serial("authenticated owner security lifecycle", () => {
     );
     await page.getByRole("button", { name: "Enable PIN", exact: true }).click();
     const enableResponse = await enableResponsePromise;
+    const authorization = enableResponse.request().headers().authorization;
+    expect(authorization).toMatch(/^Bearer\s+\S+$/);
+    const bearerPayload = JSON.parse(
+      Buffer.from(authorization.slice("Bearer ".length).split(".")[1], "base64url").toString("utf8")
+    ) as { session_id?: unknown };
+    expect(typeof bearerPayload.session_id).toBe("string");
     expect(enableResponse.status()).toBe(200);
-    expect(enableResponse.request().headers().authorization).toMatch(/^Bearer\s+\S+$/);
     await expect(page.getByText("Quick Unlock enabled.", { exact: true })).toBeVisible();
 
+    const accessToken = authorization.slice("Bearer ".length);
+    await page.context().clearCookies();
+    const bearerOnlyChange = await page.evaluate(
+      async ({ password, token }) => {
+        const response = await fetch("/api/settings/security/pin", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            confirmPin: "582947",
+            currentPassword: password,
+            pin: "582947",
+          }),
+        });
+        return {
+          body: (await response.json().catch(() => ({}))) as Record<string, unknown>,
+          status: response.status,
+        };
+      },
+      { password: credentials.password, token: accessToken }
+    );
+    expect(bearerOnlyChange.status).toBe(200);
+    expect(bearerOnlyChange.body).toMatchObject({
+      enabled: true,
+      message: "Quick Unlock PIN changed.",
+      ok: true,
+    });
+
+    await loginAsE2EOwner(page, "/settings/security");
+    await expect(page.getByRole("heading", { name: "Security" })).toBeVisible();
     const state = await page.request.get("/api/settings/security/pin");
     expect(state.status()).toBe(200);
     expect(await state.json()).toMatchObject({ enabled: true, ok: true });
-
-    await page.getByLabel("Account password").fill(credentials.password);
-    await page.getByLabel("New 6-digit PIN").fill("582947");
-    await page.getByLabel("Confirm 6-digit PIN").fill("582947");
-    const changeResponsePromise = page.waitForResponse(
-      (response) =>
-        response.request().method() === "POST" &&
-        response.url().endsWith("/api/settings/security/pin")
-    );
-    await page.getByRole("button", { name: "Change PIN", exact: true }).click();
-    const changeResponse = await changeResponsePromise;
-    expect(changeResponse.status()).toBe(200);
-    expect(changeResponse.request().headers().authorization).toMatch(/^Bearer\s+\S+$/);
-    await expect(page.getByText("Quick Unlock PIN changed.", { exact: true })).toBeVisible();
 
     const lock = await sameOriginJson(page, "/api/auth/lock", "POST");
     expect(lock.status).toBe(200);

@@ -243,6 +243,13 @@ export async function getRequestSessionId(
     ) {
       return claims.session_id;
     }
+    const {
+      data: { user: bearerUser },
+    } = await supabase.auth.getUser(bearer).catch(() => ({ data: { user: null } }));
+    if (!bearerUser || (expectedUserId && bearerUser.id !== expectedUserId)) {
+      return null;
+    }
+    return sessionIdFromAccessToken(bearer);
   }
   const {
     data: { user },
