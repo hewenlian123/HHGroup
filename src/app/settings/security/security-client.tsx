@@ -22,6 +22,7 @@ import {
   neoFormNoticeClassName,
 } from "@/components/base";
 import { Button } from "@/components/ui/button";
+import { createBrowserClient } from "@/lib/supabase";
 
 type AccountResponse = {
   account?: {
@@ -63,6 +64,13 @@ function roleLabel(role: "owner" | "admin" | undefined): string {
 }
 
 export function SecurityClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabase = React.useMemo(
+    () =>
+      supabaseUrl && supabaseAnonKey ? createBrowserClient(supabaseUrl, supabaseAnonKey) : null,
+    [supabaseAnonKey, supabaseUrl]
+  );
   const [loading, setLoading] = React.useState(true);
   const [account, setAccount] = React.useState<AccountResponse["account"] | null>(null);
   const [pinEnabled, setPinEnabled] = React.useState(false);
@@ -161,9 +169,17 @@ export function SecurityClient() {
       return;
     }
     setPinPending(true);
+    const {
+      data: { session: pinSession },
+    } = supabase
+      ? await supabase.auth.getSession().catch(() => ({ data: { session: null } }))
+      : { data: { session: null } };
     const response = await fetch("/api/settings/security/pin", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(pinSession?.access_token ? { Authorization: `Bearer ${pinSession.access_token}` } : {}),
+      },
       body: JSON.stringify({
         confirmPin,
         currentPassword: pinPassword,

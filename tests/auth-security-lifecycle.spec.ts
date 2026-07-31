@@ -34,25 +34,56 @@ test.describe.serial("authenticated owner security lifecycle", () => {
   }) => {
     const credentials = await getE2EOwnerCredentials();
     await loginAsE2EOwner(page, "/settings/security");
+    await expect(page.getByRole("heading", { name: "Security" })).toBeVisible();
 
-    const enable = await sameOriginJson(page, "/api/settings/security/pin", "POST", {
-      confirmPin: "739251",
-      currentPassword: credentials.password,
-      pin: "739251",
-    });
-    expect(enable.status).toBe(200);
-    expect(enable.body).toMatchObject({ enabled: true, ok: true });
+    const disableButton = page.getByRole("button", { name: "Disable PIN", exact: true });
+    const initialState = await page.request.get("/api/settings/security/pin");
+    expect(initialState.status()).toBe(200);
+    if ((await initialState.json()).enabled === true) {
+      await expect(disableButton).toBeVisible();
+      await page.getByLabel("Account password").fill(credentials.password);
+      const disableResponsePromise = page.waitForResponse(
+        (response) =>
+          response.request().method() === "DELETE" &&
+          response.url().endsWith("/api/settings/security/pin")
+      );
+      await disableButton.click();
+      const disableResponse = await disableResponsePromise;
+      expect(disableResponse.status()).toBe(200);
+      await expect(page.getByText("Quick Unlock disabled.", { exact: true })).toBeVisible();
+    }
+
+    await page.getByLabel("Account password").fill(credentials.password);
+    await page.getByLabel("New 6-digit PIN").fill("739251");
+    await page.getByLabel("Confirm 6-digit PIN").fill("739251");
+    const enableResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().endsWith("/api/settings/security/pin")
+    );
+    await page.getByRole("button", { name: "Enable PIN", exact: true }).click();
+    const enableResponse = await enableResponsePromise;
+    expect(enableResponse.status()).toBe(200);
+    expect(enableResponse.request().headers().authorization).toMatch(/^Bearer\s+\S+$/);
+    await expect(page.getByText("Quick Unlock enabled.", { exact: true })).toBeVisible();
 
     const state = await page.request.get("/api/settings/security/pin");
     expect(state.status()).toBe(200);
     expect(await state.json()).toMatchObject({ enabled: true, ok: true });
 
-    const change = await sameOriginJson(page, "/api/settings/security/pin", "POST", {
-      confirmPin: "582947",
-      currentPassword: credentials.password,
-      pin: "582947",
-    });
-    expect(change.status).toBe(200);
+    await page.getByLabel("Account password").fill(credentials.password);
+    await page.getByLabel("New 6-digit PIN").fill("582947");
+    await page.getByLabel("Confirm 6-digit PIN").fill("582947");
+    const changeResponsePromise = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().endsWith("/api/settings/security/pin")
+    );
+    await page.getByRole("button", { name: "Change PIN", exact: true }).click();
+    const changeResponse = await changeResponsePromise;
+    expect(changeResponse.status()).toBe(200);
+    expect(changeResponse.request().headers().authorization).toMatch(/^Bearer\s+\S+$/);
+    await expect(page.getByText("Quick Unlock PIN changed.", { exact: true })).toBeVisible();
 
     const lock = await sameOriginJson(page, "/api/auth/lock", "POST");
     expect(lock.status).toBe(200);
@@ -68,11 +99,16 @@ test.describe.serial("authenticated owner security lifecycle", () => {
     await loginAsE2EOwner(passwordPage, "/settings/security");
     await expect(passwordPage.getByRole("heading", { name: "Security" })).toBeVisible();
 
-    const disable = await sameOriginJson(passwordPage, "/api/settings/security/pin", "DELETE", {
-      currentPassword: credentials.password,
-    });
-    expect(disable.status).toBe(200);
-    expect(disable.body).toMatchObject({ enabled: false, ok: true });
+    await passwordPage.getByLabel("Account password").fill(credentials.password);
+    const finalDisableResponsePromise = passwordPage.waitForResponse(
+      (response) =>
+        response.request().method() === "DELETE" &&
+        response.url().endsWith("/api/settings/security/pin")
+    );
+    await passwordPage.getByRole("button", { name: "Disable PIN", exact: true }).click();
+    const finalDisableResponse = await finalDisableResponsePromise;
+    expect(finalDisableResponse.status()).toBe(200);
+    await expect(passwordPage.getByText("Quick Unlock disabled.", { exact: true })).toBeVisible();
     await passwordContext.close();
 
     const anonymousContext = await browser.newContext();

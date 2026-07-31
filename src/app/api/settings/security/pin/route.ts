@@ -93,7 +93,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return json(401, { ok: false, message: "Current password could not be verified." });
   }
 
-  const sessionId = await getRequestSessionId(request);
+  const sessionId = await getRequestSessionId(request, guard.context.user.id);
   if (!sessionId) {
     return json(401, { ok: false, message: "Authentication required." });
   }

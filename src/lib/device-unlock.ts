@@ -217,10 +217,33 @@ export function clearTrustedDeviceCookie(response: NextResponse): void {
   });
 }
 
-export async function getRequestSessionId(request: NextRequest): Promise<string | null> {
+function bearerAccessToken(request: NextRequest): string | null {
+  const authorization =
+    request.headers.get("authorization") ?? request.headers.get("Authorization");
+  if (!authorization?.startsWith("Bearer ")) return null;
+  const token = authorization.slice(7).trim();
+  return token || null;
+}
+
+export async function getRequestSessionId(
+  request: NextRequest,
+  expectedUserId?: string
+): Promise<string | null> {
   const response = NextResponse.next();
   const supabase = createRouteSupabaseClient(request, response);
   if (!supabase) return null;
+  const bearer = bearerAccessToken(request);
+  if (bearer) {
+    const { data } = await supabase.auth.getClaims(bearer).catch(() => ({ data: null }));
+    const claims = data?.claims;
+    if (
+      typeof claims?.session_id === "string" &&
+      claims.session_id &&
+      (!expectedUserId || claims.sub === expectedUserId)
+    ) {
+      return claims.session_id;
+    }
+  }
   const {
     data: { user },
   } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));

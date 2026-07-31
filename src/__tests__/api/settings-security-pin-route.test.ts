@@ -146,6 +146,7 @@ describe("Settings Security per-user PIN route", () => {
       password: "Current-Password-2026!",
       userId: "owner-id",
     });
+    expect(getRequestSessionIdMock).toHaveBeenCalledWith(expect.any(NextRequest), "owner-id");
     expect(hashQuickUnlockPinMock).toHaveBeenCalledWith("805274");
     const stateBuilder = adminFromMock.mock.results[0]?.value;
     const stored = stateBuilder.upsert.mock.calls[0]?.[0];

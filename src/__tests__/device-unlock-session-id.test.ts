@@ -71,4 +71,28 @@ describe("request session binding", () => {
     await expect(getRequestSessionId(request)).resolves.toBe("hydrated-session-id");
     expect(getUserMock).toHaveBeenCalledOnce();
   });
+
+  it("uses only a verified same-user Supabase bearer claim for cookie-less session binding", async () => {
+    const accessToken = "explicit-supabase-access-token";
+    getClaimsMock.mockImplementation(async (jwt?: string) =>
+      jwt === accessToken
+        ? {
+            data: {
+              claims: {
+                session_id: "bearer-session-id",
+                sub: "owner-user-id",
+              },
+            },
+            error: null,
+          }
+        : { data: null, error: null }
+    );
+    const request = new NextRequest("http://localhost:3104/api/settings/security/pin", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    await expect(getRequestSessionId(request, "owner-user-id")).resolves.toBe("bearer-session-id");
+    await expect(getRequestSessionId(request, "different-user-id")).resolves.toBeNull();
+    expect(getClaimsMock).toHaveBeenCalledWith(accessToken);
+  });
 });
