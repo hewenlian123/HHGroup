@@ -29,7 +29,24 @@ test.describe("Settings Security authenticated owner experience", () => {
     await expect(page.getByRole("button", { name: "Change password" })).toBeVisible();
     await expect(page.getByRole("button", { name: /Enable PIN|Change PIN/ })).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign out other devices" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Sign out current device" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign out current device" })).toBeVisible();
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/settings\/security$/);
+    await expect(page.getByRole("heading", { name: "Security" })).toBeVisible();
+  });
+
+  test("signs out the current device only after the explicit submit", async ({ page }) => {
+    await loginAsE2EOwner(page, "/settings/security");
+
+    await expect(page.getByRole("heading", { name: "Security" })).toBeVisible();
+    await expect(page).toHaveURL(/\/settings\/security$/);
+
+    await page.getByRole("button", { name: "Sign out current device" }).click();
+
+    await expect(page).toHaveURL(/\/login\?message=signed_out$/);
+    await page.goto("/settings/security", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/login\?redirect=%2Fsettings%2Fsecurity$/);
   });
 
   test("exposes accessible PIN management and mobile 44px touch targets", async ({ browser }) => {
@@ -42,7 +59,7 @@ test.describe("Settings Security authenticated owner experience", () => {
       page.getByRole("button", { name: "Change password" }),
       page.getByRole("button", { name: /Enable PIN|Change PIN/ }),
       page.getByRole("button", { name: "Sign out other devices" }),
-      page.getByRole("link", { name: "Sign out current device" }),
+      page.getByRole("button", { name: "Sign out current device" }),
     ]) {
       const box = await control.boundingBox();
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);

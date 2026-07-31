@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import {
   KeyRound,
   Loader2,
@@ -486,12 +485,12 @@ export function SecurityClient() {
               )}
               Sign out other devices
             </Button>
-            <Button asChild variant="outline" className="min-h-11">
-              <Link href="/logout">
+            <form action="/logout" method="post">
+              <Button type="submit" variant="outline" className="min-h-11">
                 <LogOut aria-hidden="true" />
                 Sign out current device
-              </Link>
-            </Button>
+              </Button>
+            </form>
           </div>
         </div>
         {sessionStatus.message ? (

@@ -404,9 +404,13 @@ export function Topbar({
               <Link href="/settings/company">Settings</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/logout">Sign out</Link>
-            </DropdownMenuItem>
+            <form action="/logout" method="post">
+              <DropdownMenuItem asChild>
+                <button type="submit" className="w-full">
+                  Sign out
+                </button>
+              </DropdownMenuItem>
+            </form>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

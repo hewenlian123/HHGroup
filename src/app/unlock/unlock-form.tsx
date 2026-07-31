@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KeyRound, Loader2 } from "lucide-react";
 
@@ -87,12 +86,14 @@ export function UnlockForm({ redirectTo }: { redirectTo: string }) {
         </Button>
       </form>
 
-      <Link
-        href="/logout"
-        className="mt-4 flex min-h-11 items-center justify-center rounded-md text-sm font-medium text-zinc-400 outline-none transition hover:text-white focus-visible:ring-2 focus-visible:ring-[var(--neo-gold)]"
-      >
-        Use password instead
-      </Link>
+      <form action="/logout" method="post">
+        <button
+          type="submit"
+          className="mt-4 flex min-h-11 w-full items-center justify-center rounded-md text-sm font-medium text-zinc-400 outline-none transition hover:text-white focus-visible:ring-2 focus-visible:ring-[var(--neo-gold)]"
+        >
+          Use password instead
+        </button>
+      </form>
     </section>
   );
 }
