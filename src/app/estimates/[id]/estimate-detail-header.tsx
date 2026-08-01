@@ -175,7 +175,7 @@ export function EstimateDetailHeader({
               ) : null}
             </>
           ) : (
-            <div className="hidden md:contents">
+            <div className="hidden lg:contents">
               <Button
                 type="button"
                 size="sm"

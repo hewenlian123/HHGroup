@@ -629,7 +629,7 @@ export function EstimateTemplatesClient({ templates }: { templates: EstimateTemp
             </div>
           </DialogHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+          <div className="eb-neo-scroll-region min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
             <div className="estimate-builder estimate-builder-new grid gap-4 lg:grid-cols-[minmax(16rem,0.78fr)_minmax(0,1.72fr)]">
               <div className="space-y-3">
                 <div className={ebGlassPanel("space-y-3")}>

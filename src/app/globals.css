@@ -1305,13 +1305,49 @@
   position: sticky;
   top: 0.5rem;
   z-index: 20;
-  border: 1px solid rgb(120 113 108 / 0.16);
+  border: 1px solid rgb(190 198 210 / 0.16);
   border-radius: 0.5rem;
-  background: rgb(250 250 249 / 0.9);
+  background: rgb(13 14 18 / 0.94);
   padding: 0.5rem;
-  box-shadow: 0 10px 32px rgb(41 37 36 / 0.08);
+  color: #f4f7fb;
+  box-shadow:
+    0 14px 38px rgb(18 16 13 / 0.15),
+    inset 0 1px 0 rgb(255 255 255 / 0.055);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+}
+
+.estimate-preview-tool-button {
+  border: 1px solid rgb(190 198 210 / 0.14) !important;
+  border-radius: 0.375rem !important;
+  background: rgb(24 27 35 / 0.72) !important;
+  color: #d8dee8 !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.045) !important;
+}
+
+.estimate-preview-tool-button:hover:not(:disabled) {
+  border-color: rgb(205 213 225 / 0.22) !important;
+  background: rgb(30 34 43 / 0.9) !important;
+  color: #f6f7fa !important;
+}
+
+.estimate-preview-tool-button:focus-visible {
+  outline: none !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.055),
+    0 0 0 2px rgb(198 165 106 / 0.3) !important;
+}
+
+.estimate-preview-toolbar-meta,
+.estimate-preview-toolbar output {
+  color: #929caf !important;
+}
+
+.estimate-print-action-bar {
+  border-bottom: 1px solid rgb(190 198 210 / 0.14);
+  background: rgb(13 14 18 / 0.98);
+  color: #f4f7fb;
+  box-shadow: inset 0 -1px 0 rgb(255 255 255 / 0.025);
 }
 
 .estimate-preview-viewport {
@@ -1319,6 +1355,29 @@
   overflow: auto;
   overscroll-behavior-x: contain;
   padding: 1.75rem 0 3rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(120 113 108 / 0.42) transparent;
+}
+
+.estimate-preview-viewport::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.estimate-preview-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.estimate-preview-viewport::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgb(120 113 108 / 0.42);
+  background-clip: padding-box;
+}
+
+.estimate-preview-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgb(87 83 78 / 0.58);
+  background-clip: padding-box;
 }
 
 .estimate-preview-zoom-frame {

@@ -26,7 +26,10 @@ import {
   paymentAmountFromPercent,
   paymentPercentFromAmount,
 } from "../_components/estimate-payment-percent";
-import { EstimateBuilderSummary } from "../_components/estimate-builder-summary";
+import {
+  EstimateBuilderMobileSummary,
+  EstimateBuilderSummary,
+} from "../_components/estimate-builder-summary";
 import { EstimateBuilderAdvanced } from "../_components/estimate-builder-advanced";
 import { EstimateNewCustomerSection } from "../_components/estimate-new-customer-section";
 import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
@@ -213,14 +216,18 @@ export function NewEstimateEditor({
   const [pmError, setPmError] = React.useState<string | null>(null);
   const { asideRef, overviewFloating } = useEstimateOverviewScrollMotion();
   const initialTemplateAppliedRef = React.useRef<string | null>(null);
-  const initializedDirtyTrackingRef = React.useRef(false);
+  const dirtyTrackingReadyRef = React.useRef(false);
   const saveInFlightRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (!initializedDirtyTrackingRef.current) {
-      initializedDirtyTrackingRef.current = true;
-      return;
-    }
+    const frame = window.requestAnimationFrame(() => {
+      dirtyTrackingReadyRef.current = true;
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  React.useEffect(() => {
+    if (!dirtyTrackingReadyRef.current) return;
     setDirty(true);
     setSaveStatus((current) => (current === "saving" ? current : "unsaved"));
   }, [
@@ -1026,19 +1033,23 @@ export function NewEstimateEditor({
         )}
         aria-label="Estimate total"
       >
-        <div className="mb-4 flex items-baseline justify-between gap-4">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-[#9EA8B8]">
-            Total
-          </span>
-          <span
-            className={cn(
-              "text-[1.8125rem] font-semibold leading-none tabular-nums tracking-[-0.02em] [font-feature-settings:'tnum']",
-              EB.goldTotal
-            )}
-          >
-            {formatEstimateCurrency(summary.grandTotal)}
-          </span>
-        </div>
+        <EstimateBuilderMobileSummary
+          className="mb-3"
+          summary={{
+            materialCost: summary.materialCost,
+            laborCost: summary.laborCost,
+            subcontractorCost: summary.subcontractorCost,
+            subtotal: summary.subtotal,
+            tax: summary.tax,
+            discount: summary.discount,
+            markup: 0,
+            grandTotal: summary.grandTotal,
+            overheadPct: 0,
+            profitPct: 0,
+            overhead: 0,
+            profit: 0,
+          }}
+        />
         <EstimateBuilderSaveStatus status={saveStatus} className="mb-2 block text-center" />
         <div className="flex gap-2">
           <Button

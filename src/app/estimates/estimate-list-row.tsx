@@ -134,7 +134,9 @@ export const EstimateListRow = memo(function EstimateListRow({
       <td className={cn(tableRawTdClass, "text-right")}>
         <NeoAmount>{formatEstimateCurrency(row.total)}</NeoAmount>
       </td>
-      <td className={cn(tableRawTdClass, "text-[var(--neo-text-secondary)]")}>{row.updatedAt}</td>
+      <td className={cn(tableRawTdClass, "whitespace-nowrap text-[var(--neo-text-secondary)]")}>
+        {row.updatedAt}
+      </td>
       <td className={cn(tableRawTdClass, "w-10 text-right")} onClick={(e) => e.stopPropagation()}>
         <RowActionsMenu
           appearance="list"

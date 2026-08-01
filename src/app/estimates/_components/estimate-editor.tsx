@@ -64,6 +64,7 @@ import {
 } from "./estimate-section-title-menu";
 import { formatEstimateCurrency, roundEstimateCurrencyValue } from "./estimate-currency";
 import {
+  EstimateBuilderMobileSummary,
   EstimateBuilderSummary,
   type EstimateBuilderPaymentSummary,
 } from "./estimate-builder-summary";
@@ -841,10 +842,8 @@ export function EstimateEditor({
                           isDropTarget={overSectionId === categoryId}
                           className={cn(
                             "transition-all duration-300",
-                            selectedCategoryId === categoryId &&
-                              "aria-[current=true]:bg-primary/10",
-                            flashHighlightCategoryId === categoryId &&
-                              "bg-primary/10 dark:bg-primary/15"
+                            selectedCategoryId === categoryId && "eb-scope-section-current",
+                            flashHighlightCategoryId === categoryId && EB.scopeSectionInserted
                           )}
                           ariaCurrent={selectedCategoryId === categoryId ? "true" : undefined}
                         >
@@ -947,19 +946,7 @@ export function EstimateEditor({
           )}
           aria-label="Estimate total"
         >
-          <div className="flex items-baseline justify-between gap-4">
-            <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-              Total
-            </span>
-            <span
-              className={cn(
-                "text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight",
-                EB.goldTotal
-              )}
-            >
-              {summary ? formatEstimateCurrency(summary.grandTotal) : "—"}
-            </span>
-          </div>
+          <EstimateBuilderMobileSummary summary={summary} />
         </div>
       ) : null}
     </React.Fragment>

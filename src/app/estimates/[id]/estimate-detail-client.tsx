@@ -43,7 +43,7 @@ import { Button } from "@/components/ui/button";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { cn } from "@/lib/utils";
 import { EB } from "../_components/estimate-builder-ui";
-import { formatEstimateCurrency } from "../_components/estimate-currency";
+import { EstimateBuilderMobileSummary } from "../_components/estimate-builder-summary";
 
 export function EstimateDetailClient({
   estimateId,
@@ -327,24 +327,12 @@ export function EstimateDetailClient({
       {editing && !isLocked ? (
         <div
           className={cn(
-            "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 py-3 md:hidden",
+            "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 py-3 lg:hidden",
             EB.glassMobileBar
           )}
           aria-label="Estimate edit actions"
         >
-          <div className="mb-3 flex items-baseline justify-between gap-4">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-[#9EA8B8]">
-              Total
-            </span>
-            <span
-              className={cn(
-                "min-w-0 break-words text-right text-[1.625rem] font-semibold leading-none tabular-nums tracking-[-0.02em] [font-feature-settings:'tnum']",
-                EB.goldTotal
-              )}
-            >
-              {summary ? formatEstimateCurrency(summary.grandTotal) : "—"}
-            </span>
-          </div>
+          <EstimateBuilderMobileSummary className="mb-3" summary={summary} />
           <EstimateBuilderSaveStatus
             status={pending || savingDetails ? "saving" : saveStatus}
             className="mb-2 block text-center"

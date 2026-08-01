@@ -6,21 +6,23 @@ import { Printer, ArrowLeft } from "lucide-react";
 
 export function PrintActionBar({ estimateId }: { estimateId: string }) {
   return (
-    <div className="print:hidden relative z-10 flex items-center justify-between gap-4 border-b border-zinc-200 bg-white px-6 py-3 shadow-sm">
-      <Button variant="outline" size="sm" className="btn-outline-ghost rounded-lg" asChild>
+    <div className="estimate-print-action-bar print:hidden relative z-10 flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+      <Button
+        variant="outline"
+        size="sm"
+        className="estimate-preview-tool-button min-h-11 sm:min-h-8"
+        asChild
+      >
         <Link href={`/estimates/${estimateId}`}>
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back
         </Link>
       </Button>
       <div className="flex items-center gap-2">
-        <span className="text-sm text-zinc-500">
-          Save as PDF via your browser&apos;s Print dialog.
-        </span>
         <Button
           type="button"
           size="sm"
-          className="rounded-lg"
+          className="estimate-preview-tool-button min-h-11 sm:min-h-8"
           onClick={() => typeof window !== "undefined" && window.print()}
         >
           <Printer className="h-4 w-4 mr-2" />

@@ -137,7 +137,7 @@ export function EstimatesListClient({
       <div className="hidden md:block">
         <PageHeader
           title="Estimates"
-          description="Manage cost-code estimates."
+          description="Manage proposals, pricing, and estimate workflows."
           actions={
             <div className="flex items-center gap-2">
               <Button asChild size="sm" className={cn("min-h-10 px-3", PRIMARY_ACTION)}>

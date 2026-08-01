@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ChevronDown } from "lucide-react";
 import type { EstimateSummaryResult } from "@/lib/data";
 import { formatEstimateCurrency } from "./estimate-currency";
 import { EB } from "./estimate-builder-ui";
@@ -42,6 +43,11 @@ export function EstimateBuilderSummary({
 
   const { subtotal, grandTotal, tax, discount, materialCost, laborCost, subcontractorCost } =
     summary;
+  const internalLines = [
+    { label: "Material", value: materialCost },
+    { label: "Labor", value: laborCost },
+    { label: "Subcontractor", value: subcontractorCost },
+  ].filter(({ value }) => Math.abs(value) >= 0.005);
 
   return (
     <div className={shellClass} aria-label="Estimate overview">
@@ -66,9 +72,13 @@ export function EstimateBuilderSummary({
       {showInternal ? (
         <div className="mb-3 space-y-1 border-b border-white/[0.05] pb-2.5">
           <p className={EB.summaryInternalLabel}>Internal</p>
-          <InternalLine label="Material" value={materialCost} />
-          <InternalLine label="Labor" value={laborCost} />
-          <InternalLine label="Subcontractor" value={subcontractorCost} />
+          {internalLines.length > 0 ? (
+            internalLines.map(({ label, value }) => (
+              <InternalLine key={label} label={label} value={value} />
+            ))
+          ) : (
+            <p className="py-0.5 text-[12.5px] leading-snug text-[#7F899B]">No internal costs</p>
+          )}
         </div>
       ) : null}
 
@@ -92,6 +102,33 @@ export function EstimateBuilderSummary({
         </p>
       </div>
     </div>
+  );
+}
+
+export function EstimateBuilderMobileSummary({
+  summary,
+  className,
+}: {
+  summary: EstimateSummaryResult | null;
+  className?: string;
+}): React.ReactElement {
+  return (
+    <details className={cn("eb-mobile-summary", className)}>
+      <summary aria-label="Toggle price breakdown">
+        <span className="eb-mobile-summary-label">Total</span>
+        <span className={cn("eb-mobile-summary-total", EB.goldTotal)}>
+          {summary ? fmt(summary.grandTotal) : "—"}
+        </span>
+        <ChevronDown className="eb-mobile-summary-chevron h-4 w-4" aria-hidden />
+      </summary>
+      {summary ? (
+        <div className="eb-mobile-summary-breakdown">
+          <SummaryLine label="Subtotal" value={summary.subtotal} />
+          {summary.discount > 0 ? <SummaryLine label="Discount" value={-summary.discount} /> : null}
+          {summary.tax > 0 ? <SummaryLine label="Tax" value={summary.tax} /> : null}
+        </div>
+      ) : null}
+    </details>
   );
 }
 

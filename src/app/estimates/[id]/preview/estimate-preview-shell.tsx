@@ -128,18 +128,18 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
   return (
     <div className="estimate-preview-shell mx-auto w-full px-3 py-5 print:px-0 print:py-0">
       <div className="estimate-preview-toolbar mx-auto mb-5 flex max-w-[8.5in] flex-wrap items-center gap-2 print:hidden">
-        <Button variant="outline" size="sm" className="btn-outline-ghost rounded-sm h-8" asChild>
+        <Button variant="outline" size="sm" className="estimate-preview-tool-button h-8" asChild>
           <Link href={`/estimates/${estimateId}`}>
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back to estimate
           </Link>
         </Button>
-        <Button variant="outline" size="sm" className="rounded-sm h-8" asChild>
+        <Button variant="outline" size="sm" className="estimate-preview-tool-button h-8" asChild>
           <a href={`/estimates/${estimateId}/print`} target="_blank" rel="noopener noreferrer">
             Print
           </a>
         </Button>
-        <Button variant="outline" size="sm" className="rounded-sm h-8" asChild>
+        <Button variant="outline" size="sm" className="estimate-preview-tool-button h-8" asChild>
           <a
             href={pdfDownloadHref}
             download
@@ -164,7 +164,7 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
             type="button"
             variant="outline"
             size="icon"
-            className="h-11 w-11 rounded-sm sm:h-8 sm:w-8"
+            className="estimate-preview-tool-button h-11 w-11 sm:h-8 sm:w-8"
             onClick={() => setManualScale(scale - 0.1)}
             aria-label="Zoom out"
             disabled={scale <= MIN_PREVIEW_SCALE}
@@ -175,7 +175,7 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
             type="button"
             variant="outline"
             size="sm"
-            className="h-11 min-w-[5.75rem] rounded-sm sm:h-8"
+            className="estimate-preview-tool-button h-11 min-w-[5.75rem] sm:h-8"
             onClick={() => {
               setFitMode(true);
               requestAnimationFrame(measurePreview);
@@ -190,7 +190,7 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
             type="button"
             variant="outline"
             size="icon"
-            className="h-11 w-11 rounded-sm sm:h-8 sm:w-8"
+            className="estimate-preview-tool-button h-11 w-11 sm:h-8 sm:w-8"
             onClick={() => setManualScale(scale + 0.1)}
             aria-label="Zoom in"
             disabled={scale >= MAX_PREVIEW_SCALE}
@@ -201,8 +201,8 @@ export function EstimatePreviewShell({ estimateId, estimateNumber, children }: P
             {Math.round(scale * 100)}%
           </output>
         </div>
-        <p className="basis-full text-xs text-muted-foreground">
-          {estimateNumber} · Letter preview · Press Esc to return
+        <p className="estimate-preview-toolbar-meta basis-full text-xs">
+          {estimateNumber} · Letter preview
         </p>
       </div>
 

@@ -150,6 +150,64 @@ test("mobile number fields and saved Edit actions remain touch-safe", async ({ p
   await editActions.getByRole("button", { name: "Cancel", exact: true }).click();
 });
 
+test("iPad portrait keeps saved Edit total and actions persistently reachable", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 820, height: 1180 });
+  await page.goto(`/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+
+  const editActions = page.getByLabel("Estimate edit actions");
+  await expect(editActions).toBeVisible({ timeout: 30_000 });
+  await expect(editActions.getByText("Total", { exact: true })).toBeVisible();
+  await expect(editActions.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByTestId("estimate-detail-header-actions")
+      .getByRole("button", { name: "Save", exact: true })
+  ).toBeHidden();
+
+  const geometry = await editActions.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      left: rect.left,
+      right: rect.right,
+      bottom: rect.bottom,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+  expect(geometry.left).toBeGreaterThanOrEqual(80);
+  expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth);
+  expect(geometry.bottom).toBeLessThanOrEqual(geometry.viewportHeight);
+  expect(geometry.overflow).toBe(0);
+
+  await editActions.getByRole("button", { name: "Cancel", exact: true }).click();
+});
+
+test("iPad landscape keeps line title readable beside stacked pricing", async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await addBlankSection(page);
+
+  const title = page.getByLabel("Line item 1 title").locator("visible=true").first();
+  await title.fill("Long contractor scope title remains readable");
+  const geometry = await title.evaluate((input) => {
+    const grid = input.closest<HTMLElement>(".eb-line-item-grid--pricing");
+    const rect = input.getBoundingClientRect();
+    return {
+      inputWidth: rect.width,
+      gridColumns: grid ? getComputedStyle(grid).gridTemplateColumns.split(" ").length : 0,
+      scrollbarWidth: getComputedStyle(document.querySelector(".estimate-builder")!).scrollbarWidth,
+      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    };
+  });
+  expect(geometry.inputWidth).toBeGreaterThan(300);
+  expect(geometry.gridColumns).toBe(2);
+  expect(geometry.scrollbarWidth).toBe("thin");
+  expect(geometry.overflow).toBe(0);
+});
+
 test("saved Estimate overview remains visible through a long edit", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`/estimates/${E2E_PRESERVED_ESTIMATE_ID}`);
