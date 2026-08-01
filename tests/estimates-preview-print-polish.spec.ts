@@ -146,7 +146,11 @@ test("customer estimate preview and print use polished proposal output", async (
   await page.keyboard.press("ArrowRight");
   const optionalStatusItem = page.getByRole("menuitem", { name: "Optional" });
   await expect(optionalStatusItem).toBeVisible();
-  await optionalStatusItem.click();
+  await optionalStatusItem.focus();
+  await optionalStatusItem.press("Enter");
+  await expect(
+    page.locator(".eb-line-item-status-pill:visible", { hasText: "Optional" }).first()
+  ).toBeVisible({ timeout: 10_000 });
 
   await page.getByRole("button", { name: "Add note" }).click();
   await page.getByRole("menuitem", { name: "Assumptions" }).click();

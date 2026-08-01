@@ -1,7 +1,11 @@
 import type { Browser } from "puppeteer-core";
 import { describe, expect, it, vi } from "vitest";
 
-import { EstimatePdfBrowserPool, renderEstimatePdfWithBrowser } from "@/lib/estimate-print-pdf";
+import {
+  EstimatePdfBrowserPool,
+  EstimatePdfFreshBrowserRunner,
+  renderEstimatePdfWithBrowser,
+} from "@/lib/estimate-print-pdf";
 
 function fakeBrowser() {
   return {
@@ -182,5 +186,103 @@ describe("Estimate PDF browser pool", () => {
     expect(page.close).toHaveBeenCalledTimes(1);
     expect(context.close).toHaveBeenCalledTimes(1);
     expect(browser.close).not.toHaveBeenCalled();
+  });
+});
+
+describe("Estimate PDF fresh serverless browser runner", () => {
+  it("uses and closes one fresh browser for each request", async () => {
+    const first = fakeBrowser();
+    const second = fakeBrowser();
+    const launch = vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    const runner = new EstimatePdfFreshBrowserRunner(launch);
+
+    await expect(runner.run(async (browser) => browser)).resolves.toBe(first);
+    await expect(runner.run(async (browser) => browser)).resolves.toBe(second);
+
+    expect(launch).toHaveBeenCalledTimes(2);
+    expect(first.close).toHaveBeenCalledTimes(1);
+    expect(second.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries one target-close failure with a new browser", async () => {
+    const first = fakeBrowser();
+    const second = fakeBrowser();
+    const launch = vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    const runner = new EstimatePdfFreshBrowserRunner(launch);
+    const job = vi.fn().mockRejectedValueOnce(targetClosedError()).mockResolvedValueOnce("pdf");
+
+    await expect(runner.run(job)).resolves.toBe("pdf");
+
+    expect(job).toHaveBeenNthCalledWith(1, first);
+    expect(job).toHaveBeenNthCalledWith(2, second);
+    expect(first.close).toHaveBeenCalledTimes(1);
+    expect(second.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps simultaneous serverless requests isolated", async () => {
+    const first = fakeBrowser();
+    const second = fakeBrowser();
+    const launch = vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    const runner = new EstimatePdfFreshBrowserRunner(launch);
+
+    const [left, right] = await Promise.all([
+      runner.run(async (browser) => browser),
+      runner.run(async (browser) => browser),
+    ]);
+
+    expect(new Set([left, right])).toEqual(new Set([first, second]));
+    expect(launch).toHaveBeenCalledTimes(2);
+    expect(first.close).toHaveBeenCalledTimes(1);
+    expect(second.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns the safe error after two target-close failures", async () => {
+    const first = fakeBrowser();
+    const second = fakeBrowser();
+    const launch = vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(second);
+    const runner = new EstimatePdfFreshBrowserRunner(launch);
+
+    await expect(runner.run(async () => Promise.reject(targetClosedError()))).rejects.toThrow(
+      "Estimate PDF is temporarily unavailable. Please try again."
+    );
+
+    expect(first.close).toHaveBeenCalledTimes(1);
+    expect(second.close).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the fresh browser default context and leaves its cleanup to browser close", async () => {
+    const page = {
+      close: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockResolvedValue(undefined),
+      goto: vi.fn().mockResolvedValue(undefined),
+      pdf: vi.fn().mockResolvedValue(new Uint8Array([37, 80, 68, 70])),
+      setDefaultNavigationTimeout: vi.fn(),
+      setDefaultTimeout: vi.fn(),
+      setExtraHTTPHeaders: vi.fn().mockResolvedValue(undefined),
+      waitForFunction: vi.fn().mockResolvedValue(undefined),
+      waitForSelector: vi.fn().mockResolvedValue(undefined),
+    };
+    const context = {
+      close: vi.fn().mockResolvedValue(undefined),
+      newPage: vi.fn().mockResolvedValue(page),
+    };
+    const browser = {
+      close: vi.fn().mockResolvedValue(undefined),
+      connected: true,
+      createBrowserContext: vi.fn(),
+      defaultBrowserContext: vi.fn().mockReturnValue(context),
+      on: vi.fn(),
+    } as unknown as Browser;
+
+    await renderEstimatePdfWithBrowser({
+      browser,
+      url: "http://example.test/print?pdf=1",
+      useDefaultContext: true,
+    });
+
+    expect(browser.createBrowserContext).not.toHaveBeenCalled();
+    expect(browser.defaultBrowserContext).toHaveBeenCalledTimes(1);
+    expect(page.close).toHaveBeenCalledTimes(1);
+    expect(context.close).not.toHaveBeenCalled();
   });
 });

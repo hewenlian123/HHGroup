@@ -105,6 +105,41 @@ export class EstimatePdfBrowserPool {
   }
 }
 
+/**
+ * Serverless Chromium builds can reject additional browser contexts. A fresh browser gives each
+ * invocation an isolated default context without carrying process state across a freeze/thaw.
+ */
+export class EstimatePdfFreshBrowserRunner {
+  constructor(private readonly launch: BrowserLauncher) {}
+
+  async run<T>(job: (browser: Browser) => Promise<T>): Promise<T> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      let browser: Browser | null = null;
+      try {
+        browser = await this.launch();
+        if (!browser.connected) {
+          throw new Error("Estimate PDF browser disconnected before the render started.");
+        }
+        return await job(browser);
+      } catch (error) {
+        lastError = error;
+        if (!isRecoverableBrowserFailure(error, browser) || attempt === 1) {
+          if (isRecoverableBrowserFailure(error, browser)) {
+            throw new EstimatePdfUnavailableError(error);
+          }
+          throw error;
+        }
+      } finally {
+        if (browser) await browser.close().catch(() => undefined);
+      }
+    }
+
+    throw new EstimatePdfUnavailableError(lastError);
+  }
+}
+
 function isVercelRuntime(): boolean {
   return process.env.VERCEL === "1" || Boolean(process.env.VERCEL_ENV);
 }
@@ -141,7 +176,7 @@ async function launchChromiumOnVercel(): Promise<Browser> {
   applyChromiumLibraryPath(executablePath);
 
   return (await puppeteer.launch({
-    args: chromium.args,
+    args: puppeteer.defaultArgs({ args: chromium.args, headless: "shell" }),
     defaultViewport: {
       deviceScaleFactor: 1,
       hasTouch: false,
@@ -192,8 +227,8 @@ function getEstimatePdfBrowserPool(): EstimatePdfBrowserPool {
   return shared.__hhEstimatePdfBrowserPool;
 }
 
-function isRecoverableBrowserFailure(error: unknown, browser: Browser): boolean {
-  if (!browser.connected) return true;
+function isRecoverableBrowserFailure(error: unknown, browser: Browser | null): boolean {
+  if (browser && !browser.connected) return true;
   const name = error instanceof Error ? error.name : "";
   const message = error instanceof Error ? error.message : String(error ?? "");
   return /targetcloseerror|target closed|browser (?:has )?disconnected|connection closed|session closed|protocol error.*(?:target|connection).*closed/i.test(
@@ -218,13 +253,16 @@ async function waitForEstimateDocumentReady(page: Page): Promise<void> {
 export async function renderEstimatePdfWithBrowser(params: {
   browser: Browser;
   cookieHeader?: string | null;
+  useDefaultContext?: boolean;
   url: string;
 }): Promise<Buffer> {
   let context: BrowserContext | null = null;
   let page: Page | null = null;
   let timeout: ReturnType<typeof setTimeout> | null = null;
   try {
-    context = await params.browser.createBrowserContext();
+    context = params.useDefaultContext
+      ? params.browser.defaultBrowserContext()
+      : await params.browser.createBrowserContext();
     page = await context.newPage();
     page.setDefaultTimeout(15_000);
     page.setDefaultNavigationTimeout(25_000);
@@ -256,7 +294,7 @@ export async function renderEstimatePdfWithBrowser(params: {
   } finally {
     if (timeout) clearTimeout(timeout);
     if (page) await page.close().catch(() => undefined);
-    if (context) await context.close().catch(() => undefined);
+    if (context && !params.useDefaultContext) await context.close().catch(() => undefined);
   }
 }
 
@@ -269,6 +307,19 @@ export async function generateEstimatePrintPdfBuffer(
   const { estimateId, origin, cookieHeader } = options;
   const base = origin.replace(/\/$/, "");
   const url = `${base}/estimates/${encodeURIComponent(estimateId)}/print?pdf=1`;
+
+  if (isVercelRuntime()) {
+    const runner = new EstimatePdfFreshBrowserRunner(launchChromiumBrowser);
+    return runner.run((browser) =>
+      renderEstimatePdfWithBrowser({
+        browser,
+        cookieHeader,
+        useDefaultContext: true,
+        url,
+      })
+    );
+  }
+
   const pool = getEstimatePdfBrowserPool();
   return pool.run((browser) => renderEstimatePdfWithBrowser({ browser, cookieHeader, url }));
 }
