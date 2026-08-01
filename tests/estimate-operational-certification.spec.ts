@@ -70,6 +70,7 @@ const metrics: CertificationMetrics = {
 
 let estimateId = "";
 let estimateNumber = "";
+let expectedPersistedSectionOrder: string[] = [];
 
 const sections: ScopeSection[] = [
   {
@@ -706,6 +707,9 @@ test.describe.serial("Estimate operational certification", () => {
     await firstReorder.press("ArrowDown");
     await firstReorder.press("Space");
     metrics.keyboardInteractions += 3;
+    expectedPersistedSectionOrder = await sectionTitleInputs.evaluateAll((inputs) =>
+      inputs.map((input) => (input as HTMLInputElement).value.trim())
+    );
 
     await addNote(
       page,
@@ -877,10 +881,7 @@ test.describe.serial("Estimate operational certification", () => {
           )
         )
       )
-      .toEqual([
-        "Preconstruction & Mobilization",
-        ...sections.slice(1).map((section) => section.title),
-      ]);
+      .toEqual(expectedPersistedSectionOrder);
     const persistedMobilizationRow = await lineItemCardByTitle(page, "Mobilization and site setup");
     await expect(persistedMobilizationRow.locator('input[aria-label$="unit price"]')).toHaveValue(
       "3800"

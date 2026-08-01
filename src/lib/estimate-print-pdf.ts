@@ -1,7 +1,7 @@
 import "server-only";
 
 import path from "node:path";
-import puppeteer, { type Browser, type BrowserContext, type Page } from "puppeteer-core";
+import type { Browser, BrowserContext, Page } from "puppeteer-core";
 
 export type GenerateEstimatePrintPdfOptions = {
   estimateId: string;
@@ -14,9 +14,20 @@ const PDF_JOB_TIMEOUT_MS = 45_000;
 
 type BrowserLauncher = () => Promise<Browser>;
 
+const PDF_UNAVAILABLE_MESSAGE = "Estimate PDF is temporarily unavailable. Please try again.";
+
+export class EstimatePdfUnavailableError extends Error {
+  constructor(cause: unknown) {
+    super(PDF_UNAVAILABLE_MESSAGE, { cause });
+    this.name = "EstimatePdfUnavailableError";
+  }
+}
+
 export class EstimatePdfBrowserPool {
   private browser: Browser | null = null;
   private launchPromise: Promise<Browser> | null = null;
+  private replacementPromise: Promise<Browser> | null = null;
+  private readonly invalidationPromises = new WeakMap<Browser, Promise<void>>();
 
   constructor(private readonly launch: BrowserLauncher) {}
 
@@ -44,7 +55,53 @@ export class EstimatePdfBrowserPool {
 
   async invalidate(browser: Browser): Promise<void> {
     if (this.browser === browser) this.browser = null;
-    await browser.close().catch(() => undefined);
+    const existing = this.invalidationPromises.get(browser);
+    if (existing) return existing;
+    const pending = browser.close().catch(() => undefined);
+    this.invalidationPromises.set(browser, pending);
+    await pending;
+  }
+
+  private async replace(failedBrowser: Browser): Promise<Browser> {
+    if (this.browser && this.browser !== failedBrowser && this.browser.connected) {
+      return this.browser;
+    }
+    if (this.replacementPromise) return this.replacementPromise;
+
+    const pending = (async () => {
+      await this.invalidate(failedBrowser);
+      return this.acquire();
+    })();
+    this.replacementPromise = pending;
+    try {
+      return await pending;
+    } finally {
+      if (this.replacementPromise === pending) this.replacementPromise = null;
+    }
+  }
+
+  async run<T>(job: (browser: Browser) => Promise<T>): Promise<T> {
+    let browser = await this.acquire();
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        if (!browser.connected) {
+          throw new Error("Estimate PDF browser disconnected before the render started.");
+        }
+        return await job(browser);
+      } catch (error) {
+        lastError = error;
+        if (!isRecoverableBrowserFailure(error, browser)) throw error;
+        if (attempt === 1) {
+          await this.invalidate(browser);
+          throw new EstimatePdfUnavailableError(error);
+        }
+        browser = await this.replace(browser);
+      }
+    }
+
+    throw new EstimatePdfUnavailableError(lastError);
   }
 }
 
@@ -74,18 +131,28 @@ function applyChromiumLibraryPath(executablePath: string): void {
 
 async function launchChromiumOnVercel(): Promise<Browser> {
   ensureVercelChromiumRuntimeEnv();
-  const chromium = (await import("@sparticuz/chromium")).default;
+  const [{ default: chromium }, { default: puppeteer }] = await Promise.all([
+    import("estimate-pdf-chromium"),
+    import("estimate-pdf-puppeteer"),
+  ]);
   chromium.setGraphicsMode = false;
 
   const executablePath = await chromium.executablePath();
   applyChromiumLibraryPath(executablePath);
 
-  return puppeteer.launch({
+  return (await puppeteer.launch({
     args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
+    defaultViewport: {
+      deviceScaleFactor: 1,
+      hasTouch: false,
+      height: 1080,
+      isLandscape: true,
+      isMobile: false,
+      width: 1920,
+    },
     executablePath,
-    headless: chromium.headless,
-  });
+    headless: "shell",
+  })) as unknown as Browser;
 }
 
 async function launchChromiumBrowser(): Promise<Browser> {
@@ -93,22 +160,24 @@ async function launchChromiumBrowser(): Promise<Browser> {
     return launchChromiumOnVercel();
   }
 
+  const { default: puppeteer } = await import("estimate-pdf-puppeteer");
+
   const executablePath =
     process.env.PUPPETEER_EXECUTABLE_PATH?.trim() || process.env.CHROME_PATH?.trim() || undefined;
 
   if (executablePath) {
-    return puppeteer.launch({
+    return (await puppeteer.launch({
       executablePath,
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
-    });
+    })) as unknown as Browser;
   }
 
-  return puppeteer.launch({
+  return (await puppeteer.launch({
     channel: "chrome",
     headless: true,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
-  });
+  })) as unknown as Browser;
 }
 
 type EstimatePdfGlobal = typeof globalThis & {
@@ -125,9 +194,10 @@ function getEstimatePdfBrowserPool(): EstimatePdfBrowserPool {
 
 function isRecoverableBrowserFailure(error: unknown, browser: Browser): boolean {
   if (!browser.connected) return true;
+  const name = error instanceof Error ? error.name : "";
   const message = error instanceof Error ? error.message : String(error ?? "");
-  return /browser has disconnected|connection closed|protocol error.*connection.*closed/i.test(
-    message
+  return /targetcloseerror|target closed|browser (?:has )?disconnected|connection closed|session closed|protocol error.*(?:target|connection).*closed/i.test(
+    `${name}: ${message}`
   );
 }
 
@@ -145,7 +215,7 @@ async function waitForEstimateDocumentReady(page: Page): Promise<void> {
   ]);
 }
 
-async function renderEstimatePdfWithBrowser(params: {
+export async function renderEstimatePdfWithBrowser(params: {
   browser: Browser;
   cookieHeader?: string | null;
   url: string;
@@ -200,20 +270,7 @@ export async function generateEstimatePrintPdfBuffer(
   const base = origin.replace(/\/$/, "");
   const url = `${base}/estimates/${encodeURIComponent(estimateId)}/print?pdf=1`;
   const pool = getEstimatePdfBrowserPool();
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const browser = await pool.acquire();
-    try {
-      return await renderEstimatePdfWithBrowser({ browser, cookieHeader, url });
-    } catch (error) {
-      lastError = error;
-      if (!isRecoverableBrowserFailure(error, browser) || attempt === 1) throw error;
-      await pool.invalidate(browser);
-    }
-  }
-
-  throw lastError instanceof Error ? lastError : new Error("Estimate PDF generation failed.");
+  return pool.run((browser) => renderEstimatePdfWithBrowser({ browser, cookieHeader, url }));
 }
 
 export function estimatePrintPdfFilename(estimateNumber: string): string {

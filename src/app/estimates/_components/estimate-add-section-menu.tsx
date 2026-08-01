@@ -62,6 +62,7 @@ export function EstimateAddSectionMenu({
   const [customTitle, setCustomTitle] = React.useState("");
   const customTitleId = React.useId();
   const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const selectionMovedFocusRef = React.useRef(false);
   const contextualMenuSpace = 296;
   const normalizedExistingNames = React.useMemo(
     () => new Set(existingSectionNames.map((name) => normalizeProposalSectionName(name))),
@@ -81,6 +82,7 @@ export function EstimateAddSectionMenu({
     if (!canSubmitCustom) return;
     const added = onAddCustom(customTitle);
     if (!added) return;
+    selectionMovedFocusRef.current = true;
     setCustomTitle("");
     setOpen(false);
   }, [canSubmitCustom, customTitle, onAddCustom, setOpen]);
@@ -126,6 +128,11 @@ export function EstimateAddSectionMenu({
           sideOffset={4}
           collisionPadding={12}
           avoidCollisions={!reserveSpaceWhenOpen}
+          onCloseAutoFocus={(event) => {
+            if (!selectionMovedFocusRef.current) return;
+            event.preventDefault();
+            selectionMovedFocusRef.current = false;
+          }}
           className={cn(
             EB.builderPickerMenu,
             EB.commandMenu,
@@ -194,6 +201,7 @@ export function EstimateAddSectionMenu({
             className={EB.commandMenuItem}
             disabled={disabled || !canAddSection}
             onSelect={() => {
+              selectionMovedFocusRef.current = true;
               onAddBlank();
               setOpen(false);
             }}
@@ -208,6 +216,7 @@ export function EstimateAddSectionMenu({
               className={EB.commandMenuItem}
               disabled={disabled || !canAddSection}
               onSelect={() => {
+                selectionMovedFocusRef.current = true;
                 if (hasExistingSectionName(name)) {
                   onFocusExisting?.(name);
                 } else {
@@ -232,6 +241,7 @@ export function EstimateAddSectionMenu({
                   className={EB.commandMenuItem}
                   disabled={disabled || !canAddSection}
                   onSelect={() => {
+                    selectionMovedFocusRef.current = true;
                     if (hasExistingSectionName(entry.displayName)) {
                       onFocusExisting?.(entry.displayName);
                     } else {

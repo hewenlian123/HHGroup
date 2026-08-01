@@ -298,25 +298,36 @@ export function EstimateLineItemsLocal({
 
   React.useLayoutEffect(() => {
     if (!sectionFocusTargetCode || !orderedSectionCodes.includes(sectionFocusTargetCode)) return;
-    const candidates = Array.from(
-      document.querySelectorAll<HTMLElement>(
-        `[data-estimate-section-id="${sectionFocusTargetCode.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"], [data-estimate-section-mobile-id="${sectionFocusTargetCode.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"]`
-      )
-    );
-    const section = candidates.find((candidate) => candidate.getClientRects().length > 0);
-    if (!section) return;
-    const rect = section.getBoundingClientRect();
-    if (rect.top < 88 || rect.bottom > window.innerHeight - 88) {
-      section.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-    const focusTarget = section.querySelector<HTMLElement>(
-      'input[aria-label^="Line item"], input[aria-label^="Section name"]'
-    );
-    focusTarget?.focus({ preventScroll: true });
-    setHighlightSectionCode(sectionFocusTargetCode);
-    setSectionFocusTargetCode(null);
-    const timeout = window.setTimeout(() => setHighlightSectionCode(null), 1200);
-    return () => window.clearTimeout(timeout);
+    const targetCode = sectionFocusTargetCode;
+    let focusFrame = 0;
+    const closeFrame = window.requestAnimationFrame(() => {
+      focusFrame = window.requestAnimationFrame(() => {
+        const escapedCode = targetCode.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+        const candidates = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            `[data-estimate-section-id="${escapedCode}"], [data-estimate-section-mobile-id="${escapedCode}"]`
+          )
+        );
+        const section = candidates.find((candidate) => candidate.getClientRects().length > 0);
+        if (!section) return;
+        const rect = section.getBoundingClientRect();
+        if (rect.top < 88 || rect.bottom > window.innerHeight - 88) {
+          const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          section.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+        }
+        const focusTarget = section.querySelector<HTMLElement>(
+          'input[aria-label^="Section name"], input[aria-label^="Line item"]'
+        );
+        focusTarget?.focus({ preventScroll: true });
+        setHighlightSectionCode(targetCode);
+        setSectionFocusTargetCode(null);
+        window.setTimeout(() => setHighlightSectionCode(null), 1200);
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(closeFrame);
+      if (focusFrame) window.cancelAnimationFrame(focusFrame);
+    };
   }, [orderedSectionCodes, sectionFocusTargetCode]);
 
   const addSectionWithMeta = React.useCallback(

@@ -98,6 +98,8 @@ export default function nextConfig(phase) {
     experimental: {
       serverComponentsExternalPackages: [
         "@sparticuz/chromium",
+        "estimate-pdf-chromium",
+        "estimate-pdf-puppeteer",
         "puppeteer-core",
         "@supabase/supabase-js",
         "@supabase/ssr",

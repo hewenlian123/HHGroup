@@ -263,26 +263,34 @@ export function EstimateEditor({
     if (!categoryScrollTargetCode) return;
     const target = categoryScrollTargetCode;
     if (!costBreakdownSections.some((s) => s.categoryId === target)) return;
-
-    const candidates = Array.from(
-      document.querySelectorAll<HTMLElement>(
-        `[data-estimate-section-id="${cssEscapeAttrSelector(target)}"], [data-estimate-section-mobile-id="${cssEscapeAttrSelector(target)}"]`
-      )
-    );
-    const el = candidates.find((candidate) => candidate.getClientRects().length > 0);
-    if (el) {
-      const rect = el.getBoundingClientRect();
-      if (rect.top < 88 || rect.bottom > window.innerHeight - 88) {
-        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-      el.querySelector<HTMLElement>('input[aria-label="Line item title"]')?.focus({
-        preventScroll: true,
+    let focusFrame = 0;
+    const closeFrame = window.requestAnimationFrame(() => {
+      focusFrame = window.requestAnimationFrame(() => {
+        const candidates = Array.from(
+          document.querySelectorAll<HTMLElement>(
+            `[data-estimate-section-id="${cssEscapeAttrSelector(target)}"], [data-estimate-section-mobile-id="${cssEscapeAttrSelector(target)}"]`
+          )
+        );
+        const el = candidates.find((candidate) => candidate.getClientRects().length > 0);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top < 88 || rect.bottom > window.innerHeight - 88) {
+            const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            el.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+          }
+          el.querySelector<HTMLElement>(
+            'input[aria-label^="Section name"], input[aria-label="Line item title"]'
+          )?.focus({ preventScroll: true });
+        }
+        setFlashHighlightCategoryId(target);
+        setCategoryScrollTargetCode(null);
+        window.setTimeout(() => setFlashHighlightCategoryId(null), 1000);
       });
-    }
-    setFlashHighlightCategoryId(target);
-    setCategoryScrollTargetCode(null);
-    const t = window.setTimeout(() => setFlashHighlightCategoryId(null), 1000);
-    return () => window.clearTimeout(t);
+    });
+    return () => {
+      window.cancelAnimationFrame(closeFrame);
+      if (focusFrame) window.cancelAnimationFrame(focusFrame);
+    };
   }, [categoryScrollTargetCode, costBreakdownSections]);
 
   const handleNewCategoryCreated = React.useCallback(

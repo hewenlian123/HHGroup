@@ -80,6 +80,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "estimate-pdf-chromium": "npm:@sparticuz/chromium@143.0.0",
+    "estimate-pdf-puppeteer": "npm:puppeteer-core@24.35.0",
     "framer-motion": "^12.38.0",
     "html2pdf.js": "^0.14.0",
     "isomorphic-dompurify": "^3.5.1",

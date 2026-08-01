@@ -70,6 +70,35 @@ async function expectSectionOrder(page: Page, expectedNames: string[]): Promise<
   await expect.poll(async () => sectionOrder(page), { timeout: 30_000 }).toEqual(expectedNames);
 }
 
+async function expectFocusedSection(page: Page, name: string): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        page.evaluate((expectedName) => {
+          const active = document.activeElement as HTMLElement | null;
+          const section = active?.closest<HTMLElement>(
+            "[data-estimate-section-id], [data-estimate-section-mobile-id]"
+          );
+          if (!active || !section) return false;
+          const sectionName = section.querySelector<HTMLInputElement>(
+            'input[aria-label^="Section name for "]'
+          );
+          const labelledSection = section.querySelector<HTMLElement>(
+            `[aria-label="Section: ${CSS.escape(expectedName)}"]`
+          );
+          const isEditableTarget = active.matches(
+            'input[aria-label^="Section name for "], input[aria-label^="Line item"]'
+          );
+          return (
+            isEditableTarget &&
+            (sectionName?.value.trim() === expectedName || Boolean(labelledSection))
+          );
+        }, name),
+      { timeout: 15_000 }
+    )
+    .toBe(true);
+}
+
 async function addTemplateSection(page: Page, name: string): Promise<void> {
   await page.getByRole("button", { name: /^Add Section$/i }).click();
   await page.getByRole("menuitem", { name: new RegExp(`^${escapeRegExp(name)}$`, "i") }).click();
@@ -79,6 +108,7 @@ async function addTemplateSection(page: Page, name: string): Promise<void> {
       .locator("visible=true")
       .first()
   ).toBeVisible({ timeout: 15_000 });
+  await expectFocusedSection(page, name);
 }
 
 async function insertCustomSectionAfter(
@@ -212,6 +242,14 @@ test("Add Next Section inserts in context, preserves order, and remains responsi
     .fill(newContextSection);
   await newContextMenu.getByRole("button", { name: "Add custom section" }).click();
   await expectSectionOrder(page, ["Demolition", newContextSection, "Concrete", "Electrical"]);
+  await expectFocusedSection(page, newContextSection);
+
+  await page.getByRole("button", { name: /^Add Section$/i }).click();
+  await page
+    .getByRole("menuitem", { name: /^Concrete Already added$/i })
+    .first()
+    .click();
+  await expectFocusedSection(page, "Concrete");
 
   const titles = page.getByLabel(/Line item \d+ title/i);
   for (let index = 0; index < (await titles.count()); index += 1) {
