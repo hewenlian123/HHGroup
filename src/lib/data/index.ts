@@ -3290,6 +3290,13 @@ export function getEstimateById(
   return estDb.getEstimateById(id, explicitClient);
 }
 
+export function getEstimateHeaderById(
+  id: string,
+  explicitClient?: SupabaseClient | null
+): Promise<estDb.EstimateHeaderRecord | null> {
+  return estDb.getEstimateHeaderById(id, explicitClient);
+}
+
 export function getEstimateList(): Promise<EstimateListItem[]> {
   return estDb.getEstimateList(estimateCodeToType);
 }
@@ -3588,6 +3595,27 @@ export async function getEstimateSummary(
   const meta = await estDb.getEstimateMeta(estimateId, explicitClient);
   if (!meta) return null;
   const items = await estDb.getEstimateItems(estimateId, explicitClient);
+  const s = estDb.computeSummary(items, meta, estimateCodeToType);
+  return {
+    materialCost: s.materialCost,
+    laborCost: s.laborCost,
+    subcontractorCost: s.subcontractorCost,
+    subtotal: s.subtotal,
+    tax: s.tax,
+    discount: s.discount,
+    markup: s.markup,
+    grandTotal: s.total,
+    overheadPct: 0,
+    profitPct: 0,
+    overhead: 0,
+    profit: 0,
+  };
+}
+
+export function getEstimateSummaryFromRecords(
+  meta: estDb.EstimateMetaRecord,
+  items: EstimateItemRow[]
+): EstimateSummaryResult {
   const s = estDb.computeSummary(items, meta, estimateCodeToType);
   return {
     materialCost: s.materialCost,

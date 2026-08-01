@@ -1,6 +1,9 @@
 "use client";
 
-import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
+import {
+  refreshRscNonBlocking,
+  syncRouterNonBlocking,
+} from "@/components/perf/sync-router-non-blocking";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -25,13 +28,22 @@ import {
 import { deleteEstimateAction } from "../actions";
 import { runDeleteEstimateActionWithTimeout } from "../delete-estimate-client";
 import { EstimateDetailHeader } from "./estimate-detail-header";
-import type { EstimateSaveStatus } from "../_components/estimate-builder-save-status";
+import {
+  EstimateBuilderSaveStatus,
+  type EstimateSaveStatus,
+} from "../_components/estimate-builder-save-status";
+import { useEstimateUnsavedWarning } from "../_components/use-estimate-unsaved-warning";
 import { ConvertToProjectDrawer } from "./convert-to-project-drawer";
 import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
 import { EstimateEditor } from "../_components/estimate-editor";
 import type { EstimatePaymentScheduleInvoiceSummary } from "../_components/estimate-payment-schedule";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 import { SaveEstimateAsTemplateDialog } from "@/app/estimate-templates/save-estimate-as-template-dialog";
+import { Button } from "@/components/ui/button";
+import { SubmitSpinner } from "@/components/ui/submit-spinner";
+import { cn } from "@/lib/utils";
+import { EB } from "../_components/estimate-builder-ui";
+import { formatEstimateCurrency } from "../_components/estimate-currency";
 
 export function EstimateDetailClient({
   estimateId,
@@ -82,8 +94,10 @@ export function EstimateDetailClient({
   const [dirty, setDirty] = React.useState(false);
   const [saveStatus, setSaveStatus] = React.useState<EstimateSaveStatus>("idle");
   const [savingDetails, setSavingDetails] = React.useState(false);
+  const saveInFlightRef = React.useRef(false);
 
   const isLocked = !["Draft", "Sent"].includes(status);
+  useEstimateUnsavedWarning(editing && dirty && !pending && !savingDetails);
 
   React.useEffect(() => {
     if (!editing) {
@@ -108,12 +122,13 @@ export function EstimateDetailClient({
 
   useOnAppSync(
     React.useCallback(() => {
-      syncRouterNonBlocking(router);
+      refreshRscNonBlocking(router);
     }, [router]),
     [router]
   );
 
   const onCancelEditing = () => {
+    if (dirty && !window.confirm("Discard unsaved Estimate changes?")) return;
     setEditing(false);
     setResetNonce((n) => n + 1);
     setDirty(false);
@@ -121,6 +136,8 @@ export function EstimateDetailClient({
   };
 
   const onSave = () => {
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
     const finishWithoutMetaForm = () => {
       setSaveStatus("saving");
       startTransition(() => {
@@ -129,6 +146,7 @@ export function EstimateDetailClient({
         setSaveStatus("saved");
         syncRouterNonBlocking(router);
         window.setTimeout(() => setSaveStatus("idle"), 2000);
+        saveInFlightRef.current = false;
       });
     };
 
@@ -148,14 +166,14 @@ export function EstimateDetailClient({
             window.setTimeout(() => setSaveStatus("idle"), 2000);
             return;
           }
-          setSaveStatus(dirty ? "unsaved" : "idle");
+          setSaveStatus("failed");
           toast({
             title: "Save failed",
             description: res.error ?? "Please try again.",
             variant: "error",
           });
         } catch {
-          setSaveStatus(dirty ? "unsaved" : "idle");
+          setSaveStatus("failed");
           toast({
             title: "Save failed",
             description: "Please try again.",
@@ -163,6 +181,7 @@ export function EstimateDetailClient({
           });
         } finally {
           setSavingDetails(false);
+          saveInFlightRef.current = false;
         }
       })();
     };
@@ -304,6 +323,55 @@ export function EstimateDetailClient({
         editing={editing && !isLocked}
         onSaveDetails={onSave}
       />
+
+      {editing && !isLocked ? (
+        <div
+          className={cn(
+            "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 py-3 md:hidden",
+            EB.glassMobileBar
+          )}
+          aria-label="Estimate edit actions"
+        >
+          <div className="mb-3 flex items-baseline justify-between gap-4">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] leading-tight text-[#9EA8B8]">
+              Total
+            </span>
+            <span
+              className={cn(
+                "min-w-0 break-words text-right text-[1.625rem] font-semibold leading-none tabular-nums tracking-[-0.02em] [font-feature-settings:'tnum']",
+                EB.goldTotal
+              )}
+            >
+              {summary ? formatEstimateCurrency(summary.grandTotal) : "—"}
+            </span>
+          </div>
+          <EstimateBuilderSaveStatus
+            status={pending || savingDetails ? "saving" : saveStatus}
+            className="mb-2 block text-center"
+          />
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              className={cn("min-h-11 min-w-[44px] flex-1", EB.btnGhost)}
+              disabled={pending || savingDetails}
+              onClick={onCancelEditing}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className={cn("min-h-11 min-w-[44px] flex-1 font-medium", EB.btnPrimary)}
+              disabled={pending || savingDetails}
+              aria-busy={pending || savingDetails}
+              onClick={onSave}
+            >
+              <SubmitSpinner loading={pending || savingDetails} className="mr-2" />
+              {pending || savingDetails ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <ConfirmDialog
         open={deleteConfirmOpen}

@@ -35,6 +35,8 @@ export type EstimateListItem = {
   approvedAt?: string;
 };
 
+export type EstimateHeaderRecord = Omit<EstimateListItem, "total">;
+
 export type EstimateMetaRecord = {
   client: { name: string; phone: string; email: string; address: string };
   project: { name: string; siteAddress: string };
@@ -128,6 +130,21 @@ function client(explicitClient?: SupabaseClient | null) {
 function isMissingTable(err: { message?: string } | null): boolean {
   const m = err?.message ?? "";
   return /schema cache|relation.*does not exist|could not find the table/i.test(m);
+}
+
+function isNonNegativeFiniteNumber(value: number): boolean {
+  return Number.isFinite(value) && value >= 0;
+}
+
+function assertValidEstimateItemAmounts(
+  items: ReadonlyArray<{ qty: number; unitCost: number }>
+): void {
+  if (items.some((item) => !isNonNegativeFiniteNumber(item.qty))) {
+    throw new Error("Estimate line item quantity must be a non-negative number.");
+  }
+  if (items.some((item) => !isNonNegativeFiniteNumber(item.unitCost))) {
+    throw new Error("Estimate line item unit price must be a non-negative number.");
+  }
 }
 
 /** Visible line total = qty * unitCost. */
@@ -275,6 +292,7 @@ async function grandTotalForList(
 export async function createEstimateWithClient(
   c: SupabaseClient,
   payload: {
+    customerId?: string;
     clientName: string;
     projectName: string;
     address: string;
@@ -306,7 +324,13 @@ export async function createEstimateWithClient(
   const now = payload.estimateDate ?? new Date().toISOString().slice(0, 10);
   const { data: row, error: e1 } = await c
     .from("estimates")
-    .insert({ number, client: payload.clientName, project: payload.projectName, updated_at: now })
+    .insert({
+      number,
+      client: payload.clientName,
+      project: payload.projectName,
+      updated_at: now,
+      customer_id: payload.customerId?.trim() || null,
+    })
     .select("id")
     .single();
 
@@ -354,6 +378,13 @@ export async function createEstimateWithClient(
     e2 = retry.error;
   }
   if (e2) {
+    const { error: cleanupError } = await c.from("estimates").delete().eq("id", row.id);
+    if (cleanupError) {
+      console.error("[createEstimateWithClient] failed to remove incomplete estimate", {
+        estimateId: row.id,
+        error: cleanupError.message,
+      });
+    }
     const hint =
       "Run supabase/migrations/RUN_ESTIMATES_MIGRATIONS.sql in Supabase Dashboard → SQL Editor.";
     const raw = e2.message ? ` (${e2.message})` : "";
@@ -366,6 +397,7 @@ export async function createEstimateWithClient(
 }
 
 export async function createEstimate(payload: {
+  customerId?: string;
   clientName: string;
   projectName: string;
   address: string;
@@ -388,6 +420,7 @@ export async function createEstimate(payload: {
 export async function createEstimateWithItemsWithClient(
   c: SupabaseClient,
   payload: {
+    customerId?: string;
     clientName: string;
     projectName: string;
     address: string;
@@ -423,7 +456,9 @@ export async function createEstimateWithItemsWithClient(
     }>;
   }
 ): Promise<string> {
+  assertValidEstimateItemAmounts(payload.items);
   const id = await createEstimateWithClient(c, {
+    customerId: payload.customerId,
     clientName: payload.clientName,
     projectName: payload.projectName,
     address: payload.address,
@@ -512,6 +547,7 @@ export async function createEstimateWithItemsWithClient(
 }
 
 export async function createEstimateWithItems(payload: {
+  customerId?: string;
   clientName: string;
   projectName: string;
   address: string;
@@ -562,29 +598,91 @@ export async function getEstimateList(
     if (isMissingTable(error)) return [];
     throw new Error(error.message);
   }
-  const out: EstimateListItem[] = [];
-  for (const r of rows ?? []) {
-    const meta = await getEstimateMeta(r.id);
-    const items = await getEstimateItems(r.id);
-    const total = await grandTotalForList(r.id, meta, items, codeToType);
-    out.push({
-      id: r.id,
-      number: r.number,
-      client: r.client,
-      project: r.project,
-      status: r.status as EstimateStatus,
-      updatedAt: r.updated_at,
-      total,
-      ...(r.approved_at ? { approvedAt: r.approved_at } : {}),
-    });
+
+  const estimateRows = rows ?? [];
+  if (estimateRows.length === 0) return [];
+  const estimateIds = estimateRows.map((row) => row.id);
+  const [metaResult, initialItemsResult] = await Promise.all([
+    c.from("estimate_meta").select("*").in("estimate_id", estimateIds),
+    c
+      .from("estimate_items")
+      .select("*")
+      .in("estimate_id", estimateIds)
+      .order("sort_order", { ascending: true })
+      .order("id", { ascending: true }),
+  ]);
+
+  const metaRows = metaResult.error ? [] : (metaResult.data ?? []);
+  let itemRows = initialItemsResult.data ?? [];
+  if (initialItemsResult.error) {
+    if (isMissingTable(initialItemsResult.error)) {
+      itemRows = [];
+    } else if (isMissingColumnError(initialItemsResult.error, "sort_order")) {
+      const fallback = await c
+        .from("estimate_items")
+        .select("*")
+        .in("estimate_id", estimateIds)
+        .order("cost_code");
+      if (fallback.error) throw new Error(fallback.error.message);
+      itemRows = fallback.data ?? [];
+    } else {
+      throw new Error(initialItemsResult.error.message);
+    }
   }
-  return out;
+
+  const metaByEstimateId = new Map<string, EstimateMetaRecord>();
+  for (const rawMeta of metaRows) {
+    const row = rawMeta as Record<string, unknown>;
+    const estimateId = String(row.estimate_id ?? "");
+    if (estimateId) metaByEstimateId.set(estimateId, mapEstimateMetaRow(row));
+  }
+
+  const itemsByEstimateId = new Map<string, EstimateItemRow[]>();
+  for (const rawItem of itemRows) {
+    const item = mapEstimateItemRow(rawItem as Record<string, unknown>);
+    const existing = itemsByEstimateId.get(item.estimateId);
+    if (existing) existing.push(item);
+    else itemsByEstimateId.set(item.estimateId, [item]);
+  }
+
+  return Promise.all(
+    estimateRows.map(async (r) => {
+      const meta = metaByEstimateId.get(r.id) ?? null;
+      const items = itemsByEstimateId.get(r.id) ?? [];
+      const total = await grandTotalForList(r.id, meta, items, codeToType);
+      return {
+        id: r.id,
+        number: r.number,
+        client: r.client,
+        project: r.project,
+        status: r.status as EstimateStatus,
+        updatedAt: r.updated_at,
+        total,
+        ...(r.approved_at ? { approvedAt: r.approved_at } : {}),
+      };
+    })
+  );
 }
 
 export async function getEstimateById(
   id: string,
   explicitClient?: SupabaseClient | null
 ): Promise<EstimateListItem | null> {
+  const estimate = await getEstimateHeaderById(id, explicitClient);
+  if (!estimate) return null;
+  const [meta, items] = await Promise.all([
+    getEstimateMeta(id, explicitClient),
+    getEstimateItems(id, explicitClient),
+  ]);
+  const codeToType = () => undefined as "material" | "labor" | "subcontractor" | undefined;
+  const total = await grandTotalForList(id, meta, items, codeToType);
+  return { ...estimate, total };
+}
+
+export async function getEstimateHeaderById(
+  id: string,
+  explicitClient?: SupabaseClient | null
+): Promise<EstimateHeaderRecord | null> {
   const c = client(explicitClient);
   const { data: r, error } = await c
     .from("estimates")
@@ -595,10 +693,6 @@ export async function getEstimateById(
     if (error?.code === "PGRST116" || isMissingTable(error)) return null;
     return null;
   }
-  const meta = await getEstimateMeta(id, explicitClient);
-  const items = await getEstimateItems(id, explicitClient);
-  const codeToType = () => undefined as "material" | "labor" | "subcontractor" | undefined;
-  const total = await grandTotalForList(id, meta, items, codeToType);
   return {
     id: r.id,
     number: r.number,
@@ -606,7 +700,6 @@ export async function getEstimateById(
     project: r.project,
     status: r.status as EstimateStatus,
     updatedAt: r.updated_at,
-    total,
     ...(r.approved_at ? { approvedAt: r.approved_at } : {}),
   };
 }
@@ -625,7 +718,10 @@ export async function getEstimateMeta(
     if (isMissingTable(error)) return null;
     return null;
   }
-  const row = r as Record<string, unknown>;
+  return mapEstimateMetaRow(r as Record<string, unknown>);
+}
+
+function mapEstimateMetaRow(row: Record<string, unknown>): EstimateMetaRecord {
   return {
     client: {
       name: (row.client_name as string) ?? "",
@@ -1396,6 +1492,9 @@ export async function addLineItemWithClient(
   estimateId: string,
   item: LineItemInsertPayload
 ): Promise<EstimateItemRow | null> {
+  if (!isNonNegativeFiniteNumber(item.qty) || !isNonNegativeFiniteNumber(item.unitCost)) {
+    return null;
+  }
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return null;
   const sortOrder =
@@ -1728,6 +1827,12 @@ export async function updateLineItemWithClient(
     sortOrder?: number;
   }
 ): Promise<boolean> {
+  if (
+    (payload.qty != null && !isNonNegativeFiniteNumber(payload.qty)) ||
+    (payload.unitCost != null && !isNonNegativeFiniteNumber(payload.unitCost))
+  ) {
+    return false;
+  }
   const { data: est } = await c.from("estimates").select("status").eq("id", estimateId).single();
   if (!est || !["Draft", "Sent"].includes(est.status as string)) return false;
   const up: Record<string, unknown> = {};

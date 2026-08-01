@@ -3,7 +3,7 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-export type EstimateSaveStatus = "idle" | "unsaved" | "saving" | "saved";
+export type EstimateSaveStatus = "idle" | "unsaved" | "saving" | "saved" | "failed";
 
 export function EstimateBuilderSaveStatus({
   status,
@@ -15,7 +15,13 @@ export function EstimateBuilderSaveStatus({
   if (status === "idle") return null;
 
   const label =
-    status === "unsaved" ? "Unsaved changes" : status === "saving" ? "Saving…" : "Saved";
+    status === "unsaved"
+      ? "Unsaved changes"
+      : status === "saving"
+        ? "Saving…"
+        : status === "failed"
+          ? "Save failed — try again"
+          : "Saved";
 
   return (
     <span
@@ -24,6 +30,7 @@ export function EstimateBuilderSaveStatus({
         status === "unsaved" && "text-amber-700 dark:text-amber-500",
         status === "saving" && "text-muted-foreground",
         status === "saved" && "text-emerald-700 dark:text-emerald-500",
+        status === "failed" && "text-rose-700 dark:text-rose-400",
         className
       )}
       role="status"

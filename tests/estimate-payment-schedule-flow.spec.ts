@@ -1,10 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
 const createdProjectNames = new Set<string>();
+
+test.beforeEach(async ({ page }) => {
+  await loginAsE2EOwner(page, "/estimates");
+});
 
 async function deleteRowsByEstimateIds(
   supabase: SupabaseClient,

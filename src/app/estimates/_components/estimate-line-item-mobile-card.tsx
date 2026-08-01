@@ -140,11 +140,13 @@ export function EstimateLineItemMobileCard({
                   <Input
                     type="number"
                     min={0}
-                    step={1}
+                    step={0.01}
+                    inputMode="decimal"
                     value={item.qty}
-                    onChange={(e) => onChange({ qty: Number(e.target.value) || 0 })}
+                    onChange={(e) => onChange({ qty: Math.max(0, Number(e.target.value) || 0) })}
                     onBlur={onBlurField}
                     onKeyDown={handleEnter}
+                    onWheel={(event) => event.currentTarget.blur()}
                     className={ebInput(`min-h-11 ${EB.inputMuted}`)}
                     placeholder="Qty"
                     aria-label={`Line item ${rowIndex} quantity`}
@@ -154,10 +156,14 @@ export function EstimateLineItemMobileCard({
                     type="number"
                     min={0}
                     step={0.01}
+                    inputMode="decimal"
                     value={item.unitPrice}
-                    onChange={(e) => onChange({ unitPrice: Number(e.target.value) || 0 })}
+                    onChange={(e) =>
+                      onChange({ unitPrice: Math.max(0, Number(e.target.value) || 0) })
+                    }
                     onBlur={onBlurField}
                     onKeyDown={handleEnter}
+                    onWheel={(event) => event.currentTarget.blur()}
                     className={ebInput(`min-h-11 ${EB.inputMuted} text-right`)}
                     placeholder="Unit price"
                     aria-label={`Line item ${rowIndex} unit price`}

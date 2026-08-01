@@ -40,6 +40,7 @@ export function EstimateBuilderPageChrome({
     }
     document.body.classList.add(ACTIVE_CLASS);
     main?.classList.add(ACTIVE_CLASS);
+    if (main) main.scrollLeft = 0;
     topbar?.classList.add(ACTIVE_CLASS);
     topbar?.classList.add("estimate-topbar-glass");
     return () => {

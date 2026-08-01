@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 import {
   E2E_PRESERVED_CUSTOMER_ID,
+  E2E_PRESERVED_ESTIMATE_ID,
   E2E_PRESERVED_LABOR_ENTRY_ID,
   E2E_PRESERVED_PROJECT_ID,
   E2E_PRESERVED_WORKER_ID,
@@ -166,6 +167,33 @@ export async function ensureE2EPreservedSeed(supabase: SupabaseClient): Promise<
     },
   ];
   await upsertFirstSuccess(supabase, "projects", projectVariants, "id");
+
+  await upsertFirstSuccess(
+    supabase,
+    "estimates",
+    [
+      {
+        id: E2E_PRESERVED_ESTIMATE_ID,
+        number: "[E2E]-EST-001",
+        client: "Seed Client",
+        project: "Seed Job",
+        status: "Draft",
+      },
+    ],
+    "id"
+  );
+  await upsertFirstSuccess(
+    supabase,
+    "estimate_meta",
+    [
+      {
+        estimate_id: E2E_PRESERVED_ESTIMATE_ID,
+        client_name: "Seed Client",
+        project_name: "Seed Job",
+      },
+    ],
+    "estimate_id"
+  );
 
   // Unpaid labor for [E2E] Seed Worker so /labor/workers/:id/balance enables "Pay Worker" (globalSetup-only DBs
   // often lack rows that full supabase/seed.sql would insert).

@@ -1,10 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
 const createdProjectNames = new Set<string>();
+
+test.beforeEach(async ({ page }) => {
+  await loginAsE2EOwner(page, "/estimates");
+});
 
 async function cleanupEstimateTestData(
   clientNames: Iterable<string>,
@@ -108,6 +113,76 @@ async function addTemplateSectionFromNewComposer(page: Page, name: string): Prom
     .click();
   await page.getByRole("menuitem", { name: new RegExp(`^${name}$`, "i") }).click();
   await expectVisibleSectionName(page, name);
+}
+
+async function expectSavedSectionMenuLayout(page: Page): Promise<void> {
+  const visibleAddSectionActions = page
+    .getByRole("button", { name: /^Add Section$/i })
+    .locator("visible=true");
+  await expect(visibleAddSectionActions).toHaveCount(1);
+
+  const search = page.getByRole("textbox", { name: "Search or add section" });
+  await search.scrollIntoViewIfNeeded();
+  await search.click();
+
+  const menu = page.getByRole("listbox");
+  await expect(menu).toBeVisible({ timeout: 10_000 });
+  const layout = await menu.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    const firstVisibleLine = Array.from(
+      document.querySelectorAll<HTMLElement>(".eb-line-item-card")
+    ).find((candidate) => {
+      const candidateRect = candidate.getBoundingClientRect();
+      return candidateRect.width > 0 && candidateRect.height > 0;
+    });
+    const lineRect = firstVisibleLine?.getBoundingClientRect();
+    const topmost = document.elementFromPoint(
+      Math.min(rect.right - 2, rect.left + rect.width / 2),
+      Math.min(rect.bottom - 2, rect.top + rect.height / 2)
+    );
+
+    return {
+      backgroundColor: style.backgroundColor,
+      overflowY: style.overflowY,
+      zIndex: Number(style.zIndex || 0),
+      menu: { top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left },
+      line: lineRect
+        ? { top: lineRect.top, right: lineRect.right, bottom: lineRect.bottom, left: lineRect.left }
+        : null,
+      menuOwnsTopmostPoint: Boolean(topmost && element.contains(topmost)),
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+    };
+  });
+
+  const rgbaMatch = layout.backgroundColor.match(/rgba?\(([^)]+)\)/);
+  const colorParts = rgbaMatch?.[1]?.split(",").map((part) => Number(part.trim())) ?? [];
+  const backgroundAlpha = colorParts.length === 4 ? colorParts[3] : colorParts.length === 3 ? 1 : 0;
+  expect(backgroundAlpha).toBeGreaterThanOrEqual(0.95);
+  expect(layout.zIndex).toBeGreaterThanOrEqual(200);
+  expect(layout.overflowY).toBe("auto");
+  expect(layout.menuOwnsTopmostPoint).toBe(true);
+  expect(layout.menu.left).toBeGreaterThanOrEqual(0);
+  expect(layout.menu.top).toBeGreaterThanOrEqual(0);
+  expect(layout.menu.right).toBeLessThanOrEqual(layout.viewport.width);
+  expect(layout.menu.bottom).toBeLessThanOrEqual(layout.viewport.height);
+  if (layout.line) {
+    const intersectsLine =
+      layout.menu.left < layout.line.right &&
+      layout.menu.right > layout.line.left &&
+      layout.menu.top < layout.line.bottom &&
+      layout.menu.bottom > layout.line.top;
+    expect(intersectsLine).toBe(false);
+  }
+
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await expect(search).toBeFocused();
+
+  await search.click();
+  await expect(menu).toBeVisible();
+  await page.getByRole("heading", { name: "Scope of work" }).click();
+  await expect(menu).toBeHidden();
 }
 
 test("estimate builder smoke: create, edit totals, preview, open existing edit", async ({
@@ -265,13 +340,11 @@ test("estimate section dropdowns add templates without crashing in new and edit 
     .getByRole("button", { name: /^Add Section$/i })
     .first()
     .click();
-  const duplicateDemolition = page.getByRole("menuitem", { name: /^Demolition$/i }).first();
+  const duplicateDemolition = page
+    .getByRole("menuitem", { name: /^Demolition Already added$/i })
+    .first();
   await expect(duplicateDemolition).toBeVisible({ timeout: 10_000 });
-  if ((await duplicateDemolition.getAttribute("data-disabled")) === "") {
-    await page.keyboard.press("Escape");
-  } else {
-    await duplicateDemolition.click();
-  }
+  await duplicateDemolition.click();
   await expectVisibleSectionName(page, "Demolition");
 
   const customSection = `PW Custom Section ${suffix}`;
@@ -292,11 +365,22 @@ test("estimate section dropdowns add templates without crashing in new and edit 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   const addSectionBlock = page.locator("#estimate-add-section");
   await expect(addSectionBlock).toBeVisible({ timeout: 15_000 });
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 1280, height: 800 },
+    { width: 820, height: 1180 },
+    { width: 1180, height: 820 },
+    { width: 390, height: 844 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await expectSavedSectionMenuLayout(page);
+  }
   const search = addSectionBlock.getByRole("textbox", { name: "Search or add section" });
   await search.scrollIntoViewIfNeeded();
   await search.click();
   await page.getByRole("option", { name: /^Electrical$/i }).click();
   await expect(search).toHaveValue("Electrical");
+  await expect(search).toBeFocused();
   await addSectionBlock.getByRole("button", { name: /^Add Section$/i }).click();
   await expectVisibleSectionName(page, "Electrical");
 

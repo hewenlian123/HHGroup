@@ -3,10 +3,15 @@ import { mkdirSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
 const createdProjectNames = new Set<string>();
+
+test.beforeEach(async ({ page }) => {
+  await loginAsE2EOwner(page, "/estimates");
+});
 
 function ensureScreenshotDir(): void {
   mkdirSync("test-results", { recursive: true });
@@ -136,8 +141,12 @@ test("customer estimate preview and print use polished proposal output", async (
   await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("5000");
 
   await page.getByRole("button", { name: "More actions" }).locator("visible=true").first().click();
-  await page.getByText("Set status", { exact: true }).hover();
-  await page.getByRole("menuitem", { name: "Optional" }).click();
+  const setStatusItem = page.getByRole("menuitem", { name: "Set status" });
+  await setStatusItem.focus();
+  await page.keyboard.press("ArrowRight");
+  const optionalStatusItem = page.getByRole("menuitem", { name: "Optional" });
+  await expect(optionalStatusItem).toBeVisible();
+  await optionalStatusItem.click();
 
   await page.getByRole("button", { name: "Add note" }).click();
   await page.getByRole("menuitem", { name: "Assumptions" }).click();

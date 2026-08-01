@@ -70,7 +70,6 @@ import {
 import { EstimateBuilderAdvanced } from "./estimate-builder-advanced";
 import { EstimateEditCustomerSection } from "./estimate-edit-customer-section";
 import { EB, ebGlassPanel, ebInput } from "./estimate-builder-ui";
-import { EstimateLineItemsToolbar } from "./estimate-line-items-toolbar";
 import { EstimateLineItemPersistedMobile } from "./estimate-line-item-persisted-mobile";
 import { ScopeSectionCollapsibleBody, ScopeSectionHeader } from "./estimate-line-items-local";
 import { EstimateScopeSortableSection } from "./estimate-scope-section-sortable";
@@ -258,28 +257,76 @@ export function EstimateEditor({
   const [flashHighlightCategoryId, setFlashHighlightCategoryId] = React.useState<string | null>(
     null
   );
+  const [activeSectionInsertion, setActiveSectionInsertion] = React.useState<string | null>(null);
 
   React.useLayoutEffect(() => {
     if (!categoryScrollTargetCode) return;
     const target = categoryScrollTargetCode;
     if (!costBreakdownSections.some((s) => s.categoryId === target)) return;
 
-    const el = document.querySelector<HTMLElement>(
-      `[data-estimate-section-id="${cssEscapeAttrSelector(target)}"]`
+    const candidates = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        `[data-estimate-section-id="${cssEscapeAttrSelector(target)}"], [data-estimate-section-mobile-id="${cssEscapeAttrSelector(target)}"]`
+      )
     );
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const el = candidates.find((candidate) => candidate.getClientRects().length > 0);
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      if (rect.top < 88 || rect.bottom > window.innerHeight - 88) {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+      el.querySelector<HTMLElement>('input[aria-label="Line item title"]')?.focus({
+        preventScroll: true,
+      });
+    }
     setFlashHighlightCategoryId(target);
     setCategoryScrollTargetCode(null);
     const t = window.setTimeout(() => setFlashHighlightCategoryId(null), 1000);
     return () => window.clearTimeout(t);
   }, [categoryScrollTargetCode, costBreakdownSections]);
 
-  const handleNewCategoryCreated = React.useCallback((code: string, displayName: string) => {
-    setLocalCategoryNames((prev) => ({ ...prev, [code]: displayName }));
-    setSelectedCategoryId(code);
-    setPendingSelectNewCategory({ code, displayName });
-    setCategoryScrollTargetCode(code);
-  }, []);
+  const handleNewCategoryCreated = React.useCallback(
+    async (code: string, displayName: string, insertAfterCode?: string | null) => {
+      const currentOrder = costBreakdownSections
+        .map((section) => section.categoryId)
+        .filter((categoryId) => categoryId !== code);
+      const anchorIndex = insertAfterCode ? currentOrder.indexOf(insertAfterCode) : -1;
+      const insertIndex = anchorIndex >= 0 ? anchorIndex + 1 : currentOrder.length;
+      const nextOrder = [...currentOrder];
+      nextOrder.splice(insertIndex, 0, code);
+      const nextNames: Record<string, string> = {};
+      for (const categoryId of nextOrder) {
+        const section = costBreakdownSections.find(
+          (candidate) => candidate.categoryId === categoryId
+        );
+        nextNames[categoryId] =
+          categoryId === code
+            ? displayName
+            : (localCategoryNames[categoryId] ??
+              catalogNameByCode[categoryId] ??
+              section?.title ??
+              categoryId);
+      }
+
+      setLocalCategoryNames((prev) => ({ ...prev, [code]: displayName }));
+      setLocalCategorySectionOrder(nextOrder);
+      setSelectedCategoryId(code);
+      if (insertAfterCode === undefined) setPendingSelectNewCategory({ code, displayName });
+      setCategoryScrollTargetCode(code);
+      setActiveSectionInsertion(null);
+
+      const result = await reorderEstimateCategoriesAction(estimateId, nextOrder, nextNames);
+      if (!result.ok) {
+        toast({
+          title: "Could not save section order",
+          description: result.error ?? "Try again.",
+          variant: "error",
+        });
+        setLocalCategorySectionOrder(null);
+      }
+    },
+    [catalogNameByCode, costBreakdownSections, estimateId, localCategoryNames, toast]
+  );
   const focusExistingCategory = React.useCallback((code: string) => {
     setSelectedCategoryId(code);
     setCategoryScrollTargetCode(code);
@@ -406,6 +453,82 @@ export function EstimateEditor({
     [estimateId, isReadOnly, toast]
   );
 
+  const restoreContextualActionFocus = React.useCallback((ariaLabel: string): void => {
+    window.requestAnimationFrame(() => {
+      const candidates = Array.from(
+        document.querySelectorAll<HTMLButtonElement>(
+          `button[aria-label="${cssEscapeAttrSelector(ariaLabel)}"]`
+        )
+      );
+      candidates
+        .find((candidate) => candidate.getClientRects().length > 0)
+        ?.focus({
+          preventScroll: true,
+        });
+    });
+  }, []);
+
+  const renderContextualSectionAction = React.useCallback(
+    ({
+      actionKey,
+      insertAfterCode,
+      label,
+      ariaLabel,
+      inputAriaLabel,
+    }: {
+      actionKey: string;
+      insertAfterCode: string | null;
+      label: string;
+      ariaLabel: string;
+      inputAriaLabel: string;
+    }): React.ReactElement => {
+      if (activeSectionInsertion === actionKey) {
+        return (
+          <AddCategoryBlock
+            estimateId={estimateId}
+            allCategoryCodes={sectionDropdownOptions.map((option) => option.code)}
+            existingCategoryCodes={costBreakdownSections.map((section) => section.categoryId)}
+            getCategoryDisplayName={getCategoryDisplayNameHint}
+            onFocusExistingCategory={focusExistingCategory}
+            onPostCreateCategoryUx={handleNewCategoryCreated}
+            instanceId={actionKey.replace(/[^a-zA-Z0-9_-]/g, "-")}
+            compact
+            autoFocus
+            commitOnSelect
+            preferBelow
+            insertAfterCategoryCode={insertAfterCode}
+            inputAriaLabel={inputAriaLabel}
+            onDismiss={(reason) => {
+              setActiveSectionInsertion(null);
+              if (reason !== "selection") restoreContextualActionFocus(ariaLabel);
+            }}
+          />
+        );
+      }
+      return (
+        <button
+          type="button"
+          className={EB.composerAddSection}
+          aria-label={ariaLabel}
+          onClick={() => setActiveSectionInsertion(actionKey)}
+        >
+          <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          {label}
+        </button>
+      );
+    },
+    [
+      activeSectionInsertion,
+      costBreakdownSections,
+      estimateId,
+      focusExistingCategory,
+      getCategoryDisplayNameHint,
+      handleNewCategoryCreated,
+      restoreContextualActionFocus,
+      sectionDropdownOptions,
+    ]
+  );
+
   return (
     <React.Fragment>
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-8 lg:items-start">
@@ -431,16 +554,6 @@ export function EstimateEditor({
                   <h2 className={EB.scopeHeading}>Scope of work</h2>
                   <p className={EB.scopeSubtitle}>Proposal sections and line totals</p>
                 </div>
-                {!isReadOnly ? (
-                  <EstimateLineItemsToolbar
-                    onAddSection={() => {
-                      document.getElementById("estimate-add-section")?.scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                      });
-                    }}
-                  />
-                ) : null}
               </div>
 
               {!isReadOnly ? (
@@ -462,7 +575,14 @@ export function EstimateEditor({
                     localCategoryNames[categoryId] ?? catalogNameByCode[categoryId] ?? title;
                   const collapsed = isSectionCollapsed(categoryId);
                   return (
-                    <div key={categoryId} className={EB.scopeSectionMobile}>
+                    <div
+                      key={categoryId}
+                      data-estimate-section-mobile-id={categoryId}
+                      className={cn(
+                        EB.scopeSectionMobile,
+                        flashHighlightCategoryId === categoryId && EB.scopeSectionInserted
+                      )}
+                    >
                       <ScopeSectionHeader
                         code={categoryId}
                         catalogName={catalogNameByCode[categoryId] ?? title}
@@ -553,6 +673,17 @@ export function EstimateEditor({
                           ) : null}
                         </div>
                       </ScopeSectionCollapsibleBody>
+                      {!isReadOnly ? (
+                        <div className={EB.addNextSectionRow}>
+                          {renderContextualSectionAction({
+                            actionKey: `mobile:${categoryId}`,
+                            insertAfterCode: categoryId,
+                            label: "Add Next Section",
+                            ariaLabel: `Add Next Section after ${displayName}`,
+                            inputAriaLabel: `Search section after ${displayName}`,
+                          })}
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -673,6 +804,17 @@ export function EstimateEditor({
                               ) : null}
                             </div>
                           </ScopeSectionCollapsibleBody>
+                          {!isReadOnly ? (
+                            <div className={EB.addNextSectionRow}>
+                              {renderContextualSectionAction({
+                                actionKey: `desktop:${categoryId}`,
+                                insertAfterCode: categoryId,
+                                label: "Add Next Section",
+                                ariaLabel: `Add Next Section after ${displayName}`,
+                                inputAriaLabel: `Search section after ${displayName}`,
+                              })}
+                            </div>
+                          ) : null}
                         </React.Fragment>
                       );
 
@@ -732,6 +874,18 @@ export function EstimateEditor({
                   );
                 })()}
               </div>
+              {!isReadOnly && costBreakdownSections.length > 0 ? (
+                <div className={cn(EB.addNextSectionRow, EB.addFinalSectionRow)}>
+                  {renderContextualSectionAction({
+                    actionKey: "final",
+                    insertAfterCode:
+                      costBreakdownSections[costBreakdownSections.length - 1]?.categoryId ?? null,
+                    label: "Add Final Section",
+                    ariaLabel: "Add Final Section",
+                    inputAriaLabel: "Search final section",
+                  })}
+                </div>
+              ) : null}
             </div>
           </section>
 
@@ -767,7 +921,7 @@ export function EstimateEditor({
           </EstimateBuilderAdvanced>
         </div>
 
-        <aside className="hidden lg:block lg:pl-1">
+        <aside className={cn("hidden lg:block lg:pl-1", EB.overviewStickyAside)}>
           <EstimateBuilderSummary
             summary={summary}
             showInternal={editing && !isReadOnly}
@@ -777,27 +931,29 @@ export function EstimateEditor({
         </aside>
       </div>
 
-      <div
-        className={cn(
-          "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 py-4 lg:hidden",
-          EB.glassMobileBar
-        )}
-        aria-label="Estimate total"
-      >
-        <div className="flex items-baseline justify-between gap-4">
-          <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
-            Total
-          </span>
-          <span
-            className={cn(
-              "text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight",
-              EB.goldTotal
-            )}
-          >
-            {summary ? formatEstimateCurrency(summary.grandTotal) : "—"}
-          </span>
+      {isReadOnly ? (
+        <div
+          className={cn(
+            "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 py-4 lg:hidden",
+            EB.glassMobileBar
+          )}
+          aria-label="Estimate total"
+        >
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-zinc-500">
+              Total
+            </span>
+            <span
+              className={cn(
+                "text-[1.75rem] font-semibold leading-none tabular-nums tracking-tight",
+                EB.goldTotal
+              )}
+            >
+              {summary ? formatEstimateCurrency(summary.grandTotal) : "—"}
+            </span>
+          </div>
         </div>
-      </div>
+      ) : null}
     </React.Fragment>
   );
 }
@@ -955,8 +1111,9 @@ function LineItemRow({
             type="number"
             name="qty"
             step="1"
+            min={0}
             value={qty}
-            onChange={(e) => setQty(Number(e.target.value) || 0)}
+            onChange={(e) => setQty(Math.max(0, Number(e.target.value) || 0))}
             onBlur={submitForm}
             className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`)}
             aria-label="Line item quantity"
@@ -981,8 +1138,9 @@ function LineItemRow({
             type="number"
             name="unitCost"
             step="0.01"
+            min={0}
             value={unitCost}
-            onChange={(e) => setUnitCost(Number(e.target.value) || 0)}
+            onChange={(e) => setUnitCost(Math.max(0, Number(e.target.value) || 0))}
             onBlur={submitForm}
             className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`)}
             aria-label="Line item unit price"
@@ -1057,6 +1215,14 @@ function AddCategoryBlock({
   onPendingSelectNewCategoryConsumed,
   onFocusExistingCategory,
   onPostCreateCategoryUx,
+  instanceId,
+  compact = false,
+  autoFocus = false,
+  commitOnSelect = false,
+  preferBelow = false,
+  insertAfterCategoryCode,
+  inputAriaLabel = "Search or add section",
+  onDismiss,
 }: {
   estimateId: string;
   allCategoryCodes: string[];
@@ -1067,7 +1233,19 @@ function AddCategoryBlock({
   /** Focus an already-added section instead of adding another blank line item to it. */
   onFocusExistingCategory?: (code: string, displayName: string) => void;
   /** Scroll + highlight + bottom-bar selection after creating a category from this block. */
-  onPostCreateCategoryUx?: (code: string, displayName: string) => void;
+  onPostCreateCategoryUx?: (
+    code: string,
+    displayName: string,
+    insertAfterCode?: string | null
+  ) => void | Promise<void>;
+  instanceId?: string;
+  compact?: boolean;
+  autoFocus?: boolean;
+  commitOnSelect?: boolean;
+  preferBelow?: boolean;
+  insertAfterCategoryCode?: string | null;
+  inputAriaLabel?: string;
+  onDismiss?: (reason: "escape" | "outside" | "selection") => void;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -1087,6 +1265,8 @@ function AddCategoryBlock({
   const [open, setOpen] = React.useState(false);
   const [highlightIndex, setHighlightIndex] = React.useState(0);
   const [busy, setBusy] = React.useState(false);
+  const inputId = instanceId ? `add-section-input-${instanceId}` : "add-section-input";
+  const containerId = instanceId ? `estimate-add-section-${instanceId}` : "estimate-add-section";
   const containerRef = React.useRef<HTMLDivElement>(null);
   const anchorRef = React.useRef<HTMLDivElement>(null);
   const listRef = React.useRef<HTMLUListElement>(null);
@@ -1096,6 +1276,7 @@ function AddCategoryBlock({
     left: number;
     width: number;
     maxHeight: number;
+    placement: "above" | "below";
   } | null>(null);
 
   const searchLower = deferredSearch.trim().toLowerCase();
@@ -1138,26 +1319,76 @@ function AddCategoryBlock({
       const t = e.target as Node;
       const inContainer = containerRef.current?.contains(t) ?? false;
       const inMenu = listRef.current?.contains(t) ?? false;
-      if (!inContainer && !inMenu) setOpen(false);
+      if (!inContainer && !inMenu) {
+        setOpen(false);
+        onDismiss?.("outside");
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [onDismiss]);
+
+  React.useEffect(() => {
+    if (!autoFocus) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (!containerRef.current?.getClientRects().length) return;
+      inputRef.current?.focus({ preventScroll: true });
+      setOpen(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [autoFocus]);
 
   const computeMenuPosition = React.useCallback(() => {
     const anchor = anchorRef.current;
     if (!anchor) return;
-    const rect = anchor.getBoundingClientRect();
     const desiredMax = 240;
     const padding = 12;
-    const belowTop = rect.bottom + 4;
-    const belowAvail = window.innerHeight - belowTop - padding;
-    if (belowAvail >= 160) {
+    let rect = anchor.getBoundingClientRect();
+    let belowTop = rect.bottom + 4;
+    let belowAvail = window.innerHeight - belowTop - padding;
+    if (preferBelow && belowAvail < desiredMax) {
+      const scrollAmount = Math.min(
+        desiredMax - belowAvail,
+        Math.max(0, rect.top - (88 + padding))
+      );
+      if (scrollAmount > 0) {
+        let scrollParent: HTMLElement | null = anchor.parentElement;
+        while (scrollParent) {
+          const style = window.getComputedStyle(scrollParent);
+          const scrollable =
+            /(auto|scroll)/.test(style.overflowY) &&
+            scrollParent.scrollHeight > scrollParent.clientHeight;
+          if (scrollable) break;
+          scrollParent = scrollParent.parentElement;
+        }
+        if (scrollParent) {
+          // The workspace uses `scroll-smooth`; assigning scrollTop keeps this
+          // positioning correction synchronous so the portal never flashes
+          // outside the viewport while the animation catches up.
+          const previousScrollBehavior = scrollParent.style.scrollBehavior;
+          scrollParent.style.scrollBehavior = "auto";
+          scrollParent.scrollTop += scrollAmount;
+          window.requestAnimationFrame(() => {
+            scrollParent.style.scrollBehavior = previousScrollBehavior;
+          });
+        } else {
+          window.scrollTo(window.scrollX, window.scrollY + scrollAmount);
+        }
+        rect = anchor.getBoundingClientRect();
+        belowTop = rect.bottom + 4;
+        belowAvail = window.innerHeight - belowTop - padding;
+      }
+    }
+    const maxWidth = Math.max(0, window.innerWidth - padding * 2);
+    const width = Math.min(rect.width, maxWidth);
+    const left = Math.min(Math.max(rect.left, padding), window.innerWidth - padding - width);
+    if (preferBelow || belowAvail >= 160) {
       setMenuPos({
         top: belowTop,
-        left: rect.left,
-        width: rect.width,
+        left,
+        width,
         maxHeight: Math.max(120, Math.min(desiredMax, belowAvail)),
+        placement: "below",
       });
       return;
     }
@@ -1165,11 +1396,29 @@ function AddCategoryBlock({
     const maxHeight = Math.max(120, Math.min(desiredMax, aboveAvail));
     setMenuPos({
       top: Math.max(padding, rect.top - 4 - maxHeight),
-      left: rect.left,
-      width: rect.width,
+      left,
+      width,
       maxHeight,
+      placement: "above",
     });
-  }, []);
+  }, [preferBelow]);
+
+  const reservedMenuHeight = React.useMemo(() => {
+    if (!open) return 0;
+    const optionCount = Math.max(1, visibleOptions.length + (canInstantCreate ? 1 : 0));
+    const contentHeight = Math.min(240, optionCount * 36 + 8) + 4;
+    if (preferBelow) return contentHeight;
+    if (menuPos?.placement !== "below") return 0;
+    return Math.min(menuPos.maxHeight, contentHeight) + 4;
+  }, [canInstantCreate, menuPos, open, preferBelow, visibleOptions.length]);
+
+  React.useLayoutEffect(() => {
+    if (!open || !preferBelow || reservedMenuHeight <= 0) return;
+    // A bottom-of-page selector can only scroll its nearest container after
+    // the reserved menu space participates in layout.
+    const frame = window.requestAnimationFrame(computeMenuPosition);
+    return () => window.cancelAnimationFrame(frame);
+  }, [computeMenuPosition, open, preferBelow, reservedMenuHeight]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -1193,11 +1442,12 @@ function AddCategoryBlock({
       try {
         const res = await createCustomEstimateCategoryAction(estimateId, trimmed);
         if (res.ok && res.costCode) {
-          onPostCreateCategoryUx?.(res.costCode, trimmed);
+          await onPostCreateCategoryUx?.(res.costCode, trimmed, insertAfterCategoryCode);
           setSelectedCode(res.costCode);
           setCustomCategoryLabel(trimmed);
           setSearch("");
           setOpen(false);
+          onDismiss?.("selection");
           syncRouterNonBlocking(router);
           toast({ title: "Section created", variant: "success" });
         } else {
@@ -1211,7 +1461,7 @@ function AddCategoryBlock({
         setBusy(false);
       }
     },
-    [estimateId, onPostCreateCategoryUx, router, toast]
+    [estimateId, insertAfterCategoryCode, onDismiss, onPostCreateCategoryUx, router, toast]
   );
 
   const handleInstantCreateCategory = () => {
@@ -1226,29 +1476,25 @@ function AddCategoryBlock({
       setCustomCategoryLabel(null);
       setSearch("");
       setOpen(false);
+      onDismiss?.("selection");
     },
-    [onFocusExistingCategory]
+    [onDismiss, onFocusExistingCategory]
   );
 
-  const runAdd = React.useCallback(async () => {
-    if (busy) return;
-    const typedName = search.trim();
-    if (typedName) {
-      await createWithName(typedName);
-      return;
-    }
-    if (selectedCode) {
+  const addSelectedCategory = React.useCallback(
+    async (code: string, displayName?: string | null) => {
       setBusy(true);
       try {
-        const name = customCategoryLabel?.trim() ?? "";
-        const res = await addLineItemCatalogInlineAction(estimateId, selectedCode, name);
+        const name = displayName?.trim() ?? "";
+        const res = await addLineItemCatalogInlineAction(estimateId, code, name);
         if (res.ok) {
-          const displayLabel = name.trim() || getCategoryDisplayName(selectedCode) || selectedCode;
-          onPostCreateCategoryUx?.(selectedCode, displayLabel);
+          const displayLabel = name || getCategoryDisplayName(code) || code;
+          await onPostCreateCategoryUx?.(code, displayLabel, insertAfterCategoryCode);
           setSearch("");
           setSelectedCode(null);
           setCustomCategoryLabel(null);
           setOpen(false);
+          onDismiss?.("selection");
           syncRouterNonBlocking(router);
           toast({ title: "Section added", variant: "success" });
         } else {
@@ -1261,6 +1507,27 @@ function AddCategoryBlock({
       } finally {
         setBusy(false);
       }
+    },
+    [
+      estimateId,
+      getCategoryDisplayName,
+      insertAfterCategoryCode,
+      onDismiss,
+      onPostCreateCategoryUx,
+      router,
+      toast,
+    ]
+  );
+
+  const runAdd = React.useCallback(async () => {
+    if (busy) return;
+    const typedName = search.trim();
+    if (typedName) {
+      await createWithName(typedName);
+      return;
+    }
+    if (selectedCode) {
+      await addSelectedCategory(selectedCode, customCategoryLabel);
       return;
     }
     inputRef.current?.focus();
@@ -1270,18 +1537,7 @@ function AddCategoryBlock({
       description: "Type a name to create one, or pick a section from the list.",
       variant: "error",
     });
-  }, [
-    busy,
-    selectedCode,
-    customCategoryLabel,
-    estimateId,
-    onPostCreateCategoryUx,
-    router,
-    toast,
-    search,
-    createWithName,
-    getCategoryDisplayName,
-  ]);
+  }, [addSelectedCategory, busy, createWithName, customCategoryLabel, search, selectedCode, toast]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!open) {
@@ -1294,6 +1550,7 @@ function AddCategoryBlock({
     }
     if (e.key === "Escape") {
       setOpen(false);
+      onDismiss?.("escape");
       return;
     }
     if (e.key === "ArrowDown") {
@@ -1320,10 +1577,14 @@ function AddCategoryBlock({
           focusExistingSection(cc.code, cc.name);
           return;
         }
-        setSelectedCode(cc.code);
-        setCustomCategoryLabel(null);
-        setSearch("");
-        setOpen(false);
+        if (commitOnSelect) {
+          void addSelectedCategory(cc.code, cc.name);
+        } else {
+          setSelectedCode(cc.code);
+          setCustomCategoryLabel(null);
+          setSearch("");
+          setOpen(false);
+        }
       }
     }
   };
@@ -1332,6 +1593,10 @@ function AddCategoryBlock({
     const displayName = getCategoryDisplayName(code);
     if (existingCategorySet.has(code)) {
       focusExistingSection(code, displayName);
+      return;
+    }
+    if (commitOnSelect) {
+      void addSelectedCategory(code, displayName);
       return;
     }
     setSelectedCode(code);
@@ -1346,18 +1611,22 @@ function AddCategoryBlock({
   }, [customCategoryLabel, getCategoryDisplayName, search, selectedCode]);
 
   return (
-    <div id="estimate-add-section" ref={containerRef} className={cn(EB.addSectionComposer, "mb-4")}>
-      <p className="eb-composer-hint mb-2">New section</p>
+    <div
+      id={containerId}
+      ref={containerRef}
+      className={cn(EB.addSectionComposer, compact ? "eb-add-section-composer--compact" : "mb-4")}
+    >
+      {!compact ? <p className="eb-composer-hint mb-2">New section</p> : null}
       <div className="flex flex-wrap items-center gap-2.5">
-        <div className="relative min-w-[200px] flex-1 max-w-md">
-          <Label htmlFor="add-section-input" className={EB.label}>
+        <div className={cn("relative min-w-[200px] flex-1", !compact && "max-w-md")}>
+          <Label htmlFor={inputId} className={compact ? "sr-only" : EB.label}>
             Section name
           </Label>
           <div ref={anchorRef} className="relative">
             <Input
               ref={inputRef}
-              id="add-section-input"
-              aria-label="Search or add section"
+              id={inputId}
+              aria-label={inputAriaLabel}
               type="text"
               value={open ? search : selectedCode ? selectedCategoryDisplayValue : search}
               onChange={(e) => {
@@ -1376,6 +1645,7 @@ function AddCategoryBlock({
                 }
               }}
               onFocus={() => setOpen(true)}
+              onClick={() => setOpen(true)}
               onKeyDown={handleKeyDown}
               placeholder="Add or search section…"
               className={ebInput("h-8 pr-9")}
@@ -1420,6 +1690,7 @@ function AddCategoryBlock({
                               existingCategorySet.has(cc.code) && "opacity-55"
                             )}
                             onMouseEnter={() => setHighlightIndex(i)}
+                            onMouseDown={(event) => event.preventDefault()}
                             onClick={() => handleSelect(cc.code)}
                           >
                             <span>{cc.name}</span>
@@ -1447,6 +1718,7 @@ function AddCategoryBlock({
                                 EB.commandMenuItemActive
                             )}
                             onMouseEnter={() => setHighlightIndex(visibleOptions.length)}
+                            onMouseDown={(event) => event.preventDefault()}
                             onClick={() => handleInstantCreateCategory()}
                           >
                             <Plus className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />
@@ -1466,20 +1738,29 @@ function AddCategoryBlock({
               : null}
           </div>
         </div>
-        <button
-          type="button"
-          className={cn(EB.composerAddSection, "shrink-0 disabled:opacity-40")}
-          disabled={busy || (!selectedCode && !search.trim())}
-          onClick={() => void runAdd()}
-        >
-          {busy ? (
-            <InlineLoading className="mr-2" size="md" aria-hidden />
-          ) : (
-            <Plus className="h-4 w-4 mr-2" aria-hidden />
-          )}
-          {busy ? "Adding…" : "Add Section"}
-        </button>
+        {!compact ? (
+          <button
+            type="button"
+            className={cn(EB.composerAddSection, "shrink-0 disabled:opacity-40")}
+            disabled={busy || (!selectedCode && !search.trim())}
+            onClick={() => void runAdd()}
+          >
+            {busy ? (
+              <InlineLoading className="mr-2" size="md" aria-hidden />
+            ) : (
+              <Plus className="h-4 w-4 mr-2" aria-hidden />
+            )}
+            {busy ? "Adding…" : "Add Section"}
+          </button>
+        ) : null}
       </div>
+      {reservedMenuHeight > 0 ? (
+        <div
+          aria-hidden="true"
+          data-testid="estimate-section-menu-space"
+          style={{ height: reservedMenuHeight }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAuthenticatedUser } from "@/lib/auth-boundary";
 import { estimatePrintPdfFilename, generateEstimatePrintPdfBuffer } from "@/lib/estimate-print-pdf";
 import { resolveServerAppOrigin } from "@/lib/server-app-origin";
-import { getEstimateById } from "@/lib/data";
+import { getEstimateHeaderById } from "@/lib/data";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export async function GET(
   }
 
   const readClient = getServerSupabaseInternalNoStore();
-  const estimate = await getEstimateById(estimateId, readClient);
+  const estimate = await getEstimateHeaderById(estimateId, readClient);
   if (!estimate) {
     return NextResponse.json({ ok: false, message: "Estimate not found" }, { status: 404 });
   }

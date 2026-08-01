@@ -369,6 +369,39 @@ function paginateScopeSections(sections: ScopeSection[]): PaginatedScopeSection[
   return pages.length ? pages : [[]];
 }
 
+function estimateTextLineCount(text: string | null | undefined, charactersPerLine = 82): number {
+  const normalized = text?.trim();
+  if (!normalized) return 0;
+
+  return normalized
+    .split(/\r?\n/)
+    .reduce((lines, row) => lines + Math.max(1, Math.ceil(row.length / charactersPerLine)), 0);
+}
+
+function shouldSplitFinalPacket({
+  paymentSchedule,
+  documentNotes,
+  defaultTerms,
+}: {
+  paymentSchedule: PaymentScheduleItem[];
+  documentNotes: EstimateMetaRecord["documentNotes"];
+  defaultTerms: string | null | undefined;
+}): boolean {
+  const paymentWeight = paymentSchedule.reduce(
+    (weight, item) => weight + 3 + estimateTextLineCount(item.description),
+    paymentSchedule.length > 0 ? 5 : 0
+  );
+  const notesWeight = documentNotes.reduce(
+    (weight, note) =>
+      weight + 2 + estimateTextLineCount(note.title, 60) + estimateTextLineCount(note.body),
+    documentNotes.length > 0 ? 4 : 0
+  );
+  const termsWeight = defaultTerms ? 2 + estimateTextLineCount(defaultTerms) : 0;
+  const signatureWeight = 10;
+
+  return paymentWeight + notesWeight + termsWeight + signatureWeight > 38;
+}
+
 export function EstimatePreviewContent({
   company,
   estimate,
@@ -398,6 +431,122 @@ export function EstimatePreviewContent({
   const projectAddress = cleanText(meta?.project.siteAddress);
   const jobAddress = clientAddress ?? projectAddress;
   const finalPageNumber = scopePages.length + 1;
+  const documentNotes = meta?.documentNotes ?? [];
+  const splitFinalPacket = shouldSplitFinalPacket({
+    paymentSchedule,
+    documentNotes,
+    defaultTerms: company.defaultTerms,
+  });
+
+  const paymentScheduleSection =
+    paymentSchedule.length > 0 ? (
+      <section className="estimate-final-packet-section">
+        <div className="mb-5 flex items-end justify-between gap-6 pb-2">
+          <div>
+            <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
+              Payment Schedule
+            </p>
+            <h2 className="mt-1 text-[20px] font-semibold tracking-[-0.035em] text-zinc-950">
+              Milestone agreement
+            </h2>
+            <p className="mt-1 text-[13px] leading-relaxed text-zinc-600">
+              Customer payment milestones tied to this proposal.
+            </p>
+          </div>
+          <div className="text-right text-[11px] text-zinc-500">
+            <p>
+              Total scheduled:{" "}
+              <span className="font-semibold tabular-nums text-zinc-900">
+                $
+                {fmt(
+                  paymentSchedule.reduce(
+                    (total, item) => total + paymentMilestoneAmount(item, estimateTotal),
+                    0
+                  )
+                )}
+              </span>
+            </p>
+            <p>
+              Remaining balance:{" "}
+              <span className="font-semibold tabular-nums text-zinc-900">
+                $
+                {fmt(
+                  Math.max(
+                    0,
+                    estimateTotal -
+                      paymentSchedule.reduce(
+                        (total, item) => total + paymentMilestoneAmount(item, estimateTotal),
+                        0
+                      )
+                  )
+                )}
+              </span>
+            </p>
+          </div>
+        </div>
+        <div className="space-y-2 text-sm">
+          {paymentSchedule.map((item, index) => (
+            <PaymentMilestoneRow
+              key={item.id}
+              item={item}
+              amount={paymentMilestoneAmount(item, estimateTotal)}
+              index={index}
+              fmt={fmt}
+            />
+          ))}
+        </div>
+      </section>
+    ) : null;
+
+  const notesAndAcceptance = (
+    <>
+      {documentNotes.length ? (
+        <EstimateNotesPreview notes={documentNotes} className={splitFinalPacket ? "" : "mt-4"} />
+      ) : null}
+
+      {company.defaultTerms ? (
+        <section className="estimate-final-packet-section mt-5">
+          <h2 className="mb-2 text-[11px] font-medium tracking-[0.08em] text-zinc-500">Terms</h2>
+          <p className="whitespace-pre-wrap break-words py-2 text-sm leading-relaxed text-zinc-700">
+            {company.defaultTerms}
+          </p>
+        </section>
+      ) : null}
+
+      <section
+        className="estimate-signature-block mt-6 w-full text-left"
+        aria-label="Client acceptance"
+      >
+        <h2 className="mb-2 text-[20px] font-semibold tracking-[-0.035em] text-zinc-950">
+          Client Acceptance
+        </h2>
+        <p className="mb-6 max-w-2xl text-sm leading-relaxed text-zinc-600">
+          By signing below, the client acknowledges review and acceptance of this estimate, payment
+          schedule, and listed notes or clarifications.
+        </p>
+        <div className="grid gap-x-10 gap-y-6 text-sm text-zinc-900 sm:grid-cols-2">
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Client Name</p>
+            <div className="mt-5 border-b border-zinc-400" aria-hidden />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Date</p>
+            <div className="mt-5 border-b border-zinc-400" aria-hidden />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Signature</p>
+            <div className="mt-6 border-b border-zinc-400" aria-hidden />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
+              Company Representative
+            </p>
+            <div className="mt-6 border-b border-zinc-400" aria-hidden />
+          </div>
+        </div>
+      </section>
+    </>
+  );
 
   return (
     <article
@@ -464,7 +613,7 @@ export function EstimatePreviewContent({
                           {title}
                           {isContinuation ? (
                             <span className="ml-1 text-xs font-medium text-zinc-500">
-                              continued
+                              {" continued"}
                             </span>
                           ) : null}
                         </h3>
@@ -500,120 +649,30 @@ export function EstimatePreviewContent({
       <section
         data-testid="estimate-preview-page"
         className="estimate-a4-page estimate-final-packet"
+        data-final-packet-part={splitFinalPacket ? "payment" : "complete"}
         aria-label={`Estimate preview page ${finalPageNumber}`}
       >
         <div className="estimate-page-label" data-html2canvas-ignore="true">
           Page {finalPageNumber}
         </div>
 
-        {paymentSchedule.length > 0 ? (
-          <section className="estimate-final-packet-section">
-            <div className="mb-5 flex items-end justify-between gap-6 pb-2">
-              <div>
-                <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
-                  Payment Schedule
-                </p>
-                <h2 className="mt-1 text-[20px] font-semibold tracking-[-0.035em] text-zinc-950">
-                  Milestone agreement
-                </h2>
-                <p className="mt-1 text-[13px] leading-relaxed text-zinc-600">
-                  Customer payment milestones tied to this proposal.
-                </p>
-              </div>
-              <div className="text-right text-[11px] text-zinc-500">
-                <p>
-                  Total scheduled:{" "}
-                  <span className="font-semibold tabular-nums text-zinc-900">
-                    $
-                    {fmt(
-                      paymentSchedule.reduce(
-                        (total, item) => total + paymentMilestoneAmount(item, estimateTotal),
-                        0
-                      )
-                    )}
-                  </span>
-                </p>
-                <p>
-                  Remaining balance:{" "}
-                  <span className="font-semibold tabular-nums text-zinc-900">
-                    $
-                    {fmt(
-                      Math.max(
-                        0,
-                        estimateTotal -
-                          paymentSchedule.reduce(
-                            (total, item) => total + paymentMilestoneAmount(item, estimateTotal),
-                            0
-                          )
-                      )
-                    )}
-                  </span>
-                </p>
-              </div>
-            </div>
-            <div className="space-y-2 text-sm">
-              {paymentSchedule.map((item, index) => {
-                const amount = paymentMilestoneAmount(item, estimateTotal);
-                return (
-                  <PaymentMilestoneRow
-                    key={item.id}
-                    item={item}
-                    amount={amount}
-                    index={index}
-                    fmt={fmt}
-                  />
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
-
-        {meta?.documentNotes.length ? (
-          <EstimateNotesPreview notes={meta.documentNotes} className="mt-4" />
-        ) : null}
-
-        {company.defaultTerms ? (
-          <section className="estimate-final-packet-section mt-5">
-            <h2 className="mb-2 text-[11px] font-medium tracking-[0.08em] text-zinc-500">Terms</h2>
-            <p className="whitespace-pre-wrap break-words py-2 text-sm leading-relaxed text-zinc-700">
-              {company.defaultTerms}
-            </p>
-          </section>
-        ) : null}
-
-        <section
-          className="estimate-signature-block mt-6 w-full text-left"
-          aria-label="Client acceptance"
-        >
-          <h2 className="mb-2 text-[20px] font-semibold tracking-[-0.035em] text-zinc-950">
-            Client Acceptance
-          </h2>
-          <p className="mb-6 max-w-2xl text-sm leading-relaxed text-zinc-600">
-            By signing below, the client acknowledges review and acceptance of this estimate,
-            payment schedule, and listed notes or clarifications.
-          </p>
-          <div className="grid gap-x-10 gap-y-6 text-sm text-zinc-900 sm:grid-cols-2">
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Client Name</p>
-              <div className="mt-5 border-b border-zinc-400" aria-hidden />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Date</p>
-              <div className="mt-5 border-b border-zinc-400" aria-hidden />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">Signature</p>
-              <div className="mt-6 border-b border-zinc-400" aria-hidden />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
-                Company Representative
-              </p>
-              <div className="mt-6 border-b border-zinc-400" aria-hidden />
-            </div>
-          </div>
-        </section>
+        {paymentScheduleSection}
+        {splitFinalPacket ? null : notesAndAcceptance}
       </section>
+
+      {splitFinalPacket ? (
+        <section
+          data-testid="estimate-preview-page"
+          className="estimate-a4-page estimate-final-packet estimate-final-packet-continuation"
+          data-final-packet-part="acceptance"
+          aria-label={`Estimate preview page ${finalPageNumber + 1}`}
+        >
+          <div className="estimate-page-label" data-html2canvas-ignore="true">
+            Page {finalPageNumber + 1}
+          </div>
+          {notesAndAcceptance}
+        </section>
+      ) : null}
     </article>
   );
 }

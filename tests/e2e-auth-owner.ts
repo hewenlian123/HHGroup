@@ -133,22 +133,18 @@ export async function deleteE2EAssistant(): Promise<void> {
 }
 
 export async function loginAsE2EOwner(page: Page, destination = "/dashboard"): Promise<void> {
-  await ensureE2EOwner();
-  const { email, password } = localE2EAuthCredentials("owner");
-  await page.goto(`/login?redirect=${encodeURIComponent(destination)}`, {
-    waitUntil: "domcontentloaded",
-  });
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password", { exact: true }).fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  const baseURL = (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
+  await addE2ESession(page.context(), baseURL, "owner");
+  await page.goto(destination, { waitUntil: "domcontentloaded" });
   await page.waitForURL((url) => url.pathname === destination, { timeout: 60_000 });
 }
 
-export async function addE2EAssistantSession(
+async function addE2ESession(
   context: BrowserContext,
-  baseURL: string
+  baseURL: string,
+  role: E2EAuthRole
 ): Promise<void> {
-  const { email, password } = await ensureE2EUser("assistant");
+  const { email, password } = await ensureE2EUser(role);
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
   if (!url || !anon) throw new Error("Local Supabase Auth is not configured.");
@@ -172,7 +168,7 @@ export async function addE2EAssistantSession(
     },
   });
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw new Error("Unable to create the local assistant Auth session.");
+  if (error) throw new Error(`Unable to create the local ${role} Auth session.`);
 
   await context.addCookies(
     cookieJar.map(({ name, value, options }) => ({
@@ -189,4 +185,11 @@ export async function addE2EAssistantSession(
       value,
     }))
   );
+}
+
+export async function addE2EAssistantSession(
+  context: BrowserContext,
+  baseURL: string
+): Promise<void> {
+  await addE2ESession(context, baseURL, "assistant");
 }

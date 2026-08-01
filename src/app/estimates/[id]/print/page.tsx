@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import {
-  getEstimateById,
+  getEstimateHeaderById,
   getEstimateItems,
   getEstimateMeta,
   getEstimateCategories,
-  getEstimateSummary,
+  getEstimateSummaryFromRecords,
   getPaymentSchedule,
   getCostCodes,
 } from "@/lib/data";
@@ -29,19 +29,19 @@ export default async function EstimatePrintPage({
   const pdfCapture = pdf === "1";
   const readClient = getServerSupabaseInternalNoStore();
 
-  const [estimate, meta, items, categories, summary, paymentSchedule, costCodes, company] =
+  const [estimate, meta, items, categories, paymentSchedule, costCodes, company] =
     await Promise.all([
-      getEstimateById(id, readClient),
+      getEstimateHeaderById(id, readClient),
       getEstimateMeta(id, readClient),
       getEstimateItems(id, readClient),
       getEstimateCategories(id, readClient),
-      getEstimateSummary(id, readClient),
       getPaymentSchedule(id, readClient),
       getCostCodes(),
       fetchDocumentCompanyProfile(),
     ]);
 
   if (!estimate || !meta) redirect("/estimates");
+  const resolvedSummary = getEstimateSummaryFromRecords(meta, items);
 
   const categoryList = categories;
   const catalogNameByCode = Object.fromEntries(costCodes.map((c) => [c.code, c.name]));
@@ -61,7 +61,7 @@ export default async function EstimatePrintPage({
         dangerouslySetInnerHTML={{
           __html: `
             @media print {
-              @page { size: A4; margin: 0; }
+              @page { size: Letter; margin: 0; }
               body { background: #fff !important; }
             }
           `,
@@ -79,7 +79,7 @@ export default async function EstimatePrintPage({
         items={items}
         catalogNameByCode={catalogNameByCode}
         paymentSchedule={paymentSchedule}
-        summary={summary}
+        summary={resolvedSummary}
       />
     </div>
   );

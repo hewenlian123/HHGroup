@@ -149,6 +149,7 @@ export function Sidebar({
   onToggleCollapsed?: () => void;
 }) {
   const pathname = usePathname();
+  const deferBulkPrefetch = pathname === "/estimate-templates" || pathname.startsWith("/estimates");
   const router = useRouter();
   const queryClient = useQueryClient();
   const prefetchedNavRoutesRef = React.useRef<Set<string>>(new Set());
@@ -200,13 +201,14 @@ export function Sidebar({
   const sectionsInitDone = React.useRef(false);
 
   React.useEffect(() => {
+    if (deferBulkPrefetch) return;
     return runWhenIdle(() => {
       for (const href of OWNER_NAV_PREFETCH_ROUTES) {
         prefetchedNavRoutesRef.current.add(href);
       }
       prefetchRoutes(router, OWNER_NAV_PREFETCH_ROUTES);
     }, 2500);
-  }, [router]);
+  }, [deferBulkPrefetch, router]);
 
   const itemMatchesPath = React.useCallback(
     (item: HhProjectOsNavItem) => {
@@ -346,6 +348,7 @@ export function Sidebar({
       <Link
         key={item.href}
         href={item.href}
+        prefetch={false}
         onClick={onNavigate}
         {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
         title={iconOnly ? navLabel : undefined}

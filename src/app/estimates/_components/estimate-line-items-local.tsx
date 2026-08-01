@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   DndContext,
@@ -18,7 +17,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ChevronDown, ChevronRight, Plus, Layers } from "lucide-react";
+import { ChevronDown, ChevronRight, Layers } from "lucide-react";
 import type { CostCode } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
@@ -220,6 +219,9 @@ export function EstimateLineItemsLocal({
   const [sectionDragging, setSectionDragging] = React.useState(false);
   const [overSectionId, setOverSectionId] = React.useState<string | null>(null);
   const [collapsedSections, setCollapsedSections] = React.useState<Record<string, boolean>>({});
+  const [openSectionMenuKey, setOpenSectionMenuKey] = React.useState<string | null>(null);
+  const [sectionFocusTargetCode, setSectionFocusTargetCode] = React.useState<string | null>(null);
+  const [highlightSectionCode, setHighlightSectionCode] = React.useState<string | null>(null);
 
   const isSectionCollapsed = React.useCallback(
     (code: string) => collapsedSections[code] === true,
@@ -294,12 +296,41 @@ export function EstimateLineItemsLocal({
     [orderedSectionCodes, sectionDisplayName]
   );
 
+  React.useLayoutEffect(() => {
+    if (!sectionFocusTargetCode || !orderedSectionCodes.includes(sectionFocusTargetCode)) return;
+    const candidates = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        `[data-estimate-section-id="${sectionFocusTargetCode.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"], [data-estimate-section-mobile-id="${sectionFocusTargetCode.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"]`
+      )
+    );
+    const section = candidates.find((candidate) => candidate.getClientRects().length > 0);
+    if (!section) return;
+    const rect = section.getBoundingClientRect();
+    if (rect.top < 88 || rect.bottom > window.innerHeight - 88) {
+      section.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    const focusTarget = section.querySelector<HTMLElement>(
+      'input[aria-label^="Line item"], input[aria-label^="Section name"]'
+    );
+    focusTarget?.focus({ preventScroll: true });
+    setHighlightSectionCode(sectionFocusTargetCode);
+    setSectionFocusTargetCode(null);
+    const timeout = window.setTimeout(() => setHighlightSectionCode(null), 1200);
+    return () => window.clearTimeout(timeout);
+  }, [orderedSectionCodes, sectionFocusTargetCode]);
+
   const addSectionWithMeta = React.useCallback(
-    (costCode: string, displayName: string): boolean => {
+    (costCode: string, displayName: string, insertAfterCode?: string | null): boolean => {
       const trimmed = displayName.trim();
       if (!trimmed || usedCostCodes.has(costCode) || sectionNameExists(trimmed)) return false;
       onCategoryNamesChange({ ...categoryNames, [costCode]: trimmed });
       onLineItemsChange([...lineItems, createEmptyLineItem(costCode)]);
+      const nextOrder = orderedSectionCodes.filter((code) => code !== costCode);
+      const anchorIndex = insertAfterCode ? nextOrder.indexOf(insertAfterCode) : -1;
+      const insertIndex = anchorIndex >= 0 ? anchorIndex + 1 : nextOrder.length;
+      nextOrder.splice(insertIndex, 0, costCode);
+      onSectionOrderChange(nextOrder);
+      setSectionFocusTargetCode(costCode);
       pushRecentSection({ displayName: trimmed, costCode });
       refreshDraftStorage();
       return true;
@@ -309,41 +340,46 @@ export function EstimateLineItemsLocal({
       lineItems,
       onCategoryNamesChange,
       onLineItemsChange,
+      onSectionOrderChange,
+      orderedSectionCodes,
       refreshDraftStorage,
       sectionNameExists,
       usedCostCodes,
     ]
   );
 
-  const addBlankSection = React.useCallback((): void => {
-    const resolved = resolveBlankSection(usedCostCodes, nextBlankSectionName());
-    if (!resolved) return;
-    addSectionWithMeta(resolved.costCode, resolved.displayName);
-  }, [addSectionWithMeta, nextBlankSectionName, usedCostCodes]);
+  const addBlankSection = React.useCallback(
+    (insertAfterCode?: string | null): void => {
+      const resolved = resolveBlankSection(usedCostCodes, nextBlankSectionName());
+      if (!resolved) return;
+      addSectionWithMeta(resolved.costCode, resolved.displayName, insertAfterCode);
+    },
+    [addSectionWithMeta, nextBlankSectionName, usedCostCodes]
+  );
 
   const addCustomSection = React.useCallback(
-    (title: string): boolean => {
+    (title: string, insertAfterCode?: string | null): boolean => {
       const resolved = resolveSectionForTemplate(title, usedCostCodes);
       if (!resolved) return false;
-      return addSectionWithMeta(resolved.costCode, resolved.displayName);
+      return addSectionWithMeta(resolved.costCode, resolved.displayName, insertAfterCode);
     },
     [addSectionWithMeta, usedCostCodes]
   );
 
   const addSectionFromTemplate = React.useCallback(
-    (templateName: string): void => {
+    (templateName: string, insertAfterCode?: string | null): void => {
       const resolved = resolveSectionForTemplate(templateName, usedCostCodes);
       if (!resolved) return;
-      addSectionWithMeta(resolved.costCode, resolved.displayName);
+      addSectionWithMeta(resolved.costCode, resolved.displayName, insertAfterCode);
     },
     [addSectionWithMeta, usedCostCodes]
   );
 
   const addSectionFromRecent = React.useCallback(
-    (entry: RecentSectionEntry): void => {
+    (entry: RecentSectionEntry, insertAfterCode?: string | null): void => {
       const resolved = resolveSectionForTemplate(entry.displayName, usedCostCodes);
       if (!resolved) return;
-      addSectionWithMeta(resolved.costCode, resolved.displayName);
+      addSectionWithMeta(resolved.costCode, resolved.displayName, insertAfterCode);
     },
     [addSectionWithMeta, usedCostCodes]
   );
@@ -439,6 +475,64 @@ export function EstimateLineItemsLocal({
     addLineItem(costCode);
   };
 
+  const focusExistingSection = React.useCallback(
+    (name: string): void => {
+      const normalizedName = normalizeProposalSectionName(name);
+      const existingCode = orderedSectionCodes.find(
+        (code) => normalizeProposalSectionName(sectionDisplayName(code)) === normalizedName
+      );
+      if (!existingCode) return;
+      setSectionFocusTargetCode(existingCode);
+    },
+    [orderedSectionCodes, sectionDisplayName]
+  );
+
+  const renderSectionMenu = React.useCallback(
+    ({
+      menuKey,
+      insertAfterCode,
+      label,
+      ariaLabel,
+      align = "start",
+    }: {
+      menuKey: string;
+      insertAfterCode?: string | null;
+      label: string;
+      ariaLabel: string;
+      align?: "start" | "center" | "end";
+    }): React.ReactElement => (
+      <EstimateAddSectionMenu
+        disabled={disabled}
+        canAddSection={canAddSection}
+        recentSections={recentSections}
+        existingSectionNames={existingSectionNames}
+        open={openSectionMenuKey === menuKey}
+        onOpenChange={(nextOpen) => setOpenSectionMenuKey(nextOpen ? menuKey : null)}
+        triggerLabel={label}
+        triggerAriaLabel={ariaLabel}
+        align={align}
+        reserveSpaceWhenOpen={menuKey !== "top"}
+        onFocusExisting={focusExistingSection}
+        onAddCustom={(title) => addCustomSection(title, insertAfterCode)}
+        onAddBlank={() => addBlankSection(insertAfterCode)}
+        onAddTemplate={(name) => addSectionFromTemplate(name, insertAfterCode)}
+        onAddRecent={(entry) => addSectionFromRecent(entry, insertAfterCode)}
+      />
+    ),
+    [
+      addBlankSection,
+      addCustomSection,
+      addSectionFromRecent,
+      addSectionFromTemplate,
+      canAddSection,
+      disabled,
+      existingSectionNames,
+      focusExistingSection,
+      openSectionMenuKey,
+      recentSections,
+    ]
+  );
+
   return (
     <section className={EB.section}>
       <div className={ebGlassPanel("eb-scope-work-panel")}>
@@ -447,16 +541,12 @@ export function EstimateLineItemsLocal({
             <h2 className={EB.scopeHeading}>Scope of work</h2>
             <p className={EB.scopeSubtitle}>Proposal sections and line totals</p>
           </div>
-          <EstimateAddSectionMenu
-            disabled={disabled}
-            canAddSection={canAddSection}
-            recentSections={recentSections}
-            existingSectionNames={existingSectionNames}
-            onAddCustom={addCustomSection}
-            onAddBlank={addBlankSection}
-            onAddTemplate={addSectionFromTemplate}
-            onAddRecent={addSectionFromRecent}
-          />
+          {renderSectionMenu({
+            menuKey: "top",
+            label: "Add Section",
+            ariaLabel: "Add section",
+            align: "end",
+          })}
         </div>
         {lineItemsError ? (
           <p className="mb-3 text-xs text-muted-foreground">{lineItemsError}</p>
@@ -476,7 +566,14 @@ export function EstimateLineItemsLocal({
               const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
               const collapsed = isSectionCollapsed(code);
               return (
-                <div key={code} className={EB.scopeSectionMobile}>
+                <div
+                  key={code}
+                  data-estimate-section-mobile-id={code}
+                  className={cn(
+                    EB.scopeSectionMobile,
+                    highlightSectionCode === code && EB.scopeSectionInserted
+                  )}
+                >
                   <ScopeSectionHeader
                     code={code}
                     catalogName={catalogName}
@@ -526,23 +623,20 @@ export function EstimateLineItemsLocal({
                       />
                     </div>
                   </ScopeSectionCollapsibleBody>
+                  {!disabled ? (
+                    <div className={EB.addNextSectionRow}>
+                      {renderSectionMenu({
+                        menuKey: `mobile:${code}`,
+                        insertAfterCode: code,
+                        label: "Add Next Section",
+                        ariaLabel: `Add Next Section after ${displayName}`,
+                      })}
+                    </div>
+                  ) : null}
                 </div>
               );
             })
           )}
-          {codesWithItems.length === 0 && !disabled ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className={cn("!h-11 !min-h-11 w-full", EB.actionSecondary)}
-              onClick={addBlankSection}
-              disabled={!canAddSection}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Section
-            </Button>
-          ) : null}
         </div>
 
         {/* Desktop: scope sections (whole-section reorder via header handle) */}
@@ -578,6 +672,10 @@ export function EstimateLineItemsLocal({
                     id={code}
                     disabled={disabled}
                     isDropTarget={overSectionId === code}
+                    className={cn(
+                      "transition-colors duration-300",
+                      highlightSectionCode === code && EB.scopeSectionInserted
+                    )}
                   >
                     {(dragHandle) => (
                       <>
@@ -634,11 +732,12 @@ export function EstimateLineItemsLocal({
                                           <Input
                                             type="number"
                                             min={0}
-                                            step={1}
+                                            step={0.01}
+                                            inputMode="decimal"
                                             value={row.qty}
                                             onChange={(e) =>
                                               updateItem(row.id, {
-                                                qty: Number(e.target.value) || 0,
+                                                qty: Math.max(0, Number(e.target.value) || 0),
                                               })
                                             }
                                             onKeyDown={(e) => {
@@ -647,6 +746,7 @@ export function EstimateLineItemsLocal({
                                                 handleEnterAddNext(code);
                                               }
                                             }}
+                                            onWheel={(event) => event.currentTarget.blur()}
                                             className={ebInput(
                                               `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`
                                             )}
@@ -667,10 +767,11 @@ export function EstimateLineItemsLocal({
                                             type="number"
                                             min={0}
                                             step={0.01}
+                                            inputMode="decimal"
                                             value={row.unitPrice}
                                             onChange={(e) =>
                                               updateItem(row.id, {
-                                                unitPrice: Number(e.target.value) || 0,
+                                                unitPrice: Math.max(0, Number(e.target.value) || 0),
                                               })
                                             }
                                             onKeyDown={(e) => {
@@ -679,6 +780,7 @@ export function EstimateLineItemsLocal({
                                                 handleEnterAddNext(code);
                                               }
                                             }}
+                                            onWheel={(event) => event.currentTarget.blur()}
                                             className={ebInput(
                                               `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`
                                             )}
@@ -743,6 +845,16 @@ export function EstimateLineItemsLocal({
                             />
                           </div>
                         </ScopeSectionCollapsibleBody>
+                        {!disabled ? (
+                          <div className={EB.addNextSectionRow}>
+                            {renderSectionMenu({
+                              menuKey: `desktop:${code}`,
+                              insertAfterCode: code,
+                              label: "Add Next Section",
+                              ariaLabel: `Add Next Section after ${displayName}`,
+                            })}
+                          </div>
+                        ) : null}
                       </>
                     )}
                   </EstimateScopeSortableSection>
@@ -750,23 +862,22 @@ export function EstimateLineItemsLocal({
               })}
               {codesWithItems.length === 0 && !disabled ? (
                 <div className={EB.scopeEmpty}>
-                  <p className={cn(EB.scopeEmptyMessage, "mb-3")}>No line items yet.</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={cn("!h-11 !min-h-11", EB.actionSecondary)}
-                    onClick={addBlankSection}
-                    disabled={!canAddSection}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Section
-                  </Button>
+                  <p className={EB.scopeEmptyMessage}>No line items yet. Add a section to begin.</p>
                 </div>
               ) : null}
             </div>
           </SortableContext>
         </DndContext>
+        {!disabled && orderedSectionCodes.length > 0 ? (
+          <div className={cn(EB.addNextSectionRow, EB.addFinalSectionRow)}>
+            {renderSectionMenu({
+              menuKey: "final",
+              insertAfterCode: orderedSectionCodes[orderedSectionCodes.length - 1],
+              label: "Add Final Section",
+              ariaLabel: "Add Final Section",
+            })}
+          </div>
+        ) : null}
       </div>
     </section>
   );

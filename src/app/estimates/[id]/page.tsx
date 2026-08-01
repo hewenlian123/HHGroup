@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import {
-  getEstimateById,
+  getEstimateHeaderById,
   getEstimateMeta,
   getEstimateItems,
   getEstimateCategories,
-  getEstimateSummary,
+  getEstimateSummaryFromRecords,
   getCostCodes,
   getPaymentSchedule,
   listPaymentTemplates,
@@ -111,19 +111,19 @@ export default async function EstimateDetailPage({
   /** When the dynamic segment incorrectly receives `new`, avoid UUID queries and send the canonical route. */
   if (id === "new") redirect("/estimates/new");
   const { created, saved } = await searchParams;
-  const [estimate, meta, items, categories, summary, costCodes, paymentSchedule, paymentTemplates] =
+  const [estimate, meta, items, categories, costCodes, paymentSchedule, paymentTemplates] =
     await Promise.all([
-      getEstimateById(id),
+      getEstimateHeaderById(id),
       getEstimateMeta(id),
       getEstimateItems(id),
       getEstimateCategories(id),
-      getEstimateSummary(id),
       getCostCodes(),
       getPaymentSchedule(id),
       listPaymentTemplates(),
     ]);
 
   if (!estimate || !meta) redirect("/estimates");
+  const resolvedSummary = getEstimateSummaryFromRecords(meta, items);
 
   const categoryNames = categories.reduce<Record<string, string>>((acc, c) => {
     acc[c.costCode] = c.displayName;
@@ -153,7 +153,7 @@ export default async function EstimateDetailPage({
         estimateCategories={estimateCategories}
         categoryNames={categoryNames}
         costCodes={costCodes}
-        summary={summary}
+        summary={resolvedSummary}
         paymentSchedule={paymentSchedule}
         paymentTemplates={paymentTemplates}
         invoiceProjectLink={invoiceProjectLink}

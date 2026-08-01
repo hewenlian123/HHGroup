@@ -63,7 +63,7 @@ export const EB = {
   lineTotalBlock: "eb-line-total-block",
   lineTotalAmount: "eb-line-total-amount",
   lineItemMoreTrigger:
-    "eb-line-item-more-trigger inline-flex h-7 w-7 min-h-7 min-w-7 shrink-0 items-center justify-center rounded-md border-0 bg-transparent p-0 text-[#929CAF] opacity-[0.65] transition-[opacity,background,color] duration-150 hover:!translate-y-0 hover:bg-white/[0.05] hover:text-[#B5BECC] hover:opacity-100 active:!scale-100 active:!duration-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15 max-md:min-h-9 max-md:min-w-9 max-md:h-9 max-md:w-9 max-md:opacity-90",
+    "eb-line-item-more-trigger inline-flex h-7 w-7 min-h-7 min-w-7 shrink-0 items-center justify-center rounded-md border-0 bg-transparent p-0 text-[#929CAF] opacity-[0.65] transition-[opacity,background,color] duration-150 hover:!translate-y-0 hover:bg-white/[0.05] hover:text-[#B5BECC] hover:opacity-100 active:!scale-100 active:!duration-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15 max-md:h-11 max-md:w-11 max-md:min-h-11 max-md:min-w-11 max-md:opacity-90",
   lineItemMoreMenu: "eb-line-item-more-menu min-w-[9.5rem] w-[9.5rem] rounded-md border p-1",
   lineItemMoreMenuItem:
     "eb-line-item-more-menu-item flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-[13px] leading-snug text-[#D8DEE8] outline-none transition-colors",
@@ -127,10 +127,10 @@ export const EB = {
     "eb-add-section eb-action-secondary inline-flex min-h-11 items-center gap-1.5 px-2.5 text-[14px] font-medium leading-[1.35] md:h-8 md:min-h-8",
   commandMenu: "z-[100] max-h-64 overflow-y-auto rounded-xl border py-1 eb-glass-command",
   commandMenuItem:
-    "mx-1 cursor-pointer rounded-lg px-2.5 py-2 text-[14px] leading-snug text-[#B5BECC] transition-colors hover:bg-white/[0.06] hover:text-[#F6F7FA]",
+    "mx-1 flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-2.5 py-2 text-[14px] leading-snug text-[#B5BECC] transition-colors hover:bg-white/[0.06] hover:text-[#F6F7FA] md:min-h-0",
   commandMenuItemActive: "bg-white/[0.06] text-[#F6F7FA]",
   addLineLink:
-    "eb-add-line inline-flex h-8 min-h-8 items-center gap-1.5 rounded-[0.625rem] border px-2.5 text-[13px] font-medium leading-none transition-[color,background,border-color,opacity] duration-150",
+    "eb-add-line inline-flex min-h-11 items-center gap-1.5 rounded-[0.625rem] border px-2.5 text-[13px] font-medium leading-none transition-[color,background,border-color,opacity] duration-150 md:h-8 md:min-h-8",
   lineIndexBadge:
     "eb-line-index inline-flex w-[32px] shrink-0 items-center justify-start text-[12.5px] font-medium tabular-nums leading-none tracking-[-0.02em] text-[#A7B0C0] [font-feature-settings:'tnum']",
   paymentTitle: "text-[15px] font-semibold leading-snug text-[#F6F7FA]",
@@ -139,6 +139,9 @@ export const EB = {
   paymentStatValue:
     "text-[14px] font-semibold tabular-nums text-[#D8DEE8] [font-feature-settings:'tnum']",
   categoryGroup: "mb-3 last:mb-0",
+  addNextSectionRow: "eb-add-next-section-row",
+  addFinalSectionRow: "eb-add-final-section-row",
+  scopeSectionInserted: "eb-scope-section-inserted",
   scopeSectionSortable: "eb-scope-section-sortable relative",
   scopeSectionDragging: "eb-scope-section-dragging",
   scopeSectionDragHandle: "eb-scope-section-drag-handle",

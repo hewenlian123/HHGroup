@@ -1,10 +1,16 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
+import type { EstimateDocumentStyle } from "../src/lib/estimate-document-style";
 
 const createdClientNames = new Set<string>();
 const createdProjectNames = new Set<string>();
+
+test.beforeEach(async ({ page }) => {
+  await loginAsE2EOwner(page, "/estimates");
+});
 
 async function cleanupEstimateTestData(
   clientNames: Iterable<string>,
@@ -50,7 +56,11 @@ async function cleanupEstimateTestData(
 
 async function fillNewEstimateCustomerFields(
   page: Page,
-  params: { clientName: string; projectName: string }
+  params: {
+    clientName: string;
+    projectName: string;
+    documentStyle?: EstimateDocumentStyle;
+  }
 ): Promise<void> {
   const dialog = page.getByRole("dialog");
   if (!(await dialog.isVisible().catch(() => false))) {
@@ -59,6 +69,11 @@ async function fillNewEstimateCustomerFields(
   }
   await dialog.getByPlaceholder("Client or company name").fill(params.clientName);
   await dialog.getByPlaceholder("Project name").fill(params.projectName);
+  if (params.documentStyle) {
+    await dialog
+      .getByRole("radio", { name: params.documentStyle === "itemized" ? "Itemized" : "Proposal" })
+      .check();
+  }
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
 }
 
@@ -164,7 +179,11 @@ test("hide amount on PDF persists through preview and print", async ({ page }) =
     timeout: 30_000,
   });
 
-  await fillNewEstimateCustomerFields(page, { clientName, projectName });
+  await fillNewEstimateCustomerFields(page, {
+    clientName,
+    projectName,
+    documentStyle: "itemized",
+  });
   await fillNewEstimateLine(page, { lineTitle, quantity: "1", unitPrice: "5000" });
 
   await page.getByRole("button", { name: "More actions" }).locator("visible=true").first().click();
@@ -181,18 +200,18 @@ test("hide amount on PDF persists through preview and print", async ({ page }) =
   await page.goto(`/estimates/${estimateId}/preview`);
   await page.waitForLoadState("domcontentloaded");
 
-  const previewRow = page.locator("tbody tr").filter({ hasText: lineTitle });
+  const previewRow = page.getByTestId("estimate-line-item-output").filter({ hasText: lineTitle });
   await expect(previewRow).toBeVisible({ timeout: 30_000 });
-  await expect(previewRow.locator("td").nth(3)).toHaveText("—");
-  await expect(previewRow.locator("td").nth(4)).toHaveText("—");
+  await expect(previewRow.getByTestId("estimate-line-item-unit-price")).toHaveText(/—/);
+  await expect(previewRow.getByTestId("estimate-line-item-total")).toHaveText("—");
   await expect(page.getByText("Grand Total")).toBeVisible();
 
   await page.goto(`/estimates/${estimateId}/print`);
   await page.waitForLoadState("domcontentloaded");
-  const printRow = page.locator("tbody tr").filter({ hasText: lineTitle });
+  const printRow = page.getByTestId("estimate-line-item-output").filter({ hasText: lineTitle });
   await expect(printRow).toBeVisible({ timeout: 30_000 });
-  await expect(printRow.locator("td").nth(3)).toHaveText("—");
-  await expect(printRow.locator("td").nth(4)).toHaveText("—");
+  await expect(printRow.getByTestId("estimate-line-item-unit-price")).toHaveText(/—/);
+  await expect(printRow.getByTestId("estimate-line-item-total")).toHaveText("—");
 
   await page.goto(`/estimates/${estimateId}`);
   await page.getByRole("button", { name: "Edit", exact: true }).click();
@@ -223,8 +242,13 @@ test("line item status and notes persist to customer preview and print", async (
   await fillNewEstimateLine(page, { lineTitle, quantity: "1", unitPrice: "2500" });
 
   await page.getByRole("button", { name: "More actions" }).locator("visible=true").first().click();
-  await page.getByText("Set status", { exact: true }).hover();
-  await page.getByRole("menuitem", { name: "Optional" }).click();
+  const setStatus = page.getByRole("menuitem", { name: "Set status" });
+  await setStatus.focus();
+  await setStatus.press("ArrowRight");
+  const optionalStatus = page.getByRole("menuitem", { name: "Optional" });
+  await expect(optionalStatus).toBeVisible();
+  await optionalStatus.focus();
+  await optionalStatus.press("Enter");
   await expect(
     page.locator(".eb-line-item-status-pill:visible", { hasText: "Optional" }).first()
   ).toBeVisible({ timeout: 10_000 });

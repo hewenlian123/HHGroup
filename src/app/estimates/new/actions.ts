@@ -7,6 +7,7 @@ import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import type { EstimateNoteBlock } from "@/lib/estimate-notes";
 
 export type CreateEstimatePayload = {
+  customerId?: string;
   clientName: string;
   projectName: string;
   address: string;
@@ -61,6 +62,17 @@ export async function createEstimateWithItemsAction(
   if (!clientName) return { ok: false, error: "Client name is required." };
   const projectName = payload.projectName.trim();
   if (!projectName) return { ok: false, error: "Project name is required." };
+  if (
+    (payload.items ?? []).some(
+      (item) =>
+        !Number.isFinite(Number(item.qty)) ||
+        Number(item.qty) < 0 ||
+        !Number.isFinite(Number(item.unitCost)) ||
+        Number(item.unitCost) < 0
+    )
+  ) {
+    return { ok: false, error: "Line item quantity and unit price must be non-negative numbers." };
+  }
   const items = (payload.items ?? [])
     .map((i) => ({
       ...i,
@@ -84,6 +96,7 @@ export async function createEstimateWithItemsAction(
     if (!server) return { ok: false, error: "Server Supabase is not configured." };
 
     const id = await createEstimateWithItemsWithClient(server, {
+      customerId: payload.customerId?.trim() || undefined,
       clientName,
       projectName,
       address: payload.address?.trim() ?? "",
@@ -115,8 +128,6 @@ export async function createEstimateWithItemsAction(
     });
 
     revalidatePath("/estimates");
-    revalidatePath("/projects");
-    revalidatePath("/projects/[id]", "page");
     revalidateEstimatePaths(id);
     return { ok: true, estimateId: id };
   } catch (error) {

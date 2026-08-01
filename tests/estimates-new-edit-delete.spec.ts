@@ -1,10 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdClientNames = new Set<string>();
 const createdProjectNames = new Set<string>();
+
+test.beforeEach(async ({ page }) => {
+  await loginAsE2EOwner(page, "/estimates");
+});
 
 function isEstimatesListUrl(url: URL): boolean {
   const pathname = url.pathname;

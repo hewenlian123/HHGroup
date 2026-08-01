@@ -88,8 +88,9 @@ export function FloatingActionButton() {
   const hiddenForPage = shouldHideFloatingQuickActionFab(pathname);
 
   React.useEffect(() => {
+    if (hiddenForPage) return;
     return runWhenIdle(() => prefetchRoutes(router, [...QUICK_ACTION_ROUTES]));
-  }, [router]);
+  }, [hiddenForPage, router]);
 
   React.useEffect(() => {
     if (!open) return;

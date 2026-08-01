@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 const DETAIL_HEADER =
   "dark rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:px-4";
 const BACK_LINK =
-  "inline-flex min-h-10 items-center gap-2 text-[14px] leading-snug text-[var(--neo-text-secondary)] transition-colors duration-200 hover:text-[var(--neo-gold-soft)] md:min-h-8";
+  "inline-flex min-h-11 items-center gap-2 text-[14px] leading-snug text-[var(--neo-text-secondary)] transition-colors duration-200 hover:text-[var(--neo-gold-soft)] lg:min-h-8";
 const HEADER_BUTTON =
   "rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
 const HEADER_PRIMARY_BUTTON =
@@ -97,7 +97,10 @@ export function EstimateDetailHeader({
           : [];
 
   return (
-    <header className={DETAIL_HEADER} data-testid="estimate-detail-header">
+    <header
+      className={cn(DETAIL_HEADER, "eb-estimate-command-bar")}
+      data-testid="estimate-detail-header"
+    >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
         <div className="min-w-0 flex-1 space-y-2">
           <Link href="/estimates" className={BACK_LINK}>
@@ -131,7 +134,7 @@ export function EstimateDetailHeader({
             variant="outline"
             size="sm"
             className={cn(
-              "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
+              "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
               HEADER_BUTTON
             )}
             disabled={pending}
@@ -147,7 +150,7 @@ export function EstimateDetailHeader({
                   variant="default"
                   size="sm"
                   className={cn(
-                    "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
+                    "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
                     HEADER_PRIMARY_BUTTON
                   )}
                   disabled={pending}
@@ -161,7 +164,7 @@ export function EstimateDetailHeader({
                   type="button"
                   size="sm"
                   className={cn(
-                    "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
+                    "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
                     HEADER_PRIMARY_BUTTON
                   )}
                   disabled={pending}
@@ -172,12 +175,12 @@ export function EstimateDetailHeader({
               ) : null}
             </>
           ) : (
-            <>
+            <div className="hidden md:contents">
               <Button
                 type="button"
                 size="sm"
                 className={cn(
-                  "min-h-11 whitespace-nowrap px-5 font-medium max-md:flex-1 md:min-h-8",
+                  "min-h-11 whitespace-nowrap px-5 font-medium lg:min-h-8",
                   HEADER_PRIMARY_BUTTON
                 )}
                 disabled={pending}
@@ -190,16 +193,13 @@ export function EstimateDetailHeader({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className={cn(
-                  "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
-                  HEADER_BUTTON
-                )}
+                className={cn("min-h-11 whitespace-nowrap px-4 lg:min-h-8", HEADER_BUTTON)}
                 disabled={pending}
                 onClick={onCancel}
               >
                 Cancel
               </Button>
-            </>
+            </div>
           )}
 
           {!editing && statusActions.length > 0 ? (
@@ -210,7 +210,7 @@ export function EstimateDetailHeader({
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "min-h-11 whitespace-nowrap px-3 max-md:flex-1 md:min-h-8",
+                    "min-h-11 whitespace-nowrap px-3 max-md:flex-1 lg:min-h-8",
                     HEADER_BUTTON
                   )}
                   disabled={pending}
@@ -244,7 +244,7 @@ export function EstimateDetailHeader({
               variant="outline"
               size="sm"
               className={cn(
-                "min-h-11 whitespace-nowrap px-4 max-md:flex-1 md:min-h-8",
+                "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
                 HEADER_BUTTON
               )}
               disabled={pending}
@@ -262,7 +262,7 @@ export function EstimateDetailHeader({
                   variant="outline"
                   size="sm"
                   className={cn(
-                    "min-h-11 w-11 shrink-0 md:min-h-8 md:w-auto md:px-3",
+                    "min-h-11 w-11 shrink-0 lg:min-h-8 md:w-auto md:px-3",
                     HEADER_BUTTON
                   )}
                   disabled={pending}
@@ -293,7 +293,7 @@ export function EstimateDetailHeader({
               variant="ghost"
               size="sm"
               className={cn(
-                "min-h-11 w-11 shrink-0 md:min-h-8 md:w-auto",
+                "min-h-11 w-11 shrink-0 lg:min-h-8 md:w-auto",
                 HEADER_BUTTON,
                 "hover:border-rose-500/30 hover:text-rose-300"
               )}

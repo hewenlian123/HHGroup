@@ -345,9 +345,11 @@ export function EstimatePaymentSchedule(props: {
                         type="number"
                         step="0.01"
                         min={0}
+                        inputMode="decimal"
                         placeholder="0.00"
                         value={amountDraft}
                         onChange={(e) => handleAmountChange(e.target.value)}
+                        onWheel={(event) => event.currentTarget.blur()}
                         className={ebSheetInput(
                           cn("text-sm text-right text-slate-50", EB.inputNumeric)
                         )}
@@ -364,9 +366,11 @@ export function EstimatePaymentSchedule(props: {
                         step="0.01"
                         min={0}
                         max={100}
+                        inputMode="decimal"
                         placeholder="Optional"
                         value={percentDraft}
                         onChange={(e) => handlePercentChange(e.target.value)}
+                        onWheel={(event) => event.currentTarget.blur()}
                         className={ebSheetInput(
                           cn("text-sm text-right text-slate-50", EB.inputNumeric)
                         )}

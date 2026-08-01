@@ -87,7 +87,7 @@ const BottomNavItem = React.memo(function BottomNavItem({
   return (
     <Link
       href={href}
-      prefetch
+      prefetch={false}
       onPointerDown={() => {
         onPointerEnterNav?.();
         router.prefetch(href);
@@ -108,6 +108,7 @@ const BottomNavItem = React.memo(function BottomNavItem({
 
 export function BottomNav({ className }: { className?: string }) {
   const pathname = usePathname();
+  const deferBulkPrefetch = pathname === "/estimate-templates" || pathname.startsWith("/estimates");
   const router = useRouter();
   const queryClient = useQueryClient();
   const prefetchSupabase = React.useMemo(() => {
@@ -117,8 +118,9 @@ export function BottomNav({ className }: { className?: string }) {
   }, []);
 
   React.useEffect(() => {
+    if (deferBulkPrefetch) return;
     return runWhenIdle(() => prefetchRoutes(router, [...BOTTOM_NAV_ROUTES]));
-  }, [router]);
+  }, [deferBulkPrefetch, router]);
 
   const activeHref = getHhProjectOsMobileActiveHref(pathname);
 

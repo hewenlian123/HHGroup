@@ -1301,6 +1301,36 @@
     radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.82), transparent 34rem), #ebe8e1;
 }
 
+.estimate-preview-toolbar {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 20;
+  border: 1px solid rgb(120 113 108 / 0.16);
+  border-radius: 0.5rem;
+  background: rgb(250 250 249 / 0.9);
+  padding: 0.5rem;
+  box-shadow: 0 10px 32px rgb(41 37 36 / 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.estimate-preview-viewport {
+  width: 100%;
+  overflow: auto;
+  overscroll-behavior-x: contain;
+  padding: 1.75rem 0 3rem;
+}
+
+.estimate-preview-zoom-frame {
+  position: relative;
+  margin-inline: auto;
+}
+
+.estimate-preview-zoom-layer {
+  width: 8.5in;
+  transform-origin: top left;
+}
+
 .estimate-preview-paper-stack {
   display: flex;
   flex-direction: column;
@@ -1311,8 +1341,8 @@
 .estimate-a4-page {
   position: relative;
   box-sizing: border-box;
-  width: min(210mm, calc(100vw - 2rem));
-  min-height: 297mm;
+  width: 8.5in;
+  min-height: 11in;
   padding: 12mm;
   background: #fffdf8;
   box-shadow:
@@ -1339,6 +1369,11 @@
   flex-direction: column;
 }
 
+.estimate-final-packet-continuation {
+  break-before: auto;
+  page-break-before: auto;
+}
+
 .estimate-final-packet-section,
 .estimate-scope-section,
 .estimate-payment-row,
@@ -1357,8 +1392,8 @@
 }
 
 .estimate-pdf-exporting .estimate-a4-page {
-  width: 210mm !important;
-  height: 296mm;
+  width: 8.5in !important;
+  height: 10.99in;
   min-height: 0;
   overflow: hidden;
   margin: 0 !important;
@@ -1388,38 +1423,8 @@
     padding-right: 0.5rem;
   }
 
-  .estimate-preview-paper-stack {
-    gap: 2.25rem;
-  }
-
-  .estimate-a4-page {
-    width: calc(100vw - 1rem);
-    min-height: calc((100vw - 1rem) * 1.414);
-    padding: 1rem;
-    font-size: 0.78rem;
-  }
-
-  .estimate-a4-page table {
-    table-layout: fixed;
-    font-size: 0.68rem;
-  }
-
-  .estimate-a4-page th,
-  .estimate-a4-page td {
-    padding-left: 0.25rem !important;
-    padding-right: 0.25rem !important;
-  }
-
-  .estimate-a4-page th:nth-child(3),
-  .estimate-a4-page td:nth-child(3) {
-    display: none;
-  }
-
-  .estimate-a4-page th:nth-child(4),
-  .estimate-a4-page td:nth-child(4),
-  .estimate-a4-page th:nth-child(5),
-  .estimate-a4-page td:nth-child(5) {
-    width: 4.75rem !important;
+  .estimate-preview-toolbar {
+    top: 0.25rem;
   }
 }
 
@@ -1476,8 +1481,8 @@ body:has([data-estimate-pdf-capture="true"]) .estimate-preview-paper-stack {
 }
 
 body:has([data-estimate-pdf-capture="true"]) .estimate-a4-page {
-  width: 210mm !important;
-  min-height: 297mm;
+  width: 8.5in !important;
+  min-height: 11in;
   margin: 0 !important;
   padding: 12mm !important;
   background: #fff !important;
@@ -1499,7 +1504,7 @@ body:has([data-estimate-pdf-capture="true"]) .estimate-page-label {
 
 @media print {
   @page {
-    size: A4;
+    size: Letter;
     margin: 0;
   }
   /* App shell uses h-screen + flex-1 main; in print that reserves a full viewport page
@@ -1550,6 +1555,22 @@ body:has([data-estimate-pdf-capture="true"]) .estimate-page-label {
     background: #fff !important;
     padding: 0 !important;
   }
+  .estimate-preview-toolbar {
+    display: none !important;
+  }
+  .estimate-preview-viewport {
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+  .estimate-preview-zoom-frame {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+  }
+  .estimate-preview-zoom-layer {
+    width: auto !important;
+    transform: none !important;
+  }
   .estimate-preview-paper-stack,
   .estimate-print-pdf-capture {
     display: block;
@@ -1557,8 +1578,8 @@ body:has([data-estimate-pdf-capture="true"]) .estimate-page-label {
     background: #fff !important;
   }
   .estimate-a4-page {
-    width: 210mm !important;
-    min-height: 297mm;
+    width: 8.5in !important;
+    min-height: 11in;
     margin: 0 !important;
     padding: 12mm !important;
     background: #fff !important;
@@ -1580,6 +1601,10 @@ body:has([data-estimate-pdf-capture="true"]) .estimate-page-label {
     page-break-before: always;
     display: flex;
     flex-direction: column;
+  }
+  .estimate-final-packet-continuation {
+    break-before: auto;
+    page-break-before: auto;
   }
   .estimate-final-packet-section,
   .estimate-scope-section,

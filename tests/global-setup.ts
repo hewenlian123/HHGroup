@@ -10,6 +10,7 @@ import type { FullConfig } from "@playwright/test";
 
 import {
   E2E_PRESERVED_CUSTOMER_ID,
+  E2E_PRESERVED_ESTIMATE_ID,
   E2E_PRESERVED_PROJECT_ID,
   E2E_PRESERVED_WORKER_ID,
   cleanupTestData,
@@ -71,6 +72,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 
   const ids = {
     customer: E2E_PRESERVED_CUSTOMER_ID,
+    estimate: E2E_PRESERVED_ESTIMATE_ID,
     worker: E2E_PRESERVED_WORKER_ID,
     project: E2E_PRESERVED_PROJECT_ID,
   };
@@ -78,17 +80,18 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
 
   const checks = await Promise.all([
     supabase.from("customers").select("id").eq("id", E2E_PRESERVED_CUSTOMER_ID).maybeSingle(),
+    supabase.from("estimates").select("id").eq("id", E2E_PRESERVED_ESTIMATE_ID).maybeSingle(),
     supabase.from("workers").select("id").eq("id", E2E_PRESERVED_WORKER_ID).maybeSingle(),
     supabase.from("projects").select("id").eq("id", E2E_PRESERVED_PROJECT_ID).maybeSingle(),
   ]);
-  const labels = ["customer", "worker", "project"] as const;
+  const labels = ["customer", "estimate", "worker", "project"] as const;
   for (let i = 0; i < checks.length; i++) {
     const row = checks[i].data as { id?: string } | null;
     if (!row?.id) {
       throw new Error(`[global-setup] Post-seed verify failed: ${labels[i]} row missing.`);
     }
   }
-  console.log("[global-setup] Post-seed DB verify OK (3333… / 2222… / 1111… present).");
+  console.log("[global-setup] Post-seed DB verify OK (3333… / 4444…49 / 2222… / 1111… present).");
 
   // Prime Next.js dev compile for heavy routes so first tests do not sit on AppShell "Loading…".
   const base = (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, "");

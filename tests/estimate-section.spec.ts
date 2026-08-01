@@ -1,6 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
+
 const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
+
+test.beforeEach(async ({ page }) => {
+  await loginAsE2EOwner(page, "/estimates");
+});
 
 async function addBlankEstimateSection(page: Page): Promise<void> {
   const addSectionBtn = page.getByRole("button", { name: /^Add Section$/i }).first();

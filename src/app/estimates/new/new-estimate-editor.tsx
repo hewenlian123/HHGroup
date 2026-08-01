@@ -33,7 +33,13 @@ import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
 import { EstimateLineItemsLocal } from "../_components/estimate-line-items-local";
 import { ProposalScopeEditor } from "../_components/proposal-scope-editor";
 import { ProposalPaymentMilestoneList } from "../_components/proposal-payment-milestone-list";
-import { EB, ebSheetGlassNarrow, ebSheetInput } from "../_components/estimate-builder-ui";
+import {
+  EB,
+  ebGlassPanel,
+  ebInput,
+  ebSheetGlassNarrow,
+  ebSheetInput,
+} from "../_components/estimate-builder-ui";
 import { useEstimateOverviewScrollMotion } from "../_components/use-estimate-overview-scroll-motion";
 import type { EditorLineItem } from "../_components/estimate-line-item-model";
 import {
@@ -48,6 +54,11 @@ import type { CustomerOption } from "@/components/customers/customer-select-with
 import type { EstimateDocumentStyle } from "@/lib/estimate-document-style";
 import type { EstimateTemplateRecord } from "@/lib/estimate-templates";
 import { createProposalSectionId } from "../_components/estimate-section-templates";
+import {
+  EstimateBuilderSaveStatus,
+  type EstimateSaveStatus,
+} from "../_components/estimate-builder-save-status";
+import { useEstimateUnsavedWarning } from "../_components/use-estimate-unsaved-warning";
 
 type CostCodeType = "material" | "labor" | "subcontractor";
 
@@ -100,7 +111,7 @@ function EstimateTemplateSelector({
 }) {
   return (
     <section className={EB.section} data-testid="estimate-template-selector">
-      <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:px-4">
+      <div className={ebGlassPanel("px-3 py-3 md:px-4")}>
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 items-start gap-3">
             <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[rgb(198_165_106_/_0.22)] bg-[rgb(198_165_106_/_0.10)] text-[var(--neo-gold-soft)]">
@@ -118,7 +129,7 @@ function EstimateTemplateSelector({
             <select
               value={selectedTemplateId}
               onChange={(event) => onTemplateChange(event.target.value)}
-              className="h-10 min-h-10 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 text-sm text-[var(--neo-text-primary)] outline-none focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] md:min-w-[260px]"
+              className={ebInput("min-h-11 px-3 text-sm md:h-10 md:min-h-10 md:min-w-[260px]")}
               aria-label="Estimate template"
               data-testid="estimate-template-select"
             >
@@ -133,7 +144,7 @@ function EstimateTemplateSelector({
               type="button"
               variant="outline"
               asChild
-              className={cn("min-h-10 shrink-0", EB.actionSecondary)}
+              className={cn("min-h-11 shrink-0 md:min-h-10", EB.actionSecondary)}
             >
               <Link href="/estimate-templates">
                 <FileText className="mr-2 h-4 w-4" />
@@ -184,6 +195,8 @@ export function NewEstimateEditor({
   const [lineItems, setLineItems] = React.useState<LineItem[]>([]);
   const [estimateNotes, setEstimateNotes] = React.useState<EstimateNoteBlock[]>([]);
   const [saving, setSaving] = React.useState(false);
+  const [dirty, setDirty] = React.useState(false);
+  const [saveStatus, setSaveStatus] = React.useState<EstimateSaveStatus>("idle");
   const [submitAttempted, setSubmitAttempted] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
   const [paymentMilestones, setPaymentMilestones] = React.useState<PaymentMilestoneLocal[]>([]);
@@ -197,8 +210,40 @@ export function NewEstimateEditor({
   const [pmAmount, setPmAmount] = React.useState("");
   const [pmPercent, setPmPercent] = React.useState("");
   const [pmDueDate, setPmDueDate] = React.useState("");
+  const [pmError, setPmError] = React.useState<string | null>(null);
   const { asideRef, overviewFloating } = useEstimateOverviewScrollMotion();
   const initialTemplateAppliedRef = React.useRef<string | null>(null);
+  const initializedDirtyTrackingRef = React.useRef(false);
+  const saveInFlightRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!initializedDirtyTrackingRef.current) {
+      initializedDirtyTrackingRef.current = true;
+      return;
+    }
+    setDirty(true);
+    setSaveStatus((current) => (current === "saving" ? current : "unsaved"));
+  }, [
+    address,
+    categoryNames,
+    clientName,
+    discount,
+    documentStyle,
+    email,
+    estimateNotes,
+    lineItems,
+    paymentMilestones,
+    phone,
+    projectName,
+    salesPerson,
+    sectionOrder,
+    selectedCustomer?.id,
+    selectedTemplateId,
+    tax,
+    validUntil,
+  ]);
+
+  useEstimateUnsavedWarning(dirty && !saving);
 
   const codeToType = React.useMemo(() => {
     const m = new Map<string, CostCodeType>();
@@ -245,7 +290,9 @@ export function NewEstimateEditor({
     setSectionOrder((prev) => {
       const kept = prev.filter((c) => codesInItems.includes(c));
       const added = codesInItems.filter((c) => !kept.includes(c));
-      return [...kept, ...added];
+      const next = [...kept, ...added];
+      const unchanged = next.length === prev.length && next.every((code, i) => code === prev[i]);
+      return unchanged ? prev : next;
     });
   }, [lineItems]);
 
@@ -414,7 +461,8 @@ export function NewEstimateEditor({
   );
 
   const handleSave = async () => {
-    if (saving) return;
+    if (saving || saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
     setSubmitAttempted(true);
     const client = clientName.trim();
     const project = projectName.trim();
@@ -422,13 +470,16 @@ export function NewEstimateEditor({
       const msg = validationErrors[0] ?? "Please complete the estimate.";
       setFormError(msg);
       toast({ title: "Estimate is incomplete", description: msg, variant: "error" });
+      saveInFlightRef.current = false;
       return;
     }
 
     setSaving(true);
+    setSaveStatus("saving");
     setFormError(null);
     try {
       const res = await createEstimateWithItemsAction({
+        customerId: selectedCustomer?.id,
         clientName: client,
         projectName: project,
         address,
@@ -473,12 +524,21 @@ export function NewEstimateEditor({
       if (!res.ok || !res.estimateId) {
         const msg = res.error ?? "操作失败";
         setFormError(msg);
+        setSaveStatus("failed");
         toast({ title: "Create failed", description: msg, variant: "error" });
         return;
       }
+      setDirty(false);
+      setSaveStatus("saved");
       toast({ title: "Created", description: "Estimate created.", variant: "success" });
       router.push(`/estimates/${res.estimateId}?created=1`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Please try again.";
+      setFormError(message);
+      setSaveStatus("failed");
+      toast({ title: "Create failed", description: message, variant: "error" });
     } finally {
+      saveInFlightRef.current = false;
       setSaving(false);
     }
   };
@@ -503,6 +563,7 @@ export function NewEstimateEditor({
     setPmAmount("");
     setPmPercent("");
     setPmDueDate("");
+    setPmError(null);
   };
   const openPaymentMilestoneDrawer = (milestone?: PaymentMilestoneLocal) => {
     if (milestone) {
@@ -559,7 +620,10 @@ export function NewEstimateEditor({
         : null;
   const savePaymentMilestoneLocal = () => {
     const title = pmTitle.trim();
-    if (!title) return;
+    if (!title) {
+      setPmError("Enter a payment name before saving this milestone.");
+      return;
+    }
     const amount = Math.max(0, Number(pmAmount) || 0);
     const next: PaymentMilestoneLocal = {
       id: editingPaymentMilestoneId ?? `pm-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -581,7 +645,7 @@ export function NewEstimateEditor({
     <EstimateBuilderShell className="estimate-builder-new">
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_18.5rem] lg:gap-7 lg:items-start">
         <div className="min-w-0 space-y-4 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
-          <header className={EB.glassHeader}>
+          <header className={cn(EB.glassHeader, "eb-estimate-command-bar")}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
                 <Link href="/estimates" className={EB.backLink}>
@@ -589,7 +653,8 @@ export function NewEstimateEditor({
                 </Link>
                 <h1 className="sr-only">New Estimate</h1>
               </div>
-              <div className="hidden flex-wrap justify-end gap-2 lg:flex">
+              <div className="hidden flex-wrap items-center justify-end gap-2 lg:flex">
+                <EstimateBuilderSaveStatus status={saveStatus} className="mr-1" />
                 <Button
                   type="button"
                   variant="ghost"
@@ -602,6 +667,7 @@ export function NewEstimateEditor({
                   type="button"
                   onClick={handleSave}
                   disabled={saving}
+                  aria-busy={saving}
                   className={cn("min-h-11 px-5 font-medium md:min-h-8", EB.btnPrimary)}
                 >
                   <SubmitSpinner loading={saving} className="mr-2" />
@@ -798,10 +864,20 @@ export function NewEstimateEditor({
                         <Input
                           id="pm-title"
                           value={pmTitle}
-                          onChange={(e) => setPmTitle(e.target.value)}
+                          onChange={(e) => {
+                            setPmTitle(e.target.value);
+                            if (e.target.value.trim()) setPmError(null);
+                          }}
                           placeholder="e.g. Deposit"
                           className={ebSheetInput("text-sm")}
+                          aria-invalid={Boolean(pmError)}
+                          aria-describedby={pmError ? "pm-title-error" : undefined}
                         />
+                        {pmError ? (
+                          <p id="pm-title-error" role="alert" className="text-xs text-rose-300">
+                            {pmError}
+                          </p>
+                        ) : null}
                       </div>
                       <div className={EB.sheetField}>
                         <div className={EB.paymentAmountRow}>
@@ -816,10 +892,12 @@ export function NewEstimateEditor({
                               type="number"
                               step="0.01"
                               min={0}
+                              inputMode="decimal"
                               placeholder="0.00"
                               className={ebSheetInput(
                                 cn("text-sm text-right text-[#F4F7FB]", EB.inputNumeric)
                               )}
+                              onWheel={(event) => event.currentTarget.blur()}
                             />
                           </div>
                           <div className={EB.paymentPercentCol}>
@@ -834,6 +912,7 @@ export function NewEstimateEditor({
                               step="0.01"
                               min={0}
                               max={100}
+                              inputMode="decimal"
                               placeholder="Optional"
                               className={ebSheetInput(
                                 cn("text-sm text-right text-[#F4F7FB]", EB.inputNumeric)
@@ -841,6 +920,7 @@ export function NewEstimateEditor({
                               aria-describedby={
                                 pmPercentHelperText ? "pm-percent-helper" : undefined
                               }
+                              onWheel={(event) => event.currentTarget.blur()}
                             />
                           </div>
                         </div>
@@ -959,6 +1039,7 @@ export function NewEstimateEditor({
             {formatEstimateCurrency(summary.grandTotal)}
           </span>
         </div>
+        <EstimateBuilderSaveStatus status={saveStatus} className="mb-2 block text-center" />
         <div className="flex gap-2">
           <Button
             type="button"
@@ -971,6 +1052,7 @@ export function NewEstimateEditor({
           <Button
             onClick={handleSave}
             disabled={saving}
+            aria-busy={saving}
             className={cn("min-h-11 min-w-[44px] flex-1 font-medium", EB.btnPrimary)}
           >
             <SubmitSpinner loading={saving} className="mr-2" />

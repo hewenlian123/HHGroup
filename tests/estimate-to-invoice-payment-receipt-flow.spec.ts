@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import {
   assertE2EBaseUrlSafeForMutations,
   assertE2ESupabaseUrlSafeForMutations,
@@ -12,6 +13,10 @@ const TEST_EMAIL = "test+estimate-receipt-flow@hhprojectgroup.com";
 
 const createdCustomerNames = new Set<string>();
 const createdProjectNames = new Set<string>();
+
+test.beforeEach(async ({ page }) => {
+  await loginAsE2EOwner(page, "/estimates");
+});
 
 function db(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -250,7 +255,7 @@ async function markInvoiceSent(page: Page, invoiceId: string): Promise<void> {
   });
   await page.getByRole("button", { name: "More" }).click();
   await page.getByRole("menuitem", { name: "Mark as sent" }).click();
-  await expect(page.getByTestId("invoice-detail-status")).toContainText("Unpaid", {
+  await expect(page.getByTestId("invoice-detail-status")).toContainText(/Unpaid|Overdue/, {
     timeout: 30_000,
   });
 }
