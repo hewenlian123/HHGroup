@@ -1090,32 +1090,35 @@ export async function updateMaterialSelection(
 export async function deleteMaterialSelection(id: string) {
   return materialSelectionsDb.deleteSelection(id);
 }
-export async function getCloseoutPunch(projectId: string, explicitClient?: SupabaseClient) {
+export async function getCloseoutPunch(projectId: string, explicitClient: SupabaseClient) {
   return projectCloseoutDb.getCloseoutPunch(projectId, explicitClient);
 }
 export async function upsertCloseoutPunch(
   projectId: string,
-  data: Parameters<typeof projectCloseoutDb.upsertCloseoutPunch>[1]
+  data: Parameters<typeof projectCloseoutDb.upsertCloseoutPunch>[1],
+  explicitClient: SupabaseClient
 ) {
-  return projectCloseoutDb.upsertCloseoutPunch(projectId, data);
+  return projectCloseoutDb.upsertCloseoutPunch(projectId, data, explicitClient);
 }
-export async function getCloseoutWarranty(projectId: string) {
-  return projectCloseoutDb.getCloseoutWarranty(projectId);
+export async function getCloseoutWarranty(projectId: string, explicitClient: SupabaseClient) {
+  return projectCloseoutDb.getCloseoutWarranty(projectId, explicitClient);
 }
 export async function upsertCloseoutWarranty(
   projectId: string,
-  data: Parameters<typeof projectCloseoutDb.upsertCloseoutWarranty>[1]
+  data: Parameters<typeof projectCloseoutDb.upsertCloseoutWarranty>[1],
+  explicitClient: SupabaseClient
 ) {
-  return projectCloseoutDb.upsertCloseoutWarranty(projectId, data);
+  return projectCloseoutDb.upsertCloseoutWarranty(projectId, data, explicitClient);
 }
-export async function getCloseoutCompletion(projectId: string, explicitClient?: SupabaseClient) {
+export async function getCloseoutCompletion(projectId: string, explicitClient: SupabaseClient) {
   return projectCloseoutDb.getCloseoutCompletion(projectId, explicitClient);
 }
 export async function upsertCloseoutCompletion(
   projectId: string,
-  data: Parameters<typeof projectCloseoutDb.upsertCloseoutCompletion>[1]
+  data: Parameters<typeof projectCloseoutDb.upsertCloseoutCompletion>[1],
+  explicitClient: SupabaseClient
 ) {
-  return projectCloseoutDb.upsertCloseoutCompletion(projectId, data);
+  return projectCloseoutDb.upsertCloseoutCompletion(projectId, data, explicitClient);
 }
 export async function getApBills(filters: import("../ap-bills-db").ApBillsFilters = {}) {
   return apBillsDb.getApBills(filters);

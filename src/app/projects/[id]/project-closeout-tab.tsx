@@ -95,7 +95,7 @@ export function ProjectCloseoutTab({
     return d.toISOString().slice(0, 10);
   }, [warrantyForm.start_date, warrantyForm.period_months]);
 
-  const savePunch = async () => {
+  const savePunch = async (): Promise<boolean> => {
     setSaving("punch");
     setMessage(null);
     try {
@@ -114,14 +114,16 @@ export function ProjectCloseoutTab({
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Save failed");
       onRefresh();
+      return true;
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Save failed");
+      return false;
     } finally {
       setSaving(null);
     }
   };
 
-  const saveWarranty = async () => {
+  const saveWarranty = async (): Promise<boolean> => {
     setSaving("warranty");
     setMessage(null);
     try {
@@ -137,14 +139,16 @@ export function ProjectCloseoutTab({
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Save failed");
       onRefresh();
+      return true;
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Save failed");
+      return false;
     } finally {
       setSaving(null);
     }
   };
 
-  const saveCompletion = async () => {
+  const saveCompletion = async (): Promise<boolean> => {
     setSaving("completion");
     setMessage(null);
     try {
@@ -162,8 +166,10 @@ export function ProjectCloseoutTab({
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "Save failed");
       onRefresh();
+      return true;
     } catch (e) {
       setMessage(e instanceof Error ? e.message : "Save failed");
+      return false;
     } finally {
       setSaving(null);
     }
@@ -173,7 +179,7 @@ export function ProjectCloseoutTab({
     setGenerating("punch-pdf");
     setMessage(null);
     try {
-      await savePunch();
+      if (!(await savePunch())) return;
       const res = await fetch(`/api/projects/${projectId}/closeout/generate-punch-pdf`, {
         method: "POST",
         headers: { "Idempotency-Key": crypto.randomUUID() },
@@ -212,7 +218,7 @@ export function ProjectCloseoutTab({
     setGenerating("completion-pdf");
     setMessage(null);
     try {
-      await saveCompletion();
+      if (!(await saveCompletion())) return;
       const res = await fetch(`/api/projects/${projectId}/closeout/generate-completion-pdf`, {
         method: "POST",
         headers: {

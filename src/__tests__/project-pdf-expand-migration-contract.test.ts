@@ -17,13 +17,14 @@ function sourceWithSuffix(directory: string, suffix: string): { file: string; sq
 describe("Project PDF documents expand migration contract", () => {
   it("adds every canonical document field defensively in a new ordered migration", () => {
     const { file, sql } = sourceWithSuffix(MIGRATIONS, "_project_pdf_documents_expand.sql");
-    const maxPrevious = readdirSync(MIGRATIONS)
-      .filter((candidate) => /^\d{12,14}_/.test(candidate) && candidate !== file)
-      .sort()
-      .at(-1);
+    const canonicalCloseout = readdirSync(MIGRATIONS).find((candidate) =>
+      candidate.endsWith("_canonical_closeout_reconciliation.sql")
+    );
 
     expect(file).toMatch(/^\d{14}_project_pdf_documents_expand\.sql$/);
-    expect(file > (maxPrevious ?? "")).toBe(true);
+    expect(file > "20260801065640_restore_estimate_grants_rls_parity.sql").toBe(true);
+    expect(canonicalCloseout).toBeTruthy();
+    expect(file < (canonicalCloseout ?? "")).toBe(true);
     for (const [column, type] of [
       ["file_name", "text"],
       ["file_path", "text"],
@@ -122,8 +123,9 @@ describe("Project PDF documents expand migration contract", () => {
     for (const table of [
       "project_material_selections",
       "material_catalog",
-      "project_closeout_completion",
-      "project_closeout_punch",
+      "final_punch_lists",
+      "final_punch_list_items",
+      "completion_certificates",
       "invoices",
       "invoice_items",
       "invoice_payments",

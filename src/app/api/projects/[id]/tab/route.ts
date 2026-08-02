@@ -25,7 +25,10 @@ import {
   getPunchListByProject,
 } from "@/lib/data";
 import { getApBillsByProject } from "@/lib/ap-bills-db";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import {
+  getServerSupabaseInternalNoStore,
+  getStrictSupabaseRequestAuth,
+} from "@/lib/supabase-server";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 
 type TabKey =
@@ -167,10 +170,21 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (key === "closeout") {
+      const auth = await getStrictSupabaseRequestAuth(_req);
+      if (!auth) return jsonError("Authentication required.", 401);
+      let permission: { data: unknown; error: unknown };
+      try {
+        permission = await auth.client.rpc("has_perm", { p_key: "projects.update" });
+      } catch {
+        permission = { data: false, error: true };
+      }
+      if (permission.error || permission.data !== true) {
+        return jsonError("Project access denied.", 403);
+      }
       const [punch, warranty, completion] = await Promise.all([
-        getCloseoutPunch(id).catch(() => null),
-        getCloseoutWarranty(id).catch(() => null),
-        getCloseoutCompletion(id).catch(() => null),
+        getCloseoutPunch(id, auth.client).catch(() => null),
+        getCloseoutWarranty(id, auth.client).catch(() => null),
+        getCloseoutCompletion(id, auth.client).catch(() => null),
       ]);
       return NextResponse.json({ ok: true as const, key, punch, warranty, completion });
     }

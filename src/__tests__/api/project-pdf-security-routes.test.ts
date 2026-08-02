@@ -613,4 +613,26 @@ describe("Project PDF route-local P0 security", () => {
     expect(textMock).toHaveBeenCalledWith(expect.stringContaining("Payments received:"), 20, 43);
     expect(textMock).toHaveBeenCalledWith(expect.stringContaining("Remaining balance:"), 20, 51);
   });
+
+  it("renders punch PDF items in the canonical UI order", async () => {
+    getCloseoutPunchMock.mockResolvedValue({
+      inspection_date: "2026-08-02",
+      inspector: "Owner",
+      notes: null,
+      contractor_signature: null,
+      client_signature: null,
+      items: [
+        { item: "First UI item", status: "pending" },
+        { item: "Second UI item", status: "done" },
+      ],
+    });
+
+    const response = await callRoute(routes[3]);
+
+    expect(response.status).toBe(200);
+    const rendered = textMock.mock.calls
+      .map(([value]) => value)
+      .filter((value) => typeof value === "string" && value.startsWith("• "));
+    expect(rendered).toEqual(["• First UI item [pending]", "• Second UI item [done]"]);
+  });
 });

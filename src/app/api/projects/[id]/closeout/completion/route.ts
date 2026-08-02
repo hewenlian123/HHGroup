@@ -1,21 +1,25 @@
 import { NextResponse } from "next/server";
 import { upsertCloseoutCompletion } from "@/lib/data";
+import {
+  authorizeProjectCloseoutMutation,
+  closeoutMutationFailure,
+  type CompletionMutationBody,
+} from "@/lib/project-closeout-security";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  if (!id) return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+  const authorization = await authorizeProjectCloseoutMutation({
+    kind: "completion",
+    projectId: id,
+    request: req,
+  });
+  if (!authorization.ok) return authorization.response;
+
+  const { admin, body, projectId } = authorization.context;
   try {
-    const body = await req.json();
-    await upsertCloseoutCompletion(id, {
-      completion_date: body.completion_date ?? null,
-      contractor_name: body.contractor_name ?? null,
-      client_name: body.client_name ?? null,
-      contractor_signature: body.contractor_signature ?? null,
-      client_signature: body.client_signature ?? null,
-    });
+    await upsertCloseoutCompletion(projectId, body as CompletionMutationBody, admin);
     return NextResponse.json({ ok: true });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to save";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+  } catch (error) {
+    return closeoutMutationFailure("completion", error);
   }
 }

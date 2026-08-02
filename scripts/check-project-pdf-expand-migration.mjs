@@ -305,8 +305,9 @@ try {
           and table_name in (
             'project_material_selections',
             'material_catalog',
-            'project_closeout_completion',
-            'project_closeout_punch',
+            'final_punch_lists',
+            'final_punch_list_items',
+            'completion_certificates',
             'invoices',
             'invoice_items',
             'invoice_payments',
@@ -320,7 +321,7 @@ try {
           )
       `;
       invariant(
-        serviceReadDependencies.length === 14,
+        serviceReadDependencies.length === 15,
         "Project PDF service-role read grants are incomplete."
       );
 

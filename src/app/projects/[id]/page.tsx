@@ -25,7 +25,10 @@ import { getProjectByIdWithClient } from "@/lib/projects-db";
 import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { getProjectCostDashboard } from "@/lib/project-cost-dashboard";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import {
+  createServerSupabaseClient,
+  getServerSupabaseInternalNoStore,
+} from "@/lib/supabase-server";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { ProjectDetailTabsClient } from "./project-detail-tabs-client";
@@ -119,6 +122,19 @@ export default async function ProjectDetailPage({
   ];
   const tab: TabKey = validTabs.includes(tabParam as TabKey) ? (tabParam as TabKey) : "overview";
   const internalSupabase = getServerSupabaseInternalNoStore();
+  const closeoutSupabase = await createServerSupabaseClient();
+  const closeoutAuthorized = closeoutSupabase
+    ? await closeoutSupabase.auth
+        .getUser()
+        .then(async ({ data, error }) => {
+          if (error || !data.user) return false;
+          const permission = await closeoutSupabase.rpc("has_perm", {
+            p_key: "projects.update",
+          });
+          return !permission.error && permission.data === true;
+        })
+        .catch(() => false)
+    : false;
 
   let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
   try {
@@ -217,9 +233,15 @@ export default async function ProjectDetailPage({
     safe(() => getActivityLogsByProject(id, 20), []),
     safe(() => getChangeOrdersByProject(id), []),
     safe(() => getProjectBudgetItems(id), []),
-    safe(() => getCloseoutPunch(id), null),
-    safe(() => getCloseoutWarranty(id), null),
-    safe(() => getCloseoutCompletion(id), null),
+    closeoutAuthorized && closeoutSupabase
+      ? safe(() => getCloseoutPunch(id, closeoutSupabase), null)
+      : Promise.resolve(null),
+    closeoutAuthorized && closeoutSupabase
+      ? safe(() => getCloseoutWarranty(id, closeoutSupabase), null)
+      : Promise.resolve(null),
+    closeoutAuthorized && closeoutSupabase
+      ? safe(() => getCloseoutCompletion(id, closeoutSupabase), null)
+      : Promise.resolve(null),
     safe(() => getProjectSchedule(id), []),
     safe(() => getInvoicesWithDerived({ projectId: id }), []),
     safe(() => getEstimateList(), []),

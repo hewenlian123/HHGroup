@@ -323,8 +323,9 @@ grant select, insert, update, delete on table public.documents to service_role;
 grant select on table
   public.project_material_selections,
   public.material_catalog,
-  public.project_closeout_completion,
-  public.project_closeout_punch,
+  public.final_punch_lists,
+  public.final_punch_list_items,
+  public.completion_certificates,
   public.invoices,
   public.invoice_items,
   public.invoice_payments,

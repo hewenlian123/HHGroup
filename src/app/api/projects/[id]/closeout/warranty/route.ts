@@ -1,19 +1,25 @@
 import { NextResponse } from "next/server";
 import { upsertCloseoutWarranty } from "@/lib/data";
+import {
+  authorizeProjectCloseoutMutation,
+  closeoutMutationFailure,
+  type WarrantyMutationBody,
+} from "@/lib/project-closeout-security";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  if (!id) return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+  const authorization = await authorizeProjectCloseoutMutation({
+    kind: "warranty",
+    projectId: id,
+    request: req,
+  });
+  if (!authorization.ok) return authorization.response;
+
+  const { admin, body, projectId } = authorization.context;
   try {
-    const body = await req.json();
-    await upsertCloseoutWarranty(id, {
-      start_date: body.start_date ?? null,
-      period_months: body.period_months ?? 12,
-      notes: body.notes ?? null,
-    });
+    await upsertCloseoutWarranty(projectId, body as WarrantyMutationBody, admin);
     return NextResponse.json({ ok: true });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Failed to save";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+  } catch (error) {
+    return closeoutMutationFailure("warranty", error);
   }
 }

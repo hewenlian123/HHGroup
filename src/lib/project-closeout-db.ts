@@ -1,8 +1,10 @@
 /**
- * Project closeout: final punch list, warranty, completion certificate.
+ * Canonical Project Closeout data access.
+ *
+ * Every operation requires an explicit request-scoped client. Mutations are intended
+ * for the authorized server service client; browser callers cannot obtain that client.
  */
 
-import { getSupabaseClient } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type PunchListItem = { item: string; status: "pending" | "done" };
@@ -42,40 +44,76 @@ export type CloseoutCompletion = {
   updated_at: string;
 };
 
-function client(explicitClient?: SupabaseClient) {
-  const c = explicitClient ?? getSupabaseClient();
-  if (!c) throw new Error("Supabase is not configured.");
-  return c;
+export type CloseoutDatabaseErrorKind = "conflict" | "not_found" | "validation" | "unexpected";
+
+export class CloseoutDatabaseError extends Error {
+  constructor(public readonly kind: CloseoutDatabaseErrorKind) {
+    super("Project Closeout database operation failed.");
+    this.name = "CloseoutDatabaseError";
+  }
+}
+
+function errorKind(error: { code?: string } | null): CloseoutDatabaseErrorKind {
+  if (["55P03", "57014", "40001", "40P01"].includes(error?.code ?? "")) return "conflict";
+  if (error?.code === "P0002") return "not_found";
+  if (error?.code === "22023") return "validation";
+  return "unexpected";
+}
+
+function dateOnly(value: unknown): string | null {
+  return value ? String(value).slice(0, 10) : null;
+}
+
+function punchFromRows(
+  row: Record<string, unknown>,
+  itemRows: Array<Record<string, unknown>>
+): CloseoutPunch {
+  return {
+    id: String(row.id),
+    project_id: String(row.project_id),
+    inspection_date: dateOnly(row.inspection_date),
+    inspector: typeof row.inspector === "string" ? row.inspector : null,
+    notes: typeof row.notes === "string" ? row.notes : null,
+    contractor_signature:
+      typeof row.contractor_signature === "string" ? row.contractor_signature : null,
+    client_signature: typeof row.client_signature === "string" ? row.client_signature : null,
+    items: itemRows.map((item) => ({
+      item: typeof item.item === "string" ? item.item : "",
+      status: item.status === "done" ? "done" : "pending",
+    })),
+    created_at: typeof row.created_at === "string" ? row.created_at : "",
+    // The canonical parent predates updated_at. Preserve the public UI shape without
+    // inventing a second timestamp source.
+    updated_at: typeof row.created_at === "string" ? row.created_at : "",
+  };
 }
 
 export async function getCloseoutPunch(
   projectId: string,
-  explicitClient?: SupabaseClient
+  explicitClient: SupabaseClient
 ): Promise<CloseoutPunch | null> {
-  const c = client(explicitClient);
-  const { data: row, error } = await c
-    .from("project_closeout_punch")
-    .select("*")
+  const { data: parent, error: parentError } = await explicitClient
+    .from("final_punch_lists")
+    .select(
+      "id, project_id, inspection_date, inspector, notes, contractor_signature, client_signature, created_at"
+    )
     .eq("project_id", projectId)
     .maybeSingle();
-  if (error) throw new Error(error.message ?? "Failed to load punch list.");
-  if (!row) return null;
-  const items = Array.isArray(row.items) ? row.items : [];
-  return {
-    id: row.id,
-    project_id: row.project_id,
-    inspection_date: row.inspection_date ? String(row.inspection_date).slice(0, 10) : null,
-    inspector: row.inspector ?? null,
-    notes: row.notes ?? null,
-    contractor_signature: row.contractor_signature ?? null,
-    client_signature: row.client_signature ?? null,
-    items: items.map((x: { item?: string; status?: string }) => ({
-      item: x.item ?? "",
-      status: x.status === "done" ? "done" : "pending",
-    })),
-    created_at: row.created_at ?? "",
-    updated_at: row.updated_at ?? "",
-  };
+  if (parentError) throw new CloseoutDatabaseError(errorKind(parentError));
+  if (!parent) return null;
+
+  const { data: items, error: itemsError } = await explicitClient
+    .from("final_punch_list_items")
+    .select("id, punch_list_id, item, status, position")
+    .eq("punch_list_id", parent.id)
+    .order("position", { ascending: true })
+    .order("id", { ascending: true });
+  if (itemsError) throw new CloseoutDatabaseError(errorKind(itemsError));
+
+  return punchFromRows(
+    parent as Record<string, unknown>,
+    (items ?? []) as Array<Record<string, unknown>>
+  );
 }
 
 export async function upsertCloseoutPunch(
@@ -90,118 +128,99 @@ export async function upsertCloseoutPunch(
       | "client_signature"
       | "items"
     >
-  >
+  >,
+  explicitClient: SupabaseClient
 ): Promise<CloseoutPunch> {
-  const c = client();
-  const payload = {
-    project_id: projectId,
-    ...(data.inspection_date !== undefined && {
-      inspection_date: data.inspection_date?.slice(0, 10) ?? null,
-    }),
-    ...(data.inspector !== undefined && { inspector: data.inspector ?? null }),
-    ...(data.notes !== undefined && { notes: data.notes ?? null }),
-    ...(data.contractor_signature !== undefined && {
-      contractor_signature: data.contractor_signature ?? null,
-    }),
-    ...(data.client_signature !== undefined && { client_signature: data.client_signature ?? null }),
-    ...(data.items !== undefined && { items: data.items }),
-    updated_at: new Date().toISOString(),
-  };
-  const { data: row, error } = await c
-    .from("project_closeout_punch")
-    .upsert(payload, { onConflict: "project_id" })
-    .select()
-    .single();
-  if (error) throw new Error(error.message ?? "Failed to save punch list.");
-  const items = Array.isArray(row.items) ? row.items : [];
-  return {
-    id: row.id,
-    project_id: row.project_id,
-    inspection_date: row.inspection_date ? String(row.inspection_date).slice(0, 10) : null,
-    inspector: row.inspector ?? null,
-    notes: row.notes ?? null,
-    contractor_signature: row.contractor_signature ?? null,
-    client_signature: row.client_signature ?? null,
-    items: items.map((x: { item?: string; status?: string }) => ({
-      item: x.item ?? "",
-      status: x.status === "done" ? "done" : "pending",
-    })),
-    created_at: row.created_at ?? "",
-    updated_at: row.updated_at ?? "",
-  };
+  const { error } = await explicitClient.rpc("replace_final_punch_list", {
+    p_project_id: projectId,
+    p_inspection_date: data.inspection_date ?? null,
+    p_inspector: data.inspector ?? null,
+    p_notes: data.notes ?? null,
+    p_contractor_signature: data.contractor_signature ?? null,
+    p_client_signature: data.client_signature ?? null,
+    p_items: data.items ?? [],
+  });
+  if (error) throw new CloseoutDatabaseError(errorKind(error));
+
+  const result = await getCloseoutPunch(projectId, explicitClient);
+  if (!result) throw new CloseoutDatabaseError("unexpected");
+  return result;
 }
 
-export async function getCloseoutWarranty(projectId: string): Promise<CloseoutWarranty | null> {
-  const c = client();
-  const { data: row, error } = await c
-    .from("project_closeout_warranty")
-    .select("*")
+export async function getCloseoutWarranty(
+  projectId: string,
+  explicitClient: SupabaseClient
+): Promise<CloseoutWarranty | null> {
+  const { data: row, error } = await explicitClient
+    .from("warranties")
+    .select("id, project_id, start_date, period_months, notes, created_at")
     .eq("project_id", projectId)
     .maybeSingle();
-  if (error) throw new Error(error.message ?? "Failed to load warranty.");
+  if (error) throw new CloseoutDatabaseError(errorKind(error));
   if (!row) return null;
   return {
-    id: row.id,
-    project_id: row.project_id,
-    start_date: row.start_date ? String(row.start_date).slice(0, 10) : null,
+    id: String(row.id),
+    project_id: String(row.project_id),
+    start_date: dateOnly(row.start_date),
     period_months: Number(row.period_months) || 12,
-    notes: row.notes ?? null,
-    created_at: row.created_at ?? "",
-    updated_at: row.updated_at ?? "",
+    notes: typeof row.notes === "string" ? row.notes : null,
+    created_at: typeof row.created_at === "string" ? row.created_at : "",
+    updated_at: typeof row.created_at === "string" ? row.created_at : "",
   };
 }
 
 export async function upsertCloseoutWarranty(
   projectId: string,
-  data: Partial<Pick<CloseoutWarranty, "start_date" | "period_months" | "notes">>
+  data: Partial<Pick<CloseoutWarranty, "start_date" | "period_months" | "notes">>,
+  explicitClient: SupabaseClient
 ): Promise<CloseoutWarranty> {
-  const c = client();
   const payload = {
     project_id: projectId,
-    ...(data.start_date !== undefined && { start_date: data.start_date?.slice(0, 10) ?? null }),
-    ...(data.period_months !== undefined && { period_months: data.period_months }),
-    ...(data.notes !== undefined && { notes: data.notes ?? null }),
-    updated_at: new Date().toISOString(),
+    start_date: data.start_date ?? null,
+    period_months: data.period_months ?? 12,
+    notes: data.notes ?? null,
   };
-  const { data: row, error } = await c
-    .from("project_closeout_warranty")
+  const { data: row, error } = await explicitClient
+    .from("warranties")
     .upsert(payload, { onConflict: "project_id" })
-    .select()
+    .select("id, project_id, start_date, period_months, notes, created_at")
     .single();
-  if (error) throw new Error(error.message ?? "Failed to save warranty.");
+  if (error || !row) throw new CloseoutDatabaseError(errorKind(error));
   return {
-    id: row.id,
-    project_id: row.project_id,
-    start_date: row.start_date ? String(row.start_date).slice(0, 10) : null,
+    id: String(row.id),
+    project_id: String(row.project_id),
+    start_date: dateOnly(row.start_date),
     period_months: Number(row.period_months) || 12,
-    notes: row.notes ?? null,
-    created_at: row.created_at ?? "",
-    updated_at: row.updated_at ?? "",
+    notes: typeof row.notes === "string" ? row.notes : null,
+    created_at: typeof row.created_at === "string" ? row.created_at : "",
+    updated_at: typeof row.created_at === "string" ? row.created_at : "",
   };
 }
 
 export async function getCloseoutCompletion(
   projectId: string,
-  explicitClient?: SupabaseClient
+  explicitClient: SupabaseClient
 ): Promise<CloseoutCompletion | null> {
-  const c = client(explicitClient);
-  const { data: row, error } = await c
-    .from("project_closeout_completion")
-    .select("*")
+  const { data: row, error } = await explicitClient
+    .from("completion_certificates")
+    .select(
+      "id, project_id, completion_date, contractor_name, client_name, contractor_signature, client_signature, created_at"
+    )
     .eq("project_id", projectId)
     .maybeSingle();
-  if (error) throw new Error(error.message ?? "Failed to load completion.");
+  if (error) throw new CloseoutDatabaseError(errorKind(error));
   if (!row) return null;
   return {
-    id: row.id,
-    project_id: row.project_id,
-    completion_date: row.completion_date ? String(row.completion_date).slice(0, 10) : null,
-    contractor_name: row.contractor_name ?? null,
-    client_name: row.client_name ?? null,
-    contractor_signature: row.contractor_signature ?? null,
-    client_signature: row.client_signature ?? null,
-    created_at: row.created_at ?? "",
-    updated_at: row.updated_at ?? "",
+    id: String(row.id),
+    project_id: String(row.project_id),
+    completion_date: dateOnly(row.completion_date),
+    contractor_name: typeof row.contractor_name === "string" ? row.contractor_name : null,
+    client_name: typeof row.client_name === "string" ? row.client_name : null,
+    contractor_signature:
+      typeof row.contractor_signature === "string" ? row.contractor_signature : null,
+    client_signature: typeof row.client_signature === "string" ? row.client_signature : null,
+    created_at: typeof row.created_at === "string" ? row.created_at : "",
+    updated_at: typeof row.created_at === "string" ? row.created_at : "",
   };
 }
 
@@ -216,37 +235,35 @@ export async function upsertCloseoutCompletion(
       | "contractor_signature"
       | "client_signature"
     >
-  >
+  >,
+  explicitClient: SupabaseClient
 ): Promise<CloseoutCompletion> {
-  const c = client();
   const payload = {
     project_id: projectId,
-    ...(data.completion_date !== undefined && {
-      completion_date: data.completion_date?.slice(0, 10) ?? null,
-    }),
-    ...(data.contractor_name !== undefined && { contractor_name: data.contractor_name ?? null }),
-    ...(data.client_name !== undefined && { client_name: data.client_name ?? null }),
-    ...(data.contractor_signature !== undefined && {
-      contractor_signature: data.contractor_signature ?? null,
-    }),
-    ...(data.client_signature !== undefined && { client_signature: data.client_signature ?? null }),
-    updated_at: new Date().toISOString(),
+    completion_date: data.completion_date ?? null,
+    contractor_name: data.contractor_name ?? null,
+    client_name: data.client_name ?? null,
+    contractor_signature: data.contractor_signature ?? null,
+    client_signature: data.client_signature ?? null,
   };
-  const { data: row, error } = await c
-    .from("project_closeout_completion")
+  const { data: row, error } = await explicitClient
+    .from("completion_certificates")
     .upsert(payload, { onConflict: "project_id" })
-    .select()
+    .select(
+      "id, project_id, completion_date, contractor_name, client_name, contractor_signature, client_signature, created_at"
+    )
     .single();
-  if (error) throw new Error(error.message ?? "Failed to save completion.");
+  if (error || !row) throw new CloseoutDatabaseError(errorKind(error));
   return {
-    id: row.id,
-    project_id: row.project_id,
-    completion_date: row.completion_date ? String(row.completion_date).slice(0, 10) : null,
-    contractor_name: row.contractor_name ?? null,
-    client_name: row.client_name ?? null,
-    contractor_signature: row.contractor_signature ?? null,
-    client_signature: row.client_signature ?? null,
-    created_at: row.created_at ?? "",
-    updated_at: row.updated_at ?? "",
+    id: String(row.id),
+    project_id: String(row.project_id),
+    completion_date: dateOnly(row.completion_date),
+    contractor_name: typeof row.contractor_name === "string" ? row.contractor_name : null,
+    client_name: typeof row.client_name === "string" ? row.client_name : null,
+    contractor_signature:
+      typeof row.contractor_signature === "string" ? row.contractor_signature : null,
+    client_signature: typeof row.client_signature === "string" ? row.client_signature : null,
+    created_at: typeof row.created_at === "string" ? row.created_at : "",
+    updated_at: typeof row.created_at === "string" ? row.created_at : "",
   };
 }
