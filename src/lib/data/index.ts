@@ -1073,8 +1073,8 @@ export async function updateMaterial(
 ) {
   return materialCatalogDb.updateMaterial(id, patch);
 }
-export async function getSelectionsByProject(projectId: string) {
-  return materialSelectionsDb.getSelectionsByProject(projectId);
+export async function getSelectionsByProject(projectId: string, explicitClient?: SupabaseClient) {
+  return materialSelectionsDb.getSelectionsByProject(projectId, explicitClient);
 }
 export async function createMaterialSelection(
   draft: import("../material-selections-db").ProjectMaterialSelectionDraft
@@ -1090,8 +1090,8 @@ export async function updateMaterialSelection(
 export async function deleteMaterialSelection(id: string) {
   return materialSelectionsDb.deleteSelection(id);
 }
-export async function getCloseoutPunch(projectId: string) {
-  return projectCloseoutDb.getCloseoutPunch(projectId);
+export async function getCloseoutPunch(projectId: string, explicitClient?: SupabaseClient) {
+  return projectCloseoutDb.getCloseoutPunch(projectId, explicitClient);
 }
 export async function upsertCloseoutPunch(
   projectId: string,
@@ -1108,8 +1108,8 @@ export async function upsertCloseoutWarranty(
 ) {
   return projectCloseoutDb.upsertCloseoutWarranty(projectId, data);
 }
-export async function getCloseoutCompletion(projectId: string) {
-  return projectCloseoutDb.getCloseoutCompletion(projectId);
+export async function getCloseoutCompletion(projectId: string, explicitClient?: SupabaseClient) {
+  return projectCloseoutDb.getCloseoutCompletion(projectId, explicitClient);
 }
 export async function upsertCloseoutCompletion(
   projectId: string,
@@ -2254,20 +2254,25 @@ export type ProjectFromEstimate = {
   snapshotBudgetBreakdown?: { materials: number; labor: number; vendor: number; other: number };
 };
 
-export async function getInvoices(): Promise<Invoice[]> {
-  return invoicesDb.getInvoices();
+export async function getInvoices(explicitClient?: SupabaseClient): Promise<Invoice[]> {
+  return invoicesDb.getInvoices(explicitClient);
 }
 
-export async function getInvoicePayments(): Promise<InvoicePayment[]> {
-  return invoicesDb.getInvoicePayments();
+export async function getInvoicePayments(
+  explicitClient?: SupabaseClient
+): Promise<InvoicePayment[]> {
+  return invoicesDb.getInvoicePayments(explicitClient);
 }
 
-export async function getInvoicesWithDerived(filters?: {
-  status?: InvoiceStatus | "Overdue";
-  projectId?: string;
-  search?: string;
-}): Promise<InvoiceWithDerived[]> {
-  return invoicesDb.getInvoicesWithDerived(filters);
+export async function getInvoicesWithDerived(
+  filters?: {
+    status?: InvoiceStatus | "Overdue";
+    projectId?: string;
+    search?: string;
+  },
+  explicitClient?: SupabaseClient
+): Promise<InvoiceWithDerived[]> {
+  return invoicesDb.getInvoicesWithDerived(filters, explicitClient);
 }
 
 export async function getInvoicesWithDerivedPaged(
@@ -2287,8 +2292,11 @@ export async function getInvoiceById(id: string): Promise<InvoiceWithDerived | n
 /** Alias for getInvoiceById for compatibility. */
 export const getInvoiceByIdWithDerived = getInvoiceById;
 
-export async function getPaymentsByInvoiceId(invoiceId: string): Promise<InvoicePayment[]> {
-  return invoicesDb.getPaymentsByInvoiceId(invoiceId);
+export async function getPaymentsByInvoiceId(
+  invoiceId: string,
+  explicitClient?: SupabaseClient
+): Promise<InvoicePayment[]> {
+  return invoicesDb.getPaymentsByInvoiceId(invoiceId, explicitClient);
 }
 
 export async function recordInvoicePayment(
@@ -2514,13 +2522,16 @@ export async function getOutstandingInvoices(): Promise<InvoiceWithDerived[]> {
   );
 }
 
-export async function getProjectBillingSummary(projectId: string): Promise<{
+export async function getProjectBillingSummary(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<{
   invoicedTotal: number;
   paidTotal: number;
   arBalance: number;
   lastPaymentDate: string | null;
 }> {
-  const projectInvoices = (await getInvoicesWithDerived({ projectId })).filter(
+  const projectInvoices = (await getInvoicesWithDerived({ projectId }, explicitClient)).filter(
     (i) => i.computedStatus !== "Void" && i.computedStatus !== "Draft"
   );
   let invoicedTotal = 0;
@@ -2531,7 +2542,7 @@ export async function getProjectBillingSummary(projectId: string): Promise<{
     invoicedTotal += inv.total;
     paidTotal += inv.paidTotal;
     arBalance += inv.balanceDue;
-    const payments = await getPaymentsByInvoiceId(inv.id);
+    const payments = await getPaymentsByInvoiceId(inv.id, explicitClient);
     for (const p of payments) {
       if (!lastPaymentDate || p.date > lastPaymentDate) lastPaymentDate = p.date;
     }

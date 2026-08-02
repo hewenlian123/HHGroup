@@ -136,7 +136,8 @@ const noStoreFetch: typeof fetch = (input, init) =>
     cache: "no-store",
   });
 
-function client(): SupabaseClient {
+function client(explicitClient?: SupabaseClient): SupabaseClient {
+  if (explicitClient) return explicitClient;
   if (typeof window === "undefined") {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key =
@@ -363,8 +364,8 @@ async function getInvoiceItemsOrEmpty(invoiceId: string): Promise<InvoiceItemRow
 const INVOICE_COLS =
   "id,project_id,customer_id,invoice_no,client_name,issue_date,due_date,status,total,notes,tax_pct,subtotal,tax_amount,created_at,updated_at";
 
-export async function getInvoices(): Promise<Invoice[]> {
-  const c = client();
+export async function getInvoices(explicitClient?: SupabaseClient): Promise<Invoice[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("invoices")
     .select(INVOICE_COLS)
@@ -413,8 +414,10 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
   return toInvoice(row as InvoiceRow, itemRows);
 }
 
-export async function getInvoicePayments(): Promise<InvoicePayment[]> {
-  const c = client();
+export async function getInvoicePayments(
+  explicitClient?: SupabaseClient
+): Promise<InvoicePayment[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("invoice_payments")
     .select(
@@ -428,8 +431,11 @@ export async function getInvoicePayments(): Promise<InvoicePayment[]> {
   return ((rows ?? []) as InvoicePaymentRow[]).map(toPayment);
 }
 
-export async function getPaymentsByInvoiceId(invoiceId: string): Promise<InvoicePayment[]> {
-  const c = client();
+export async function getPaymentsByInvoiceId(
+  invoiceId: string,
+  explicitClient?: SupabaseClient
+): Promise<InvoicePayment[]> {
+  const c = client(explicitClient);
   const fullCols =
     "id, invoice_id, amount, payment_date, paid_at, method, reference, memo, status, payment_received_id";
   let { data: rows, error } = await c
@@ -512,13 +518,16 @@ export interface InvoiceWithDerived extends Invoice {
   daysOverdue: number;
 }
 
-export async function getInvoicesWithDerived(filters?: {
-  status?: InvoiceStatus | InvoiceComputedStatus;
-  projectId?: string;
-  search?: string;
-}): Promise<InvoiceWithDerived[]> {
-  const list = await getInvoices();
-  const payments = await getInvoicePayments();
+export async function getInvoicesWithDerived(
+  filters?: {
+    status?: InvoiceStatus | InvoiceComputedStatus;
+    projectId?: string;
+    search?: string;
+  },
+  explicitClient?: SupabaseClient
+): Promise<InvoiceWithDerived[]> {
+  const list = await getInvoices(explicitClient);
+  const payments = await getInvoicePayments(explicitClient);
   let withDerived: InvoiceWithDerived[] = list.map((inv) => {
     const invPayments = payments.filter((p) => p.invoiceId === inv.id);
     const { paidTotal, balanceDue, computedStatus, daysOverdue } = computeDerived(inv, invPayments);

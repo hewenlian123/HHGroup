@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type PunchListItem = { item: string; status: "pending" | "done" };
 
@@ -41,14 +42,17 @@ export type CloseoutCompletion = {
   updated_at: string;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
 
-export async function getCloseoutPunch(projectId: string): Promise<CloseoutPunch | null> {
-  const c = client();
+export async function getCloseoutPunch(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<CloseoutPunch | null> {
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from("project_closeout_punch")
     .select("*")
@@ -176,8 +180,11 @@ export async function upsertCloseoutWarranty(
   };
 }
 
-export async function getCloseoutCompletion(projectId: string): Promise<CloseoutCompletion | null> {
-  const c = client();
+export async function getCloseoutCompletion(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<CloseoutCompletion | null> {
+  const c = client(explicitClient);
   const { data: row, error } = await c
     .from("project_closeout_completion")
     .select("*")

@@ -19,6 +19,7 @@
     "check:schema-preflight": "node scripts/check-schema-preflight.mjs",
     "check:schema-preflight:strict": "SCHEMA_PREFLIGHT_RLS_MODE=strict node scripts/check-schema-preflight.mjs",
     "check:rollback-sql": "node scripts/check-rollback-sql.mjs",
+    "check:project-pdf-expand-migration": "node scripts/check-project-pdf-expand-migration.mjs",
     "check:schema-vs-code": "node scripts/audit-schema-vs-code.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -97,7 +98,8 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
-    "tesseract.js": "^7.0.0"
+    "tesseract.js": "^7.0.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",

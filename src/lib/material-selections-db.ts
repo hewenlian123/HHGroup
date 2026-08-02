@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type MaterialSelectionStatus = "Selected" | "Pending" | "Ordered";
 
@@ -34,8 +35,8 @@ export type ProjectMaterialSelectionDraft = {
   notes?: string | null;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -60,9 +61,10 @@ function toRow(r: Record<string, unknown>): ProjectMaterialSelection {
 
 /** Get all selections for a project, with material photo_url when material_id is set. */
 export async function getSelectionsByProject(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectMaterialSelectionWithMaterial[]> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_material_selections")
     .select(`${COLS}, material_catalog(photo_url)`)

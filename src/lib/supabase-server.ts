@@ -235,6 +235,62 @@ function createRequestReadOnlySupabaseClient(
   });
 }
 
+export type StrictSupabaseRequestAuth = {
+  client: SupabaseClient;
+  source: "bearer" | "cookie";
+  user: User;
+};
+
+/**
+ * Verify one request authentication source and retain its user-scoped client.
+ *
+ * A supplied Authorization header is authoritative: malformed or invalid Bearer
+ * credentials never fall back to cookies. The returned client carries the same
+ * verified session and is safe for RLS/RPC authorization checks.
+ */
+export async function getStrictSupabaseRequestAuth(
+  request: Request | NextRequest
+): Promise<StrictSupabaseRequestAuth | null> {
+  const url = envUrl();
+  const anon = envAnon();
+  if (!url || !anon) return null;
+
+  const authorization = request.headers.get("authorization");
+  if (authorization !== null) {
+    const match = /^Bearer\s+(\S+)$/i.exec(authorization.trim());
+    if (!match) return null;
+
+    const token = match[1];
+    const client = createClient(url, anon, {
+      ...serverClientOptions(),
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+    try {
+      const {
+        data: { user },
+        error,
+      } = await client.auth.getUser(token);
+      if (error || !user) return null;
+      return { client, source: "bearer", user };
+    } catch {
+      return null;
+    }
+  }
+
+  const client = createRequestReadOnlySupabaseClient(request);
+  if (!client) return null;
+  try {
+    const {
+      data: { user },
+      error,
+    } = await client.auth.getUser();
+    if (error || !user) return null;
+    return { client, source: "cookie", user };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Resolve the Supabase user for a Route Handler request.
  * 1) `Authorization: Bearer <access_token>` (browser session without SSR cookies)

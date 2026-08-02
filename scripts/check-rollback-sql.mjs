@@ -25,6 +25,10 @@ const scripts = [
     path: `${root}/supabase/rollbacks/20260728105015_receipt_storage_security_phase1.rollback.sql`,
     confirmation: "ROLLBACK_RECEIPT_STORAGE_SECURITY_PHASE1_20260728105015",
   },
+  {
+    path: `${root}/supabase/rollbacks/20260802055949_project_pdf_documents_expand.rollback.sql`,
+    confirmation: "ROLLBACK_PROJECT_PDF_DOCUMENTS_EXPAND",
+  },
 ];
 
 const sql = postgres(localDatabaseUrl, {

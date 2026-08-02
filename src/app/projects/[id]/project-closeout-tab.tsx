@@ -176,6 +176,7 @@ export function ProjectCloseoutTab({
       await savePunch();
       const res = await fetch(`/api/projects/${projectId}/closeout/generate-punch-pdf`, {
         method: "POST",
+        headers: { "Idempotency-Key": crypto.randomUUID() },
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "PDF failed");
@@ -194,6 +195,7 @@ export function ProjectCloseoutTab({
     try {
       const res = await fetch(`/api/projects/${projectId}/closeout/generate-final-invoice-pdf`, {
         method: "POST",
+        headers: { "Idempotency-Key": crypto.randomUUID() },
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "PDF failed");
@@ -213,7 +215,10 @@ export function ProjectCloseoutTab({
       await saveCompletion();
       const res = await fetch(`/api/projects/${projectId}/closeout/generate-completion-pdf`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": crypto.randomUUID(),
+        },
         body: JSON.stringify({
           projectName,
           completion_date: completionForm.completion_date,

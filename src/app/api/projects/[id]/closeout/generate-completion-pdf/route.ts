@@ -1,30 +1,38 @@
-import { NextResponse } from "next/server";
-import { getCloseoutCompletion, getProjectById, insertDocument } from "@/lib/data";
+import { getCloseoutCompletion } from "@/lib/data";
 import {
   addDocumentCompanyPdfFooter,
   addDocumentCompanyPdfHeader,
 } from "@/lib/document-company-pdf";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
-
-const BUCKET = "attachments";
+import {
+  authorizeProjectPdfMutation,
+  type CompletionPdfRequestBody,
+  persistGeneratedProjectPdf,
+  projectPdfGenerationFailure,
+} from "@/lib/project-pdf-security";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id: projectId } = await ctx.params;
-  if (!projectId)
-    return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+  const authorization = await authorizeProjectPdfMutation({
+    kind: "completion-certificate",
+    projectId,
+    request: req,
+  });
+  if (!authorization.ok) return authorization.response;
+  const { admin, project } = authorization.context;
+  const body = authorization.context.body as CompletionPdfRequestBody;
+
   try {
-    const body = await req.json().catch(() => ({}));
     const projectName = body.projectName ?? "";
     const completionDate = body.completion_date ?? "";
     const contractorName = body.contractor_name ?? "";
     const clientName = body.client_name ?? "";
-    const [completion, project, company] = await Promise.all([
-      getCloseoutCompletion(projectId),
-      getProjectById(projectId),
+    void projectName;
+    const [completion, company] = await Promise.all([
+      getCloseoutCompletion(projectId, admin),
       fetchDocumentCompanyProfile(),
     ]);
-    const name = project?.name ?? projectName;
+    const name = project.name;
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF();
     let y = await addDocumentCompanyPdfHeader(doc, company, {
@@ -54,30 +62,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     y += 6;
     addDocumentCompanyPdfFooter(doc, company, { y });
     const buf = doc.output("arraybuffer") as ArrayBuffer;
-    const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-    const fileName = `completion-certificate-${ts}.pdf`;
-    const filePath = `projects/${projectId}/closeout/${fileName}`;
-    const supabase = getServerSupabaseAdmin();
-    if (!supabase)
-      return NextResponse.json({ ok: false, message: "Supabase not configured" }, { status: 500 });
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(filePath, buf, { contentType: "application/pdf", upsert: true });
-    if (uploadError)
-      return NextResponse.json({ ok: false, message: uploadError.message }, { status: 500 });
-    await insertDocument({
-      file_name: `Completion Certificate - ${name}.pdf`,
-      file_path: filePath,
-      file_type: "Other",
-      mime_type: "application/pdf",
-      size_bytes: buf.byteLength,
-      project_id: projectId,
-      related_module: "closeout",
-      related_id: "completion",
+    return persistGeneratedProjectPdf({
+      buffer: buf,
+      context: authorization.context,
     });
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "PDF generation failed";
-    return NextResponse.json({ ok: false, message }, { status: 500 });
+  } catch {
+    return projectPdfGenerationFailure();
   }
 }

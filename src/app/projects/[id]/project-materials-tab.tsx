@@ -125,6 +125,7 @@ export function ProjectMaterialsTab({
     try {
       const res = await fetch(`/api/projects/${projectId}/materials/generate-pdf`, {
         method: "POST",
+        headers: { "Idempotency-Key": crypto.randomUUID() },
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.message || "PDF failed");
