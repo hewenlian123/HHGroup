@@ -25,6 +25,17 @@ const siblingProvenanceFile = "20260731080335_restore_estimate_grants_rls_parity
 const productionRawSha = "d97cdd6462f56b4f6a2b6aa835cea573392627ccb07ae1147ca0f1a35a87b349";
 const productionNormalizedSha = "474e4070650e5be94320811d0bf9bbb6f10f3cb7630d3630bba60d9254a41bbe";
 const productionTokenSha = "1281a2721db891c0f05ae76b179c32ac98b342b5d710523137cbde9d33b595c8";
+const projectsProvenance = Object.freeze({
+  canonicalFile: "20260228000301_projects.sql",
+  // The later file is a Production-ledger mirror, not a second canonical source.
+  ledgerMirrorFile: "202603081650_projects.sql",
+  gitBlob: "6704296bb567526e1eb90ac38afc2bb8cb3710c3",
+  rawSha: "05e7d47b7ca634c403ab9017a837b13f963ea2e8ebce53d5a3d7296bc030ee5d",
+  normalizedSha: "3d33c2838bd138339dcc0928f42912bdc9c6423cb2f9109ee81cc2e3903e6289",
+  tokenSha: "6360e7a0460d5680b28f40294c44ff3a53bb7215a293e46f1cd1947354963fc5",
+  statementArraySha: "3b06e021c294ea1d25092c520e6acca6e3d0f19eff7f9499cdb1d1455aa30e49",
+  statementCount: 17,
+});
 
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
@@ -35,6 +46,122 @@ function normalizeSql(value) {
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+\n/g, "\n")
     .trimEnd();
+}
+
+function gitBlobFingerprint(bytes) {
+  return createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
+}
+
+function splitSqlStatements(source) {
+  const statements = [];
+  let start = 0;
+  let index = 0;
+  let singleQuoted = false;
+  let doubleQuoted = false;
+  let lineComment = false;
+  let blockCommentDepth = 0;
+  let dollarTag = null;
+
+  while (index < source.length) {
+    if (lineComment) {
+      if (source[index] === "\n") lineComment = false;
+      index += 1;
+      continue;
+    }
+    if (blockCommentDepth > 0) {
+      if (source[index] === "/" && source[index + 1] === "*") {
+        blockCommentDepth += 1;
+        index += 2;
+      } else if (source[index] === "*" && source[index + 1] === "/") {
+        blockCommentDepth -= 1;
+        index += 2;
+      } else {
+        index += 1;
+      }
+      continue;
+    }
+    if (dollarTag) {
+      if (source.startsWith(dollarTag, index)) {
+        index += dollarTag.length;
+        dollarTag = null;
+      } else {
+        index += 1;
+      }
+      continue;
+    }
+    if (singleQuoted) {
+      if (source[index] === "'" && source[index + 1] === "'") {
+        index += 2;
+      } else if (source[index] === "'") {
+        singleQuoted = false;
+        index += 1;
+      } else {
+        index += 1;
+      }
+      continue;
+    }
+    if (doubleQuoted) {
+      if (source[index] === '"' && source[index + 1] === '"') {
+        index += 2;
+      } else if (source[index] === '"') {
+        doubleQuoted = false;
+        index += 1;
+      } else {
+        index += 1;
+      }
+      continue;
+    }
+
+    if (source[index] === "-" && source[index + 1] === "-") {
+      lineComment = true;
+      index += 2;
+      continue;
+    }
+    if (source[index] === "/" && source[index + 1] === "*") {
+      blockCommentDepth = 1;
+      index += 2;
+      continue;
+    }
+    if (source[index] === "'") {
+      singleQuoted = true;
+      index += 1;
+      continue;
+    }
+    if (source[index] === '"') {
+      doubleQuoted = true;
+      index += 1;
+      continue;
+    }
+    if (source[index] === "$") {
+      const tag = source.slice(index).match(/^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/)?.[0];
+      if (tag) {
+        dollarTag = tag;
+        index += tag.length;
+        continue;
+      }
+    }
+    if (source[index] === ";") {
+      const statement = source.slice(start, index).trim();
+      if (statement) statements.push(statement);
+      start = index + 1;
+    }
+    index += 1;
+  }
+
+  if (singleQuoted || doubleQuoted || dollarTag || blockCommentDepth > 0) {
+    throw new Error("Unterminated SQL construct while parsing migration statements.");
+  }
+  const trailing = source.slice(start).trim();
+  if (trailing) statements.push(trailing);
+  return statements;
+}
+
+function statementArrayFingerprint(source) {
+  const statements = splitSqlStatements(source);
+  return {
+    count: statements.length,
+    sha: sha256(statements.join("\x1f")),
+  };
 }
 
 // Tokenize outside quoted values so comments, whitespace, and unquoted identifier case
@@ -151,8 +278,37 @@ function sqlTokenFingerprint(value) {
   return sha256(tokens.join("\x1f"));
 }
 
+function verifyProjectsProvenance(files) {
+  const expectedFiles = [projectsProvenance.canonicalFile, projectsProvenance.ledgerMirrorFile];
+  const missingFiles = expectedFiles.filter((file) => !files.includes(file));
+  if (missingFiles.length > 0) {
+    throw new Error(
+      `Projects migration provenance requires both exact historical filenames; missing: ${missingFiles.join(", ")}. See docs/superpowers/specs/2026-08-02-projects-migration-provenance-resolution-design.md.`
+    );
+  }
+
+  for (const file of expectedFiles) {
+    const bytes = readFileSync(join(migrationsDirectory, file));
+    const source = bytes.toString("utf8");
+    const statements = statementArrayFingerprint(source);
+    if (
+      gitBlobFingerprint(bytes) !== projectsProvenance.gitBlob ||
+      sha256(bytes) !== projectsProvenance.rawSha ||
+      sha256(normalizeSql(source)) !== projectsProvenance.normalizedSha ||
+      sqlTokenFingerprint(source) !== projectsProvenance.tokenSha ||
+      statements.sha !== projectsProvenance.statementArraySha ||
+      statements.count !== projectsProvenance.statementCount
+    ) {
+      throw new Error(
+        `Projects migration provenance fingerprint mismatch for ${file}. Historical migrations must remain byte-for-byte unchanged; see docs/superpowers/specs/2026-08-02-projects-migration-provenance-resolution-design.md.`
+      );
+    }
+  }
+}
+
 function verifyProvenance() {
   const files = readdirSync(migrationsDirectory).filter((file) => file.endsWith(".sql"));
+  verifyProjectsProvenance(files);
   if (!files.includes(productionProvenanceFile) || files.includes(siblingProvenanceFile)) {
     throw new Error("Estimate-grants provenance must exist only at the Production ledger version.");
   }
@@ -181,11 +337,20 @@ function verifyProvenance() {
   const tokenFingerprints = new Map();
   for (const file of files) {
     const fingerprint = sqlTokenFingerprint(readFileSync(join(migrationsDirectory, file), "utf8"));
-    const prior = tokenFingerprints.get(fingerprint);
-    if (prior) {
-      throw new Error(`Semantic duplicate migrations: ${prior}, ${file}`);
+    const matches = tokenFingerprints.get(fingerprint) ?? [];
+    matches.push(file);
+    tokenFingerprints.set(fingerprint, matches);
+  }
+  for (const [fingerprint, matches] of tokenFingerprints) {
+    if (matches.length < 2) continue;
+    const isApprovedProjectsPair =
+      fingerprint === projectsProvenance.tokenSha &&
+      matches.length === 2 &&
+      matches.includes(projectsProvenance.canonicalFile) &&
+      matches.includes(projectsProvenance.ledgerMirrorFile);
+    if (!isApprovedProjectsPair) {
+      throw new Error(`Semantic duplicate migrations: ${matches.join(", ")}`);
     }
-    tokenFingerprints.set(fingerprint, file);
   }
 }
 
