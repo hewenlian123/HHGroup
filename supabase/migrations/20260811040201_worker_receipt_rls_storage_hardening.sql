@@ -100,6 +100,10 @@ begin
       dangling_reimbursement_reference_count;
   end if;
 
+  -- A reimbursement can retain independently hosted historical evidence without
+  -- being a worker-receipt Storage reference. Only valid http(s) URLs are
+  -- tolerated in that unlinked legacy case. A linked, malformed, or
+  -- worker-receipts-bucket reference remains fail-closed.
   with reimbursement_references as (
     select
       reimbursement.id,
@@ -118,7 +122,16 @@ begin
             '\\?.*$',
             ''
           )
-      end as storage_path
+      end as storage_path,
+      exists (
+        select 1
+        from public.worker_receipts as receipt
+        where receipt.reimbursement_id = reimbursement.id
+      ) as has_linked_worker_receipt,
+      reimbursement.receipt_url ~* '^https?://[^/?#[:space:]]+(?:/[^[:space:]#]*)?(?:#[^[:space:]]*)?$'
+        as is_valid_external_http_reference,
+      reimbursement.receipt_url ~* '^https?://[^/?#]+/storage/v1/object/(public|sign)/worker-receipts(?:/|$)'
+        as is_worker_receipts_storage_url
     from public.worker_reimbursements as reimbursement
     where reimbursement.receipt_url is not null
   )
@@ -130,16 +143,28 @@ begin
   left join storage.objects as receipt_object
     on receipt_object.bucket_id = 'worker-receipts'
     and receipt_object.name = reimbursement.storage_path
-  where reimbursement.storage_path is null
-    or receipt_object.id is null
-    or (
-      receipt.id is not null
-      and receipt.receipt_url is distinct from reimbursement.receipt_url
-    );
+  where (
+    reimbursement.has_linked_worker_receipt
+    and (
+      reimbursement.storage_path is null
+      or receipt_object.id is null
+      or receipt.receipt_url is distinct from reimbursement.receipt_url
+    )
+  )
+  or (
+    not reimbursement.has_linked_worker_receipt
+    and not (
+      (
+        reimbursement.is_valid_external_http_reference
+        and not reimbursement.is_worker_receipts_storage_url
+      )
+      or (reimbursement.storage_path is not null and receipt_object.id is not null)
+    )
+  );
 
   if invalid_reimbursement_reference_count <> 0 then
     raise exception
-      'Receipt hardening blocked: % reimbursement receipt links are incompatible, missing their object, or detached from their worker receipt',
+      'Receipt hardening blocked: % reimbursement receipt links are malformed, missing their worker-receipts object, or detached from their worker receipt',
       invalid_reimbursement_reference_count;
   end if;
 

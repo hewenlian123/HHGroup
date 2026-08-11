@@ -89,4 +89,14 @@ describe("worker receipt runtime security contract", () => {
       expect(file).not.toMatch(/SUPABASE_SERVICE_ROLE_KEY/i);
     }
   });
+
+  it("keeps valid reimbursement-only external historical evidence outside worker-receipt Storage signing", () => {
+    const reimbursements = source("src/app/labor/reimbursements/page.tsx");
+    const signedUrl = source("src/lib/storage-signed-url.ts");
+
+    expect(reimbursements).toContain("resolvePreviewSignedUrl");
+    expect(reimbursements).toContain("signed || u");
+    expect(signedUrl).toContain("if (/^https?:\\/\\//i.test(raw))");
+    expect(signedUrl).toContain("if (!parsed) return raw");
+  });
 });

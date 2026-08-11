@@ -1,8 +1,9 @@
 # Receipt hardening — ledger-safe rollout
 
 This is an operator procedure only. It has not been executed by this worktree.
-Do not use `supabase db push`, `supabase migration up`, a migration reset, or a
-broad migration repair: Production has known historical ledger drift.
+Do not use `supabase db push`, `supabase migration up`, `supabase db reset`, a
+migration reset, replay/renumbering, or any broad migration repair (including
+`supabase migration repair`): Production has known historical ledger drift.
 
 ## Immutable scope
 
@@ -15,8 +16,9 @@ Apply only these reviewed receipt artifacts, in this order:
 
 For the owner-approved cleanup state, preflight must instead prove zero
 incompatible worker-receipt references and zero dangling reimbursement receipt
-links. In that state, skip step 2: do not recreate receipts, objects, or
-obsolete remediation evidence.
+links. Valid external http(s) reimbursement-only historical evidence is outside
+the `worker-receipts` bucket cutover and is reported separately. In that state,
+skip step 2: do not recreate receipts, objects, or obsolete remediation evidence.
 
 Do not replay, renumber, delete, or repair historical migrations. Preserve every
 row in `supabase_migrations.schema_migrations`, including Production-only
@@ -96,7 +98,11 @@ Choose exactly one path from the redacted result:
 - Owner-approved cleanup path: no `worker_receipt_id` rows. The aggregate must
   report zero incompatible worker-receipt references and zero dangling
   reimbursement receipt links; the reimbursement-side aggregate must also
-  report zero invalid or dangling receipt links.
+  report zero invalid or dangling receipt links. A non-zero
+  `allowed_unlinked_external_reimbursement_references` count is permitted only
+  for syntactically valid external http(s) URLs with no linked `worker_receipts`
+  row and no `worker-receipts` Storage-route shape; it is historical
+  reimbursement evidence, not bucket evidence.
 
 Any other count, a missing/mismatched reimbursement, or a non-zero dangling
 link count is a stop condition. Do not continue to final hardening.
@@ -110,12 +116,41 @@ upload/submit/options policies and owner/admin receipt review. Its bucket is
 temporarily public only so historic public object URLs remain available until
 Stage C.
 
-Apply the bridge only through the approved migration release mechanism that
-executes the reviewed artifact and records its version atomically. Do not run
-the SQL file by hand, use `supabase db push`, reset/replay history, or use any
-migration-repair command. If the release mechanism cannot apply and record this
-new version without repair, stop and escalate. Confirm the ledger has only the
-new bridge row and the immutable Production-only rows are unchanged.
+Apply and record exactly the bridge version with this selective, serialized
+ledger procedure. It is the only approved manual pattern for these receipt
+migrations; run it from the repository root in an operator-only terminal. The
+session lock prevents another receipt release from interleaving. The migration
+file retains its explicit transaction; the ledger row is recorded only after the
+file returns successfully.
+
+```sh
+psql "$HH_PROD_DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+select pg_advisory_lock(hashtext('hh:receipt-hardening:selective-ledger'));
+
+select count(*) = 0 as bridge_absent
+from supabase_migrations.schema_migrations
+where version = '20260811040100'
+\gset
+\if :bridge_absent
+  \i supabase/migrations/20260811040100_worker_receipt_legacy_bridge.sql
+  insert into supabase_migrations.schema_migrations (version, name)
+  values ('20260811040100', 'worker_receipt_legacy_bridge');
+\else
+  \echo 'STOP: 20260811040100 is already recorded; do not replay or repair it.'
+  \quit
+\endif
+
+select version, name
+from supabase_migrations.schema_migrations
+where version in ('20260811040100', '20260802055949', '20260802110245')
+order by version;
+select pg_advisory_unlock(hashtext('hh:receipt-hardening:selective-ledger'));
+SQL
+```
+
+If the migration file or ledger insert fails, stop and escalate; do not retry by
+replaying, renumbering, or repairing history. Never use `supabase db push`,
+`supabase migration up`, reset, or a broad migration repair.
 
 ## Stage B — remediation path only
 
@@ -198,23 +233,56 @@ result must contain exactly two rows where `receipt_points_to_replacement`,
 all true. On the owner-approved cleanup path, zero audit rows are expected. For
 either path, the aggregate must report zero incompatible and zero dangling
 reimbursement receipt links, and the reimbursement-side aggregate must report
-zero invalid or dangling receipt links.
+zero invalid or dangling receipt links. Only valid, unlinked external http(s)
+historical reimbursement evidence may appear in the separately reported allowed
+count.
 
 ## Stage C — final hardening only
 
-Apply the final migration only through the approved migration release mechanism
-that executes the reviewed artifact and records its version atomically. Do not
-run the SQL file by hand, use `supabase db push`, reset/replay history, or use a
-migration-repair command. If this cannot be done without repair, stop and
-escalate.
+Apply and record only the final version with the same approved selective ledger
+pattern. Do not run this command until Stage A is recorded and the selected
+remediation/cleanup path has its redacted proof.
+
+```sh
+psql "$HH_PROD_DATABASE_URL" -v ON_ERROR_STOP=1 <<'SQL'
+select pg_advisory_lock(hashtext('hh:receipt-hardening:selective-ledger'));
+
+select
+  (select count(*) from supabase_migrations.schema_migrations where version = '20260811040100') = 1
+  and (select count(*) from supabase_migrations.schema_migrations where version = '20260811040201') = 0
+  as final_is_the_only_next_receipt_step
+\gset
+\if :final_is_the_only_next_receipt_step
+  \i supabase/migrations/20260811040201_worker_receipt_rls_storage_hardening.sql
+  insert into supabase_migrations.schema_migrations (version, name)
+  values ('20260811040201', 'worker_receipt_rls_storage_hardening');
+\else
+  \echo 'STOP: do not replay, repair, or record any version other than the reviewed final migration.'
+  \quit
+\endif
+
+select version, name
+from supabase_migrations.schema_migrations
+where version in ('20260811040100', '20260811040201', '20260802055949', '20260802110245')
+order by version;
+select pg_advisory_unlock(hashtext('hh:receipt-hardening:selective-ledger'));
+SQL
+```
+
+This command applies/records only `20260811040201`; it never runs an inferred
+pending migration set. If it fails, stop and escalate. Do not use `supabase db
+push`, `supabase migration up`, reset, replay/renumbering, or broad migration
+repair.
 
 The migration is transactional. Before it changes policies, it requires the
 bridge audit table; every present remediation row to be complete and backed by a
 live replacement object; zero incompatible worker-receipt references; zero
 dangling or invalid reimbursement receipt links; and a live Storage object for
-every remaining worker-receipt or reimbursement receipt reference. A failed gate
-rolls back before bucket/policy changes. The owner-approved cleanup path may
-have zero remediation audit rows; it does not recreate deleted data.
+every remaining worker-receipt or `worker-receipts`-bucket reference. A valid,
+unlinked external http(s) reimbursement-only historical URL is explicitly
+outside that Storage invariant. A failed gate rolls back before bucket/policy
+changes. The owner-approved cleanup path may have zero remediation audit rows;
+it does not recreate deleted data.
 
 Post-check: bucket private; anon list/read/update/delete denied; anon only
 uploads a valid UUID path and submits valid Pending metadata; owner/admin signed
@@ -230,19 +298,38 @@ psql "$HH_PROD_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f scripts/verify-worker-receipt-remediation.sql
 ```
 
+Then run the executable, read-only verifier
+`scripts/verify-worker-receipt-post-cutover.mjs`. Before cutover, record the
+object count and the exact approved post-cutover security fingerprint from the
+local Docker test using `scripts/receipt-hardening-production-baseline.sql`.
+Do not derive the expected fingerprint from Production after cutover.
+
+```sh
+export RECEIPT_HARDENING_DATABASE_URL="$HH_PROD_DATABASE_URL"
+export RECEIPT_HARDENING_EXPECTED_OBJECT_COUNT='<pre-cutover worker-receipts object count>'
+export RECEIPT_HARDENING_EXPECTED_SECURITY_FINGERPRINT='cebd30f9b0c1d507aae596a51d87e69e'
+npm run verify:receipt-hardening
+```
+
+It fails closed on bucket/configuration, object-count, worker-receipt or
+reimbursement linkage, RLS/Storage/grant fingerprint, anon list/read exposure,
+narrow anon upload/submit policy, owner/admin review policy, `/sync` guard, or
+public-intake service-role exposure.
+
 ## Rollback
 
 If Stage A fails, its transaction rolls back. If Stage C commits but application
-verification fails, restore the narrow bridge—not the original broad policies:
+verification fails, restore the exact verified Production pre-cutover baseline:
 
 ```sh
 psql "$HH_PROD_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f scripts/receipt-hardening-rollback.sql
 ```
 
-The rollback is transactional. It restores public object delivery plus narrow
-legacy/canonical submission; it does not delete `worker_receipts`,
-`worker_reimbursements`, `storage.objects`, replacement objects, or audit rows.
-If the final version was already recorded, preserve that ledger row and create a
-new reviewed forward migration for a later cutover. Never erase or replay
-migration history.
+The rollback is transactional. It restores the Production bucket public state,
+null file-size/MIME limits, exact Storage policies, exact worker receipt and
+worker/project policies, and exact related grants. It does not delete
+`worker_receipts`, `worker_reimbursements`, `storage.objects`, replacement
+objects, or audit rows. If the final version was already recorded, preserve that
+ledger row and create a new reviewed forward migration for a later cutover.
+Never erase or replay migration history.

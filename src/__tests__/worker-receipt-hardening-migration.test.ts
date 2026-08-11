@@ -26,10 +26,19 @@ const rollbackSql = readFileSync(
   join(process.cwd(), "scripts/receipt-hardening-rollback.sql"),
   "utf8"
 );
+const productionBaselineSql = readFileSync(
+  join(process.cwd(), "scripts/receipt-hardening-production-baseline.sql"),
+  "utf8"
+);
+const preflightSql = readFileSync(
+  join(process.cwd(), "scripts/preflight-worker-receipt-remediation.sql"),
+  "utf8"
+);
 const verificationSql = readFileSync(
   join(process.cwd(), "scripts/verify-worker-receipt-remediation.sql"),
   "utf8"
 );
+const postCutoverVerifier = join(process.cwd(), "scripts/verify-worker-receipt-post-cutover.mjs");
 
 const workerId = "10000000-0000-4000-8000-000000000001";
 const projectId = "20000000-0000-4000-8000-000000000001";
@@ -42,13 +51,14 @@ const pathTwo = "uploads/50000000-0000-4000-8000-000000000002.png";
 const externalOne = "https://legacy.example.test/receipt-one.png";
 const externalTwo = "https://legacy.example.test/receipt-two.png";
 
-let db: Sql<{}>;
+let db: Sql;
+let localDatabaseUrl = "";
 
 function docker(args: string[]): string {
   return execFileSync("docker", args, { encoding: "utf8" }).trim();
 }
 
-async function waitForDatabase(port: number): Promise<void> {
+async function waitForDatabase(): Promise<void> {
   for (let attempt = 0; attempt < 40; attempt += 1) {
     try {
       await db`select 1`;
@@ -60,7 +70,9 @@ async function waitForDatabase(port: number): Promise<void> {
   throw new Error("Timed out waiting for isolated receipt-hardening PostgreSQL.");
 }
 
-async function resetDatabase(): Promise<void> {
+async function resetDatabase({
+  applyBridge = true,
+}: { applyBridge?: boolean } = {}): Promise<void> {
   await db.unsafe(`
     drop schema if exists private cascade;
     drop schema if exists storage cascade;
@@ -140,7 +152,8 @@ async function resetDatabase(): Promise<void> {
     values ('worker-receipts', 'worker-receipts', true);
   `);
 
-  await db.unsafe(bridgeSql);
+  await db.unsafe(productionBaselineSql);
+  if (applyBridge) await db.unsafe(bridgeSql);
   await db`
     insert into public.workers (id, name, status)
     values (${workerId}, 'Receipt Migration Test Worker', 'active')
@@ -205,6 +218,77 @@ async function bucketIsPublic(): Promise<boolean> {
   return Boolean(bucket?.public);
 }
 
+async function productionBaselineFingerprint(): Promise<string> {
+  const [result] = await db<{ fingerprint: unknown }[]>`
+    select jsonb_build_object(
+      'bucket', (
+        select jsonb_build_object(
+          'public', public,
+          'file_size_limit', file_size_limit,
+          'allowed_mime_types', allowed_mime_types
+        )
+        from storage.buckets
+        where id = 'worker-receipts'
+      ),
+      'policies', coalesce((
+        select jsonb_agg(to_jsonb(policy) order by policy.schemaname, policy.tablename, policy.policyname)
+        from (
+          select schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
+          from pg_policies
+          where (schemaname = 'storage' and tablename = 'objects' and (
+            coalesce(qual, '') ilike '%worker-receipts%'
+            or coalesce(with_check, '') ilike '%worker-receipts%'
+          ))
+          or (schemaname = 'public' and tablename in ('worker_receipts', 'workers', 'projects'))
+        ) as policy
+      ), '[]'::jsonb),
+      'grants', coalesce((
+        select jsonb_agg(to_jsonb(table_grant) order by table_grant.table_schema, table_grant.table_name, table_grant.grantee, table_grant.privilege_type)
+        from (
+          select table_schema, table_name, grantee, privilege_type, is_grantable
+          from information_schema.role_table_grants
+          where (table_schema = 'storage' and table_name in ('objects', 'buckets'))
+             or (table_schema = 'public' and table_name in ('worker_receipts', 'workers', 'projects'))
+        ) as table_grant
+      ), '[]'::jsonb),
+      'column_grants', coalesce((
+        select jsonb_agg(to_jsonb(column_grant) order by column_grant.table_schema, column_grant.table_name, column_grant.column_name, column_grant.grantee, column_grant.privilege_type)
+        from (
+          select table_schema, table_name, column_name, grantee, privilege_type, is_grantable
+          from information_schema.role_column_grants
+          where (table_schema = 'storage' and table_name in ('objects', 'buckets'))
+             or (table_schema = 'public' and table_name in ('worker_receipts', 'workers', 'projects'))
+        ) as column_grant
+      ), '[]'::jsonb),
+      'rls', coalesce((
+        select jsonb_agg(to_jsonb(table_rls) order by table_rls.schemaname, table_rls.tablename)
+        from (
+          select namespace.nspname as schemaname, relation.relname as tablename,
+            relation.relrowsecurity, relation.relforcerowsecurity
+          from pg_class as relation
+          join pg_namespace as namespace on namespace.oid = relation.relnamespace
+          where (namespace.nspname = 'storage' and relation.relname in ('objects', 'buckets'))
+             or (namespace.nspname = 'public' and relation.relname in ('worker_receipts', 'workers', 'projects'))
+        ) as table_rls
+      ), '[]'::jsonb)
+    ) as fingerprint
+  `;
+  return JSON.stringify(result?.fingerprint);
+}
+
+function runPostCutoverVerifier(args: string[], fingerprint?: string): string {
+  return execFileSync(process.execPath, [postCutoverVerifier, ...args], {
+    cwd: process.cwd(),
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      RECEIPT_HARDENING_DATABASE_URL: localDatabaseUrl,
+      RECEIPT_HARDENING_EXPECTED_OBJECT_COUNT: "1",
+      ...(fingerprint ? { RECEIPT_HARDENING_EXPECTED_SECURITY_FINGERPRINT: fingerprint } : {}),
+    },
+  }).trim();
+}
+
 const localDescribe = runLocal ? describe : describe.skip;
 
 localDescribe("worker receipt final hardening migration (local Docker)", () => {
@@ -231,7 +315,8 @@ localDescribe("worker receipt final hardening migration (local Docker)", () => {
       password: postgresPassword,
       max: 1,
     });
-    await waitForDatabase(port);
+    localDatabaseUrl = `postgres://supabase_admin:${postgresPassword}@127.0.0.1:${port}/postgres`;
+    await waitForDatabase();
   }, 30_000);
 
   afterAll(async () => {
@@ -288,6 +373,20 @@ localDescribe("worker receipt final hardening migration (local Docker)", () => {
     expect(count).toBe("0");
   });
 
+  test("allows valid unlinked external reimbursement evidence outside worker-receipt Storage", async () => {
+    await resetDatabase();
+    await db`
+      insert into public.worker_reimbursements (id, receipt_url)
+      values (${reimbursementOneId}, ${externalOne})
+    `;
+
+    await db.unsafe(preflightSql);
+    await applyFinal();
+    await applyFinal();
+
+    expect(await bucketIsPublic()).toBe(false);
+  });
+
   test("fails closed when incompatible rows remain without remediation evidence", async () => {
     await resetDatabase();
     await addReceipt(receiptOneId, externalOne, reimbursementOneId, externalOne);
@@ -298,13 +397,32 @@ localDescribe("worker receipt final hardening migration (local Docker)", () => {
     expect(await bucketIsPublic()).toBe(true);
   });
 
-  test("fails closed when a deleted worker receipt leaves an invalid reimbursement reference", async () => {
+  test("fails closed when a deleted worker receipt leaves a dangling worker-receipts reference", async () => {
     await resetDatabase();
     await addReceipt(receiptOneId, externalOne, reimbursementOneId, externalOne);
     await db`delete from public.worker_receipts where id = ${receiptOneId}`;
+    await db`
+      update public.worker_reimbursements
+      set receipt_url = ${pathOne}
+      where id = ${reimbursementOneId}
+    `;
 
     await expectFinalToFail(
-      /reimbursement receipt links are incompatible, missing their object, or detached/i
+      /reimbursement receipt links are malformed, missing their worker-receipts object, or detached/i
+    );
+    expect(await bucketIsPublic()).toBe(true);
+
+    await resetDatabase();
+    await db`
+      insert into public.worker_reimbursements (id, receipt_url)
+      values (
+        ${reimbursementOneId},
+        'https://project.example.test/storage/v1/object/public/worker-receipts/not-canonical.gif'
+      )
+    `;
+
+    await expectFinalToFail(
+      /reimbursement receipt links are malformed, missing their worker-receipts object, or detached/i
     );
     expect(await bucketIsPublic()).toBe(true);
   });
@@ -351,10 +469,24 @@ localDescribe("worker receipt final hardening migration (local Docker)", () => {
       /reimbursement links are dangling or reference a different receipt object/i
     );
     expect(await bucketIsPublic()).toBe(true);
+
+    await resetDatabase();
+    await db`
+      insert into public.worker_reimbursements (id, receipt_url)
+      values (${reimbursementOneId}, 'not a receipt reference')
+    `;
+
+    await expectFinalToFail(
+      /reimbursement receipt links are malformed, missing their worker-receipts object, or detached/i
+    );
+    expect(await bucketIsPublic()).toBe(true);
   });
 
-  test("restores the narrow bridge after final hardening", async () => {
-    await resetDatabase();
+  test("restores the verified Production baseline exactly after bridge and final hardening", async () => {
+    await resetDatabase({ applyBridge: false });
+    const baselineFingerprint = await productionBaselineFingerprint();
+
+    await db.unsafe(bridgeSql);
     await addObject(pathOne);
     await addReceipt(receiptOneId, pathOne, reimbursementOneId, pathOne);
     await applyFinal();
@@ -362,30 +494,32 @@ localDescribe("worker receipt final hardening migration (local Docker)", () => {
     await db.unsafe(rollbackSql);
 
     expect(await bucketIsPublic()).toBe(true);
-    const [{ count }] = await db<{ count: string }[]>`
-      select count(*)::text as count
-      from pg_policies
-      where schemaname = 'storage'
-        and tablename = 'objects'
-        and policyname = 'worker_receipts_bridge_anon_insert'
-    `;
-    expect(count).toBe("1");
+    expect(await productionBaselineFingerprint()).toBe(baselineFingerprint);
   });
 
   test("runs post-cutover verification for the approved cleanup state", async () => {
     await resetDatabase();
     await addReceipt(receiptOneId, externalOne, reimbursementOneId, externalOne);
     await db`delete from public.worker_receipts where id = ${receiptOneId}`;
-    await db`
-      update public.worker_reimbursements
-      set receipt_url = null
-      where id = ${reimbursementOneId}
-    `;
     await addObject(pathOne);
     await addReceipt(receiptTwoId, pathOne, null, null);
     await applyFinal();
 
     await db.unsafe(verificationSql);
+
+    const captured = JSON.parse(runPostCutoverVerifier(["--print-security-fingerprint"])) as {
+      securityFingerprint: string;
+    };
+    const verified = JSON.parse(runPostCutoverVerifier([], captured.securityFingerprint)) as {
+      ok: boolean;
+      objectCount: number;
+      allowedUnlinkedExternalReimbursements: number;
+    };
+    expect(verified).toMatchObject({
+      ok: true,
+      objectCount: 1,
+      allowedUnlinkedExternalReimbursements: 1,
+    });
 
     const [integrity] = await db<
       {
