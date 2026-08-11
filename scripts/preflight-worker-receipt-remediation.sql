@@ -64,7 +64,7 @@ with reimbursement_references as (
             '',
             'i'
           ),
-          '\\?.*$',
+          '\?.*$',
           ''
         )
     end as storage_path,

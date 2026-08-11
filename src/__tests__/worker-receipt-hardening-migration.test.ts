@@ -54,6 +54,19 @@ const externalTwo = "https://legacy.example.test/receipt-two.png";
 let db: Sql;
 let localDatabaseUrl = "";
 
+function canonicalPath(sequence: number): string {
+  const suffix = String(sequence).padStart(12, "0");
+  return `uploads/${String(sequence).padStart(8, "0")}-0000-4000-8000-${suffix}.png`;
+}
+
+function canonicalPublicUrl(path: string, sequence: number): string {
+  return `https://project.example.test/storage/v1/object/public/worker-receipts/${path}?token=receipt-${sequence}&download=1`;
+}
+
+function fixtureId(prefix: "3" | "4", sequence: number): string {
+  return `${prefix}${String(sequence).padStart(7, "0")}-0000-4000-8000-${String(sequence).padStart(12, "0")}`;
+}
+
 function docker(args: string[]): string {
   return execFileSync("docker", args, { encoding: "utf8" }).trim();
 }
@@ -276,14 +289,18 @@ async function productionBaselineFingerprint(): Promise<string> {
   return JSON.stringify(result?.fingerprint);
 }
 
-function runPostCutoverVerifier(args: string[], fingerprint?: string): string {
+function runPostCutoverVerifier(
+  args: string[],
+  fingerprint?: string,
+  expectedObjectCount = 1
+): string {
   return execFileSync(process.execPath, [postCutoverVerifier, ...args], {
     cwd: process.cwd(),
     encoding: "utf8",
     env: {
       ...process.env,
       RECEIPT_HARDENING_DATABASE_URL: localDatabaseUrl,
-      RECEIPT_HARDENING_EXPECTED_OBJECT_COUNT: "1",
+      RECEIPT_HARDENING_EXPECTED_OBJECT_COUNT: String(expectedObjectCount),
       ...(fingerprint ? { RECEIPT_HARDENING_EXPECTED_SECURITY_FINGERPRINT: fingerprint } : {}),
     },
   }).trim();
@@ -385,6 +402,65 @@ localDescribe("worker receipt final hardening migration (local Docker)", () => {
     await applyFinal();
 
     expect(await bucketIsPublic()).toBe(false);
+  });
+
+  test("preserves canonical public receipt paths while accounting for 35 linked reimbursements, 48 receipts, and 63 objects", async () => {
+    await resetDatabase();
+
+    for (let sequence = 1; sequence <= 63; sequence += 1) {
+      await addObject(canonicalPath(sequence));
+    }
+
+    for (let sequence = 1; sequence <= 48; sequence += 1) {
+      const receiptUrl = canonicalPublicUrl(canonicalPath(sequence), sequence);
+      const reimbursementId = sequence <= 35 ? fixtureId("4", sequence) : null;
+      await addReceipt(
+        fixtureId("3", sequence),
+        receiptUrl,
+        reimbursementId,
+        reimbursementId ? receiptUrl : null
+      );
+    }
+
+    try {
+      await db.unsafe(preflightSql);
+      await applyFinal();
+      await db.unsafe(verificationSql);
+
+      const [counts] = await db<
+        {
+          worker_receipt_count: string;
+          linked_reimbursement_count: string;
+          object_count: string;
+        }[]
+      >`
+        select
+          (select count(*)::text from public.worker_receipts) as worker_receipt_count,
+          (select count(*)::text from public.worker_reimbursements) as linked_reimbursement_count,
+          (select count(*)::text from storage.objects where bucket_id = 'worker-receipts') as object_count
+      `;
+      expect(counts).toEqual({
+        worker_receipt_count: "48",
+        linked_reimbursement_count: "35",
+        object_count: "63",
+      });
+
+      const captured = JSON.parse(
+        runPostCutoverVerifier(["--print-security-fingerprint"], undefined, 63)
+      ) as { securityFingerprint: string };
+      const verified = JSON.parse(runPostCutoverVerifier([], captured.securityFingerprint, 63)) as {
+        ok: boolean;
+        objectCount: number;
+        allowedUnlinkedExternalReimbursements: number;
+      };
+      expect(verified).toMatchObject({
+        ok: true,
+        objectCount: 63,
+        allowedUnlinkedExternalReimbursements: 0,
+      });
+    } finally {
+      await db.unsafe("rollback");
+    }
   });
 
   test("fails closed when incompatible rows remain without remediation evidence", async () => {

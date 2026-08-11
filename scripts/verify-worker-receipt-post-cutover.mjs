@@ -87,7 +87,7 @@ try {
                 '',
                 'i'
               ),
-              '\\\\?.*$',
+              '\\?.*$',
               ''
             )
         end as storage_path,
@@ -103,6 +103,26 @@ try {
       from public.worker_reimbursements as reimbursement
       where reimbursement.receipt_url is not null
     ),
+    worker_receipt_references as (
+      select
+        receipt.id,
+        case
+          when receipt.receipt_url ~ '^uploads/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(jpg|png|webp|pdf)$'
+            then receipt.receipt_url
+          when receipt.receipt_url ~* '^https?://[^/?#]+/storage/v1/object/(public|sign)/worker-receipts/uploads/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(jpg|png|webp|pdf)(\\?[^#]*)?$'
+            then regexp_replace(
+              regexp_replace(
+                receipt.receipt_url,
+                '^https?://[^/?#]+/storage/v1/object/(public|sign)/worker-receipts/',
+                '',
+                'i'
+              ),
+              '\\?.*$',
+              ''
+            )
+        end as storage_path
+      from public.worker_receipts as receipt
+    ),
     integrity as (
       select
         (select count(*) from storage.objects where bucket_id = 'worker-receipts')::bigint as object_count,
@@ -111,7 +131,7 @@ try {
           or receipt.receipt_url ~* '^https?://[^/?#]+/storage/v1/object/(public|sign)/worker-receipts/uploads/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.(jpg|png|webp|pdf)(\\?[^#]*)?$'
         ))::bigint as incompatible_worker_receipts,
         (select count(*) from public.worker_receipts as receipt left join public.worker_reimbursements as reimbursement on reimbursement.id = receipt.reimbursement_id where receipt.reimbursement_id is not null and (reimbursement.id is null or reimbursement.receipt_url is distinct from receipt.receipt_url))::bigint as dangling_worker_receipt_links,
-        (select count(*) from public.worker_receipts as receipt left join storage.objects as object on object.bucket_id = 'worker-receipts' and object.name = receipt.receipt_url where object.id is null)::bigint as missing_worker_receipt_objects,
+        (select count(*) from worker_receipt_references as receipt left join storage.objects as object on object.bucket_id = 'worker-receipts' and object.name = receipt.storage_path where receipt.storage_path is null or object.id is null)::bigint as missing_worker_receipt_objects,
         (select count(*) from reimbursement_references as reimbursement left join public.worker_receipts as receipt on receipt.reimbursement_id = reimbursement.id left join storage.objects as object on object.bucket_id = 'worker-receipts' and object.name = reimbursement.storage_path where (
           reimbursement.has_linked_worker_receipt and (reimbursement.storage_path is null or object.id is null or receipt.receipt_url is distinct from reimbursement.receipt_url)
         ) or (

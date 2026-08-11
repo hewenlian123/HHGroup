@@ -119,7 +119,7 @@ begin
               '',
               'i'
             ),
-            '\\?.*$',
+            '\?.*$',
             ''
           )
       end as storage_path,

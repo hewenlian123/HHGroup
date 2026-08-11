@@ -82,7 +82,7 @@ with reimbursement_references as (
             '',
             'i'
           ),
-          '\\?.*$',
+          '\?.*$',
           ''
         )
     end as storage_path,
@@ -142,7 +142,7 @@ with resolved_receipts as (
         '',
         'i'
       ),
-      '\\?.*$',
+      '\?.*$',
       ''
     )
   end as storage_path
