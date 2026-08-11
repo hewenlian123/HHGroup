@@ -28,11 +28,56 @@ order by id;
 
 select
   count(*) filter (
-    where receipt_url is null
+    where receipt.receipt_url is null
       or not (
-        receipt_url ~ '^uploads/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|pdf)$'
-        or receipt_url ~* '^https?://[^/?#]+/storage/v1/object/(public|sign)/worker-receipts/uploads/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|pdf)(\?[^#]*)?$'
+        receipt.receipt_url ~ '^uploads/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|pdf)$'
+        or receipt.receipt_url ~* '^https?://[^/?#]+/storage/v1/object/(public|sign)/worker-receipts/uploads/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|pdf)(\?[^#]*)?$'
       )
   ) as incompatible_worker_receipt_references,
+  count(*) filter (
+    where receipt.reimbursement_id is not null
+      and (
+        reimbursement.id is null
+        or reimbursement.receipt_url is distinct from receipt.receipt_url
+      )
+  ) as dangling_reimbursement_receipt_links,
   count(*) as total_worker_receipts
-from public.worker_receipts;
+from public.worker_receipts as receipt
+left join public.worker_reimbursements as reimbursement
+  on reimbursement.id = receipt.reimbursement_id;
+
+with reimbursement_references as (
+  select
+    reimbursement.id,
+    reimbursement.receipt_url,
+    case
+      when reimbursement.receipt_url ~ '^uploads/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|pdf)$'
+        then reimbursement.receipt_url
+      when reimbursement.receipt_url ~* '^https?://[^/?#]+/storage/v1/object/(public|sign)/worker-receipts/uploads/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|pdf)(\?[^#]*)?$'
+        then regexp_replace(
+          regexp_replace(
+            reimbursement.receipt_url,
+            '^https?://[^/?#]+/storage/v1/object/(public|sign)/worker-receipts/',
+            '',
+            'i'
+          ),
+          '\\?.*$',
+          ''
+        )
+    end as storage_path
+  from public.worker_reimbursements as reimbursement
+  where reimbursement.receipt_url is not null
+)
+select count(*) as invalid_or_dangling_worker_reimbursement_receipt_links
+from reimbursement_references as reimbursement
+left join public.worker_receipts as receipt
+  on receipt.reimbursement_id = reimbursement.id
+left join storage.objects as receipt_object
+  on receipt_object.bucket_id = 'worker-receipts'
+  and receipt_object.name = reimbursement.storage_path
+where reimbursement.storage_path is null
+  or receipt_object.id is null
+  or (
+    receipt.id is not null
+    and receipt.receipt_url is distinct from reimbursement.receipt_url
+  );

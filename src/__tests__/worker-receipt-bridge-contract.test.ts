@@ -58,14 +58,54 @@ describe("worker receipt bridge contract", () => {
     );
   });
 
-  it("gates the final hardening on exactly two complete remediations", () => {
+  it("gates remaining incompatible rows on valid evidence while allowing the approved deleted-row state", () => {
     const sql = readFileSync(finalMigration, "utf8").trim();
 
     expect(sql).toMatch(/^begin;/i);
-    expect(sql).toMatch(/expected exactly 2 remediation audit rows/i);
-    expect(sql).toMatch(/incomplete_remediation_count/i);
+    expect(sql).toMatch(/remediation_evidence_count/i);
+    expect(sql).toMatch(/if incompatible_reference_count <> 0 then/i);
+    expect(sql).toMatch(/if remediation_evidence_count <> remediation_audit_rows then/i);
+    expect(sql).toMatch(/dangling_reimbursement_reference_count/i);
+    expect(sql).toMatch(/if dangling_reimbursement_reference_count <> 0 then/i);
+    expect(sql).not.toMatch(/expected exactly 2 remediation audit rows/i);
     expect(sql).toMatch(/missing_object_count/i);
     expect(sql).toMatch(/commit;$/i);
+  });
+
+  it("locks mutable receipt and Storage state before evaluating the final hardening gates", () => {
+    const sql = readFileSync(finalMigration, "utf8");
+    const firstGate = sql.indexOf("select count(*)\n  into remediation_audit_rows");
+
+    expect(firstGate).toBeGreaterThan(-1);
+    for (const target of [
+      "public.worker_receipts",
+      "public.worker_reimbursements",
+      "public.worker_receipt_reference_remediations",
+      "storage.objects",
+      "storage.buckets",
+    ]) {
+      const lock = sql.indexOf(`lock table ${target} in share row exclusive mode;`);
+      expect(lock).toBeGreaterThan(-1);
+      expect(lock).toBeLessThan(firstGate);
+    }
+  });
+
+  it("validates reimbursement-side receipt links even after their worker receipt is deleted", () => {
+    const finalSql = readFileSync(finalMigration, "utf8");
+    const preflight = readFileSync(preflightSql, "utf8");
+    const verification = readFileSync(verificationSql, "utf8");
+
+    expect(finalSql).toContain("invalid_reimbursement_reference_count");
+    expect(finalSql).toMatch(/from public\.worker_reimbursements as reimbursement/i);
+    for (const sql of [preflight, verification]) {
+      expect(sql).toMatch(
+        /from public\.worker_reimbursements as reimbursement\s+where reimbursement\.receipt_url is not null/i
+      );
+      expect(sql).toMatch(
+        /from reimbursement_references as reimbursement\s+left join public\.worker_receipts as receipt/i
+      );
+      expect(sql).toContain("invalid_or_dangling_worker_reimbursement_receipt_links");
+    }
   });
 
   it("fails closed when the worker-receipts bucket is missing", () => {
@@ -122,7 +162,7 @@ describe("worker receipt bridge contract", () => {
     expect(workerReceiptSection).not.toContain("storage.objects");
   });
 
-  it("documents ledger-safe SQL-only application and the two-row procedure", () => {
+  it("documents ledger-safe SQL-only application for remediation and approved cleanup states", () => {
     const runbook = readFileSync(rolloutRunbook, "utf8");
 
     expect(runbook).toMatch(/do not use\s+`?supabase db push`?/i);
@@ -133,8 +173,9 @@ describe("worker receipt bridge contract", () => {
     expect(runbook).toContain("private.remediate_worker_receipt_reference(");
     expect(runbook).toContain("scripts/preflight-worker-receipt-remediation.sql");
     expect(runbook).toContain("scripts/verify-worker-receipt-remediation.sql");
-    expect(runbook).toContain("supabase migration repair --linked --status applied 20260811040100");
-    expect(runbook).toContain("supabase migration repair --linked --status applied 20260811040201");
+    expect(runbook).toMatch(/owner-approved cleanup/i);
+    expect(runbook).toMatch(/zero incompatible worker-receipt references/i);
+    expect(runbook).not.toMatch(/supabase migration repair/i);
   });
 
   it("keeps the pre-bridge audit independent of the bridge audit table", () => {
@@ -144,5 +185,17 @@ describe("worker receipt bridge contract", () => {
     expect(preflight).toContain("classified_receipts");
     expect(preflight).not.toContain("worker_receipt_reference_remediations");
     expect(verification).toContain("worker_receipt_reference_remediations");
+  });
+
+  it("qualifies receipt fields in joined link-integrity aggregates", () => {
+    const preflight = readFileSync(preflightSql, "utf8");
+    const verification = readFileSync(verificationSql, "utf8");
+
+    for (const sql of [preflight, verification]) {
+      const aggregate = sql.slice(sql.lastIndexOf("select\n  count(*) filter"));
+      expect(aggregate).toContain("receipt.receipt_url");
+      expect(aggregate).toContain("receipt.reimbursement_id");
+      expect(aggregate).not.toMatch(/where\s+receipt_url\s+is\s+null/i);
+    }
   });
 });

@@ -3,48 +3,62 @@ begin;
 -- Worker receipt public-intake hardening.
 -- Non-destructive: this migration does not rewrite or delete receipt rows or Storage objects.
 
--- The compatibility bridge must have audited and remediated the known two
--- external references before the bucket is made private. This runs before any
--- bucket, policy, or grant change so a failed gate rolls back without outage.
+-- The compatibility bridge must be present before the bucket is made private.
+-- Any evidence it contains must still be complete, but an owner-approved
+-- cleanup that deleted every incompatible receipt does not need obsolete audit
+-- rows recreated. This runs before any bucket, policy, or grant change so a
+-- failed gate rolls back without outage.
 do $$
 declare
   remediation_audit_rows bigint;
+  remediation_evidence_count bigint;
   incompatible_reference_count bigint;
+  dangling_reimbursement_reference_count bigint;
+  invalid_reimbursement_reference_count bigint;
   missing_object_count bigint;
-  incomplete_remediation_count bigint;
 begin
-  if not exists (select 1 from storage.buckets where id = 'worker-receipts') then
-    raise exception 'Receipt hardening blocked: worker-receipts bucket is missing';
-  end if;
-
   if to_regclass('public.worker_receipt_reference_remediations') is null then
     raise exception 'Receipt hardening bridge has not been applied';
+  end if;
+
+  -- Hold writer-conflicting locks for the whole preflight and hardening change.
+  -- A writer already in progress settles before the checks; later writers wait
+  -- until the private bucket and narrow policies commit.
+  lock table public.worker_receipts in share row exclusive mode;
+  lock table public.worker_reimbursements in share row exclusive mode;
+  lock table public.worker_receipt_reference_remediations in share row exclusive mode;
+  lock table storage.objects in share row exclusive mode;
+  lock table storage.buckets in share row exclusive mode;
+
+  if not exists (select 1 from storage.buckets where id = 'worker-receipts') then
+    raise exception 'Receipt hardening blocked: worker-receipts bucket is missing';
   end if;
 
   select count(*)
   into remediation_audit_rows
   from public.worker_receipt_reference_remediations;
 
-  if remediation_audit_rows <> 2 then
-    raise exception 'Receipt hardening blocked: expected exactly 2 remediation audit rows, found %', remediation_audit_rows;
-  end if;
-
   select count(*)
-  into incomplete_remediation_count
+  into remediation_evidence_count
   from public.worker_receipt_reference_remediations as remediation
   join public.worker_receipts as receipt
     on receipt.id = remediation.worker_receipt_id
   left join public.worker_reimbursements as reimbursement
     on reimbursement.id = remediation.reimbursement_id
-  where receipt.receipt_url is distinct from remediation.replacement_storage_path
-    or receipt.reimbursement_id is distinct from remediation.reimbursement_id
-    or (
-      remediation.reimbursement_id is not null
-      and reimbursement.receipt_url is distinct from remediation.replacement_storage_path
+  join storage.objects as replacement_object
+    on replacement_object.bucket_id = 'worker-receipts'
+    and replacement_object.name = remediation.replacement_storage_path
+  where receipt.receipt_url is not distinct from remediation.replacement_storage_path
+    and receipt.reimbursement_id is not distinct from remediation.reimbursement_id
+    and (
+      remediation.reimbursement_id is null
+      or reimbursement.receipt_url is not distinct from remediation.replacement_storage_path
     );
 
-  if incomplete_remediation_count <> 0 then
-    raise exception 'Receipt hardening blocked: % remediation audit rows do not match the current receipt linkage', incomplete_remediation_count;
+  if remediation_evidence_count <> remediation_audit_rows then
+    raise exception
+      'Receipt hardening blocked: % remediation audit rows are incomplete, stale, or missing their replacement object',
+      remediation_audit_rows - remediation_evidence_count;
   end if;
 
   select count(*)
@@ -57,10 +71,76 @@ begin
     );
 
   if incompatible_reference_count <> 0 then
+    if remediation_audit_rows = 0 then
+      raise exception
+        'Receipt hardening blocked: % incompatible receipt references remain without valid remediation evidence',
+        incompatible_reference_count;
+    end if;
+
     raise exception
-      'Receipt hardening blocked: % incompatible receipt references remain (% remediation audit rows)',
+      'Receipt hardening blocked: % incompatible receipt references remain despite % valid remediation audit rows',
       incompatible_reference_count,
-      remediation_audit_rows;
+      remediation_evidence_count;
+  end if;
+
+  select count(*)
+  into dangling_reimbursement_reference_count
+  from public.worker_receipts as receipt
+  left join public.worker_reimbursements as reimbursement
+    on reimbursement.id = receipt.reimbursement_id
+  where receipt.reimbursement_id is not null
+    and (
+      reimbursement.id is null
+      or reimbursement.receipt_url is distinct from receipt.receipt_url
+    );
+
+  if dangling_reimbursement_reference_count <> 0 then
+    raise exception
+      'Receipt hardening blocked: % worker receipt reimbursement links are dangling or reference a different receipt object',
+      dangling_reimbursement_reference_count;
+  end if;
+
+  with reimbursement_references as (
+    select
+      reimbursement.id,
+      reimbursement.receipt_url,
+      case
+        when reimbursement.receipt_url ~ '^uploads/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|pdf)$'
+          then reimbursement.receipt_url
+        when reimbursement.receipt_url ~* '^https?://[^/?#]+/storage/v1/object/(public|sign)/worker-receipts/uploads/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|pdf)(\?[^#]*)?$'
+          then regexp_replace(
+            regexp_replace(
+              reimbursement.receipt_url,
+              '^https?://[^/?#]+/storage/v1/object/(public|sign)/worker-receipts/',
+              '',
+              'i'
+            ),
+            '\\?.*$',
+            ''
+          )
+      end as storage_path
+    from public.worker_reimbursements as reimbursement
+    where reimbursement.receipt_url is not null
+  )
+  select count(*)
+  into invalid_reimbursement_reference_count
+  from reimbursement_references as reimbursement
+  left join public.worker_receipts as receipt
+    on receipt.reimbursement_id = reimbursement.id
+  left join storage.objects as receipt_object
+    on receipt_object.bucket_id = 'worker-receipts'
+    and receipt_object.name = reimbursement.storage_path
+  where reimbursement.storage_path is null
+    or receipt_object.id is null
+    or (
+      receipt.id is not null
+      and receipt.receipt_url is distinct from reimbursement.receipt_url
+    );
+
+  if invalid_reimbursement_reference_count <> 0 then
+    raise exception
+      'Receipt hardening blocked: % reimbursement receipt links are incompatible, missing their object, or detached from their worker receipt',
+      invalid_reimbursement_reference_count;
   end if;
 
   with resolved_receipts as (

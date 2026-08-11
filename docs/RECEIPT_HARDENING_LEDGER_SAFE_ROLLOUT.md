@@ -9,8 +9,14 @@ broad migration repair: Production has known historical ledger drift.
 Apply only these reviewed receipt artifacts, in this order:
 
 1. `20260811040100_worker_receipt_legacy_bridge.sql`
-2. two service-only `private.remediate_worker_receipt_reference` calls
+2. when the read-only preflight finds the historic incompatible rows, the
+   corresponding service-only `private.remediate_worker_receipt_reference` calls
 3. `20260811040201_worker_receipt_rls_storage_hardening.sql`
+
+For the owner-approved cleanup state, preflight must instead prove zero
+incompatible worker-receipt references and zero dangling reimbursement receipt
+links. In that state, skip step 2: do not recreate receipts, objects, or
+obsolete remediation evidence.
 
 Do not replay, renumber, delete, or repair historical migrations. Preserve every
 row in `supabase_migrations.schema_migrations`, including Production-only
@@ -59,24 +65,41 @@ where table_schema = 'public'
   and table_name = 'projects'
 order by ordinal_position;
 
+select column_name, data_type
+from information_schema.columns
+where table_schema = 'storage'
+  and table_name = 'objects'
+order by ordinal_position;
+
 select id, public, file_size_limit, allowed_mime_types
 from storage.buckets
 where id = 'worker-receipts';
 ```
 
 The bridge/final versions must both be absent. The two Production-only versions
-must remain present. The four public tables must have the columns referenced by
-the reviewed SQL, and the `worker-receipts` bucket must return exactly one row.
-Then run the redacted incompatible-reference preflight:
+must remain present. The four public tables and `storage.objects` must have the
+columns referenced by the reviewed SQL, and the `worker-receipts` bucket must
+return exactly one row. Then run the redacted incompatible-reference preflight:
 
 ```sh
 psql "$HH_PROD_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f scripts/preflight-worker-receipt-remediation.sql
 ```
 
-Its first result must contain exactly two `worker_receipt_id` rows. Each must
-have a linked reimbursement and matching receipt/reimbursement fingerprints.
-The aggregate must report exactly two incompatible worker-receipt references.
+Choose exactly one path from the redacted result:
+
+- Remediation path: exactly two `worker_receipt_id` rows, each with a linked
+  reimbursement and matching receipt/reimbursement fingerprints. The aggregate
+  must report exactly two incompatible worker-receipt references and zero
+  dangling reimbursement receipt links; the reimbursement-side aggregate must
+  also report zero invalid or dangling receipt links.
+- Owner-approved cleanup path: no `worker_receipt_id` rows. The aggregate must
+  report zero incompatible worker-receipt references and zero dangling
+  reimbursement receipt links; the reimbursement-side aggregate must also
+  report zero invalid or dangling receipt links.
+
+Any other count, a missing/mismatched reimbursement, or a non-zero dangling
+link count is a stop condition. Do not continue to final hardening.
 
 ## Stage A — bridge only
 
@@ -87,21 +110,19 @@ upload/submit/options policies and owner/admin receipt review. Its bucket is
 temporarily public only so historic public object URLs remain available until
 Stage C.
 
-Apply the bridge manually, then record only its successful version:
+Apply the bridge only through the approved migration release mechanism that
+executes the reviewed artifact and records its version atomically. Do not run
+the SQL file by hand, use `supabase db push`, reset/replay history, or use any
+migration-repair command. If the release mechanism cannot apply and record this
+new version without repair, stop and escalate. Confirm the ledger has only the
+new bridge row and the immutable Production-only rows are unchanged.
 
-```sh
-psql "$HH_PROD_DATABASE_URL" -v ON_ERROR_STOP=1 \
-  -f supabase/migrations/20260811040100_worker_receipt_legacy_bridge.sql
+## Stage B — remediation path only
 
-supabase migration repair --linked --status applied 20260811040100
-```
+Skip this entire stage for the owner-approved cleanup path. It is not a data
+repair authorization and must never recreate the deleted rows or their objects.
 
-Do not run the repair command if the SQL command fails. Confirm the ledger has
-only the added bridge row and the immutable Production-only rows are unchanged.
-
-## Stage B — exact two-row remediation
-
-For each of the two read-only-preflight rows, an authorized operator obtains the
+For each of the two remediation-path rows, an authorized operator obtains the
 source image through a non-public channel and creates one new canonical object.
 Do this in a controlled, server-only terminal; do not use browser code or expose
 a service-role key.
@@ -171,32 +192,43 @@ psql "$HH_PROD_DATABASE_URL" -v ON_ERROR_STOP=1 \
   -f scripts/verify-worker-receipt-remediation.sql
 ```
 
-The incompatible-row result must be empty; the audit result must contain exactly
-two rows where `receipt_points_to_replacement`,
+The incompatible-row result must be empty. On the remediation path, the audit
+result must contain exactly two rows where `receipt_points_to_replacement`,
 `reimbursement_points_to_replacement`, and `reimbursement_link_preserved` are
-all true; the aggregate must be zero.
+all true. On the owner-approved cleanup path, zero audit rows are expected. For
+either path, the aggregate must report zero incompatible and zero dangling
+reimbursement receipt links, and the reimbursement-side aggregate must report
+zero invalid or dangling receipt links.
 
 ## Stage C — final hardening only
 
-Apply precisely the requested final migration, then record only that successful
-version:
-
-```sh
-psql "$HH_PROD_DATABASE_URL" -v ON_ERROR_STOP=1 \
-  -f supabase/migrations/20260811040201_worker_receipt_rls_storage_hardening.sql
-
-supabase migration repair --linked --status applied 20260811040201
-```
+Apply the final migration only through the approved migration release mechanism
+that executes the reviewed artifact and records its version atomically. Do not
+run the SQL file by hand, use `supabase db push`, reset/replay history, or use a
+migration-repair command. If this cannot be done without repair, stop and
+escalate.
 
 The migration is transactional. Before it changes policies, it requires the
-bridge audit table, exactly two complete remediation rows, zero incompatible
-references, and a live Storage object for every reference. A failed gate rolls
-back before bucket/policy changes. Do not run `supabase db push` afterwards.
+bridge audit table; every present remediation row to be complete and backed by a
+live replacement object; zero incompatible worker-receipt references; zero
+dangling or invalid reimbursement receipt links; and a live Storage object for
+every remaining worker-receipt or reimbursement receipt reference. A failed gate
+rolls back before bucket/policy changes. The owner-approved cleanup path may
+have zero remediation audit rows; it does not recreate deleted data.
 
 Post-check: bucket private; anon list/read/update/delete denied; anon only
 uploads a valid UUID path and submits valid Pending metadata; owner/admin signed
 review works; non-owner and unauthenticated review fail; `/api/upload-receipt/sync`
 is owner/admin-only; no service-role variable is browser-exposed.
+
+Run the redacted post-cutover verification. It must report zero incompatible
+references, zero forward or reimbursement-side dangling links, and zero missing
+receipt objects:
+
+```sh
+psql "$HH_PROD_DATABASE_URL" -v ON_ERROR_STOP=1 \
+  -f scripts/verify-worker-receipt-remediation.sql
+```
 
 ## Rollback
 
