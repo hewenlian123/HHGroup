@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server";
-import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabase } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 /**
- * Public-friendly dropdown data (no auth). Workers + projects for receipt upload form.
- * Prefers service role (RLS bypass); falls back to URL + anon so local dev works without
- * SUPABASE_SERVICE_ROLE_KEY (workers/projects allow anon select in this project's RLS).
+ * Public dropdown data is constrained by the anon RLS policies to active id/name values.
  */
 export async function GET() {
-  const client = getServerSupabaseAdmin() ?? getServerSupabase();
+  const client = getServerSupabase();
   if (!client) {
     return NextResponse.json(
       {
         message:
-          "Supabase not configured (set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY; optional SUPABASE_SERVICE_ROLE_KEY for RLS bypass)",
+          "Supabase not configured (set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY)",
       },
       { status: 503 }
     );

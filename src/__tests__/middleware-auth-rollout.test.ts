@@ -73,6 +73,24 @@ describe("middleware Auth rollout behavior", () => {
   });
 
   it.each([
+    "/api/upload-receipt/options",
+    "/api/upload-receipt/upload",
+    "/api/upload-receipt/submit",
+  ])(
+    "keeps only the documented public receipt endpoint available in strict mode: %s",
+    async (path) => {
+      process.env.HH_REQUIRE_LOGIN = "true";
+
+      const response = await middleware(
+        request(path, { method: path.endsWith("options") ? "GET" : "POST" })
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("x-middleware-next")).toBe("1");
+    }
+  );
+
+  it.each([
     ["explicit false", "false"],
     ["explicit zero", "0"],
     ["unset", undefined],
@@ -147,15 +165,25 @@ describe("middleware Auth rollout behavior", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it.each([`/api/financial/expenses/${EXPENSE_ID}/ocr-writeback`, "/api/ocr-receipt"])(
-    "keeps the pre-cutover OCR workflow available at %s",
+  it("keeps the non-receipt OCR writeback workflow available in compatibility mode", async () => {
+    process.env.HH_REQUIRE_LOGIN = "false";
+
+    const response = await middleware(
+      request(`/api/financial/expenses/${EXPENSE_ID}/ocr-writeback`, { method: "POST" })
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it.each(["/api/ocr-receipt", "/api/upload-receipt/sync", "/api/worker-receipts"])(
+    "keeps sensitive receipt API %s strict in compatibility mode",
     async (path) => {
       process.env.HH_REQUIRE_LOGIN = "false";
 
       const response = await middleware(request(path, { method: "POST" }));
 
-      expect(response.status).toBe(200);
-      expect(response.headers.get("x-middleware-next")).toBe("1");
+      expect(response.status).toBe(401);
     }
   );
 

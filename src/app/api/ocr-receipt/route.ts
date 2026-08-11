@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 
 export type ReceiptOcrResult = {
   vendor_name: string;
@@ -170,6 +171,9 @@ function normalizeConfidence(raw: unknown): FieldConfidence {
 }
 
 export async function POST(request: NextRequest) {
+  const guard = await requireSupabaseOwnerOrAdmin(request);
+  if (!guard.ok) return guard.response;
+
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {

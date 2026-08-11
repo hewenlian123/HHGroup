@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabase } from "@/lib/supabase-server";
 
 const BUCKET = "worker-receipts";
 const MAX_WORKER_RECEIPT_UPLOAD_BYTES = 10 * 1024 * 1024;
@@ -15,12 +15,11 @@ function jsonError(message: string, status: number) {
 }
 
 /**
- * Upload receipt image to Supabase Storage. Uses server Supabase client so upload runs with server env.
- * Returns public URL for receipt_url.
+ * Public worker receipt upload. Uses only the anon/RLS client; this endpoint never bypasses Storage policy.
+ * Returns the private object path, never a public URL.
  */
 export async function POST(req: Request) {
-  // Prefer service role client for storage uploads; fall back to anon if needed.
-  const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
+  const supabase = getServerSupabase();
   if (!supabase) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
   }
@@ -61,8 +60,7 @@ export async function POST(req: Request) {
       });
       return jsonError("Receipt upload failed. Please try again.", 500);
     }
-    const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-    return NextResponse.json({ ok: true as const, path, receipt_url: pub.publicUrl });
+    return NextResponse.json({ ok: true as const, path, receipt_url: path });
   } catch (e) {
     console.error("[upload-receipt/upload] unexpected failure", {
       message: e instanceof Error ? e.message : String(e),

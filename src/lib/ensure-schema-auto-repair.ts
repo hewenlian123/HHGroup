@@ -418,22 +418,6 @@ END $$`,
   `ALTER TABLE public.worker_receipts ALTER COLUMN worker_id DROP NOT NULL`,
   `CREATE INDEX IF NOT EXISTS idx_worker_receipts_expense_type ON public.worker_receipts (expense_type)`,
 
-  // Storage bucket + policies (best effort). Will no-op if storage schema unavailable.
-  `INSERT INTO storage.buckets (id, name, public)
-   VALUES ('worker-receipts', 'worker-receipts', true)
-   ON CONFLICT (id) DO NOTHING`,
-  `DROP POLICY IF EXISTS "worker_receipts_public_read" ON storage.objects`,
-  `CREATE POLICY "worker_receipts_public_read"
-   ON storage.objects FOR SELECT
-   TO anon, authenticated
-   USING (bucket_id = 'worker-receipts')`,
-  `DROP POLICY IF EXISTS "worker_receipts_anon_insert" ON storage.objects`,
-  `DROP POLICY IF EXISTS "worker_receipts_authenticated_insert" ON storage.objects`,
-  `CREATE POLICY "worker_receipts_authenticated_insert"
-   ON storage.objects FOR INSERT
-   TO authenticated
-   WITH CHECK (bucket_id = 'worker-receipts')`,
-
   // 8. attachments: table + relax entity_type so Quick Expense can insert entity_type = 'expense'
   `CREATE TABLE IF NOT EXISTS public.attachments (
   id uuid primary key default gen_random_uuid(),

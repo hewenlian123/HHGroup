@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
-import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { insertWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
+import { parseWorkerReceiptStoragePath } from "@/lib/worker-receipt-storage";
 
 const BUCKET = "worker-receipts";
 
@@ -14,10 +16,12 @@ function jsonError(message: string, status: number) {
  * POST: Sync — for each storage object that has no matching worker_receipts.receipt_url, insert a placeholder row.
  */
 export async function GET(request: Request) {
+  const guard = await requireSupabaseOwnerOrAdmin(request);
+  if (!guard.ok) return guard.response;
   const blocked = guardDangerousMaintenanceRequest(request);
   if (blocked) return blocked;
 
-  const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
+  const supabase = getServerSupabaseAdmin();
   if (!supabase) {
     return jsonError("Receipt sync is temporarily unavailable.", 500);
   }
@@ -34,19 +38,21 @@ export async function GET(request: Request) {
       .from("worker_receipts")
       .select("id, receipt_url")
       .not("receipt_url", "is", null);
-    const dbUrls = new Set(
-      (rows ?? []).map((r: { receipt_url: string | null }) => r.receipt_url).filter(Boolean)
+    const dbPaths = new Set(
+      (rows ?? [])
+        .map((r: { receipt_url: string | null }) =>
+          parseWorkerReceiptStoragePath(r.receipt_url ?? "")
+        )
+        .filter((path): path is string => Boolean(path))
     );
-    const baseUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/${BUCKET}`;
     const orphanPaths: string[] = [];
     for (const obj of objects) {
       const path = `uploads/${obj.name}`;
-      const publicUrl = `${baseUrl}/${path}`;
-      if (!dbUrls.has(publicUrl)) orphanPaths.push(path);
+      if (!dbPaths.has(path)) orphanPaths.push(path);
     }
     return NextResponse.json({
       storageCount: objects.length,
-      dbReceiptUrlCount: dbUrls.size,
+      dbReceiptUrlCount: dbPaths.size,
       orphanCount: orphanPaths.length,
       orphanPaths: orphanPaths.slice(0, 50),
     });
@@ -59,10 +65,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const guard = await requireSupabaseOwnerOrAdmin(request);
+  if (!guard.ok) return guard.response;
   const blocked = guardDangerousMaintenanceRequest(request);
   if (blocked) return blocked;
 
-  const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
+  const supabase = getServerSupabaseAdmin();
   if (!supabase) {
     return jsonError("Receipt sync is temporarily unavailable.", 500);
   }
@@ -79,25 +87,27 @@ export async function POST(request: Request) {
       .from("worker_receipts")
       .select("receipt_url")
       .not("receipt_url", "is", null);
-    const dbUrls = new Set(
-      (rows ?? []).map((r: { receipt_url: string | null }) => r.receipt_url).filter(Boolean)
+    const dbPaths = new Set(
+      (rows ?? [])
+        .map((r: { receipt_url: string | null }) =>
+          parseWorkerReceiptStoragePath(r.receipt_url ?? "")
+        )
+        .filter((path): path is string => Boolean(path))
     );
-    const baseUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""}/storage/v1/object/public/${BUCKET}`;
     const inserted: string[] = [];
     for (const obj of objects) {
       const path = `uploads/${obj.name}`;
-      const publicUrl = `${baseUrl}/${path}`;
-      if (dbUrls.has(publicUrl)) continue;
+      if (dbPaths.has(path)) continue;
       await insertWorkerReceiptWithClient(supabase, {
         workerName: "Unknown",
         projectId: null,
         expenseType: "Other",
         amount: 0,
-        receiptUrl: publicUrl,
+        receiptUrl: path,
         status: "Pending",
       });
-      inserted.push(publicUrl);
-      dbUrls.add(publicUrl);
+      inserted.push(path);
+      dbPaths.add(path);
     }
     return NextResponse.json({
       ok: true,

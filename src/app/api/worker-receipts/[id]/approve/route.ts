@@ -1,15 +1,23 @@
 import { NextResponse } from "next/server";
-import { approveWorkerReceipt, approveWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
-import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { approveWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
-export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdmin(request);
+  if (!guard.ok) return guard.response;
+
+  const server = getServerSupabaseAdmin();
+  if (!server) {
+    return NextResponse.json(
+      { message: "Receipt approval is temporarily unavailable." },
+      { status: 503 }
+    );
+  }
+
   try {
     const { id } = await params;
-    // Prefer service role so approve (insert worker_reimbursements + update worker_receipts) is not blocked by RLS
-    const server = getServerSupabaseAdmin() ?? getServerSupabase();
-    const { receipt, reimbursementCreated } = server
-      ? await approveWorkerReceiptWithClient(server, id)
-      : await approveWorkerReceipt(id);
+    const { receipt, reimbursementCreated } = await approveWorkerReceiptWithClient(server, id);
     return NextResponse.json({ receipt, reimbursementCreated });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to approve";

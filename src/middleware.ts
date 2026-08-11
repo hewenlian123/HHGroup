@@ -30,6 +30,9 @@ const PUBLIC_API_PATHS = new Set([
   "/api/auth/forgot-password",
   "/api/auth/recovery/verify",
   "/api/auth/reset-password",
+  "/api/upload-receipt/options",
+  "/api/upload-receipt/upload",
+  "/api/upload-receipt/submit",
 ]);
 
 const STRICT_AUTH_PREFIXES = [
@@ -38,6 +41,9 @@ const STRICT_AUTH_PREFIXES = [
   "/api/auth/unlock",
   "/api/auth/lock",
   "/api/financial/receipt-queue",
+  "/api/ocr-receipt",
+  "/api/upload-receipt/sync",
+  "/api/worker-receipts",
 ];
 
 const ADMIN_APP_PREFIXES = ["/admin"];

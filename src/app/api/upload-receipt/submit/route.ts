@@ -1,11 +1,8 @@
 import { NextResponse } from "next/server";
-import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
-import { insertWorkerReceiptWithClient } from "@/lib/worker-receipts-db";
+import { getServerSupabase } from "@/lib/supabase-server";
+import { isWorkerReceiptUploadPath, WORKER_RECEIPT_BUCKET } from "@/lib/worker-receipt-storage";
 
-const BUCKET = "worker-receipts";
 const MAX_WORKER_RECEIPT_AMOUNT = 100_000;
-const WORKER_RECEIPT_UPLOAD_PATH_RE =
-  /^uploads\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp|pdf)$/i;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EXPENSE_TYPES = new Set([
   "Building Materials",
@@ -33,33 +30,33 @@ function isValidIsoDate(value: string): boolean {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
-function isWorkerReceiptPublicUrl(value: string): boolean {
+function normalizeWorkerReceiptUploadPath(value: string): string | null {
+  if (isWorkerReceiptUploadPath(value)) return value;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "");
-  if (!supabaseUrl) return false;
+  if (!supabaseUrl) return null;
 
   try {
     const parsed = new URL(value);
     const expected = new URL(supabaseUrl);
-    if (parsed.origin !== expected.origin) return false;
-    if (parsed.search || parsed.hash) return false;
+    if (parsed.origin !== expected.origin) return null;
+    if (parsed.search || parsed.hash) return null;
 
-    const prefix = `/storage/v1/object/public/${BUCKET}/`;
-    if (!parsed.pathname.startsWith(prefix)) return false;
+    const prefix = `/storage/v1/object/public/${WORKER_RECEIPT_BUCKET}/`;
+    if (!parsed.pathname.startsWith(prefix)) return null;
     const storagePath = decodeURIComponent(parsed.pathname.slice(prefix.length));
-    return WORKER_RECEIPT_UPLOAD_PATH_RE.test(storagePath);
+    return isWorkerReceiptUploadPath(storagePath) ? storagePath : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
 /**
- * Save receipt metadata + receipt_url to worker_receipts. Uses server Supabase client
- * so insert runs with server env (no auth required).
+ * Public worker receipt submission. The anon/RLS client is deliberately used so this route
+ * cannot bypass the worker_receipts policy or create records with service-role authority.
  */
 export async function POST(req: Request) {
   try {
-    // Prefer service role client so inserts are not blocked by RLS in production.
-    const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
+    const supabase = getServerSupabase();
     if (!supabase) {
       return jsonError("Receipt submission is temporarily unavailable.", 500);
     }
@@ -83,7 +80,7 @@ export async function POST(req: Request) {
     const expenseType = EXPENSE_TYPES.has(expenseTypeRaw) ? expenseTypeRaw : "Other";
     const vendor = trimText(body.vendor, 160);
     const amount = Number(body.amount);
-    const receiptUrl = trimText(body.receiptUrl, 1000);
+    const receiptReference = trimText(body.receiptPath ?? body.receiptUrl, 1000);
     const description = trimText(body.description, 500);
     const notes = trimText(body.notes, 1000);
     const receiptDateRaw = trimText(body.receiptDate, 20) ?? "";
@@ -105,25 +102,28 @@ export async function POST(req: Request) {
     if (receiptDateRaw && !isValidIsoDate(receiptDateRaw)) {
       return jsonError("Receipt date is invalid.", 400);
     }
-    if (!receiptUrl || !isWorkerReceiptPublicUrl(receiptUrl)) {
+    const receiptPath = receiptReference
+      ? normalizeWorkerReceiptUploadPath(receiptReference)
+      : null;
+    if (!receiptPath) {
       return jsonError("Receipt upload reference is invalid.", 400);
     }
 
     try {
-      const receipt = await insertWorkerReceiptWithClient(supabase, {
-        workerId,
-        workerName: workerName || "Worker",
-        projectId,
-        expenseType,
+      const { error } = await supabase.from("worker_receipts").insert({
+        worker_id: workerId,
+        worker_name: workerName || "Worker",
+        project_id: projectId,
+        expense_type: expenseType,
         vendor,
         amount,
-        receiptUrl,
+        receipt_url: receiptPath,
         description,
         notes,
-        receiptDate,
-        status: "Pending",
+        receipt_date: receiptDate,
       });
-      return NextResponse.json({ ok: true, id: receipt.id, receipt_url: receipt.receiptUrl });
+      if (error) throw new Error(error.message ?? "Failed to create receipt upload.");
+      return NextResponse.json({ ok: true });
     } catch (err) {
       // Log detailed error for debugging in Vercel function logs.
       // eslint-disable-next-line no-console

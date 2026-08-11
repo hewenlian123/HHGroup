@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { parseWorkerReceiptStoragePath, WORKER_RECEIPT_BUCKET } from "@/lib/worker-receipt-storage";
 
 export type ParsedSupabaseStorageObject = {
   bucket: string;
@@ -50,6 +51,22 @@ export async function createSignedStorageUrl(
   return data.signedUrl;
 }
 
+async function requestWorkerReceiptSignedUrl(rawUrlOrPath: string): Promise<string | null> {
+  if (typeof window === "undefined" || !parseWorkerReceiptStoragePath(rawUrlOrPath)) return null;
+  try {
+    const response = await fetch("/api/worker-receipts/view", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ receiptUrl: rawUrlOrPath }),
+    });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { signedUrl?: unknown };
+    return typeof data.signedUrl === "string" && data.signedUrl ? data.signedUrl : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Resolve a URL (or storage path) to a signed URL for preview.
  *
@@ -72,12 +89,19 @@ export async function resolvePreviewSignedUrl(options: {
     const parsed = parseSupabaseStorageObjectUrl(raw);
     if (!parsed) return raw;
     const signed = await createSignedStorageUrl(supabase, parsed.bucket, parsed.path, ttlSec);
-    return signed ?? raw;
+    if (signed) return signed;
+    if (parsed.bucket === WORKER_RECEIPT_BUCKET) {
+      return (await requestWorkerReceiptSignedUrl(raw)) ?? raw;
+    }
+    return raw;
   }
   const path = raw.replace(/^\/+/, "");
   for (const b of bucketCandidates) {
     const signed = await createSignedStorageUrl(supabase, b, path, ttlSec);
     if (signed) return signed;
+  }
+  if (bucketCandidates.includes(WORKER_RECEIPT_BUCKET)) {
+    return (await requestWorkerReceiptSignedUrl(raw)) ?? raw;
   }
   return raw;
 }
