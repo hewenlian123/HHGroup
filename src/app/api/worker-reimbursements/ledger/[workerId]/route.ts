@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { getWorkerReimbursementsByWorkerId } from "@/lib/worker-reimbursements-db";
 
 export async function GET(req: Request, { params }: { params: Promise<{ workerId: string }> }) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = guard.client;
   if (!supabase) {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }

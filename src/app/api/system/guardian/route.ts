@@ -10,7 +10,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { guardedInternalFetchHeaders } from "@/lib/production-safety";
 import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { addSystemLog } from "@/lib/system-log-store";
@@ -206,7 +206,7 @@ async function checkTable(
 // ── route handler ─────────────────────────────────────────────────────────────
 
 export async function GET(request: Request): Promise<NextResponse<GuardianResult>> {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response as NextResponse<GuardianResult>;
 
   const safeResult = (checks: GuardianCheck[], ok: boolean): NextResponse<GuardianResult> =>

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { createEstimateWithItemsWithClient, type EstimateLineItemStatus } from "@/lib/estimates-db";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import type { EstimateNoteBlock } from "@/lib/estimate-notes";
@@ -58,6 +59,9 @@ function safeCreateEstimateError(error: unknown): string {
 export async function createEstimateWithItemsAction(
   payload: CreateEstimatePayload
 ): Promise<{ ok: boolean; estimateId?: string; error?: string }> {
+  const auth = await requireSupabaseOwnerOrAdminServerAction();
+  if (!auth.ok) return { ok: false, error: "Authentication required." };
+
   const clientName = payload.clientName.trim();
   if (!clientName) return { ok: false, error: "Client name is required." };
   const projectName = payload.projectName.trim();

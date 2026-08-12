@@ -5,6 +5,7 @@ import {
 } from "@/lib/expenses-db";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { sumPaidWorkerReimbursementsForProject } from "@/lib/worker-reimbursements-db";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type ProjectCostBreakdown = {
   totalCost: number;
@@ -74,12 +75,13 @@ function toCostTableRow(r: ProjectExpenseCostLineRow): ProjectCostTableRow {
  * Confirmed expense statuses: done, reviewed, approved, paid (see isConfirmedExpenseStatus).
  */
 export async function getProjectCostDashboard(
-  projectId: string
+  projectId: string,
+  explicitClient?: SupabaseClient
 ): Promise<ProjectCostDashboardPayload> {
   const [bundle, canonical, reimb] = await Promise.all([
-    getProjectExpenseLinesBundle(projectId),
-    getCanonicalProjectProfit(projectId),
-    sumPaidWorkerReimbursementsForProject(projectId),
+    getProjectExpenseLinesBundle(projectId, explicitClient),
+    getCanonicalProjectProfit(projectId, explicitClient),
+    sumPaidWorkerReimbursementsForProject(projectId, explicitClient),
   ]);
 
   let expenseMaterials = 0;

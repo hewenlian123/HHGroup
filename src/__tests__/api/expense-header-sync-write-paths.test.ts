@@ -5,11 +5,13 @@ const mocks = vi.hoisted(() => ({
   getExpenseById: vi.fn(),
   getServerSupabaseInternalNoStore: vi.fn(),
   requireAuthenticatedUser: vi.fn(),
+  requireSupabaseOwnerOrAdminWithClient: vi.fn(),
   syncExpenseHeaderAmountFromLinesWithClient: vi.fn(),
 }));
 
 vi.mock("@/lib/auth-boundary", () => ({
   requireAuthenticatedUser: mocks.requireAuthenticatedUser,
+  requireSupabaseOwnerOrAdminWithClient: mocks.requireSupabaseOwnerOrAdminWithClient,
 }));
 
 vi.mock("@/lib/supabase-server", async (importOriginal) => {
@@ -136,6 +138,13 @@ describe("expense header sync write paths", () => {
     mocks.getExpenseById.mockReset();
     mocks.getServerSupabaseInternalNoStore.mockReset();
     mocks.requireAuthenticatedUser.mockReset();
+    mocks.requireSupabaseOwnerOrAdminWithClient
+      .mockReset()
+      .mockImplementation(async (_request: Request, createClient: () => unknown) => ({
+        ok: true,
+        context: { email: "owner@example.com", role: "owner", user: { id: "owner-1" } },
+        client: createClient(),
+      }));
     mocks.syncExpenseHeaderAmountFromLinesWithClient.mockReset();
     mocks.requireAuthenticatedUser.mockResolvedValue({ ok: true, user: { id: "user-1" } });
   });

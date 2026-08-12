@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternal,
@@ -63,10 +63,10 @@ function mapBankTransaction(row: BankTransactionRow) {
 }
 
 export async function GET(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(request, getServerSupabaseInternal);
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseInternal();
+  const supabase = guard.client;
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const { searchParams } = new URL(request.url);
@@ -265,10 +265,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(request, getServerSupabaseInternal);
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseInternal();
+  const supabase = guard.client;
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   try {

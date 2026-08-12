@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
@@ -39,10 +39,13 @@ function safeDate(value: string | null, fallback: string): string {
 }
 
 export async function GET(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(
+    request,
+    getServerSupabaseInternalNoStore
+  );
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = guard.client;
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const today = workerRateLocalYmd();

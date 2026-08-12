@@ -18,14 +18,19 @@ import {
 } from "@/lib/projects-db";
 import {
   createServerSupabaseClient,
-  getServerSupabase,
-  getServerSupabaseAdmin,
   getServerSupabaseInternalNoStore,
 } from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { authorizedAppRole } from "@/lib/auth-role";
 import type { ProjectUsageCounts } from "@/lib/data";
 import type { DeleteBlockedPayload } from "@/lib/projects-db";
 import type { ProjectTask, ProjectTaskStatus } from "@/lib/project-tasks-db";
+
+async function getProjectActionClient() {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) return null;
+  return getServerSupabaseInternalNoStore();
+}
 
 export async function createProjectAction(
   prevState: { error?: string } | null,
@@ -43,7 +48,7 @@ export async function createProjectAction(
   if (!address) return { error: "Project address is required." };
   if (!Number.isFinite(budget) || budget <= 0) return { error: "Budget must be greater than 0." };
   // projects.budget is the canonical contract value used by profit-engine (revenue base).
-  const server = getServerSupabaseInternalNoStore();
+  const server = await getProjectActionClient();
   if (!server) return { error: "Server Supabase is not configured." };
   await createProjectWithClient(server, { name, client, customerId, address, budget, status });
   revalidatePath("/projects");
@@ -56,7 +61,7 @@ export async function getProjectUsageAction(
 ): Promise<{ blocked: false } | { blocked: true; counts: ProjectUsageCounts }> {
   if (!projectId?.trim()) return { blocked: false };
   try {
-    const server = getServerSupabaseInternalNoStore();
+    const server = await getProjectActionClient();
     if (!server) return { blocked: false };
     const counts = await getProjectUsageCountsWithClient(server, projectId);
     const hasAny =
@@ -89,6 +94,9 @@ export async function updateProjectAction(
     customerId?: string | null;
   }
 ): Promise<{ error?: string }> {
+  const strictGuard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!strictGuard.ok) return { error: "Authentication required." };
+
   if (!projectId?.trim()) return { error: "Project ID is required." };
   const name = patch.name?.trim();
   const client = patch.client?.trim();
@@ -137,7 +145,7 @@ export async function updateProjectStatusAction(
 ): Promise<{ error?: string }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
-    const server = getServerSupabaseInternalNoStore();
+    const server = await getProjectActionClient();
     if (!server) return { error: "Server Supabase is not configured." };
     const updated = await updateProjectWithClient(server, projectId, { status });
     if (!updated) return { error: "Project was not found or could not be updated." };
@@ -156,7 +164,7 @@ export async function updateProjectStatusAction(
 export async function archiveProjectAction(projectId: string): Promise<{ error?: string }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
-    const server = getServerSupabaseInternalNoStore();
+    const server = await getProjectActionClient();
     if (!server) return { error: "Server Supabase is not configured." };
     const updated = await updateProjectWithClient(server, projectId, { status: "completed" });
     if (!updated) return { error: "Project was not found or could not be archived." };
@@ -176,7 +184,7 @@ export async function deleteProjectAction(
 ): Promise<{ error?: string; blocked?: boolean; counts?: Record<string, number> }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
-    const server = getServerSupabaseInternalNoStore();
+    const server = await getProjectActionClient();
     if (!server) return { error: "Server Supabase is not configured." };
     const usage = await getProjectUsageCountsWithClient(server, projectId);
     const hasAny =
@@ -213,7 +221,7 @@ export async function deleteProjectAction(
 export async function forceDeleteProjectAction(projectId: string): Promise<{ error?: string }> {
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
-    const server = getServerSupabaseInternalNoStore();
+    const server = await getProjectActionClient();
     if (!server) return { error: "Server Supabase is not configured." };
     await forceDeleteProjectWithClient(server, projectId);
     revalidatePath("/projects");
@@ -236,6 +244,9 @@ export async function createProjectTaskAction(
     status?: ProjectTaskStatus;
   }
 ): Promise<{ error?: string; task?: ProjectTask }> {
+  const strictGuard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!strictGuard.ok) return { error: "Authentication required." };
+
   if (!projectId?.trim()) return { error: "Project ID is required." };
   try {
     const task = await createProjectTask({
@@ -268,6 +279,9 @@ export async function updateProjectTaskAction(
     priority?: "low" | "medium" | "high";
   }
 ): Promise<{ error?: string; task?: ProjectTask | null }> {
+  const strictGuard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!strictGuard.ok) return { error: "Authentication required." };
+
   if (!projectId?.trim() || !taskId?.trim()) return { error: "Project and task ID are required." };
   try {
     const updated = await updateProjectTask(taskId, patch);
@@ -288,10 +302,12 @@ export async function deleteProjectTaskAction(
   projectId: string,
   taskId: string
 ): Promise<{ error?: string }> {
+  const strictGuard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!strictGuard.ok) return { error: "Authentication required." };
+
   if (!projectId?.trim() || !taskId?.trim()) return { error: "Project and task ID are required." };
   try {
-    const admin = getServerSupabaseAdmin();
-    const server = admin ?? getServerSupabase();
+    const server = await getProjectActionClient();
     if (server) {
       await deleteProjectTaskWithClient(server, taskId);
     } else {

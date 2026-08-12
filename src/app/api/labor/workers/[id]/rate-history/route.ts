@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
   changeWorkerDailyRateWithClient,
   getWorkerCurrentDailyRateWithClient,
@@ -27,7 +27,7 @@ function apiError(status: number, message: string): NextResponse {
 }
 
 export async function GET(req: Request, { params }: RouteParams) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
@@ -48,7 +48,7 @@ export async function GET(req: Request, { params }: RouteParams) {
 }
 
 export async function POST(req: Request, { params }: RouteParams) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
   const { id } = await params;

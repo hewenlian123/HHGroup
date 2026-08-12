@@ -4,11 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const MIGRATION = path.join(
   process.cwd(),
-  "supabase/migrations/20260731080335_restore_estimate_grants_rls_parity.sql"
-);
-const ROLLBACK = path.join(
-  process.cwd(),
-  "supabase/rollbacks/20260731080335_restore_estimate_grants_rls_parity.rollback.sql"
+  "supabase/migrations/20260801065640_restore_estimate_grants_rls_parity.sql"
 );
 
 function migrationSql(): string {
@@ -53,17 +49,22 @@ describe("Estimate access parity migration", () => {
     expect(sql).not.toMatch(/disable\s+row\s+level\s+security/i);
   });
 
-  it("ships an explicit, data-preserving emergency rollback", () => {
-    expect(fs.existsSync(ROLLBACK)).toBe(true);
-    const sql = fs.readFileSync(ROLLBACK, "utf8");
-
-    expect(sql).toMatch(/grant\s+insert\s*,\s*update\s*,\s*delete[\s\S]*to\s+anon/i);
-    expect(sql).toContain("CREATE POLICY estimate_meta_insert_all");
-    expect(sql).toContain("CREATE POLICY estimate_categories_insert_all");
-    expect(sql).toContain("CREATE POLICY estimate_snapshots_insert_all");
-    expect(sql).not.toMatch(/\bdrop\s+(table|column)\b/i);
-    expect(sql).not.toMatch(/\btruncate\b/i);
-    expect(sql).not.toMatch(/\bdelete\s+from\b/i);
-    expect(sql).not.toMatch(/disable\s+row\s+level\s+security/i);
+  it("uses the Production-recorded filename without reintroducing the obsolete rollback", () => {
+    expect(
+      fs.existsSync(
+        path.join(
+          process.cwd(),
+          "supabase/migrations/20260731080335_restore_estimate_grants_rls_parity.sql"
+        )
+      )
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(
+          process.cwd(),
+          "supabase/rollbacks/20260731080335_restore_estimate_grants_rls_parity.rollback.sql"
+        )
+      )
+    ).toBe(false);
   });
 });

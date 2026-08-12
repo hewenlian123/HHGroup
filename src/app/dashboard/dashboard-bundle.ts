@@ -1,4 +1,5 @@
 import { cache } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   computeDashboardStatsFromProjects,
   getApBillsSummary,
@@ -11,7 +12,6 @@ import {
   type ProjectRiskOverview,
 } from "@/lib/data";
 import { getCanonicalProjectProfitBatch } from "@/lib/profit-engine";
-import type { CanonicalProjectProfit } from "@/lib/profit-engine";
 import { getProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 
@@ -20,22 +20,25 @@ const emptyRiskOverview: ProjectRiskOverview = {
   projects: [],
 };
 
-export const getProjectRiskOverviewCached = cache(async (): Promise<ProjectRiskOverview> => {
-  try {
-    return await getProjectRiskOverview();
-  } catch {
-    return emptyRiskOverview;
+export const getProjectRiskOverviewCached = cache(
+  async (supabase: SupabaseClient): Promise<ProjectRiskOverview> => {
+    try {
+      return await getProjectRiskOverview(supabase);
+    } catch {
+      return emptyRiskOverview;
+    }
   }
-});
+);
 
 /**
  * Single-flight projects + canonical profit map + dashboard stats for one HTTP request.
  * Used by streaming dashboard sections so KPI / projects / financial summary share work.
  */
-export const loadDashboardProjectsBundle = cache(async () => {
-  const projects = await getProjectsDashboard(200);
-  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(
-    () => new Map<string, CanonicalProjectProfit>()
+export const loadDashboardProjectsBundle = cache(async (supabase: SupabaseClient) => {
+  const projects = await getProjectsDashboard(200, supabase);
+  const profitMap = await getCanonicalProjectProfitBatch(
+    projects.map((p) => p.id),
+    supabase
   );
   const contractReview = getProjectContractReviewSummary(
     projects.map((project) => ({
@@ -76,9 +79,10 @@ const defaultAp = {
 };
 
 /** Dedupes overlapping KPI + main dashboard fetches in the same request. */
-export const getApBillsSummaryCached = cache(async () => {
+export const getApBillsSummaryCached = cache(async (supabase: SupabaseClient | null) => {
+  if (!supabase) return defaultAp;
   try {
-    return await getApBillsSummary();
+    return await getApBillsSummary(supabase);
   } catch {
     return defaultAp;
   }

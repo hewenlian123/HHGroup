@@ -11,7 +11,10 @@ import {
   getSubcontractsByProject,
 } from "@/lib/data";
 import { summarizeSubcontractFinancials } from "@/lib/subcontractor-financials";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import {
+  createServerSupabaseClient,
+  getServerSupabaseInternalNoStore,
+} from "@/lib/supabase-server";
 import { AddSubcontractButton } from "./add-subcontract-button";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
@@ -27,8 +30,10 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function ProjectSubcontractsPage({ params }: Props) {
   const { id } = await params;
+  const projectSupabase = await createServerSupabaseClient();
+  if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
   const [project, subcontracts, subcontractors] = await Promise.all([
-    getProjectById(id),
+    getProjectById(id, projectSupabase),
     getSubcontractsByProject(id),
     getSubcontractors(),
   ]);

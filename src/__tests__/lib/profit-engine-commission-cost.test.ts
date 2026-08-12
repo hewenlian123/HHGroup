@@ -3,8 +3,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type FakeRow = Record<string, unknown>;
 type FakeData = Record<string, FakeRow[]>;
+type FakeError = { message: string; code?: string };
+type FakeQueryResult = { data: FakeRow[]; error: FakeError | null };
 
 let fakeData: FakeData = {};
+let fakeErrors: Record<string, FakeError | undefined> = {};
+let selectedColumns: Array<{ table: string; columns: string }> = [];
 const globalFromSpy = vi.fn((table: string) => new FakeQuery(table));
 
 class FakeQuery {
@@ -13,7 +17,8 @@ class FakeQuery {
 
   constructor(private readonly table: string) {}
 
-  select() {
+  select(columns = "") {
+    selectedColumns.push({ table: this.table, columns });
     return this;
   }
 
@@ -44,20 +49,21 @@ class FakeQuery {
 
   single() {
     const rows = this.rows();
-    return Promise.resolve({ data: rows[0] ?? null, error: rows[0] ? null : null });
+    return Promise.resolve({ data: rows[0] ?? null, error: fakeErrors[this.table] ?? null });
   }
 
   maybeSingle() {
     return this.single();
   }
 
-  then<TResult1 = { data: FakeRow[]; error: null }, TResult2 = never>(
-    onfulfilled?:
-      | ((value: { data: FakeRow[]; error: null }) => TResult1 | PromiseLike<TResult1>)
-      | null,
+  then<TResult1 = FakeQueryResult, TResult2 = never>(
+    onfulfilled?: ((value: FakeQueryResult) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null
   ) {
-    return Promise.resolve({ data: this.rows(), error: null }).then(onfulfilled, onrejected);
+    return Promise.resolve({ data: this.rows(), error: fakeErrors[this.table] ?? null }).then(
+      onfulfilled,
+      onrejected
+    );
   }
 
   private rows() {
@@ -72,12 +78,15 @@ vi.mock("@/lib/supabase", () => ({
   getSupabaseClient: () => ({
     from: globalFromSpy,
   }),
+  humanizeSupabaseRequestError: (error: { message?: string }) => error.message ?? "Request failed",
 }));
 
 describe("profit engine commission cost", () => {
   beforeEach(() => {
     vi.resetModules();
     globalFromSpy.mockClear();
+    fakeErrors = {};
+    selectedColumns = [];
     fakeData = {
       project_commissions: [],
       commission_payments: [],
@@ -107,6 +116,16 @@ describe("profit engine commission cost", () => {
     expect(result.commissionCost).toBe(30);
     expect(result.actualCost).toBe(350);
     expect(result.profit).toBe(750);
+    expect(result.margin).toBeCloseTo(750 / 1100);
+    expect(selectedColumns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          table: "labor_entries",
+          columns: "project_id, cost_amount, status",
+        }),
+      ])
+    );
+    expect(selectedColumns.some(({ columns }) => columns.includes("total"))).toBe(false);
   });
 
   it("uses the explicit server client for every single-project cost source", async () => {
@@ -129,6 +148,49 @@ describe("profit engine commission cost", () => {
 
     expect(result.commissionCost).toBe(30);
     expect(globalFromSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not convert a protected project read failure into a zero-valued profit result", async () => {
+    fakeErrors = {
+      projects: { code: "42501", message: "permission denied for table projects" },
+    };
+    const explicitClient = {
+      from: (table: string) => new FakeQuery(table),
+    } as unknown as SupabaseClient;
+
+    const { getCanonicalProjectProfit } = await import("@/lib/profit-engine");
+
+    await expect(getCanonicalProjectProfit("project-1", explicitClient)).rejects.toThrow(
+      "Financial data unavailable: projects.budget"
+    );
+  });
+
+  it("does not ignore a denied legacy commission read", async () => {
+    fakeData = {
+      projects: [{ id: "project-1", budget: 1000 }],
+      project_change_orders: [],
+      subcontract_bills: [],
+      labor_entries: [],
+      expense_lines: [],
+      expenses: [],
+      commissions: [],
+      project_commissions: [],
+    };
+    fakeErrors = {
+      project_commissions: {
+        code: "42501",
+        message: "permission denied for table project_commissions",
+      },
+    };
+    const explicitClient = {
+      from: (table: string) => new FakeQuery(table),
+    } as unknown as SupabaseClient;
+
+    const { getCanonicalProjectProfit } = await import("@/lib/profit-engine");
+
+    await expect(getCanonicalProjectProfit("project-1", explicitClient)).rejects.toThrow(
+      "permission denied for table project_commissions"
+    );
   });
 
   it("includes accrued commission amount per project in batch profit", async () => {

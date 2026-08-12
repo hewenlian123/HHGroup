@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { rejectWorkerReceipt } from "@/lib/worker-receipts-db";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdmin(req);
+  if (!guard.ok) return guard.response;
   try {
     const { id } = await params;
     let reason: string | null = null;

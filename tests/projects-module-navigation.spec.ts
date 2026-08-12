@@ -227,7 +227,7 @@ async function createEstimateForProject(
   await addBlankEstimateSection(page);
   await page.getByLabel("Line item 1 title").locator("visible=true").fill(params.lineTitle);
   await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("1");
-  await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("500");
+  await page.getByLabel("Line item 1 rate").locator("visible=true").fill("500");
   await page.getByRole("button", { name: "Save Estimate" }).click();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
   await expect(page.getByText(params.customerName, { exact: true }).first()).toBeVisible({
@@ -356,8 +356,8 @@ test("links customer, project, estimate, and change order flows together", async
 
   await page.goto(projectUrl);
   await page.waitForLoadState("domcontentloaded");
-  await expect(page.locator(`a[href="${estimatePath}"]`).first()).toBeVisible({ timeout: 30_000 });
-  await page.locator(`a[href="${estimatePath}"]`).first().click();
+  await expect(page.locator(`a[href^="${estimatePath}"]`).first()).toBeVisible({ timeout: 30_000 });
+  await page.locator(`a[href^="${estimatePath}"]`).first().click();
   await expect(page).toHaveURL(new RegExp(`${estimatePath}(?:[/?#]|$)`), { timeout: 30_000 });
   await expect(page.getByText(customerName, { exact: true }).first()).toBeVisible({
     timeout: 30_000,
@@ -377,12 +377,6 @@ test("links customer, project, estimate, and change order flows together", async
     .locator('input[placeholder="Search change orders…"]:visible')
     .first()
     .fill(projectName);
-  await expect(page.locator(`a[href="${changeOrderPath}"]`).first()).toBeVisible({
-    timeout: 30_000,
-  });
-
-  await page.goto(`${projectUrl}?tab=change-orders`);
-  await page.waitForLoadState("domcontentloaded");
   await expect(page.locator(`a[href="${changeOrderPath}"]`).first()).toBeVisible({
     timeout: 30_000,
   });

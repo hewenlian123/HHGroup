@@ -9,9 +9,10 @@ import { getProjectFinancialSnapshotProfitReadinessWarning } from "@/lib/financi
 import { getProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
 import type { ProjectFinancialSnapshot } from "@/lib/financial/project-financial-snapshot";
-import { getCanonicalProjectProfitBatch, type CanonicalProjectProfit } from "@/lib/profit-engine";
+import { getCanonicalProjectProfitBatch } from "@/lib/profit-engine";
 import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { fetchWorkerBalances } from "@/lib/worker-balances-list";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export type FinanceOwnerCashFlowPoint = {
   label: string;
@@ -128,7 +129,9 @@ async function getProjectFinancialSnapshotMap(
  * Owner-focused finance snapshot: this month KPIs, 6-month cash flow (received vs spend),
  * top projects by profit, and alert counts. Batches shared queries to limit round-trips.
  */
-export async function getFinanceOwnerDashboard(): Promise<FinanceOwnerDashboard> {
+export async function getFinanceOwnerDashboard(
+  explicitClient?: SupabaseClient
+): Promise<FinanceOwnerDashboard> {
   const now = new Date();
   const cy = now.getFullYear();
   const cm = now.getMonth() + 1;
@@ -149,7 +152,7 @@ export async function getFinanceOwnerDashboard(): Promise<FinanceOwnerDashboard>
   ] = await Promise.all([
     invoicesDb.getInvoicesWithDerived(),
     invoicesDb.getInvoicePayments(),
-    apBillsDb.getApBillsSummary().catch(() => ({
+    apBillsDb.getApBillsSummary(explicitClient).catch(() => ({
       totalOutstanding: 0,
       overdueCount: 0,
       overdueAmount: 0,
@@ -157,7 +160,9 @@ export async function getFinanceOwnerDashboard(): Promise<FinanceOwnerDashboard>
       dueThisWeekAmount: 0,
       paidThisMonthAmount: 0,
     })),
-    projectsDb.getProjects().catch(() => [] as Awaited<ReturnType<typeof projectsDb.getProjects>>),
+    projectsDb
+      .getProjects(explicitClient)
+      .catch(() => [] as Awaited<ReturnType<typeof projectsDb.getProjects>>),
     expensesDb.countExpensesWithoutReceiptUrlInRange(receiptStartStr, monthEnd).catch(() => 0),
     Promise.all(
       [5, 4, 3, 2, 1, 0]
@@ -233,9 +238,7 @@ export async function getFinanceOwnerDashboard(): Promise<FinanceOwnerDashboard>
 
   const projectIds = projects.map((p) => p.id);
   const [profitMap, snapshotMap] = await Promise.all([
-    getCanonicalProjectProfitBatch(projectIds).catch(
-      () => new Map<string, CanonicalProjectProfit>()
-    ),
+    getCanonicalProjectProfitBatch(projectIds, explicitClient),
     getProjectFinancialSnapshotMap(projectIds),
   ]);
   const contractReview = getProjectContractReviewSummary(

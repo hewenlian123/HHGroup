@@ -1,6 +1,7 @@
 import { getProjects } from "@/lib/data";
-import { getCanonicalProjectProfitBatch } from "@/lib/profit-engine";
+import { getCanonicalProjectProfitBatch, type CanonicalProjectProfit } from "@/lib/profit-engine";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import {
   ProjectsListClient,
   type ProjectListStatusFilter,
@@ -27,15 +28,28 @@ export default async function ProjectsPage({
     : "all";
   let projects: Awaited<ReturnType<typeof getProjects>> = [];
   let dataLoadWarning: string | null = null;
+  let projectSupabase: Awaited<ReturnType<typeof createServerSupabaseClient>> = null;
   try {
-    projects = await getProjects();
+    projectSupabase = await createServerSupabaseClient({ noStore: true });
+    if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
+    projects = await getProjects(projectSupabase);
   } catch (e) {
     logServerPageDataError("projects", e);
     dataLoadWarning = serverDataLoadWarning(e, "projects");
   }
-  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(
-    () => new Map()
-  );
+  let profitMap = new Map<string, CanonicalProjectProfit>();
+  if (projectSupabase && projects.length > 0) {
+    try {
+      profitMap = await getCanonicalProjectProfitBatch(
+        projects.map((p) => p.id),
+        projectSupabase
+      );
+    } catch (e) {
+      logServerPageDataError("projects/financial", e);
+      dataLoadWarning = serverDataLoadWarning(e, "project financial data");
+      projects = [];
+    }
+  }
 
   const rows: ProjectsListRow[] = projects.map((p) => {
     const c = profitMap.get(p.id);

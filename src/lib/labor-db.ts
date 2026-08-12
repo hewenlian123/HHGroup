@@ -1115,12 +1115,15 @@ export async function getLaborInvoiceActualByProject(
   return total;
 }
 
-export async function getLaborPayments(filters?: {
-  workerId?: string;
-  startDate?: string;
-  endDate?: string;
-}): Promise<LaborPayment[]> {
-  const c = client();
+export async function getLaborPayments(
+  filters?: {
+    workerId?: string;
+    startDate?: string;
+    endDate?: string;
+  },
+  explicitClient?: SupabaseClient
+): Promise<LaborPayment[]> {
+  const c = client(explicitClient);
   let q = c.from("labor_payments").select("*").order("payment_date", { ascending: false });
   if (filters?.workerId) q = q.eq("worker_id", filters.workerId) as typeof q;
   if (filters?.startDate) q = q.gte("payment_date", filters.startDate.slice(0, 10)) as typeof q;

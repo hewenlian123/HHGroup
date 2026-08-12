@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { ensureMaterialImagesBucket, MATERIAL_IMAGES_BUCKET } from "@/lib/material-images-storage";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const PREFIX = "selections";
 
 export async function POST(req: Request) {
+  const guard = await requireSupabaseOwnerOrAdmin(req);
+  if (!guard.ok) return guard.response;
+
   const supabase = getServerSupabaseAdmin();
   if (!supabase) {
     return NextResponse.json(

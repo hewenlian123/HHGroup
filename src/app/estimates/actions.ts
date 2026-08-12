@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { revalidateEstimatePaths } from "./revalidate-estimate-paths";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 type SupabaseActionError = {
@@ -120,6 +121,9 @@ function rowIds(rows: Array<Record<string, unknown>>, key: "id" | "estimate_id")
 export async function deleteEstimateAction(
   formData: FormData
 ): Promise<{ ok: boolean; error?: string; diagnostic?: DeleteEstimateDiagnostic }> {
+  const auth = await requireSupabaseOwnerOrAdminServerAction();
+  if (!auth.ok) return { ok: false, error: "Authentication required." };
+
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string" || !estimateId) {
     return { ok: false, error: "Missing estimate." };

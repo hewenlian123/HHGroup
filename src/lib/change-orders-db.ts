@@ -254,8 +254,11 @@ async function selectChangeOrderByProjectNumber(
 
 // —— Read ——
 
-export async function getChangeOrdersByProject(projectId: string): Promise<ChangeOrder[]> {
-  const c = client();
+export async function getChangeOrdersByProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<ChangeOrder[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await selectChangeOrders(c, projectId);
   if (error) {
     if (isMissingTable(error)) throw new Error(`Change orders table not found. ${HINT}`);
@@ -264,8 +267,11 @@ export async function getChangeOrdersByProject(projectId: string): Promise<Chang
   return (rows ?? []).map((r) => toChangeOrder(r as ChangeOrderRow));
 }
 
-export async function getChangeOrderById(id: string): Promise<ChangeOrder | null> {
-  const c = client();
+export async function getChangeOrderById(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<ChangeOrder | null> {
+  const c = client(explicitClient);
   const { data: r, error } = await selectChangeOrderById(c, id);
   if (error) {
     if (isMissingTable(error)) throw new Error(`Change orders table not found. ${HINT}`);
@@ -274,8 +280,11 @@ export async function getChangeOrderById(id: string): Promise<ChangeOrder | null
   return r ? toChangeOrder(r as ChangeOrderRow) : null;
 }
 
-export async function getChangeOrderItems(changeOrderId: string): Promise<ChangeOrderItem[]> {
-  const c = client();
+export async function getChangeOrderItems(
+  changeOrderId: string,
+  explicitClient?: SupabaseClient
+): Promise<ChangeOrderItem[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_change_order_items")
     .select("id, change_order_id, cost_code, description, qty, unit, unit_price, total")
@@ -289,9 +298,10 @@ export async function getChangeOrderItems(changeOrderId: string): Promise<Change
 }
 
 export async function getChangeOrderAttachments(
-  changeOrderId: string
+  changeOrderId: string,
+  explicitClient?: SupabaseClient
 ): Promise<ChangeOrderAttachment[]> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("project_change_order_attachments")
     .select("id, change_order_id, file_name, storage_path, mime_type, size_bytes, created_at")
@@ -466,10 +476,11 @@ export async function deleteChangeOrderAttachment(attachmentId: string): Promise
 
 export async function addChangeOrderItem(
   changeOrderId: string,
-  item: { costCode: string; description: string; qty: number; unit: string; unitPrice: number }
+  item: { costCode: string; description: string; qty: number; unit: string; unitPrice: number },
+  explicitClient?: SupabaseClient
 ): Promise<ChangeOrderItem | null> {
-  const c = client();
-  const co = await getChangeOrderById(changeOrderId);
+  const c = client(explicitClient);
+  const co = await getChangeOrderById(changeOrderId, c);
   if (!co || co.status !== "Draft") return null;
   const total = item.qty * item.unitPrice;
   const { data: row, error } = await c
@@ -519,10 +530,11 @@ export type UpdateChangeOrderPatch = {
 
 export async function updateChangeOrder(
   changeOrderId: string,
-  patch: UpdateChangeOrderPatch
+  patch: UpdateChangeOrderPatch,
+  explicitClient?: SupabaseClient
 ): Promise<boolean> {
-  const c = client();
-  const co = await getChangeOrderById(changeOrderId);
+  const c = client(explicitClient);
+  const co = await getChangeOrderById(changeOrderId, c);
   if (!co || co.status !== "Draft") return false;
   const updates: Record<string, unknown> = {};
   if (patch.title !== undefined) updates.title = patch.title;
@@ -554,10 +566,11 @@ export async function updateChangeOrder(
 export async function updateChangeOrderItem(
   changeOrderId: string,
   itemId: string,
-  patch: { description?: string; qty?: number; unit?: string; unitPrice?: number }
+  patch: { description?: string; qty?: number; unit?: string; unitPrice?: number },
+  explicitClient?: SupabaseClient
 ): Promise<boolean> {
-  const c = client();
-  const co = await getChangeOrderById(changeOrderId);
+  const c = client(explicitClient);
+  const co = await getChangeOrderById(changeOrderId, c);
   if (!co || co.status !== "Draft") return false;
   const itemRows = await c
     .from("project_change_order_items")
@@ -588,10 +601,11 @@ export async function updateChangeOrderItem(
 
 export async function deleteChangeOrderItem(
   changeOrderId: string,
-  itemId: string
+  itemId: string,
+  explicitClient?: SupabaseClient
 ): Promise<boolean> {
-  const c = client();
-  const co = await getChangeOrderById(changeOrderId);
+  const c = client(explicitClient);
+  const co = await getChangeOrderById(changeOrderId, c);
   if (!co || co.status !== "Draft") return false;
   const { error } = await c
     .from("project_change_order_items")
@@ -610,10 +624,11 @@ export async function deleteChangeOrderItem(
 export async function updateChangeOrderStatus(
   changeOrderId: string,
   status: ChangeOrderStatus,
-  options?: { approvedBy?: string | null }
+  options?: { approvedBy?: string | null },
+  explicitClient?: SupabaseClient
 ): Promise<boolean> {
-  const c = client();
-  const co = await getChangeOrderById(changeOrderId);
+  const c = client(explicitClient);
+  const co = await getChangeOrderById(changeOrderId, c);
   if (!co) return false;
 
   if (status === "Approved") {

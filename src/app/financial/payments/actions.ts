@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireSupabaseOwnerOrAdminServerActionWithClient } from "@/lib/auth-boundary";
 import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import {
   createPaymentReceived as createPaymentReceivedData,
@@ -34,16 +35,11 @@ function safePaymentActionError(error: unknown, fallback: string): string {
 }
 
 async function getPaymentActionClient() {
-  const admin = getServerSupabaseAdmin();
+  const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(getServerSupabaseAdmin);
+  if (!guard.ok) return { ok: false as const, error: guard.error };
+  const admin = guard.client;
   const c = admin ?? (await createServerSupabaseClient());
   if (!c) return { ok: false as const, error: "Supabase is not configured." };
-  if (!admin) {
-    const {
-      data: { user },
-      error: authError,
-    } = await c.auth.getUser();
-    if (authError || !user) return { ok: false as const, error: "You must be signed in." };
-  }
   return { ok: true as const, client: c };
 }
 
@@ -98,16 +94,9 @@ export async function createPaymentReceivedAction(
   payload: CreatePaymentReceivedPayload
 ): Promise<{ ok: true; paymentId: string } | { ok: false; error: string }> {
   try {
-    const admin = getServerSupabaseAdmin();
-    const c = admin ?? (await createServerSupabaseClient());
-    if (!c) return { ok: false, error: "Supabase is not configured." };
-    if (!admin) {
-      const {
-        data: { user },
-        error: authError,
-      } = await c.auth.getUser();
-      if (authError || !user) return { ok: false, error: "You must be signed in." };
-    }
+    const clientResult = await getPaymentActionClient();
+    if (!clientResult.ok) return clientResult;
+    const c = clientResult.client;
 
     const payment = await createPaymentReceivedData(payload, c);
     revalidatePaymentPaths(payment.invoice_id, payment.project_id ?? payload.project_id ?? null);

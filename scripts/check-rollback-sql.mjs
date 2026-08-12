@@ -18,12 +18,12 @@ if (!localHosts.has(parsedDatabaseUrl.hostname) || parsedDatabaseUrl.port !== "5
 
 const scripts = [
   {
-    path: `${root}/supabase/rollbacks/20260728095543_authenticated_owner_access.rollback.sql`,
-    confirmation: "ROLLBACK_AUTHENTICATED_OWNER_ACCESS_20260728095543",
+    path: `${root}/supabase/rollbacks/20260811233656_project_change_orders_owner_admin_access.rollback.sql`,
+    confirmation: "ROLLBACK_PROJECT_CHANGE_ORDERS_OWNER_ADMIN_ACCESS_20260811233656",
   },
   {
-    path: `${root}/supabase/rollbacks/20260728105015_receipt_storage_security_phase1.rollback.sql`,
-    confirmation: "ROLLBACK_RECEIPT_STORAGE_SECURITY_PHASE1_20260728105015",
+    path: `${root}/supabase/rollbacks/20260811190000_financial_protected_access_contract.rollback.sql`,
+    confirmation: "ROLLBACK_FINANCIAL_PROTECTED_ACCESS_CONTRACT_20260811190000",
   },
 ];
 

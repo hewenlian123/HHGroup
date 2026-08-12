@@ -15,7 +15,7 @@
  */
 
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser, requireInternalAdminAccess } from "@/lib/auth-boundary";
+import { requireInternalAdminAccess, requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { addSystemLog } from "@/lib/system-log-store";
 import { safeErrorMessage } from "@/lib/system-response-safety";
@@ -75,6 +75,9 @@ function todayStr(): string {
 // ── POST — create backup ──────────────────────────────────────────────────────
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const strictGuard = await requireSupabaseOwnerOrAdmin(request);
+  if (!strictGuard.ok) return strictGuard.response;
+
   const guard = await requireInternalAdminAccess(request);
   if (!guard.ok) return guard.response;
 
@@ -180,7 +183,7 @@ export async function POST(request: Request): Promise<NextResponse> {
 // ── GET — list backups ────────────────────────────────────────────────────────
 
 export async function GET(request: Request): Promise<NextResponse> {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
   try {

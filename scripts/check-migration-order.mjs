@@ -14,6 +14,21 @@
 
 import { execSync } from "node:child_process";
 
+// These filenames reconcile source control to versions already recorded in Production.
+// They are provenance artifacts only: the release procedure must never replay, repair,
+// or renumber them. Keep this allowlist exact so ordinary old-version migrations still fail.
+const productionRecordedHistoricalMigrations = new Set([
+  "20260801065640_restore_estimate_grants_rls_parity.sql",
+  "20260802055949_project_pdf_documents_expand.sql",
+  "20260802110245_canonical_closeout_reconciliation.sql",
+]);
+const productionRecordedRenameTargets = new Map([
+  [
+    "supabase/migrations/20260731080335_restore_estimate_grants_rls_parity.sql",
+    "supabase/migrations/20260801065640_restore_estimate_grants_rls_parity.sql",
+  ],
+]);
+
 function sh(cmd) {
   return execSync(cmd, { stdio: ["ignore", "pipe", "pipe"] })
     .toString("utf8")
@@ -71,7 +86,9 @@ function main() {
     diffRange = `${baseRef}..HEAD`;
   }
 
-  const changed = sh(`git diff --name-status ${diffRange} -- supabase/migrations/*.sql`);
+  const changed = sh(
+    `git diff --find-renames --name-status ${diffRange} -- supabase/migrations/*.sql`
+  );
   if (!changed) {
     console.log("Migration order check passed (no migration changes).");
     return;
@@ -82,12 +99,16 @@ function main() {
     const parts = line.split("\t");
     const status = parts[0] || "";
     if (status.startsWith("R")) {
+      const from = parts[1];
       const to = parts[2];
+      if (from && to && productionRecordedRenameTargets.get(from) === to) continue;
       if (to) changedTargets.push(to);
       continue;
     }
     if (status === "A") {
       const file = parts[1];
+      const base = file?.split("/").pop() || "";
+      if (productionRecordedHistoricalMigrations.has(base)) continue;
       if (file) changedTargets.push(file);
     }
   }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import postgres from "postgres";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternal,
@@ -163,7 +163,7 @@ async function insertWorkerViaDatabaseUrl(input: WorkerCreateInput): Promise<Wor
  * GET: List all workers — query with admin client directly so UI always sees same data as DELETE/clear-data.
  */
 export async function GET(req: Request) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
   const admin = getServerSupabaseInternal();
@@ -197,7 +197,7 @@ export async function GET(req: Request) {
  * POST: Create a worker (uses admin client).
  */
 export async function POST(req: Request) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
   const admin = getServerSupabaseInternal();

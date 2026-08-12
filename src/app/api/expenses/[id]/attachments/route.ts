@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import { normalizeReceiptLocation } from "@/lib/expense-receipt-reference";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
@@ -60,9 +60,12 @@ function safeFileName(name: string): string {
 }
 
 async function requireClient(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(
+    request,
+    getServerSupabaseInternalNoStore
+  );
   if (!guard.ok) return { response: guard.response, supabase: null };
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = guard.client;
   if (!supabase) return { response: apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE), supabase };
   return { response: null, supabase };
 }

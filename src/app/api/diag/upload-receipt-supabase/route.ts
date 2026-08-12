@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 /** Same UUID as `tests/reimbursement-flow-visual-helpers.ts` — diagnostic only. */
@@ -24,7 +25,10 @@ function hostFromEnvUrl(raw: string | undefined): string | null {
  *
  * Optional local `next start`: set `E2E_DIAG_UPLOAD_RECEIPT_SUPABASE=1` when NODE_ENV=production.
  */
-export async function GET() {
+export async function GET(request: Request) {
+  const guard = await requireSupabaseOwnerOrAdmin(request);
+  if (!guard.ok) return guard.response;
+
   const allow =
     process.env.NODE_ENV !== "production" || process.env.E2E_DIAG_UPLOAD_RECEIPT_SUPABASE === "1";
   if (!allow) {

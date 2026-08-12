@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
@@ -138,7 +138,7 @@ async function readJson(request: Request): Promise<Record<string, unknown> | nul
 }
 
 export async function GET(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
   const supabase = getServerSupabaseInternalNoStore();
@@ -185,7 +185,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
   const supabase = getServerSupabaseInternalNoStore();

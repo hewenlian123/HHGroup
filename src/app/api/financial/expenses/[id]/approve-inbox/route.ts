@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import {
   ensureWorkerReimbursementForApprovedExpense,
   getExpenseById,
@@ -42,14 +42,17 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(
+    request,
+    getServerSupabaseInternalNoStore
+  );
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
   const expenseId = id?.trim();
   if (!expenseId) return apiError(400, "Expense id is required.");
 
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = guard.client;
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const current = await getExpenseById(expenseId, supabase);

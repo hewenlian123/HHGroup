@@ -257,16 +257,19 @@ export type {
 export type { WorkerInvoice, WorkerInvoiceDraft, WorkerInvoiceStatus } from "../worker-invoices-db";
 export type { WorkerPayment, CreateWorkerPaymentInput } from "../worker-payments-db";
 
-export async function getProjects(): Promise<Project[]> {
-  return projectsDb.getProjects();
+export async function getProjects(explicitClient?: SupabaseClient): Promise<Project[]> {
+  return projectsDb.getProjects(explicitClient);
 }
 
-export async function getProjectsDashboard(limit?: number) {
-  return projectsDb.getProjectsDashboard(limit);
+export async function getProjectsDashboard(limit?: number, explicitClient?: SupabaseClient) {
+  return projectsDb.getProjectsDashboard(limit, explicitClient);
 }
 
-export async function getProjectById(id: string): Promise<Project | undefined> {
-  const p = await projectsDb.getProjectById(id);
+export async function getProjectById(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<Project | undefined> {
+  const p = await projectsDb.getProjectById(id, explicitClient);
   return p ?? undefined;
 }
 
@@ -313,16 +316,16 @@ export async function getProjectUsageCounts(projectId: string): Promise<ProjectU
 
 // —— Change Orders (Supabase only) ——
 
-export async function getChangeOrdersByProject(projectId: string) {
-  return coDb.getChangeOrdersByProject(projectId);
+export async function getChangeOrdersByProject(projectId: string, explicitClient?: SupabaseClient) {
+  return coDb.getChangeOrdersByProject(projectId, explicitClient);
 }
 
-export async function getChangeOrderById(id: string) {
-  return coDb.getChangeOrderById(id);
+export async function getChangeOrderById(id: string, explicitClient?: SupabaseClient) {
+  return coDb.getChangeOrderById(id, explicitClient);
 }
 
-export async function getChangeOrderItems(changeOrderId: string) {
-  return coDb.getChangeOrderItems(changeOrderId);
+export async function getChangeOrderItems(changeOrderId: string, explicitClient?: SupabaseClient) {
+  return coDb.getChangeOrderItems(changeOrderId, explicitClient);
 }
 
 export async function getProjectBudgetItems(projectId: string): Promise<ProjectBudgetItem[]> {
@@ -349,13 +352,17 @@ export async function createChangeOrder(
 
 export async function updateChangeOrder(
   changeOrderId: string,
-  patch: import("../change-orders-db").UpdateChangeOrderPatch
+  patch: import("../change-orders-db").UpdateChangeOrderPatch,
+  explicitClient?: SupabaseClient
 ) {
-  return coDb.updateChangeOrder(changeOrderId, patch);
+  return coDb.updateChangeOrder(changeOrderId, patch, explicitClient);
 }
 
-export async function getChangeOrderAttachments(changeOrderId: string) {
-  return coDb.getChangeOrderAttachments(changeOrderId);
+export async function getChangeOrderAttachments(
+  changeOrderId: string,
+  explicitClient?: SupabaseClient
+) {
+  return coDb.getChangeOrderAttachments(changeOrderId, explicitClient);
 }
 
 export async function addChangeOrderAttachment(
@@ -371,29 +378,36 @@ export async function deleteChangeOrderAttachment(attachmentId: string) {
 
 export async function addChangeOrderItem(
   changeOrderId: string,
-  item: { costCode: string; description: string; qty: number; unit: string; unitPrice: number }
+  item: { costCode: string; description: string; qty: number; unit: string; unitPrice: number },
+  explicitClient?: SupabaseClient
 ) {
-  return coDb.addChangeOrderItem(changeOrderId, item);
+  return coDb.addChangeOrderItem(changeOrderId, item, explicitClient);
 }
 
 export async function updateChangeOrderItem(
   changeOrderId: string,
   itemId: string,
-  patch: { description?: string; qty?: number; unit?: string; unitPrice?: number }
+  patch: { description?: string; qty?: number; unit?: string; unitPrice?: number },
+  explicitClient?: SupabaseClient
 ) {
-  return coDb.updateChangeOrderItem(changeOrderId, itemId, patch);
+  return coDb.updateChangeOrderItem(changeOrderId, itemId, patch, explicitClient);
 }
 
-export async function deleteChangeOrderItem(changeOrderId: string, itemId: string) {
-  return coDb.deleteChangeOrderItem(changeOrderId, itemId);
+export async function deleteChangeOrderItem(
+  changeOrderId: string,
+  itemId: string,
+  explicitClient?: SupabaseClient
+) {
+  return coDb.deleteChangeOrderItem(changeOrderId, itemId, explicitClient);
 }
 
 export async function updateChangeOrderStatus(
   changeOrderId: string,
   status: import("../change-orders-db").ChangeOrderStatus,
-  options?: { approvedBy?: string | null }
+  options?: { approvedBy?: string | null },
+  explicitClient?: SupabaseClient
 ): Promise<boolean> {
-  return coDb.updateChangeOrderStatus(changeOrderId, status, options);
+  return coDb.updateChangeOrderStatus(changeOrderId, status, options, explicitClient);
 }
 
 export async function getCommitments(projectId: string): Promise<Commitment[]> {
@@ -611,9 +625,10 @@ export async function getConfirmedLaborInvoiceTotalByWorker(
 export async function getLaborPayments(
   workerId?: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  explicitClient?: SupabaseClient
 ): Promise<LaborPayment[]> {
-  return laborDb.getLaborPayments({ workerId, startDate, endDate });
+  return laborDb.getLaborPayments({ workerId, startDate, endDate }, explicitClient);
 }
 
 export async function getLaborPaymentsByWorker(workerId: string): Promise<LaborPayment[]> {
@@ -1156,8 +1171,8 @@ export async function voidApBill(id: string) {
 export async function deleteApBillDraft(id: string) {
   return apBillsDb.deleteApBillDraft(id);
 }
-export async function getApBillsSummary() {
-  return apBillsDb.getApBillsSummary();
+export async function getApBillsSummary(explicitClient?: SupabaseClient) {
+  return apBillsDb.getApBillsSummary(explicitClient);
 }
 
 /** Finance overview: Revenue (invoices.total), Total Bills (ap_bills.amount), Total Expenses (expense_lines), Total Labor Cost (labor_entries.cost_amount), Profit = Revenue - Bills - Expenses - Labor. */
@@ -1418,9 +1433,7 @@ export function computeDashboardStatsFromProjects(
 
 export async function getDashboardStats() {
   const projects = await projectsDb.getProjectsDashboard(200);
-  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(
-    () => new Map<string, CanonicalProjectProfit>()
-  );
+  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id));
   return computeDashboardStatsFromProjects(projects, profitMap);
 }
 
@@ -1690,8 +1703,10 @@ export async function getBillsSummaryAll(): Promise<
   return subcontractBillsDb.getBillsSummaryAll();
 }
 
-export async function getBillsAll(): Promise<{ id: string; amount: number; status: string }[]> {
-  return subcontractBillsDb.getBillsAll();
+export async function getBillsAll(
+  explicitClient?: SupabaseClient
+): Promise<{ id: string; amount: number; status: string }[]> {
+  return subcontractBillsDb.getBillsAll(explicitClient);
 }
 
 export async function getApprovedSubcontractBillsTotalByProject(
@@ -1742,16 +1757,16 @@ export async function createApBillFromScheduleItem(
   return subcontractPaymentScheduleDb.createApBillFromScheduleItem(scheduleId);
 }
 
-export async function getPaymentsSummaryAll(): Promise<
-  { subcontract_id: string; amount: number }[]
-> {
-  return subcontractPaymentsDb.getPaymentsSummaryAll();
+export async function getPaymentsSummaryAll(
+  explicitClient?: SupabaseClient
+): Promise<{ subcontract_id: string; amount: number }[]> {
+  return subcontractPaymentsDb.getPaymentsSummaryAll(explicitClient);
 }
 
-export async function getSubcontractPaymentsAll(): Promise<
-  { bill_id: string | null; amount: number }[]
-> {
-  return subcontractPaymentsDb.getPaymentsAll();
+export async function getSubcontractPaymentsAll(
+  explicitClient?: SupabaseClient
+): Promise<{ bill_id: string | null; amount: number }[]> {
+  return subcontractPaymentsDb.getPaymentsAll(explicitClient);
 }
 
 export async function getPaymentsBySubcontractIds(
@@ -2041,12 +2056,15 @@ export async function deleteExpenseAttachment(
   return expensesDb.deleteExpenseAttachment(expenseId, attachmentId);
 }
 
-export async function getExpenseTotalsByProject(projectId: string): Promise<number> {
-  return expensesDb.getExpenseTotalsByProject(projectId);
+export async function getExpenseTotalsByProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  return expensesDb.getExpenseTotalsByProject(projectId, explicitClient);
 }
 
-export async function getTotalExpenses(): Promise<number> {
-  return expensesDb.getTotalExpenses();
+export async function getTotalExpenses(explicitClient?: SupabaseClient): Promise<number> {
+  return expensesDb.getTotalExpenses(explicitClient);
 }
 
 export async function getExpenseLinesByProject(
@@ -2254,41 +2272,53 @@ export type ProjectFromEstimate = {
   snapshotBudgetBreakdown?: { materials: number; labor: number; vendor: number; other: number };
 };
 
-export async function getInvoices(): Promise<Invoice[]> {
-  return invoicesDb.getInvoices();
+export async function getInvoices(explicitClient?: SupabaseClient): Promise<Invoice[]> {
+  return invoicesDb.getInvoices(explicitClient);
 }
 
-export async function getInvoicePayments(): Promise<InvoicePayment[]> {
-  return invoicesDb.getInvoicePayments();
+export async function getInvoicePayments(
+  explicitClient?: SupabaseClient
+): Promise<InvoicePayment[]> {
+  return invoicesDb.getInvoicePayments(explicitClient);
 }
 
-export async function getInvoicesWithDerived(filters?: {
-  status?: InvoiceStatus | "Overdue";
-  projectId?: string;
-  search?: string;
-}): Promise<InvoiceWithDerived[]> {
-  return invoicesDb.getInvoicesWithDerived(filters);
+export async function getInvoicesWithDerived(
+  filters?: {
+    status?: InvoiceStatus | "Overdue";
+    projectId?: string;
+    search?: string;
+  },
+  explicitClient?: SupabaseClient
+): Promise<InvoiceWithDerived[]> {
+  return invoicesDb.getInvoicesWithDerived(filters, explicitClient);
 }
 
 export async function getInvoicesWithDerivedPaged(
-  input?: Parameters<typeof invoicesDb.getInvoicesWithDerivedPaged>[0]
+  input?: Parameters<typeof invoicesDb.getInvoicesWithDerivedPaged>[0],
+  explicitClient?: SupabaseClient
 ) {
-  return invoicesDb.getInvoicesWithDerivedPaged(input);
+  return invoicesDb.getInvoicesWithDerivedPaged(input, explicitClient);
 }
 
 export async function getOverdueInvoices(): Promise<OverdueInvoiceRow[]> {
   return invoicesDb.getOverdueInvoices();
 }
 
-export async function getInvoiceById(id: string): Promise<InvoiceWithDerived | null> {
-  return invoicesDb.getInvoiceByIdWithDerived(id);
+export async function getInvoiceById(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<InvoiceWithDerived | null> {
+  return invoicesDb.getInvoiceByIdWithDerived(id, explicitClient);
 }
 
 /** Alias for getInvoiceById for compatibility. */
 export const getInvoiceByIdWithDerived = getInvoiceById;
 
-export async function getPaymentsByInvoiceId(invoiceId: string): Promise<InvoicePayment[]> {
-  return invoicesDb.getPaymentsByInvoiceId(invoiceId);
+export async function getPaymentsByInvoiceId(
+  invoiceId: string,
+  explicitClient?: SupabaseClient
+): Promise<InvoicePayment[]> {
+  return invoicesDb.getPaymentsByInvoiceId(invoiceId, explicitClient);
 }
 
 export async function recordInvoicePayment(
@@ -2413,14 +2443,14 @@ export async function updatePaymentReceived(
 }
 
 export type { DepositRow, DepositWithMeta } from "../deposits-db";
-export async function getDeposits() {
-  return depositsDb.getDeposits();
+export async function getDeposits(explicitClient?: SupabaseClient) {
+  return depositsDb.getDeposits(explicitClient);
 }
-export async function getDepositsByInvoiceId(invoiceId: string) {
-  return depositsDb.getDepositsByInvoiceId(invoiceId);
+export async function getDepositsByInvoiceId(invoiceId: string, explicitClient?: SupabaseClient) {
+  return depositsDb.getDepositsByInvoiceId(invoiceId, explicitClient);
 }
-export async function getTotalDepositsAmount() {
-  return depositsDb.getTotalDepositsAmount();
+export async function getTotalDepositsAmount(explicitClient?: SupabaseClient) {
+  return depositsDb.getTotalDepositsAmount(explicitClient);
 }
 
 export async function duplicateInvoice(invoiceId: string): Promise<Invoice | null> {
@@ -2478,13 +2508,13 @@ export interface ARSummary {
   paidThisMonth: number;
 }
 
-export async function getARSummary(): Promise<ARSummary> {
+export async function getARSummary(explicitClient?: SupabaseClient): Promise<ARSummary> {
   const today = new Date().toISOString().slice(0, 10);
   const startOfMonth = today.slice(0, 7) + "-01";
-  const withDerived = await invoicesDb.getInvoicesWithDerived();
+  const withDerived = await invoicesDb.getInvoicesWithDerived(undefined, explicitClient);
   let totalAR = 0;
   let overdueAR = 0;
-  const payments = await invoicesDb.getInvoicePayments();
+  const payments = await invoicesDb.getInvoicePayments(explicitClient);
   let paidThisMonth = 0;
   for (const inv of withDerived) {
     if (inv.computedStatus === "Void") continue;
@@ -2504,8 +2534,10 @@ export async function getARSummary(): Promise<ARSummary> {
   return { totalAR, overdueAR, paidThisMonth };
 }
 
-export async function getOutstandingInvoices(): Promise<InvoiceWithDerived[]> {
-  const list = await getInvoicesWithDerived();
+export async function getOutstandingInvoices(
+  explicitClient?: SupabaseClient
+): Promise<InvoiceWithDerived[]> {
+  const list = await getInvoicesWithDerived(undefined, explicitClient);
   return list.filter(
     (i) =>
       i.computedStatus === "Unpaid" ||
@@ -2809,9 +2841,7 @@ export async function getCompanyFinancialDashboard(): Promise<CompanyFinancialDa
     invoicesDb.getCompanyRevenueAndCollected(),
   ]);
   const budget = projects.reduce((s, p) => s + (Number(p.budget) || 0), 0);
-  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(
-    () => new Map()
-  );
+  const profitMap = await getCanonicalProjectProfitBatch(projects.map((p) => p.id));
   const spent = projects.reduce((s, p) => s + (profitMap.get(p.id)?.actualCost ?? 0), 0);
   const { revenue, collected } = revenueData;
   const profit = revenue - spent;
@@ -3265,6 +3295,26 @@ export async function getProjectFromEstimate(
 export async function getSourceForProject(projectId: string): Promise<ProjectFromEstimate | null> {
   const project = await getProjectById(projectId);
   if (!project || !("sourceEstimateId" in project) || !project.sourceEstimateId) return null;
+  const b = project.snapshotBudgetBreakdown;
+  return {
+    projectId: project.id,
+    sourceEstimateId: project.sourceEstimateId,
+    sourceSnapshotId: `estimate-${project.sourceEstimateId}`,
+    sourceVersion: 1,
+    snapshotRevenue: project.snapshotRevenue ?? project.budget,
+    snapshotBudgetCost: project.snapshotBudgetCost ?? undefined,
+    snapshotBudgetBreakdown: b
+      ? { materials: b.materials, labor: b.labor, vendor: b.vendor, other: b.other }
+      : undefined,
+  };
+}
+
+async function getSourceForProjectWithClient(
+  projectId: string,
+  explicitClient: SupabaseClient
+): Promise<ProjectFromEstimate | null> {
+  const project = await projectsDb.getProjectById(projectId, explicitClient);
+  if (!project || !project.sourceEstimateId) return null;
   const b = project.snapshotBudgetBreakdown;
   return {
     projectId: project.id,
@@ -3741,8 +3791,10 @@ export interface ProjectRiskOverview {
 }
 
 /** Computes risk overview from projects + sources + financial. Null-safe. */
-export async function getProjectRiskOverview(): Promise<ProjectRiskOverview> {
-  const projects = await getProjects();
+export async function getProjectRiskOverview(
+  explicitClient: SupabaseClient
+): Promise<ProjectRiskOverview> {
+  const projects = await getProjects(explicitClient);
   const rows: ProjectRiskRow[] = [];
   let highCount = 0;
   let overBudgetCount = 0;
@@ -3751,8 +3803,13 @@ export async function getProjectRiskOverview(): Promise<ProjectRiskOverview> {
 
   // Fetch financials in batch (5 queries total) + all sources in parallel.
   const [profitMap, sources] = await Promise.all([
-    getCanonicalProjectProfitBatch(projects.map((p) => p.id)).catch(() => new Map()),
-    Promise.all(projects.map((p) => getSourceForProject(p.id).catch(() => null))),
+    getCanonicalProjectProfitBatch(
+      projects.map((p) => p.id),
+      explicitClient
+    ),
+    Promise.all(
+      projects.map((p) => getSourceForProjectWithClient(p.id, explicitClient).catch(() => null))
+    ),
   ]);
 
   for (let i = 0; i < projects.length; i++) {

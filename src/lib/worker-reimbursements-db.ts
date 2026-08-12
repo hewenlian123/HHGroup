@@ -181,23 +181,21 @@ export async function sumUnpaidApprovedWorkerReimbursements(): Promise<number> {
   }
 }
 
-/** Paid reimbursements allocated to a project. Safe $0 if table missing or query fails. */
-export async function sumPaidWorkerReimbursementsForProject(projectId: string): Promise<number> {
-  try {
-    const c = client();
-    const { data, error } = await c
-      .from(TABLE_NAME)
-      .select("amount")
-      .eq("project_id", projectId)
-      .eq("status", "paid");
-    if (error) {
-      if (isTableMissingError(error)) return 0;
-      return 0;
-    }
-    return (data ?? []).reduce((s, r) => s + Number((r as { amount?: unknown }).amount ?? 0), 0);
-  } catch {
-    return 0;
+/** Paid reimbursements allocated to a project. No matching rows contribute $0; failed reads reject. */
+export async function sumPaidWorkerReimbursementsForProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const c = client(explicitClient);
+  const { data, error } = await c
+    .from(TABLE_NAME)
+    .select("amount")
+    .eq("project_id", projectId)
+    .eq("status", "paid");
+  if (error) {
+    throw new Error(`Financial data unavailable: worker_reimbursements. ${error.message}`);
   }
+  return (data ?? []).reduce((s, r) => s + Number((r as { amount?: unknown }).amount ?? 0), 0);
 }
 
 export async function getWorkerReimbursements(

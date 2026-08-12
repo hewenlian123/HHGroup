@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { revalidateEstimatePaths } from "@/app/estimates/revalidate-estimate-paths";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import {
   setEstimateStatusWithClient,
@@ -36,7 +37,9 @@ import {
 
 export type EstimateStatus = "Draft" | "Sent" | "Approved" | "Rejected" | "Converted";
 
-function getEstimateWriteClient(): SupabaseClient | null {
+async function getEstimateWriteClient(): Promise<SupabaseClient | null> {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) return null;
   return getServerSupabaseAdmin();
 }
 
@@ -290,7 +293,7 @@ export async function approveEstimateAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     const ok = await setEstimateStatusWithClient(estimateId, "Approved", db);
     if (!ok) return;
@@ -303,6 +306,9 @@ export async function approveEstimateAction(formData: FormData) {
 }
 
 export async function createNewVersionAction(formData: FormData) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) return;
+
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
@@ -317,6 +323,9 @@ export async function createNewVersionAction(formData: FormData) {
 }
 
 export async function convertToProjectAction(formData: FormData) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) return;
+
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
@@ -335,7 +344,7 @@ export async function sendEstimateAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     const ok = await setEstimateStatusWithClient(estimateId, "Sent", db);
     if (!ok) return;
@@ -351,7 +360,7 @@ export async function rejectEstimateAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     const ok = await setEstimateStatusWithClient(estimateId, "Rejected", db);
     if (!ok) return;
@@ -370,7 +379,7 @@ export async function changeEstimateStatusAction(formData: FormData) {
   if (typeof estimateId !== "string" || typeof newStatus !== "string" || !valid.includes(newStatus))
     return;
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     const ok = await updateEstimateStatusWithClient(
       db,
@@ -393,7 +402,7 @@ export async function changeEstimateStatusInlineAction(
   newStatus: EstimateStatus
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await updateEstimateStatusWithClient(db, estimateId, newStatus);
     if (ok) {
@@ -410,7 +419,7 @@ export async function sendEstimateInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await setEstimateStatusWithClient(estimateId, "Sent", db);
     if (ok) {
@@ -427,7 +436,7 @@ export async function approveEstimateInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await setEstimateStatusWithClient(estimateId, "Approved", db);
     if (ok) {
@@ -444,7 +453,7 @@ export async function rejectEstimateInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await setEstimateStatusWithClient(estimateId, "Rejected", db);
     if (ok) {
@@ -460,6 +469,9 @@ export async function rejectEstimateInlineAction(
 export async function convertToProjectInlineAction(
   estimateId: string
 ): Promise<{ ok: boolean; projectId?: string; error?: string }> {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) return { ok: false, error: "Authentication required." };
+
   try {
     const record = await convertEstimateSnapshotToProject(estimateId);
     if (record) {
@@ -478,6 +490,9 @@ export async function convertToProjectInlineAction(
 export async function convertToProjectWithSetupAction(
   formData: FormData
 ): Promise<{ ok: boolean; projectId?: string; error?: string }> {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) return { ok: false, error: "Authentication required." };
+
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return { ok: false, error: "Missing estimate" };
   try {
@@ -529,7 +544,7 @@ export async function saveEstimateMetaInlineAction(
     if (formData.has("projectName") && !projectName) {
       return { ok: false, error: "Project name is required." };
     }
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await updateEstimateMetaWithClient(db, estimateId, {
       ...(clientName != null
@@ -568,7 +583,7 @@ export async function addPaymentMilestoneAction(formData: FormData) {
   const dueDateRaw = (formData.get("dueDate") as string)?.trim() || "";
   const dueDate = dueDateRaw || undefined;
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     await addPaymentMilestoneWithClient(db, estimateId, { title, description, amount, dueDate });
     revalidateEstimatePaths(estimateId);
@@ -590,7 +605,7 @@ export async function updatePaymentMilestoneAction(formData: FormData) {
   const dueDateRaw = (formData.get("dueDate") as string)?.trim() || "";
   const dueDate = dueDateRaw || null;
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     await updatePaymentMilestoneWithClient(db, estimateId, itemId, {
       ...(title != null ? { title } : {}),
@@ -611,7 +626,7 @@ export async function deletePaymentMilestoneAction(formData: FormData) {
   const itemId = formData.get("itemId");
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     await deletePaymentMilestoneWithClient(db, estimateId, itemId);
     revalidateEstimatePaths(estimateId);
@@ -627,7 +642,7 @@ export async function markPaymentMilestonePaidAction(formData: FormData) {
   const itemId = formData.get("itemId");
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     await markPaymentMilestonePaidWithClient(db, estimateId, itemId);
     revalidateEstimatePaths(estimateId);
@@ -649,7 +664,7 @@ export async function createInvoiceFromPaymentScheduleItemAction(
   }
 
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
 
     const [estimateRes, metaRes, itemRes] = await Promise.all([
@@ -802,7 +817,7 @@ export async function reorderPaymentScheduleAction(formData: FormData) {
   try {
     const orderedItemIds = JSON.parse(orderedIdsJson) as string[];
     if (!Array.isArray(orderedItemIds) || orderedItemIds.length === 0) return;
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     const ok = await reorderPaymentScheduleWithClient(db, estimateId, orderedItemIds);
     if (!ok) return;
@@ -815,6 +830,9 @@ export async function reorderPaymentScheduleAction(formData: FormData) {
 }
 
 export async function applyPaymentTemplateAction(formData: FormData) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) return;
+
   const estimateId = formData.get("estimateId");
   const templateId = formData.get("templateId");
   if (typeof estimateId !== "string" || typeof templateId !== "string") return;
@@ -829,6 +847,9 @@ export async function applyPaymentTemplateAction(formData: FormData) {
 }
 
 export async function createPaymentTemplateAction(formData: FormData) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) return;
+
   const name = (formData.get("templateName") as string)?.trim() || "Payment template";
   const estimateId = formData.get("estimateId");
   if (typeof estimateId !== "string") return;
@@ -857,7 +878,7 @@ export async function addLineItemAction(formData: FormData) {
   if (typeof estimateId !== "string" || typeof costCode !== "string") return;
   const categoryDisplayName = (formData.get("categoryDisplayName") as string)?.trim() || "";
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     const item = await addLineItemWithClient(db, estimateId, {
       costCode,
@@ -887,7 +908,7 @@ export async function addLineItemCatalogInlineAction(
   categoryDisplayName: string
 ): Promise<{ ok: boolean; error?: string }> {
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const item = await addLineItemWithClient(db, estimateId, {
       costCode,
@@ -917,7 +938,7 @@ export async function createCustomEstimateCategoryAction(
 ): Promise<{ ok: boolean; costCode?: string; error?: string }> {
   if (!estimateId.trim()) return { ok: false, error: "Estimate id is required." };
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const out = await createCustomEstimateCategoryWithClient(db, estimateId, displayName);
     if (!out.ok) return { ok: false, error: out.error };
@@ -936,7 +957,7 @@ export async function createEstimateCategoryWithCodeAction(
 ): Promise<{ ok: boolean; costCode?: string; error?: string }> {
   if (!estimateId.trim()) return { ok: false, error: "Estimate id is required." };
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const out = await createEstimateCategoryWithExplicitCodeWithClient(
       db,
@@ -963,7 +984,7 @@ export async function toggleLineItemHideAmountOnPdfAction(
     return { ok: false, error: "Missing estimate or item id" };
   }
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const hideAmountOnPdf = hideRaw === "1" || hideRaw === "true";
     const ok = await updateLineItemWithClient(db, estimateId, itemId, { hideAmountOnPdf });
@@ -985,7 +1006,7 @@ export async function setLineItemStatusAction(
     return { ok: false, error: "Missing estimate, item, or status" };
   }
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await updateLineItemWithClient(db, estimateId, itemId, {
       status: status as EstimateLineItemStatus,
@@ -1007,7 +1028,7 @@ export async function saveEstimateDocumentNotesInlineAction(
 ): Promise<{ ok: boolean; error?: string }> {
   if (!estimateId.trim()) return { ok: false, error: "Missing estimate id" };
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await updateEstimateMetaWithClient(db, estimateId, {
       documentNotes: normalizeEstimateNoteBlocks(notes),
@@ -1030,7 +1051,7 @@ export async function updateLineItemAction(formData: FormData) {
     const qty = formData.get("qty");
     const unit = formData.get("unit") as string | null;
     const unitCost = formData.get("unitCost");
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     const ok = await updateLineItemWithClient(db, estimateId, itemId, {
       ...(desc != null ? { desc } : {}),
@@ -1055,7 +1076,7 @@ export async function updateLineItemInlineAction(
   if (typeof estimateId !== "string" || typeof itemId !== "string")
     return { ok: false, error: "Missing estimate or item id" };
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const desc = formData.get("desc") as string | null;
     const qty = formData.get("qty");
@@ -1082,7 +1103,7 @@ export async function duplicateLineItemAction(formData: FormData) {
   const itemId = formData.get("itemId");
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     const item = await duplicateLineItemWithClient(db, estimateId, itemId);
     if (!item) return;
@@ -1098,7 +1119,7 @@ export async function deleteLineItemAction(formData: FormData) {
   const itemId = formData.get("itemId");
   if (typeof estimateId !== "string" || typeof itemId !== "string") return;
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     await deleteLineItemWithClient(db, estimateId, itemId);
     revalidateEstimatePaths(estimateId);
@@ -1126,7 +1147,7 @@ export async function saveEstimateMetaAction(formData: FormData) {
       documentStyleRaw === "itemized" || documentStyleRaw === "proposal"
         ? documentStyleRaw
         : undefined;
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     const ok = await updateEstimateMetaWithClient(db, estimateId, {
       ...(clientName != null
@@ -1161,7 +1182,7 @@ export async function saveCostCategoryNameAction(formData: FormData) {
   const displayName = (formData.get("displayName") as string)?.trim();
   if (typeof estimateId !== "string" || typeof costCode !== "string" || displayName == null) return;
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return;
     await updateEstimateMetaWithClient(db, estimateId, {
       categoryNames: { [costCode]: displayName },
@@ -1180,7 +1201,7 @@ export async function reorderEstimateCategoriesAction(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     if (orderedCostCodes.length === 0) return { ok: true };
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await reorderEstimateCategoriesWithClient(
       db,
@@ -1204,7 +1225,7 @@ export async function moveEstimateItemsToCostCodeAction(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     if (itemIds.length === 0) return { ok: true };
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await moveEstimateItemsToCostCodeWithClient(
       db,
@@ -1230,7 +1251,7 @@ export async function saveCostCategoryNameInlineAction(
   const trimmed = displayName.trim();
   if (!trimmed) return { ok: false, error: "Name cannot be empty." };
   try {
-    const db = getEstimateWriteClient();
+    const db = await getEstimateWriteClient();
     if (!db) return { ok: false, error: "Database is not configured." };
     const ok = await updateEstimateCategoryDisplayNameWithClient(db, estimateId, costCode, trimmed);
     if (!ok) {

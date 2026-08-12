@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { deleteProjectTaskWithClient } from "@/lib/data";
 import { isTestTask } from "@/lib/project-tasks-db";
@@ -14,6 +15,9 @@ type RouteParams = { params: Promise<{ id: string }> };
  * System tests should delete their own tasks via direct Supabase, not this API.
  */
 export async function DELETE(_req: Request, { params }: RouteParams) {
+  const guard = await requireSupabaseOwnerOrAdmin(_req);
+  if (!guard.ok) return guard.response;
+
   const { id } = await params;
   if (!id?.trim()) {
     return NextResponse.json({ ok: false, message: "Task id is required." }, { status: 400 });

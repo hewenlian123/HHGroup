@@ -6,6 +6,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import postgres from "postgres";
@@ -22,6 +23,9 @@ const CLEANUP_CONFIRMATION = "CLEAN UP";
 type CleanupCategory = "orphaned" | "ghost" | "duplicate" | "stale";
 
 export async function POST(request: Request) {
+  const strictGuard = await requireSupabaseOwnerOrAdmin(request);
+  if (!strictGuard.ok) return strictGuard.response;
+
   const blocked = guardDangerousMaintenanceRequest(request);
   if (blocked) return blocked;
 

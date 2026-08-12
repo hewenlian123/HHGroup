@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { isTestTask } from "@/lib/project-tasks-db";
 
@@ -18,7 +19,10 @@ function timeoutReject<T>(ms: number, message: string): Promise<T> {
 }
 
 /** GET: Tasks, projects, workers — query with admin client directly so UI sees same data as DELETE/clear-data. */
-export async function GET() {
+export async function GET(request: Request) {
+  const guard = await requireSupabaseOwnerOrAdmin(request);
+  if (!guard.ok) return guard.response;
+
   const admin = getServerSupabaseAdmin();
   if (!admin) {
     return NextResponse.json(

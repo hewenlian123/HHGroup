@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import { updateCommission, deleteCommission, getCommissionById } from "@/lib/data";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
@@ -11,6 +12,8 @@ export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
     return NextResponse.json(
@@ -49,7 +52,7 @@ export async function PATCH(
     const commission = await updateCommission(
       commissionId,
       updates as Parameters<typeof updateCommission>[1],
-      getServerSupabaseInternalNoStore() ?? undefined
+      guard.client ?? undefined
     );
     if (!commission)
       return NextResponse.json({ ok: false, message: "Commission not found" }, { status: 404 });
@@ -68,9 +71,11 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
     return NextResponse.json(
@@ -86,7 +91,7 @@ export async function DELETE(
         { ok: false, message: "Commission does not belong to this project" },
         { status: 400 }
       );
-    await deleteCommission(commissionId, getServerSupabaseInternalNoStore() ?? undefined);
+    await deleteCommission(commissionId, guard.client ?? undefined);
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
     return NextResponse.json({ ok: true });

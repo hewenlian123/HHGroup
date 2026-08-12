@@ -20,6 +20,7 @@ import {
 } from "./dashboard-bundle";
 import { DashboardView } from "./dashboard-view";
 import type { ProjectContractReviewSummary } from "@/lib/financial/project-financial-review";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 const EMPTY_RISK_OVERVIEW: ProjectRiskOverview = {
   summary: {
@@ -50,12 +51,15 @@ export async function DashboardMainSection({
   let profitMap = new Map<string, CanonicalProjectProfit>();
   let contractReview: ProjectContractReviewSummary = emptyDashboardContractReview;
   let dataLoadWarning: string | null = null;
+  let projectSupabase: Awaited<ReturnType<typeof createServerSupabaseClient>> = null;
 
   try {
+    projectSupabase = await createServerSupabaseClient({ noStore: true });
+    if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
     const [tx, risk, bundle] = await Promise.all([
       getRecentTransactionsCached(20),
-      getProjectRiskOverviewCached(),
-      loadDashboardProjectsBundle(),
+      getProjectRiskOverviewCached(projectSupabase),
+      loadDashboardProjectsBundle(projectSupabase),
     ]);
     transactions = tx;
     riskOverview = risk;
@@ -87,7 +91,7 @@ export async function DashboardMainSection({
 
   const [apBillsSummary, laborCostThisWeek, expensesThisMonth, overdueInvoices] = await Promise.all(
     [
-      getApBillsSummaryCached(),
+      getApBillsSummaryCached(projectSupabase),
       getLaborCostThisWeekCached(),
       getExpensesThisMonthCached(),
       getOverdueInvoicesCached(),

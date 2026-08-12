@@ -130,7 +130,9 @@ export function appendLaborSettlementServiceRoleHint(message: string): string {
 }
 
 /** Back-compat alias used by some server actions. */
-export async function createServerSupabaseClient(): Promise<SupabaseClient | null> {
+export async function createServerSupabaseClient(
+  options: { noStore?: boolean } = {}
+): Promise<SupabaseClient | null> {
   const url = envUrl();
   const anon = envAnon();
   if (!url || !anon) return null;
@@ -141,6 +143,7 @@ export async function createServerSupabaseClient(): Promise<SupabaseClient | nul
   const cookieStore = cookies();
 
   return createServerClient(url, anon, {
+    ...(options.noStore ? { global: { fetch: noStoreFetch } } : {}),
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -188,7 +191,7 @@ function requestCookies(request: Request | NextRequest): RouteCookie[] {
 export function createRouteSupabaseClient(
   request: Request | NextRequest,
   response: NextResponse,
-  options: { persistent?: boolean } = {}
+  options: { persistent?: boolean; noStore?: boolean } = {}
 ): SupabaseClient | null {
   const url = envUrl();
   const anon = envAnon();
@@ -196,6 +199,7 @@ export function createRouteSupabaseClient(
   const persistent = options.persistent === true;
 
   return createServerClient(url, anon, {
+    ...(options.noStore ? { global: { fetch: noStoreFetch } } : {}),
     cookies: {
       getAll() {
         return requestCookies(request);
@@ -266,6 +270,20 @@ export async function getSupabaseUserFromRequest(req: Request): Promise<User | n
   } = await cookieClient.auth.getUser();
   if (!error && user) return user;
   return null;
+}
+
+/**
+ * Resolve the current Server Action user from the server-owned Supabase session cookies.
+ * This intentionally has no compatibility, PIN, header-secret, or local test bypass.
+ */
+export async function getSupabaseUserFromServerSession(): Promise<User | null> {
+  const client = await createServerSupabaseClient().catch(() => null);
+  if (!client) return null;
+  const {
+    data: { user },
+    error,
+  } = await client.auth.getUser().catch(() => ({ data: { user: null }, error: null }));
+  return !error && user ? user : null;
 }
 
 /** Single-tenant / dev only: allow logo API with service role when no session is present. */

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { deleteWorker, updateWorker } from "@/lib/data";
 import { getWorkerByIdWithClient, getWorkerUsageWithClient } from "@/lib/labor-db";
 import {
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 type RouteParams = { params: Promise<{ id: string }> };
 
 export async function GET(req: Request, { params }: RouteParams) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
@@ -65,7 +65,7 @@ export async function GET(req: Request, { params }: RouteParams) {
  * PATCH: Update a worker (uses admin client).
  */
 export async function PATCH(req: Request, { params }: RouteParams) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
@@ -103,7 +103,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
  * DELETE: Remove a worker (uses admin client so it matches list/clear-data).
  */
 export async function DELETE(req: Request, { params }: RouteParams) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
   const { id } = await params;

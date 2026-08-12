@@ -8,16 +8,19 @@ import {
   getRecentTransactionsCached,
   loadDashboardProjectsBundle,
 } from "./dashboard-bundle";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export async function DashboardKpiSection() {
   try {
+    const projectSupabase = await createServerSupabaseClient({ noStore: true });
+    if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
     const [bundle, apBillsSummary, overdueInvoices, laborCostThisWeek, riskOverview, recentTx] =
       await Promise.all([
-        loadDashboardProjectsBundle(),
-        getApBillsSummaryCached(),
+        loadDashboardProjectsBundle(projectSupabase),
+        getApBillsSummaryCached(projectSupabase),
         getOverdueInvoicesCached(),
         getLaborCostThisWeekCached(),
-        getProjectRiskOverviewCached(),
+        getProjectRiskOverviewCached(projectSupabase),
         getRecentTransactionsCached(24),
       ]);
 

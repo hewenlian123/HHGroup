@@ -1,12 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getSupabaseUserFromRequestMock, isValidPinSessionMock } = vi.hoisted(() => ({
+const {
+  getSupabaseUserFromRequestMock,
+  getSupabaseUserFromServerSessionMock,
+  isValidPinSessionMock,
+} = vi.hoisted(() => ({
   getSupabaseUserFromRequestMock: vi.fn(),
+  getSupabaseUserFromServerSessionMock: vi.fn(),
   isValidPinSessionMock: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase-server", () => ({
   getSupabaseUserFromRequest: getSupabaseUserFromRequestMock,
+  getSupabaseUserFromServerSession: getSupabaseUserFromServerSessionMock,
 }));
 
 vi.mock("@/lib/pin-auth", () => ({
@@ -14,7 +20,11 @@ vi.mock("@/lib/pin-auth", () => ({
 }));
 
 import { authorizedAppRole, isAuthorizedAppRole } from "@/lib/auth-role";
-import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import {
+  requireSupabaseOwnerOrAdmin,
+  requireSupabaseOwnerOrAdminServerActionWithClient,
+  requireSupabaseOwnerOrAdminWithClient,
+} from "@/lib/auth-boundary";
 import { normalizeAuthRedirect } from "@/lib/auth-redirect";
 import { validateSameOriginMutation } from "@/lib/auth-request-security";
 import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
@@ -29,6 +39,7 @@ describe("authenticated owner-access security primitives", () => {
     delete process.env.INTERNAL_ADMIN_SECRET;
     delete process.env.HH_ADMIN_EMAILS;
     getSupabaseUserFromRequestMock.mockReset().mockResolvedValue(null);
+    getSupabaseUserFromServerSessionMock.mockReset().mockResolvedValue(null);
     isValidPinSessionMock.mockReset().mockResolvedValue(true);
   });
 
@@ -145,5 +156,83 @@ describe("authenticated owner-access security primitives", () => {
       expect(result.context.role).toBe("owner");
       expect(result.context.user.id).toBe("owner-id");
     }
+  });
+
+  it("denies compatibility-mode access before a privileged route client is created", async () => {
+    process.env.HH_REQUIRE_LOGIN = "false";
+    const clientFactory = vi.fn(() => ({ privileged: true }));
+
+    const result = await requireSupabaseOwnerOrAdminWithClient(
+      new Request("http://localhost:3104/api/bills"),
+      clientFactory
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.response.status).toBe(401);
+    expect(clientFactory).not.toHaveBeenCalled();
+  });
+
+  it("denies a non-owner before a privileged route client is created", async () => {
+    getSupabaseUserFromRequestMock.mockResolvedValue({
+      app_metadata: { role: "worker" },
+      email: "worker@example.test",
+      id: "worker-id",
+      user_metadata: {},
+    });
+    const clientFactory = vi.fn(() => ({ privileged: true }));
+
+    const result = await requireSupabaseOwnerOrAdminWithClient(
+      new Request("http://localhost:3104/api/bills"),
+      clientFactory
+    );
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.response.status).toBe(403);
+    expect(clientFactory).not.toHaveBeenCalled();
+  });
+
+  it("allows an owner and only then creates a privileged route client", async () => {
+    getSupabaseUserFromRequestMock.mockResolvedValue({
+      app_metadata: { role: "owner" },
+      email: "owner@example.test",
+      id: "owner-id",
+      user_metadata: {},
+    });
+    const client = { privileged: true };
+    const clientFactory = vi.fn(() => client);
+
+    const result = await requireSupabaseOwnerOrAdminWithClient(
+      new Request("http://localhost:3104/api/bills"),
+      clientFactory
+    );
+
+    expect(result).toMatchObject({ ok: true, client });
+    expect(clientFactory).toHaveBeenCalledOnce();
+  });
+
+  it("denies an unauthenticated Server Action before its privileged client is created", async () => {
+    const clientFactory = vi.fn(() => ({ privileged: true }));
+
+    const result = await requireSupabaseOwnerOrAdminServerActionWithClient(clientFactory);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.status).toBe(401);
+    expect(clientFactory).not.toHaveBeenCalled();
+  });
+
+  it("allows an admin Server Action and only then creates its privileged client", async () => {
+    getSupabaseUserFromServerSessionMock.mockResolvedValue({
+      app_metadata: { role: "admin" },
+      email: "admin@example.test",
+      id: "admin-id",
+      user_metadata: {},
+    });
+    const client = { privileged: true };
+    const clientFactory = vi.fn(() => client);
+
+    const result = await requireSupabaseOwnerOrAdminServerActionWithClient(clientFactory);
+
+    expect(result).toMatchObject({ ok: true, client });
+    expect(clientFactory).toHaveBeenCalledOnce();
   });
 });

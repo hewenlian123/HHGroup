@@ -5,20 +5,31 @@ import {
   addDocumentCompanyPdfHeader,
 } from "@/lib/document-company-pdf";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "attachments";
 
 export async function POST(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdmin(_req);
+  if (!guard.ok) return guard.response;
+
   const { id: projectId } = await ctx.params;
   if (!projectId)
     return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
+  const sessionSupabase = await createServerSupabaseClient({ noStore: true });
+  if (!sessionSupabase) {
+    return NextResponse.json(
+      { ok: false, message: "Authenticated session is not configured" },
+      { status: 503 }
+    );
+  }
   try {
     const [project, billing, canonical, company] = await Promise.all([
       getProjectById(projectId),
       getProjectBillingSummary(projectId),
-      getCanonicalProjectProfit(projectId),
+      getCanonicalProjectProfit(projectId, sessionSupabase),
       fetchDocumentCompanyProfile(),
     ]);
     if (!project)

@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import { getCommissionById, getPaymentRecordById, updatePaymentRecord } from "@/lib/data";
 import {
   parseCommissionReceiptStorageUrl,
@@ -31,11 +32,13 @@ export async function POST(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdmin);
+  if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
     return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
 
-  const supabase = getServerSupabaseAdmin();
+  const supabase = guard.client;
   if (!supabase)
     return NextResponse.json(
       { ok: false, message: "Supabase service role is not configured." },
@@ -139,14 +142,16 @@ export async function POST(
  * Remove uploaded file from Storage (if recognized) and clear receipt_url on the payment row.
  */
 export async function DELETE(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdmin);
+  if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
     return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
 
-  const supabase = getServerSupabaseAdmin();
+  const supabase = guard.client;
   if (!supabase)
     return NextResponse.json(
       { ok: false, message: "Supabase service role is not configured." },

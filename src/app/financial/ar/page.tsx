@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getARSummary, getOutstandingInvoices, getProjects } from "@/lib/data";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { Banknote, AlertCircle, TrendingUp, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency } from "@/lib/formatters";
@@ -31,10 +34,14 @@ function getAgingBucket(dueDate: string): string {
 export const dynamic = "force-dynamic";
 
 export default async function ARPage() {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
+  const supabase = await createServerSupabaseClient({ noStore: true });
+  if (!supabase) notFound();
   const [summary, outstanding, projects] = await Promise.all([
-    getARSummary(),
-    getOutstandingInvoices(),
-    getProjects(),
+    getARSummary(supabase),
+    getOutstandingInvoices(supabase),
+    getProjects(supabase),
   ]);
   const projectNameById = new Map(projects.map((p) => [p.id, p.name]));
 

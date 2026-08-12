@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import {
+  requireSupabaseOwnerOrAdmin,
+  requireSupabaseOwnerOrAdminWithClient,
+} from "@/lib/auth-boundary";
 import { getServerSupabaseAdmin, getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { updateWorkerReimbursement } from "@/lib/worker-reimbursements-db";
 import postgres from "postgres";
@@ -13,7 +16,7 @@ const TABLE_NAME = "worker_reimbursements";
  * Returns 204 on success, 404 if not found, 500 on error.
  */
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
   try {
@@ -62,10 +65,13 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(
+    request,
+    getServerSupabaseInternalNoStore
+  );
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = guard.client;
   if (!supabase) {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }

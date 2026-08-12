@@ -155,14 +155,13 @@ export async function getCommissionCostByProjectBatch(
     .from(LEGACY_COMMISSIONS)
     .select("id, project_id, commission_amount, status")
     .in("project_id", ids);
-  if (!legacyError) {
-    for (const row of (legacyRows ?? []) as CommissionCostRow[]) {
-      const id = String(row.id ?? "").trim();
-      if (id && canonicalIds.has(id)) continue;
-      const projectId = String(row.project_id ?? "").trim();
-      if (!projectId) continue;
-      byProject.set(projectId, (byProject.get(projectId) ?? 0) + commissionCostFromRow(row));
-    }
+  if (legacyError) throw new Error(humanizeSupabaseRequestError(legacyError));
+  for (const row of (legacyRows ?? []) as CommissionCostRow[]) {
+    const id = String(row.id ?? "").trim();
+    if (id && canonicalIds.has(id)) continue;
+    const projectId = String(row.project_id ?? "").trim();
+    if (!projectId) continue;
+    byProject.set(projectId, (byProject.get(projectId) ?? 0) + commissionCostFromRow(row));
   }
 
   return byProject;

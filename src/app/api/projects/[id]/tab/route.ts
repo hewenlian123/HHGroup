@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
   getProjectBillingSummary,
   getProjectTransactions,
@@ -25,7 +25,7 @@ import {
   getPunchListByProject,
 } from "@/lib/data";
 import { getApBillsByProject } from "@/lib/ap-bills-db";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { createRouteSupabaseClient, getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 
 type TabKey =
@@ -51,7 +51,7 @@ function jsonError(message: string, status = 400) {
 }
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(_req);
+  const guard = await requireSupabaseOwnerOrAdmin(_req);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -130,8 +130,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     if (key === "change-orders") {
-      const changeOrders = await getChangeOrdersByProject(id);
-      return NextResponse.json({ ok: true as const, key, changeOrders });
+      const sessionResponse = NextResponse.next();
+      const supabase = createRouteSupabaseClient(_req, sessionResponse, { noStore: true });
+      if (!supabase) return jsonError("Authenticated project session is not configured.", 503);
+      const changeOrders = await getChangeOrdersByProject(id, supabase);
+      const response = NextResponse.json({ ok: true as const, key, changeOrders });
+      for (const cookie of sessionResponse.cookies.getAll()) response.cookies.set(cookie);
+      return response;
     }
 
     if (key === "labor") {

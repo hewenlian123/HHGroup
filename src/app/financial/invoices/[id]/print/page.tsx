@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { getInvoiceById, getProjectById } from "@/lib/data";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
@@ -16,9 +18,13 @@ export const fetchCache = "force-no-store";
 export default async function InvoicePrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   noStore();
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
+  const supabase = await createServerSupabaseClient();
+  if (!supabase) notFound();
   let invoice: Awaited<ReturnType<typeof getInvoiceById>> | null = null;
   try {
-    invoice = await getInvoiceById(id);
+    invoice = await getInvoiceById(id, supabase);
   } catch (e) {
     logServerPageDataError(`financial/invoices/${id}/print`, e);
     return (
@@ -35,7 +41,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
   let company: Awaited<ReturnType<typeof fetchDocumentCompanyProfile>>;
   try {
     [project, company] = await Promise.all([
-      getProjectById(invoice.projectId),
+      getProjectById(invoice.projectId, supabase),
       fetchDocumentCompanyProfile(),
     ]);
   } catch (e) {

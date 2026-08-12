@@ -94,8 +94,11 @@ export async function getWorkerReceipts(explicitClient?: SupabaseClient): Promis
   return ((data ?? []) as Record<string, unknown>[]).map(fromRow);
 }
 
-export async function getWorkerReceiptById(id: string): Promise<WorkerReceipt | null> {
-  const { data, error } = await client()
+export async function getWorkerReceiptById(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<WorkerReceipt | null> {
+  const { data, error } = await client(explicitClient)
     .from("worker_receipts")
     .select(COLS)
     .eq("id", id)
@@ -169,13 +172,14 @@ export async function updateWorkerReceiptStatus(
     status: WorkerReceiptStatus;
     rejectionReason?: string | null;
     reimbursementId?: string | null;
-  }
+  },
+  explicitClient?: SupabaseClient
 ): Promise<WorkerReceipt> {
   const payload: Record<string, unknown> = { status: patch.status };
   if (patch.rejectionReason !== undefined)
     payload.rejection_reason = patch.rejectionReason?.trim() || null;
   if (patch.reimbursementId !== undefined) payload.reimbursement_id = patch.reimbursementId;
-  const { data, error } = await client()
+  const { data, error } = await client(explicitClient)
     .from("worker_receipts")
     .update(payload)
     .eq("id", id)
@@ -479,25 +483,37 @@ export async function approveWorkerReceiptWithClient(
  */
 export async function rejectWorkerReceipt(
   receiptId: string,
-  reason?: string | null
+  reason?: string | null,
+  explicitClient?: SupabaseClient
 ): Promise<WorkerReceipt> {
-  const receipt = await getWorkerReceiptById(receiptId);
+  const receipt = await getWorkerReceiptById(receiptId, explicitClient);
   if (!receipt) throw new Error("Receipt not found.");
-  return updateWorkerReceiptStatus(receiptId, {
-    status: "Rejected",
-    rejectionReason: reason ?? null,
-  });
+  return updateWorkerReceiptStatus(
+    receiptId,
+    {
+      status: "Rejected",
+      rejectionReason: reason ?? null,
+    },
+    explicitClient
+  );
 }
 
 /**
  * Reset to Pending: set status Pending and clear reimbursement_id.
  * Use so you can click Approve again to test reimbursement creation.
  */
-export async function resetWorkerReceiptToPending(receiptId: string): Promise<WorkerReceipt> {
-  const receipt = await getWorkerReceiptById(receiptId);
+export async function resetWorkerReceiptToPending(
+  receiptId: string,
+  explicitClient?: SupabaseClient
+): Promise<WorkerReceipt> {
+  const receipt = await getWorkerReceiptById(receiptId, explicitClient);
   if (!receipt) throw new Error("Receipt not found.");
-  return updateWorkerReceiptStatus(receiptId, {
-    status: "Pending",
-    reimbursementId: null,
-  });
+  return updateWorkerReceiptStatus(
+    receiptId,
+    {
+      status: "Pending",
+      reimbursementId: null,
+    },
+    explicitClient
+  );
 }

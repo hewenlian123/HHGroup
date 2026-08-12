@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
-import { createServerSupabaseClient } from "@/lib/supabase-server";
-import { getServerSupabaseAdmin } from "@/lib/supabase-server";
-import { getServerSupabase } from "@/lib/supabase-server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { createRouteSupabaseClient } from "@/lib/supabase-server";
 import { getProjectByIdWithClient } from "@/lib/projects-db";
 import {
   getPaymentAttachmentPreviewUrl,
@@ -81,7 +80,7 @@ function mapInvoicePayment(row: Record<string, unknown>): InvoicePaymentForClien
 
 async function withPaymentAttachmentPreviewUrls(
   payments: PaymentReceivedRow[],
-  supabase: NonNullable<ReturnType<typeof getServerSupabaseAdmin>>
+  supabase: SupabaseClient
 ): Promise<PaymentReceivedRow[]> {
   return Promise.all(
     payments.map(async (payment) => ({
@@ -103,16 +102,15 @@ async function withPaymentAttachmentPreviewUrls(
   );
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(_req);
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
   if (!id) return NextResponse.json({ ok: false, message: "Missing invoice id." }, { status: 400 });
   try {
-    const admin = getServerSupabaseAdmin();
-    const server = getServerSupabase();
-    const supabase = admin ?? server ?? (await createServerSupabaseClient());
+    const sessionResponse = NextResponse.next();
+    const supabase = createRouteSupabaseClient(req, sessionResponse);
     if (!supabase)
       return NextResponse.json(
         { ok: false, message: "Supabase is not configured." },
@@ -286,7 +284,7 @@ type PatchBody = { action?: string };
  * (Draft, Sent, Partially Paid, Paid — including rows whose computed UI status is Unpaid / Overdue / Partial).
  */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
@@ -303,25 +301,14 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   }
 
   try {
-    const admin = getServerSupabaseAdmin();
-    const server = getServerSupabase();
-    const supabase = admin ?? server ?? (await createServerSupabaseClient());
+    const sessionResponse = NextResponse.next();
+    const supabase = createRouteSupabaseClient(req, sessionResponse);
     if (!supabase) {
       return NextResponse.json(
         { ok: false, message: "Supabase is not configured." },
         { status: 500 }
       );
     }
-    if (!admin && !server) {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-      if (authError || !user) {
-        return NextResponse.json({ ok: false, message: "You must be signed in." }, { status: 401 });
-      }
-    }
-
     const invRes = await supabase.from("invoices").select("id, status").eq("id", id).maybeSingle();
     if (invRes.error) {
       logInvoiceApiError("failed to load invoice before void", invRes.error);

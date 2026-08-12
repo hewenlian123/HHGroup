@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
-import {
-  getServerSupabaseAdmin,
-  getSupabaseUserFromRequest,
-  isCompanyLogoServerUploadWithoutSessionAllowed,
-} from "@/lib/supabase-server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { uploadCompanyLogo, removeCompanyLogo } from "@/lib/company-profile";
 import { validateLogoFileForUpload } from "@/lib/company-profile-form-validation";
 
@@ -32,28 +29,18 @@ function normalizeFormDataFile(entry: FormDataEntryValue | null): File | null {
 
 /**
  * Upload/remove company logo with the service-role client (bypasses Storage RLS).
- * Auth: session cookie, or `Authorization: Bearer <access_token>`, or (optional)
- * `ALLOW_COMPANY_LOGO_SERVER_WITHOUT_SESSION=1` when service role is set (single-tenant only).
+ * Auth: verified Supabase owner/admin session.
  * Returns 503 + `fallback: "client"` when `SUPABASE_SERVICE_ROLE_KEY` is not set.
  */
 export async function POST(req: Request) {
+  const guard = await requireSupabaseOwnerOrAdmin(req);
+  if (!guard.ok) return guard.response;
+
   const admin = getServerSupabaseAdmin();
   if (!admin) {
     return NextResponse.json(
       { ok: false, fallback: "client", message: "Server upload unavailable." },
       { status: 503 }
-    );
-  }
-
-  const user = await getSupabaseUserFromRequest(req);
-  if (!user && !isCompanyLogoServerUploadWithoutSessionAllowed()) {
-    return NextResponse.json(
-      {
-        ok: false,
-        fallback: "client",
-        message: "You must be signed in (or use client upload with anon RLS).",
-      },
-      { status: 401 }
     );
   }
 
@@ -84,23 +71,14 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const guard = await requireSupabaseOwnerOrAdmin(req);
+  if (!guard.ok) return guard.response;
+
   const admin = getServerSupabaseAdmin();
   if (!admin) {
     return NextResponse.json(
       { ok: false, fallback: "client", message: "Server remove unavailable." },
       { status: 503 }
-    );
-  }
-
-  const user = await getSupabaseUserFromRequest(req);
-  if (!user && !isCompanyLogoServerUploadWithoutSessionAllowed()) {
-    return NextResponse.json(
-      {
-        ok: false,
-        fallback: "client",
-        message: "You must be signed in (or use client remove with anon RLS).",
-      },
-      { status: 401 }
     );
   }
 

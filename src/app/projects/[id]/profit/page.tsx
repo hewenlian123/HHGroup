@@ -19,7 +19,10 @@ import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { cn } from "@/lib/utils";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import {
+  createServerSupabaseClient,
+  getServerSupabaseInternalNoStore,
+} from "@/lib/supabase-server";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -29,6 +32,8 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function ProjectProfitPage({ params }: Props) {
   const { id } = await params;
+  const projectSupabase = await createServerSupabaseClient();
+  if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
   const supabase = getServerSupabaseInternalNoStore();
   const [
     project,
@@ -43,8 +48,8 @@ export default async function ProjectProfitPage({ params }: Props) {
     expenseLines,
     workers,
   ] = await Promise.all([
-    getProjectById(id),
-    getCanonicalProjectProfit(id, supabase ?? undefined),
+    getProjectById(id, projectSupabase),
+    getCanonicalProjectProfit(id, projectSupabase),
     getLaborEntriesWithJoins({ project_id: id }, supabase ?? undefined),
     getLaborActualByProject(id, supabase ?? undefined),
     getApprovedSubcontractBillsTotalByProject(id),

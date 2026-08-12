@@ -9,7 +9,10 @@ import {
   isProductionSafetyLocked,
 } from "@/lib/production-safety";
 import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
-import { getSupabaseUserFromRequest } from "@/lib/supabase-server";
+import {
+  getSupabaseUserFromRequest,
+  getSupabaseUserFromServerSession,
+} from "@/lib/supabase-server";
 
 type AuthBoundaryContext = {
   user: User | null;
@@ -36,6 +39,14 @@ export type StrictAuthContext = {
 export type StrictGuardResult =
   | { ok: true; context: StrictAuthContext }
   | { ok: false; response: NextResponse };
+
+export type StrictClientGuardResult<T> =
+  | { ok: true; context: StrictAuthContext; client: T | null }
+  | { ok: false; response: NextResponse };
+
+export type StrictServerActionClientGuardResult<T> =
+  | { ok: true; context: StrictAuthContext; client: T | null }
+  | { ok: false; status: 401 | 403; error: string };
 
 type GuardOptions = {
   allowLocalBypass?: boolean;
@@ -105,6 +116,10 @@ export async function requireAdminUser(
 
 export async function requireSupabaseOwnerOrAdmin(request: Request): Promise<StrictGuardResult> {
   const user = await getSupabaseUserFromRequest(request).catch(() => null);
+  return strictGuardForUser(user);
+}
+
+function strictGuardForUser(user: User | null): StrictGuardResult {
   if (!user) {
     return { ok: false, response: jsonError(401, AUTH_REQUIRED_MESSAGE) };
   }
@@ -121,6 +136,41 @@ export async function requireSupabaseOwnerOrAdmin(request: Request): Promise<Str
       role,
       email: user.email?.trim().toLowerCase() ?? null,
     },
+  };
+}
+
+/**
+ * Verify a strict owner/admin request boundary before constructing any privileged client.
+ * Compatibility mode, local bypasses, headers, and PIN state never satisfy this gate.
+ */
+export async function requireSupabaseOwnerOrAdminWithClient<T>(
+  request: Request,
+  createClient: () => T | null
+): Promise<StrictClientGuardResult<T>> {
+  const guard = await requireSupabaseOwnerOrAdmin(request);
+  if (!guard.ok) return guard;
+  return { ...guard, client: createClient() };
+}
+
+/** Verify the server-owned Supabase session for Server Actions without any compatibility path. */
+export async function requireSupabaseOwnerOrAdminServerAction(): Promise<StrictGuardResult> {
+  const user = await getSupabaseUserFromServerSession().catch(() => null);
+  return strictGuardForUser(user);
+}
+
+/**
+ * Verify a strict owner/admin Server Action boundary before constructing any privileged client.
+ * The scalar failure result is safe to return from Server Actions and avoids serializing a Response.
+ */
+export async function requireSupabaseOwnerOrAdminServerActionWithClient<T>(
+  createClient: () => T | null
+): Promise<StrictServerActionClientGuardResult<T>> {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (guard.ok) return { ...guard, client: createClient() };
+  return {
+    ok: false,
+    status: guard.response.status === 403 ? 403 : 401,
+    error: guard.response.status === 403 ? ADMIN_REQUIRED_MESSAGE : AUTH_REQUIRED_MESSAGE,
   };
 }
 

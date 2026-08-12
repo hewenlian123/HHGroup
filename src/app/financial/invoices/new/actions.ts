@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireSupabaseOwnerOrAdminServerActionWithClient } from "@/lib/auth-boundary";
 import { createServerSupabaseClient, getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 function toNum(v: unknown): number {
@@ -46,18 +47,12 @@ export async function createInvoiceDraftAction(payload: {
     return { ok: false, error: "At least one line item is required." };
 
   try {
-    // Prefer admin client (service role) so INSERT + subsequent SELECT on detail page
-    // won't be blocked by RLS/user mismatch.
-    const admin = getServerSupabaseAdmin();
+    const clientGuard =
+      await requireSupabaseOwnerOrAdminServerActionWithClient(getServerSupabaseAdmin);
+    if (!clientGuard.ok) return { ok: false, error: clientGuard.error };
+    const admin = clientGuard.client;
     const supabase = admin ?? (await createServerSupabaseClient());
     if (!supabase) return { ok: false, error: "Supabase is not configured." };
-    if (!admin) {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-      if (authError || !user) return { ok: false, error: "You must be signed in." };
-    }
 
     const safeIssueDate = String(payload.issueDate ?? "").slice(0, 10);
     const safeDueDate = String(payload.dueDate ?? "").slice(0, 10);

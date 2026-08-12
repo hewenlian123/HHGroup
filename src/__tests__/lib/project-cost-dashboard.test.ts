@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 const mocks = vi.hoisted(() => ({
   getProjectExpenseLinesBundle: vi.fn(),
@@ -80,5 +81,19 @@ describe("project cost dashboard", () => {
     expect(dashboard.spentTotal).toBe(575);
     expect(dashboard.profit).toBe(425);
     expect(dashboard.margin).toBe(0.425);
+  });
+
+  it("uses the supplied owner session for every cost source", async () => {
+    const { getProjectCostDashboard } = await import("@/lib/project-cost-dashboard");
+    const ownerSession = {} as SupabaseClient;
+
+    await getProjectCostDashboard("project-1", ownerSession);
+
+    expect(mocks.getProjectExpenseLinesBundle).toHaveBeenCalledWith("project-1", ownerSession);
+    expect(mocks.getCanonicalProjectProfit).toHaveBeenCalledWith("project-1", ownerSession);
+    expect(mocks.sumPaidWorkerReimbursementsForProject).toHaveBeenCalledWith(
+      "project-1",
+      ownerSession
+    );
   });
 });

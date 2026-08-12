@@ -3,6 +3,7 @@
  * Table: subcontract_payments.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 import { getSubcontractDeductionsBySubcontractIds } from "@/lib/subcontract-deductions-db";
 
@@ -17,17 +18,17 @@ export type SubcontractPaymentRow = {
   created_at: string;
 };
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
 
 /** Fetch all payments for summary: subcontract_id, amount. */
-export async function getPaymentsSummaryAll(): Promise<
-  { subcontract_id: string; amount: number }[]
-> {
-  const c = client();
+export async function getPaymentsSummaryAll(
+  explicitClient?: SupabaseClient
+): Promise<{ subcontract_id: string; amount: number }[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c
     .from("subcontract_payments")
     .select("subcontract_id, amount");
@@ -39,8 +40,10 @@ export async function getPaymentsSummaryAll(): Promise<
 }
 
 /** Fetch all payments with bill_id and amount (for cashflow expected outflow). */
-export async function getPaymentsAll(): Promise<{ bill_id: string | null; amount: number }[]> {
-  const c = client();
+export async function getPaymentsAll(
+  explicitClient?: SupabaseClient
+): Promise<{ bill_id: string | null; amount: number }[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c.from("subcontract_payments").select("bill_id, amount");
   if (error) throw new Error(error.message ?? "Failed to load payments.");
   return (rows ?? []).map((r: Record<string, unknown>) => ({

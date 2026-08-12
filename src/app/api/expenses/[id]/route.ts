@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseAdmin,
@@ -152,11 +152,14 @@ function normalizeSubcontractDeduction(
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(
+    request,
+    getServerSupabaseInternalNoStore
+  );
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = guard.client;
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const [
@@ -264,11 +267,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(
+    request,
+    getServerSupabaseInternalNoStore
+  );
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = guard.client;
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const body = await readJson(request);
@@ -460,13 +466,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(request, getServerSupabaseAdmin);
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
   if (!id?.trim()) return apiError(400, "Missing expense id.");
 
-  const supabase = getServerSupabaseAdmin();
+  const supabase = guard.client;
   if (!supabase) {
     return apiError(
       503,
@@ -549,11 +555,14 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(
+    request,
+    getServerSupabaseInternalNoStore
+  );
   if (!guard.ok) return guard.response;
 
   const { id } = await params;
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = guard.client;
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const body = await readJson(request);

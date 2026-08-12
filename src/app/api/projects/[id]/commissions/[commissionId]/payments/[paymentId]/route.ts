@@ -1,5 +1,6 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import {
   getCommissionById,
   getPaymentRecordById,
@@ -16,6 +17,8 @@ export async function PATCH(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
     return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
@@ -63,7 +66,7 @@ export async function PATCH(
             : null
           : undefined;
     const amountFinal = amount !== undefined ? amount : existing.amount;
-    const internalClient = getServerSupabaseInternalNoStore() ?? undefined;
+    const internalClient = guard.client ?? undefined;
     const paidTotal = await getSumPaidForCommission(commissionId, internalClient);
     const nextTotal = paidTotal - existing.amount + amountFinal;
     if (nextTotal > commission.commission_amount + 1e-6) {
@@ -98,9 +101,11 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string; paymentId: string }> }
 ) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  if (!guard.ok) return guard.response;
   const { id: projectId, commissionId, paymentId } = await ctx.params;
   if (!projectId || !commissionId || !paymentId)
     return NextResponse.json({ ok: false, message: "Missing id" }, { status: 400 });
@@ -121,7 +126,7 @@ export async function DELETE(
         { ok: false, message: "Payment does not match commission" },
         { status: 400 }
       );
-    await deletePaymentRecord(paymentId, getServerSupabaseInternalNoStore() ?? undefined);
+    await deletePaymentRecord(paymentId, guard.client ?? undefined);
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");
     return NextResponse.json({ ok: true });

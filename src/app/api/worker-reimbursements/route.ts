@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import type {
   WorkerReimbursement,
@@ -48,10 +48,10 @@ function fromRow(r: Record<string, unknown>): WorkerReimbursement {
  * GET: List worker reimbursements using the same admin client as DELETE, so list and delete see the same data.
  */
 export async function GET(req: Request) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdmin);
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
+  const supabase = guard.client ?? getServerSupabase();
   if (!supabase) {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
@@ -150,10 +150,10 @@ export async function GET(req: Request) {
  * Handles vendor column name differences (vendor vs vendor_name).
  */
 export async function POST(req: Request) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdmin);
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseAdmin() ?? getServerSupabase();
+  const supabase = guard.client ?? getServerSupabase();
   if (!supabase) {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }

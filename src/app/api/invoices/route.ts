@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
+import { createRouteSupabaseClient } from "@/lib/supabase-server";
 import {
   getInvoices,
   getInvoicesWithDerived,
@@ -38,8 +39,16 @@ function toStoredOrOverdueStatus(
  * Returns invoice list for health check and API consumers.
  */
 export async function GET(req: Request) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
+  const sessionResponse = NextResponse.next();
+  const supabase = createRouteSupabaseClient(req, sessionResponse, { noStore: true });
+  if (!supabase) {
+    return NextResponse.json(
+      { ok: false, message: "Supabase is not configured." },
+      { status: 503 }
+    );
+  }
 
   try {
     const url = new URL(req.url);
@@ -52,12 +61,15 @@ export async function GET(req: Request) {
       const includeProjects = url.searchParams.get("includeProjects") === "1";
       if (url.searchParams.get("all") === "1") {
         const [invoices, projects] = await Promise.all([
-          getInvoicesWithDerived({
-            status: toStoredOrOverdueStatus(status),
-            projectId,
-            search,
-          }),
-          includeProjects ? getProjects() : Promise.resolve([]),
+          getInvoicesWithDerived(
+            {
+              status: toStoredOrOverdueStatus(status),
+              projectId,
+              search,
+            },
+            supabase
+          ),
+          includeProjects ? getProjects(supabase) : Promise.resolve([]),
         ]);
         return NextResponse.json({
           ok: true,
@@ -69,14 +81,17 @@ export async function GET(req: Request) {
         });
       }
       const [paged, projects] = await Promise.all([
-        getInvoicesWithDerivedPaged({
-          page,
-          pageSize,
-          status: status as InvoiceStatus | InvoiceComputedStatus | undefined,
-          projectId,
-          search,
-        }),
-        includeProjects ? getProjects() : Promise.resolve([]),
+        getInvoicesWithDerivedPaged(
+          {
+            page,
+            pageSize,
+            status: status as InvoiceStatus | InvoiceComputedStatus | undefined,
+            projectId,
+            search,
+          },
+          supabase
+        ),
+        includeProjects ? getProjects(supabase) : Promise.resolve([]),
       ]);
       return NextResponse.json({
         ok: true,
@@ -88,7 +103,7 @@ export async function GET(req: Request) {
       });
     }
 
-    const invoices = await getInvoices();
+    const invoices = await getInvoices(supabase);
     return NextResponse.json({ ok: true, invoices });
   } catch (e) {
     console.error("[api/invoices] failed to load invoices", e);

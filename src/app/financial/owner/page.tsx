@@ -26,6 +26,7 @@ import { FinanceOwnerHeaderActions } from "./_components/finance-owner-header-ac
 import { FinanceOwnerPendingDonut } from "./_components/finance-owner-pending-donut";
 import { fmtUsdAdaptive, fmtUsdFull, fmtUsdSignedFull } from "./_lib/format-owner-currency";
 import { formatDate, formatInteger, formatPercent } from "@/lib/formatters";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -315,7 +316,9 @@ export default async function FinanceOwnerDashboardPage() {
   let data = EMPTY_OWNER_DASHBOARD;
   let dataLoadWarning: string | null = null;
   try {
-    data = await getFinanceOwnerDashboard();
+    const supabase = await createServerSupabaseClient({ noStore: true });
+    if (!supabase) throw new Error("Authenticated finance session is not configured.");
+    data = await getFinanceOwnerDashboard(supabase);
   } catch (e) {
     logServerPageDataError("financial/owner", e);
     dataLoadWarning = serverDataLoadWarning(e, "owner finance dashboard");

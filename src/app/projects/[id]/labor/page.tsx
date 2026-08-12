@@ -6,7 +6,10 @@ import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import {
+  createServerSupabaseClient,
+  getServerSupabaseInternalNoStore,
+} from "@/lib/supabase-server";
 
 function fmtUsd(n: number): string {
   return n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -19,7 +22,9 @@ export default async function ProjectLaborPage({ params }: Props) {
 
   let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
   try {
-    project = await getProjectById(id);
+    const projectSupabase = await createServerSupabaseClient();
+    if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
+    project = await getProjectById(id, projectSupabase);
   } catch (e) {
     logServerPageDataError(`projects/${id}/labor`, e);
     return (

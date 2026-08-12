@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getServerSupabaseInternal } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ type Metrics = {
  * Returns { projects, workers, labor_entries, reimbursements, expenses, invoices, worker_payments }.
  */
 export async function GET(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
   const server = getServerSupabaseInternal();

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
   AP_BILL_STATUSES,
   AP_BILL_TYPES,
@@ -16,7 +16,7 @@ import {
 } from "@/lib/ap-bills-db";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternalNoStore,
+  createRouteSupabaseClient,
 } from "@/lib/supabase-server";
 import { safeErrorMessage } from "@/lib/system-response-safety";
 
@@ -96,10 +96,9 @@ async function readJson(request: Request): Promise<Record<string, unknown> | nul
 }
 
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
-
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = createRouteSupabaseClient(request, NextResponse.next());
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const { id } = await ctx.params;
@@ -119,10 +118,9 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
 }
 
 export async function PATCH(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
-
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = createRouteSupabaseClient(request, NextResponse.next());
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const { id } = await ctx.params;
@@ -194,10 +192,9 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
 }
 
 export async function DELETE(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
-
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = createRouteSupabaseClient(request, NextResponse.next());
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const { id } = await ctx.params;

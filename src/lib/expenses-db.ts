@@ -2459,7 +2459,8 @@ async function fetchExpenseHeadersByIds(
   for (let i = 0; i < ids.length; i += PAYMENT_METHOD_LIST_HYDRATE_CHUNK) {
     const slice = ids.slice(i, i + PAYMENT_METHOD_LIST_HYDRATE_CHUNK);
     const { data, error } = await c.from("expenses").select("*").in("id", slice);
-    if (error || !data) continue;
+    if (error) throw new Error(`Financial data unavailable: expenses. ${error.message}`);
+    if (!data) continue;
     for (const r of data as ExpenseHeaderForProjectCost[]) {
       map.set(r.id, r);
     }
@@ -2511,7 +2512,10 @@ async function fetchAttachmentCountsByExpenseIds(
  * Project-linked expense lines with batched headers: confirmed-status cost rows (see
  * isConfirmedExpenseStatus), all lines for secondary lists, and alert counts (deduped per expense).
  */
-export async function getProjectExpenseLinesBundle(projectId: string): Promise<{
+export async function getProjectExpenseLinesBundle(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<{
   doneCostLines: ProjectExpenseCostLineRow[];
   allDisplayLines: Array<{
     id: string;
@@ -2524,12 +2528,13 @@ export async function getProjectExpenseLinesBundle(projectId: string): Promise<{
   }>;
   alerts: ProjectExpenseAlertSummary;
 }> {
-  const c = client();
+  const c = client(explicitClient);
   const { data: lineRows, error } = await c
     .from("expense_lines")
     .select("id, expense_id, project_id, category, memo, amount")
     .eq("project_id", projectId);
-  if (error || !lineRows?.length) {
+  if (error) throw new Error(`Financial data unavailable: expense_lines. ${error.message}`);
+  if (!lineRows?.length) {
     return {
       doneCostLines: [],
       allDisplayLines: [],
@@ -2706,8 +2711,11 @@ export async function getProjectExpenseLines(
   return result;
 }
 
-export async function getExpenseTotalsByProject(projectId: string): Promise<number> {
-  const c = client();
+export async function getExpenseTotalsByProject(
+  projectId: string,
+  explicitClient?: SupabaseClient
+): Promise<number> {
+  const c = client(explicitClient);
   const { data: rows } = await c
     .from("expense_lines")
     .select("amount, expense_id")
@@ -2737,8 +2745,8 @@ export async function getExpenseTotalsByProject(projectId: string): Promise<numb
   }, 0);
 }
 
-export async function getTotalExpenses(): Promise<number> {
-  const c = client();
+export async function getTotalExpenses(explicitClient?: SupabaseClient): Promise<number> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c.from("expenses").select("total");
   if (error) {
     if (isMissingColumn(error)) {

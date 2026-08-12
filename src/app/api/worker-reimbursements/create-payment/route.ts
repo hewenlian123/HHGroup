@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { recordBatchReimbursementPayment } from "@/lib/worker-reimbursements-db";
 import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
@@ -10,21 +10,15 @@ import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
  * Body: { reimbursementIds: string[], paymentMethod?: string, note?: string }
  */
 export async function POST(req: Request) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = guard.client;
   if (!supabase) {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
 
   try {
-    try {
-      const { ensureExpensesSourceColumns } = await import("@/lib/ensure-expenses-source-columns");
-      await ensureExpensesSourceColumns();
-    } catch {
-      /* optional migration */
-    }
     const body = await req.json().catch(() => ({}));
     const ids = body?.reimbursementIds;
     if (!Array.isArray(ids) || ids.length === 0) {

@@ -7,6 +7,7 @@ import { ChangeOrderEditClient } from "./change-order-edit-client";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 export default async function ChangeOrderEditPage({
   params,
@@ -14,9 +15,19 @@ export default async function ChangeOrderEditPage({
   params: Promise<{ id: string; coId: string }>;
 }) {
   const { id: projectId, coId } = await params;
+  const projectSupabase = await createServerSupabaseClient({ noStore: true });
+  if (!projectSupabase) {
+    return (
+      <ServerDataLoadFallback
+        message="Could not load the authenticated project session."
+        backHref="/projects"
+        backLabel="Back to projects"
+      />
+    );
+  }
   let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
   try {
-    project = await getProjectById(projectId);
+    project = await getProjectById(projectId, projectSupabase);
   } catch (e) {
     logServerPageDataError(`projects/${projectId}/change-orders/${coId}/edit`, e);
     return (
@@ -31,7 +42,7 @@ export default async function ChangeOrderEditPage({
 
   let co: Awaited<ReturnType<typeof getChangeOrderById>> | null = null;
   try {
-    co = await getChangeOrderById(coId);
+    co = await getChangeOrderById(coId, projectSupabase);
   } catch (e) {
     logServerPageDataError(`projects/${projectId}/change-orders/${coId}/edit co`, e);
     return (
@@ -47,7 +58,7 @@ export default async function ChangeOrderEditPage({
 
   let items: Awaited<ReturnType<typeof getChangeOrderItems>> = [];
   try {
-    items = await getChangeOrderItems(coId);
+    items = await getChangeOrderItems(coId, projectSupabase);
   } catch (e) {
     logServerPageDataError(`projects/${projectId}/change-orders/${coId}/edit items`, e);
     return (

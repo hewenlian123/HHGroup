@@ -21,11 +21,13 @@ import {
   getEstimateList,
 } from "@/lib/data";
 import { getApBillsByProject } from "@/lib/ap-bills-db";
-import { getProjectByIdWithClient } from "@/lib/projects-db";
 import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
 import { getCanonicalProjectProfit } from "@/lib/profit-engine";
 import { getProjectCostDashboard } from "@/lib/project-cost-dashboard";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import {
+  createServerSupabaseClient,
+  getServerSupabaseInternalNoStore,
+} from "@/lib/supabase-server";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { ProjectDetailTabsClient } from "./project-detail-tabs-client";
@@ -121,10 +123,11 @@ export default async function ProjectDetailPage({
   const internalSupabase = getServerSupabaseInternalNoStore();
 
   let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
+  let projectSupabase: Awaited<ReturnType<typeof createServerSupabaseClient>> = null;
   try {
-    project = internalSupabase
-      ? ((await getProjectByIdWithClient(internalSupabase, id)) ?? undefined)
-      : await getProjectById(id);
+    projectSupabase = await createServerSupabaseClient({ noStore: true });
+    if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
+    project = await getProjectById(id, projectSupabase);
   } catch (e) {
     logServerPageDataError(`projects/${id}`, e);
     return (
@@ -136,6 +139,25 @@ export default async function ProjectDetailPage({
     );
   }
   if (!project) notFound();
+  if (!projectSupabase) notFound();
+
+  let canonical: Awaited<ReturnType<typeof getCanonicalProjectProfit>>;
+  let costDashboard: Awaited<ReturnType<typeof getProjectCostDashboard>>;
+  try {
+    [canonical, costDashboard] = await Promise.all([
+      getCanonicalProjectProfit(id, projectSupabase),
+      getProjectCostDashboard(id, projectSupabase),
+    ]);
+  } catch (e) {
+    logServerPageDataError(`projects/${id}/financial`, e);
+    return (
+      <ServerDataLoadFallback
+        message={serverDataLoadWarning(e, "project financial data")}
+        backHref="/projects"
+        backLabel="Back to projects"
+      />
+    );
+  }
 
   /** Wrap a fetch in try/catch so missing tables or other DB errors don't crash the page. */
   const safe = async <T,>(fn: () => Promise<T>, fallback: T): Promise<T> => {
@@ -146,7 +168,6 @@ export default async function ProjectDetailPage({
     }
   };
   const [
-    canonical,
     billingSummary,
     tasks,
     workers,
@@ -167,20 +188,7 @@ export default async function ProjectDetailPage({
     scheduleItems,
     projectInvoicesRaw,
     estimatesRaw,
-    costDashboard,
   ] = await Promise.all([
-    safe(() => getCanonicalProjectProfit(id), {
-      revenue: 0,
-      actualCost: 0,
-      profit: 0,
-      margin: 0,
-      budget: 0,
-      approvedChangeOrders: 0,
-      laborCost: 0,
-      expenseCost: 0,
-      subcontractCost: 0,
-      commissionCost: 0,
-    }),
     safe(() => getProjectBillingSummary(id), {
       paidTotal: 0,
       invoicedTotal: 0,
@@ -215,7 +223,7 @@ export default async function ProjectDetailPage({
       []
     ),
     safe(() => getActivityLogsByProject(id, 20), []),
-    safe(() => getChangeOrdersByProject(id), []),
+    safe(() => getChangeOrdersByProject(id, projectSupabase), []),
     safe(() => getProjectBudgetItems(id), []),
     safe(() => getCloseoutPunch(id), null),
     safe(() => getCloseoutWarranty(id), null),
@@ -223,17 +231,6 @@ export default async function ProjectDetailPage({
     safe(() => getProjectSchedule(id), []),
     safe(() => getInvoicesWithDerived({ projectId: id }), []),
     safe(() => getEstimateList(), []),
-    safe(() => getProjectCostDashboard(id), {
-      breakdown: { totalCost: 0, materials: 0, labor: 0, bills: 0, commission: 0, other: 0 },
-      spentTotal: 0,
-      profit: 0,
-      margin: 0,
-      revenue: 0,
-      doneCostRows: [],
-      recentDoneRows: [],
-      allExpenseLineRows: [],
-      alerts: { needsReviewCount: 0, missingReceiptCount: 0, missingClassificationCount: 0 },
-    }),
   ]);
 
   const recentExpenseLines: RecentExpenseLineRow[] = costDashboard.recentDoneRows.map((r) => ({

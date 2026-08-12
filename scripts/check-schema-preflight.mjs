@@ -94,7 +94,11 @@ function main() {
   const modeFromEnv = String(process.env.SCHEMA_PREFLIGHT_RLS_MODE ?? "").toLowerCase();
   const rlsMode = ["loose", "strict", "both"].includes(modeFromEnv) ? modeFromEnv : cfg.rlsMode;
 
-  const tsFiles = listFilesRecursive(srcDir, [".ts", ".tsx"]);
+  // Test fixtures may intentionally reference absent/retired migration paths to assert that
+  // they stay excluded. Preflight applies only to application source contracts.
+  const tsFiles = listFilesRecursive(srcDir, [".ts", ".tsx"]).filter(
+    (file) => !file.includes("/__tests__/")
+  );
   const hintMigrations = new Set();
   const fromTables = new Set();
   const riskySwallowedSelfHeal = [];

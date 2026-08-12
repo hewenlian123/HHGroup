@@ -9,14 +9,38 @@ import {
   deleteChangeOrderItem as deleteItem,
 } from "@/lib/data";
 import { createChangeOrderWithClient } from "@/lib/change-orders-db";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import {
+  requireSupabaseOwnerOrAdminServerAction,
+  requireSupabaseOwnerOrAdminServerActionWithClient,
+} from "@/lib/auth-boundary";
+import {
+  createServerSupabaseClient,
+  getServerSupabaseInternalNoStore,
+} from "@/lib/supabase-server";
 import type { ChangeOrderStatus } from "@/lib/data";
+
+async function requireChangeOrderOwnerAction() {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) {
+    return {
+      ok: false as const,
+      error: guard.response.status === 403 ? "Admin access required." : "Authentication required.",
+    };
+  }
+  const client = await createServerSupabaseClient({ noStore: true });
+  if (!client) return { ok: false as const, error: "Authenticated session is not configured." };
+  return { ok: true as const, client };
+}
 
 export async function createChangeOrderAction(
   projectId: string,
   formData: FormData
 ): Promise<{ ok: boolean; error?: string }> {
   try {
+    const clientGuard = await requireSupabaseOwnerOrAdminServerActionWithClient(
+      getServerSupabaseInternalNoStore
+    );
+    if (!clientGuard.ok) return { ok: false, error: clientGuard.error };
     const title = (formData.get("title") as string)?.trim() || "";
     const description = (formData.get("description") as string)?.trim() || null;
     const amountRaw = formData.get("amount");
@@ -28,7 +52,7 @@ export async function createChangeOrderAction(
       scheduleImpactDaysRaw != null && scheduleImpactDaysRaw !== ""
         ? Number(scheduleImpactDaysRaw)
         : null;
-    const server = getServerSupabaseInternalNoStore();
+    const server = clientGuard.client;
     if (!server) return { ok: false, error: "Server Supabase is not configured." };
     const co = await createChangeOrderWithClient(server, projectId, {
       title: title || null,
@@ -69,7 +93,9 @@ export async function updateChangeOrderStatus(
   status: ChangeOrderStatus,
   options?: { approvedBy?: string | null }
 ): Promise<{ ok: boolean }> {
-  const ok = await updateStatus(changeOrderId, status, options);
+  const authorization = await requireChangeOrderOwnerAction();
+  if (!authorization.ok) return { ok: false };
+  const ok = await updateStatus(changeOrderId, status, options, authorization.client);
   if (ok) {
     revalidatePath(`/projects/${projectId}`);
     revalidatePath(`/projects/${projectId}/change-orders/${changeOrderId}`);
@@ -82,6 +108,8 @@ export async function updateChangeOrderAction(
   projectId: string,
   formData: FormData
 ): Promise<{ ok: boolean }> {
+  const authorization = await requireChangeOrderOwnerAction();
+  if (!authorization.ok) return { ok: false };
   const title = (formData.get("title") as string)?.trim();
   const description = (formData.get("description") as string)?.trim();
   const amountRaw = formData.get("amount");
@@ -107,7 +135,10 @@ export async function updateChangeOrderAction(
   if (amount !== undefined) patch.amount = amount;
   if (costImpact !== undefined) patch.costImpact = costImpact;
   if (scheduleImpactDays !== undefined) patch.scheduleImpactDays = scheduleImpactDays;
-  const ok = Object.keys(patch).length > 0 ? await updateCO(changeOrderId, patch) : true;
+  const ok =
+    Object.keys(patch).length > 0
+      ? await updateCO(changeOrderId, patch, authorization.client)
+      : true;
   if (ok) {
     revalidatePath(`/projects/${projectId}/change-orders/${changeOrderId}`);
     revalidatePath(`/projects/${projectId}/change-orders/${changeOrderId}/edit`);
@@ -120,7 +151,9 @@ export async function addChangeOrderItemAction(
   projectId: string,
   item: { costCode: string; description: string; qty: number; unit: string; unitPrice: number }
 ): Promise<{ ok: boolean }> {
-  const added = await addItem(changeOrderId, item);
+  const authorization = await requireChangeOrderOwnerAction();
+  if (!authorization.ok) return { ok: false };
+  const added = await addItem(changeOrderId, item, authorization.client);
   if (added) {
     revalidatePath(`/projects/${projectId}/change-orders/${changeOrderId}`);
     revalidatePath(`/projects/${projectId}/change-orders/${changeOrderId}/edit`);
@@ -133,7 +166,9 @@ export async function deleteChangeOrderItemAction(
   projectId: string,
   itemId: string
 ): Promise<{ ok: boolean }> {
-  const ok = await deleteItem(changeOrderId, itemId);
+  const authorization = await requireChangeOrderOwnerAction();
+  if (!authorization.ok) return { ok: false };
+  const ok = await deleteItem(changeOrderId, itemId, authorization.client);
   if (ok) {
     revalidatePath(`/projects/${projectId}/change-orders/${changeOrderId}`);
     revalidatePath(`/projects/${projectId}/change-orders/${changeOrderId}/edit`);
@@ -146,6 +181,8 @@ export async function addChangeOrderAttachmentAction(
   projectId: string,
   formData: FormData
 ): Promise<{ ok: boolean; error?: string }> {
+  const authorization = await requireChangeOrderOwnerAction();
+  if (!authorization.ok) return authorization;
   const file = formData.get("file") as File | null;
   if (!file || !file.size) return { ok: false, error: "No file selected." };
   const { getSupabaseClient } = await import("@/lib/supabase");
@@ -176,6 +213,8 @@ export async function deleteChangeOrderAttachmentAction(
   projectId: string,
   changeOrderId: string
 ): Promise<{ ok: boolean }> {
+  const authorization = await requireChangeOrderOwnerAction();
+  if (!authorization.ok) return { ok: false };
   const { deleteChangeOrderAttachment, getChangeOrderAttachments } = await import("@/lib/data");
   const list = await getChangeOrderAttachments(changeOrderId);
   const att = list.find((a) => a.id === attachmentId);

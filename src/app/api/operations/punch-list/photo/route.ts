@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "punch-photos";
 
 export async function GET(req: Request) {
+  const guard = await requireSupabaseOwnerOrAdmin(req);
+  if (!guard.ok) return guard.response;
+
   const url = new URL(req.url);
   const path = url.searchParams.get("path");
   if (!path?.trim()) {

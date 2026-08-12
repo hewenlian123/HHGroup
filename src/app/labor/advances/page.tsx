@@ -1,14 +1,18 @@
 import { getLaborWorkers, getLaborWorkersList, getProjects } from "@/lib/data";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 
 import { WorkerAdvancesClient } from "./worker-advances-client";
 
 export const dynamic = "force-dynamic";
 
 export default async function WorkerAdvancesPage() {
+  const projectSupabase = await createServerSupabaseClient();
+  if (!projectSupabase) throw new Error("Authenticated project session is not configured.");
+
   const [laborWorkers, profileWorkers, projects] = await Promise.all([
     getLaborWorkersList().catch(() => []),
     getLaborWorkers().catch(() => []),
-    getProjects(),
+    getProjects(projectSupabase),
   ]);
   const workersById = new Map<string, { id: string; name: string }>();
   for (const w of [...laborWorkers, ...profileWorkers]) {

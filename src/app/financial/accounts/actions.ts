@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { createServerSupabaseClient, getServerSupabase } from "@/lib/supabase-server";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import type { AccountType } from "@/lib/accounts-db";
@@ -23,6 +24,9 @@ export type UpdateAccountInput = {
 export async function createAccountAction(
   input: CreateAccountInput
 ): Promise<{ data?: { id: string; name: string }; error?: string }> {
+  const auth = await requireSupabaseOwnerOrAdminServerAction();
+  if (!auth.ok) return { error: "Authentication required." };
+
   try {
     const supabase = (await createServerSupabaseClient()) ?? getServerSupabase();
     if (!supabase) {
@@ -75,6 +79,9 @@ export async function getAccountsAction(): Promise<{
   }>;
   error?: string;
 }> {
+  const auth = await requireSupabaseOwnerOrAdminServerAction();
+  if (!auth.ok) return { accounts: [], error: "Authentication required." };
+
   const supabase = (await createServerSupabaseClient()) ?? getServerSupabase();
   if (!supabase) return { accounts: [], error: "Supabase is not configured." };
   // user is optional; when present we can optionally scope admin results.
@@ -109,6 +116,9 @@ export async function getAccountsAction(): Promise<{
 export async function updateAccountAction(
   input: UpdateAccountInput
 ): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireSupabaseOwnerOrAdminServerAction();
+  if (!auth.ok) return { ok: false, error: "Authentication required." };
+
   try {
     const supabase = (await createServerSupabaseClient()) ?? getServerSupabase();
     if (!supabase) return { ok: false, error: "Supabase is not configured." };
@@ -136,6 +146,9 @@ export async function updateAccountAction(
 }
 
 export async function deleteAccountAction(id: string): Promise<{ ok: boolean; error?: string }> {
+  const auth = await requireSupabaseOwnerOrAdminServerAction();
+  if (!auth.ok) return { ok: false, error: "Authentication required." };
+
   try {
     const supabase = (await createServerSupabaseClient()) ?? getServerSupabase();
     if (!supabase) return { ok: false, error: "Supabase is not configured." };

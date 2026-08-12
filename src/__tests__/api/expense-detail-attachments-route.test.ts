@@ -1,20 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
-const { attachmentQueryMock, createSignedUrlMock, requireAuthenticatedUserMock, storageFromMock } =
-  vi.hoisted(() => ({
-    attachmentQueryMock: {
-      eq: vi.fn(),
-      in: vi.fn(),
-      select: vi.fn(),
-    },
-    createSignedUrlMock: vi.fn(),
-    requireAuthenticatedUserMock: vi.fn(),
-    storageFromMock: vi.fn(),
-  }));
+const {
+  attachmentQueryMock,
+  createSignedUrlMock,
+  requireAuthenticatedUserMock,
+  requireSupabaseOwnerOrAdminWithClientMock,
+  storageFromMock,
+} = vi.hoisted(() => ({
+  attachmentQueryMock: {
+    eq: vi.fn(),
+    in: vi.fn(),
+    select: vi.fn(),
+  },
+  createSignedUrlMock: vi.fn(),
+  requireAuthenticatedUserMock: vi.fn(),
+  requireSupabaseOwnerOrAdminWithClientMock: vi.fn(),
+  storageFromMock: vi.fn(),
+}));
 
 vi.mock("@/lib/auth-boundary", () => ({
   requireAuthenticatedUser: requireAuthenticatedUserMock,
+  requireSupabaseOwnerOrAdminWithClient: requireSupabaseOwnerOrAdminWithClientMock,
 }));
 
 vi.mock("@/lib/supabase-server", () => ({
@@ -59,6 +66,13 @@ function request() {
 describe("expense detail historical attachment signing", () => {
   beforeEach(() => {
     requireAuthenticatedUserMock.mockReset().mockResolvedValue({ ok: true });
+    requireSupabaseOwnerOrAdminWithClientMock
+      .mockReset()
+      .mockImplementation(async (_request: Request, createClient: () => unknown) => ({
+        ok: true,
+        context: { email: "owner@example.com", role: "owner", user: { id: "owner-1" } },
+        client: createClient(),
+      }));
     attachmentQueryMock.select.mockReset().mockReturnValue(attachmentQueryMock);
     attachmentQueryMock.eq.mockReset().mockReturnValue(attachmentQueryMock);
     attachmentQueryMock.in

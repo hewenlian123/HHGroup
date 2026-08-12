@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
@@ -27,7 +27,7 @@ function paySelectErrorMissingCol(err: { message?: string } | null): boolean {
  * no labor_entries and no worker_payments rows (matches list `deletable` flag).
  */
 export async function DELETE(req: Request, { params }: RouteParams) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
   if (!guard.ok) return guard.response;
 
   const { workerId } = await params;
@@ -42,7 +42,7 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
   }
 
-  const c = getServerSupabaseInternalNoStore();
+  const c = guard.client;
   if (!c) {
     return NextResponse.json(
       { ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },

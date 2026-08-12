@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getServerSupabaseInternal } from "@/lib/supabase-server";
 import { safeErrorMessage } from "@/lib/system-response-safety";
 
@@ -461,7 +461,7 @@ async function fetchSchemaCheck(request: Request): Promise<string[] | undefined>
 }
 
 export async function GET(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
   const checkedAt = new Date().toISOString();

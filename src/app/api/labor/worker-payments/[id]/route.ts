@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternalNoStore,
@@ -20,7 +20,7 @@ function parseLaborEntryIds(raw: unknown): string[] {
  * so balances and "paid" state match accounting reality.
  */
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
   if (!guard.ok) return guard.response;
 
   const { id: paymentId } = await params;
@@ -28,7 +28,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ message: "Payment id required." }, { status: 400 });
   }
 
-  const admin = getServerSupabaseInternalNoStore();
+  const admin = guard.client;
   if (!admin) {
     return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }

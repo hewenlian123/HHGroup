@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getDailyWorkEntriesInRange, totalPayForEntry } from "@/lib/daily-work-db";
 import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
 import { getWorkers } from "@/lib/labor-db";
@@ -37,7 +37,7 @@ function safeDate(value: string | null, fallback: string): string {
 }
 
 export async function GET(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
   const supabase = getServerSupabaseInternalNoStore();

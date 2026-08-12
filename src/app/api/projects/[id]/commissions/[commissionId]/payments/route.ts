@@ -1,6 +1,10 @@
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import {
+  requireSupabaseOwnerOrAdmin,
+  requireSupabaseOwnerOrAdminWithClient,
+} from "@/lib/auth-boundary";
+import {
   getCommissionById,
   createPaymentRecord,
   getPaymentRecordsByCommissionId,
@@ -11,9 +15,11 @@ import { uuidNormalizedEqual } from "@/lib/uuid-normalize";
 const PAYMENT_METHODS = ["Check", "Bank Transfer", "Cash", "Zelle", "Other"];
 
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
+  const guard = await requireSupabaseOwnerOrAdmin(req);
+  if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
     return NextResponse.json(
@@ -51,6 +57,8 @@ export async function POST(
   req: Request,
   ctx: { params: Promise<{ id: string; commissionId: string }> }
 ) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  if (!guard.ok) return guard.response;
   const { id: projectId, commissionId } = await ctx.params;
   if (!projectId || !commissionId)
     return NextResponse.json(
@@ -92,7 +100,7 @@ export async function POST(
         payment_method,
         note,
       },
-      getServerSupabaseInternalNoStore() ?? undefined
+      guard.client ?? undefined
     );
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");

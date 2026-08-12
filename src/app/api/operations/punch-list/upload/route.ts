@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "punch-photos";
 
 export async function POST(req: Request) {
+  const guard = await requireSupabaseOwnerOrAdmin(req);
+  if (!guard.ok) return guard.response;
+
   const supabase = getServerSupabaseAdmin();
   if (!supabase) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });

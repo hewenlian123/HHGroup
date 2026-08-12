@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
   AP_BILL_STATUSES,
   AP_BILL_TYPES,
@@ -12,7 +13,7 @@ import {
 } from "@/lib/ap-bills-db";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternalNoStore,
+  createRouteSupabaseClient,
 } from "@/lib/supabase-server";
 import { safeErrorMessage } from "@/lib/system-response-safety";
 
@@ -45,7 +46,7 @@ function isMissingTableError(error: unknown): boolean {
   );
 }
 
-async function apBillsAvailable(supabase: ReturnType<typeof getServerSupabaseInternalNoStore>) {
+async function apBillsAvailable(supabase: SupabaseClient | null) {
   if (!supabase) return false;
   const { error } = await supabase.from("ap_bills").select("id", { head: true }).limit(0);
   if (!error) return true;
@@ -102,7 +103,7 @@ function filtersFromUrl(url: URL): ApBillsFilters {
   };
 }
 
-async function getProjectOptions(supabase: ReturnType<typeof getServerSupabaseInternalNoStore>) {
+async function getProjectOptions(supabase: SupabaseClient | null) {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("projects")
@@ -118,10 +119,9 @@ async function getProjectOptions(supabase: ReturnType<typeof getServerSupabaseIn
 }
 
 export async function GET(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
-
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = createRouteSupabaseClient(request, NextResponse.next());
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const url = new URL(request.url);
@@ -167,10 +167,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
-
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = createRouteSupabaseClient(request, NextResponse.next());
   if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
 
   const body = await readJson(request);

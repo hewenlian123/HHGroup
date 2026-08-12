@@ -1,26 +1,20 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import { getReimbursementById, markReimbursementPaid } from "@/lib/worker-reimbursements-db";
 import { createExpenseFromPaidReimbursement } from "@/lib/expenses-db";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(req);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
   if (!guard.ok) return guard.response;
 
   const { id: reimbursementId } = await params;
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = guard.client;
   if (!supabase) {
     return NextResponse.json({ message: "Supabase not configured." }, { status: 500 });
   }
 
   try {
-    try {
-      const { ensureExpensesSourceColumns } = await import("@/lib/ensure-expenses-source-columns");
-      await ensureExpensesSourceColumns();
-    } catch {
-      /* optional DB migration; duplicate-key logic still applies when columns exist */
-    }
     const body = await req.json().catch(() => ({}));
 
     // Step 1: Find reimbursement by id

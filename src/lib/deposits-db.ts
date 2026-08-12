@@ -65,8 +65,8 @@ function isMissingTable(err: { message?: string } | null): boolean {
 }
 
 /** List all deposits. Newest first. */
-export async function getDeposits(): Promise<DepositWithMeta[]> {
-  const c = client();
+export async function getDeposits(explicitClient?: SupabaseClient): Promise<DepositWithMeta[]> {
+  const c = client(explicitClient);
   const selectWithStatus =
     "id, payment_id, invoice_id, amount, deposit_account, deposit_date, customer_name, project_id, payment_method, status, created_at";
   const selectWithoutStatus =
@@ -167,8 +167,8 @@ export async function getDepositsByInvoiceId(
 }
 
 /** Sum of deposits.amount (Cash In for dashboard). */
-export async function getTotalDepositsAmount(): Promise<number> {
-  const c = client();
+export async function getTotalDepositsAmount(explicitClient?: SupabaseClient): Promise<number> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c.from("deposits").select("amount");
   if (error || !rows) return 0;
   return (rows as { amount: number }[]).reduce((s, r) => s + Number(r.amount ?? 0), 0);

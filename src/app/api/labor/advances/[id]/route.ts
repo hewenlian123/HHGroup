@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   getServerSupabaseInternal,
@@ -12,8 +13,10 @@ const NO_CACHE_HEADERS = {
   Pragma: "no-cache",
 };
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const admin = getServerSupabaseInternal();
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(request, getServerSupabaseInternal);
+  if (!guard.ok) return guard.response;
+  const admin = guard.client;
   if (!admin) {
     return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
@@ -38,7 +41,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const admin = getServerSupabaseInternal();
+  const guard = await requireSupabaseOwnerOrAdminWithClient(request, getServerSupabaseInternal);
+  if (!guard.ok) return guard.response;
+  const admin = guard.client;
   if (!admin) {
     return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }
@@ -75,8 +80,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const admin = getServerSupabaseInternal();
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(request, getServerSupabaseInternal);
+  if (!guard.ok) return guard.response;
+  const admin = guard.client;
   if (!admin) {
     return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }

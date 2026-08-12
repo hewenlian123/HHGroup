@@ -6,6 +6,10 @@ import {
   insertPaymentScheduleItem,
 } from "@/lib/subcontract-payment-schedule-db";
 import { updateSubcontractStatus as updateSubcontractStatusDefault } from "@/lib/data";
+import {
+  requireSupabaseOwnerOrAdminServerAction,
+  requireSupabaseOwnerOrAdminServerActionWithClient,
+} from "@/lib/auth-boundary";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 export async function updateSubcontractStatusAction(
@@ -14,6 +18,8 @@ export async function updateSubcontractStatusAction(
   status: "Draft" | "Active" | "Completed" | "Cancelled"
 ): Promise<{ ok: boolean; error?: string }> {
   try {
+    const guard = await requireSupabaseOwnerOrAdminServerAction();
+    if (!guard.ok) return { ok: false, error: "Authentication required." };
     await updateSubcontractStatusDefault(subcontractId, status);
     revalidatePath(`/projects/${projectId}/subcontracts`);
     revalidatePath(`/projects/${projectId}/subcontracts/${subcontractId}`);
@@ -37,7 +43,11 @@ export async function addPaymentScheduleItemAction(input: {
   error?: string;
 }> {
   try {
-    const supabase = getServerSupabaseInternalNoStore();
+    const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(
+      getServerSupabaseInternalNoStore
+    );
+    if (!guard.ok) return { ok: false, error: guard.error };
+    const supabase = guard.client;
     if (!supabase) throw new Error("Supabase is not configured.");
     const item = await insertPaymentScheduleItem(
       {
@@ -65,7 +75,11 @@ export async function createApBillFromScheduleAction(input: {
   scheduleId: string;
 }): Promise<{ ok: boolean; billId?: string; created?: boolean; error?: string }> {
   try {
-    const supabase = getServerSupabaseInternalNoStore();
+    const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(
+      getServerSupabaseInternalNoStore
+    );
+    if (!guard.ok) return { ok: false, error: guard.error };
+    const supabase = guard.client;
     if (!supabase) throw new Error("Supabase is not configured.");
     const result = await createApBillFromScheduleItem(input.scheduleId, supabase);
     revalidatePath(`/projects/${input.projectId}/subcontracts`);

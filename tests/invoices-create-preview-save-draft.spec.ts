@@ -176,6 +176,19 @@ async function openInvoiceFromList(
   await expect(page.getByTestId("invoice-detail")).toBeVisible({ timeout: 30_000 });
 }
 
+async function expectInvoiceListApiContains(page: Page, invoiceId: string): Promise<void> {
+  const response = await page
+    .context()
+    .request.get("/api/invoices?derived=1&all=1&page=1&pageSize=1000&includeProjects=1");
+  expect(response.status()).toBe(200);
+  const body = (await response.json()) as {
+    ok?: boolean;
+    invoices?: Array<{ id?: string }>;
+  };
+  expect(body.ok).toBe(true);
+  expect(body.invoices?.map((invoice) => invoice.id)).toContain(invoiceId);
+}
+
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
   const overflows = await page.evaluate(() => {
     return document.documentElement.scrollWidth > window.innerWidth + 4;
@@ -289,6 +302,8 @@ test("create invoice, preview, save, reopen, draft continue, final save, and edi
   await expect(page.getByTestId("invoice-detail-total")).toContainText("$50.00");
   const draftId = invoiceIdFromUrl(page.url());
 
+  await expectInvoiceListApiContains(page, draftId);
+
   await openInvoiceFromList(page, draftInvoiceNo, draftClient);
   await page.getByRole("button", { name: "Edit Draft" }).click();
   await expect(page).toHaveURL(new RegExp(`/financial/invoices/${draftId}/edit`), {
@@ -337,7 +352,9 @@ test("create invoice, preview, save, reopen, draft continue, final save, and edi
   });
   await page.getByRole("button", { name: "More" }).click();
   await page.getByRole("menuitem", { name: "Mark as sent" }).click();
-  await expect(page.getByTestId("invoice-detail-status")).toContainText("Unpaid", {
+  // The fixed test due date is before the current local test clock; a sent, unpaid invoice is
+  // therefore correctly derived as overdue rather than changing invoice aging semantics.
+  await expect(page.getByTestId("invoice-detail-status")).toContainText("Overdue", {
     timeout: 30_000,
   });
 });

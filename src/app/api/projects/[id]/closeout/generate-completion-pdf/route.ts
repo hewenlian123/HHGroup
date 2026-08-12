@@ -5,11 +5,15 @@ import {
   addDocumentCompanyPdfHeader,
 } from "@/lib/document-company-pdf";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const BUCKET = "attachments";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdmin(req);
+  if (!guard.ok) return guard.response;
+
   const { id: projectId } = await ctx.params;
   if (!projectId)
     return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });

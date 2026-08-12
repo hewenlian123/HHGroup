@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { markInvoiceSent } from "@/lib/invoices-db";
@@ -62,6 +63,9 @@ type TestId = (typeof TEST_IDS)[number];
  * Tests are independent — each creates and deletes its own rows.
  */
 export async function POST(req: Request) {
+  const strictGuard = await requireSupabaseOwnerOrAdmin(req);
+  if (!strictGuard.ok) return strictGuard.response;
+
   const blocked = guardDangerousMaintenanceRequest(req);
   if (blocked) return blocked;
 

@@ -33,6 +33,17 @@ vi.mock("@/lib/supabase-server", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/auth-boundary", () => ({
+  requireSupabaseOwnerOrAdminWithClient: async (
+    _request: Request,
+    createClient: () => MockSupabaseClient
+  ) => ({
+    ok: true as const,
+    context: { email: "owner@example.com", role: "owner", user: { id: "owner-1" } },
+    client: createClient(),
+  }),
+}));
+
 describe("GET /api/labor/worker-balances", () => {
   beforeEach(() => {
     vi.resetModules();

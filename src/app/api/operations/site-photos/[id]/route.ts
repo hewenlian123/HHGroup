@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getSitePhotoById, updateSitePhoto, deleteSitePhoto } from "@/lib/data";
 import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 
 const STORAGE_BUCKET = "attachments";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdmin(_req);
+  if (!guard.ok) return guard.response;
+
   try {
     const { id } = await params;
     const photo = await getSitePhotoById(id);
@@ -19,6 +23,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdmin(req);
+  if (!guard.ok) return guard.response;
+
   try {
     const { id } = await params;
     const body = await req.json();
@@ -41,6 +48,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdmin(_req);
+  if (!guard.ok) return guard.response;
+
   try {
     const { id } = await params;
     const photo = await getSitePhotoById(id);

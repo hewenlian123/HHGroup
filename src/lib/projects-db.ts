@@ -261,9 +261,10 @@ export async function getProjects(explicitClient?: SupabaseClient): Promise<Proj
  * Avoids pulling large optional columns (notes, snapshots, etc).
  */
 export async function getProjectsDashboard(
-  limit = 200
+  limit = 200,
+  explicitClient?: SupabaseClient
 ): Promise<Array<Pick<Project, "id" | "name" | "status" | "budget" | "updated">>> {
-  const c = client();
+  const c = client(explicitClient);
   const cap = Math.max(1, Math.min(limit, 1000));
   const { data: rows, error } = await c
     .from("projects")
@@ -319,8 +320,11 @@ export async function getProjectByIdWithClient(
   return r ? toProject(r as ProjectRow) : null;
 }
 
-export async function getProjectById(id: string): Promise<Project | null> {
-  return getProjectByIdWithClient(client(), id);
+export async function getProjectById(
+  id: string,
+  explicitClient?: SupabaseClient
+): Promise<Project | null> {
+  return getProjectByIdWithClient(client(explicitClient), id);
 }
 
 /** Used to prevent duplicate convert-from-estimate: one estimate → one project. */

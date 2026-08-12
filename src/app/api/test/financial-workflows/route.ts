@@ -300,11 +300,7 @@ export async function POST(req: Request) {
         });
         steps.push("worker invoice created");
         log("worker_invoice_workflow", "worker invoice");
-        const profitBefore = await getCanonicalProjectProfit(projectId).catch(() => ({
-          expenseCost: 0,
-          actualCost: 0,
-          commissionCost: 0,
-        }));
+        const profitBefore = await getCanonicalProjectProfit(projectId, server);
         const expense = await createExpense({
           date: new Date().toISOString().slice(0, 10),
           vendorName: "Test Worker Invoice",
@@ -313,11 +309,7 @@ export async function POST(req: Request) {
         });
         steps.push("expense created");
         log("worker_invoice_workflow", "approve -> expense created");
-        const profitAfter = await getCanonicalProjectProfit(projectId).catch(() => ({
-          expenseCost: 0,
-          actualCost: 0,
-          commissionCost: 0,
-        }));
+        const profitAfter = await getCanonicalProjectProfit(projectId, server);
         const { data: directLineRows } = await server
           .from("expense_lines")
           .select("amount")
@@ -367,11 +359,7 @@ export async function POST(req: Request) {
       if (!projectId) {
         tests.push({ name: "expense_workflow", ok: false, steps: ["No project"] });
       } else {
-        const profitBefore = await getCanonicalProjectProfit(projectId).catch(() => ({
-          actualCost: 0,
-          profit: 0,
-          commissionCost: 0,
-        }));
+        const profitBefore = await getCanonicalProjectProfit(projectId, server);
         const expense = await createExpense({
           date: new Date().toISOString().slice(0, 10),
           vendorName: "Expense Workflow Test",
@@ -380,11 +368,7 @@ export async function POST(req: Request) {
         });
         steps.push("expense created");
         log("expense_workflow", "expense created");
-        const profitAfter = await getCanonicalProjectProfit(projectId).catch(() => ({
-          actualCost: 0,
-          profit: 0,
-          commissionCost: 0,
-        }));
+        const profitAfter = await getCanonicalProjectProfit(projectId, server);
         const spentIncreased =
           (profitAfter?.actualCost ?? 0) >= (profitBefore?.actualCost ?? 0) + 74;
         steps.push(spentIncreased ? "project.spent / actualCost increased" : "spent check");

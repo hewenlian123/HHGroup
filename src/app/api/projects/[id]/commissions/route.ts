@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import {
+  requireSupabaseOwnerOrAdmin,
+  requireSupabaseOwnerOrAdminWithClient,
+} from "@/lib/auth-boundary";
 import { createCommission, getCommissionsWithPaidByProject } from "@/lib/data";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 
 const ROLES = ["Designer", "Sales", "Referral", "Agent", "Other"];
 const MODES = ["Auto", "Manual"];
 
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdmin(req);
+  if (!guard.ok) return guard.response;
   const { id: projectId } = await ctx.params;
   if (!projectId?.trim()) {
     return NextResponse.json({ ok: false, message: "Missing project id" }, { status: 400 });
@@ -24,6 +30,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
   const projectId = String(id ?? "").trim();
   if (!projectId)
@@ -65,7 +73,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         commission_amount,
         notes,
       },
-      getServerSupabaseInternalNoStore() ?? undefined
+      guard.client ?? undefined
     );
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/financial/commissions");

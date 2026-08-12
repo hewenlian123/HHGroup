@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getProjectFinancialSnapshotComparison } from "@/lib/financial/project-financial-snapshot-db";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ function jsonError(status: number, message: string): NextResponse {
 }
 
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

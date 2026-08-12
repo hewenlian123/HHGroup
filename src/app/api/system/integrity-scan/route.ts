@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
   buildSystemIntegrityScanReport,
   type SystemIntegrityReadClient,
@@ -16,7 +16,7 @@ const NO_CACHE_HEADERS = {
 };
 
 export async function GET(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
   const supabase = getServerSupabaseInternalNoStore();

@@ -11,6 +11,13 @@ vi.mock("@/lib/supabase-server", () => ({
   getServerSupabaseAdmin: getServerSupabaseAdminMock,
 }));
 
+vi.mock("@/lib/auth-boundary", () => ({
+  requireSupabaseOwnerOrAdminServerAction: async () => ({
+    ok: true as const,
+    context: { email: "owner@example.com", role: "owner", user: { id: "owner-1" } },
+  }),
+}));
+
 describe("deleteEstimateAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();

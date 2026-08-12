@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import {
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
   appendLaborSettlementServiceRoleHint,
@@ -92,6 +93,8 @@ function chooseAdvanceRowsForDeduction(
  * of unpaid labor + pending reimbursements in scope (full outstanding or subset-sum).
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  if (!guard.ok) return guard.response;
   const { id: workerId } = await params;
   if (!workerId) {
     return NextResponse.json({ message: "Worker id required" }, { status: 400 });
@@ -131,7 +134,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       ? body.project_id.trim()
       : null;
 
-  const admin = getServerSupabaseInternalNoStore();
+  const admin = guard.client;
   if (!admin) {
     return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
   }

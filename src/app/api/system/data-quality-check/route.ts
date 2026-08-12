@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { getProjectFinancialSnapshot } from "@/lib/financial/project-financial-snapshot-db";
 import {
   buildDataQualityReport,
@@ -114,7 +114,7 @@ async function fetchProjectSnapshots(
 }
 
 export async function GET(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
   const supabase = getServerSupabaseInternalNoStore();

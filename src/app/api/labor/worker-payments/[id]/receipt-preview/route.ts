@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import { getWorkerByIdWithClient } from "@/lib/labor-db";
 import { getProjectByIdWithClient } from "@/lib/projects-db";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
@@ -10,14 +11,16 @@ import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  if (!guard.ok) return guard.response;
   const { id } = await params;
   if (!id?.trim()) {
     return NextResponse.json({ error: "Payment id required." }, { status: 400 });
   }
 
   try {
-    const supabase = getServerSupabaseInternalNoStore();
+    const supabase = guard.client;
     if (!supabase) {
       return NextResponse.json({ error: "Supabase not configured." }, { status: 500 });
     }

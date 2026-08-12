@@ -3,6 +3,7 @@
  * Table: subcontract_bills.
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/lib/supabase";
 
 export type SubcontractBillRow = {
@@ -32,8 +33,8 @@ export type ApproveSubcontractBillResult = {
 
 const BILL_ALREADY_APPROVED_MESSAGE = "Bill is already approved";
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -273,8 +274,10 @@ export async function getBillsSummaryAll(): Promise<
 }
 
 /** Fetch all bills with id, amount, status (for cashflow approved unpaid). */
-export async function getBillsAll(): Promise<{ id: string; amount: number; status: string }[]> {
-  const c = client();
+export async function getBillsAll(
+  explicitClient?: SupabaseClient
+): Promise<{ id: string; amount: number; status: string }[]> {
+  const c = client(explicitClient);
   const { data: rows, error } = await c.from("subcontract_bills").select("id, amount, status");
   if (error) throw new Error(error.message ?? "Failed to load bills.");
   return (rows ?? []).map((r: Record<string, unknown>) => ({

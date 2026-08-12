@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { computeWorkerPaymentReceiptNo } from "@/lib/worker-payment-receipt-no";
 import {
   generateWorkerPaymentReceiptPrintPdfBuffer,
@@ -18,7 +18,7 @@ export async function GET(
   request: Request,
   ctx: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
-  const auth = await requireAuthenticatedUser(request);
+  const auth = await requireSupabaseOwnerOrAdmin(request);
   if (!auth.ok) return auth.response;
 
   const { id: rawId } = await ctx.params;

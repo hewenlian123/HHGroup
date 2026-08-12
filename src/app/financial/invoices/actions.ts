@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { requireSupabaseOwnerOrAdminServerActionWithClient } from "@/lib/auth-boundary";
 import {
   createInvoice as createInvoiceData,
   deleteInvoice as deleteInvoiceData,
@@ -47,16 +48,11 @@ function safeInvoiceActionError(error: unknown, fallback: string): string {
 }
 
 async function getInvoiceActionClient() {
-  const admin = getServerSupabaseAdmin();
+  const guard = await requireSupabaseOwnerOrAdminServerActionWithClient(getServerSupabaseAdmin);
+  if (!guard.ok) return { ok: false as const, error: guard.error };
+  const admin = guard.client;
   const supabase = admin ?? (await createServerSupabaseClient());
   if (!supabase) return { ok: false as const, error: "Supabase is not configured." };
-  if (!admin) {
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-    if (authError || !user) return { ok: false as const, error: "You must be signed in." };
-  }
   return { ok: true as const, client: supabase };
 }
 

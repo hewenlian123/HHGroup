@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAuthenticatedUser } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
   getProjectFinancialSnapshotComparison,
   type ProjectFinancialSnapshotComparison,
@@ -56,7 +56,7 @@ function jsonError(status: number, message: string): NextResponse {
 }
 
 export async function GET(request: Request) {
-  const guard = await requireAuthenticatedUser(request);
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
   const ids = parseProjectIds(request);

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import type { PaymentReceiptPreviewDto } from "@/lib/payment-receipt-preview-dto";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
@@ -61,14 +62,17 @@ async function resolveRecipientEmail(
   return ((byName.data as { email?: string | null } | null)?.email ?? "").trim() || null;
 }
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  if (!guard.ok) return guard.response;
+
   const { id } = await params;
   if (!id?.trim()) {
     return NextResponse.json({ error: "Payment id required." }, { status: 400 });
   }
 
   try {
-    const c = getServerSupabaseInternalNoStore();
+    const c = guard.client;
     if (!c) return NextResponse.json({ error: "Supabase is not configured." }, { status: 500 });
 
     const paymentRes = await c
