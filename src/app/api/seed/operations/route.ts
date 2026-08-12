@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
+import {
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+  getServerSupabaseAdmin,
+} from "@/lib/supabase-server";
 import {
   getProjects,
   createProject,
@@ -96,8 +101,19 @@ const INSPECTION_TEMPLATES: Array<{ type: string; status: "passed" | "failed" | 
  * Does NOT overwrite existing data.
  */
 export async function POST(request: Request) {
+  const strictGuard = await requireSupabaseOwnerOrAdmin(request);
+  if (!strictGuard.ok) return strictGuard.response;
+
   const blocked = guardDangerousMaintenanceRequest(request);
   if (blocked) return blocked;
+
+  const admin = getServerSupabaseAdmin();
+  if (!admin) {
+    return NextResponse.json(
+      { ok: false, message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
+      { status: 503 }
+    );
+  }
 
   try {
     let projects = await getProjects();
@@ -131,12 +147,15 @@ export async function POST(request: Request) {
     if (!workers.length) {
       try {
         for (const w of DEMO_WORKERS) {
-          await createWorker({
-            name: w.name,
-            trade: w.trade,
-            dailyRate: w.dailyRate,
-            status: "active",
-          });
+          await createWorker(
+            {
+              name: w.name,
+              trade: w.trade,
+              dailyRate: w.dailyRate,
+              status: "active",
+            },
+            admin
+          );
         }
         workersSeeded = true;
       } catch {

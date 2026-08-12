@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
-import { getServerSupabase, getServerSupabaseAdmin } from "@/lib/supabase-server";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { markInvoiceSent } from "@/lib/invoices-db";
 import { createPaymentReceived } from "@/lib/payments-received-db";
 import { createWorkerPaymentWithClient } from "@/lib/worker-payments-db";
@@ -83,12 +83,12 @@ export async function POST(req: Request) {
   }
 
   // Prefer service role so RLS does not block test data creation (workers, receipts, etc.)
-  const c = getServerSupabaseAdmin() ?? getServerSupabase();
+  const c = getServerSupabaseAdmin();
   if (!c) {
     return NextResponse.json(
       {
         ok: false,
-        message: "Supabase not configured. Set SUPABASE_SERVICE_ROLE_KEY or anon key.",
+        message: "Supabase privileged server client is not configured.",
         tests: [],
       },
       { status: 500 }

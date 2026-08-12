@@ -11,8 +11,9 @@ import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { getServerSupabaseAdminNoStore } from "@/lib/supabase-server";
 import { getWorkerPaymentByIdWithClient } from "@/lib/worker-payments-db";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 
 export const metadata: Metadata = {
   title: "Worker Payment Receipt",
@@ -26,12 +27,14 @@ export default async function WorkerPaymentReceiptPrintPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ autoprint?: string; pdf?: string }>;
 }) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
   const { id } = await params;
   const sp = await searchParams;
   const autoprint = sp.autoprint === "1" || sp.autoprint === "true";
   const pdfCapture = sp.pdf === "1" || sp.pdf === "true";
 
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = getServerSupabaseAdminNoStore();
   if (!supabase) {
     return (
       <ServerDataLoadFallback
@@ -70,8 +73,9 @@ export default async function WorkerPaymentReceiptPrintPage({
         : Promise.resolve(undefined),
       getWorkerPaymentReceiptPayload(payment.id, payment.workerId, payment.amount, {
         laborEntryIdsFromPayment: payment.laborEntryIds,
+        client: supabase,
       }),
-      computeWorkerPaymentReceiptNo(payment.id, payment.paymentDate),
+      computeWorkerPaymentReceiptNo(payment.id, payment.paymentDate, supabase),
       fetchDocumentCompanyProfile(),
     ]);
   } catch (e) {

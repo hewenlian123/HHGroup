@@ -3,7 +3,6 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
 import {
   isLaborUnpaidForWorkerPayroll,
   isWorkerAdvanceOpenForBalance,
@@ -282,12 +281,12 @@ export async function getWorkerPaymentReceiptPayload(
   paymentId: string,
   workerId: string,
   paymentAmount: number,
-  options?: {
+  options: {
     laborEntryIdsFromPayment?: string[] | null;
+    client: SupabaseClient;
   }
 ): Promise<WorkerPaymentReceiptPayload | null> {
-  const c = getServerSupabaseInternalNoStore();
-  if (!c) return null;
+  const c = options.client;
 
   const projectNameById = new Map<string, string | null>();
   const { data: projects } = await c.from("projects").select("id, name");

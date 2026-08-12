@@ -1,5 +1,6 @@
 import { ensureConstructionSchema } from "@/lib/ensure-construction-schema";
 import { runSchemaAutoRepair } from "@/lib/ensure-schema-auto-repair";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
 import { NextResponse } from "next/server";
 
@@ -10,6 +11,9 @@ import { NextResponse } from "next/server";
  * Returns combined status for the UI.
  */
 export async function POST(request: Request) {
+  const strictGuard = await requireSupabaseOwnerOrAdmin(request);
+  if (!strictGuard.ok) return strictGuard.response;
+
   const blocked = guardDangerousMaintenanceRequest(request);
   if (blocked) return blocked;
 

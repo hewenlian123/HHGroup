@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import postgres from "postgres";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternal,
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+  getServerSupabaseAdmin,
 } from "@/lib/supabase-server";
 import { insertWorker, type WorkerRow } from "@/lib/workers-db";
 
@@ -166,9 +166,12 @@ export async function GET(req: Request) {
   const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
-  const admin = getServerSupabaseInternal();
+  const admin = getServerSupabaseAdmin();
   if (!admin) {
-    return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
+    return NextResponse.json(
+      { message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
+      { status: 503 }
+    );
   }
   try {
     const { data: rows, error } = await admin
@@ -200,9 +203,12 @@ export async function POST(req: Request) {
   const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
-  const admin = getServerSupabaseInternal();
+  const admin = getServerSupabaseAdmin();
   if (!admin) {
-    return NextResponse.json({ message: SUPABASE_MISSING_SERVER_ENV_MESSAGE }, { status: 503 });
+    return NextResponse.json(
+      { message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
+      { status: 503 }
+    );
   }
   try {
     const body = await req.json().catch(() => ({}));

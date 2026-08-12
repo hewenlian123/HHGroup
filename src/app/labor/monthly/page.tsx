@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { getLaborEntriesWithJoins, getLaborPaymentsByDateRange } from "@/lib/daily-labor-db";
 import { getWorkers } from "@/lib/labor-db";
 import { getServerSupabaseInternal } from "@/lib/supabase-server";
@@ -24,6 +26,8 @@ function monthBounds(month: string): { dateFrom: string; dateTo: string } {
 type Props = { searchParams: Promise<{ month?: string }> };
 
 export default async function MonthlyLaborPage({ searchParams }: Props) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
   const { month: monthParam } = await searchParams;
   const month = monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : getDefaultMonth();
   const { dateFrom, dateTo } = monthBounds(month);

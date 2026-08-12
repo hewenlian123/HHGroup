@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import {
   getProjectById,
   getProjectBillingSummary,
@@ -90,6 +91,8 @@ export default async function ProjectDetailPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<ProjectDetailSearchParams>;
 }) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
   const { id } = await params;
   const sp = (await searchParams) ?? {};
   const rawTab = (firstSearchParam(sp.tab) ?? "overview").toString().toLowerCase();

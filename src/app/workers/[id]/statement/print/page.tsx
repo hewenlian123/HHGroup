@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { Button } from "@/components/ui/button";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
@@ -47,6 +48,8 @@ export default async function WorkerStatementPrintPage({
   params: Promise<{ id: string }>;
   searchParams?: Promise<{ start?: string; end?: string; project?: string; returnTo?: string }>;
 }) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
   const { id } = await params;
   const qs = (await searchParams) ?? {};
   const returnHref = safeWorkerReturnPath(qs.returnTo, workerDetailReturnPath(id, "statements"));

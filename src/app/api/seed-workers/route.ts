@@ -1,5 +1,10 @@
 import { createWorker } from "@/lib/data";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
+import {
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+  getServerSupabaseAdmin,
+} from "@/lib/supabase-server";
 import { NextResponse } from "next/server";
 
 const SEED_WORKERS: { name: string; daily_rate: number }[] = [
@@ -23,17 +28,31 @@ const SEED_WORKERS: { name: string; daily_rate: number }[] = [
  * that it creates; duplicate names will create duplicate rows.
  */
 export async function POST(request: Request) {
+  const strictGuard = await requireSupabaseOwnerOrAdmin(request);
+  if (!strictGuard.ok) return strictGuard.response;
+
   const blocked = guardDangerousMaintenanceRequest(request);
   if (blocked) return blocked;
+
+  const admin = getServerSupabaseAdmin();
+  if (!admin) {
+    return NextResponse.json(
+      { ok: false, message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
+      { status: 503 }
+    );
+  }
 
   try {
     const created: { name: string; id: string }[] = [];
     for (const w of SEED_WORKERS) {
-      const worker = await createWorker({
-        name: w.name,
-        dailyRate: w.daily_rate,
-        status: "active",
-      });
+      const worker = await createWorker(
+        {
+          name: w.name,
+          dailyRate: w.daily_rate,
+          status: "active",
+        },
+        admin
+      );
       created.push({ name: worker.name, id: worker.id });
     }
     return NextResponse.json({

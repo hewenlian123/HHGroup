@@ -1,27 +1,39 @@
 import { notFound } from "next/navigation";
 import { WorkerPaymentReceiptBody } from "@/components/labor/worker-payment-receipt-body";
 import { WorkerPaymentReceiptScreen } from "./receipt-screen-client";
-import { getProjectById, getWorkerById } from "@/lib/data";
+import { getWorkerByIdWithClient } from "@/lib/labor-db";
+import { getProjectByIdWithClient } from "@/lib/projects-db";
 import { getWorkerPaymentReceiptPayload } from "@/lib/worker-payment-receipt-data";
 import { computeWorkerPaymentReceiptNo } from "@/lib/worker-payment-receipt-no";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
 import { logServerPageDataError, serverDataLoadWarning } from "@/lib/server-load-warning";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { getServerSupabaseAdminNoStore } from "@/lib/supabase-server";
 import { getWorkerPaymentByIdWithClient } from "@/lib/worker-payments-db";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 
 export default async function WorkerPaymentReceiptPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
   const { id } = await params;
+  const supabase = getServerSupabaseAdminNoStore();
+  if (!supabase) {
+    return (
+      <ServerDataLoadFallback
+        message="Supabase is not configured."
+        backHref="/labor/payments"
+        backLabel="Back to payments"
+      />
+    );
+  }
 
   let payment: Awaited<ReturnType<typeof getWorkerPaymentByIdWithClient>> | null = null;
   try {
-    const supabase = getServerSupabaseInternalNoStore();
-    if (!supabase) throw new Error("Supabase is not configured.");
     payment = await getWorkerPaymentByIdWithClient(supabase, id);
   } catch (e) {
     logServerPageDataError(`labor/payments/${id}/receipt`, e);
@@ -35,19 +47,22 @@ export default async function WorkerPaymentReceiptPage({
   }
   if (!payment) notFound();
 
-  let worker: Awaited<ReturnType<typeof getWorkerById>> | undefined;
-  let project: Awaited<ReturnType<typeof getProjectById>> | undefined;
+  let worker: Awaited<ReturnType<typeof getWorkerByIdWithClient>> | undefined;
+  let project: Awaited<ReturnType<typeof getProjectByIdWithClient>> | undefined;
   let receiptData: Awaited<ReturnType<typeof getWorkerPaymentReceiptPayload>>;
   let receiptNo: string;
   let company: Awaited<ReturnType<typeof fetchDocumentCompanyProfile>>;
   try {
     [worker, project, receiptData, receiptNo, company] = await Promise.all([
-      getWorkerById(payment.workerId),
-      payment.projectId ? getProjectById(payment.projectId) : Promise.resolve(undefined),
+      getWorkerByIdWithClient(supabase, payment.workerId),
+      payment.projectId
+        ? getProjectByIdWithClient(supabase, payment.projectId)
+        : Promise.resolve(undefined),
       getWorkerPaymentReceiptPayload(payment.id, payment.workerId, payment.amount, {
         laborEntryIdsFromPayment: payment.laborEntryIds,
+        client: supabase,
       }),
-      computeWorkerPaymentReceiptNo(payment.id, payment.paymentDate),
+      computeWorkerPaymentReceiptNo(payment.id, payment.paymentDate, supabase),
       fetchDocumentCompanyProfile(),
     ]);
   } catch (e) {

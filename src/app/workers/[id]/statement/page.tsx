@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { PageLayout, PageHeader } from "@/components/base";
 import { Button } from "@/components/ui/button";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
@@ -109,6 +110,8 @@ function EmptyState({ children }: { children: React.ReactNode }) {
 }
 
 export default async function WorkerStatementPage({ params, searchParams }: Props) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
   const { id } = await params;
   const qs = (await searchParams) ?? {};
   const returnHref = safeWorkerReturnPath(qs.returnTo, workerDetailReturnPath(id, "statements"));

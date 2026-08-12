@@ -27,6 +27,7 @@ vi.mock("@/lib/supabase-server", async (importOriginal) => {
   return {
     ...actual,
     getServerSupabaseAdmin: () => mockSupabaseGetter(),
+    getServerSupabaseAdminNoStore: () => mockSupabaseGetter(),
     getServerSupabase: () => mockSupabaseGetter(),
     getServerSupabaseInternal: () => mockSupabaseGetter(),
     getServerSupabaseInternalNoStore: () => mockSupabaseGetter(),
@@ -34,6 +35,10 @@ vi.mock("@/lib/supabase-server", async (importOriginal) => {
 });
 
 vi.mock("@/lib/auth-boundary", () => ({
+  requireSupabaseOwnerOrAdmin: async () => ({
+    ok: true as const,
+    context: { email: "owner@example.com", role: "owner", user: { id: "owner-1" } },
+  }),
   requireSupabaseOwnerOrAdminWithClient: async (
     _request: Request,
     createClient: () => MockSupabaseClient

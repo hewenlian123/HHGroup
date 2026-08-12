@@ -8,7 +8,6 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/native-select";
-import { updateWorker, getWorkerUsage, disableWorker, deleteWorker } from "@/lib/data";
 import { useBreadcrumbEntityLabel } from "@/contexts/breadcrumb-override-context";
 
 type WorkerProfile = {
@@ -63,6 +62,21 @@ async function fetchWorkerProfile(id: string): Promise<{
   };
 }
 
+async function mutateWorker(
+  id: string,
+  method: "PATCH" | "DELETE",
+  body?: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  const res = await fetch(`/api/labor/workers/${encodeURIComponent(id)}`, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) throw new Error(String(json.message ?? `Failed to ${method.toLowerCase()} worker.`));
+  return json;
+}
+
 export default function WorkerProfileEditPage() {
   const params = useParams();
   const router = useRouter();
@@ -112,36 +126,33 @@ export default function WorkerProfileEditPage() {
 
   const handleSave = async () => {
     if (!id) return;
-    const updated = await updateWorker(id, {
+    const updated = await mutateWorker(id, "PATCH", {
       name: name.trim(),
       phone,
       trade,
       status,
       notes,
     });
-    if (!updated) {
-      setMessage("Unable to save worker.");
-      return;
-    }
-    setWorker(updated);
+    setWorker(normalizeWorker(updated));
     setMessage("Worker updated.");
   };
 
   const handleDisable = async () => {
     if (!id) return;
-    await disableWorker(id);
+    const updated = await mutateWorker(id, "PATCH", { status: "inactive" });
+    setWorker(normalizeWorker(updated));
     setStatus("inactive");
     setMessage("Worker set to inactive.");
   };
 
   const handleDelete = async () => {
     if (!id) return;
-    const u = await getWorkerUsage(id);
+    const u = usage ?? { used: false };
     if (u.used) {
       setMessage("Delete blocked: this worker has labor entries or labor invoices. Use Disable.");
       return;
     }
-    await deleteWorker(id);
+    await mutateWorker(id, "DELETE");
     router.push("/workers");
   };
 

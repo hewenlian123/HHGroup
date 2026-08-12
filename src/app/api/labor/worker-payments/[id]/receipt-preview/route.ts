@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
 import { getWorkerByIdWithClient } from "@/lib/labor-db";
 import { getProjectByIdWithClient } from "@/lib/projects-db";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { getServerSupabaseAdminNoStore } from "@/lib/supabase-server";
 import { getWorkerPaymentByIdWithClient } from "@/lib/worker-payments-db";
 import { getWorkerPaymentReceiptPayload } from "@/lib/worker-payment-receipt-data";
 import type { WorkerPaymentReceiptPreviewDto } from "@/lib/worker-payment-receipt-preview-dto";
@@ -12,7 +12,7 @@ import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseAdminNoStore);
   if (!guard.ok) return guard.response;
   const { id } = await params;
   if (!id?.trim()) {
@@ -37,8 +37,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         : Promise.resolve(undefined),
       getWorkerPaymentReceiptPayload(payment.id, payment.workerId, payment.amount, {
         laborEntryIdsFromPayment: payment.laborEntryIds,
+        client: supabase,
       }),
-      computeWorkerPaymentReceiptNo(payment.id, payment.paymentDate),
+      computeWorkerPaymentReceiptNo(payment.id, payment.paymentDate, supabase),
       fetchDocumentCompanyProfile(),
     ]);
 

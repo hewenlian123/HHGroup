@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternalNoStore,
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+  getServerSupabaseAdminNoStore,
 } from "@/lib/supabase-server";
 import { workerOutstandingBalanceFromUnsettledItems } from "@/lib/labor-balance-shared";
 import { fetchWorkerBalanceRowForDelete } from "@/lib/worker-balances-list";
@@ -27,7 +27,7 @@ function paySelectErrorMissingCol(err: { message?: string } | null): boolean {
  * no labor_entries and no worker_payments rows (matches list `deletable` flag).
  */
 export async function DELETE(req: Request, { params }: RouteParams) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(req, getServerSupabaseInternalNoStore);
+  const guard = await requireSupabaseOwnerOrAdmin(req);
   if (!guard.ok) return guard.response;
 
   const { workerId } = await params;
@@ -42,10 +42,10 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
   }
 
-  const c = guard.client;
+  const c = getServerSupabaseAdminNoStore();
   if (!c) {
     return NextResponse.json(
-      { ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },
+      { ok: false, message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
       { status: 503 }
     );
   }

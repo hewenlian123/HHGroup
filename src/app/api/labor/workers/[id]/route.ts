@@ -3,8 +3,8 @@ import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { deleteWorker, updateWorker } from "@/lib/data";
 import { getWorkerByIdWithClient, getWorkerUsageWithClient } from "@/lib/labor-db";
 import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternal,
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+  getServerSupabaseAdmin,
 } from "@/lib/supabase-server";
 import {
   getWorkerCurrentDailyRateWithClient,
@@ -23,10 +23,10 @@ export async function GET(req: Request, { params }: RouteParams) {
   if (!id?.trim()) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
   }
-  const admin = getServerSupabaseInternal();
+  const admin = getServerSupabaseAdmin();
   if (!admin) {
     return NextResponse.json(
-      { ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },
+      { ok: false, message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
       { status: 503 }
     );
   }
@@ -72,26 +72,31 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   if (!id?.trim()) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
   }
-  const admin = getServerSupabaseInternal();
+  const admin = getServerSupabaseAdmin();
   if (!admin) {
     return NextResponse.json(
-      { ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },
+      { ok: false, message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
       { status: 503 }
     );
   }
   try {
     const body = await req.json().catch(() => ({}));
     const name = (body.name as string)?.trim();
-    const worker = await updateWorker(id, {
-      ...(name !== undefined && { name }),
-      ...(body.phone !== undefined && { phone: (body.phone as string)?.trim() ?? null }),
-      ...((body.role !== undefined || body.trade !== undefined) && {
-        trade: ((body.role ?? body.trade) as string)?.trim() ?? null,
-      }),
-      ...(body.half_day_rate !== undefined && { halfDayRate: Number(body.half_day_rate) }),
-      ...(body.status === "inactive" && { status: "inactive" as const }),
-      ...(body.status === "active" && { status: "active" as const }),
-    });
+    const worker = await updateWorker(
+      id,
+      {
+        ...(name !== undefined && { name }),
+        ...(body.phone !== undefined && { phone: (body.phone as string)?.trim() ?? null }),
+        ...((body.role !== undefined || body.trade !== undefined) && {
+          trade: ((body.role ?? body.trade) as string)?.trim() ?? null,
+        }),
+        ...(body.half_day_rate !== undefined && { halfDayRate: Number(body.half_day_rate) }),
+        ...(body.notes !== undefined && { notes: (body.notes as string)?.trim() ?? null }),
+        ...(body.status === "inactive" && { status: "inactive" as const }),
+        ...(body.status === "active" && { status: "active" as const }),
+      },
+      admin
+    );
     return NextResponse.json(worker);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to update worker.";
@@ -110,15 +115,25 @@ export async function DELETE(req: Request, { params }: RouteParams) {
   if (!id?.trim()) {
     return NextResponse.json({ ok: false, message: "Worker id is required." }, { status: 400 });
   }
-  const admin = getServerSupabaseInternal();
+  const admin = getServerSupabaseAdmin();
   if (!admin) {
     return NextResponse.json(
-      { ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },
+      { ok: false, message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
       { status: 503 }
     );
   }
   try {
-    await deleteWorker(id);
+    const deleted = await deleteWorker(id, admin);
+    if (!deleted) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "Worker has labor entries or invoices and cannot be deleted. Archive the worker instead.",
+        },
+        { status: 409 }
+      );
+    }
     return NextResponse.json({ ok: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to delete worker.";

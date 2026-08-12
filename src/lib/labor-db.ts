@@ -12,6 +12,7 @@ import {
   changeWorkerDailyRateWithClient,
   ensureInitialWorkerRateHistoryWithClient,
 } from "@/lib/worker-rate-history-db";
+import { syncLaborWorkerProjectionWithClient } from "@/lib/labor-workers-projection";
 import {
   mergeLaborOvertimeIntoNotes,
   parseLaborOvertimeAmountFromNotes,
@@ -342,16 +343,19 @@ export async function getWorkerByIdWithClient(
   return toWorker(row as WorkerRow);
 }
 
-export async function createWorker(input: {
-  name: string;
-  phone?: string;
-  trade?: string;
-  status?: "active" | "inactive";
-  halfDayRate?: number;
-  dailyRate?: number;
-  notes?: string;
-}): Promise<Worker> {
-  return createWorkerWithClient(undefined, input);
+export async function createWorker(
+  input: {
+    name: string;
+    phone?: string;
+    trade?: string;
+    status?: "active" | "inactive";
+    halfDayRate?: number;
+    dailyRate?: number;
+    notes?: string;
+  },
+  explicitClient?: SupabaseClient
+): Promise<Worker> {
+  return createWorkerWithClient(explicitClient, input);
 }
 
 export async function createWorkerWithClient(
@@ -421,9 +425,10 @@ export async function updateWorker(
     status: "active" | "inactive";
     halfDayRate: number;
     notes?: string;
-  }>
+  }>,
+  explicitClient?: SupabaseClient
 ): Promise<Worker | null> {
-  const c = client();
+  const c = client(explicitClient);
   const dailyRatePatch = patch.halfDayRate;
   const updates: Record<string, unknown> = {};
   if (patch.name != null) updates.name = patch.name.trim();
@@ -439,7 +444,7 @@ export async function updateWorker(
         notes: "Updated from legacy worker edit",
       });
     }
-    return getWorkerById(id);
+    return getWorkerByIdWithClient(c, id);
   }
   const { data: row, error } = await c
     .from("workers")
@@ -454,13 +459,13 @@ export async function updateWorker(
       effectiveFrom: new Date().toISOString().slice(0, 10),
       notes: "Updated from legacy worker edit",
     });
-    return getWorkerById(id);
+    return getWorkerByIdWithClient(c, id);
   }
   return toWorker(row as WorkerRow);
 }
 
-export async function deleteWorker(id: string): Promise<void> {
-  const c = client();
+export async function deleteWorker(id: string, explicitClient?: SupabaseClient): Promise<void> {
+  const c = client(explicitClient);
   await c.from("workers").delete().eq("id", id);
 }
 
@@ -644,14 +649,11 @@ export async function insertDailyLaborEntriesWithClient(
   // if the sync migration/trigger wasn't applied or backfilled.
   const ensureLaborWorkers = async () => {
     try {
-      // IMPORTANT: production `labor_workers` schema has drifted over time (e.g. created_at dropped).
-      // To stay compatible across schemas, only upsert the minimal common columns: (id, name).
-      const payload = Array.from(workerMap.values()).map((w) => ({
-        id: w.id,
-        name: w.name ?? "",
-      }));
-      if (payload.length === 0) return;
-      await c.from("labor_workers").upsert(payload, { onConflict: "id" });
+      await Promise.all(
+        Array.from(workerMap.values()).map((worker) =>
+          syncLaborWorkerProjectionWithClient(c, worker)
+        )
+      );
     } catch (e) {
       // Only ignore missing table; surface RLS / column drift errors early.
       const msg = e instanceof Error ? e.message : String(e);
@@ -786,15 +788,7 @@ export async function upsertLaborEntry(
 
   // Safety: ensure labor_workers contains this worker for FK schemas.
   try {
-    await c.from("labor_workers").upsert(
-      [
-        {
-          id: worker.id,
-          name: worker.name ?? "",
-        },
-      ],
-      { onConflict: "id" }
-    );
+    await syncLaborWorkerProjectionWithClient(c, worker);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (/schema cache|relation.*does not exist|could not find the table/i.test(msg)) {

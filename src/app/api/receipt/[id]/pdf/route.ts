@@ -7,7 +7,7 @@ import {
   workerPaymentReceiptPrintPdfFilename,
 } from "@/lib/worker-payment-receipt-print-pdf";
 import { resolveServerAppOrigin } from "@/lib/server-app-origin";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { getServerSupabaseAdminNoStore } from "@/lib/supabase-server";
 import { getWorkerPaymentByIdWithClient } from "@/lib/worker-payments-db";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +27,7 @@ export async function GET(
     return NextResponse.json({ ok: false, message: "Missing payment id." }, { status: 400 });
   }
 
-  const supabase = getServerSupabaseInternalNoStore();
+  const supabase = getServerSupabaseAdminNoStore();
   if (!supabase) {
     return NextResponse.json({ ok: false, message: "Supabase not configured." }, { status: 500 });
   }
@@ -43,7 +43,11 @@ export async function GET(
       origin: resolveServerAppOrigin(request),
       cookieHeader: request.headers.get("cookie"),
     });
-    const receiptNo = await computeWorkerPaymentReceiptNo(payment.id, payment.paymentDate);
+    const receiptNo = await computeWorkerPaymentReceiptNo(
+      payment.id,
+      payment.paymentDate,
+      supabase
+    );
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       status: 200,

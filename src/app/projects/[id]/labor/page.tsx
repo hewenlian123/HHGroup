@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { PageLayout, PageHeader, Divider, SectionHeader } from "@/components/base";
 import { getProjectById, getLaborEntriesWithJoins, getWorkers } from "@/lib/data";
 import { ServerDataLoadFallback } from "@/components/server-data-load-fallback";
@@ -18,6 +19,8 @@ function fmtUsd(n: number): string {
 type Props = { params: Promise<{ id: string }> };
 
 export default async function ProjectLaborPage({ params }: Props) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
   const { id } = await params;
 
   let project: Awaited<ReturnType<typeof getProjectById>> | undefined;

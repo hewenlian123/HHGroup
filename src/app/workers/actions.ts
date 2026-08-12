@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import * as workersDb from "@/lib/workers-db";
 import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternal,
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+  getServerSupabaseAdmin,
 } from "@/lib/supabase-server";
 import type { WorkerDraft, UpdateWorkerPatch, WorkerRow } from "@/lib/workers-db";
 
@@ -13,8 +13,8 @@ async function workerActionClient() {
   const guard = await requireSupabaseOwnerOrAdminServerAction();
   if (!guard.ok) throw new Error("Authentication required.");
 
-  const client = getServerSupabaseInternal();
-  if (!client) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const client = getServerSupabaseAdmin();
+  if (!client) throw new Error(SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE);
   return client;
 }
 

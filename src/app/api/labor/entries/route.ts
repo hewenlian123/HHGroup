@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternal,
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+  getServerSupabaseAdmin,
 } from "@/lib/supabase-server";
 import { getLaborEntriesWithJoins } from "@/lib/daily-labor-db";
 import { insertDailyLaborEntriesWithClient } from "@/lib/labor-db";
@@ -200,7 +200,7 @@ function ensureNoDuplicateRowsInRequest(rows: DailyLaborInput[]): void {
 }
 
 async function ensureNoOverlappingLaborSession(
-  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseAdmin>>,
   input: {
     entryId?: string;
     workerId: string;
@@ -238,7 +238,7 @@ async function ensureNoOverlappingLaborSession(
 }
 
 async function ensureNoOverlappingDailyRows(
-  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseAdmin>>,
   workDate: string,
   rows: DailyLaborInput[]
 ): Promise<void> {
@@ -256,7 +256,7 @@ async function ensureNoOverlappingDailyRows(
 }
 
 async function ensureNotDuplicateSession(
-  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseAdmin>>,
   input: {
     entryId: string;
     workerId: string;
@@ -275,7 +275,7 @@ async function ensureNotDuplicateSession(
 }
 
 async function updateSessionEntry(
-  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseAdmin>>,
   body: LaborEntryPayload
 ): Promise<void> {
   const id = safeString(body.id);
@@ -371,7 +371,7 @@ async function updateSessionEntry(
 }
 
 async function updateDailyEntry(
-  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseAdmin>>,
   body: LaborEntryPayload
 ): Promise<void> {
   const id = safeString(body.id);
@@ -451,7 +451,7 @@ async function updateDailyEntry(
 }
 
 async function runBulkAction(
-  supabase: NonNullable<ReturnType<typeof getServerSupabaseInternal>>,
+  supabase: NonNullable<ReturnType<typeof getServerSupabaseAdmin>>,
   body: LaborEntryPayload
 ): Promise<void> {
   const action = safeString(body.action).toLowerCase();
@@ -478,8 +478,8 @@ export async function GET(request: Request) {
   const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseInternal();
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const supabase = getServerSupabaseAdmin();
+  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE);
 
   const { searchParams } = new URL(request.url);
   const view = searchParams.get("view")?.trim() ?? "";
@@ -614,8 +614,8 @@ export async function POST(request: Request) {
   const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseInternal();
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const supabase = getServerSupabaseAdmin();
+  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE);
 
   try {
     const body = (await request.json().catch(() => null)) as LaborEntryPayload | null;
@@ -671,8 +671,8 @@ export async function PATCH(request: Request) {
   const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseInternal();
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const supabase = getServerSupabaseAdmin();
+  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE);
 
   try {
     const body = (await request.json().catch(() => null)) as
@@ -714,8 +714,8 @@ export async function DELETE(request: Request) {
   const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
-  const supabase = getServerSupabaseInternal();
-  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ENV_MESSAGE);
+  const supabase = getServerSupabaseAdmin();
+  if (!supabase) return apiError(503, SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE);
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id")?.trim() ?? "";

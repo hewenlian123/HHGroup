@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import { guardDangerousMaintenanceRequest } from "@/lib/production-safety";
-import { SUPABASE_MISSING_SERVER_ENV_MESSAGE, getServerSupabase } from "@/lib/supabase-server";
+import {
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+  getServerSupabaseAdmin,
+} from "@/lib/supabase-server";
 import { insertLaborEntryForTestSchema } from "@/lib/labor-entry-test-insert";
 import { createWorkerPaymentWithClient } from "@/lib/worker-payments-db";
 import {
@@ -37,6 +41,9 @@ const TEST_IDS = [
  * Returns { ok, tests: [{ name, ok, steps? }] }.
  */
 export async function POST(req: Request) {
+  const strictGuard = await requireSupabaseOwnerOrAdmin(req);
+  if (!strictGuard.ok) return strictGuard.response;
+
   const blocked = guardDangerousMaintenanceRequest(req);
   if (blocked) return blocked;
 
@@ -52,10 +59,10 @@ export async function POST(req: Request) {
     // ignore
   }
 
-  const server = getServerSupabase();
+  const server = getServerSupabaseAdmin();
   if (!server) {
     return NextResponse.json(
-      { ok: false, message: SUPABASE_MISSING_SERVER_ENV_MESSAGE, tests: [] },
+      { ok: false, message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE, tests: [] },
       { status: 503 }
     );
   }

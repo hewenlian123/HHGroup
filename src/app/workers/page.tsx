@@ -1,5 +1,7 @@
 import { PageLayout, PageHeader } from "@/components/base";
 import { unstable_noStore as noStore } from "next/cache";
+import { notFound } from "next/navigation";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { getWorkers as getLaborWorkersFlat, type Worker as LaborWorker } from "@/lib/labor-db";
 import { getWorkers } from "@/lib/workers-db";
 import type { WorkerRow, WorkerStatus } from "@/lib/workers-db";
@@ -31,6 +33,8 @@ function laborWorkerToWorkerRow(w: LaborWorker): WorkerRow {
 
 export default async function WorkersPage() {
   noStore();
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
   let rows: Awaited<ReturnType<typeof getWorkers>> = [];
   let initialLastPayments: WorkerPayment[] = [];
   let dataLoadWarning: string | null = null;

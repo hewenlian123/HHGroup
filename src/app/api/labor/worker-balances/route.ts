@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireSupabaseOwnerOrAdminWithClient } from "@/lib/auth-boundary";
+import { requireSupabaseOwnerOrAdmin } from "@/lib/auth-boundary";
 import {
-  SUPABASE_MISSING_SERVER_ENV_MESSAGE,
-  getServerSupabaseInternalNoStore,
+  SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE,
+  getServerSupabaseAdminNoStore,
 } from "@/lib/supabase-server";
 import { fetchWorkerBalances, type WorkerBalanceRow } from "@/lib/worker-balances-list";
 
@@ -28,16 +28,13 @@ export type { WorkerBalanceRow };
  * GET: Worker balances summary (see `fetchWorkerBalances` in `@/lib/worker-balances-list`).
  */
 export async function GET(request: Request) {
-  const guard = await requireSupabaseOwnerOrAdminWithClient(
-    request,
-    getServerSupabaseInternalNoStore
-  );
+  const guard = await requireSupabaseOwnerOrAdmin(request);
   if (!guard.ok) return guard.response;
 
-  const c = guard.client;
+  const c = getServerSupabaseAdminNoStore();
   if (!c) {
     return NextResponse.json(
-      { message: SUPABASE_MISSING_SERVER_ENV_MESSAGE },
+      { message: SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE },
       { status: 503, headers: NO_CACHE_HEADERS }
     );
   }

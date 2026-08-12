@@ -78,6 +78,14 @@ export function getServerSupabaseAdmin(): SupabaseClient | null {
   return createClient(url, serverSecret, serverClientOptions());
 }
 
+/** Service-role client for privileged reads that must observe a just-completed mutation. */
+export function getServerSupabaseAdminNoStore(): SupabaseClient | null {
+  const url = envUrl();
+  const serverSecret = envServerSecret();
+  if (!url || !serverSecret) return null;
+  return createClient(url, serverSecret, serverClientOptions(true));
+}
+
 /**
  * Internal API routes: prefer service-role admin; otherwise use {@link getServerSupabase}
  * (anon/publishable key).
@@ -115,6 +123,10 @@ export const SUPABASE_SERVICE_ROLE_ENV_NAME = "SUPABASE_SERVICE_ROLE_KEY" as con
  */
 export const SUPABASE_MISSING_SERVER_ENV_MESSAGE =
   "Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on the server (e.g. Vercel). Optional: SUPABASE_SECRET_KEY is server-only and should be used only by explicit admin/internal routes; SUPABASE_SERVICE_ROLE_KEY is a temporary legacy fallback.";
+
+/** Explicit privileged server paths must never fall back to an anonymous client. */
+export const SUPABASE_MISSING_SERVER_ADMIN_ENV_MESSAGE =
+  "Supabase privileged server client is not configured. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY (or the temporary SUPABASE_SERVICE_ROLE_KEY fallback) on the server; never expose it to the browser.";
 
 /** PostgREST/Postgres errors that usually mean anon/session lacks privileges — hint service role on server. */
 export function appendLaborSettlementServiceRoleHint(message: string): string {

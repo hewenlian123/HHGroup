@@ -451,16 +451,19 @@ export async function getWorkers(): Promise<import("../labor-db").Worker[]> {
   return laborDb.getWorkers();
 }
 
-export async function createWorker(input: {
-  name: string;
-  phone?: string;
-  trade?: string;
-  status?: "active" | "inactive";
-  halfDayRate?: number;
-  dailyRate?: number;
-  notes?: string;
-}): Promise<import("../labor-db").Worker> {
-  return laborDb.createWorker(input);
+export async function createWorker(
+  input: {
+    name: string;
+    phone?: string;
+    trade?: string;
+    status?: "active" | "inactive";
+    halfDayRate?: number;
+    dailyRate?: number;
+    notes?: string;
+  },
+  explicitClient?: SupabaseClient
+): Promise<import("../labor-db").Worker> {
+  return laborDb.createWorker(input, explicitClient);
 }
 
 export async function updateWorker(
@@ -472,9 +475,10 @@ export async function updateWorker(
     status: "active" | "inactive";
     halfDayRate: number;
     notes?: string;
-  }>
+  }>,
+  explicitClient?: SupabaseClient
 ): Promise<import("../labor-db").Worker | null> {
-  return laborDb.updateWorker(id, patch);
+  return laborDb.updateWorker(id, patch, explicitClient);
 }
 
 export async function getWorkerById(id: string): Promise<import("../labor-db").Worker | null> {
@@ -772,10 +776,13 @@ export async function disableWorker(id: string): Promise<import("../labor-db").W
   return laborDb.updateWorker(id, { status: "inactive" });
 }
 
-export async function deleteWorker(id: string): Promise<void> {
-  const usage = await laborDb.getWorkerUsage(id);
-  if (usage.used) return;
-  return laborDb.deleteWorker(id);
+export async function deleteWorker(id: string, explicitClient?: SupabaseClient): Promise<boolean> {
+  const usage = explicitClient
+    ? await laborDb.getWorkerUsageWithClient(explicitClient, id)
+    : await laborDb.getWorkerUsage(id);
+  if (usage.used) return false;
+  await laborDb.deleteWorker(id, explicitClient);
+  return true;
 }
 
 export async function getLaborEntriesByDate(date: string): Promise<LaborEntry[]> {
