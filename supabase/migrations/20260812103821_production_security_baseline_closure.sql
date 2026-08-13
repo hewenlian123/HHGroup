@@ -1,8 +1,9 @@
 -- HH Group Production Security Baseline Closure
 -- Scope: secure retained security/history tables and establish the canonical
 -- labor_workers projection contract. This migration neither deletes nor rewrites data.
-
-begin;
+--
+-- Transaction ownership belongs to the certified operator procedure so this
+-- file can run atomically with its migration-ledger record.
 
 do $$
 declare
@@ -175,5 +176,3 @@ on public.labor_workers
 for select
 to authenticated
 using ((select public.is_owner_or_admin()));
-
-commit;

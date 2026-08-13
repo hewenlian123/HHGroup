@@ -1,8 +1,8 @@
 -- HH Group Final Anonymous CRUD Closure
 -- Scope: close direct Data API access only for cost_allocations,
 -- material_selections, and material_selection_items. No data is changed.
-
-begin;
+-- Transaction ownership belongs to the certified operator procedure so this
+-- file can run atomically with its migration-ledger record.
 
 do $$
 declare
@@ -113,5 +113,3 @@ drop policy if exists "material_selection_items_select_all" on public.material_s
 drop policy if exists "material_selection_items_update_all" on public.material_selection_items;
 
 notify pgrst, 'reload schema';
-
-commit;
