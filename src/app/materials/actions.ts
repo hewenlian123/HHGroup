@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import type { MaterialSelectionSheetStatus } from "@/lib/material-selection-sheets";
 import {
   createMaterialSelectionSheet,
@@ -20,6 +21,9 @@ function selectionStatus(value: FormDataEntryValue | null): MaterialSelectionShe
 }
 
 export async function createMaterialSelectionAction(formData: FormData) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) redirect("/login");
+
   const title = String(formData.get("title") ?? "").trim();
   const selection = await createMaterialSelectionSheet({
     title,
@@ -34,6 +38,9 @@ export async function createMaterialSelectionAction(formData: FormData) {
 export async function deleteMaterialSelectionAction(
   id: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) return { ok: false, error: "Authentication required." };
+
   try {
     await deleteMaterialSelectionSheet(id);
     revalidatePath("/materials");

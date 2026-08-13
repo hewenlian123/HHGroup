@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { getServerSupabaseAdminNoStore } from "@/lib/supabase-server";
 import type {
   MaterialSelectionItem,
   MaterialSelectionItemDraft,
@@ -19,8 +19,10 @@ const ITEM_COLS =
   "id, selection_id, area_name, category, item_name, brand, sku, size, color, finish, image_url, notes, status, sort_order, created_at, updated_at";
 
 function client(explicitClient?: SupabaseClient): SupabaseClient {
-  const c = explicitClient ?? getServerSupabaseInternalNoStore();
-  if (!c) throw new Error("Supabase is not configured.");
+  const c = explicitClient ?? getServerSupabaseAdminNoStore();
+  if (!c) {
+    throw new Error("Supabase privileged server client is not configured for material selections.");
+  }
   return c;
 }
 

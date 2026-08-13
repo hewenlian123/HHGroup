@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
 import { fetchDocumentCompanyProfile } from "@/lib/document-company-profile";
 import { getMaterialSelectionSheet } from "@/lib/material-selection-sheets-db";
 import { MaterialSelectionDocument } from "../material-selection-document";
@@ -14,6 +15,8 @@ export default async function MaterialSelectionPrintPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ pdf?: string }>;
 }) {
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
   const { id } = await params;
   const { pdf } = await searchParams;
   const pdfCapture = pdf === "1";

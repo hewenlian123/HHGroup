@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import {
   NeoFieldLabel,
@@ -13,6 +14,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { getAllCustomers } from "@/lib/customers-db";
 import { getProjects } from "@/lib/projects-db";
+import { requireSupabaseOwnerOrAdminServerAction } from "@/lib/auth-boundary";
+import { getServerSupabaseAdmin } from "@/lib/supabase-server";
 import { createMaterialSelectionAction } from "../actions";
 import { MaterialSelectionLinkedRecordCombobox } from "./material-selection-linked-record-combobox";
 
@@ -37,7 +40,12 @@ function sortProjectsForSelection(projects: ProjectOptionSource[]): ProjectOptio
 }
 
 export default async function NewMaterialSelectionPage() {
-  const [customers, projects] = await Promise.all([getAllCustomers(), getProjects()]);
+  const guard = await requireSupabaseOwnerOrAdminServerAction();
+  if (!guard.ok) notFound();
+  const supabase = getServerSupabaseAdmin();
+  if (!supabase) throw new Error("Supabase privileged server client is not configured.");
+
+  const [customers, projects] = await Promise.all([getAllCustomers(), getProjects(supabase)]);
   const customerOptions = [...customers]
     .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
     .map((customer) => ({

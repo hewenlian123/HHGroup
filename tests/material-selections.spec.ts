@@ -8,6 +8,7 @@ import {
   E2E_PRESERVED_PROJECT_ID,
   E2E_PRESERVED_PROJECT_LABEL,
 } from "./e2e-cleanup-db";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const OPEN_SECTIONS = {
@@ -132,6 +133,7 @@ async function addMaterialItem(
 test.describe("Material Selections", () => {
   test.beforeEach(async ({ page }) => {
     await openSidebarForDesktop(page);
+    await loginAsE2EOwner(page);
   });
 
   test.beforeAll(async () => {
