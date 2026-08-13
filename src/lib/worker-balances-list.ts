@@ -189,7 +189,6 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
         amount_snapshot?: number | null;
         labor_cost_snapshot?: number | null;
         cost_amount?: number | null;
-        total?: number | null;
         status?: string | null;
         worker_payment_id?: string | null;
       };
@@ -197,14 +196,10 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
       let laborSettlementMode: "payment_link" | "status_fallback" = "payment_link";
 
       for (const cols of [
-        "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, total, status, worker_payment_id",
-        "id, worker_id, cost_amount, total, status, worker_payment_id",
+        "id, worker_id, labor_cost_snapshot, amount_snapshot, cost_amount, status, worker_payment_id",
         "id, worker_id, cost_amount, status, worker_payment_id",
-        "id, worker_id, total, status, worker_payment_id",
-        "id, worker_id, cost_amount, total, status",
         "id, worker_id, cost_amount, status",
-        "id, worker_id, total, status",
-        "id, worker_id, cost_amount, total",
+        "id, worker_id, cost_amount",
       ]) {
         const base = c.from("labor_entries").select(cols) as unknown;
         const res = (await (hasFunction(base, "eq")
@@ -259,16 +254,10 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
           )
         )
           return s;
-        return (
-          s + (Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount ?? r.total) || 0)
-        );
+        return s + (Number(r.labor_cost_snapshot ?? r.amount_snapshot ?? r.cost_amount) || 0);
       }, 0);
 
-      // Reimbursements: prefer `amount`, fallback to `total_amount` (older schemas).
-      let reimbRes = await queryByIds("worker_reimbursements", "worker_id, amount, status");
-      if (reimbRes.error && isMissingColumn(reimbRes.error)) {
-        reimbRes = await queryByIds("worker_reimbursements", "worker_id, total_amount, status");
-      }
+      const reimbRes = await queryByIds("worker_reimbursements", "worker_id, amount, status");
       if (reimbRes.error && !isMissingColumn(reimbRes.error)) {
         throw new Error(
           `worker_reimbursements query failed for worker ${workerId}: ${reimbRes.error.message ?? "unknown error"}`
@@ -277,7 +266,6 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
       const reimbRows = (reimbRes.data ?? []) as Array<{
         worker_id?: string | null;
         amount?: number | null;
-        total_amount?: number | null;
         status?: string | null;
       }>;
       const reimbursements = reimbRows.reduce((s, r) => {
@@ -287,26 +275,21 @@ export async function fetchWorkerBalances(c: SupabaseClient): Promise<WorkerBala
             .toLowerCase() === "paid"
         )
           return s;
-        return s + (Number(r.amount ?? r.total_amount) || 0);
+        return s + (Number(r.amount) || 0);
       }, 0);
 
       const payments = payRows.reduce((s, r) => s + (Number(r.total_amount ?? r.amount) || 0), 0);
 
       // Advances: always use the same Supabase path as detail page to avoid env DB URL drift.
-      // Prefer `amount`, fallback to `total_amount` if present in older schemas.
-      let advRes = await queryByIds("worker_advances", "worker_id, amount, status");
-      if (advRes.error && isMissingColumn(advRes.error)) {
-        advRes = await queryByIds("worker_advances", "worker_id, total_amount, status");
-      }
+      const advRes = await queryByIds("worker_advances", "worker_id, amount, status");
       const advRows = (advRes.data ?? []) as Array<{
         worker_id?: string | null;
         amount?: number | null;
-        total_amount?: number | null;
         status?: string | null;
       }>;
       const advances = advRows.reduce((s, r) => {
         if (!isWorkerAdvanceOpenForBalance(r.status)) return s;
-        return s + (Number(r.amount ?? r.total_amount) || 0);
+        return s + (Number(r.amount) || 0);
       }, 0);
 
       const balance = workerOutstandingBalanceFromUnsettledItems({

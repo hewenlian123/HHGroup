@@ -915,7 +915,7 @@ function selectExpenseLinesByProject(
 ) {
   if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
   const cols = [
-    "id,expense_id,project_id,total,amount,category,memo",
+    "id,expense_id,project_id,total,amount,category",
     "id,expense_id,project_id,total,amount",
     "id,expense_id,project_id,amount",
     "id,expense_id,project_id,total",
@@ -932,9 +932,9 @@ function selectExpenseLinesByExpenseIds(
 ) {
   if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
   const cols = [
-    "id,expense_id,project_id,total,amount,category,memo",
+    "id,expense_id,project_id,total,amount,category",
     "id,expense_id,project_id,total,amount",
-    "id,expense_id,total,amount,category,memo",
+    "id,expense_id,total,amount,category",
     "id,expense_id,total,amount",
     "id,expense_id,amount",
     "id,expense_id,total",

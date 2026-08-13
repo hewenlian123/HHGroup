@@ -135,6 +135,7 @@ type ExpenseLineRow = {
   project_id?: string | null;
   category?: string;
   cost_code?: string | null;
+  description?: string | null;
   memo?: string | null;
   amount?: number;
   total?: number;
@@ -409,7 +410,7 @@ function toExpenseLine(r: ExpenseLineRow): ExpenseLine {
     projectId: pid,
     category: r.category ?? "Other",
     costCode: r.cost_code ?? undefined,
-    memo: r.memo ?? undefined,
+    memo: r.description ?? r.memo ?? undefined,
     amount: Number(r.amount ?? r.total) || 0,
   };
 }
@@ -2531,7 +2532,7 @@ export async function getProjectExpenseLinesBundle(
   const c = client(explicitClient);
   const { data: lineRows, error } = await c
     .from("expense_lines")
-    .select("id, expense_id, project_id, category, memo, amount")
+    .select("id, expense_id, project_id, category, description, amount")
     .eq("project_id", projectId);
   if (error) throw new Error(`Financial data unavailable: expense_lines. ${error.message}`);
   if (!lineRows?.length) {
@@ -2614,7 +2615,7 @@ export async function getProjectExpenseLinesBundle(
     const dateStr = String(e.expense_date ?? "").slice(0, 10) || "—";
     const vendorName = vendorOf(e);
     const category = String(l.category ?? "").trim() || "Other";
-    const memo = l.memo ?? null;
+    const memo = l.description ?? null;
     const amount = Number(l.amount ?? 0) || 0;
     const paymentMethod = String(e.payment_method ?? "").trim() || "—";
 
@@ -2665,7 +2666,7 @@ export async function getExpenseLinesByProject(
   const c = client(explicitClient);
   const { data: lineRows } = await c
     .from("expense_lines")
-    .select("id, expense_id, project_id, category, cost_code, memo, amount")
+    .select("id, expense_id, project_id, category, cost_code, description, amount")
     .eq("project_id", projectId);
   const lines = (lineRows ?? []) as (ExpenseLineRow & { expense_id: string })[];
   const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> =
@@ -2692,7 +2693,7 @@ export async function getProjectExpenseLines(
   const c = client(explicitClient);
   const { data: lineRows } = await c
     .from("expense_lines")
-    .select("id, expense_id, project_id, category, cost_code, memo, amount")
+    .select("id, expense_id, project_id, category, cost_code, description, amount")
     .eq("project_id", projectId);
   const lines = (lineRows ?? []) as (ExpenseLineRow & { expense_id: string })[];
   const result: Array<{ expenseId: string; date: string; vendorName: string; line: ExpenseLine }> =
