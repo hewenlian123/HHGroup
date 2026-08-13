@@ -1,4 +1,8 @@
 import { expenseCountsTowardCanonicalProjectCost } from "@/lib/expense-canonical-cost";
+import {
+  changeOrderAmountValue,
+  PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS,
+} from "@/lib/financial/change-order-amount";
 import { getCommissionCostByProject, getCommissionCostByProjectBatch } from "@/lib/commission-db";
 import { getSupabaseClient } from "@/lib/supabase";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -60,7 +64,8 @@ function isMissingColumn(err: { message?: string } | null): boolean {
  *
  * Revenue = base contract + approved change orders
  *   - Base contract = projects.budget (canonical contract value; set on create/convert).
- *   - Approved change orders = project_change_orders where status = 'Approved' (amount or total/total_amount).
+ *   - Approved change orders = project_change_orders where status = 'Approved' (`total`,
+ *     with `total_amount` only as the legacy null fallback).
  *
  * Actual cost = labor cost + expense cost + subcontract cost + commission cost
  *   - Labor cost = sum(labor_entries.cost_amount) allocated to this project via project_id.
@@ -351,7 +356,7 @@ export async function getCanonicalProjectProfit(
     c.from("projects").select("budget").eq("id", projectId).single(),
     c
       .from("project_change_orders")
-      .select("*")
+      .select(PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS)
       .eq("project_id", projectId)
       .eq("status", "Approved"),
     c
@@ -372,11 +377,10 @@ export async function getCanonicalProjectProfit(
   const approvedCO = Array.isArray(approvedChangeOrdersRes.data)
     ? (
         approvedChangeOrdersRes.data as Array<{
-          amount?: unknown;
           total?: unknown;
           total_amount?: unknown;
         }>
-      ).reduce((sum, co) => sum + toNum(co?.amount ?? co?.total ?? co?.total_amount), 0)
+      ).reduce((sum, co) => sum + toNum(changeOrderAmountValue(co)), 0)
     : 0;
 
   const laborCost = await fetchLaborCostForProject(projectId, explicitClient);
@@ -435,7 +439,7 @@ export async function getCanonicalProjectProfitBatch(
       c.from("projects").select("id, budget").in("id", projectIds),
       c
         .from("project_change_orders")
-        .select("project_id, amount, total, total_amount")
+        .select(`project_id,${PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS}`)
         .in("project_id", projectIds)
         .eq("status", "Approved"),
       c
@@ -466,14 +470,13 @@ export async function getCanonicalProjectProfitBatch(
   if (!cosRes.error && Array.isArray(cosRes.data)) {
     for (const co of cosRes.data as Array<{
       project_id?: string;
-      amount?: unknown;
       total?: unknown;
       total_amount?: unknown;
     }>) {
       const pid = co.project_id ?? "";
       coByProject.set(
         pid,
-        (coByProject.get(pid) ?? 0) + toNum(co.amount ?? co.total ?? co.total_amount)
+        (coByProject.get(pid) ?? 0) + toNum(changeOrderAmountValue(co))
       );
     }
   }

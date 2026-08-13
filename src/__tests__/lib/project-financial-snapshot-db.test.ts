@@ -15,8 +15,8 @@ describe("project financial snapshot DB mapper", () => {
         contract_amount: 9999,
       },
       changeOrders: [
-        { id: "co-1", status: "Approved", amount: 1500 },
-        { id: "co-draft", status: "Draft", amount: 400 },
+        { id: "co-1", status: "Approved", total: 1500, total_amount: 1500 },
+        { id: "co-draft", status: "Draft", total: 400, total_amount: 400 },
       ],
       invoices: [
         { id: "invoice-1", status: "Sent", total: 6000 },
@@ -403,8 +403,16 @@ describe("project financial snapshot DB mapper", () => {
           id: "co-items-backed",
           project_id: "project-1",
           status: "approved",
-          total: 0,
+          total: null,
           item_total: 75,
+        },
+        {
+          id: "co-legitimate-zero",
+          project_id: "project-1",
+          status: "Approved",
+          total: 0,
+          total_amount: 900,
+          item_total: 800,
         },
         { id: "co-draft", project_id: "project-1", status: "Draft", total: 900 },
         { id: "co-rejected", project_id: "project-1", status: "Rejected", total: 800 },
@@ -428,8 +436,8 @@ describe("project financial snapshot DB mapper", () => {
     expect(snapshot.revisedContractValue).toBe(1225);
     expect(comparison.diagnostics).toEqual(
       expect.objectContaining({
-        changeOrdersLoaded: 4,
-        approvedChangeOrdersCount: 2,
+        changeOrdersLoaded: 5,
+        approvedChangeOrdersCount: 3,
       })
     );
   });

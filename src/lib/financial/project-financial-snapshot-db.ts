@@ -19,6 +19,10 @@ import {
   type ProjectCostDashboardPayload,
 } from "@/lib/project-cost-dashboard";
 import {
+  changeOrderAmountValue,
+  PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS,
+} from "@/lib/financial/change-order-amount";
+import {
   getServerSupabaseInternalNoStore,
   SUPABASE_MISSING_SERVER_ENV_MESSAGE,
 } from "@/lib/supabase-server";
@@ -398,8 +402,8 @@ function changeOrderAmountFromRow(
   row: ProjectFinancialChangeOrderRow,
   mapperWarnings: ProjectFinancialWarning[]
 ): number {
-  const rowAmount = amountFromRow(row);
-  if (rowAmount > 0) return rowAmount;
+  const rowAmount = changeOrderAmountValue(row);
+  if (rowAmount !== null && rowAmount !== undefined) return toMoney(rowAmount);
   const itemTotal = toMoney(row.item_total);
   if (itemTotal > 0) {
     mapperWarnings.push(
@@ -947,11 +951,9 @@ function selectChangeOrdersByProject(
 ) {
   if (!supabase) throw new Error(SUPABASE_MISSING_SERVER_ENV_MESSAGE);
   const cols = [
-    "id,project_id,status,total,total_amount,amount",
-    "id,project_id,status,total,total_amount",
+    `id,project_id,status,${PROJECT_CHANGE_ORDER_AMOUNT_COLUMNS}`,
     "id,project_id,status,total",
     "id,project_id,status,total_amount",
-    "id,project_id,status,amount",
     "id,project_id,status",
   ];
   return safeSelectFallback<ProjectFinancialChangeOrderRow>(

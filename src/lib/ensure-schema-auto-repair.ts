@@ -523,7 +523,6 @@ $_$`,
   // 9c. project_change_orders metadata used by detail/list views.
   `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS title text NULL`,
   `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS description text NULL`,
-  `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS amount numeric GENERATED ALWAYS AS (total) STORED`,
   `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS cost_impact numeric NULL`,
   `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS schedule_impact_days integer NULL`,
   `ALTER TABLE public.project_change_orders ADD COLUMN IF NOT EXISTS date date NULL`,
