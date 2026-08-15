@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { clickVisibleQuickExpenseButton } from "./e2e-expenses-helpers";
 
 /**
@@ -22,14 +23,16 @@ test.describe("Expenses mobile layout", () => {
 
   for (const [name, size] of [
     ["iPhone 14", { width: 390, height: 844 }],
-    ["iPhone SE", { width: 375, height: 667 }],
-    ["iPad", { width: 768, height: 1024 }],
-    ["Desktop Chrome", { width: 1280, height: 900 }],
+    ["iPad portrait", { width: 768, height: 1024 }],
+    ["iPad landscape", { width: 1024, height: 768 }],
+    ["Desktop compact", { width: 1280, height: 800 }],
+    ["Desktop wide", { width: 1440, height: 900 }],
   ] as const) {
     test(`${name} (${size.width}x${size.height}): expenses list no horizontal scroll`, async ({
       page,
     }) => {
       await page.setViewportSize(size);
+      await loginAsE2EOwner(page, "/financial/expenses");
       await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
       await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
       await assertNoHorizontalOverflow(page);
@@ -37,11 +40,12 @@ test.describe("Expenses mobile layout", () => {
 
     test(`${name}: Quick expense sheet scrolls and primary actions visible`, async ({ page }) => {
       await page.setViewportSize(size);
+      await loginAsE2EOwner(page, "/financial/expenses");
       await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
       await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
       await clickVisibleQuickExpenseButton(page);
-      const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+      const dialog = page.getByRole("dialog", { name: /New expense/i });
       await expect(dialog).toBeVisible({ timeout: 15_000 });
 
       await expect(
@@ -53,7 +57,7 @@ test.describe("Expenses mobile layout", () => {
         dialog.getByRole("button", { name: /Take photo or upload receipt/i })
       ).toBeVisible();
       await expect(dialog.getByRole("button", { name: "Save", exact: true })).toBeVisible();
-      await expect(dialog.getByRole("button", { name: "Save & new", exact: true })).toBeVisible();
+      await expect(dialog.getByRole("button", { name: "Save & New", exact: true })).toBeVisible();
       await expect(dialog.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
 
       const beforeDrag = await dialog.boundingBox();

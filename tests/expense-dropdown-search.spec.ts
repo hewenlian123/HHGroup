@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { E2E_PRESERVED_PROJECT_ID, E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import {
   clickVisibleQuickExpenseButton,
   expenseListRowById,
@@ -147,10 +148,10 @@ test.describe("Expense searchable dropdowns", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     const consoleState = attachConsoleCollector(page);
 
-    await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await loginAsE2EOwner(page, "/financial/expenses");
     await waitForExpenseShell(page);
     await clickVisibleQuickExpenseButton(page);
-    const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+    const dialog = page.getByRole("dialog", { name: /New expense/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
     await chooseSearchResult(
@@ -181,6 +182,7 @@ test.describe("Expense searchable dropdowns", () => {
     );
     await expect(dialog.locator("#quick-expense-category-select")).toContainText("Vehicle");
 
+    await dialog.getByRole("button", { name: /More Details/i }).click();
     await chooseSearchResult(page, dialog.locator("#quick-expense-payment-select"), "amex", "Amex");
     await expect(dialog.locator("#quick-expense-payment-select")).toContainText("Amex");
 
@@ -216,7 +218,7 @@ test.describe("Expense searchable dropdowns", () => {
     });
 
     try {
-      await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
+      await loginAsE2EOwner(page, "/financial/expenses");
       await waitForExpenseShell(page);
       await expensesVendorSearch(page).fill(reviewedVendor);
       const row = expenseListRowById(page, reviewedId);
@@ -301,41 +303,47 @@ test.describe("Expense searchable dropdowns", () => {
     }
   });
 
-  test("New Expense page dropdowns are searchable", async ({ page }) => {
+  test("New Expense compatibility route opens the canonical searchable form", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     const consoleState = attachConsoleCollector(page);
 
-    await page.goto("/financial/expenses/new", {
-      waitUntil: "domcontentloaded",
-      timeout: 60_000,
-    });
-    await expect(page.getByRole("heading", { name: /New expense/i })).toBeVisible({
+    await loginAsE2EOwner(page, "/financial/expenses/new");
+    const dialog = page.getByRole("dialog", { name: /New expense/i });
+    await expect(dialog).toBeVisible({
       timeout: 60_000,
     });
 
     await chooseSearchResult(
       page,
-      page.locator("#new-expense-cost-allocation-select"),
+      dialog.locator("#quick-expense-cost-allocation-select"),
       "proj",
       "Project Cost"
     );
-    await expect(page.locator("#new-expense-cost-allocation-select")).toContainText("Project Cost");
+    await expect(dialog.locator("#quick-expense-cost-allocation-select")).toContainText(
+      "Project Cost"
+    );
 
     await chooseSearchResult(
       page,
-      page.locator("#new-expense-project-select"),
+      dialog.locator("#quick-expense-project-select"),
       "seed",
       E2E_PRESERVED_PROJECT_LABEL
     );
-    await expect(page.locator("#new-expense-project-select")).toContainText(
+    await expect(dialog.locator("#quick-expense-project-select")).toContainText(
       E2E_PRESERVED_PROJECT_LABEL
     );
 
-    await chooseSearchResult(page, page.locator("#new-expense-category-select"), "veh", "Vehicle");
-    await expect(page.locator("#new-expense-category-select")).toContainText("Vehicle");
+    await chooseSearchResult(
+      page,
+      dialog.locator("#quick-expense-category-select"),
+      "veh",
+      "Vehicle"
+    );
+    await expect(dialog.locator("#quick-expense-category-select")).toContainText("Vehicle");
 
-    await chooseSearchResult(page, page.locator("#new-expense-payment-select"), "amex", "Amex");
-    await expect(page.locator("#new-expense-payment-select")).toContainText("Amex");
+    await dialog.getByRole("button", { name: /More Details/i }).click();
+    await chooseSearchResult(page, dialog.locator("#quick-expense-payment-select"), "amex", "Amex");
+    await expect(dialog.locator("#quick-expense-payment-select")).toContainText("Amex");
 
     consoleState.assertClean();
   });
@@ -346,10 +354,10 @@ test.describe("Expense searchable dropdowns", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     const consoleState = attachConsoleCollector(page);
 
-    await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await loginAsE2EOwner(page, "/financial/expenses");
     await waitForExpenseShell(page);
     await clickVisibleQuickExpenseButton(page);
-    const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+    const dialog = page.getByRole("dialog", { name: /New expense/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
     await dialog.locator("#quick-expense-category-select").click();

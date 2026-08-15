@@ -28,6 +28,7 @@ export type ExpenseSearchableSelectProps = {
   disabled?: boolean;
   loading?: boolean;
   className?: string;
+  contentClassName?: string;
   id?: string;
   autoFocus?: boolean;
   onKeyDown?: React.KeyboardEventHandler<HTMLElement>;
@@ -60,6 +61,7 @@ export function ExpenseSearchableSelect({
   disabled,
   loading,
   className,
+  contentClassName,
   id,
   autoFocus,
   onKeyDown,
@@ -73,7 +75,9 @@ export function ExpenseSearchableSelect({
 }: ExpenseSearchableSelectProps) {
   const reactId = React.useId();
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
   const [open, setOpen] = React.useState(false);
+  const [insideModalDialog, setInsideModalDialog] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [activeIndex, setActiveIndex] = React.useState(0);
 
@@ -100,6 +104,10 @@ export function ExpenseSearchableSelect({
       ...filteredActions.map((action) => ({ kind: "action" as const, action })),
     ];
   }, [actions, options, query]);
+
+  React.useEffect(() => {
+    setInsideModalDialog(Boolean(triggerRef.current?.closest('[role="dialog"]')));
+  }, []);
 
   React.useEffect(() => {
     if (!open) {
@@ -161,6 +169,7 @@ export function ExpenseSearchableSelect({
       }
       if (event.key === "Escape") {
         event.preventDefault();
+        event.stopPropagation();
         close();
       }
     },
@@ -177,6 +186,7 @@ export function ExpenseSearchableSelect({
         return;
       }
       if (event.key === "Escape") {
+        event.stopPropagation();
         setOpen(false);
         return;
       }
@@ -199,9 +209,10 @@ export function ExpenseSearchableSelect({
   const activeDescendant = activeEntry ? `${reactId}-${entryKey(activeEntry)}` : undefined;
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal={insideModalDialog}>
       <PopoverTrigger asChild>
         <button
+          ref={triggerRef}
           id={id}
           type="button"
           role="combobox"
@@ -217,8 +228,8 @@ export function ExpenseSearchableSelect({
           data-expense-combobox-trigger="true"
           onKeyDown={handleTriggerKeyDown}
           className={cn(
-            "flex h-10 min-h-10 w-full min-w-0 items-center justify-between gap-2 rounded-sm border border-border/60 bg-background px-3 text-left text-sm text-foreground shadow-none transition-colors duration-150",
-            "hover:bg-muted/50 focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
+            "flex h-10 min-h-10 w-full min-w-0 items-center justify-between gap-2 rounded-[7px] border border-border/60 bg-background px-3 text-left text-sm text-foreground shadow-none transition-colors duration-150",
+            "hover:border-[var(--eo-border-strong,var(--neo-border-strong))] hover:bg-muted/50 focus-visible:border-[var(--eo-border-strong,var(--neo-border-strong))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring,var(--neo-gold-ring))]",
             "disabled:cursor-not-allowed disabled:opacity-55 max-md:h-11 max-md:min-h-11 max-md:text-base",
             className
           )}
@@ -235,17 +246,21 @@ export function ExpenseSearchableSelect({
         align="start"
         sideOffset={4}
         data-expense-combobox-content="true"
+        data-expense-component-surface="combobox"
         className={cn(
-          "z-[220] w-[min(var(--radix-popover-trigger-width),calc(100vw-1rem))] min-w-[min(16rem,calc(100vw-1rem))] overflow-hidden rounded-sm border-border/70 bg-popover p-0 text-popover-foreground shadow-xl",
-          "max-md:max-h-[min(22rem,calc(100svh-8rem))]"
+          "expenses-ui-dialog z-[220] w-[min(var(--radix-popover-trigger-width),calc(100vw-1rem))] min-w-[min(16rem,calc(100vw-1rem))] overflow-hidden rounded-[10px] border-border/70 bg-popover p-0 text-popover-foreground shadow-[var(--eo-shadow-overlay)]",
+          "max-md:max-h-[min(22rem,calc(100svh-8rem))]",
+          contentClassName
         )}
+        themeScope="inherit"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           inputRef.current?.focus();
         }}
+        onEscapeKeyDown={(event) => event.stopPropagation()}
       >
         <div className="border-b border-border/60 p-2">
-          <div className="flex h-10 items-center gap-2 rounded-sm border border-border/60 bg-background px-2.5 focus-within:border-[var(--neo-gold)] focus-within:ring-2 focus-within:ring-[var(--neo-gold-ring)] max-md:h-11">
+          <div className="flex h-9 items-center gap-2 rounded-md border border-border/60 bg-background px-2.5 focus-within:border-[var(--eo-border-strong,var(--neo-border-strong))] focus-within:ring-2 focus-within:ring-[var(--eo-focus-ring,var(--neo-gold-ring))] max-md:h-11">
             <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
             <input
               ref={inputRef}
@@ -262,7 +277,12 @@ export function ExpenseSearchableSelect({
             />
           </div>
         </div>
-        <div id={listboxId} role="listbox" className="max-h-64 overflow-y-auto py-1">
+        <div
+          id={listboxId}
+          role="listbox"
+          data-expense-component-scroll="true"
+          className="max-h-64 overflow-y-auto overscroll-contain py-1"
+        >
           {visibleEntries.length === 0 ? (
             <div className="px-3 py-3 text-sm text-muted-foreground">{emptyText}</div>
           ) : (
@@ -278,8 +298,8 @@ export function ExpenseSearchableSelect({
                     role="option"
                     aria-selected={false}
                     className={cn(
-                      "flex min-h-10 w-full items-center px-3 py-2 text-left text-sm text-[var(--neo-gold-soft)] transition-colors max-md:min-h-11 max-md:text-base",
-                      isActive && "bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold)]"
+                      "flex min-h-9 w-full items-center px-3 py-2 text-left text-sm font-medium text-[var(--eo-text-primary,var(--neo-text-primary))] transition-colors max-md:min-h-11 max-md:text-base",
+                      isActive && "bg-[var(--eo-surface-selected)] text-[var(--neo-text-primary)]"
                     )}
                     onMouseEnter={() => setActiveIndex(index)}
                     onMouseDown={(event) => event.preventDefault()}
@@ -299,10 +319,10 @@ export function ExpenseSearchableSelect({
                   aria-selected={selectedOption}
                   disabled={entry.option.disabled}
                   className={cn(
-                    "flex min-h-10 w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors max-md:min-h-11 max-md:text-base",
+                    "flex min-h-9 w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors max-md:min-h-11 max-md:text-base",
                     "disabled:cursor-not-allowed disabled:opacity-50",
                     isActive
-                      ? "bg-[rgb(184_137_45_/_0.12)] text-foreground"
+                      ? "bg-[var(--eo-surface-selected)] text-foreground"
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                     selectedOption && "text-foreground"
                   )}

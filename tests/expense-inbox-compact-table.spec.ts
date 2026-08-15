@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import {
   E2E_FINANCIAL_EXPENSES_ARCHIVE_URL,
   E2E_FINANCIAL_INBOX_URL,
@@ -404,7 +405,10 @@ async function gotoCompactInbox(page: Page, prefix: string) {
   await page.goto(E2E_FINANCIAL_INBOX_URL, { waitUntil: "domcontentloaded", timeout: 90_000 });
   await waitForExpensesQuerySuccess(page, 90_000);
   await page.locator("main").first().waitFor({ state: "visible", timeout: 30_000 });
-  await expensesVendorSearch(page).fill(prefix);
+  const search = expensesVendorSearch(page);
+  await expect(search).toBeEditable();
+  await search.fill(prefix);
+  await expect(search).toHaveValue(prefix);
 }
 
 async function gotoCompactExpenses(page: Page, prefix: string) {
@@ -414,7 +418,10 @@ async function gotoCompactExpenses(page: Page, prefix: string) {
   });
   await waitForExpensesQuerySuccess(page, 90_000);
   await page.locator("main").first().waitFor({ state: "visible", timeout: 30_000 });
-  await expensesVendorSearch(page).fill(prefix);
+  const search = expensesVendorSearch(page);
+  await expect(search).toBeEditable();
+  await search.fill(prefix);
+  await expect(search).toHaveValue(prefix);
 }
 
 function collectPageErrors(page: Page): string[] {
@@ -521,7 +528,10 @@ async function openDesktopFilters(page: Page) {
 }
 
 test.describe("Expense inbox compact table", () => {
-  test.describe.configure({ timeout: 180_000, retries: 0 });
+  // These deterministic scenarios seed, exercise, reload and clean several rows across
+  // multiple responsive viewports. Authentication adds enough local-dev compilation time
+  // that the old three-minute suite budget could expire before assertions completed.
+  test.describe.configure({ timeout: 300_000, retries: 0 });
 
   test("desktop columns, receipt labels, collapsed issues, row height, and mobile overflow", async ({
     page,
@@ -538,6 +548,7 @@ test.describe("Expense inbox compact table", () => {
       seeded = await seedCompactRows(admin);
 
       await page.setViewportSize({ width: 1440, height: 900 });
+      await loginAsE2EOwner(page, E2E_FINANCIAL_INBOX_URL);
       await gotoCompactInbox(page, seeded.prefix);
 
       const table = page.locator("main table").first();
@@ -561,24 +572,23 @@ test.describe("Expense inbox compact table", () => {
       const receiptRow = expenseListRowById(page, seeded.ids.receipt);
       await expect(receiptRow).toBeVisible({ timeout: 60_000 });
       await expectHeaderCellsAligned(table, receiptRow);
-      await expect(receiptRow.getByRole("button", { name: /Preview receipt/i })).toHaveText(
-        /^View$/
+      await expect(receiptRow.getByRole("button", { name: /Receipt attached/i })).toHaveText(
+        /^Receipt$/
       );
       await expect(receiptRow.locator("td").nth(1).locator(".rounded-full")).toHaveCount(0);
-      await expect(receiptRow.getByTestId("expense-inbox-issues")).toHaveText("—");
+      await expect(receiptRow.getByTestId("expense-inbox-issues")).toHaveText("Clear");
       await expectCompactRowHeight(receiptRow);
 
       const noReceiptRow = expenseListRowById(page, seeded.ids.noReceipt);
       await expect(noReceiptRow).toBeVisible();
-      await expect(noReceiptRow.locator("td").nth(5)).toHaveText("—");
-      await expect(noReceiptRow).not.toContainText("No receipt");
+      await expect(noReceiptRow.locator("td").nth(5)).toHaveText("Missing");
       const noReceiptIssueCell = noReceiptRow.getByTestId("expense-inbox-issues");
-      await expect(noReceiptIssueCell).toHaveText("⚠");
-      await noReceiptIssueCell.getByRole("button", { name: /issue/i }).click();
+      await expect(noReceiptIssueCell).toHaveText(/^⚠\s*\d+$/);
+      await noReceiptIssueCell.getByRole("button", { name: /issue/i }).hover();
       let popover = page.getByTestId("expense-inbox-issue-popover").last();
       await expect(popover).toContainText("Missing receipt");
       await popover.getByRole("button", { name: /Dismiss Missing receipt/i }).click();
-      await expect(noReceiptIssueCell).toHaveText("—");
+      await expect(noReceiptIssueCell).toHaveText("Clear");
       await page.reload();
       await waitForExpensesQuerySuccess(page, 90_000);
       await expensesVendorSearch(page).fill(seeded.prefix);
@@ -587,7 +597,7 @@ test.describe("Expense inbox compact table", () => {
       });
       await expect(
         expenseListRowById(page, seeded.ids.noReceipt).getByTestId("expense-inbox-issues")
-      ).toHaveText("—");
+      ).toHaveText("Clear");
       await expectCompactRowHeight(noReceiptRow);
 
       const overheadRow = expenseListRowById(page, seeded.ids.overhead);
@@ -614,8 +624,8 @@ test.describe("Expense inbox compact table", () => {
       });
       expect(otherCategoryDisplay.display).not.toBe("inline-flex");
       const overheadIssueCell = overheadRow.getByTestId("expense-inbox-issues");
-      await expect(overheadIssueCell).toHaveText("⚠");
-      await overheadIssueCell.getByRole("button", { name: /issue/i }).click();
+      await expect(overheadIssueCell).toHaveText(/^⚠\s*\d+$/);
+      await overheadIssueCell.getByRole("button", { name: /issue/i }).hover();
       popover = page.getByTestId("expense-inbox-issue-popover").last();
       await expect(popover).toContainText("Missing receipt");
       await expect(popover).not.toContainText("Missing project");
@@ -623,7 +633,9 @@ test.describe("Expense inbox compact table", () => {
 
       const unassignedMaterialsRow = expenseListRowById(page, seeded.ids.missingProject);
       await expect(unassignedMaterialsRow).toBeVisible();
-      await expect(unassignedMaterialsRow.getByTestId("expense-inbox-issues")).toHaveText("⚠");
+      await expect(unassignedMaterialsRow.getByTestId("expense-inbox-issues")).toHaveText(
+        /^⚠\s*\d+$/
+      );
       const nonIssueText = await unassignedMaterialsRow.locator("td").evaluateAll((cells) =>
         cells
           .filter((_, index) => index !== 6)
@@ -634,7 +646,7 @@ test.describe("Expense inbox compact table", () => {
       await unassignedMaterialsRow
         .getByTestId("expense-inbox-issues")
         .getByRole("button", { name: /issue/i })
-        .click();
+        .hover();
       popover = page.getByTestId("expense-inbox-issue-popover").last();
       await expect(popover).toContainText("Missing receipt");
       await expect(popover).not.toContainText("Missing project");
@@ -643,9 +655,9 @@ test.describe("Expense inbox compact table", () => {
       const duplicateIssueCell = expenseListRowById(page, seeded.ids.duplicateA).getByTestId(
         "expense-inbox-issues"
       );
-      await expect(duplicateIssueCell).toHaveText("⚠");
-      await expect(duplicateIssueCell).not.toContainText(/Possible duplicate|issues/i);
-      await duplicateIssueCell.getByRole("button", { name: /issue/i }).click();
+      await expect(duplicateIssueCell).toHaveText(/^⚠\s*\d+$/);
+      await expect(duplicateIssueCell).not.toContainText(/Possible duplicate/i);
+      await duplicateIssueCell.getByRole("button", { name: /issue/i }).hover();
       popover = page.getByTestId("expense-inbox-issue-popover").last();
       await expect(popover).toContainText("Missing receipt");
       await expect(popover).toContainText("Missing category");
@@ -680,7 +692,7 @@ test.describe("Expense inbox compact table", () => {
       expect(mobileActionDisplay.height).toBeGreaterThanOrEqual(44);
       expect(mobileActionDisplay.opacity).toBeGreaterThan(0);
       await expectNoPageHorizontalOverflow(page, 390);
-      await expect(expenseListRowById(page, seeded.ids.noReceipt)).not.toContainText("No receipt");
+      await expect(expenseListRowById(page, seeded.ids.noReceipt)).toContainText("Missing");
       expect(unexpectedPageErrors(pageErrors)).toEqual([]);
     } finally {
       await cleanupCompactRows(admin, seeded);
@@ -702,6 +714,7 @@ test.describe("Expense inbox compact table", () => {
       seeded = await seedCompactRows(admin);
 
       await page.setViewportSize({ width: 1440, height: 900 });
+      await loginAsE2EOwner(page, E2E_FINANCIAL_EXPENSES_ARCHIVE_URL);
       await gotoCompactExpenses(page, seeded.prefix);
 
       const table = page.locator("main table").first();
@@ -749,15 +762,15 @@ test.describe("Expense inbox compact table", () => {
       await expect(archiveReceiptRow).not.toContainText("ZZ-PM-DEFAULT");
       await expect(archiveReceiptRow).not.toContainText("Receipt upload");
       await expect(archiveReceiptRow.locator("td").nth(4)).toHaveText("Amex");
-      await expect(archiveReceiptRow.getByRole("button", { name: /Preview receipt/i })).toHaveText(
-        /^View$/
+      await expect(archiveReceiptRow.getByRole("button", { name: /Receipt attached/i })).toHaveText(
+        /^Receipt$/
       );
 
       const metadataRow = expenseListRowById(page, seeded.ids.archiveNoDescription);
       await expect(metadataRow).toBeVisible();
       const metadataMerchant = metadataRow.locator("td").nth(1);
       await expect(metadataMerchant).toContainText(`HH ${seeded.prefix} Archive Metadata Vendor`);
-      await expect(metadataMerchant).toContainText(/Cash/);
+      await expect(metadataMerchant).toContainText("No description");
       const metadataMerchantText = (await metadataMerchant.textContent()) ?? "";
       expect(metadataMerchantText).not.toMatch(/[A-Z][a-z]{2} \d{1,2}/);
       await expect(metadataMerchant).not.toContainText("Receipt upload");
@@ -768,38 +781,39 @@ test.describe("Expense inbox compact table", () => {
       await expect(internalPaymentRow).not.toContainText("ZZ-PM");
       await expect(internalPaymentRow).not.toContainText("Receipt upload");
       await expect(internalPaymentRow.locator("td").nth(4)).toHaveText("—");
-      await expect(internalPaymentRow.locator("td").nth(1).locator("p").nth(1)).toHaveText("—");
+      await expect(internalPaymentRow.locator("td").nth(1).locator("p").nth(1)).toHaveText(
+        "No description"
+      );
 
       const noReceiptRow = expenseListRowById(page, seeded.ids.archiveNoReceipt);
-      await expect(noReceiptRow.locator("td").nth(5)).toHaveText("—");
-      await expect(noReceiptRow).not.toContainText("No receipt");
+      await expect(noReceiptRow.locator("td").nth(5)).toHaveText("Missing");
       const noReceiptIssueCell = noReceiptRow.getByTestId("expense-inbox-issues");
-      await expect(noReceiptIssueCell).toHaveText("⚠");
-      await noReceiptIssueCell.getByRole("button", { name: /issue/i }).click();
+      await expect(noReceiptIssueCell).toHaveText(/^⚠\s*\d+$/);
+      await noReceiptIssueCell.getByRole("button", { name: /issue/i }).hover();
       let popover = page.getByTestId("expense-inbox-issue-popover").last();
       await expect(popover).toContainText("Missing receipt");
       await popover.getByRole("button", { name: /Dismiss Missing receipt/i }).click();
-      await expect(noReceiptIssueCell).toHaveText("—");
+      await expect(noReceiptIssueCell).toHaveText("Clear");
       await page.reload();
       await waitForExpensesQuerySuccess(page, 90_000);
       await expensesVendorSearch(page).fill(seeded.prefix);
       await expect(
         expenseListRowById(page, seeded.ids.archiveNoReceipt).getByTestId("expense-inbox-issues")
-      ).toHaveText("—");
+      ).toHaveText("Clear");
 
       const duplicateIssueCell = expenseListRowById(page, seeded.ids.archiveDuplicateA).getByTestId(
         "expense-inbox-issues"
       );
-      await expect(duplicateIssueCell).toHaveText("⚠");
-      await expect(duplicateIssueCell).not.toContainText(/Possible duplicate|issues/i);
-      await duplicateIssueCell.getByRole("button", { name: /issue/i }).click();
+      await expect(duplicateIssueCell).toHaveText(/^⚠\s*\d+$/);
+      await expect(duplicateIssueCell).not.toContainText(/Possible duplicate/i);
+      await duplicateIssueCell.getByRole("button", { name: /issue/i }).hover();
       popover = page.getByTestId("expense-inbox-issue-popover").last();
       await expect(popover).toContainText("Possible duplicate amount");
       await expect(popover).toContainText("Missing receipt");
       await popover.getByRole("button", { name: /Dismiss Missing receipt/i }).click();
       popover = page.getByTestId("expense-inbox-issue-popover").last();
       await popover.getByRole("button", { name: /Dismiss Possible duplicate amount/i }).click();
-      await expect(duplicateIssueCell).toHaveText("—");
+      await expect(duplicateIssueCell).toHaveText("Clear");
 
       const categoryDisplay = await archiveReceiptRow
         .locator("td")

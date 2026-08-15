@@ -177,7 +177,10 @@ export function ExpensePaymentMethodSelect({
       />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-sm rounded-sm border-border/60">
+        <DialogContent
+          data-expense-component-surface="create-option"
+          className="expenses-ui-dialog max-w-sm !rounded-[10px] border-border/60 max-md:!rounded-b-none max-md:!rounded-t-[14px]"
+        >
           <DialogHeader>
             <DialogTitle className="text-base font-medium">New payment method</DialogTitle>
           </DialogHeader>

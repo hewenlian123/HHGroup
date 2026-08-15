@@ -219,7 +219,7 @@ test.describe.serial("private expense receipt Storage and Replace", () => {
         response.request().method() === "POST" &&
         response.url().endsWith(`/api/expenses/${TARGET_EXPENSE_ID}/attachments`)
     );
-    await page.getByRole("button", { name: "Open", exact: true }).click();
+    await page.getByRole("button", { name: "Preview receipt" }).click();
 
     const response = await previewResponse;
     expect(response.status()).toBe(200);
@@ -264,13 +264,13 @@ test.describe.serial("private expense receipt Storage and Replace", () => {
       }
     });
 
-    await page.getByPlaceholder("Search…").last().fill(TARGET_VENDOR);
+    await page.getByRole("textbox", { name: "Search expenses" }).fill(TARGET_VENDOR);
     await expect(page.getByText(TARGET_VENDOR, { exact: true })).toBeVisible();
-    const targetExpenseRow = page
-      .locator(`.exp-row[data-expense-id="${TARGET_EXPENSE_ID}"]`)
-      .first();
+    const targetExpenseRow = page.locator(`[data-expense-id="${TARGET_EXPENSE_ID}"]`).first();
     await expect(targetExpenseRow).toBeVisible();
-    await targetExpenseRow.getByRole("button", { name: "Preview receipt" }).click();
+    await targetExpenseRow
+      .getByRole("button", { name: "Receipt attached. Preview receipt" })
+      .click();
     await expect(page.getByRole("dialog", { name: "Receipt preview" })).toBeVisible();
     const image = page.locator("[data-receipt-viewer] img");
     await expect(image).toBeVisible();

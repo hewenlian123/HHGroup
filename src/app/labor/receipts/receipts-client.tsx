@@ -50,6 +50,7 @@ import { listTableRowStaticClassName } from "@/lib/list-table-interaction";
 import { TYPO } from "@/lib/typography";
 import { formatCurrency } from "@/lib/formatters";
 import { formatLedgerDate, LEDGER_DATE_CLASS } from "@/lib/ledger-date";
+import { ExpenseOperationsWorkspaceNav } from "@/components/financial/expense-operations-workspace-nav";
 
 export type ReceiptRow = WorkerReceipt & { projectName: string };
 
@@ -479,6 +480,7 @@ export function ReceiptsClient({
           "max-md:!gap-2"
         )}
       >
+        <ExpenseOperationsWorkspaceNav className="mb-1" />
         <div className="hidden md:block">
           <PageHeader
             className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"

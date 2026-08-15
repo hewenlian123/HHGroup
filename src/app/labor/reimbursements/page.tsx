@@ -58,6 +58,7 @@ import {
   NeoToolbar,
 } from "@/components/base";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { ExpenseOperationsWorkspaceNav } from "@/components/financial/expense-operations-workspace-nav";
 import {
   safeWorkerReturnPath,
   workerDetailPathWithReturnTo,
@@ -785,6 +786,7 @@ export default function WorkerReimbursementsPage() {
         "max-md:!gap-1"
       )}
     >
+      <ExpenseOperationsWorkspaceNav className="mb-1" />
       <div className="flex flex-col gap-2 border-b border-[color:var(--rb-border-soft)] pb-2 pt-1">
         <div className="flex flex-wrap items-center gap-2">
           <Button

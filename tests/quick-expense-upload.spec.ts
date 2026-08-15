@@ -171,7 +171,7 @@ test.describe("Quick Expense: upload and save", () => {
     await waitForExpensesQuerySuccess(page);
 
     await clickVisibleQuickExpenseButton(page);
-    const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+    const dialog = page.getByRole("dialog", { name: /New expense/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
     if (
@@ -269,7 +269,7 @@ test.describe("Quick Expense: upload and save", () => {
       await waitForExpensesQuerySuccess(page);
 
       await clickVisibleQuickExpenseButton(page);
-      const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+      const dialog = page.getByRole("dialog", { name: /New expense/i });
       await expect(dialog).toBeVisible({ timeout: 15_000 });
 
       if (
@@ -371,7 +371,7 @@ test.describe("Quick Expense: upload and save", () => {
       await waitForExpensesQuerySuccess(page);
 
       await clickVisibleQuickExpenseButton(page);
-      let dialog = page.getByRole("dialog", { name: /Quick expense/i });
+      let dialog = page.getByRole("dialog", { name: /New expense/i });
       await expect(dialog).toBeVisible({ timeout: 15_000 });
 
       if (
@@ -418,7 +418,7 @@ test.describe("Quick Expense: upload and save", () => {
       });
 
       await clickVisibleQuickExpenseButton(page);
-      dialog = page.getByRole("dialog", { name: /Quick expense/i });
+      dialog = page.getByRole("dialog", { name: /New expense/i });
       await expect(dialog).toBeVisible({ timeout: 15_000 });
       const projectCostVendor = `${vendorPrefix}-materials`;
       await dialog.locator("input[type='number']").fill("44.4");
@@ -469,7 +469,7 @@ test.describe("Quick Expense: upload and save", () => {
     await waitForExpensesQuerySuccess(page);
 
     await clickVisibleQuickExpenseButton(page);
-    const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+    const dialog = page.getByRole("dialog", { name: /New expense/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
     if (
@@ -580,7 +580,7 @@ test.describe("Quick Expense: upload and save", () => {
       await waitForExpensesQuerySuccess(page);
 
       await clickVisibleQuickExpenseButton(page);
-      const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+      const dialog = page.getByRole("dialog", { name: /New expense/i });
       await expect(dialog).toBeVisible({ timeout: 15_000 });
 
       const vendorMark = `${vendorPrefix}-save`;
@@ -589,6 +589,8 @@ test.describe("Quick Expense: upload and save", () => {
       await dialog.locator("#quick-expense-project-select").click();
       await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
       await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
+      await dialog.getByRole("button", { name: /More Details/i }).click();
+      await expect(dialog.locator("#quick-expense-payment-select")).not.toHaveText(/^Account$/);
       const paymentBefore = await dialog.locator("#quick-expense-payment-select").innerText();
       const dateBefore = (await dialog.locator("#quick-expense-date").innerText()).trim();
 
@@ -647,7 +649,7 @@ test.describe("Quick Expense: upload and save", () => {
       expect(saved.line_category).toBe(newCategory);
 
       await clickVisibleQuickExpenseButton(page);
-      const reopened = page.getByRole("dialog", { name: /Quick expense/i });
+      const reopened = page.getByRole("dialog", { name: /New expense/i });
       await expect(reopened).toBeVisible({ timeout: 15_000 });
       await reopened.locator("#quick-expense-category-select").click();
       await expect(page.getByRole("option", { name: newCategory, exact: true })).toBeVisible({
@@ -669,7 +671,7 @@ test.describe("Quick Expense: upload and save", () => {
     await waitForExpensesQuerySuccess(page);
 
     await clickVisibleQuickExpenseButton(page);
-    const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+    const dialog = page.getByRole("dialog", { name: /New expense/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
     const vendorMark = `E2E-QECAT-ERR-${Date.now()}`;
@@ -722,7 +724,7 @@ test.describe("Quick Expense: upload and save", () => {
     await waitForExpensesQuerySuccess(page);
 
     await clickVisibleQuickExpenseButton(page);
-    const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+    const dialog = page.getByRole("dialog", { name: /New expense/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
     if (

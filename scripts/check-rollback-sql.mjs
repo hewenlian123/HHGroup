@@ -25,6 +25,10 @@ const scripts = [
     path: `${root}/supabase/rollbacks/20260811190000_financial_protected_access_contract.rollback.sql`,
     confirmation: "ROLLBACK_FINANCIAL_PROTECTED_ACCESS_CONTRACT_20260811190000",
   },
+  {
+    path: `${root}/supabase/rollbacks/20260815090325_worker_invoices_owner_admin_access.rollback.sql`,
+    confirmation: "ROLLBACK_WORKER_INVOICES_OWNER_ADMIN_ACCESS_20260815090325",
+  },
 ];
 
 const sql = postgres(localDatabaseUrl, {

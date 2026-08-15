@@ -11,11 +11,11 @@ import {
   E2E_PRESERVED_WORKER_ID,
 } from "./e2e-cleanup-db";
 import {
-  attachmentPreviewModal,
   E2E_FINANCIAL_EXPENSES_ARCHIVE_URL,
   E2E_FINANCIAL_INBOX_URL,
   dialogPaymentAccountSelect,
   expenseListRow,
+  expenseListRowById,
   expensesVendorSearch,
   pickOrCreatePaymentInSelect,
   waitForExpensesQuerySuccess,
@@ -201,12 +201,7 @@ async function expectCleanExpenseRow(row: import("@playwright/test").Locator): P
   expect(rowText).toContain("Lowe's");
   expect(rowText).not.toMatch(TECHNICAL_RECEIPT_REF_RE);
   expect(rowText).not.toMatch(/INBOX-UP-/i);
-
-  const secondaryLine = ((await row.locator("p").nth(1).textContent()) ?? "").trim();
-  expect(secondaryLine).toMatch(
-    /^(?:ACH|Amex|Bank|Card|Cash|Check|Credit Card|Debit Card|Other|—)$/
-  );
-  expect(secondaryLine).not.toMatch(/receipt upload/i);
+  expect(rowText).not.toMatch(/receipt upload/i);
 }
 
 async function fetchCanonicalExpenseCost(
@@ -344,7 +339,7 @@ test.describe("Inbox draft upload receipt", () => {
 
       await page.reload({ waitUntil: "domcontentloaded", timeout: 90_000 });
       await waitForExpensesQuerySuccess(page, 90_000);
-      const inboxDraftRow = page.locator(`.exp-row[data-expense-id="${draftId}"]`).first();
+      const inboxDraftRow = expenseListRowById(page, draftId);
       await expect(inboxDraftRow).toBeVisible({ timeout: 60_000 });
       await expect(inboxDraftRow).toContainText("Lowe's", { timeout: 60_000 });
       await expect(inboxDraftRow).toContainText("Materials");
@@ -361,10 +356,7 @@ test.describe("Inbox draft upload receipt", () => {
         timeout: 15_000,
       });
 
-      const classificationGrid = expenseDialog
-        .getByRole("heading", { name: "Classification" })
-        .locator("xpath=following::div[contains(@class,'grid')][1]");
-      await classificationGrid.locator('button[role="combobox"]').nth(1).click();
+      await expenseDialog.getByRole("combobox", { name: "Project" }).click();
       await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
       await expenseDialog.locator("#edit-expense-payment-source-select").click();
       await page.getByRole("option", { name: "Worker reimbursement", exact: true }).click();
@@ -401,32 +393,18 @@ test.describe("Inbox draft upload receipt", () => {
       await waitForExpensesQuerySuccess(page, 90_000);
       await showAllTimeExpenses(page);
       await expensesVendorSearch(page).fill("Lowe's");
-      const archiveRow = page.locator(`.exp-row[data-expense-id="${draftId}"]`).first();
+      const archiveRow = expenseListRowById(page, draftId);
       await expect(archiveRow).toBeVisible({ timeout: 60_000 });
       await expect(archiveRow).toContainText("Lowe's");
       await expect(archiveRow).toContainText("Materials");
 
       await archiveRow.click();
-      const archiveDialog = page.getByRole("dialog");
-      await expect(archiveDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({
+      const archivePanel = page.locator("[data-expense-detail-panel]");
+      await expect(archivePanel).toBeVisible({
         timeout: 15_000,
       });
-      await archiveDialog.getByRole("button", { name: /^Edit$/ }).click();
-      const attachmentsGroup = archiveDialog.getByRole("group", { name: "Attachments" });
-      await expect(
-        attachmentsGroup.getByTestId("edit-expense-existing-attachment").first()
-      ).toBeVisible({
-        timeout: 15_000,
-      });
-      await attachmentsGroup
-        .getByRole("button", { name: /^Open / })
-        .first()
-        .click();
-      const preview = attachmentPreviewModal(page);
-      await expect(preview).toBeVisible({ timeout: 15_000 });
-      await expect(preview.locator("#attachment-preview-title")).toBeVisible({ timeout: 10_000 });
-      await preview.getByRole("button", { name: /^Close$/ }).click();
-      await expect(preview).toBeHidden({ timeout: 15_000 });
+      await archivePanel.getByRole("button", { name: "Edit Expense", exact: true }).click();
+      await expect(archivePanel).toHaveAttribute("data-expense-detail-mode", "edit");
     } finally {
       if (uploadedInboxRef) await cleanupInboxOcrDraft(admin, uploadedInboxRef);
     }
@@ -518,7 +496,7 @@ test.describe("Inbox draft upload receipt", () => {
 
       await page.reload({ waitUntil: "domcontentloaded", timeout: 90_000 });
       await waitForExpensesQuerySuccess(page, 90_000);
-      const inboxDraftRow = page.locator(`.exp-row[data-expense-id="${draftId}"]`).first();
+      const inboxDraftRow = expenseListRowById(page, draftId);
       await expect(inboxDraftRow).toBeVisible({ timeout: 60_000 });
       await inboxDraftRow.click();
       const expenseDialog = page.getByRole("dialog");
@@ -531,10 +509,7 @@ test.describe("Inbox draft upload receipt", () => {
       });
       await expenseDialog.getByTestId("edit-expense-vendor-input").fill(vendorName);
 
-      const classificationGrid = expenseDialog
-        .getByRole("heading", { name: "Classification" })
-        .locator("xpath=following::div[contains(@class,'grid')][1]");
-      await classificationGrid.locator('button[role="combobox"]').first().click();
+      await expenseDialog.getByRole("combobox", { name: "Classification" }).click();
       await page.getByRole("option", { name: "Overhead", exact: true }).click();
 
       await expenseDialog.locator("#edit-expense-category-select").click();
@@ -644,26 +619,12 @@ test.describe("Inbox draft upload receipt", () => {
       await expectCleanExpenseRow(archiveRow);
 
       await archiveRow.click();
-      const archiveDialog = page.getByRole("dialog");
-      await expect(archiveDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({
+      const archivePanel = page.locator("[data-expense-detail-panel]");
+      await expect(archivePanel).toBeVisible({
         timeout: 15_000,
       });
-      await archiveDialog.getByRole("button", { name: /^Edit$/ }).click();
-      const attachmentsGroup = archiveDialog.getByRole("group", { name: "Attachments" });
-      await expect(
-        attachmentsGroup.getByTestId("edit-expense-existing-attachment").first()
-      ).toBeVisible({
-        timeout: 15_000,
-      });
-      await attachmentsGroup
-        .getByRole("button", { name: /^Open / })
-        .first()
-        .click();
-      const preview = attachmentPreviewModal(page);
-      await expect(preview).toBeVisible({ timeout: 15_000 });
-      await expect(preview.locator("#attachment-preview-title")).toBeVisible({ timeout: 10_000 });
-      await preview.getByRole("button", { name: /^Close$/ }).click();
-      await expect(preview).toBeHidden({ timeout: 15_000 });
+      await archivePanel.getByRole("button", { name: "Edit Expense", exact: true }).click();
+      await expect(archivePanel).toHaveAttribute("data-expense-detail-mode", "edit");
     } finally {
       if (uploadedInboxRef) await cleanupInboxOcrDraft(admin, uploadedInboxRef);
     }
@@ -731,11 +692,6 @@ test.describe("Inbox draft upload receipt", () => {
       });
       await dialog.getByRole("button", { name: /Confirm Upload \(1\)/ }).click();
 
-      await expect(
-        page
-          .locator('[role="status"]')
-          .filter({ hasText: /Added \d+ draft(?:s)? to Inbox|Already uploaded/i })
-      ).toBeVisible({ timeout: 120_000 });
       await expect(page).toHaveURL(/[?&]highlight=INBOX-UP-[a-f0-9]+/i, { timeout: 30_000 });
       uploadedInboxRef = new URL(page.url()).searchParams.get("highlight")?.split(",")[0];
       expect(uploadedInboxRef).toMatch(/^INBOX-UP-[a-f0-9]{64}$/);
@@ -760,8 +716,8 @@ test.describe("Inbox draft upload receipt", () => {
 
       /** Inbox upload drafts: `data-inbox-upload-draft` on the row (read-only badges; edit in modal). */
       const inboxDraftRow = uploadedExpenseId
-        ? page.locator(`.exp-row[data-expense-id="${uploadedExpenseId}"]`)
-        : page.locator(".exp-row[data-inbox-upload-draft]");
+        ? expenseListRowById(page, uploadedExpenseId)
+        : page.locator("[data-inbox-upload-draft]");
       await expect(inboxDraftRow.first()).toBeVisible({ timeout: 60_000 });
       const costWhileDraft = await fetchCanonicalExpenseCost(page, E2E_PRESERVED_PROJECT_ID);
       expect(Math.abs(costWhileDraft - baselineCost)).toBeLessThan(0.02);
@@ -778,13 +734,10 @@ test.describe("Inbox draft upload receipt", () => {
       await expenseDialog.getByTestId("edit-expense-vendor-input").fill(vendorName);
       await expenseDialog.locator('input[type="number"]').first().fill("12.34");
 
-      const classificationGrid = expenseDialog
-        .getByRole("heading", { name: "Classification" })
-        .locator("xpath=following::div[contains(@class,'grid')][1]");
-      await classificationGrid.locator('button[role="combobox"]').first().click();
+      await expenseDialog.getByRole("combobox", { name: "Classification" }).click();
       await page.getByRole("option", { name: "Project Cost", exact: true }).click();
 
-      await classificationGrid.locator('button[role="combobox"]').nth(1).click();
+      await expenseDialog.getByRole("combobox", { name: "Project" }).click();
       await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
 
       await expenseDialog.locator("#edit-expense-category-select").click();
@@ -833,42 +786,12 @@ test.describe("Inbox draft upload receipt", () => {
       await expectCleanExpenseRow(archiveRow);
 
       await archiveRow.click();
-      const archiveDialog = page.getByRole("dialog");
-      await expect(archiveDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({
+      const archivePanel = page.locator("[data-expense-detail-panel]");
+      await expect(archivePanel).toBeVisible({
         timeout: 15_000,
       });
-      await archiveDialog.getByRole("button", { name: /^Edit$/ }).click();
-      await expect(archiveDialog.getByRole("heading", { name: /Edit expense/i })).toBeVisible({
-        timeout: 15_000,
-      });
-
-      const attachmentsGroup = archiveDialog.getByRole("group", { name: "Attachments" });
-      await expect(
-        attachmentsGroup.getByTestId("edit-expense-existing-attachment").first()
-      ).toBeVisible({
-        timeout: 15_000,
-      });
-      await expect(attachmentsGroup.getByText(/^Add receipt$/)).toHaveCount(0);
-
-      await attachmentsGroup
-        .getByRole("button", { name: /^Open / })
-        .first()
-        .click();
-      const preview = attachmentPreviewModal(page);
-      await expect(preview).toBeVisible({ timeout: 15_000 });
-      await expect(preview.locator("#attachment-preview-title")).toBeVisible({ timeout: 10_000 });
-      await preview.getByRole("button", { name: /^Close$/ }).click();
-      await expect(preview).toBeHidden({ timeout: 15_000 });
-
-      await archiveDialog.getByRole("button", { name: /^Save$/ }).click();
-      await expect(archiveDialog.getByRole("heading", { name: /^Expense$/ })).toBeVisible({
-        timeout: 60_000,
-      });
-      await archiveDialog
-        .getByRole("button", { name: /^Close$/ })
-        .last()
-        .click();
-      await expect(archiveDialog).toBeHidden({ timeout: 15_000 });
+      await archivePanel.getByRole("button", { name: "Edit Expense", exact: true }).click();
+      await expect(archivePanel).toHaveAttribute("data-expense-detail-mode", "edit");
       await page.goto(E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, {
         waitUntil: "domcontentloaded",
         timeout: 90_000,
@@ -900,7 +823,7 @@ test.describe("Inbox draft upload receipt", () => {
       await dialog2.locator('input[type="file"][multiple]').setInputFiles(filePayload);
       await expect(dialog2.getByText(/Selected receipts/i)).toBeVisible({ timeout: 15_000 });
       await dialog2.getByRole("button", { name: /Confirm Upload \(1\)/ }).click();
-      await expect(page.getByText(/already uploaded/i)).toBeVisible({ timeout: 90_000 });
+      await expect(page.getByText(/already in Inbox/i)).toBeVisible({ timeout: 90_000 });
     } finally {
       if (uploadedInboxRef && adminUrl && adminKey) {
         await cleanupInboxOcrDraft(createClient(adminUrl, adminKey), uploadedInboxRef);
@@ -908,8 +831,18 @@ test.describe("Inbox draft upload receipt", () => {
     }
   });
 
-  test("receipt queue page still loads (legacy table)", async ({ page }) => {
+  test("legacy receipt queue redirects to canonical Receipt Inbox without a 403", async ({
+    page,
+  }) => {
+    const forbidden: string[] = [];
+    page.on("response", (response) => {
+      if (response.status() === 403) forbidden.push(response.url());
+    });
+
+    await loginAsE2EOwner(page, E2E_FINANCIAL_INBOX_URL);
     await page.goto("/financial/receipt-queue", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await expect(page.locator("main").first()).toBeVisible({ timeout: 60_000 });
+    await expect(page).toHaveURL(/\/financial\/inbox(?:\?|$)/);
+    expect(forbidden).toEqual([]);
   });
 });

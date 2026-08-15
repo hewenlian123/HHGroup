@@ -154,7 +154,7 @@ test.describe("Expense subcontract material deductions", () => {
       expect(baselineActualCost).toBeGreaterThanOrEqual(10000);
 
       await clickVisibleQuickExpenseButton(page);
-      const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+      const dialog = page.getByRole("dialog", { name: /New expense/i });
       await expect(dialog).toBeVisible({ timeout: 15_000 });
       await dialog.locator("input[type='number']").first().fill("1000");
       await dialog.locator("#quick-expense-vendor").fill(vendor);
@@ -170,6 +170,7 @@ test.describe("Expense subcontract material deductions", () => {
         fixture.projectName.slice(0, 12),
         fixture.projectName
       );
+      await dialog.getByRole("button", { name: /More Details/i }).click();
       await dialog.getByTestId("quick-expense-subcontract-deduction-checkbox").check();
       await chooseSearchResult(
         page,

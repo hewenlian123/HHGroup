@@ -77,7 +77,7 @@ test.describe("Archived expense option in edit modal", () => {
     }
 
     await clickVisibleQuickExpenseButton(page);
-    const q = page.getByRole("dialog", { name: /Quick expense/i });
+    const q = page.getByRole("dialog", { name: /New expense/i });
     await expect(q).toBeVisible({ timeout: 15_000 });
     await q.locator("input[type='number']").fill("4.03");
     await q.locator("#quick-expense-vendor").fill(vendorMark);
@@ -180,7 +180,7 @@ test.describe("Archived expense option in edit modal", () => {
     }
 
     await clickVisibleQuickExpenseButton(page);
-    const q = page.getByRole("dialog", { name: /Quick expense/i });
+    const q = page.getByRole("dialog", { name: /New expense/i });
     await expect(q).toBeVisible({ timeout: 15_000 });
     await q.locator("input[type='number']").fill("5.04");
     await q.locator("#quick-expense-vendor").fill(vendorMark);

@@ -36,6 +36,7 @@ export type PaymentAccountSelectProps = {
   onValueChange: (accountId: string) => void;
   disabled?: boolean;
   className?: string;
+  contentClassName?: string;
   id?: string;
   autoFocus?: boolean;
   onKeyDown?: React.KeyboardEventHandler<HTMLElement>;
@@ -51,6 +52,7 @@ export function PaymentAccountSelect({
   onValueChange,
   disabled,
   className,
+  contentClassName,
   id,
   autoFocus,
   onKeyDown,
@@ -65,8 +67,10 @@ export function PaymentAccountSelect({
   const [addOpen, setAddOpen] = React.useState(false);
   const [newName, setNewName] = React.useState("");
   const [newType, setNewType] = React.useState<PaymentAccountType>("card");
+  const [newTypeOpen, setNewTypeOpen] = React.useState(false);
   const [creating, setCreating] = React.useState(false);
   const newInputRef = React.useRef<HTMLInputElement>(null);
+  const newTypeTriggerRef = React.useRef<HTMLButtonElement>(null);
   const onAccountsUpdatedRef = React.useRef(onAccountsUpdated);
   onAccountsUpdatedRef.current = onAccountsUpdated;
 
@@ -188,6 +192,7 @@ export function PaymentAccountSelect({
         searchPlaceholder="Search payment accounts…"
         id={id}
         className={cn("h-10 max-md:h-10 max-md:min-h-10 [&>span]:line-clamp-1", className)}
+        contentClassName={contentClassName}
         aria-label="Payment account"
         autoFocus={autoFocus}
         onKeyDown={onKeyDown}
@@ -203,7 +208,10 @@ export function PaymentAccountSelect({
       />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-sm rounded-sm border-border/60">
+        <DialogContent
+          data-expense-component-surface="create-option"
+          className="expenses-ui-dialog max-w-sm !rounded-[10px] border-border/60 max-md:!rounded-b-none max-md:!rounded-t-[14px]"
+        >
           <DialogHeader>
             <DialogTitle className="text-base font-medium">New payment account</DialogTitle>
           </DialogHeader>
@@ -228,14 +236,35 @@ export function PaymentAccountSelect({
             <div className="space-y-1.5">
               <label className="text-xs uppercase tracking-wide text-muted-foreground">Type</label>
               <Select
+                open={newTypeOpen}
+                onOpenChange={(nextOpen) => {
+                  setNewTypeOpen(nextOpen);
+                  if (!nextOpen) {
+                    window.setTimeout(
+                      () => newTypeTriggerRef.current?.focus({ preventScroll: true }),
+                      220
+                    );
+                  }
+                }}
                 value={newType}
                 disabled={creating}
                 onValueChange={(v) => setNewType(v as PaymentAccountType)}
               >
-                <SelectTrigger className="h-10 max-md:h-10 max-md:min-h-10 rounded-sm border-border/60">
+                <SelectTrigger
+                  ref={newTypeTriggerRef}
+                  className="h-10 max-md:h-10 max-md:min-h-10 rounded-sm border-border/60"
+                >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent position="popper" sideOffset={4} className="max-h-56">
+                <SelectContent
+                  position="popper"
+                  sideOffset={4}
+                  onEscapeKeyDown={(event) => {
+                    event.stopPropagation();
+                  }}
+                  className="expenses-ui-dialog max-h-56"
+                  data-expense-component-surface="select"
+                >
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="card">Card</SelectItem>
                   <SelectItem value="bank">Bank</SelectItem>

@@ -18,7 +18,6 @@ import {
   createExpense,
   getProjects,
   getVendors,
-  getAccounts,
   getPaymentAccounts,
   getSubcontractDeductionOptions,
   updateExpenseReceiptUrl,
@@ -26,6 +25,7 @@ import {
   type PaymentAccountRow,
   type SubcontractDeductionOption,
 } from "@/lib/data";
+import { getAccountsAction } from "@/app/financial/accounts/actions";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import { ExpenseSubcontractDeductionFields } from "@/components/expense-subcontract-deduction-fields";
 import {
@@ -144,16 +144,16 @@ export default function NewExpensePage() {
     setLoading(true);
     setError(null);
     try {
-      const [p, v, accs, payAccs, deductionOptions] = await Promise.all([
+      const [p, v, accountResult, payAccs, deductionOptions] = await Promise.all([
         getProjects(),
         getVendors(),
-        getAccounts().catch(() => []),
+        getAccountsAction(),
         getPaymentAccounts().catch(() => [] as PaymentAccountRow[]),
         getSubcontractDeductionOptions().catch(() => [] as SubcontractDeductionOption[]),
       ]);
       setProjects(p as unknown as ProjectOption[]);
       setVendors(v);
-      setAccounts(accs);
+      setAccounts(accountResult.accounts);
       setPaymentAccountRows(payAccs);
       setSubcontractDeductionOptions(deductionOptions);
     } catch (e: unknown) {
@@ -302,12 +302,14 @@ export default function NewExpensePage() {
 
     setSaving(true);
     try {
+      const selectedAccount = accounts.find((account) => account.id === accountId);
       const created = await createExpense({
         date,
         vendorName: vendorName.trim(),
         referenceNo: referenceNo.trim() || undefined,
         notes: notes.trim() || undefined,
         accountId: accountId || undefined,
+        paymentMethod: selectedAccount?.name,
         paymentAccountId: paymentAccountId.trim() || null,
         lines: effectiveLines.map((l) => ({
           projectId: l.projectId,

@@ -477,7 +477,7 @@ export function EditExpenseModal({
           onInteractOutside={(e) => {
             if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
           }}
-          className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-border/60 p-0"
+          className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-border/60 p-0 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:max-w-none max-md:rounded-none"
         >
           <DialogHeader className="shrink-0 border-b border-border/60 px-4 py-3">
             <DialogTitle className="text-sm font-semibold text-foreground">
@@ -487,8 +487,8 @@ export function EditExpenseModal({
           {expense ? (
             <>
               <div className="max-h-[min(88vh,680px)] min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="col-span-2 space-y-1.5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <label className={FIELD_LABEL}>Vendor</label>
                     <Input
                       data-testid="edit-expense-vendor-input"
@@ -684,7 +684,7 @@ export function EditExpenseModal({
                       className={SELECT_TRIGGER}
                     />
                   </div>
-                  <div className="col-span-2 space-y-1.5">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <label className={FIELD_LABEL}>Status</label>
                     <Badge
                       variant="outline"
@@ -710,7 +710,7 @@ export function EditExpenseModal({
                       Set project and category to mark done when you save.
                     </p>
                   </div>
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <ExpenseSubcontractDeductionFields
                       idPrefix="edit-expense-subcontract-deduction"
                       enabled={deductFromSubcontractor}
@@ -728,7 +728,7 @@ export function EditExpenseModal({
                       inputClassName={INPUT_ROW}
                     />
                   </div>
-                  <div className="col-span-2 space-y-1.5">
+                  <div className="space-y-1.5 sm:col-span-2">
                     <label className={FIELD_LABEL}>Description</label>
                     <Textarea
                       value={notes}
@@ -756,7 +756,7 @@ export function EditExpenseModal({
                   />
                 </div>
               </div>
-              <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/60 px-4 py-3">
+              <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border/60 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
                 <Button
                   variant="outline"
                   size="sm"

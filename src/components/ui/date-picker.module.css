@@ -1,0 +1,65 @@
+.calendar {
+  --rdp-day-width: 40px !important;
+  --rdp-day-height: 40px !important;
+  --rdp-day_button-width: 40px !important;
+  --rdp-day_button-height: 40px !important;
+  --rdp-weekday-width: 40px !important;
+  --rdp-nav_button-width: 40px !important;
+  --rdp-nav_button-height: 40px !important;
+}
+
+@media (min-width: 375px) and (max-width: 639px) {
+  .calendar {
+    --rdp-day-width: 44px !important;
+    --rdp-day-height: 44px !important;
+    --rdp-day_button-width: 44px !important;
+    --rdp-day_button-height: 44px !important;
+    --rdp-weekday-width: 44px !important;
+    --rdp-nav_button-width: 44px !important;
+    --rdp-nav_button-height: 44px !important;
+  }
+
+  .calendar :global(.rdp-day),
+  .calendar :global(.rdp-day_button),
+  .calendar :global(.rdp-button_previous),
+  .calendar :global(.rdp-button_next) {
+    width: 44px !important;
+    height: 44px !important;
+  }
+}
+
+@media (min-width: 640px) {
+  .calendar {
+    --rdp-day-width: 32px !important;
+    --rdp-day-height: 32px !important;
+    --rdp-day_button-width: 32px !important;
+    --rdp-day_button-height: 32px !important;
+    --rdp-weekday-width: 32px !important;
+    --rdp-nav_button-width: 32px !important;
+    --rdp-nav_button-height: 32px !important;
+  }
+}
+
+@media (pointer: coarse) {
+  .content {
+    width: 332px !important;
+  }
+
+  .calendar {
+    --rdp-day-width: 44px !important;
+    --rdp-day-height: 44px !important;
+    --rdp-day_button-width: 44px !important;
+    --rdp-day_button-height: 44px !important;
+    --rdp-weekday-width: 44px !important;
+    --rdp-nav_button-width: 44px !important;
+    --rdp-nav_button-height: 44px !important;
+  }
+
+  .calendar :global(.rdp-day),
+  .calendar :global(.rdp-day_button),
+  .calendar :global(.rdp-button_previous),
+  .calendar :global(.rdp-button_next) {
+    width: 44px !important;
+    height: 44px !important;
+  }
+}

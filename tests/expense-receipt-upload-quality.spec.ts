@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import {
   attachmentPreviewModal,
   clickVisibleQuickExpenseButton,
@@ -102,15 +103,12 @@ test.describe("Expense receipt upload quality", () => {
       });
     });
 
-    await page.goto(E2E_FINANCIAL_EXPENSES_ARCHIVE_URL, {
-      waitUntil: "domcontentloaded",
-      timeout: 90_000,
-    });
+    await loginAsE2EOwner(page, E2E_FINANCIAL_EXPENSES_ARCHIVE_URL);
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
     await waitForExpensesQuerySuccess(page);
     await clickVisibleQuickExpenseButton(page);
 
-    const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+    const dialog = page.getByRole("dialog", { name: /New expense/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
     if (
       await dialog

@@ -7,13 +7,6 @@ import { InlineLoading } from "@/components/ui/skeleton";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { eventTargetsAttachmentPreviewModal } from "@/components/attachment-preview-modal";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
@@ -33,7 +26,7 @@ import {
 import { dedupeExpenseReceiptUploadSlots } from "@/lib/expense-attachment-dedupe";
 import { createBrowserClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-import { ChevronDown, FileText } from "lucide-react";
+import { ChevronDown, FileText, FileUp } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { uiActionLog, uiActionMark } from "@/lib/ui-action-perf";
 import { MatchStatusBadge } from "@/components/base";
@@ -42,6 +35,7 @@ import { ExpenseDatePicker } from "@/components/expense-date-picker";
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import { ExpenseSearchableSelect } from "@/components/expense-searchable-select";
 import { ExpenseSubcontractDeductionFields } from "@/components/expense-subcontract-deduction-fields";
+import { ExpenseItemsField } from "@/components/expense-items-field";
 import { AmountDiagnosticsPanel } from "@/components/ocr/amount-diagnostics-panel";
 import {
   type AmountRuleDiagnostic,
@@ -62,10 +56,14 @@ import {
   expenseCostAllocationRequiresProject,
   EXPENSE_COST_ALLOCATION_OVERHEAD,
   EXPENSE_COST_ALLOCATION_PROJECT_COST,
-  EXPENSE_COMMON_ITEM_NONE,
   EXPENSE_PROJECT_SELECT_NONE,
   type ExpenseCostAllocation,
 } from "@/lib/expense-workflow-status";
+import {
+  EXPENSE_FORM_FIELDS,
+  composeExpenseDescription,
+  normalizeExpenseItems,
+} from "@/lib/expense-form-system";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 
@@ -105,27 +103,27 @@ async function saveQuickExpenseViaApi(payload: QuickExpenseSavePayload): Promise
     message?: string;
   } | null;
   if (!response.ok || !body?.ok || !body.expense) {
-    throw new Error(body?.message || "Failed to save quick expense.");
+    const message = (body?.message || "Failed to save new expense.").replace(
+      /quick expense/gi,
+      "new expense"
+    );
+    throw new Error(message);
   }
   return body.expense;
 }
 
-const FIELD_LABEL = "block text-xs uppercase tracking-wide text-muted-foreground";
+const FIELD_LABEL =
+  "block text-[10px] font-semibold uppercase tracking-[0.04em] text-muted-foreground";
 /** iOS Safari avoids input zoom at 16px+; 48px controls; 12px radius on mobile (Stripe / Settings feel). */
 const FIELD_INPUT_CLASS =
-  "max-md:h-12 max-md:min-h-[48px] max-md:rounded-xl max-md:text-base md:min-h-10 md:rounded-sm md:text-sm";
+  "border-[var(--eo-border)] bg-background shadow-none hover:border-[var(--eo-border-strong)] focus-visible:border-[var(--eo-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring)] max-md:!h-12 max-md:!min-h-[48px] max-md:rounded-xl max-md:text-base md:min-h-10 md:rounded-sm md:text-sm";
 const CONTROL_H = "h-10 max-md:h-12 max-md:min-h-[48px] max-md:rounded-xl md:rounded-sm";
 const SELECT_TRIGGER = cn(
   CONTROL_H,
-  "w-full border-border/60 text-sm [&>span]:line-clamp-1 max-md:text-base"
+  "w-full border-[var(--eo-border)] text-sm shadow-none hover:border-[var(--eo-border-strong)] focus:border-[var(--eo-border-strong)] focus:ring-2 focus:ring-[var(--eo-focus-ring)] [&>span]:line-clamp-1 max-md:text-base"
 );
 const FIELD_GROUP = "flex flex-col gap-1.5";
-const selectPopperContentProps = {
-  position: "popper" as const,
-  sideOffset: 4,
-  className: "z-[200] max-h-[min(280px,var(--radix-select-content-available-height))]",
-};
-
+const NEW_EXPENSE_COMPONENT_SURFACE = "expense-new-component-surface";
 type OcrDebugInfo = {
   source: OcrSource;
   fallbackTriggered: boolean;
@@ -137,36 +135,6 @@ type OcrDebugInfo = {
   amountDiagnostics: AmountRuleDiagnostic[];
   confidence: { vendor: FieldConfidence; amount: FieldConfidence; date: FieldConfidence };
 };
-
-const ITEM_CATALOG = [
-  "Paint",
-  "Lumber",
-  "Concrete",
-  "Plumbing",
-  "Electrical",
-  "Materials",
-] as const;
-
-function titleCase(v: string): string {
-  return (v || "")
-    .trim()
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function dedupeItems(values: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const raw of values) {
-    const item = titleCase(raw);
-    if (!item) continue;
-    const key = item.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(item);
-  }
-  return out;
-}
 
 function normalizeVendor(v: string): string {
   return (v || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -269,13 +237,13 @@ export function QuickExpenseModal({
     amount: false,
     date: false,
     category: false,
+    items: false,
   });
   const [ocrBannerKind, setOcrBannerKind] = React.useState<
     "idle" | "success" | "partial" | "error"
   >("idle");
   const [ocrSource, setOcrSource] = React.useState<OcrSource>("none");
   const [recognizedItems, setRecognizedItems] = React.useState<string[]>([]);
-  const [itemDraft, setItemDraft] = React.useState("");
   const [fieldConfidence, setFieldConfidence] = React.useState<{
     vendor: FieldConfidence;
     amount: FieldConfidence;
@@ -295,7 +263,6 @@ export function QuickExpenseModal({
     amount: string;
     date: string;
   } | null>(null);
-  const [catalogPick, setCatalogPick] = React.useState(EXPENSE_COMMON_ITEM_NONE);
   const [duplicateCandidate, setDuplicateCandidate] = React.useState<{
     id: string;
     vendor: string;
@@ -519,13 +486,11 @@ export function QuickExpenseModal({
     setFieldConfidence({ vendor: "low", amount: "low", date: "low" });
     setDetectedSnapshot(null);
     setRecognizedItems([]);
-    setItemDraft("");
     setDebugData(null);
     setDebugOpen(false);
     setDuplicateConfirmed(false);
     setDuplicateCandidate(null);
     setOcrSuggestions(null);
-    setCatalogPick(EXPENSE_COMMON_ITEM_NONE);
     manualVendorNameRef.current = "";
     if (fileInputRef.current) fileInputRef.current.value = "";
     ocrFieldTouchedRef.current = {
@@ -533,6 +498,7 @@ export function QuickExpenseModal({
       amount: false,
       date: false,
       category: false,
+      items: false,
     };
     setOcrBannerKind("idle");
   }, []);
@@ -700,7 +666,7 @@ export function QuickExpenseModal({
         date: merged.dateConfidence,
       });
       setDetectedSnapshot(merged.detectedSnapshot);
-      setRecognizedItems(merged.finalItems);
+      if (!ocrFieldTouchedRef.current.items) setRecognizedItems(merged.finalItems);
       setOcrSource(merged.source);
       setOcrSuggestions(merged.ocrSuggestions);
       setDebugData({
@@ -1141,13 +1107,7 @@ export function QuickExpenseModal({
         sourceType: slotsToSave.length > 0 ? "receipt_upload" : "company",
         category,
         initialStatus: deriveExpenseWorkflowStatus(projectId || null, category, costAllocation),
-        notes: (() => {
-          const userNotes = notes.trim();
-          const itemsPart = `Items: ${dedupeItems(recognizedItems).join(", ")}`;
-          if (!itemsPart || dedupeItems(recognizedItems).length === 0)
-            return userNotes || undefined;
-          return userNotes ? `${userNotes}\n${itemsPart}` : itemsPart;
-        })(),
+        notes: composeExpenseDescription(notes, recognizedItems),
         projectId: projectId || null,
         paymentAccountId: effectivePaymentAccountId || null,
         subcontractDeduction:
@@ -1220,7 +1180,7 @@ export function QuickExpenseModal({
             vendor: effectiveVendorName || "Unknown",
             amount: totalAmount,
             date: date || hawaiiTodayYmd(),
-            items: dedupeItems(recognizedItems),
+            items: normalizeExpenseItems(recognizedItems),
             category,
             projectId: projectId || null,
           },
@@ -1266,8 +1226,13 @@ export function QuickExpenseModal({
           }
           setNotes("");
           setRecognizedItems([]);
-          setItemDraft("");
-          setCatalogPick(EXPENSE_COMMON_ITEM_NONE);
+          ocrFieldTouchedRef.current = {
+            vendor: false,
+            amount: false,
+            date: false,
+            category: false,
+            items: false,
+          };
           setOcrSuggestions(null);
           setFieldConfidence({ vendor: "low", amount: "low", date: "low" });
           setDetectedSnapshot(null);
@@ -1301,20 +1266,33 @@ export function QuickExpenseModal({
     }
   };
 
+  const submitDisabled = saving || saveFlash || !supabase || processing || receiptPipelineBusy;
+  const visualAmount = Number(amount);
+  const saveVisualReadiness =
+    Number.isFinite(visualAmount) && visualAmount > 0 ? "ready" : "incomplete";
+  const primarySaveDisabledStyle: React.CSSProperties | undefined =
+    submitDisabled || saveVisualReadiness === "incomplete"
+      ? {
+          backgroundColor: "var(--eo-action-disabled)",
+          borderColor: "var(--eo-border)",
+          color: "var(--eo-text-tertiary)",
+          opacity: 1,
+        }
+      : undefined;
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           data-testid="quick-expense-dialog"
           data-quick-expense-dialog
+          data-expense-component-surface="quick-expense"
           draggable={false}
           className={cn(
-            "flex flex-col gap-0 overflow-hidden border-border/60 p-0 shadow-none",
-            "md:!fixed md:left-1/2 md:top-1/2 md:h-[min(78dvh,720px)] md:max-h-[min(92dvh,820px)] md:w-full md:max-w-[560px] md:rounded-sm md:!translate-x-[-50%] md:!translate-y-[-50%]",
-            "max-md:!fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:flex max-md:max-h-[94dvh] max-md:min-h-[82dvh] max-md:w-full max-md:max-w-none max-md:!translate-x-0 max-md:!translate-y-0 max-md:rounded-t-[14px] max-md:rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:border-t max-md:p-0",
-            "max-md:pointer-events-auto max-md:!opacity-100 max-md:!transform-none max-md:!transition-none max-md:!duration-0",
-            "max-md:data-[state=open]:!animate-none max-md:data-[state=open]:!opacity-100 max-md:data-[state=open]:!transform-none",
-            "max-md:data-[state=closed]:!animate-none"
+            "expenses-ui-dialog expense-new-dialog flex flex-col gap-0 overflow-hidden border-[var(--eo-border)] p-0",
+            "md:!fixed md:left-1/2 md:top-1/2 md:h-[min(78dvh,720px)] md:max-h-[min(92dvh,820px)] md:w-full md:max-w-[560px] md:!rounded-[14px] md:!translate-x-[-50%] md:!translate-y-[-50%]",
+            "max-md:!fixed max-md:inset-x-0 max-md:bottom-0 max-md:top-auto max-md:left-0 max-md:right-0 max-md:flex max-md:max-h-[94dvh] max-md:min-h-[82dvh] max-md:w-full max-md:max-w-none max-md:!translate-x-0 max-md:!translate-y-0 max-md:!rounded-t-[14px] max-md:!rounded-b-none max-md:border-x-0 max-md:border-b-0 max-md:border-t max-md:p-0",
+            "max-md:pointer-events-auto max-md:!transform-none"
           )}
           onPointerDownOutside={(e) => {
             if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
@@ -1335,11 +1313,14 @@ export function QuickExpenseModal({
             }
           }}
         >
-          <DialogHeader className="shrink-0 space-y-0 border-b border-border/60 bg-background px-4 pb-3 pt-3 md:pt-1">
-            <DialogTitle className="text-[17px] font-semibold leading-tight tracking-tight md:text-sm md:font-medium">
-              Quick expense
+          <DialogHeader className="shrink-0 space-y-0 bg-background px-5 pb-2 pt-4 pr-14">
+            <DialogTitle className="text-[17px] font-semibold leading-tight tracking-tight md:text-base">
+              New Expense
             </DialogTitle>
-            <p className="hidden text-[11px] text-muted-foreground md:block">
+            <p
+              data-new-expense-shortcuts="true"
+              className="hidden text-[10px] font-normal leading-4 text-muted-foreground opacity-65 md:block"
+            >
               Save · Cmd/Ctrl+Enter = save &amp; new · Esc
             </p>
           </DialogHeader>
@@ -1377,7 +1358,7 @@ export function QuickExpenseModal({
                   keyboardBottomInset > 0 ? `${keyboardBottomInset + 12}px` : undefined,
               }}
               className={cn(
-                "min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-2 pt-2",
+                "expense-new-dialog-scroll min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-5 pb-4 pt-2",
                 "scroll-pb-[calc(7.5rem+env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch]"
               )}
             >
@@ -1403,9 +1384,11 @@ export function QuickExpenseModal({
 
               <div className="mt-2 grid grid-cols-1 gap-y-4 md:grid-cols-2 md:gap-x-3 md:gap-y-3">
                 <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-1")}>
-                  <label className={FIELD_LABEL}>Amount</label>
+                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.amount.label}</label>
                   <Input
                     ref={amountInputRef}
+                    data-quick-expense-amount
+                    data-new-expense-amount
                     type="number"
                     min="0"
                     step="0.01"
@@ -1416,7 +1399,7 @@ export function QuickExpenseModal({
                       setAmount(e.target.value);
                     }}
                     className={cn(
-                      "tabular-nums",
+                      "tabular-nums text-lg font-semibold leading-none md:text-lg",
                       FIELD_INPUT_CLASS,
                       fieldConfidence.amount !== "high" && "border-amber-500/50"
                     )}
@@ -1425,7 +1408,7 @@ export function QuickExpenseModal({
                 </div>
                 <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-1")}>
                   <label htmlFor="quick-expense-vendor" className={FIELD_LABEL}>
-                    Vendor
+                    {EXPENSE_FORM_FIELDS.vendor.label}
                   </label>
                   <Input
                     id="quick-expense-vendor"
@@ -1448,13 +1431,14 @@ export function QuickExpenseModal({
                   />
                 </div>
 
-                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
-                  <label className={FIELD_LABEL}>Classification</label>
+                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-1")}>
+                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.classification.label}</label>
                   <ExpenseSearchableSelect
                     id="quick-expense-cost-allocation-select"
                     value={costAllocation}
                     disabled={saving}
                     className={cn(SELECT_TRIGGER, "text-xs")}
+                    contentClassName={NEW_EXPENSE_COMPONENT_SURFACE}
                     placeholder="Classification"
                     searchPlaceholder="Search classification…"
                     emptyText="No matching classifications"
@@ -1481,14 +1465,15 @@ export function QuickExpenseModal({
                   />
                 </div>
 
-                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
-                  <label className={FIELD_LABEL}>Project</label>
+                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-1")}>
+                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.project.label}</label>
                   <div className="flex flex-col gap-2">
                     <ExpenseSearchableSelect
                       id="quick-expense-project-select"
                       disabled={saving}
                       value={projectId.trim() ? projectId : EXPENSE_PROJECT_SELECT_NONE}
                       className={cn(SELECT_TRIGGER, "text-xs")}
+                      contentClassName={NEW_EXPENSE_COMPONENT_SURFACE}
                       placeholder="No project"
                       searchPlaceholder="Search projects…"
                       emptyText="No matching projects"
@@ -1524,19 +1509,8 @@ export function QuickExpenseModal({
                     </div>
                   ) : null}
                 </div>
-                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
-                  <label className={FIELD_LABEL}>Payment</label>
-                  <PaymentAccountSelect
-                    id="quick-expense-payment-select"
-                    value={paymentAccountId}
-                    onValueChange={onPaymentAccountChange}
-                    disabled={saving}
-                    className={cn(SELECT_TRIGGER, "text-xs")}
-                  />
-                </div>
-
-                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-2")}>
-                  <label className={FIELD_LABEL}>Category</label>
+                <div className={cn(FIELD_GROUP, "min-w-0 md:col-span-1")}>
+                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.category.label}</label>
                   <ExpenseCategorySelect
                     id="quick-expense-category-select"
                     value={category}
@@ -1547,10 +1521,11 @@ export function QuickExpenseModal({
                     }}
                     disabled={saving}
                     className={cn(SELECT_TRIGGER, "text-xs")}
+                    contentClassName={NEW_EXPENSE_COMPONENT_SURFACE}
                   />
                 </div>
-                <div className={cn(FIELD_GROUP, "min-w-0 w-full md:col-span-2")}>
-                  <label className={FIELD_LABEL}>Date</label>
+                <div className={cn(FIELD_GROUP, "min-w-0 w-full md:col-span-1")}>
+                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.date.label}</label>
                   <ExpenseDatePicker
                     id="quick-expense-date"
                     value={date}
@@ -1563,25 +1538,8 @@ export function QuickExpenseModal({
                       FIELD_INPUT_CLASS,
                       fieldConfidence.date !== "high" && "border-amber-500/50"
                     )}
+                    contentClassName={NEW_EXPENSE_COMPONENT_SURFACE}
                     disabled={saving || !supabase}
-                  />
-                </div>
-                <div className="min-w-0 md:col-span-4">
-                  <ExpenseSubcontractDeductionFields
-                    idPrefix="quick-expense-subcontract-deduction"
-                    enabled={deductFromSubcontractor}
-                    onEnabledChange={setDeductFromSubcontractor}
-                    projectId={projectId || null}
-                    subcontractId={deductionSubcontractId}
-                    onSubcontractIdChange={setDeductionSubcontractId}
-                    amount={deductionAmount}
-                    onAmountChange={setDeductionAmount}
-                    note={deductionNote}
-                    onNoteChange={setDeductionNote}
-                    options={subcontractDeductionOptions}
-                    disabled={saving}
-                    triggerClassName={cn(SELECT_TRIGGER, "text-xs")}
-                    inputClassName={FIELD_INPUT_CLASS}
                   />
                 </div>
               </div>
@@ -1603,7 +1561,7 @@ export function QuickExpenseModal({
                   return (
                     <div
                       key={cid}
-                      className="flex min-w-0 gap-2 border-b border-border/60 pb-2 last:border-b-0"
+                      className="flex min-w-0 gap-2 border-b border-[var(--eo-border)] pb-2 last:border-b-0"
                     >
                       <button
                         type="button"
@@ -1678,9 +1636,10 @@ export function QuickExpenseModal({
                 {supabase && attachmentSlots.length < 5 ? (
                   <button
                     type="button"
+                    data-new-expense-receipt-dropzone="true"
                     className={cn(
-                      "flex min-h-14 w-full min-w-0 touch-manipulation flex-col items-center justify-center gap-1 rounded-sm border border-dashed border-border/60 px-4 py-3 text-center transition-colors",
-                      "hover:bg-accent/25 active:bg-accent/35",
+                      "flex min-h-[68px] w-full min-w-0 touch-manipulation items-center justify-center gap-3 rounded-md border border-solid border-[var(--eo-border)] bg-[var(--eo-surface-secondary)] px-4 py-3 text-left shadow-none transition-colors",
+                      "hover:border-[var(--eo-border-strong)] hover:bg-muted/20 active:bg-muted/30 focus-visible:border-[var(--eo-border-strong)] focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring)]",
                       "disabled:pointer-events-none disabled:opacity-50"
                     )}
                     onClick={() => {
@@ -1690,11 +1649,19 @@ export function QuickExpenseModal({
                     disabled={processing || saving || receiptPipelineBusy}
                     aria-label="Take photo or upload receipt"
                   >
-                    <span className="text-sm font-medium text-foreground">
-                      Take photo / Upload receipt
-                    </span>
-                    <span className="text-[11px] text-muted-foreground">
-                      Camera, photo library, or PDF
+                    <FileUp
+                      data-new-expense-receipt-icon="true"
+                      className="h-4 w-4 shrink-0 text-muted-foreground"
+                      strokeWidth={1.5}
+                      aria-hidden
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-medium leading-5 text-foreground">
+                        Take photo / Upload receipt
+                      </span>
+                      <span className="block text-[10px] leading-4 text-muted-foreground">
+                        Camera, photo library, or PDF
+                      </span>
                     </span>
                   </button>
                 ) : null}
@@ -1772,98 +1739,80 @@ export function QuickExpenseModal({
                 </div>
               ) : null}
 
-              <div className="mt-4 min-h-0 shrink-0 border-t border-border/60 pt-2">
+              <div data-new-expense-more-section="true" className="mt-4 min-h-0 shrink-0 pt-1">
                 <button
                   type="button"
+                  data-quick-expense-more-trigger="true"
                   className="flex min-h-11 w-full touch-manipulation items-center justify-between gap-2 rounded-sm py-2 text-left text-[11px] text-muted-foreground hover:text-foreground md:min-h-0 md:py-1"
                   onClick={() => setMoreOpen((v) => !v)}
                   aria-expanded={moreOpen}
+                  aria-controls="quick-expense-more-content"
+                  aria-label="More Details: Payment, items, description, attachments, deduction"
                 >
-                  <span>Items, notes, attachments</span>
+                  <span>
+                    <span className="font-medium text-foreground">More Details</span>
+                    <span className="ml-1.5">Payment, items, description, attachments</span>
+                  </span>
                   <ChevronDown
                     className={cn(
-                      "h-4 w-4 shrink-0 transition-transform",
+                      "h-4 w-4 shrink-0 transition-transform duration-180 ease-out",
                       moreOpen && "rotate-180"
                     )}
                     aria-hidden
                   />
                 </button>
                 {moreOpen ? (
-                  <div className="max-h-[min(36vh,220px)] space-y-3 overflow-y-auto border-t border-border/40 py-2">
-                    <div>
-                      <label className={FIELD_LABEL}>Items</label>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {dedupeItems(recognizedItems).map((item) => (
-                          <span
-                            key={item}
-                            className="inline-flex items-center gap-1 rounded-sm border border-border/60 px-1.5 py-0.5 text-[11px]"
-                          >
-                            {item}
-                            <button
-                              type="button"
-                              className="text-muted-foreground hover:text-foreground"
-                              onClick={() =>
-                                setRecognizedItems((prev) =>
-                                  prev.filter((p) => p.toLowerCase() !== item.toLowerCase())
-                                )
-                              }
-                              disabled={saving}
-                              aria-label={`Remove ${item}`}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                      <div className="mt-1.5 flex items-center gap-1.5">
-                        <Input
-                          value={itemDraft}
-                          onChange={(e) => setItemDraft(e.target.value)}
-                          className={cn("h-10 text-xs", FIELD_INPUT_CLASS)}
-                          placeholder="Add item"
-                          disabled={saving}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-10 shrink-0 max-md:min-h-11 touch-manipulation"
-                          disabled={saving}
-                          onClick={() => {
-                            const next = titleCase(itemDraft);
-                            if (!next) return;
-                            setRecognizedItems((prev) => dedupeItems([...prev, next]));
-                            setItemDraft("");
-                          }}
-                        >
-                          Add
-                        </Button>
-                      </div>
-                      <Select
+                  <div
+                    id="quick-expense-more-content"
+                    data-quick-expense-more-content
+                    className="expense-progressive-content space-y-4 pb-2 pt-3"
+                  >
+                    <div className={FIELD_GROUP}>
+                      <label className={FIELD_LABEL}>
+                        {EXPENSE_FORM_FIELDS.paymentAccount.label}
+                      </label>
+                      <PaymentAccountSelect
+                        id="quick-expense-payment-select"
+                        value={paymentAccountId}
+                        onValueChange={onPaymentAccountChange}
                         disabled={saving}
-                        value={catalogPick}
-                        onValueChange={(v) => {
-                          if (v !== EXPENSE_COMMON_ITEM_NONE) {
-                            setRecognizedItems((prev) => dedupeItems([...prev, v]));
-                          }
-                          setCatalogPick(EXPENSE_COMMON_ITEM_NONE);
-                        }}
-                      >
-                        <SelectTrigger className={cn(SELECT_TRIGGER, "mt-1.5 text-xs")}>
-                          <SelectValue placeholder="Common items…" />
-                        </SelectTrigger>
-                        <SelectContent {...selectPopperContentProps}>
-                          <SelectItem value={EXPENSE_COMMON_ITEM_NONE}>Common items…</SelectItem>
-                          {ITEM_CATALOG.map((opt) => (
-                            <SelectItem key={opt} value={opt}>
-                              {opt}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        className={cn(SELECT_TRIGGER, "text-xs")}
+                        contentClassName={NEW_EXPENSE_COMPONENT_SURFACE}
+                      />
                     </div>
+                    <ExpenseSubcontractDeductionFields
+                      idPrefix="quick-expense-subcontract-deduction"
+                      enabled={deductFromSubcontractor}
+                      onEnabledChange={setDeductFromSubcontractor}
+                      projectId={projectId || null}
+                      subcontractId={deductionSubcontractId}
+                      onSubcontractIdChange={setDeductionSubcontractId}
+                      amount={deductionAmount}
+                      onAmountChange={setDeductionAmount}
+                      note={deductionNote}
+                      onNoteChange={setDeductionNote}
+                      options={subcontractDeductionOptions}
+                      disabled={saving}
+                      appearance="compact"
+                      triggerClassName={cn(SELECT_TRIGGER, "text-xs")}
+                      triggerContentClassName={NEW_EXPENSE_COMPONENT_SURFACE}
+                      inputClassName={FIELD_INPUT_CLASS}
+                    />
+                    <ExpenseItemsField
+                      idPrefix="quick-expense"
+                      items={recognizedItems}
+                      onItemsChange={(nextItems) => {
+                        ocrFieldTouchedRef.current.items = true;
+                        setRecognizedItems(nextItems);
+                      }}
+                      disabled={saving}
+                      labelClassName={FIELD_LABEL}
+                      inputClassName={FIELD_INPUT_CLASS}
+                      selectTriggerClassName={SELECT_TRIGGER}
+                      selectContentClassName={NEW_EXPENSE_COMPONENT_SURFACE}
+                    />
                     <div>
-                      <label className={FIELD_LABEL}>Notes</label>
+                      <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.description.label}</label>
                       <Textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
@@ -1874,7 +1823,7 @@ export function QuickExpenseModal({
                       />
                     </div>
                     <div>
-                      <label className={FIELD_LABEL}>Attachments</label>
+                      <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.attachments.label}</label>
                       <p className="mt-0.5 text-[11px] text-muted-foreground">
                         {attachmentSlots.length} file(s)
                         {receiptPreparing
@@ -1922,7 +1871,7 @@ export function QuickExpenseModal({
                       ) : null}
                     </div>
                     {debugToolsEnabled && ocrSource !== "none" ? (
-                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 text-[11px] text-muted-foreground">
                         <span>
                           OCR:{" "}
                           {ocrSource === "cloud"
@@ -1951,14 +1900,20 @@ export function QuickExpenseModal({
               {error ? <p className="mt-3 text-xs text-destructive">{error}</p> : null}
             </div>
 
-            <div className="z-[20] shrink-0 border-t border-border/60 bg-background px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-md:sticky max-md:bottom-0">
-              <div className="flex flex-col gap-2 md:hidden">
+            <div
+              data-new-expense-footer="true"
+              className="expense-new-dialog-footer z-[20] shrink-0 bg-background px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] max-md:sticky max-md:bottom-0"
+            >
+              <div className="expense-new-mobile-actions flex flex-col gap-2 md:hidden">
                 <Button
                   type="submit"
                   variant="default"
                   size="sm"
-                  className="h-12 min-h-[48px] w-full touch-manipulation rounded-xl"
-                  disabled={saving || saveFlash || !supabase || processing || receiptPipelineBusy}
+                  data-new-expense-save="true"
+                  data-new-expense-save-readiness={saveVisualReadiness}
+                  style={primarySaveDisabledStyle}
+                  className="h-12 min-h-[48px] w-full touch-manipulation rounded-xl disabled:border disabled:border-border/40 disabled:bg-muted/70 disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
+                  disabled={submitDisabled}
                 >
                   <SubmitSpinner loading={saving} className="mr-2" />
                   {saving
@@ -1979,7 +1934,7 @@ export function QuickExpenseModal({
                   size="sm"
                   className="h-12 min-h-[48px] w-full touch-manipulation rounded-xl shadow-none"
                   onClick={() => void handleSave(true, formRef.current)}
-                  disabled={saving || saveFlash || !supabase || processing || receiptPipelineBusy}
+                  disabled={submitDisabled}
                 >
                   {saveFlash
                     ? "✔ Done"
@@ -1989,7 +1944,7 @@ export function QuickExpenseModal({
                         ? "Uploading receipt…"
                         : processing
                           ? "Processing receipt…"
-                          : "Save & new"}
+                          : "Save & New"}
                 </Button>
                 <Button
                   type="button"
@@ -2001,7 +1956,7 @@ export function QuickExpenseModal({
                   Cancel
                 </Button>
               </div>
-              <div className="hidden md:flex md:flex-row md:items-center md:justify-between md:gap-3">
+              <div className="expense-new-desktop-actions hidden md:flex md:flex-row md:items-center md:justify-between md:gap-3">
                 <Button
                   type="button"
                   variant="ghost"
@@ -2016,9 +1971,9 @@ export function QuickExpenseModal({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-10 rounded-md shadow-none"
+                    className="h-10 w-40 rounded-md shadow-none"
                     onClick={() => void handleSave(true, formRef.current)}
-                    disabled={saving || saveFlash || !supabase || processing || receiptPipelineBusy}
+                    disabled={submitDisabled}
                   >
                     {saveFlash
                       ? "✔ Done"
@@ -2028,14 +1983,17 @@ export function QuickExpenseModal({
                           ? "Uploading receipt…"
                           : processing
                             ? "Processing receipt…"
-                            : "Save & new"}
+                            : "Save & New"}
                   </Button>
                   <Button
                     type="submit"
                     variant="default"
                     size="sm"
-                    className="h-10 rounded-md"
-                    disabled={saving || saveFlash || !supabase || processing || receiptPipelineBusy}
+                    data-new-expense-save="true"
+                    data-new-expense-save-readiness={saveVisualReadiness}
+                    style={primarySaveDisabledStyle}
+                    className="h-10 w-40 rounded-md disabled:border disabled:border-border/40 disabled:bg-muted/70 disabled:text-muted-foreground disabled:opacity-100 disabled:shadow-none"
+                    disabled={submitDisabled}
                   >
                     <SubmitSpinner loading={saving} className="mr-2" />
                     {saving
@@ -2058,7 +2016,7 @@ export function QuickExpenseModal({
       </Dialog>
       {debugToolsEnabled ? (
         <Dialog open={debugOpen} onOpenChange={setDebugOpen}>
-          <DialogContent className="max-w-2xl border-border/60">
+          <DialogContent className="expenses-ui-dialog max-w-2xl border-border/60">
             <DialogHeader className="border-b border-border/60 pb-2">
               <DialogTitle className="text-base font-medium">OCR Diagnostics</DialogTitle>
             </DialogHeader>

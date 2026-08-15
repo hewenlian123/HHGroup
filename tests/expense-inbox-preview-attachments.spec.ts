@@ -4,6 +4,7 @@
  */
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import {
   E2E_FINANCIAL_EXPENSES_ARCHIVE_URL,
   E2E_FINANCIAL_INBOX_URL,
@@ -165,6 +166,25 @@ async function findUploadedExpenseIdByRef(inboxRef: string): Promise<string | nu
   return String((data as { id?: string } | null)?.id ?? "") || null;
 }
 
+async function cleanupUploadedExpense(expenseId: string | null): Promise<void> {
+  if (!expenseId) return;
+  const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const adminKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!adminUrl || !adminKey) return;
+
+  const admin = createClient(adminUrl, adminKey);
+  const { data: attachments } = await admin
+    .from("attachments")
+    .select("file_path")
+    .eq("entity_type", "expense")
+    .eq("entity_id", expenseId);
+  const paths = (attachments ?? []).map((row) => String(row.file_path ?? "")).filter(Boolean);
+  if (paths.length > 0) await admin.storage.from("expense-attachments").remove(paths);
+  await admin.from("attachments").delete().eq("entity_type", "expense").eq("entity_id", expenseId);
+  await admin.from("expense_lines").delete().eq("expense_id", expenseId);
+  await admin.from("expenses").delete().eq("id", expenseId);
+}
+
 async function waitForUploadedDraftRow(
   page: Page,
   uploadedExpenseId: string | null,
@@ -188,6 +208,7 @@ test.describe("Expense inbox preview - attachment thumbnails", () => {
     let uploadedExpenseId: string | null = null;
 
     await test.step("go to Inbox", async () => {
+      await loginAsE2EOwner(page, E2E_FINANCIAL_INBOX_URL);
       await gotoInboxReady(page, diagnostics);
       if (
         await page
@@ -218,11 +239,8 @@ test.describe("Expense inbox preview - attachment thumbnails", () => {
       const confirmUpload = dialog.getByRole("button", { name: /Confirm Upload \(1\)/ });
       await confirmUpload.scrollIntoViewIfNeeded();
       await confirmUpload.click();
-      await expect(
-        page
-          .locator('[role="status"]')
-          .filter({ hasText: /Added \d+ draft(?:s)? to Inbox|Already uploaded/i })
-      ).toBeVisible({ timeout: 120_000 });
+      // The success toast is intentionally transient. The URL highlight is the durable
+      // completion signal and remains available even when local compilation outlives the toast.
       await expect(page).toHaveURL(/[?&]highlight=INBOX-UP-/i, { timeout: 120_000 });
       const raw = new URL(page.url()).searchParams.get("highlight")?.split(",")[0]?.trim();
       if (!raw) throw new Error("expected highlight= after upload");
@@ -249,5 +267,9 @@ test.describe("Expense inbox preview - attachment thumbnails", () => {
 
     await expect(attachments.getByText(uniqueName)).not.toBeVisible();
     await expect(attachments.getByText(/Preview unavailable/i)).not.toBeVisible();
+
+    await test.step("clean exact uploaded draft", async () => {
+      await cleanupUploadedExpense(uploadedExpenseId);
+    });
   });
 });

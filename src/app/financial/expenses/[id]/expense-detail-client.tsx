@@ -1,10 +1,11 @@
 "use client";
 
+import "../expenses-ui-theme.css";
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Download, FileText, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Camera, FileText, RefreshCw, Trash2, Upload } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,10 +16,11 @@ import { ExpenseDatePicker } from "@/components/expense-date-picker";
 import { ExpensePaymentMethodSelect } from "@/components/expense-payment-method-select";
 import { SplitLinesEditor, type SplitLineRow } from "@/components/split-lines-editor";
 import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatDate } from "@/lib/formatters";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
+import { cn } from "@/lib/utils";
 
 type ExpenseRow = {
   id: string;
@@ -117,7 +119,7 @@ function asNameList(rows: Array<{ name: string; status?: string | null }>): {
   return { options: Array.from(new Set(names)).sort((a, b) => a.localeCompare(b)), disabled };
 }
 
-export function ExpenseDetailClient({ id }: { id: string }) {
+export function ExpenseDetailClient({ id, returnHref }: { id: string; returnHref: string }) {
   const router = useRouter();
 
   const [loading, setLoading] = React.useState(true);
@@ -140,8 +142,15 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     disabled: Set<string>;
   }>({ options: [], disabled: new Set() });
   const [attachments, setAttachments] = React.useState<AttachmentRow[]>([]);
+  const [failedAttachmentFiles, setFailedAttachmentFiles] = React.useState<File[]>([]);
+  const [attachmentFeedback, setAttachmentFeedback] = React.useState<{
+    tone: "error" | "success";
+    title: string;
+    detail?: string;
+  } | null>(null);
   const { openPreview } = useAttachmentPreview();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
@@ -389,28 +398,57 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     return v;
   };
 
-  const uploadAttachment = async (file: File) => {
+  const uploadAttachments = async (files: File[]) => {
+    if (files.length === 0) return;
     setSaving(true);
     setError(null);
     setMessage(null);
+    setAttachmentFeedback(null);
+    setFailedAttachmentFiles([]);
+    let uploaded = 0;
+    const failed: File[] = [];
+    let firstFailure = "";
     try {
-      const formData = new FormData();
-      formData.set("file", file);
-      const response = await fetch(`/api/expenses/${encodeURIComponent(id)}/attachments`, {
-        method: "POST",
-        body: formData,
-      });
-      const body = await readJson<AttachmentUploadResponse>(response);
-      if (!response.ok || !body?.ok || !body.attachment) {
-        throw new Error(body?.message || "Upload failed.");
+      for (const file of files) {
+        try {
+          const formData = new FormData();
+          formData.set("file", file);
+          const response = await fetch(`/api/expenses/${encodeURIComponent(id)}/attachments`, {
+            method: "POST",
+            body: formData,
+          });
+          const body = await readJson<AttachmentUploadResponse>(response);
+          if (!response.ok || !body?.ok || !body.attachment) {
+            throw new Error(body?.message || "Upload failed.");
+          }
+          setAttachments((prev) => [body.attachment!, ...prev]);
+          uploaded += 1;
+        } catch (uploadError) {
+          failed.push(file);
+          firstFailure ||=
+            uploadError instanceof Error ? uploadError.message : "Receipt upload failed.";
+        }
       }
-      setAttachments((prev) => [body.attachment!, ...prev]);
-      setMessage("Attachment uploaded.");
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg || "Upload failed.");
     } finally {
       setSaving(false);
+    }
+
+    setFailedAttachmentFiles(failed);
+    if (failed.length > 0) {
+      setAttachmentFeedback({
+        tone: "error",
+        title:
+          uploaded > 0
+            ? `${uploaded} attached · ${failed.length} ${failed.length === 1 ? "file needs" : "files need"} retry`
+            : "Receipt upload failed",
+        detail: firstFailure || "Retry the failed files without selecting them again.",
+      });
+    } else {
+      setAttachmentFeedback({
+        tone: "success",
+        title: uploaded === 1 ? "Receipt attached" : `${uploaded} receipts attached`,
+        detail: "The evidence is now linked to this expense.",
+      });
     }
   };
 
@@ -443,6 +481,28 @@ export function ExpenseDetailClient({ id }: { id: string }) {
     openPreview({
       files,
       initialIndex: Math.max(0, idx),
+      presentation: {
+        kind: "receipt",
+        metadata: {
+          merchant: expense?.vendor_name || "Needs review",
+          expenseDate: formatDate(expense?.expense_date),
+          amount: formatCurrency(safeNumber(expense?.total) || linesTotal),
+          project: Array.from(
+            new Set(
+              lines.map((line) =>
+                line.project_id == null
+                  ? "Overhead"
+                  : (projects.find((project) => project.id === line.project_id)?.name ??
+                    line.project_id)
+              )
+            )
+          ).join(", "),
+          category: Array.from(
+            new Set(lines.map((line) => line.category).filter((value): value is string => !!value))
+          ).join(", "),
+          paymentSource: expense?.payment_method || undefined,
+        },
+      },
       onClosed: () => {},
     });
   };
@@ -471,299 +531,390 @@ export function ExpenseDetailClient({ id }: { id: string }) {
   };
 
   return (
-    <div className="page-container page-stack">
-      <div className="flex items-center justify-between gap-3">
-        <Link
-          href="/financial/expenses"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Expenses
-        </Link>
-        <Button variant="outline" onClick={() => syncRouterNonBlocking(router)} disabled={saving}>
-          Refresh
-        </Button>
-      </div>
-
-      {error ? (
-        <div className="rounded-[12px] border border-gray-100 bg-white px-4 py-3 text-sm text-muted-foreground">
-          {error}
+    <div className="financial-nums expenses-ui neo-page-on-graphite min-h-full px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 text-[var(--fieldbook-muted)] md:px-8 md:py-8">
+      <div className="page-shell-wide mx-auto flex w-full max-w-6xl flex-col gap-4 md:gap-5">
+        <div className="flex items-center justify-between gap-3">
+          <Link
+            href={returnHref}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg text-sm text-[var(--fieldbook-muted)] outline-none hover:text-[var(--fieldbook-ink)] focus-visible:ring-2 focus-visible:ring-[var(--fieldbook-focus)] md:min-h-9"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {returnHref.startsWith("/projects/") ? "Project workspace" : "Expenses"}
+          </Link>
+          <Button variant="outline" onClick={() => syncRouterNonBlocking(router)} disabled={saving}>
+            Refresh
+          </Button>
         </div>
-      ) : null}
-      {message ? (
-        <div className="rounded-[12px] border border-gray-100 bg-white px-4 py-3 text-sm text-[#166534]">
-          {message}
-        </div>
-      ) : null}
 
-      <Card className="p-5">
-        {loading || !expense ? (
-          <div className="space-y-3">
-            <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
+        {error ? (
+          <div
+            role="alert"
+            className="rounded-[12px] border border-[var(--eo-danger-border)] bg-[var(--eo-danger-soft)] px-4 py-3 text-sm text-[var(--eo-danger)]"
+          >
+            {error}
           </div>
-        ) : (
-          <div className="grid gap-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <CreatableSelect
-                  label="Vendor"
-                  value={expense.vendor_name ?? ""}
-                  options={vendors.options}
-                  placeholder="Vendor name"
-                  onChange={(v) =>
-                    setExpense((prev) => (prev ? { ...prev, vendor_name: v } : prev))
-                  }
-                  onCreate={async (name) => {
-                    const v = await addVendor(name);
-                    if (v) setExpense((prev) => (prev ? { ...prev, vendor_name: v } : prev));
-                  }}
-                />
-                {expense.vendor_name && vendors.disabled.has(expense.vendor_name) ? (
-                  <span className="mt-1 inline-block text-xs text-amber-600">Disabled</span>
-                ) : null}
+        ) : null}
+        {message ? (
+          <div
+            role="status"
+            className="rounded-[12px] border border-[var(--eo-success-border)] bg-[var(--eo-success-soft)] px-4 py-3 text-sm text-[var(--eo-success)]"
+          >
+            {message}
+          </div>
+        ) : null}
+
+        <Card className="rounded-xl border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-4 shadow-[var(--neo-shadow-panel)] md:p-5">
+          {loading || !expense ? (
+            <div className="space-y-3">
+              <Skeleton className="h-6 w-48" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <CreatableSelect
+                    contentClassName="expenses-ui-dialog"
+                    selectedOptionClassName="bg-[var(--eo-surface-selected)] text-[var(--eo-text-primary)]"
+                    label="Vendor"
+                    value={expense.vendor_name ?? ""}
+                    options={vendors.options}
+                    placeholder="Vendor name"
+                    onChange={(v) =>
+                      setExpense((prev) => (prev ? { ...prev, vendor_name: v } : prev))
+                    }
+                    onCreate={async (name) => {
+                      const v = await addVendor(name);
+                      if (v) setExpense((prev) => (prev ? { ...prev, vendor_name: v } : prev));
+                    }}
+                  />
+                  {expense.vendor_name && vendors.disabled.has(expense.vendor_name) ? (
+                    <span className="mt-1 inline-block text-xs text-[var(--eo-warning)]">
+                      Disabled
+                    </span>
+                  ) : null}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Date
+                  </p>
+                  <ExpenseDatePicker
+                    id="expense-detail-date"
+                    value={expense.expense_date ?? hawaiiTodayYmd()}
+                    onChange={(nextDate) =>
+                      setExpense((prev) => (prev ? { ...prev, expense_date: nextDate } : prev))
+                    }
+                  />
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Payment method
+                  </p>
+                  <ExpensePaymentMethodSelect
+                    id="expense-detail-payment-method-select"
+                    value={expense.payment_method ?? "ACH"}
+                    onValueChange={(v) =>
+                      setExpense((prev) => (prev ? { ...prev, payment_method: v } : prev))
+                    }
+                    className="mt-1"
+                  />
+                  {expense.payment_method && paymentMethods.disabled.has(expense.payment_method) ? (
+                    <span className="mt-1 inline-block text-xs text-[var(--eo-warning)]">
+                      Disabled
+                    </span>
+                  ) : null}
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Reference #
+                  </p>
+                  <Input
+                    value={expense.reference_no ?? ""}
+                    onChange={(e) =>
+                      setExpense((prev) =>
+                        prev ? { ...prev, reference_no: e.target.value } : prev
+                      )
+                    }
+                    placeholder="Optional"
+                  />
+                </div>
               </div>
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Date
-                </p>
-                <ExpenseDatePicker
-                  id="expense-detail-date"
-                  value={expense.expense_date ?? hawaiiTodayYmd()}
-                  onChange={(nextDate) =>
-                    setExpense((prev) => (prev ? { ...prev, expense_date: nextDate } : prev))
-                  }
-                />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Payment method
-                </p>
-                <ExpensePaymentMethodSelect
-                  id="expense-detail-payment-method-select"
-                  value={expense.payment_method ?? "ACH"}
-                  onValueChange={(v) =>
-                    setExpense((prev) => (prev ? { ...prev, payment_method: v } : prev))
-                  }
-                  className="mt-1"
-                />
-                {expense.payment_method && paymentMethods.disabled.has(expense.payment_method) ? (
-                  <span className="mt-1 inline-block text-xs text-amber-600">Disabled</span>
-                ) : null}
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Reference #
+                  Notes
                 </p>
                 <Input
-                  value={expense.reference_no ?? ""}
+                  value={expense.notes ?? ""}
                   onChange={(e) =>
-                    setExpense((prev) => (prev ? { ...prev, reference_no: e.target.value } : prev))
+                    setExpense((prev) => (prev ? { ...prev, notes: e.target.value } : prev))
                   }
                   placeholder="Optional"
                 />
               </div>
+              <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
+                <SubmitSpinner loading={saving} className="shrink-0" />
+                {saving ? "Saving…" : message === "Saved." ? "Saved" : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  className="rounded-sm"
+                  disabled={saving || !headerForSave}
+                  onClick={() => {
+                    if (!headerForSave) return;
+                    void saveHeader({
+                      expense_date: headerForSave.expense_date,
+                      vendor_name: headerForSave.vendor_name ?? undefined,
+                      payment_method: headerForSave.payment_method,
+                      reference_no: headerForSave.reference_no ?? undefined,
+                      notes: headerForSave.notes ?? undefined,
+                    }).then((ok) => {
+                      if (ok) lastSavedHeaderRef.current = headerForSave;
+                    });
+                  }}
+                >
+                  Save header
+                </Button>
+              </div>
             </div>
-            <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Notes
+          )}
+        </Card>
+
+        <Card
+          data-expense-detail-attachments
+          className="rounded-xl border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-4 shadow-[var(--neo-shadow-panel)] md:p-5"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Receipt attachments</p>
+              <p className="text-xs text-muted-foreground">
+                Evidence linked to this expense · Photos and PDFs
               </p>
-              <Input
-                value={expense.notes ?? ""}
-                onChange={(e) =>
-                  setExpense((prev) => (prev ? { ...prev, notes: e.target.value } : prev))
-                }
-                placeholder="Optional"
-              />
             </div>
-            <div className="flex items-center justify-end gap-2 text-xs text-muted-foreground">
-              <SubmitSpinner loading={saving} className="shrink-0" />
-              {saving ? "Saving…" : message === "Saved." ? "Saved" : null}
-              <Button
-                type="button"
-                size="sm"
-                className="rounded-sm"
-                disabled={saving || !headerForSave}
-                onClick={() => {
-                  if (!headerForSave) return;
-                  void saveHeader({
-                    expense_date: headerForSave.expense_date,
-                    vendor_name: headerForSave.vendor_name ?? undefined,
-                    payment_method: headerForSave.payment_method,
-                    reference_no: headerForSave.reference_no ?? undefined,
-                    notes: headerForSave.notes ?? undefined,
-                  }).then((ok) => {
-                    if (ok) lastSavedHeaderRef.current = headerForSave;
-                  });
+            <div className="flex shrink-0 items-center gap-1.5">
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  void uploadAttachments(files);
+                  event.target.value = "";
                 }}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,application/pdf"
+                multiple
+                className="hidden"
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  void uploadAttachments(files);
+                  event.target.value = "";
+                }}
+              />
+              <Button
+                variant="outline"
+                className="h-11 touch-manipulation md:hidden"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={saving}
               >
-                Save header
+                <Camera className="h-4 w-4" aria-hidden />
+                Take photo
+              </Button>
+              <Button
+                variant="outline"
+                className="h-11 touch-manipulation md:h-9"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={saving}
+              >
+                <Upload className="h-4 w-4" aria-hidden />
+                <span className="hidden sm:inline">Upload files</span>
+                <span className="sm:hidden">Upload</span>
               </Button>
             </div>
           </div>
-        )}
-      </Card>
 
-      <Card className="p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-foreground">Receipt attachments</p>
-            <p className="text-xs text-muted-foreground">
-              Stored in Supabase Storage bucket: attachments
-            </p>
-          </div>
-          <div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,application/pdf"
-              capture="environment"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void uploadAttachment(file);
-                e.target.value = "";
-              }}
-            />
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={saving}
+          {attachmentFeedback ? (
+            <div
+              role={attachmentFeedback.tone === "error" ? "alert" : "status"}
+              aria-live="polite"
+              className={cn(
+                "mt-3 flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5",
+                attachmentFeedback.tone === "error"
+                  ? "border-[var(--eo-danger-border)] bg-[var(--eo-danger-soft)] text-[var(--eo-danger)]"
+                  : "border-[var(--eo-success-border)] bg-[var(--eo-success-soft)] text-[var(--eo-success)]"
+              )}
             >
-              <Plus className="h-4 w-4" />
-              Add receipt
-            </Button>
-          </div>
-        </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold">{attachmentFeedback.title}</p>
+                {attachmentFeedback.detail ? (
+                  <p className="mt-0.5 text-[11px] leading-snug opacity-85">
+                    {attachmentFeedback.detail}
+                  </p>
+                ) : null}
+              </div>
+              {failedAttachmentFiles.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="min-h-11 shrink-0 touch-manipulation"
+                  disabled={saving}
+                  onClick={() => void uploadAttachments(failedAttachmentFiles)}
+                >
+                  <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden />
+                  Retry
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
 
-        <div className="mt-4 space-y-2">
+          <div className="mt-4 space-y-2">
+            {loading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 4 }).map((_, idx) => (
+                  <Skeleton key={idx} className="h-12 w-full" />
+                ))}
+              </div>
+            ) : attachments.length === 0 ? (
+              <button
+                type="button"
+                className="flex min-h-24 w-full flex-col items-center justify-center rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-4 text-center outline-none hover:bg-[var(--neo-surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <FileText className="h-5 w-5 text-[var(--neo-text-secondary)]" aria-hidden />
+                <span className="mt-2 text-sm font-medium text-[var(--neo-text-primary)]">
+                  No receipt attached
+                </span>
+                <span className="mt-0.5 text-xs text-[var(--neo-text-secondary)]">
+                  Add a photo or PDF as expense evidence
+                </span>
+              </button>
+            ) : (
+              attachments.map((att) => (
+                <div
+                  key={att.id}
+                  className="flex min-h-14 items-center gap-3 border-b border-[var(--neo-border)] px-1 py-2.5 last:border-b-0"
+                >
+                  <button
+                    type="button"
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    onClick={() => void openAttachment(att)}
+                  >
+                    <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {att.file_name}
+                      </p>
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        {(att.size_bytes ?? 0) > 1024
+                          ? `${((att.size_bytes ?? 0) / 1024).toFixed(1)} KB`
+                          : `${att.size_bytes ?? 0} B`}
+                      </p>
+                    </div>
+                  </button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="btn-outline-ghost h-11 w-11 touch-manipulation md:h-9 md:w-9"
+                    onClick={() => void openAttachment(att)}
+                    aria-label="Preview receipt"
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="btn-outline-ghost h-11 w-11 touch-manipulation text-destructive md:h-9 md:w-9"
+                    onClick={() => void deleteAttachment(att)}
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+
+        <Card className="rounded-xl border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-4 shadow-[var(--neo-shadow-panel)] md:p-5">
           {loading ? (
             <div className="space-y-2">
-              {Array.from({ length: 4 }).map((_, idx) => (
+              {Array.from({ length: 6 }).map((_, idx) => (
                 <Skeleton key={idx} className="h-12 w-full" />
               ))}
             </div>
-          ) : attachments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No data yet.</p>
           ) : (
-            attachments.map((att) => (
-              <div
-                key={att.id}
-                className="flex items-center gap-3 rounded-[12px] border border-gray-100 bg-white px-4 py-3"
-              >
-                <button
-                  type="button"
-                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
-                  onClick={() => void openAttachment(att)}
-                >
-                  <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{att.file_name}</p>
-                    <p className="text-xs text-muted-foreground tabular-nums">
-                      {(att.size_bytes ?? 0) > 1024
-                        ? `${((att.size_bytes ?? 0) / 1024).toFixed(1)} KB`
-                        : `${att.size_bytes ?? 0} B`}
-                    </p>
-                  </div>
-                </button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="btn-outline-ghost h-9 w-9"
-                  onClick={() => void openAttachment(att)}
-                  aria-label="Open"
-                >
-                  <Download className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="btn-outline-ghost h-9 w-9 text-destructive"
-                  onClick={() => void deleteAttachment(att)}
-                  aria-label="Delete"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))
+            <SplitLinesEditor
+              overlayClassName="expenses-ui-dialog"
+              lines={splitLinesForEditor}
+              onLineChange={(lineId, patch) => void upsertLine(lineId, patch)}
+              onAddLine={() => void addLine()}
+              onDeleteLine={(lineId) => void deleteLine(lineId)}
+              showCostCode
+              projects={projects.map((p) => ({ id: p.id, name: p.name ?? p.id }))}
+              categories={categories.options.length ? categories.options : ["Other"]}
+              vendorsList={vendors.options}
+              paymentMethodsList={paymentMethods.options}
+              onAddCategory={(name) => {
+                void addCategory(name);
+                return name;
+              }}
+              onAddVendor={(name) => {
+                void addVendor(name);
+                return name;
+              }}
+              onAddPaymentMethod={(name) => {
+                void addPaymentMethod(name);
+                return name;
+              }}
+              onToast={(msg) => setMessage(msg)}
+              isExpenseCategoryDisabled={(name) => categories.disabled.has(name)}
+              isVendorDisabled={(name) => vendors.disabled.has(name)}
+              isPaymentMethodDisabled={(name) => paymentMethods.disabled.has(name)}
+              minLines={1}
+            />
           )}
-        </div>
-      </Card>
 
-      <Card className="p-5">
-        {loading ? (
-          <div className="space-y-2">
-            {Array.from({ length: 6 }).map((_, idx) => (
-              <Skeleton key={idx} className="h-12 w-full" />
-            ))}
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="rounded-[12px] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-4">
+              <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                Lines total
+              </p>
+              <p className="mt-1 text-xl font-semibold tabular-nums text-[var(--eo-danger)]">
+                {formatCurrency(-linesTotal)}
+              </p>
+            </div>
+            <div className="rounded-[12px] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-4">
+              <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+                Per project
+              </p>
+              <ul className="mt-2 space-y-1 text-sm">
+                {Array.from(byProject.entries()).map(([projectId, amount]) => (
+                  <li
+                    key={projectId ?? "overhead"}
+                    className="flex items-center justify-between tabular-nums"
+                  >
+                    <span className="text-muted-foreground">
+                      {projectId == null
+                        ? "Overhead"
+                        : (projects.find((p) => p.id === projectId)?.name ?? projectId)}
+                    </span>
+                    <span className="text-foreground">{formatCurrency(-amount)}</span>
+                  </li>
+                ))}
+                {byProject.size === 0 ? (
+                  <li className="text-sm text-muted-foreground">No data yet.</li>
+                ) : null}
+              </ul>
+            </div>
           </div>
-        ) : (
-          <SplitLinesEditor
-            lines={splitLinesForEditor}
-            onLineChange={(lineId, patch) => void upsertLine(lineId, patch)}
-            onAddLine={() => void addLine()}
-            onDeleteLine={(lineId) => void deleteLine(lineId)}
-            showCostCode
-            projects={projects.map((p) => ({ id: p.id, name: p.name ?? p.id }))}
-            categories={categories.options.length ? categories.options : ["Other"]}
-            vendorsList={vendors.options}
-            paymentMethodsList={paymentMethods.options}
-            onAddCategory={(name) => {
-              void addCategory(name);
-              return name;
-            }}
-            onAddVendor={(name) => {
-              void addVendor(name);
-              return name;
-            }}
-            onAddPaymentMethod={(name) => {
-              void addPaymentMethod(name);
-              return name;
-            }}
-            onToast={(msg) => setMessage(msg)}
-            isExpenseCategoryDisabled={(name) => categories.disabled.has(name)}
-            isVendorDisabled={(name) => vendors.disabled.has(name)}
-            isPaymentMethodDisabled={(name) => paymentMethods.disabled.has(name)}
-            minLines={1}
-          />
-        )}
-
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-[12px] border border-gray-100 bg-white p-4">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-              Lines total
-            </p>
-            <p className="mt-1 text-xl font-semibold tabular-nums text-red-600">
-              {formatCurrency(-linesTotal)}
-            </p>
-          </div>
-          <div className="rounded-[12px] border border-gray-100 bg-white p-4">
-            <p className="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-              Per project
-            </p>
-            <ul className="mt-2 space-y-1 text-sm">
-              {Array.from(byProject.entries()).map(([projectId, amount]) => (
-                <li
-                  key={projectId ?? "overhead"}
-                  className="flex items-center justify-between tabular-nums"
-                >
-                  <span className="text-muted-foreground">
-                    {projectId == null
-                      ? "Overhead"
-                      : (projects.find((p) => p.id === projectId)?.name ?? projectId)}
-                  </span>
-                  <span className="text-foreground">{formatCurrency(-amount)}</span>
-                </li>
-              ))}
-              {byProject.size === 0 ? (
-                <li className="text-sm text-muted-foreground">No data yet.</li>
-              ) : null}
-            </ul>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 }

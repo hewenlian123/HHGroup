@@ -53,7 +53,7 @@ async function openQuickExpense(page: Page): Promise<Locator> {
   });
   await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
   await clickVisibleQuickExpenseButton(page);
-  const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+  const dialog = page.getByRole("dialog", { name: /New expense/i });
   await expect(dialog).toBeVisible({ timeout: 15_000 });
   if (
     await dialog

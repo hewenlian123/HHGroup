@@ -3,10 +3,22 @@ import { ExpenseDetailClient } from "./expense-detail-client";
 
 type PageProps = {
   params: Promise<{ id?: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 };
 
-export default async function ExpenseDetailPage({ params }: PageProps) {
+export default async function ExpenseDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const { returnTo } = await searchParams;
   if (!id) notFound();
-  return <ExpenseDetailClient id={id} />;
+  const returnHref =
+    returnTo &&
+    !returnTo.startsWith("//") &&
+    (returnTo.startsWith("/projects/") ||
+      returnTo === "/financial/expenses" ||
+      returnTo.startsWith("/financial/expenses?") ||
+      returnTo === "/financial/inbox" ||
+      returnTo.startsWith("/financial/inbox?"))
+      ? returnTo
+      : "/financial/expenses";
+  return <ExpenseDetailClient id={id} returnHref={returnHref} />;
 }

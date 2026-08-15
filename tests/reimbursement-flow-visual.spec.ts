@@ -14,6 +14,7 @@ import { dirname } from "node:path";
 
 import { test, expect } from "@playwright/test";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { expensesVendorSearch, waitForExpensesQuerySuccess } from "./e2e-expenses-helpers";
 import { logE2ESupabaseEnvDiagnostics } from "./e2e-supabase-env-diagnostic";
 import {
@@ -148,6 +149,7 @@ test.describe("Reimbursement flow (visual steps)", () => {
     });
 
     await test.step("02 — Receipt pending (Worker Receipt Uploads)", async () => {
+      await loginAsE2EOwner(page);
       await page.goto("/labor/receipts", { waitUntil: "domcontentloaded", timeout: 90_000 });
       if (
         await page

@@ -71,22 +71,17 @@ async function expectReceiptPreviewReady(preview: Locator) {
 }
 
 /**
- * Upload deep-link highlights the new row (emerald ring on `tr`/`li`). Synthetic vendors do not show
+ * Upload deep-link highlights the new row (emerald utility surface on `tr`/`li`). Synthetic vendors do not show
  * `referenceNo` on line 2, so we cannot match by INBOX-UP-* text. Poll frequently — highlight clears ~2s after paint.
  */
 async function waitForUploadHighlightRow(page: Page, timeoutMs: number) {
   await expect
-    .poll(
-      async () =>
-        page
-          .locator("main tr.exp-row[class*='185,129'], main li.exp-row[class*='185,129']")
-          .count(),
-      { timeout: timeoutMs, intervals: [50, 100, 100, 200, 400] }
-    )
+    .poll(async () => page.locator("main [data-expense-id][class*='emerald-500']").count(), {
+      timeout: timeoutMs,
+      intervals: [50, 100, 100, 200, 400],
+    })
     .toBeGreaterThan(0);
-  return page
-    .locator("main tr.exp-row[class*='185,129'], main li.exp-row[class*='185,129']")
-    .first();
+  return page.locator("main [data-expense-id][class*='emerald-500']").first();
 }
 
 test.describe("Inbox View Receipt preview UX", () => {
@@ -132,11 +127,6 @@ test.describe("Inbox View Receipt preview UX", () => {
       const confirmUpload = dialog.getByRole("button", { name: /Confirm Upload \(1\)/ });
       await confirmUpload.scrollIntoViewIfNeeded();
       await confirmUpload.click();
-      await expect(
-        page
-          .locator('[role="status"]')
-          .filter({ hasText: /Added \d+ draft(?:s)? to Inbox|Already uploaded/i })
-      ).toBeVisible({ timeout: 120_000 });
       await expect(page.locator('[role="dialog"]')).toHaveCount(0, { timeout: 15_000 });
       await expect(page).toHaveURL(/[?&]highlight=INBOX-UP-/i, { timeout: 120_000 });
       const raw = new URL(page.url()).searchParams.get("highlight")?.split(",")[0]?.trim();

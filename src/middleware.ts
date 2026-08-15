@@ -23,6 +23,7 @@ const PUBLIC_APP_PATHS = new Set([
   "/forgot-password",
   "/reset-password",
   "/offline",
+  "/upload-receipt",
 ]);
 
 const PUBLIC_API_PATHS = new Set([

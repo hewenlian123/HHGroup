@@ -10,6 +10,10 @@ export interface CreatableSelectProps {
   placeholder?: string;
   onChange: (value: string) => void;
   onCreate: (newValue: string) => void | Promise<void>;
+  /** Optional theme scope for the dropdown surface. */
+  contentClassName?: string;
+  /** Optional selected-option treatment for a scoped visual system. */
+  selectedOptionClassName?: string;
 }
 
 export function CreatableSelect({
@@ -19,6 +23,8 @@ export function CreatableSelect({
   placeholder = "Search or select…",
   onChange,
   onCreate,
+  contentClassName,
+  selectedOptionClassName,
 }: CreatableSelectProps) {
   const [query, setQuery] = React.useState("");
   const [isOpen, setIsOpen] = React.useState(false);
@@ -111,7 +117,10 @@ export function CreatableSelect({
       {isOpen && (
         <ul
           role="listbox"
-          className="dark absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] py-2 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+          className={cn(
+            "dark absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] py-2 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+            contentClassName
+          )}
         >
           {filtered.map((opt) => (
             <li
@@ -120,7 +129,9 @@ export function CreatableSelect({
               aria-selected={opt === value}
               className={cn(
                 "min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]",
-                opt === value && "bg-[rgb(184_147_90_/_0.12)] text-[var(--neo-gold-soft)]"
+                opt === value &&
+                  (selectedOptionClassName ??
+                    "bg-[rgb(184_147_90_/_0.12)] text-[var(--neo-gold-soft)]")
               )}
               onMouseDown={(e) => {
                 e.preventDefault();

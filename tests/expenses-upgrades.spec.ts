@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { E2E_PRESERVED_PROJECT_ID, E2E_PRESERVED_PROJECT_LABEL } from "./e2e-cleanup-db";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 import {
   assertE2EExpenseVisibleInDatabase,
   clickVisibleQuickExpenseButton,
@@ -11,8 +12,8 @@ import {
   expensesVendorSearch,
   paymentAccountSelectChooseAddNew,
   pickOrCreatePaymentInSelect,
-  E2E_FINANCIAL_INBOX_URL,
   waitForExpensesQuerySuccess,
+  waitForVisibleQuickExpenseButton,
   waitForQuickExpenseProjectLabel,
 } from "./e2e-expenses-helpers";
 
@@ -143,15 +144,19 @@ function attachConsoleErrorCollector(page: import("@playwright/test").Page): {
 test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
   test.describe.configure({ timeout: 180_000 });
 
-  test("legacy receipt queue page loads (upload → queue not asserted)", async ({ page }) => {
+  test("legacy receipt queue deep link redirects to canonical Receipt Inbox", async ({ page }) => {
     await page.setViewportSize({ width: 1400, height: 900 });
     const { assertNoErrors } = attachConsoleErrorCollector(page);
 
+    await loginAsE2EOwner(page, "/financial/inbox");
     await page.goto("/financial/receipt-queue", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
-    await expect(page.getByRole("heading", { name: /receipt queue/i })).toBeVisible({
-      timeout: 30_000,
-    });
+    await expect(page).toHaveURL(/\/financial\/inbox(?:\?|$)/);
+    await expect(page.getByRole("heading", { name: "Expense Operations" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Receipt Inbox", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
 
     assertNoErrors();
   });
@@ -162,11 +167,11 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await page.setViewportSize({ width: 1100, height: 800 });
     const { assertNoErrors } = attachConsoleErrorCollector(page);
 
-    await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
-    await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
+    await loginAsE2EOwner(page, "/financial/expenses");
+    await waitForVisibleQuickExpenseButton(page, 90_000);
 
     await clickVisibleQuickExpenseButton(page);
-    const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+    const dialog = page.getByRole("dialog", { name: /New expense/i });
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
     if (
@@ -191,6 +196,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await page.getByRole("option", { name: E2E_PRESERVED_PROJECT_LABEL }).click();
     await waitForQuickExpenseProjectLabel(dialog, E2E_PRESERVED_PROJECT_LABEL);
 
+    await dialog.getByRole("button", { name: /More Details/i }).click();
     await pickOrCreatePaymentInSelect(page, dialogPaymentAccountSelect(dialog, page));
 
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
@@ -242,7 +248,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await page.goto("/financial/expenses", { waitUntil: "domcontentloaded", timeout: 60_000 });
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
-    const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+    const dialog = page.getByRole("dialog", { name: /New expense/i });
     await clickVisibleQuickExpenseButton(page);
     await expect(dialog).toBeVisible({ timeout: 15_000 });
 
@@ -256,6 +262,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     }
 
     const acct = `E2E-Pay-${Date.now()}`;
+    await dialog.getByRole("button", { name: /More Details/i }).click();
     const paySelect = dialogPaymentAccountSelect(dialog, page);
     await paymentAccountSelectChooseAddNew(page, paySelect);
 
@@ -293,7 +300,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
     await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
 
     await clickVisibleQuickExpenseButton(page);
-    const q = page.getByRole("dialog", { name: /Quick expense/i });
+    const q = page.getByRole("dialog", { name: /New expense/i });
     await expect(q).toBeVisible({ timeout: 15_000 });
     if (
       await q
@@ -374,6 +381,7 @@ test.describe("Expenses upgrades (queue, quick, edit, list, payment)", () => {
 
   test("expenses list: unreviewed view, status control visible", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
+    await loginAsE2EOwner(page, "/financial/inbox");
     await page.goto("/financial/inbox", {
       waitUntil: "domcontentloaded",
       timeout: 60_000,

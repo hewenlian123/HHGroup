@@ -193,6 +193,7 @@ export function ExpenseDateRangeFilter({
       <PopoverTrigger asChild>
         <button
           type="button"
+          data-expenses-filter-date
           className={cn(
             "inline-flex h-8 min-w-[7.5rem] items-center justify-between gap-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 text-left text-xs font-medium text-[var(--neo-text-primary)] shadow-none transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
             className
@@ -205,8 +206,9 @@ export function ExpenseDateRangeFilter({
       <PopoverContent
         align="start"
         sideOffset={6}
+        data-expense-component-surface="date-filter"
         className={cn(
-          "z-[130] overflow-visible p-0",
+          "expenses-ui-dialog z-[130] overflow-visible p-0",
           panel === "menu"
             ? "w-[min(100vw-16px_260px)]"
             : "w-[min(100vw-16px_720px)] max-w-[calc(100vw-16px)]"
@@ -286,15 +288,15 @@ export function ExpenseDateRangeFilter({
                   ),
                   selected: cn(
                     rdp.selected,
-                    "!bg-[var(--neo-gold)] font-medium !text-white hover:!bg-[var(--neo-gold)]"
+                    "!bg-[var(--eo-action-primary)] font-medium !text-[var(--eo-action-primary-text)] hover:!bg-[var(--eo-action-primary)]"
                   ),
-                  range_start: cn(rdp.range_start, "rounded-r-none !bg-[var(--neo-gold)]"),
-                  range_end: cn(rdp.range_end, "rounded-l-none !bg-[var(--neo-gold)]"),
+                  range_start: cn(rdp.range_start, "rounded-r-none !bg-[var(--eo-action-primary)]"),
+                  range_end: cn(rdp.range_end, "rounded-l-none !bg-[var(--eo-action-primary)]"),
                   range_middle: cn(
                     rdp.range_middle,
-                    "rounded-none bg-[rgb(184_137_45_/_0.14)] text-[var(--neo-text-primary)]"
+                    "rounded-none bg-[var(--eo-surface-selected)] text-[var(--neo-text-primary)]"
                   ),
-                  today: cn(rdp.today, "font-semibold text-[var(--neo-gold)]"),
+                  today: cn(rdp.today, "font-semibold text-[var(--eo-text-primary)]"),
                   outside: cn(rdp.outside, "text-zinc-400 opacity-60"),
                   disabled: cn(rdp.disabled, "opacity-40"),
                 }}

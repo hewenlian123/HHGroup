@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { FileText, Plus, Upload, X } from "lucide-react";
+import { Camera, FileText, Plus, Upload, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   addExpenseAttachment,
@@ -57,8 +57,15 @@ export function ExpenseEditAttachmentsSection({
   const { toast } = useToast();
   const [uploadBusy, setUploadBusy] = React.useState(false);
   const [dragActive, setDragActive] = React.useState(false);
+  const [failedUploads, setFailedUploads] = React.useState<File[]>([]);
+  const [uploadFeedback, setUploadFeedback] = React.useState<{
+    tone: "error" | "success";
+    title: string;
+    detail?: string;
+  } | null>(null);
   const dragDepthRef = React.useRef(0);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
 
   const applyDedupedAttachments = React.useCallback(
     (next: Expense | null | undefined) => {
@@ -78,14 +85,19 @@ export function ExpenseEditAttachmentsSection({
       if (!files?.length) return;
       const list = Array.from(files);
       if (!supabase) {
-        toast({
-          title: "Upload failed",
-          description: "Supabase is not configured.",
-          variant: "error",
+        setUploadFeedback({
+          tone: "error",
+          title: "Upload unavailable",
+          detail: "Receipt upload is not configured for this environment.",
         });
         return;
       }
       const seenBatch = new Set<string>();
+      const failures: File[] = [];
+      let uploaded = 0;
+      let firstFailure = "";
+      setUploadFeedback(null);
+      setFailedUploads([]);
       setUploadBusy(true);
       try {
         for (let i = 0; i < list.length; i++) {
@@ -96,46 +108,60 @@ export function ExpenseEditAttachmentsSection({
 
           const ft = storageFileTypeForExpenseUpload(file);
           if (!ft) {
-            toast({
-              title: "Skipped file",
-              description: `${file.name} is not an image or PDF.`,
-              variant: "error",
-            });
+            firstFailure ||= `${file.name} is not an image or PDF.`;
             continue;
           }
-          const uploadData = new FormData();
-          uploadData.set("file", file);
-          const uploadResponse = await fetch("/api/quick-expense/upload-attachment", {
-            method: "POST",
-            body: uploadData,
-            credentials: "same-origin",
-          });
-          const uploadBody = (await uploadResponse.json().catch(() => ({}))) as {
-            ok?: boolean;
-            path?: string;
-          };
-          if (!uploadResponse.ok || !uploadBody.ok || !uploadBody.path) {
-            throw new Error("Attachment upload failed.");
-          }
-          const filePath = uploadBody.path;
-          const att = buildExpenseAttachmentForUpload(file, filePath);
-          const next = await addExpenseAttachment(expense.id, att);
-          if (next) {
+          try {
+            const uploadData = new FormData();
+            uploadData.set("file", file);
+            const uploadResponse = await fetch("/api/quick-expense/upload-attachment", {
+              method: "POST",
+              body: uploadData,
+              credentials: "same-origin",
+            });
+            const uploadBody = (await uploadResponse.json().catch(() => ({}))) as {
+              ok?: boolean;
+              path?: string;
+            };
+            if (!uploadResponse.ok || !uploadBody.ok || !uploadBody.path) {
+              throw new Error("Attachment upload failed.");
+            }
+            const filePath = uploadBody.path;
+            const att = buildExpenseAttachmentForUpload(file, filePath);
+            const next = await addExpenseAttachment(expense.id, att);
+            if (!next) throw new Error("Attachment could not be linked to this expense.");
             applyDedupedAttachments(next);
             onExpenseUpdated?.(next);
+            uploaded += 1;
+          } catch (error) {
+            failures.push(file);
+            firstFailure ||= error instanceof Error ? error.message : "Attachment upload failed.";
           }
         }
-      } catch (e) {
-        toast({
-          title: "Upload failed",
-          description: e instanceof Error ? e.message : "Unknown error",
-          variant: "error",
-        });
       } finally {
         setUploadBusy(false);
       }
+
+      setFailedUploads(failures);
+      if (failures.length > 0 || firstFailure) {
+        setUploadFeedback({
+          tone: "error",
+          title:
+            uploaded > 0
+              ? `${uploaded} added · ${failures.length || 1} needs attention`
+              : "Receipt upload failed",
+          detail:
+            firstFailure || "The failed file remains available to retry without selecting again.",
+        });
+      } else if (uploaded > 0) {
+        setUploadFeedback({
+          tone: "success",
+          title: uploaded === 1 ? "Receipt attached" : `${uploaded} receipts attached`,
+          detail: "The files are now linked to this expense.",
+        });
+      }
     },
-    [applyDedupedAttachments, expense.id, onExpenseUpdated, supabase, toast]
+    [applyDedupedAttachments, expense.id, onExpenseUpdated, supabase]
   );
 
   const handleDeleteAttachment = React.useCallback(
@@ -210,6 +236,19 @@ export function ExpenseEditAttachmentsSection({
           e.target.value = "";
         }}
       />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        className="sr-only"
+        accept="image/*"
+        capture="environment"
+        aria-hidden
+        tabIndex={-1}
+        onChange={(e) => {
+          void handleUploadFiles(e.target.files);
+          e.target.value = "";
+        }}
+      />
 
       <div
         role="group"
@@ -231,38 +270,37 @@ export function ExpenseEditAttachmentsSection({
             Configure Supabase to add attachments.
           </p>
         ) : showEmptyIdle ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={openFilePicker}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                openFilePicker();
-              }
-            }}
-            className={cn(
-              "group flex w-full max-w-md cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-5 py-5 text-center outline-none",
-              "transition-[border-color,box-shadow,transform,background-color] duration-200 ease-out",
-              "hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-raised)]",
-              "active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
-              "disabled:cursor-not-allowed disabled:opacity-50"
-            )}
-          >
-            <Upload
-              className="size-[18px] shrink-0 text-[var(--neo-text-secondary)] transition-colors duration-200 group-hover:text-[var(--neo-gold-soft)]"
-              strokeWidth={2}
-              aria-hidden
-            />
-            <div className="flex flex-col gap-0.5 pt-0.5">
-              <span className="text-sm font-medium tracking-normal text-[var(--neo-text-primary)]">
-                Add receipt
+          <div className="grid w-full max-w-md grid-cols-2 gap-2 sm:grid-cols-1">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => cameraInputRef.current?.click()}
+              className={cn(
+                "group flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 text-center outline-none sm:hidden",
+                "transition-[border-color,background-color] hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] disabled:opacity-50"
+              )}
+            >
+              <Camera className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden />
+              <span className="text-xs font-medium text-[var(--neo-text-primary)]">Take photo</span>
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={openFilePicker}
+              className={cn(
+                "group flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-3 text-center outline-none",
+                "transition-[border-color,background-color] hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] disabled:opacity-50 sm:min-h-24"
+              )}
+            >
+              <Upload className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden />
+              <span className="text-xs font-medium text-[var(--neo-text-primary)]">
+                Upload file
               </span>
-              <span className="text-xs leading-snug text-[var(--neo-text-secondary)]">
-                Tap to upload or take a photo
+              <span className="hidden text-[11px] text-[var(--neo-text-secondary)] sm:block">
+                Drop, browse, or select a photo or PDF
               </span>
-            </div>
-          </button>
+            </button>
+          </div>
         ) : (
           <div className="flex flex-wrap items-start gap-2">
             {attachments.map((att) => {
@@ -332,7 +370,7 @@ export function ExpenseEditAttachmentsSection({
               className={cn(
                 CARD_FRAME,
                 "cursor-pointer items-center justify-center border border-dashed border-[var(--neo-border-strong)] text-[var(--neo-text-secondary)] shadow-none transition-[border-color,box-shadow,background-color] duration-200 ease-out",
-                "hover:border-[var(--neo-gold)] hover:bg-[rgb(184_137_45_/_0.10)] hover:text-[var(--neo-gold-soft)] active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                "hover:border-[var(--neo-border-strong)] hover:bg-[var(--eo-surface-selected)] hover:text-[var(--neo-text-primary)] active:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
               )}
             >
               <Plus className="h-7 w-7" strokeWidth={1.5} />
@@ -341,6 +379,36 @@ export function ExpenseEditAttachmentsSection({
           </div>
         )}
       </div>
+      {uploadFeedback ? (
+        <div
+          data-attachment-upload-feedback
+          role={uploadFeedback.tone === "error" ? "alert" : "status"}
+          aria-live="polite"
+          className={cn(
+            "flex max-w-md items-start justify-between gap-3 rounded-lg border px-3 py-2.5",
+            uploadFeedback.tone === "error"
+              ? "border-rose-500/25 bg-rose-500/[0.06] text-rose-700 dark:text-rose-200"
+              : "border-emerald-500/25 bg-emerald-500/[0.06] text-emerald-700 dark:text-emerald-200"
+          )}
+        >
+          <div className="min-w-0">
+            <p className="text-xs font-semibold">{uploadFeedback.title}</p>
+            {uploadFeedback.detail ? (
+              <p className="mt-0.5 text-[11px] leading-snug opacity-85">{uploadFeedback.detail}</p>
+            ) : null}
+          </div>
+          {failedUploads.length > 0 ? (
+            <button
+              type="button"
+              className="min-h-11 shrink-0 rounded-md px-2 text-xs font-semibold underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+              disabled={busy}
+              onClick={() => void handleUploadFiles(failedUploads)}
+            >
+              Retry upload
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

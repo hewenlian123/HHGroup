@@ -7,20 +7,25 @@ const PROTECTED_GETS = [
   "/api/financial/bank-transactions",
   "/api/labor/worker-balances",
   "/api/settings/security/account",
-  "/api/upload-receipt/options",
   "/api/system-health",
 ] as const;
 
 test.describe("authenticated API authorization matrix", () => {
   test.describe.configure({ timeout: 120_000 });
 
-  test("returns 401 for representative anonymous financial, labor, upload, and system APIs", async ({
+  test("returns 401 for representative anonymous financial, labor, and system APIs", async ({
     request,
   }) => {
     for (const path of PROTECTED_GETS) {
       const response = await request.get(path);
       expect(response.status(), path).toBe(401);
     }
+  });
+
+  test("admits only the documented public worker receipt options API", async ({ request }) => {
+    const options = await request.get("/api/upload-receipt/options");
+    expect(options.status()).toBe(200);
+
     const ocr = await request.post("/api/ocr-receipt", {
       multipart: {},
     });

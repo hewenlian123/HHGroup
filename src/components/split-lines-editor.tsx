@@ -67,6 +67,8 @@ export interface SplitLinesEditorProps {
   focusLineId?: string | null;
   /** Called after focusLineId has been applied */
   onFocusLineHandled?: () => void;
+  /** Optional visual scope for portaled/dropdown content. */
+  overlayClassName?: string;
 }
 
 export function SplitLinesEditor({
@@ -96,14 +98,18 @@ export function SplitLinesEditor({
   firstFocusId,
   focusLineId,
   onFocusLineHandled,
+  overlayClassName,
 }: SplitLinesEditorProps) {
   const selectPopperContentProps = React.useMemo(
     () => ({
       position: "popper" as const,
       sideOffset: 4,
-      className: "z-[120] max-h-[min(280px,var(--radix-select-content-available-height))]",
+      className: cn(
+        "z-[120] max-h-[min(280px,var(--radix-select-content-available-height))]",
+        overlayClassName
+      ),
     }),
-    []
+    [overlayClassName]
   );
   const projectSelectTriggerClass =
     "h-10 w-full rounded-sm border-border/60 text-sm [&>span]:line-clamp-1";
@@ -124,6 +130,12 @@ export function SplitLinesEditor({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <CreatableSelect
+              contentClassName={overlayClassName}
+              selectedOptionClassName={
+                overlayClassName
+                  ? "bg-[var(--eo-surface-selected)] text-[var(--eo-text-primary)]"
+                  : undefined
+              }
               label="Vendor"
               value={vendorName}
               options={vendorsList}
@@ -146,6 +158,12 @@ export function SplitLinesEditor({
           </div>
           <div>
             <CreatableSelect
+              contentClassName={overlayClassName}
+              selectedOptionClassName={
+                overlayClassName
+                  ? "bg-[var(--eo-surface-selected)] text-[var(--eo-text-primary)]"
+                  : undefined
+              }
               label="Payment method"
               value={paymentMethod}
               options={paymentMethodsList}
@@ -272,6 +290,12 @@ export function SplitLinesEditor({
                 <TableCell>
                   <div className="min-w-[120px]">
                     <CreatableSelect
+                      contentClassName={overlayClassName}
+                      selectedOptionClassName={
+                        overlayClassName
+                          ? "bg-[var(--eo-surface-selected)] text-[var(--eo-text-primary)]"
+                          : undefined
+                      }
                       label=""
                       value={line.category}
                       options={categories}

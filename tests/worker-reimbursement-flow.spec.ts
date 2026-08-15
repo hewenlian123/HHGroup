@@ -7,6 +7,7 @@ import {
   assertE2EBaseUrlSafeForMutations,
   assertE2ESupabaseUrlSafeForMutations,
 } from "./e2e-supabase-url-guard";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
 
 const BASE = (process.env.E2E_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
 const PREFIX = "LOCAL-WORKER-REIMBURSEMENT-FIX-DELETE-ME";
@@ -258,6 +259,7 @@ test.describe("Worker reimbursement company expense flow", () => {
 
   test("approved company reimbursement expense becomes payable and traceable", async ({ page }) => {
     if (!admin) test.skip(true, "Supabase service role is not configured.");
+    await loginAsE2EOwner(page);
 
     const approve = await page.request.post(
       `/api/financial/expenses/${encodeURIComponent(EXPENSE_ID)}/approve-inbox`

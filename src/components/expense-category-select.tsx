@@ -23,6 +23,7 @@ export type ExpenseCategorySelectProps = {
   onValueChange: (next: string) => void;
   disabled?: boolean;
   className?: string;
+  contentClassName?: string;
   id?: string;
   autoFocus?: boolean;
   onKeyDown?: React.KeyboardEventHandler<HTMLElement>;
@@ -40,6 +41,7 @@ export function ExpenseCategorySelect({
   onValueChange,
   disabled,
   className,
+  contentClassName,
   id,
   autoFocus,
   onKeyDown,
@@ -192,6 +194,7 @@ export function ExpenseCategorySelect({
         searchPlaceholder="Search categories…"
         id={id}
         className={cn("h-9", className)}
+        contentClassName={contentClassName}
         aria-label="Category"
         autoFocus={autoFocus}
         onKeyDown={onKeyDown}
@@ -204,7 +207,10 @@ export function ExpenseCategorySelect({
       />
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-sm rounded-sm border-border/60">
+        <DialogContent
+          data-expense-component-surface="create-option"
+          className="expenses-ui-dialog max-w-sm !rounded-[10px] border-border/60 max-md:!rounded-b-none max-md:!rounded-t-[14px]"
+        >
           <DialogHeader>
             <DialogTitle className="text-base font-medium">New category</DialogTitle>
           </DialogHeader>

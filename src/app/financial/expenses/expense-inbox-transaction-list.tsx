@@ -11,7 +11,7 @@ import {
 } from "@/components/base";
 import { getExpenseTotal, type Expense, type PaymentAccountRow } from "@/lib/data";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronRight, Copy, Paperclip, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { tableRawThClass } from "@/components/ui/table";
@@ -48,9 +48,9 @@ type InboxIssue = {
 };
 
 const EXPENSE_INBOX_DISMISSED_ISSUE_PREFIX = "hh.expenseInbox.dismissedIssue";
+const EXPENSE_ISSUE_POPOVER_CLOSE_DELAY_MS = 140;
 
-const compactTextPill =
-  "inline-flex h-6 max-h-6 min-w-0 items-center truncate rounded-md border border-[var(--neo-border)] px-1.5 py-0 text-[11px] leading-none shadow-none";
+let activeExpenseIssuePopover: { id: symbol; close: () => void } | null = null;
 
 function expenseInboxDismissedIssueKey(expenseId: string, issueId: InboxIssueId): string {
   return `${EXPENSE_INBOX_DISMISSED_ISSUE_PREFIX}.${expenseId}.${issueId}`;
@@ -78,11 +78,13 @@ function ExpenseReceiptCell({
   row,
   onReceiptPreview,
   onReceiptPrefetch,
+  onMissingReceipt,
   touch = false,
 }: {
   row: Expense;
   onReceiptPreview: () => void;
   onReceiptPrefetch?: () => void;
+  onMissingReceipt: () => void;
   touch?: boolean;
 }) {
   const items = React.useMemo(() => getExpenseReceiptItems(row), [row]);
@@ -94,22 +96,33 @@ function ExpenseReceiptCell({
 
   if (!hasReceipt) {
     return (
-      <span
+      <button
+        type="button"
+        data-expense-receipt-state="missing"
+        data-expense-issue-indicator="missing-receipt"
         className={cn(
-          "inline-flex items-center whitespace-nowrap text-[11px] font-medium text-[var(--neo-text-tertiary)]",
-          touch && "min-h-6"
+          "inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-md px-1.5 text-[11px] font-medium text-[var(--eo-warning)] outline-none transition-colors hover:bg-[var(--eo-warning-soft)] focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
+          touch && "h-11 min-h-11 px-2 md:h-7 md:min-h-0"
         )}
+        onClick={(event) => {
+          event.stopPropagation();
+          onMissingReceipt();
+        }}
+        aria-label="Missing receipt. Open expense to attach receipt"
+        title="Missing receipt · Add in expense details"
       >
-        —
-      </span>
+        <Paperclip className="h-3 w-3 shrink-0 opacity-70" strokeWidth={1.8} aria-hidden />
+        <span>Missing</span>
+      </button>
     );
   }
 
   return (
     <button
       type="button"
+      data-expense-receipt-state="attached"
       className={cn(
-        "inline-flex h-7 max-h-7 cursor-pointer items-center gap-1 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 text-[11px] font-medium leading-none text-[var(--neo-text-primary)] transition-colors duration-150 hover:border-emerald-500/25 hover:text-[var(--neo-emerald)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
+        "inline-flex h-7 max-h-7 cursor-pointer items-center gap-1 rounded-md px-1.5 text-[11px] font-medium leading-none text-[var(--neo-text-primary)] outline-none transition-colors hover:bg-emerald-500/[0.08] hover:text-[var(--neo-emerald)] focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
         touch && "h-11 max-h-none min-h-11 md:h-7 md:max-h-7 md:min-h-0"
       )}
       onMouseEnter={() => onReceiptPrefetch?.()}
@@ -123,17 +136,14 @@ function ExpenseReceiptCell({
         onReceiptPreview();
       }}
       aria-label={
-        items.length > 1 ? `Preview receipts, ${items.length} attached` : "Preview receipt"
+        items.length > 1
+          ? `Receipt attached. Preview ${items.length} files`
+          : "Receipt attached. Preview receipt"
       }
-      title="Preview receipt"
+      title="Receipt attached · Preview"
     >
       <Paperclip className="h-3 w-3 shrink-0 opacity-75" strokeWidth={2} aria-hidden />
-      <span>View</span>
-      {items.length > 1 ? (
-        <span className="tabular-nums text-[10px] text-[var(--neo-text-tertiary)]">
-          {items.length}
-        </span>
-      ) : null}
+      <span>{items.length > 1 ? `${items.length} files` : "Receipt"}</span>
     </button>
   );
 }
@@ -204,15 +214,28 @@ function ExpenseIssuesCell({
   expenseId,
   issues,
   touch = false,
+  informational = false,
 }: {
   expenseId: string;
   issues: InboxIssue[];
   touch?: boolean;
+  informational?: boolean;
 }) {
   const [open, setOpen] = React.useState(false);
   const [dismissedIssueIds, setDismissedIssueIds] = React.useState<Set<InboxIssueId>>(
     () => new Set()
   );
+  const instanceIdRef = React.useRef(Symbol("expense-issue-popover"));
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const previewAnchorRef = React.useRef<HTMLSpanElement>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const closeTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pointerInsideTriggerRef = React.useRef(false);
+  const pointerInsideContentRef = React.useRef(false);
+  const lastPointerTypeRef = React.useRef<string | null>(null);
+  const openSourceRef = React.useRef<"pointer" | "focus" | "touch">("pointer");
+  const restoreFocusOnCloseRef = React.useRef(false);
+  const suppressFocusOpenRef = React.useRef(false);
   const issueIdsKey = issues.map((issue) => issue.id).join("|");
 
   React.useEffect(() => {
@@ -221,6 +244,79 @@ function ExpenseIssuesCell({
   }, [expenseId, issueIdsKey]);
 
   const visibleIssues = issues.filter((issue) => !dismissedIssueIds.has(issue.id));
+  const issueCountLabel = `${visibleIssues.length} ${visibleIssues.length === 1 ? "issue" : "issues"}`;
+
+  const clearPendingClose = React.useCallback(() => {
+    if (closeTimerRef.current === null) return;
+    clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
+  }, []);
+
+  const closePopover = React.useCallback(() => {
+    clearPendingClose();
+    pointerInsideTriggerRef.current = false;
+    pointerInsideContentRef.current = false;
+    if (activeExpenseIssuePopover?.id === instanceIdRef.current) {
+      activeExpenseIssuePopover = null;
+    }
+    setOpen(false);
+  }, [clearPendingClose]);
+
+  const openPopover = React.useCallback(
+    (source: "pointer" | "focus" | "touch") => {
+      clearPendingClose();
+      if (activeExpenseIssuePopover && activeExpenseIssuePopover.id !== instanceIdRef.current) {
+        activeExpenseIssuePopover.close();
+      }
+      activeExpenseIssuePopover = {
+        id: instanceIdRef.current,
+        close: closePopover,
+      };
+      openSourceRef.current = source;
+      restoreFocusOnCloseRef.current = false;
+      setOpen(true);
+    },
+    [clearPendingClose, closePopover]
+  );
+
+  const focusRemainsInside = React.useCallback(() => {
+    const activeElement = document.activeElement;
+    if (!activeElement) return false;
+    return Boolean(
+      triggerRef.current?.contains(activeElement) ||
+      previewAnchorRef.current?.contains(activeElement) ||
+      contentRef.current?.contains(activeElement)
+    );
+  }, []);
+
+  const scheduleClose = React.useCallback(() => {
+    clearPendingClose();
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
+      if (
+        pointerInsideTriggerRef.current ||
+        pointerInsideContentRef.current ||
+        focusRemainsInside()
+      ) {
+        return;
+      }
+      closePopover();
+    }, EXPENSE_ISSUE_POPOVER_CLOSE_DELAY_MS);
+  }, [clearPendingClose, closePopover, focusRemainsInside]);
+
+  React.useEffect(
+    () => () => {
+      clearPendingClose();
+      if (activeExpenseIssuePopover?.id === instanceIdRef.current) {
+        activeExpenseIssuePopover = null;
+      }
+    },
+    [clearPendingClose]
+  );
+
+  React.useEffect(() => {
+    if (visibleIssues.length === 0 && open) closePopover();
+  }, [closePopover, open, visibleIssues.length]);
 
   const dismissIssue = React.useCallback(
     (issue: InboxIssue) => {
@@ -238,13 +334,14 @@ function ExpenseIssuesCell({
     return (
       <span
         data-testid="expense-inbox-issues"
+        data-expense-issue-state="clear"
         className={cn(
-          "inline-flex h-6 items-center justify-center text-[11px] text-[var(--neo-text-tertiary)]",
+          "inline-flex h-6 items-center justify-center text-[11px] font-medium text-[var(--neo-text-tertiary)]",
           !touch && "min-w-6"
         )}
         aria-label="No issues"
       >
-        —
+        Clear
       </span>
     );
   }
@@ -252,37 +349,145 @@ function ExpenseIssuesCell({
   return (
     <span
       data-testid="expense-inbox-issues"
+      data-expense-issue-state="attention"
       className="inline-flex max-w-full justify-center"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onPointerEnter={(event) => {
+        if (event.pointerType === "touch") return;
+        pointerInsideTriggerRef.current = true;
+        openPopover("pointer");
+      }}
+      onPointerLeave={(event) => {
+        if (event.pointerType === "touch") return;
+        pointerInsideTriggerRef.current = false;
+        scheduleClose();
+      }}
     >
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "inline-flex h-6 max-h-6 min-w-6 items-center justify-center rounded-md border border-transparent px-1 text-[13px] font-semibold leading-none text-[var(--neo-gold)] transition-colors duration-150 hover:border-[rgb(184_137_45_/_0.30)] hover:bg-[rgb(184_137_45_/_0.09)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)] dark:text-[var(--neo-gold-soft)]",
-              touch &&
-                "h-11 max-h-none min-h-11 min-w-11 px-2 md:h-6 md:max-h-6 md:min-h-0 md:min-w-6"
-            )}
-            aria-label={`${visibleIssues.length} issue${visibleIssues.length === 1 ? "" : "s"}: ${visibleIssues
-              .map((issue) => issue.label)
-              .join(", ")}`}
-            onFocus={() => setOpen(true)}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setOpen(true);
-            }}
-          >
-            <span aria-hidden>⚠</span>
-          </button>
-        </PopoverTrigger>
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            if (!informational) openPopover("focus");
+            return;
+          }
+          closePopover();
+        }}
+      >
+        {informational ? (
+          <PopoverAnchor asChild>
+            <span
+              ref={previewAnchorRef}
+              tabIndex={0}
+              data-expense-issue-indicator="count"
+              data-expense-row-passive
+              className={cn(
+                "inline-flex h-6 max-h-6 min-w-6 items-center justify-center gap-1 px-1 text-[11px] font-semibold leading-none text-[var(--eo-warning)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
+                touch &&
+                  "h-11 max-h-none min-h-11 min-w-11 px-2 md:h-6 md:max-h-6 md:min-h-0 md:min-w-6"
+              )}
+              aria-label={`${issueCountLabel}: ${visibleIssues.map((issue) => issue.label).join(", ")}`}
+              onPointerDown={(event) => {
+                event.preventDefault();
+              }}
+              onFocus={() => {
+                if (suppressFocusOpenRef.current) return;
+                openPopover("focus");
+              }}
+              onBlur={scheduleClose}
+            >
+              <span className="text-[10px] leading-none" aria-hidden>
+                ⚠
+              </span>
+              <span className="tabular-nums">{visibleIssues.length}</span>
+            </span>
+          </PopoverAnchor>
+        ) : (
+          <PopoverTrigger asChild>
+            <button
+              ref={triggerRef}
+              type="button"
+              data-expense-issue-indicator="count"
+              className={cn(
+                "inline-flex h-6 max-h-6 min-w-6 items-center justify-center gap-1 rounded-md px-1 text-[11px] font-semibold leading-none text-[var(--eo-warning)] transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
+                touch &&
+                  "h-11 max-h-none min-h-11 min-w-11 px-2 md:h-6 md:max-h-6 md:min-h-0 md:min-w-6"
+              )}
+              aria-label={`${issueCountLabel}: ${visibleIssues.map((issue) => issue.label).join(", ")}`}
+              onPointerDown={(event) => {
+                lastPointerTypeRef.current = event.pointerType;
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  lastPointerTypeRef.current = null;
+                }
+              }}
+              onFocus={() => {
+                if (suppressFocusOpenRef.current) return;
+                const pointerType = lastPointerTypeRef.current;
+                openPopover(pointerType === "touch" ? "touch" : pointerType ? "pointer" : "focus");
+              }}
+              onBlur={scheduleClose}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const pointerType = lastPointerTypeRef.current;
+                lastPointerTypeRef.current = null;
+                openPopover(pointerType === "touch" ? "touch" : "focus");
+              }}
+            >
+              <span className="text-[10px] leading-none" aria-hidden>
+                ⚠
+              </span>
+              <span className="tabular-nums">{visibleIssues.length}</span>
+            </button>
+          </PopoverTrigger>
+        )}
         <PopoverContent
+          ref={contentRef}
           data-testid="expense-inbox-issue-popover"
-          className="w-72 p-2"
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
+          data-expense-component-surface="issue"
+          className="expenses-ui-dialog w-72 p-2"
+          onPointerEnter={(event) => {
+            if (event.pointerType === "touch") return;
+            pointerInsideContentRef.current = true;
+            clearPendingClose();
+          }}
+          onPointerLeave={(event) => {
+            if (event.pointerType === "touch") return;
+            pointerInsideContentRef.current = false;
+            scheduleClose();
+          }}
+          onFocusCapture={() => {
+            clearPendingClose();
+          }}
+          onBlurCapture={scheduleClose}
+          onOpenAutoFocus={(event) => {
+            if (openSourceRef.current !== "focus") event.preventDefault();
+          }}
+          onEscapeKeyDown={() => {
+            restoreFocusOnCloseRef.current = true;
+          }}
+          onPointerDownOutside={(event) => {
+            const outsideTarget = event.detail.originalEvent.target;
+            if (
+              informational &&
+              outsideTarget instanceof Node &&
+              previewAnchorRef.current?.contains(outsideTarget)
+            ) {
+              event.preventDefault();
+              return;
+            }
+            restoreFocusOnCloseRef.current = false;
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            if (!restoreFocusOnCloseRef.current) return;
+            restoreFocusOnCloseRef.current = false;
+            suppressFocusOpenRef.current = true;
+            (informational ? previewAnchorRef.current : triggerRef.current)?.focus();
+            window.setTimeout(() => {
+              suppressFocusOpenRef.current = false;
+            }, 0);
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="space-y-1.5">
@@ -296,7 +501,7 @@ function ExpenseIssuesCell({
                   />
                 ) : (
                   <span
-                    className="mt-[-1px] inline-flex h-4 w-4 shrink-0 items-center justify-center text-[12px] font-semibold leading-none text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]"
+                    className="mt-[-1px] inline-flex h-4 w-4 shrink-0 items-center justify-center text-[12px] font-semibold leading-none text-[var(--eo-warning)]"
                     aria-hidden
                   >
                     ⚠
@@ -344,12 +549,12 @@ function ExpenseHeaderLineMismatchIssueCell({
     <div
       data-testid="expense-header-line-mismatch-issue"
       className={cn(
-        "w-full rounded-lg border border-[rgb(184_137_45_/_0.26)] bg-[rgb(184_137_45_/_0.075)] px-2 py-1.5 text-left shadow-[inset_2px_0_0_rgb(184_137_45_/_0.65)]",
+        "w-full rounded-lg border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-2 py-1.5 text-left shadow-[inset_2px_0_0_var(--eo-warning)]",
         touch && "px-2.5 py-2"
       )}
     >
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] leading-snug text-[var(--neo-text-secondary)]">
-        <span className="font-semibold text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
+        <span className="font-semibold text-[var(--eo-warning)]">
           Header: <span className="tabular-nums">{formatCurrency(mismatch.headerTotal)}</span>
         </span>
         <span className="tabular-nums">Lines: {formatCurrency(mismatch.linesTotal)}</span>
@@ -359,7 +564,7 @@ function ExpenseHeaderLineMismatchIssueCell({
         type="button"
         data-testid="expense-review-issue-button"
         className={cn(
-          "mt-1 inline-flex h-7 items-center rounded-md border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] px-2 text-[11px] font-medium text-[var(--neo-gold)] transition-colors duration-150 hover:bg-[rgb(184_137_45_/_0.18)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)] dark:text-[var(--neo-gold-soft)]",
+          "mt-1 inline-flex h-7 items-center rounded-md border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-2 text-[11px] font-medium text-[var(--eo-warning)] transition-colors duration-150 hover:bg-[var(--eo-warning-soft)] focus-visible:outline focus-visible:ring-1 focus-visible:ring-[var(--neo-gold-ring)]",
           touch && "h-11 min-h-11"
         )}
         onClick={onReviewIssue}
@@ -446,12 +651,11 @@ function expensePaymentSourceDisplayLabel(e: Expense): string {
   return paymentMethodDisplayLabel(e.paymentMethod);
 }
 
-/** Single secondary line: description, then payment source. Date already has its own column. */
+/** Merchant context stays descriptive; payment source has its own explicit column/context line. */
 function inboxSecondaryMetaLine(e: Expense): string {
   const description = expenseDescriptionDisplayLabel(e);
   if (description) return description;
-  const sourceSeg = expensePaymentSourceDisplayLabel(e);
-  return sourceSeg === "—" ? "—" : sourceSeg;
+  return "No description";
 }
 
 function paymentMethodDisplayLabel(pm: string | undefined): string {
@@ -474,7 +678,7 @@ function inboxRowActivateIgnored(target: EventTarget | null): boolean {
   if (!el?.closest) return false;
   return Boolean(
     el.closest(
-      "button, a, input, textarea, select, [role='checkbox'], [role='combobox'], [role='menuitem'], [data-radix-collection-item]"
+      "button, a, input, textarea, select, [role='checkbox'], [role='combobox'], [role='menuitem'], [data-radix-collection-item], [data-expense-row-passive]"
     )
   );
 }
@@ -590,7 +794,6 @@ export type ExpenseListBulkActionsApi = {
   runSetPayment: (ids: string[], paymentAccountId: string | null) => Promise<void>;
   /** Return `false` on cancel or hard failure — selection is kept. Otherwise clear selection. */
   runDeleteMany: (ids: string[]) => Promise<boolean | void>;
-  onDownloadComingSoon: () => void;
 };
 
 const InboxCtx = React.createContext<ExpenseInboxApi | null>(null);
@@ -635,7 +838,7 @@ function RowActionsMenu({ row }: { row: Expense }) {
       ariaLabel="Row actions"
       appearance="list"
       className="h-11 min-h-11 w-11 min-w-11 opacity-100 md:h-8 md:min-h-0 md:w-8 md:min-w-0 md:opacity-0 md:p-1.5 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
-      contentClassName="w-44"
+      contentClassName="expenses-ui-dialog w-44"
       destructiveItemClassName="mt-1 border-t border-[var(--neo-border)] pt-2 text-rose-600 focus:text-rose-600 hover:bg-rose-600 hover:text-white dark:text-rose-400 dark:focus:text-rose-400"
       actions={[
         {
@@ -677,11 +880,13 @@ function DateGroupDesktopHeader({
   autoExpand,
   onToggle,
   groupSelect,
+  ledgerMode,
 }: {
   chunk: ExpenseDateGroup;
   expanded: boolean;
   autoExpand: boolean;
   onToggle: () => void;
+  ledgerMode: boolean;
   groupSelect?: {
     show: boolean;
     checked: boolean;
@@ -696,7 +901,13 @@ function DateGroupDesktopHeader({
   }, [groupSelect?.indeterminate, groupSelect?.show]);
 
   return (
-    <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+    <tr
+      data-expense-date-group={ledgerMode ? "desktop" : undefined}
+      className={cn(
+        "border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]",
+        ledgerMode && "expense-ledger-date-group"
+      )}
+    >
       <td colSpan={COL_COUNT} className="p-0 align-middle">
         <div className="flex min-w-0 items-stretch">
           {groupSelect?.show ? (
@@ -739,7 +950,7 @@ function DateGroupDesktopHeader({
               {chunk.missingReceiptCount > 0 ? (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
+                  <span className="text-[var(--eo-warning)]">
                     {chunk.missingReceiptCount} missing receipt
                     {chunk.missingReceiptCount !== 1 ? "s" : ""}
                   </span>
@@ -782,14 +993,21 @@ function DesktopRows({
 }) {
   const a = useInbox();
   const triageLayout = a.dateGroupPool === "inbox";
+  const ledgerMode = !triageLayout;
   const dupIds = possibleDuplicateIds;
 
-  const projectTextClass =
-    "block max-w-[10.5rem] truncate text-[13px] font-normal leading-tight text-[var(--neo-text-secondary)] opacity-75";
-  const categoryTextClass =
-    "block max-w-[6.5rem] truncate text-[12px] font-normal leading-tight text-[var(--neo-text-secondary)]";
-  const sourceClass =
-    "block max-w-[6.5rem] truncate text-[11px] font-medium leading-tight text-[var(--neo-text-secondary)]";
+  const projectTextClass = cn(
+    "block max-w-[10.5rem] truncate text-[13px] leading-tight text-[var(--neo-text-secondary)]",
+    ledgerMode ? "font-medium opacity-90" : "font-normal opacity-75"
+  );
+  const categoryTextClass = cn(
+    "block max-w-[6.5rem] truncate text-[12px] leading-tight text-[var(--neo-text-secondary)]",
+    "font-normal"
+  );
+  const sourceClass = cn(
+    "block max-w-[6.5rem] truncate text-[11px] leading-tight text-[var(--neo-text-secondary)]",
+    ledgerMode ? "font-normal opacity-85" : "font-medium"
+  );
 
   return (
     <>
@@ -820,6 +1038,7 @@ function DesktopRows({
               autoExpand={autoExpandDateGroups || forceExpanded}
               onToggle={() => onToggleDateKey(chunk.dateKey, chunkIdx)}
               groupSelect={groupSelect}
+              ledgerMode={ledgerMode}
             />
             {expanded
               ? chunk.rows.map((row) => {
@@ -853,31 +1072,38 @@ function DesktopRows({
                     !!row.referenceNo && (a.highlightReferenceNos?.has(row.referenceNo) ?? false);
                   const isInboxUploadDraft = isInboxUploadExpenseReference(row.referenceNo);
                   const systemHealthFocused = a.focusedExpenseId === row.id;
+                  const hasException =
+                    missingReceipt || issues.length > 0 || Boolean(headerLineMismatch);
 
                   return (
                     <tr
                       key={`desk-${row.id}`}
                       data-expense-id={row.id}
+                      data-expense-active={a.activeExpenseId === row.id ? "true" : "false"}
+                      data-expense-has-exception={ledgerMode && hasException ? "true" : undefined}
                       data-system-health-focus={systemHealthFocused ? "true" : undefined}
                       data-inbox-upload-draft={isInboxUploadDraft ? "" : undefined}
+                      aria-selected={ledgerMode && selectionEnabled ? rowSelected : undefined}
                       ref={(el) => {
                         a.rowElsRef.current[row.id] = el;
                       }}
                       className={cn(
-                        "exp-row group h-12 cursor-pointer border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] transition-[background-color,box-shadow] duration-150 ease-out hover:bg-[var(--neo-surface-muted)] [&>td]:align-middle [&>td]:px-2.5 [&>td]:py-1",
+                        "expense-row-continuity exp-row group h-12 cursor-pointer bg-[var(--neo-surface-raised)] transition-[background-color,box-shadow] duration-150 ease-out hover:bg-[var(--neo-surface-muted)] [&>td]:align-middle [&>td]:px-2.5 [&>td]:py-1",
+                        ledgerMode ? "border-b-0" : "border-b border-[var(--neo-border)]",
                         a.deletingExpenseId === row.id &&
                           "pointer-events-none opacity-0 duration-300 ease-out",
                         uploadHighlight &&
                           "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
                         a.listView === "unreviewed" &&
                           a.activeExpenseId === row.id &&
-                          "ring-1 ring-inset ring-amber-400/35 dark:ring-amber-500/30",
-                        systemHealthFocused &&
-                          "bg-[rgb(184_137_45_/_0.08)] shadow-[inset_4px_0_0_rgb(184_137_45_/_0.82),inset_0_0_0_1px_rgb(184_137_45_/_0.26)]",
+                          "ring-1 ring-inset ring-[var(--eo-border-strong)]",
+                        systemHealthFocused && "expense-ledger-row-high-attention",
+                        ledgerMode && hasException && "expense-ledger-row-exception",
+                        ledgerMode && a.activeExpenseId === row.id && "expense-ledger-row-active",
                         rowSelected &&
                           (triageLayout
-                            ? "bg-[rgb(184_137_45_/_0.09)] shadow-[inset_3px_0_0_0_var(--neo-gold)] ring-1 ring-inset ring-[rgb(184_137_45_/_0.28)]"
-                            : "bg-[rgb(184_137_45_/_0.08)] ring-1 ring-inset ring-[rgb(184_137_45_/_0.24)]")
+                            ? "bg-[var(--eo-surface-selected)] shadow-[inset_3px_0_0_0_var(--eo-text-primary)] ring-1 ring-inset ring-[var(--eo-border-strong)]"
+                            : "bg-[var(--eo-surface-selected)]")
                       )}
                       onClick={(e) => {
                         if (selectionEnabled && (e.metaKey || e.ctrlKey || e.shiftKey)) {
@@ -886,7 +1112,7 @@ function DesktopRows({
                           return;
                         }
                         if (inboxRowActivateIgnored(e.target)) return;
-                        if (a.listView === "unreviewed") a.setActiveExpenseId(row.id);
+                        a.setActiveExpenseId(row.id);
                         a.openExpensePreview(row);
                       }}
                     >
@@ -919,9 +1145,15 @@ function DesktopRows({
                               }}
                             />
                           )}
-                          <div className="min-w-0 flex-1">
+                          <div
+                            data-expense-merchant={ledgerMode ? "" : undefined}
+                            className="min-w-0 flex-1"
+                          >
                             <p
-                              className="min-w-0 max-w-full truncate text-[13px] font-semibold leading-tight text-[var(--neo-text-primary)] md:font-medium"
+                              className={cn(
+                                "min-w-0 max-w-full truncate text-[13px] leading-tight text-[var(--neo-text-primary)]",
+                                ledgerMode ? "font-semibold" : "font-semibold md:font-medium"
+                              )}
                               title={vendorClean || vendorTitle}
                             >
                               {vendorTitle}
@@ -935,29 +1167,43 @@ function DesktopRows({
                           </div>
                         </div>
                       </td>
-                      <td className="w-36 shrink-0">
+                      <td
+                        data-expense-context={ledgerMode ? "project" : undefined}
+                        className="w-36 shrink-0"
+                      >
                         <span className={projectTextClass} title={projLabel}>
                           {projLabel}
                         </span>
                       </td>
-                      <td className="w-24 shrink-0">
+                      <td
+                        data-expense-context={ledgerMode ? "category" : undefined}
+                        className="w-24 shrink-0"
+                      >
                         <span className={categoryTextClass} title={catLabel}>
                           {catLabel}
                         </span>
                       </td>
-                      <td className="w-24 shrink-0">
+                      <td
+                        data-expense-context={ledgerMode ? "source" : undefined}
+                        className="w-24 shrink-0"
+                      >
                         <span className={sourceClass} title={expensePaymentSourceDisplayLabel(row)}>
                           {expensePaymentSourceDisplayLabel(row)}
                         </span>
                       </td>
-                      <td className="w-[82px] shrink-0 whitespace-nowrap">
+                      <td
+                        data-expense-signals={ledgerMode ? "receipt" : undefined}
+                        className="w-[82px] shrink-0 whitespace-nowrap"
+                      >
                         <ExpenseReceiptCell
                           row={row}
                           onReceiptPreview={() => a.openReceiptPreview(row)}
                           onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
+                          onMissingReceipt={() => a.openExpensePreview(row, { mode: "edit" })}
                         />
                       </td>
                       <td
+                        data-expense-signals={ledgerMode ? "issues" : undefined}
                         className={cn(
                           "w-[190px] shrink-0",
                           headerLineMismatch ? "text-left" : "text-center"
@@ -973,16 +1219,30 @@ function DesktopRows({
                             }}
                           />
                         ) : (
-                          <ExpenseIssuesCell expenseId={row.id} issues={issues} />
+                          <ExpenseIssuesCell
+                            expenseId={row.id}
+                            issues={issues}
+                            informational={ledgerMode}
+                          />
                         )}
                       </td>
-                      <td className="w-[104px] shrink-0 whitespace-nowrap">
+                      <td
+                        data-expense-signals={ledgerMode ? "status" : undefined}
+                        className="w-[104px] shrink-0 whitespace-nowrap"
+                      >
                         <ExpenseStatusCell status={status} />
                       </td>
-                      <td className="w-[90px] shrink-0 whitespace-nowrap text-right tabular-nums">
+                      <td
+                        data-expense-amount={ledgerMode ? "" : undefined}
+                        className="w-[90px] shrink-0 whitespace-nowrap text-right tabular-nums"
+                      >
                         <NeoAmount
                           tone="expense"
-                          className={cn(triageLayout ? "text-[15px] leading-none" : "text-sm")}
+                          className={cn(
+                            triageLayout
+                              ? "text-[15px] leading-none"
+                              : "text-[15px] font-semibold leading-none"
+                          )}
                         >
                           {formatCurrency(-rowTotal)}
                         </NeoAmount>
@@ -1007,11 +1267,13 @@ function DateGroupMobileHeader({
   autoExpand,
   onToggle,
   groupSelect,
+  ledgerMode,
 }: {
   chunk: ExpenseDateGroup;
   expanded: boolean;
   autoExpand: boolean;
   onToggle: () => void;
+  ledgerMode: boolean;
   groupSelect?: {
     show: boolean;
     checked: boolean;
@@ -1026,7 +1288,13 @@ function DateGroupMobileHeader({
   }, [groupSelect?.indeterminate, groupSelect?.show]);
 
   return (
-    <li className="list-none border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-0">
+    <li
+      data-expense-date-group={ledgerMode ? "mobile" : undefined}
+      className={cn(
+        "list-none border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-0",
+        ledgerMode && "expense-ledger-date-group"
+      )}
+    >
       <div className="flex min-w-0 items-stretch">
         {groupSelect?.show ? (
           <div className="flex shrink-0 items-center border-r border-[var(--neo-border)] px-2">
@@ -1069,7 +1337,7 @@ function DateGroupMobileHeader({
               {chunk.missingReceiptCount > 0 ? (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
+                  <span className="text-[var(--eo-warning)]">
                     {chunk.missingReceiptCount} missing receipt
                     {chunk.missingReceiptCount !== 1 ? "s" : ""}
                   </span>
@@ -1119,14 +1387,8 @@ function MobileRows({
 }) {
   const a = useInbox();
   const triageLayout = a.dateGroupPool === "inbox";
+  const ledgerMode = !triageLayout;
   const dupIds = possibleDuplicateIds;
-  const projectTextClass =
-    "hidden max-w-full truncate text-[13px] font-normal leading-tight text-[var(--neo-text-secondary)] opacity-75 sm:inline-block";
-  const categoryTextClass =
-    "hidden max-w-full truncate text-[12px] font-normal leading-tight text-[var(--neo-text-secondary)] sm:inline-block";
-  const sourceBadgeClass =
-    "bg-[var(--neo-surface-muted)] font-normal text-[var(--neo-text-secondary)]";
-
   return (
     <>
       {dateChunks.map((chunk, chunkIdx) => {
@@ -1156,6 +1418,7 @@ function MobileRows({
               autoExpand={autoExpandDateGroups || forceExpanded}
               onToggle={() => onToggleDateKey(chunk.dateKey, chunkIdx)}
               groupSelect={groupSelect}
+              ledgerMode={ledgerMode}
             />
             {expanded
               ? chunk.rows.map((row) => {
@@ -1190,18 +1453,31 @@ function MobileRows({
                     !!row.referenceNo && (a.highlightReferenceNos?.has(row.referenceNo) ?? false);
                   const isInboxUploadDraft = isInboxUploadExpenseReference(row.referenceNo);
                   const systemHealthFocused = a.focusedExpenseId === row.id;
+                  const hasException =
+                    missingReceipt || issues.length > 0 || Boolean(headerLineMismatch);
+                  const statusMeta = inboxStatusMeta(status);
+                  const hasOperationalStatus =
+                    statusMeta.label === "Draft" ||
+                    statusMeta.label === "Needs Review" ||
+                    statusMeta.label === "Rejected";
 
                   return (
                     <NeoMobileCard asChild selected={rowSelected} key={row.id}>
                       <li
                         data-expense-id={row.id}
+                        data-expense-active={a.activeExpenseId === row.id ? "true" : "false"}
+                        data-expense-has-exception={ledgerMode && hasException ? "true" : undefined}
                         data-system-health-focus={systemHealthFocused ? "true" : undefined}
                         data-inbox-upload-draft={isInboxUploadDraft ? "" : undefined}
+                        data-expense-selected={
+                          ledgerMode && selectionEnabled ? String(rowSelected) : undefined
+                        }
                         ref={(el) => {
                           a.rowElsRef.current[row.id] = el;
                         }}
                         className={cn(
-                          "exp-row group list-none cursor-pointer rounded-none border-x-0 border-t-0 border-b border-[var(--neo-border)] px-3 py-2.5 shadow-none",
+                          "expense-row-continuity exp-row group list-none cursor-pointer rounded-none border-x-0 border-t-0 px-3 py-2.5 shadow-none",
+                          ledgerMode ? "border-b-0" : "border-b border-[var(--neo-border)]",
                           "min-h-[52px] hover:bg-[var(--neo-surface-muted)]",
                           a.deletingExpenseId === row.id &&
                             "pointer-events-none opacity-0 duration-300 ease-out",
@@ -1209,13 +1485,14 @@ function MobileRows({
                             "bg-emerald-500/[0.06] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)] dark:bg-emerald-500/[0.08] dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.22)]",
                           a.listView === "unreviewed" &&
                             a.activeExpenseId === row.id &&
-                            "ring-1 ring-inset ring-amber-400/35 dark:ring-amber-500/30",
-                          systemHealthFocused &&
-                            "bg-[rgb(184_137_45_/_0.08)] shadow-[inset_4px_0_0_rgb(184_137_45_/_0.82),inset_0_0_0_1px_rgb(184_137_45_/_0.26)]",
+                            "ring-1 ring-inset ring-[var(--eo-border-strong)]",
+                          systemHealthFocused && "expense-ledger-row-high-attention",
+                          ledgerMode && hasException && "expense-ledger-row-exception",
+                          ledgerMode && a.activeExpenseId === row.id && "expense-ledger-row-active",
                           rowSelected &&
                             (triageLayout
-                              ? "shadow-[inset_3px_0_0_0_var(--neo-gold)]"
-                              : "ring-1 ring-inset ring-[rgb(184_137_45_/_0.24)]")
+                              ? "bg-[var(--eo-surface-selected)] shadow-[inset_3px_0_0_0_var(--eo-text-primary)]"
+                              : "bg-[var(--eo-surface-selected)]")
                         )}
                         onTouchStart={
                           selectionEnabled && !showSelectionUi ? lp.onTouchStart : undefined
@@ -1236,7 +1513,7 @@ function MobileRows({
                             return;
                           }
                           if (inboxRowActivateIgnored(e.target)) return;
-                          if (a.listView === "unreviewed") a.setActiveExpenseId(row.id);
+                          a.setActiveExpenseId(row.id);
                           a.openExpensePreview(row);
                         }}
                       >
@@ -1266,8 +1543,14 @@ function MobileRows({
                             />
                           )}
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="min-w-0 flex-1">
+                            <div
+                              data-expense-row-primary={ledgerMode ? "" : undefined}
+                              className="flex items-start justify-between gap-2"
+                            >
+                              <div
+                                data-expense-merchant={ledgerMode ? "" : undefined}
+                                className="min-w-0 flex-1"
+                              >
                                 <p
                                   className="line-clamp-1 min-w-0 break-words text-sm font-semibold leading-tight text-[var(--neo-text-primary)]"
                                   title={vendorClean || vendorTitle}
@@ -1275,13 +1558,38 @@ function MobileRows({
                                   {vendorTitle}
                                 </p>
                                 <p
+                                  data-expense-row-description={ledgerMode ? "" : undefined}
                                   className="mt-0.5 truncate text-[11px] leading-tight text-[var(--neo-text-secondary)]"
                                   title={secondaryLine}
                                 >
                                   {secondaryLine}
                                 </p>
+                                <p
+                                  data-expense-context={ledgerMode ? "" : undefined}
+                                  data-expense-mobile-context
+                                  data-expense-row-metadata={ledgerMode ? "" : undefined}
+                                  className="mt-1 line-clamp-1 text-[11px] leading-tight text-[var(--neo-text-tertiary)]"
+                                  aria-label={`Project ${projLabel}, category ${catLabel}, source ${expensePaymentSourceDisplayLabel(row)}`}
+                                  title={`${projLabel} · ${catLabel} · ${expensePaymentSourceDisplayLabel(row)}`}
+                                >
+                                  <span
+                                    data-expense-context-part="project"
+                                    className="font-medium text-[var(--neo-text-secondary)]"
+                                  >
+                                    {projLabel}
+                                  </span>{" "}
+                                  <span aria-hidden>·</span>{" "}
+                                  <span data-expense-context-part="category">{catLabel}</span>{" "}
+                                  <span aria-hidden>·</span>{" "}
+                                  <span data-expense-context-part="source">
+                                    {expensePaymentSourceDisplayLabel(row)}
+                                  </span>
+                                </p>
                               </div>
-                              <div className="flex max-w-[42%] shrink-0 flex-col items-end gap-1">
+                              <div
+                                data-expense-amount={ledgerMode ? "" : undefined}
+                                className="flex max-w-[42%] shrink-0 flex-col items-end gap-1 whitespace-nowrap text-right tabular-nums"
+                              >
                                 <NeoAmount
                                   tone="expense"
                                   className={cn(
@@ -1291,34 +1599,54 @@ function MobileRows({
                                   {formatCurrency(-rowTotal)}
                                 </NeoAmount>
                               </div>
+                              {ledgerMode ? (
+                                <div
+                                  data-expense-compact-row-actions
+                                  className="hidden shrink-0 items-center"
+                                >
+                                  <RowActionsMenu row={row} />
+                                </div>
+                              ) : null}
                             </div>
-                            <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1">
-                              <span className={projectTextClass} title={projLabel}>
-                                {projLabel}
-                              </span>
-                              <span className={categoryTextClass} title={catLabel}>
-                                {catLabel}
-                              </span>
-                              <span
-                                className={cn(compactTextPill, sourceBadgeClass, "max-w-full")}
-                                title={expensePaymentSourceDisplayLabel(row)}
-                              >
-                                {expensePaymentSourceDisplayLabel(row)}
-                              </span>
+                            <div
+                              data-expense-signals={ledgerMode ? "" : undefined}
+                              data-expense-signal-row={
+                                ledgerMode
+                                  ? hasException || hasOperationalStatus
+                                    ? "attention"
+                                    : "quiet"
+                                  : undefined
+                              }
+                              className="mt-1.5 flex min-w-0 flex-wrap items-center gap-1"
+                            >
                               <ExpenseReceiptCell
                                 row={row}
                                 onReceiptPreview={() => a.openReceiptPreview(row)}
                                 onReceiptPrefetch={() => a.prefetchReceiptUrls?.(row)}
+                                onMissingReceipt={() => a.openExpensePreview(row, { mode: "edit" })}
                                 touch
                               />
                               {headerLineMismatch ? null : (
-                                <ExpenseIssuesCell expenseId={row.id} issues={issues} touch />
+                                <ExpenseIssuesCell
+                                  expenseId={row.id}
+                                  issues={issues}
+                                  touch
+                                  informational={ledgerMode}
+                                />
                               )}
-                              <ExpenseStatusCell status={status} />
-                              <RowActionsMenu row={row} />
+                              <span
+                                data-expense-status-signal={
+                                  ledgerMode && !hasOperationalStatus ? "complete" : "attention"
+                                }
+                              >
+                                <ExpenseStatusCell status={status} />
+                              </span>
+                              <span data-expense-mobile-row-actions>
+                                <RowActionsMenu row={row} />
+                              </span>
                             </div>
                             {headerLineMismatch ? (
-                              <div className="mt-2">
+                              <div data-expense-header-mismatch-row className="mt-2">
                                 <ExpenseHeaderLineMismatchIssueCell
                                   mismatch={headerLineMismatch}
                                   touch
@@ -1359,6 +1687,7 @@ export function ExpenseInboxTransactionList({
   bulkActions?: ExpenseListBulkActionsApi;
 }) {
   const dupIds = possibleDuplicateIds ?? new Set<string>();
+  const ledgerMode = api.dateGroupPool === "expenses";
   const rootRef = React.useRef<HTMLDivElement>(null);
   const desktopLayout = useDesktopTableLayout(rootRef);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
@@ -1537,7 +1866,8 @@ export function ExpenseInboxTransactionList({
     <InboxCtx.Provider value={api}>
       <div
         ref={rootRef}
-        className="flex min-w-0 flex-col pb-[max(0.35rem,env(safe-area-inset-bottom,0px))]"
+        data-expense-ledger-content
+        className="flex min-h-0 min-w-0 flex-1 flex-col pb-[max(0.35rem,env(safe-area-inset-bottom,0px))]"
       >
         {bulkActions && showSelectionUi ? (
           <ExpenseBulkActionBar
@@ -1559,7 +1889,6 @@ export function ExpenseInboxTransactionList({
               void runBulk((ids) => bulkActions.runSetPayment(ids, paymentAccountId))
             }
             onDeleteMany={() => void runBulk(bulkActions.runDeleteMany)}
-            onDownload={bulkActions.onDownloadComingSoon}
           />
         ) : null}
         {desktopLayout ? (
@@ -1618,7 +1947,10 @@ export function ExpenseInboxTransactionList({
             </tbody>
           </NeoTable>
         ) : (
-          <ul className="exp-divide flex flex-col border-y border-[var(--neo-border)]">
+          <ul
+            data-expense-mobile-ledger={ledgerMode ? "" : undefined}
+            className="exp-divide flex flex-col border-y border-[var(--neo-border)]"
+          >
             <MobileRows
               dateChunks={dateChunks}
               expandedByDate={expandedByDate}

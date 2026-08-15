@@ -28,22 +28,26 @@ export function expenseListRowById(page: Page, expenseId: string): Locator {
 }
 
 /**
- * Vendor filter on inbox/archive (`ExpensesPageClient`). Two inputs share placeholder `Search…`
- * (mobile `md:hidden` + desktop `hidden md:flex`); must target the **visible** one or fills no-op on Desktop.
+ * Vendor filter on inbox/archive (`ExpensesPageClient`). Mobile and desktop controls share the
+ * stable Search expenses aria label; target the visible one so fills are never applied to a hidden UI.
  */
 export function expensesVendorSearch(page: Page): Locator {
-  return page.locator(".expenses-ui").getByPlaceholder("Search…").filter({ visible: true }).first();
+  return page
+    .locator(".expenses-ui")
+    .locator('input[aria-label="Search expenses"]')
+    .filter({ visible: true })
+    .first();
 }
 
 /**
- * Inbox / Expenses toolbar renders two "Quick" buttons (mobile `md:hidden` + desktop `hidden md:block`).
+ * Inbox / Expenses toolbar renders two "New Expense" buttons (mobile `md:hidden` + desktop `hidden md:block`).
  * Only one is visible; `nth(0)` / `nth(1)` alone is wrong when the count is 1 or order differs.
  */
 export async function waitForVisibleQuickExpenseButton(
   page: Page,
   timeoutMs = 150_000
 ): Promise<void> {
-  const buttons = page.getByRole("button", { name: /^Quick$/ });
+  const buttons = page.getByRole("button", { name: /^New Expense$/ });
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const n = await buttons.count();
@@ -56,12 +60,12 @@ export async function waitForVisibleQuickExpenseButton(
     }
     await page.waitForTimeout(100);
   }
-  throw new Error('Visible "Quick" button not found');
+  throw new Error('Visible "New Expense" button not found');
 }
 
 export async function clickVisibleQuickExpenseButton(page: Page): Promise<void> {
   await waitForVisibleQuickExpenseButton(page);
-  const buttons = page.getByRole("button", { name: /^Quick$/ });
+  const buttons = page.getByRole("button", { name: /^New Expense$/ });
   const n = await buttons.count();
   for (let i = 0; i < n; i++) {
     const b = buttons.nth(i);
@@ -70,7 +74,7 @@ export async function clickVisibleQuickExpenseButton(page: Page): Promise<void> 
       return;
     }
   }
-  throw new Error('Visible "Quick" button not found');
+  throw new Error('Visible "New Expense" button not found');
 }
 
 /** Radix project Select updates async; wait until the trigger shows the chosen label before Save. */

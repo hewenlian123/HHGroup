@@ -7,6 +7,8 @@ import {
   expenseListRowById,
   waitForExpensesQuerySuccess,
 } from "./e2e-expenses-helpers";
+import { loginAsE2EOwner } from "./e2e-auth-owner";
+import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 
 type SeededSystemHealthExpense = {
   expenseId: string;
@@ -35,6 +37,7 @@ async function seedSystemHealthExpense(admin: SupabaseClient): Promise<SeededSys
   const expenseId = randomUUID();
   const projectId = randomUUID();
   const prefix = `E2E-SH-FOCUS-${Date.now().toString(36).toUpperCase()}`;
+  const expenseDate = hawaiiTodayYmd();
 
   const projectInsert = await admin.from("projects").insert({
     id: projectId,
@@ -45,7 +48,7 @@ async function seedSystemHealthExpense(admin: SupabaseClient): Promise<SeededSys
 
   const expenseInsert = await admin.from("expenses").insert({
     id: expenseId,
-    expense_date: "2026-06-13",
+    expense_date: expenseDate,
     vendor_name: `${prefix} Home Depot`,
     vendor: `${prefix} Home Depot`,
     payment_method: "Visa",
@@ -98,16 +101,13 @@ test.describe("Expenses System Health issue focus", () => {
       seeded = await seedSystemHealthExpense(admin);
 
       await page.setViewportSize({ width: 1440, height: 900 });
+      await loginAsE2EOwner(page);
       await page.goto(
         `${E2E_FINANCIAL_EXPENSES_ARCHIVE_URL}?focusExpenseId=${seeded.expenseId}&issue=expense_header_line_total_mismatch`,
         { waitUntil: "domcontentloaded", timeout: 90_000 }
       );
       await page.locator("main").first().waitFor({ state: "visible", timeout: 90_000 });
       await waitForExpensesQuerySuccess(page, 90_000);
-
-      const dateGroup = page.getByRole("button", { name: /Jun 13, 2026/ }).first();
-      await expect(dateGroup).toBeVisible({ timeout: 60_000 });
-      await expect(dateGroup).toHaveAttribute("aria-expanded", "true");
 
       const row = expenseListRowById(page, seeded.expenseId);
       await expect(row).toBeVisible({ timeout: 60_000 });
@@ -123,9 +123,9 @@ test.describe("Expenses System Health issue focus", () => {
       );
 
       await row.getByRole("button", { name: "Review issue" }).click();
-      const dialog = page.getByRole("dialog", { name: /^Expense$/ });
-      await expect(dialog).toBeVisible({ timeout: 15_000 });
-      const mismatchPanel = dialog.getByTestId("expense-header-line-mismatch-panel");
+      const detailPanel = page.getByRole("complementary", { name: "Expense detail" });
+      await expect(detailPanel).toBeVisible({ timeout: 15_000 });
+      const mismatchPanel = detailPanel.getByTestId("expense-header-line-mismatch-panel");
       await expect(mismatchPanel).toContainText(
         "System Health found a header/line total mismatch."
       );

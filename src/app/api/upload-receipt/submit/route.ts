@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase-server";
-import { isWorkerReceiptUploadPath, WORKER_RECEIPT_BUCKET } from "@/lib/worker-receipt-storage";
 
 const MAX_WORKER_RECEIPT_AMOUNT = 100_000;
+const WORKER_RECEIPT_UPLOAD_PATH_RE =
+  /^uploads\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|png|webp|pdf)$/i;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const EXPENSE_TYPES = new Set([
   "Building Materials",
@@ -30,24 +31,8 @@ function isValidIsoDate(value: string): boolean {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
-function normalizeWorkerReceiptUploadPath(value: string): string | null {
-  if (isWorkerReceiptUploadPath(value)) return value;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "");
-  if (!supabaseUrl) return null;
-
-  try {
-    const parsed = new URL(value);
-    const expected = new URL(supabaseUrl);
-    if (parsed.origin !== expected.origin) return null;
-    if (parsed.search || parsed.hash) return null;
-
-    const prefix = `/storage/v1/object/public/${WORKER_RECEIPT_BUCKET}/`;
-    if (!parsed.pathname.startsWith(prefix)) return null;
-    const storagePath = decodeURIComponent(parsed.pathname.slice(prefix.length));
-    return isWorkerReceiptUploadPath(storagePath) ? storagePath : null;
-  } catch {
-    return null;
-  }
+function isWorkerReceiptUploadPath(value: string): boolean {
+  return WORKER_RECEIPT_UPLOAD_PATH_RE.test(value);
 }
 
 /**
@@ -80,7 +65,7 @@ export async function POST(req: Request) {
     const expenseType = EXPENSE_TYPES.has(expenseTypeRaw) ? expenseTypeRaw : "Other";
     const vendor = trimText(body.vendor, 160);
     const amount = Number(body.amount);
-    const receiptReference = trimText(body.receiptPath ?? body.receiptUrl, 1000);
+    const receiptUrl = trimText(body.receiptUrl, 1000);
     const description = trimText(body.description, 500);
     const notes = trimText(body.notes, 1000);
     const receiptDateRaw = trimText(body.receiptDate, 20) ?? "";
@@ -102,10 +87,7 @@ export async function POST(req: Request) {
     if (receiptDateRaw && !isValidIsoDate(receiptDateRaw)) {
       return jsonError("Receipt date is invalid.", 400);
     }
-    const receiptPath = receiptReference
-      ? normalizeWorkerReceiptUploadPath(receiptReference)
-      : null;
-    if (!receiptPath) {
+    if (!receiptUrl || !isWorkerReceiptUploadPath(receiptUrl)) {
       return jsonError("Receipt upload reference is invalid.", 400);
     }
 
@@ -117,7 +99,7 @@ export async function POST(req: Request) {
         expense_type: expenseType,
         vendor,
         amount,
-        receipt_url: receiptPath,
+        receipt_url: receiptUrl,
         description,
         notes,
         receipt_date: receiptDate,

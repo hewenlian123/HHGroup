@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
-import { ChevronDown, Download } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PaymentAccountRow } from "@/lib/data";
 
@@ -29,7 +29,6 @@ export type ExpenseBulkActionBarProps = {
   onSetCategory: (category: string) => void;
   onSetPayment: (paymentAccountId: string | null) => void;
   onDeleteMany: () => void;
-  onDownload: () => void;
 };
 
 export function ExpenseBulkActionBar({
@@ -45,7 +44,6 @@ export function ExpenseBulkActionBar({
   onSetCategory,
   onSetPayment,
   onDeleteMany,
-  onDownload,
 }: ExpenseBulkActionBarProps) {
   const inbox = pool === "inbox";
 
@@ -111,7 +109,10 @@ export function ExpenseBulkActionBar({
                 <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-64 w-52 overflow-y-auto">
+            <DropdownMenuContent
+              align="start"
+              className="expenses-ui-dialog max-h-64 w-52 overflow-y-auto"
+            >
               <DropdownMenuItem
                 className="cursor-pointer text-xs"
                 onSelect={() => onAssignProject(null)}
@@ -145,7 +146,10 @@ export function ExpenseBulkActionBar({
                 <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-64 w-48 overflow-y-auto">
+            <DropdownMenuContent
+              align="start"
+              className="expenses-ui-dialog max-h-64 w-48 overflow-y-auto"
+            >
               {categories.map((c) => (
                 <DropdownMenuItem
                   key={c}
@@ -173,7 +177,10 @@ export function ExpenseBulkActionBar({
                 <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-64 w-52 overflow-y-auto">
+            <DropdownMenuContent
+              align="start"
+              className="expenses-ui-dialog max-h-64 w-52 overflow-y-auto"
+            >
               <DropdownMenuItem
                 className="cursor-pointer text-xs"
                 onSelect={() => onSetPayment(null)}
@@ -207,7 +214,10 @@ export function ExpenseBulkActionBar({
                 <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-64 w-52 overflow-y-auto">
+            <DropdownMenuContent
+              align="start"
+              className="expenses-ui-dialog max-h-64 w-52 overflow-y-auto"
+            >
               <DropdownMenuItem
                 className="cursor-pointer text-xs"
                 onSelect={() => onAssignProject(null)}
@@ -238,7 +248,10 @@ export function ExpenseBulkActionBar({
                 <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="max-h-64 w-48 overflow-y-auto">
+            <DropdownMenuContent
+              align="start"
+              className="expenses-ui-dialog max-h-64 w-48 overflow-y-auto"
+            >
               {categories.map((c) => (
                 <DropdownMenuItem
                   key={c}
@@ -259,17 +272,6 @@ export function ExpenseBulkActionBar({
             onClick={onDeleteMany}
           >
             Delete
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1 text-xs text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
-            disabled={busy || selectedCount === 0}
-            onClick={onDownload}
-          >
-            <Download className="h-3.5 w-3.5" aria-hidden />
-            Download
           </Button>
         </>
       )}

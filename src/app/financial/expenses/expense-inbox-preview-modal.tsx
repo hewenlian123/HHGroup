@@ -34,6 +34,7 @@ import { ExpensePaymentSourceSelect } from "@/components/expense-payment-source-
 import { PaymentAccountSelect } from "@/components/payment-account-select";
 import { ExpenseSearchableSelect } from "@/components/expense-searchable-select";
 import { ExpenseSubcontractDeductionFields } from "@/components/expense-subcontract-deduction-fields";
+import { ExpenseItemsField } from "@/components/expense-items-field";
 import type { PaymentAccountRow } from "@/lib/data";
 import { persistLastExpensePaymentAccountId } from "@/lib/expense-payment-preferences";
 import type { ExpenseReviewSavePatch } from "./edit-expense-modal";
@@ -79,22 +80,30 @@ import { expenseAttachmentStorageDedupeKey } from "@/lib/expense-attachment-dedu
 import { ExpenseEditAttachmentsSection } from "./expense-edit-attachments-section";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import {
+  EXPENSE_FORM_FIELDS,
+  composeExpenseDescription,
+  parseExpenseDescription,
+} from "@/lib/expense-form-system";
+import { ArrowLeft, ChevronDown, FileText, X } from "lucide-react";
 
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
 
 const FIELD_LABEL =
-  "text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]";
+  "text-[10px] font-semibold uppercase tracking-[0.04em] text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]";
 const INPUT_CLASS =
-  "h-10 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-sm text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11 max-md:text-base";
+  "h-11 rounded-md border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-primary,var(--neo-surface-raised))] text-sm text-[var(--eo-text-primary,var(--neo-text-primary))] shadow-none placeholder:text-[var(--eo-text-tertiary,var(--neo-text-tertiary))] focus-visible:border-[var(--eo-focus,var(--neo-border-strong))] focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))] max-md:min-h-12 max-md:text-base";
 const SELECT_TRIGGER_CLASS =
-  "h-10 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-sm text-[var(--neo-text-primary)] shadow-none focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11 max-md:text-base [&>span]:line-clamp-1";
+  "h-11 rounded-md border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-primary,var(--neo-surface-raised))] text-sm text-[var(--eo-text-primary,var(--neo-text-primary))] shadow-none focus-visible:border-[var(--eo-focus,var(--neo-border-strong))] focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))] max-md:min-h-12 max-md:text-base [&>span]:line-clamp-1";
 const PREVIEW_SECONDARY_BUTTON =
-  "rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] focus-visible:ring-[var(--neo-gold-ring)]";
+  "rounded-md border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-primary,var(--neo-surface-raised))] text-[var(--eo-text-primary,var(--neo-text-primary))] shadow-none hover:bg-[var(--eo-surface-selected,var(--neo-surface-muted))] focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]";
+const PREVIEW_QUIET_BUTTON =
+  "rounded-md border-transparent bg-transparent text-[var(--eo-text-secondary,var(--neo-text-secondary))] shadow-none hover:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] hover:text-[var(--eo-text-primary,var(--neo-text-primary))] focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]";
 const PREVIEW_PRIMARY_BUTTON =
-  "rounded-lg border-transparent bg-[var(--neo-gold)] text-zinc-950 shadow-none hover:bg-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)]";
+  "rounded-md border-transparent bg-[var(--eo-action-primary,#171717)] text-[var(--eo-action-primary-text,#fff)] shadow-none hover:bg-[var(--eo-action-primary-hover,#2a2a2a)] focus-visible:ring-[var(--eo-focus-ring,rgb(23_23_23_/_0.24))]";
 const PREVIEW_WARNING_CHIP =
-  "rounded-md border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]";
+  "rounded-md border border-[var(--eo-warning-border,rgb(180_83_9_/_0.22))] bg-[var(--eo-warning-soft,rgb(245_158_11_/_0.10))] px-1.5 py-0.5 text-[11px] font-medium text-[var(--eo-warning,#a16207)]";
 
 export type ExpenseInboxPreviewSavePayload = ExpenseReviewSavePatch;
 
@@ -170,8 +179,101 @@ function projectLabelFromExpense(expense: Expense, projectNameById: Map<string, 
 function ModalSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <h3 className={cn(FIELD_LABEL, "border-b border-[var(--neo-border)] pb-2")}>{title}</h3>
+      <h3 data-expense-detail-section-title className={FIELD_LABEL}>
+        {title}
+      </h3>
       {children}
+    </div>
+  );
+}
+
+function ProgressiveDisclosure({
+  enabled,
+  children,
+}: {
+  enabled: boolean;
+  children: React.ReactNode;
+}) {
+  if (!enabled) return <>{children}</>;
+  return (
+    <details className="expense-more-details group pt-1">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-1.5 py-2 text-[13px] font-medium text-[var(--eo-text-primary,var(--neo-text-primary))] outline-none transition-colors duration-120 hover:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]">
+        More Details
+        <ChevronDown
+          className="h-4 w-4 transition-transform duration-180 group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div className="expense-progressive-content space-y-5 pb-2 pt-4">{children}</div>
+    </details>
+  );
+}
+
+function WorkerEditField({
+  value,
+  workers,
+  saving,
+  onChange,
+}: {
+  value: string;
+  workers: WorkerOption[];
+  saving: boolean;
+  onChange: (workerId: string | null) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.worker.label}</label>
+      <ExpenseSearchableSelect
+        id="edit-expense-worker-select"
+        value={value}
+        disabled={saving}
+        className={SELECT_TRIGGER_CLASS}
+        placeholder="Worker"
+        searchPlaceholder="Search workers…"
+        emptyText="No matching workers"
+        options={[
+          { value: EXPENSE_WORKER_SELECT_NONE, label: "—", searchText: "none no worker" },
+          ...workers.map((worker) => ({
+            value: worker.id,
+            label: worker.name,
+            searchText: worker.id,
+          })),
+        ]}
+        onValueChange={(nextValue) =>
+          onChange(nextValue === EXPENSE_WORKER_SELECT_NONE ? null : nextValue)
+        }
+      />
+    </div>
+  );
+}
+
+function PaymentSourceEditField({
+  value,
+  saving,
+  onChange,
+}: {
+  value: Expense["sourceType"];
+  saving: boolean;
+  onChange: (sourceType: Expense["sourceType"]) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.paymentSource.label}</label>
+        <Link
+          href="/settings/expenses"
+          className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+        >
+          Manage
+        </Link>
+      </div>
+      <ExpensePaymentSourceSelect
+        value={(value ?? "company") as NonNullable<Expense["sourceType"]>}
+        onValueChange={onChange}
+        disabled={saving}
+        id="edit-expense-payment-source-select"
+        className={SELECT_TRIGGER_CLASS}
+      />
     </div>
   );
 }
@@ -197,7 +299,7 @@ function HeaderLineMismatchPanel({
   return (
     <div
       data-testid="expense-header-line-mismatch-panel"
-      className="rounded-xl border border-[rgb(184_137_45_/_0.26)] bg-[rgb(184_137_45_/_0.08)] p-3 shadow-[inset_3px_0_0_rgb(184_137_45_/_0.72)]"
+      className="rounded-xl border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] p-3 shadow-[inset_3px_0_0_var(--eo-warning)]"
       role="status"
     >
       <p className="text-sm font-semibold text-[var(--neo-text-primary)]">
@@ -270,6 +372,14 @@ type Props = {
   onAttachmentsUpdated?: (expense: Expense) => void;
   /** System Health issue context for read-only diagnostic display. */
   issueContext?: ExpenseIssueFocus | null;
+  /** Workspace routes render the same canonical editor inline; legacy surfaces may retain Dialog. */
+  presentation?: "dialog" | "panel";
+  /** Invoked only after `onSave` confirms success and local/cache state is reconciled. */
+  onSaveAndNext?: () => void;
+  /** URL-restored request to open the contextual receipt evidence surface. */
+  receiptEvidenceRequested?: boolean;
+  /** Keep the workspace URL in sync with the contextual evidence surface. */
+  onReceiptEvidenceChange?: (open: boolean) => void;
 };
 
 export function ExpenseInboxPreviewModal({
@@ -289,6 +399,10 @@ export function ExpenseInboxPreviewModal({
   possibleDuplicate = false,
   onAttachmentsUpdated,
   issueContext = null,
+  presentation = "dialog",
+  onSaveAndNext,
+  receiptEvidenceRequested = false,
+  onReceiptEvidenceChange,
 }: Props) {
   const { toast } = useToast();
   const { openPreview, patchPreview } = useAttachmentPreview();
@@ -296,6 +410,7 @@ export function ExpenseInboxPreviewModal({
   patchPreviewRef.current = patchPreview;
   const inboxPreviewSessionRef = React.useRef(0);
   const inboxPreviewIndexRef = React.useRef(0);
+  const restoredReceiptExpenseIdRef = React.useRef<string | null>(null);
   const [mode, setMode] = React.useState<"preview" | "edit">("preview");
   const [markBusy, setMarkBusy] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -309,6 +424,7 @@ export function ExpenseInboxPreviewModal({
   const [workerId, setWorkerId] = React.useState<string | null>(null);
   const [category, setCategory] = React.useState("Other");
   const [notes, setNotes] = React.useState("");
+  const [items, setItems] = React.useState<string[]>([]);
   const [expenseDate, setExpenseDate] = React.useState("");
   const [sourceType, setSourceType] = React.useState<Expense["sourceType"]>("company");
   const [paymentMethod, setPaymentMethod] = React.useState("");
@@ -324,6 +440,8 @@ export function ExpenseInboxPreviewModal({
   const [previewPmArchived, setPreviewPmArchived] = React.useState(false);
   const [previewCatArchived, setPreviewCatArchived] = React.useState(false);
   const [previewPaArchived, setPreviewPaArchived] = React.useState(false);
+  const vendorInputRef = React.useRef<HTMLInputElement>(null);
+  const editActionRef = React.useRef<HTMLButtonElement>(null);
   /** Preview-mode attachment thumbnails: keyed by storage dedupe key (same signing path as list thumbs). */
   const [previewThumbSignedByDedupeKey, setPreviewThumbSignedByDedupeKey] = React.useState<
     Record<string, string | null>
@@ -368,6 +486,12 @@ export function ExpenseInboxPreviewModal({
   }, [open, expenseId]);
 
   React.useEffect(() => {
+    if (!open || mode !== "edit") return;
+    const frame = window.requestAnimationFrame(() => vendorInputRef.current?.focus());
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, mode]);
+
+  React.useEffect(() => {
     if (!expense) return;
     setVendorName(expense.vendorName ?? "");
     setAmount(String(getExpenseTotal(expense)));
@@ -376,7 +500,9 @@ export function ExpenseInboxPreviewModal({
     setCostAllocation(expenseCostAllocationFromProjectId(nextProjectId));
     setWorkerId(expense.workerId ?? null);
     setCategory(expense.lines[0]?.category ?? "Other");
-    setNotes(stripInboxUploadNoiseFromText(expense.notes ?? ""));
+    const parsedDescription = parseExpenseDescription(expense.notes ?? "");
+    setNotes(stripInboxUploadNoiseFromText(parsedDescription.description));
+    setItems(parsedDescription.items);
     setExpenseDate((expense.date ?? "").slice(0, 10));
     setSourceType(expense.sourceType ?? "company");
     setPaymentMethod((expense.paymentMethod ?? "").trim());
@@ -448,9 +574,16 @@ export function ExpenseInboxPreviewModal({
       attachments,
     });
   }, [expense, attachments]);
+  const displayedDescription = React.useMemo(() => {
+    const parsed = parseExpenseDescription(expense?.notes ?? "");
+    return {
+      ...parsed,
+      description: stripInboxUploadNoiseFromText(parsed.description),
+    };
+  }, [expense?.notes]);
 
   React.useEffect(() => {
-    if (!open || !expense) {
+    if (!open || !expense || receiptItems.length === 0) {
       setSecureReceiptItems([]);
       setThumbById({});
       setPreviewThumbSignedByDedupeKey({});
@@ -508,6 +641,24 @@ export function ExpenseInboxPreviewModal({
     setSecureReceiptItems(secure);
     return secure;
   }, []);
+  const receiptPreviewPresentation = React.useMemo(
+    () =>
+      expense
+        ? {
+            kind: "receipt" as const,
+            metadata: {
+              merchant: (expense.vendorName ?? "").trim() || "Needs Review",
+              expenseDate: formatDate(expense.date),
+              amount: formatCurrency(getExpenseTotal(expense)),
+              project: projectLabelFromExpense(expense, projectNameById),
+              category: expense.lines[0]?.category?.trim() ?? "",
+              paymentSource: expense.paymentAccountName || expense.paymentMethod,
+              status: expenseStatusUiLabel(expense.status),
+            },
+          }
+        : undefined,
+    [expense, projectNameById]
+  );
 
   const openAttachmentPreview = React.useCallback(
     (att: ExpenseAttachment) => {
@@ -560,10 +711,13 @@ export function ExpenseInboxPreviewModal({
           });
       };
 
+      restoredReceiptExpenseIdRef.current = expense.id;
+      onReceiptEvidenceChange?.(true);
       openPreview({
         files: shellFiles,
         initialIndex,
         isLoading: false,
+        presentation: receiptPreviewPresentation,
         onRetrySignedUrlResolve: () => {
           patchPreviewRef.current({
             files: buildReceiptPreviewShellFiles(receiptItemsRef.current).map((f) => ({
@@ -584,11 +738,20 @@ export function ExpenseInboxPreviewModal({
           const idx = inboxPreviewIndexRef.current;
           return (resolved[idx]?.url ?? "").trim() || null;
         },
+        onClosed: () => onReceiptEvidenceChange?.(false),
       });
 
       if (needsResolve) resolveAndPatch();
     },
-    [expense, openPreview, receiptItems, refreshSecureReceiptItems, toast]
+    [
+      expense,
+      onReceiptEvidenceChange,
+      openPreview,
+      receiptItems,
+      receiptPreviewPresentation,
+      refreshSecureReceiptItems,
+      toast,
+    ]
   );
 
   const openReceiptItemPreview = React.useCallback(
@@ -635,10 +798,13 @@ export function ExpenseInboxPreviewModal({
           });
       };
 
+      restoredReceiptExpenseIdRef.current = expense.id;
+      onReceiptEvidenceChange?.(true);
       openPreview({
         files: shellFiles,
         initialIndex,
         isLoading: false,
+        presentation: receiptPreviewPresentation,
         onRetrySignedUrlResolve: () => {
           patchPreviewRef.current({
             files: buildReceiptPreviewShellFiles(receiptItemsRef.current).map((f) => ({
@@ -659,14 +825,34 @@ export function ExpenseInboxPreviewModal({
           const idx = inboxPreviewIndexRef.current;
           return (resolved[idx]?.url ?? "").trim() || null;
         },
+        onClosed: () => onReceiptEvidenceChange?.(false),
       });
 
       if (needsResolve) resolveAndPatch();
     },
-    [expense, openPreview, receiptItems, refreshSecureReceiptItems, toast]
+    [
+      expense,
+      onReceiptEvidenceChange,
+      openPreview,
+      receiptItems,
+      receiptPreviewPresentation,
+      refreshSecureReceiptItems,
+      toast,
+    ]
   );
 
-  const handleSave = async () => {
+  React.useEffect(() => {
+    if (!receiptEvidenceRequested) {
+      restoredReceiptExpenseIdRef.current = null;
+      return;
+    }
+    if (!open || !expense || receiptItems.length === 0) return;
+    if (restoredReceiptExpenseIdRef.current === expense.id) return;
+    restoredReceiptExpenseIdRef.current = expense.id;
+    openReceiptItemPreview(receiptItems[0]!);
+  }, [expense, open, openReceiptItemPreview, receiptEvidenceRequested, receiptItems]);
+
+  const handleSave = async (advanceAfterSave = false) => {
     if (!expense || saving) return;
     const numAmount = parseFloat(amount);
     if (Number.isNaN(numAmount) || numAmount < 0) {
@@ -749,7 +935,7 @@ export function ExpenseInboxPreviewModal({
         projectId: projectId || null,
         workerId: workerId || null,
         category: category || "Other",
-        notes: notes.trim() || undefined,
+        notes: composeExpenseDescription(notes, items),
         status: workflowStatus,
         sourceType,
         paymentAccountId: paId,
@@ -768,6 +954,11 @@ export function ExpenseInboxPreviewModal({
       });
       if (saved) {
         setMode("preview");
+        if (advanceAfterSave) {
+          onSaveAndNext?.();
+        } else {
+          window.requestAnimationFrame(() => editActionRef.current?.focus());
+        }
       }
     } finally {
       setSaving(false);
@@ -828,7 +1019,9 @@ export function ExpenseInboxPreviewModal({
     setCostAllocation(expenseCostAllocationFromProjectId(nextProjectId));
     setWorkerId(expense.workerId ?? null);
     setCategory(expense.lines[0]?.category ?? "Other");
-    setNotes(stripInboxUploadNoiseFromText(expense.notes ?? ""));
+    const parsedDescription = parseExpenseDescription(expense.notes ?? "");
+    setNotes(stripInboxUploadNoiseFromText(parsedDescription.description));
+    setItems(parsedDescription.items);
     setExpenseDate((expense.date ?? "").slice(0, 10));
     setSourceType(expense.sourceType ?? "company");
     setPaymentMethod((expense.paymentMethod ?? "").trim());
@@ -840,6 +1033,7 @@ export function ExpenseInboxPreviewModal({
     setDeductionNote(deduction?.note ?? "");
     setAttachments(getExpenseDisplayAttachments(expense));
     setMode("preview");
+    window.requestAnimationFrame(() => editActionRef.current?.focus());
   };
 
   if (!expense) return null;
@@ -861,30 +1055,244 @@ export function ExpenseInboxPreviewModal({
   const workerRadixValue =
     workerId && String(workerId).trim() !== "" ? workerId : EXPENSE_WORKER_SELECT_NONE;
   const previewDivide = "divide-y divide-[var(--neo-border)]";
+  const handlePanelKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key !== "Escape" || mode !== "edit") return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (window.confirm("Discard unsaved expense changes?")) cancelEdit();
+  };
+  const requestPanelClose = () => {
+    if (mode === "edit" && !window.confirm("Discard unsaved expense changes?")) return;
+    onOpenChange(false);
+  };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        onPointerDownOutside={(e) => {
-          if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
-        }}
-        onInteractOutside={(e) => {
-          if (eventTargetsAttachmentPreviewModal(e)) e.preventDefault();
-        }}
-        className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-[var(--neo-border)] bg-[var(--neo-surface-base)] p-0 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
-      >
+  const detailSurface = (
+    <>
+      {presentation === "panel" ? (
+        <div className="expense-detail-panel-header shrink-0 border-b border-[var(--eo-border,var(--neo-border))] px-5 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="expense-detail-back h-11 w-11 shrink-0 rounded-md text-[var(--eo-text-secondary,var(--neo-text-secondary))] lg:hidden"
+              aria-label="Back to expense queue"
+              onClick={() => onOpenChange(false)}
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+            </Button>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]">
+                {mode === "preview" ? "Expense detail" : "Editing expense"}
+              </p>
+              <p className="mt-0.5 truncate text-xs text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+                {formatDate(expense.date)} · {expenseStatusUiLabel(expense.status)}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="hidden h-11 w-11 shrink-0 rounded-md text-[var(--eo-text-secondary,var(--neo-text-secondary))] hover:bg-[var(--eo-surface-selected,var(--neo-surface-muted))] hover:text-[var(--eo-text-primary,var(--neo-text-primary))] lg:inline-flex"
+              aria-label="Close expense detail"
+              title="Close expense detail"
+              disabled={saving || markBusy}
+              onClick={requestPanelClose}
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </Button>
+          </div>
+        </div>
+      ) : (
         <DialogHeader className="shrink-0 border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3">
           <DialogTitle className="text-sm font-semibold text-[var(--neo-text-primary)]">
             {mode === "preview" ? "Expense" : "Edit expense"}
           </DialogTitle>
         </DialogHeader>
+      )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-          {mode === "preview" ? (
+      <div
+        data-expense-detail-body
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto px-4 py-4",
+          presentation === "panel" && "expense-detail-panel-body px-5 py-5"
+        )}
+      >
+        {mode === "preview" ? (
+          presentation === "panel" ? (
+            <div className="expense-detail-view space-y-6">
+              <section data-expense-detail-identity aria-label="Expense identity">
+                <p
+                  data-expense-detail-amount
+                  className="financial-nums text-[34px] font-semibold leading-[1.1] tracking-normal text-[var(--eo-text-primary,var(--neo-text-primary))] sm:text-[40px]"
+                >
+                  {formatCurrency(-getExpenseTotal(expense))}
+                </p>
+                <h2 className="mt-3 text-xl font-semibold leading-6 tracking-normal text-[var(--eo-text-primary,var(--neo-text-primary))]">
+                  <span data-expense-detail-merchant>
+                    {(expense.vendorName ?? "").trim() || "Needs Review"}
+                  </span>
+                </h2>
+                <p
+                  data-expense-detail-project
+                  className="mt-1 text-[13px] font-medium leading-[18px] text-[var(--eo-text-secondary,var(--neo-text-secondary))]"
+                >
+                  {projectLabelFromExpense(expense, projectNameById)}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {missingProject ? (
+                    <span className={PREVIEW_WARNING_CHIP}>Missing project</span>
+                  ) : null}
+                  {missingCategory ? (
+                    <span className={PREVIEW_WARNING_CHIP}>Missing category</span>
+                  ) : null}
+                  {missingWorker ? (
+                    <span className={PREVIEW_WARNING_CHIP}>Missing worker</span>
+                  ) : null}
+                  {missingReceipt ? (
+                    <span className={PREVIEW_WARNING_CHIP}>Missing receipt</span>
+                  ) : null}
+                </div>
+              </section>
+
+              {headerLineMismatch ? (
+                <HeaderLineMismatchPanel
+                  mismatch={headerLineMismatch}
+                  hasReceipt={receiptItems.length > 0}
+                  onViewReceipt={() => {
+                    const firstReceipt = receiptItems[0];
+                    if (firstReceipt) openReceiptItemPreview(firstReceipt);
+                  }}
+                />
+              ) : null}
+
+              <dl
+                data-expense-detail-facts
+                className="expense-detail-facts grid grid-cols-2 gap-x-5 gap-y-4 py-1"
+              >
+                <div>
+                  <dt className={FIELD_LABEL}>Date</dt>
+                  <dd className="mt-1 text-[13px] text-[var(--eo-text-primary,var(--neo-text-primary))]">
+                    {formatDate(expense.date)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className={FIELD_LABEL}>Category</dt>
+                  <dd className="mt-1 truncate text-[13px] text-[var(--eo-text-primary,var(--neo-text-primary))]">
+                    {expense.lines[0]?.category?.trim() || "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className={FIELD_LABEL}>Payment source</dt>
+                  <dd className="mt-1 text-[13px] text-[var(--eo-text-primary,var(--neo-text-primary))]">
+                    {sourceTypeLabel(expense.sourceType)}
+                  </dd>
+                </div>
+              </dl>
+
+              <section aria-labelledby="expense-receipt-evidence-title">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3
+                      id="expense-receipt-evidence-title"
+                      className="text-[13px] font-semibold text-[var(--eo-text-primary,var(--neo-text-primary))]"
+                    >
+                      Receipt Evidence
+                    </h3>
+                    <p className="mt-0.5 text-[11px] text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+                      {receiptItems.length > 0
+                        ? `${receiptItems.length} attachment${receiptItems.length === 1 ? "" : "s"}`
+                        : "No receipt attached"}
+                    </p>
+                  </div>
+                  <FileText
+                    className="h-4 w-4 text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]"
+                    aria-hidden
+                  />
+                </div>
+                <button
+                  type="button"
+                  data-expense-receipt-evidence
+                  className="expense-evidence-action mt-3 flex min-h-20 w-full items-center justify-between gap-3 rounded-[7px] border border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-primary,var(--neo-surface-raised))] px-4 py-3 text-left transition-colors duration-120 hover:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]"
+                  onClick={() => {
+                    const firstReceipt = receiptItems[0];
+                    if (firstReceipt) void openReceiptItemPreview(firstReceipt);
+                    else setMode("edit");
+                  }}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium text-[var(--eo-text-primary,var(--neo-text-primary))]">
+                      {receiptItems.length > 0 ? "Open receipt preview" : "Add receipt evidence"}
+                    </span>
+                    <span className="mt-1 block text-[11px] leading-4 text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+                      {receiptItems.length > 0
+                        ? "View the secured source document in context."
+                        : "Use the existing protected attachment path."}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs font-medium text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+                    {receiptItems.length > 0 ? "View" : "Attach"}
+                  </span>
+                </button>
+              </section>
+
+              <section>
+                <h3 className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.description.label}</h3>
+                <p className="mt-2 text-[13px] leading-5 text-[var(--eo-text-primary,var(--neo-text-primary))]">
+                  {displayedDescription.description || "—"}
+                </p>
+              </section>
+
+              <details className="expense-more-details group pt-1">
+                <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-1.5 py-2 text-[13px] font-medium text-[var(--eo-text-primary,var(--neo-text-primary))] outline-none transition-colors duration-120 hover:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]">
+                  More Details
+                  <ChevronDown
+                    className="h-4 w-4 transition-transform duration-180 group-open:rotate-180"
+                    aria-hidden
+                  />
+                </summary>
+                <dl className="expense-progressive-content grid grid-cols-2 gap-x-5 gap-y-4 pb-2 pt-3">
+                  {displayedDescription.items.length > 0 ? (
+                    <div className="col-span-2">
+                      <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.items.label}</dt>
+                      <dd className="mt-1 text-[13px]">{displayedDescription.items.join(", ")}</dd>
+                    </div>
+                  ) : null}
+                  <div>
+                    <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.worker.label}</dt>
+                    <dd className="mt-1 text-[13px]">
+                      {expense.workerId
+                        ? (workers.find((worker) => worker.id === expense.workerId)?.name ??
+                          expense.workerId)
+                        : "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.paymentMethod.label}</dt>
+                    <dd className="mt-1 text-[13px]">
+                      {paymentMethodLabel(expense.paymentMethod)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.paymentAccount.label}</dt>
+                    <dd className="mt-1 text-[13px]">
+                      {expense.paymentAccountName?.trim() || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className={FIELD_LABEL}>Record</dt>
+                    <dd className="mt-1 truncate font-mono text-[11px] text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+                      {expense.id}
+                    </dd>
+                  </div>
+                </dl>
+              </details>
+            </div>
+          ) : (
             <div className="space-y-6">
               {possibleDuplicate ? (
                 <p
-                  className="rounded-md border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-2 py-1.5 text-xs text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]"
+                  className="rounded-md border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-2 py-1.5 text-xs text-[var(--eo-warning)]"
                   role="status"
                 >
                   This transaction may be a duplicate.
@@ -1075,47 +1483,181 @@ export function ExpenseInboxPreviewModal({
                 </div>
               </ModalSection>
             </div>
-          ) : (
-            <div className="space-y-6">
-              <ModalSection title="Basic info">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <label className={FIELD_LABEL}>Vendor</label>
-                    <Input
-                      data-testid="edit-expense-vendor-input"
-                      value={vendorName}
-                      onChange={(e) => setVendorName(e.target.value)}
-                      className={INPUT_CLASS}
-                      disabled={saving}
-                    />
+          )
+        ) : (
+          <div className="space-y-5">
+            {presentation === "panel" ? (
+              <section data-expense-inline-identity aria-label="Editing expense identity">
+                <p
+                  data-expense-inline-amount
+                  className="financial-nums text-[34px] font-semibold leading-[1.1] tracking-normal text-[var(--eo-text-primary,var(--neo-text-primary))] sm:text-[40px]"
+                >
+                  {formatCurrency(-getExpenseTotal(expense))}
+                </p>
+                <h2
+                  data-expense-inline-merchant
+                  className="mt-3 text-xl font-semibold leading-6 tracking-normal text-[var(--eo-text-primary,var(--neo-text-primary))]"
+                >
+                  {(expense.vendorName ?? "").trim() || "Needs Review"}
+                </h2>
+                <p
+                  data-expense-inline-project
+                  className="mt-1 text-[13px] font-medium leading-[18px] text-[var(--eo-text-secondary,var(--neo-text-secondary))]"
+                >
+                  {projectLabelFromExpense(expense, projectNameById)}
+                </p>
+              </section>
+            ) : null}
+            <ModalSection title="Expense fields">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.vendor.label}</label>
+                  <Input
+                    ref={vendorInputRef}
+                    data-testid="edit-expense-vendor-input"
+                    value={vendorName}
+                    onChange={(e) => setVendorName(e.target.value)}
+                    className={INPUT_CLASS}
+                    disabled={saving}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.amount.label}</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className={cn(INPUT_CLASS, "tabular-nums")}
+                    disabled={saving}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.classification.label}</label>
+                  <ExpenseSearchableSelect
+                    id="edit-expense-cost-allocation-select"
+                    value={costAllocation}
+                    disabled={saving}
+                    className={SELECT_TRIGGER_CLASS}
+                    placeholder="Classification"
+                    searchPlaceholder="Search classification…"
+                    emptyText="No matching classifications"
+                    options={[
+                      {
+                        value: EXPENSE_COST_ALLOCATION_OVERHEAD,
+                        label: "Overhead",
+                        searchText: "company overhead",
+                      },
+                      {
+                        value: EXPENSE_COST_ALLOCATION_PROJECT_COST,
+                        label: "Project Cost",
+                        searchText: "project cost",
+                      },
+                    ]}
+                    onValueChange={(v) => {
+                      const next = v as ExpenseCostAllocation;
+                      setCostAllocation(next);
+                      if (next === EXPENSE_COST_ALLOCATION_OVERHEAD) setProjectId(null);
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.project.label}</label>
+                  <ExpenseSearchableSelect
+                    id="edit-expense-project-select"
+                    value={projectRadixValue}
+                    disabled={saving}
+                    className={SELECT_TRIGGER_CLASS}
+                    placeholder="Project"
+                    searchPlaceholder="Search projects…"
+                    emptyText="No matching projects"
+                    options={[
+                      {
+                        value: EXPENSE_PROJECT_SELECT_NONE,
+                        label: "Overhead",
+                        searchText: "no project overhead unassigned",
+                      },
+                      ...projects.map((p) => ({
+                        value: p.id,
+                        label: p.name ?? p.id,
+                        searchText: p.id,
+                      })),
+                    ]}
+                    onValueChange={(v) => {
+                      if (v === EXPENSE_PROJECT_SELECT_NONE) {
+                        setProjectId(null);
+                      } else {
+                        setProjectId(v);
+                        setCostAllocation(EXPENSE_COST_ALLOCATION_PROJECT_COST);
+                      }
+                    }}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.category.label}</label>
+                    <Link
+                      href="/settings/expenses"
+                      className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                    >
+                      Manage
+                    </Link>
                   </div>
+                  <ExpenseCategorySelect
+                    id="edit-expense-category-select"
+                    value={category}
+                    onValueChange={setCategory}
+                    disabled={saving}
+                    onCategoriesUpdated={(names) => setCategoriesList(names)}
+                    className={SELECT_TRIGGER_CLASS}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.date.label}</label>
+                  <ExpenseDatePicker
+                    id="inbox-preview-expense-date"
+                    value={expenseDate}
+                    onChange={setExpenseDate}
+                    className={INPUT_CLASS}
+                    disabled={saving}
+                  />
+                </div>
+                {presentation === "dialog" ? (
+                  <>
+                    <WorkerEditField
+                      value={workerRadixValue}
+                      workers={workers}
+                      saving={saving}
+                      onChange={setWorkerId}
+                    />
+                    <PaymentSourceEditField
+                      value={sourceType}
+                      saving={saving}
+                      onChange={setSourceType}
+                    />
+                  </>
+                ) : null}
+              </div>
+            </ModalSection>
+
+            <ProgressiveDisclosure enabled={presentation === "panel"}>
+              <ModalSection title="Details">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <ExpenseItemsField
+                    idPrefix="edit-expense"
+                    items={items}
+                    onItemsChange={setItems}
+                    disabled={saving}
+                    labelClassName={FIELD_LABEL}
+                    inputClassName={INPUT_CLASS}
+                    selectTriggerClassName={SELECT_TRIGGER_CLASS}
+                  />
                   <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Amount</label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className={cn(INPUT_CLASS, "tabular-nums")}
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Date</label>
-                    <ExpenseDatePicker
-                      id="inbox-preview-expense-date"
-                      value={expenseDate}
-                      onChange={setExpenseDate}
-                      className={INPUT_CLASS}
-                      disabled={saving}
-                    />
-                  </div>
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <label className={FIELD_LABEL}>Description</label>
+                    <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.description.label}</label>
                     <Textarea
                       value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
+                      onChange={(event) => setNotes(event.target.value)}
                       className={cn(INPUT_CLASS, "min-h-[88px] resize-y py-2")}
                       placeholder="Optional"
                       disabled={saving}
@@ -1125,160 +1667,49 @@ export function ExpenseInboxPreviewModal({
                 </div>
               </ModalSection>
 
-              <ModalSection title="Classification">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Classification</label>
-                    <ExpenseSearchableSelect
-                      id="edit-expense-cost-allocation-select"
-                      value={costAllocation}
-                      disabled={saving}
-                      className={SELECT_TRIGGER_CLASS}
-                      placeholder="Classification"
-                      searchPlaceholder="Search classification…"
-                      emptyText="No matching classifications"
-                      options={[
-                        {
-                          value: EXPENSE_COST_ALLOCATION_OVERHEAD,
-                          label: "Overhead",
-                          searchText: "company overhead",
-                        },
-                        {
-                          value: EXPENSE_COST_ALLOCATION_PROJECT_COST,
-                          label: "Project Cost",
-                          searchText: "project cost",
-                        },
-                      ]}
-                      onValueChange={(v) => {
-                        const next = v as ExpenseCostAllocation;
-                        setCostAllocation(next);
-                        if (next === EXPENSE_COST_ALLOCATION_OVERHEAD) setProjectId(null);
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Project</label>
-                    <ExpenseSearchableSelect
-                      id="edit-expense-project-select"
-                      value={projectRadixValue}
-                      disabled={saving}
-                      className={SELECT_TRIGGER_CLASS}
-                      placeholder="Project"
-                      searchPlaceholder="Search projects…"
-                      emptyText="No matching projects"
-                      options={[
-                        {
-                          value: EXPENSE_PROJECT_SELECT_NONE,
-                          label: "Overhead",
-                          searchText: "no project overhead unassigned",
-                        },
-                        ...projects.map((p) => ({
-                          value: p.id,
-                          label: p.name ?? p.id,
-                          searchText: p.id,
-                        })),
-                      ]}
-                      onValueChange={(v) => {
-                        if (v === EXPENSE_PROJECT_SELECT_NONE) {
-                          setProjectId(null);
-                        } else {
-                          setProjectId(v);
-                          setCostAllocation(EXPENSE_COST_ALLOCATION_PROJECT_COST);
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <label className={FIELD_LABEL}>Category</label>
-                      <Link
-                        href="/settings/expenses"
-                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
-                      >
-                        Manage
-                      </Link>
-                    </div>
-                    <ExpenseCategorySelect
-                      id="edit-expense-category-select"
-                      value={category}
-                      onValueChange={setCategory}
-                      disabled={saving}
-                      onCategoriesUpdated={(names) => setCategoriesList(names)}
-                      className={SELECT_TRIGGER_CLASS}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className={FIELD_LABEL}>Worker</label>
-                    <ExpenseSearchableSelect
-                      id="edit-expense-worker-select"
+              <ModalSection title="Additional">
+                {presentation === "panel" ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <WorkerEditField
                       value={workerRadixValue}
-                      disabled={saving}
-                      className={SELECT_TRIGGER_CLASS}
-                      placeholder="Worker"
-                      searchPlaceholder="Search workers…"
-                      emptyText="No matching workers"
-                      options={[
-                        {
-                          value: EXPENSE_WORKER_SELECT_NONE,
-                          label: "—",
-                          searchText: "none no worker",
-                        },
-                        ...workers.map((w) => ({
-                          value: w.id,
-                          label: w.name,
-                          searchText: w.id,
-                        })),
-                      ]}
-                      onValueChange={(v) =>
-                        setWorkerId(v === EXPENSE_WORKER_SELECT_NONE ? null : v)
-                      }
+                      workers={workers}
+                      saving={saving}
+                      onChange={setWorkerId}
+                    />
+                    <PaymentSourceEditField
+                      value={sourceType}
+                      saving={saving}
+                      onChange={setSourceType}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <label className={FIELD_LABEL}>Payment source</label>
-                      <Link
-                        href="/settings/expenses"
-                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
-                      >
-                        Manage
-                      </Link>
-                    </div>
-                    <ExpensePaymentSourceSelect
-                      value={(sourceType ?? "company") as NonNullable<Expense["sourceType"]>}
-                      onValueChange={(v) => setSourceType(v)}
-                      disabled={saving}
-                      id="edit-expense-payment-source-select"
-                      className={SELECT_TRIGGER_CLASS}
-                    />
-                  </div>
+                ) : null}
+                <div className={presentation === "panel" ? "mt-4" : undefined}>
+                  <ExpenseSubcontractDeductionFields
+                    idPrefix="inbox-preview-subcontract-deduction"
+                    enabled={deductFromSubcontractor}
+                    onEnabledChange={setDeductFromSubcontractor}
+                    projectId={projectId}
+                    subcontractId={deductionSubcontractId}
+                    onSubcontractIdChange={setDeductionSubcontractId}
+                    amount={deductionAmount}
+                    onAmountChange={setDeductionAmount}
+                    note={deductionNote}
+                    onNoteChange={setDeductionNote}
+                    options={subcontractDeductionOptions}
+                    disabled={saving}
+                    triggerClassName={SELECT_TRIGGER_CLASS}
+                    inputClassName={INPUT_CLASS}
+                  />
                 </div>
-              </ModalSection>
-
-              <ModalSection title="Subcontract deduction">
-                <ExpenseSubcontractDeductionFields
-                  idPrefix="inbox-preview-subcontract-deduction"
-                  enabled={deductFromSubcontractor}
-                  onEnabledChange={setDeductFromSubcontractor}
-                  projectId={projectId}
-                  subcontractId={deductionSubcontractId}
-                  onSubcontractIdChange={setDeductionSubcontractId}
-                  amount={deductionAmount}
-                  onAmountChange={setDeductionAmount}
-                  note={deductionNote}
-                  onNoteChange={setDeductionNote}
-                  options={subcontractDeductionOptions}
-                  disabled={saving}
-                  triggerClassName={SELECT_TRIGGER_CLASS}
-                  inputClassName={INPUT_CLASS}
-                />
               </ModalSection>
 
               <ModalSection title="Payment">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <label className={FIELD_LABEL}>Payment method</label>
+                      <label className={FIELD_LABEL}>
+                        {EXPENSE_FORM_FIELDS.paymentMethod.label}
+                      </label>
                       <Link
                         href="/settings/expenses"
                         className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
@@ -1296,7 +1727,9 @@ export function ExpenseInboxPreviewModal({
                   </div>
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <label className={FIELD_LABEL}>Payment account</label>
+                      <label className={FIELD_LABEL}>
+                        {EXPENSE_FORM_FIELDS.paymentAccount.label}
+                      </label>
                       <Link
                         href="/settings/expenses"
                         className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
@@ -1320,7 +1753,7 @@ export function ExpenseInboxPreviewModal({
                 </div>
               </ModalSection>
 
-              <ModalSection title="Attachments">
+              <ModalSection title={EXPENSE_FORM_FIELDS.attachments.label}>
                 <ExpenseEditAttachmentsSection
                   expense={expense}
                   supabase={supabase}
@@ -1333,39 +1766,41 @@ export function ExpenseInboxPreviewModal({
                   showDelete
                 />
               </ModalSection>
-            </div>
-          )}
-        </div>
+            </ProgressiveDisclosure>
+          </div>
+        )}
+      </div>
 
-        {mode === "preview" ? (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <div className="flex flex-wrap gap-1">
-              {previewNav ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={cn(PREVIEW_SECONDARY_BUTTON, "h-9")}
-                    disabled={!previewNav.canPrev}
-                    onClick={() => previewNav.onPrev()}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={cn(PREVIEW_SECONDARY_BUTTON, "h-9")}
-                    disabled={!previewNav.canNext}
-                    onClick={() => previewNav.onNext()}
-                  >
-                    Next
-                  </Button>
-                </>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap items-center justify-end gap-2">
+      {mode === "preview" ? (
+        <div className="expense-detail-actions flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-elevated,var(--neo-surface-raised))] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="flex flex-wrap gap-1">
+            {previewNav ? (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(PREVIEW_QUIET_BUTTON, "h-9 px-2.5")}
+                  disabled={!previewNav.canPrev}
+                  onClick={() => previewNav.onPrev()}
+                >
+                  Previous
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(PREVIEW_QUIET_BUTTON, "h-9 px-2.5")}
+                  disabled={!previewNav.canNext}
+                  onClick={() => previewNav.onNext()}
+                >
+                  Next
+                </Button>
+              </>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {presentation === "dialog" ? (
               <Button
                 type="button"
                 variant="outline"
@@ -1375,53 +1810,103 @@ export function ExpenseInboxPreviewModal({
               >
                 Close
               </Button>
-              <Button
-                type="button"
-                size="sm"
-                className={cn(PREVIEW_PRIMARY_BUTTON, "h-9")}
-                onClick={() => setMode("edit")}
-              >
-                Edit
-              </Button>
-              {showMarkDone ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={cn(PREVIEW_SECONDARY_BUTTON, "h-9")}
-                  disabled={markBusy}
-                  onClick={() => void handleMarkReviewed()}
-                >
-                  <SubmitSpinner loading={markBusy} className="mr-2" />
-                  {inboxUploadPreview ? "Approve" : "Mark Done"}
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        ) : (
-          <div className="flex shrink-0 items-center justify-between gap-3 border-t border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            ) : null}
             <Button
+              ref={editActionRef}
               type="button"
               variant="outline"
               size="sm"
-              className={cn(PREVIEW_SECONDARY_BUTTON, "h-10")}
-              disabled={saving}
-              onClick={cancelEdit}
+              className={cn(PREVIEW_SECONDARY_BUTTON, "h-11 min-h-11 px-5")}
+              onClick={() => setMode("edit")}
             >
-              Cancel
+              {presentation === "panel" ? "Edit Expense" : "Edit"}
             </Button>
+            {showMarkDone ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(PREVIEW_SECONDARY_BUTTON, "h-9 min-w-[108px]")}
+                disabled={markBusy}
+                onClick={() => void handleMarkReviewed()}
+              >
+                <SubmitSpinner loading={markBusy} className="mr-2" />
+                {inboxUploadPreview ? "Approve" : "Mark Done"}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : (
+        <div className="expense-detail-actions flex shrink-0 items-center justify-end gap-2 border-t border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-elevated,var(--neo-surface-raised))] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(PREVIEW_SECONDARY_BUTTON, "h-11 min-h-11")}
+            disabled={saving}
+            onClick={cancelEdit}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(PREVIEW_SECONDARY_BUTTON, "h-11 min-h-11 min-w-[88px] px-4")}
+            disabled={saving}
+            onClick={() => void handleSave(false)}
+          >
+            <SubmitSpinner loading={saving} className="mr-2" />
+            Save
+          </Button>
+          {presentation === "panel" && onSaveAndNext ? (
             <Button
               type="button"
               size="sm"
-              className={cn(PREVIEW_PRIMARY_BUTTON, "h-10 px-5")}
+              data-expense-save-and-next
+              className={cn(
+                PREVIEW_PRIMARY_BUTTON,
+                "h-11 min-h-11 min-w-[132px] justify-center px-5"
+              )}
               disabled={saving}
-              onClick={() => void handleSave()}
+              onClick={() => void handleSave(true)}
             >
               <SubmitSpinner loading={saving} className="mr-2" />
-              {saving ? "Saving…" : "Save"}
+              {saving ? "Saving…" : "Save & Next"}
             </Button>
-          </div>
-        )}
+          ) : null}
+        </div>
+      )}
+    </>
+  );
+
+  if (presentation === "panel") {
+    if (!open) return null;
+    return (
+      <aside
+        data-expense-detail-panel
+        data-expense-detail-mode={mode}
+        aria-label={mode === "preview" ? "Expense detail" : "Edit expense"}
+        className="expense-detail-panel expenses-ui-dialog flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[10px] border border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-elevated,var(--neo-surface-raised))] text-[var(--eo-text-primary,var(--neo-text-primary))]"
+        onKeyDown={handlePanelKeyDown}
+      >
+        {detailSurface}
+      </aside>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        onPointerDownOutside={(event) => {
+          if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
+        }}
+        className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-[var(--neo-border)] bg-[var(--neo-surface-base)] p-0 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+      >
+        {detailSurface}
       </DialogContent>
     </Dialog>
   );

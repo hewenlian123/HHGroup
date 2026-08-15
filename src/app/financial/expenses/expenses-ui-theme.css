@@ -1,28 +1,134 @@
-/* Expenses route: HH Finance OS — page tint aligns with the app workspace; shell bg from Tailwind */
+/* Expense Operations — owner-approved premium monochrome Light/Dark system. */
 .expenses-ui {
-  --neo-surface-base: #101418;
-  --neo-surface-raised: #151a20;
-  --neo-surface-muted: #1b2229;
-  --neo-text-primary: #f3f4f5;
-  --neo-text-secondary: #b6bdc5;
-  --neo-text-tertiary: #7f8892;
-  --neo-border: rgb(255 255 255 / 0.09);
-  --neo-border-strong: rgb(255 255 255 / 0.14);
-  --neo-gold-ring: rgb(210 166 74 / 0.28);
-  --neo-emerald-soft: rgb(16 185 129 / 0.14);
-  --neo-shadow-panel: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 18px 44px rgb(0 0 0 / 0.22);
-  --exp-page-bg: transparent;
+  --eo-depth-l0: #f7f7f6;
+  --eo-depth-l1: #ffffff;
+  --eo-depth-l2: #ffffff;
+  --eo-depth-structural: #fafafa;
+  --eo-depth-l3-hover: #f4f4f2;
+  --eo-depth-l3-selected: #ececea;
+  --eo-depth-l3-pressed: #e7e7e4;
+  --eo-depth-l4: #ffffff;
+  --eo-depth-l5: #ffffff;
+  --eo-canvas: var(--eo-depth-l0);
+  --eo-surface-primary: var(--eo-depth-l1);
+  --eo-surface-secondary: var(--eo-depth-l3-hover);
+  --eo-surface-elevated: var(--eo-depth-l2);
+  --eo-surface-selected: var(--eo-depth-l3-selected);
+  --eo-text-strong: #090909;
+  --eo-text-primary: #161616;
+  --eo-text-secondary: #4d4d4b;
+  --eo-text-tertiary: #686866;
+  --eo-border: rgb(22 22 22 / 0.075);
+  --eo-border-floating: rgb(22 22 22 / 0.12);
+  --eo-border-strong: rgb(22 22 22 / 0.17);
+  --eo-focus: #333333;
+  --eo-focus-ring: rgb(23 23 23 / 0.22);
+  --eo-action-primary: #171717;
+  --eo-action-primary-hover: #2b2b2b;
+  --eo-action-primary-text: #ffffff;
+  --eo-action-disabled: #f2f2f0;
+  --eo-success: #16815b;
+  --eo-success-soft: rgb(22 129 91 / 0.1);
+  --eo-success-border: rgb(22 129 91 / 0.22);
+  --eo-warning: #a16207;
+  --eo-warning-soft: rgb(245 158 11 / 0.1);
+  --eo-warning-border: rgb(180 83 9 / 0.22);
+  --eo-info: #2563a8;
+  --eo-info-soft: rgb(37 99 168 / 0.09);
+  --eo-info-border: rgb(37 99 168 / 0.2);
+  --eo-danger: #b4232f;
+  --eo-danger-soft: rgb(180 35 47 / 0.09);
+  --eo-danger-border: rgb(180 35 47 / 0.2);
+  --eo-shadow-operational: 0 1px 2px rgb(0 0 0 / 0.04), 0 14px 32px -26px rgb(0 0 0 / 0.24);
+  --eo-shadow-focused: 0 1px 2px rgb(0 0 0 / 0.05), 0 20px 44px -28px rgb(0 0 0 / 0.3);
+  --eo-shadow-floating: 0 2px 8px -3px rgb(0 0 0 / 0.1), 0 22px 48px -18px rgb(0 0 0 / 0.22);
+  --eo-shadow-task: 0 4px 12px -5px rgb(0 0 0 / 0.12), 0 34px 72px -26px rgb(0 0 0 / 0.28);
+  --eo-shadow-overlay: var(--eo-shadow-floating);
+
+  /* Compatibility aliases for existing canonical controls on this route. */
+  --neo-surface-base: var(--eo-canvas);
+  --neo-surface-raised: var(--eo-surface-primary);
+  --neo-surface-muted: var(--eo-surface-secondary);
+  --neo-surface-hover: var(--eo-surface-secondary);
+  --eo-hover: var(--eo-depth-l3-hover);
+  --eo-selected: var(--eo-depth-l3-selected);
+  --neo-text-primary: var(--eo-text-primary);
+  --neo-text-secondary: var(--eo-text-secondary);
+  --neo-text-tertiary: var(--eo-text-tertiary);
+  --neo-border: var(--eo-border);
+  --neo-border-strong: var(--eo-border-strong);
+  --neo-gold: var(--eo-action-primary);
+  --neo-gold-soft: var(--eo-action-primary-hover);
+  --neo-gold-ring: var(--eo-focus-ring);
+  --neo-emerald: var(--eo-success);
+  --neo-emerald-soft: var(--eo-success-soft);
+  --neo-shadow-panel: none;
+  --neo-graphite-950: var(--eo-action-primary);
+  --fieldbook-ink: var(--eo-text-primary);
+  --fieldbook-muted: var(--eo-text-secondary);
+  --fieldbook-line: var(--eo-border);
+  --fieldbook-line-strong: var(--eo-border-strong);
+  --fieldbook-paper: var(--eo-surface-primary);
+  --fieldbook-paper-soft: var(--eo-surface-secondary);
+  --fieldbook-accent: var(--eo-text-primary);
+  --fieldbook-accent-strong: var(--eo-text-primary);
+  --fieldbook-focus: var(--eo-focus-ring);
+  --exp-page-bg: var(--eo-canvas);
   --exp-content-bg: transparent;
-  --exp-primary: var(--neo-text-primary);
-  --exp-secondary: var(--neo-text-secondary);
-  --exp-negative: #e11d48;
-  --exp-positive: var(--neo-emerald);
-  --exp-row-hover: var(--neo-surface-raised);
-  --exp-border: var(--neo-border);
-  --exp-icon: var(--neo-text-tertiary);
-  --exp-icon-hover: var(--neo-text-secondary);
-  background-color: var(--exp-page-bg);
-  color: var(--exp-primary);
+  --exp-primary: var(--eo-text-primary);
+  --exp-secondary: var(--eo-text-secondary);
+  --exp-negative: var(--eo-danger);
+  --exp-positive: var(--eo-success);
+  --exp-row-hover: var(--eo-surface-secondary);
+  --exp-border: var(--eo-border);
+  --exp-icon: var(--eo-text-tertiary);
+  --exp-icon-hover: var(--eo-text-secondary);
+  background-color: var(--eo-canvas);
+  color: var(--eo-text-primary);
+  color-scheme: light;
+}
+
+.dark .expenses-ui {
+  --eo-depth-l0: #0a0a0a;
+  --eo-depth-l1: #111111;
+  --eo-depth-l2: #181818;
+  --eo-depth-structural: #1c1c1c;
+  --eo-depth-l3-hover: #222222;
+  --eo-depth-l3-selected: #2c2c2c;
+  --eo-depth-l3-pressed: #323232;
+  --eo-depth-l4: #252525;
+  --eo-depth-l5: #292929;
+  --eo-canvas: var(--eo-depth-l0);
+  --eo-surface-primary: var(--eo-depth-l1);
+  --eo-surface-secondary: var(--eo-depth-l3-hover);
+  --eo-surface-elevated: var(--eo-depth-l2);
+  --eo-surface-selected: var(--eo-depth-l3-selected);
+  --eo-text-strong: #ffffff;
+  --eo-text-primary: #f4f4f2;
+  --eo-text-secondary: #b8b8b4;
+  --eo-text-tertiary: #91918e;
+  --eo-border: rgb(255 255 255 / 0.085);
+  --eo-border-floating: rgb(255 255 255 / 0.13);
+  --eo-border-strong: rgb(255 255 255 / 0.17);
+  --eo-focus: #d7d7d2;
+  --eo-focus-ring: rgb(244 244 242 / 0.22);
+  --eo-action-primary: #f2f2ef;
+  --eo-action-primary-hover: #ffffff;
+  --eo-action-primary-text: #161616;
+  --eo-action-disabled: #222222;
+  --eo-success: #4caf7c;
+  --eo-success-soft: rgb(76 175 124 / 0.12);
+  --eo-warning: #d8a34a;
+  --eo-warning-soft: rgb(216 163 74 / 0.11);
+  --eo-warning-border: rgb(216 163 74 / 0.25);
+  --eo-info: #6e9fd1;
+  --eo-danger: #e36b72;
+  --eo-shadow-operational: 0 1px 0 rgb(255 255 255 / 0.025), 0 14px 34px -26px rgb(0 0 0 / 0.84);
+  --eo-shadow-focused: 0 1px 0 rgb(255 255 255 / 0.04), 0 20px 44px -26px rgb(0 0 0 / 0.9);
+  --eo-shadow-floating: 0 1px 0 rgb(255 255 255 / 0.055), 0 20px 46px -14px rgb(0 0 0 / 0.76);
+  --eo-shadow-task: 0 1px 0 rgb(255 255 255 / 0.065), 0 32px 76px -20px rgb(0 0 0 / 0.92);
+  --eo-shadow-overlay: var(--eo-shadow-floating);
+  color-scheme: dark;
 }
 
 .expenses-ui-content {
@@ -30,11 +136,84 @@
   color: var(--exp-primary);
 }
 
+.expenses-ui
+  :where(
+    button,
+    input,
+    textarea,
+    summary,
+    a[href],
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="combobox"]
+  ) {
+  transition-property: color, background-color, border-color, opacity, box-shadow !important;
+  transition-duration: 120ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.expenses-ui
+  :where(
+    button,
+    summary,
+    a[href],
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="combobox"]
+  ):is(:hover, :active),
+.expenses-ui [data-expense-id]:is(:hover, :active) {
+  transform: none !important;
+}
+
+.expenses-ui
+  :where(
+    button,
+    summary,
+    a[href],
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="combobox"]
+  ):active {
+  opacity: 0.9;
+}
+
+.expenses-ui [data-expense-id]:active {
+  background-color: var(--eo-depth-l3-pressed);
+  opacity: 1;
+}
+
+.expenses-ui [data-expense-id] {
+  transition-property: background-color, border-color, box-shadow, opacity !important;
+}
+
+.expenses-ui .expense-row-continuity {
+  transition-duration: 180ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.expenses-ui .financial-nums,
+.expenses-ui [data-expense-amount],
+.expenses-ui [data-expense-detail-amount] {
+  font-family: var(--font-geist-sans), "Geist", "Inter", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1,
+    "zero" 0;
+  letter-spacing: 0;
+}
+
 .expenses-ui .expense-compact-table-scroll {
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior-x: contain;
-  scrollbar-color: rgb(127 136 146 / 0.3) transparent;
+  scrollbar-color: rgb(115 115 115 / 0.3) transparent;
   scrollbar-width: thin;
 }
 
@@ -48,23 +227,140 @@
 
 .expenses-ui .expense-compact-table-scroll::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgb(127 136 146 / 0.26);
+  background: rgb(115 115 115 / 0.26);
 }
 
 .expenses-ui .expense-compact-table-scroll::-webkit-scrollbar-thumb:hover {
-  background: rgb(182 189 197 / 0.36);
+  background: rgb(115 115 115 / 0.4);
 }
 
-/* Row motion: Tailwind `transition-all` on `<li.exp-row>` (hover lift/shadow, active scale) */
+.expenses-ui .expense-row-continuity {
+  scroll-margin-block: 5rem;
+}
+
+.expenses-ui .expense-row-continuity:has(:focus-visible) {
+  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+}
+
+/* Completed-expense ledger only: keep normal rows quiet and anchor attention to exceptions/focus. */
+.expenses-ui[data-expenses-list-page="expenses"] .expense-ledger-date-group {
+  background: var(--eo-depth-structural);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] .expense-ledger-date-group button:focus-visible {
+  outline: 2px solid var(--eo-focus-ring);
+  outline-offset: -2px;
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] .exp-row {
+  background-color: var(--eo-depth-l1);
+  transition-duration: 120ms;
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] [data-expense-mobile-ledger] > .exp-row {
+  border-width: 0 !important;
+  border-radius: 0 !important;
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] .exp-row:hover {
+  background-color: var(--eo-depth-l3-hover);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] .exp-row.expense-ledger-row-high-attention {
+  background-color: var(--neo-surface-raised);
+  box-shadow: inset 2px 0 0 var(--eo-warning);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] .exp-row[aria-selected="true"],
+.expenses-ui[data-expenses-list-page="expenses"] .exp-row[data-expense-selected="true"] {
+  background-color: var(--eo-depth-l3-selected);
+  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] .exp-row.expense-ledger-row-active {
+  background-color: var(--eo-depth-l3-selected);
+  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] .exp-row:focus-within {
+  background-color: var(--eo-depth-l3-hover);
+  box-shadow: none;
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] .exp-row:has(:focus-visible) {
+  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"]
+  .exp-row:is([aria-selected="true"], [data-expense-selected="true"]):focus-within {
+  background-color: var(--eo-depth-l3-selected);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"]
+  .exp-row.expense-ledger-row-active:not([aria-selected="true"]):not(
+    [data-expense-selected="true"]
+  ) {
+  box-shadow: inset 2px 0 0 var(--eo-text-secondary);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] .exp-row:active {
+  background-color: var(--eo-depth-l3-pressed);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"]
+  .exp-row:is(
+    :hover,
+    [aria-selected="true"],
+    [data-expense-selected="true"],
+    .expense-ledger-row-active
+  )
+  :is([data-expense-merchant] > p:first-child, [data-expense-amount], [data-expense-amount] *) {
+  color: var(--eo-text-strong) !important;
+}
+
+@media (hover: hover) and (min-width: 1024px) {
+  .expenses-ui[data-expenses-list-page="expenses"] .exp-row > td:last-child {
+    opacity: 0.44;
+    transition: opacity 120ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .expenses-ui[data-expenses-list-page="expenses"]
+    .exp-row:is(:hover, :focus-within, [aria-selected="true"], .expense-ledger-row-active)
+    > td:last-child {
+    opacity: 1;
+  }
+}
+
+/* Structural lines, not grid lines: retain section boundaries and remove repeated cell framing. */
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] {
+  border-color: var(--eo-border);
+  background-color: var(--eo-depth-l2);
+  box-shadow: var(--eo-shadow-operational);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dt {
+  color: var(--eo-text-tertiary);
+  opacity: 0.86;
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dd {
+  color: var(--eo-text-strong);
+  font-weight: 650;
+}
+
+.dark .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] {
+  border-color: var(--eo-border);
+}
 
 .expenses-ui .exp-btn-primary {
-  background-color: var(--neo-graphite-950) !important;
-  color: #ffffff !important;
+  background-color: var(--eo-action-primary) !important;
+  color: var(--eo-action-primary-text) !important;
   border-color: transparent !important;
 }
 
 .expenses-ui .exp-btn-primary:hover {
-  opacity: 0.92;
+  background-color: var(--eo-action-primary-hover) !important;
+  opacity: 1;
 }
 
 .expenses-ui .exp-btn-secondary {
@@ -72,7 +368,7 @@
   color: var(--exp-primary) !important;
   border-color: var(--neo-border) !important;
   box-shadow: none !important;
-  backdrop-filter: blur(8px);
+  backdrop-filter: none;
 }
 
 .expenses-ui .exp-btn-secondary:hover {
@@ -109,17 +405,65 @@
 
 /* Dialog when using expenses palette */
 .expenses-ui-dialog {
-  --neo-surface-base: #101418;
-  --neo-surface-raised: #151a20;
-  --neo-surface-muted: #1b2229;
-  --neo-text-primary: #f3f4f5;
-  --neo-text-secondary: #b6bdc5;
-  --neo-text-tertiary: #7f8892;
-  --neo-border: rgb(255 255 255 / 0.09);
-  --neo-border-strong: rgb(255 255 255 / 0.14);
-  --neo-gold-ring: rgb(210 166 74 / 0.28);
-  --neo-emerald-soft: rgb(16 185 129 / 0.14);
-  --neo-shadow-panel: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 18px 44px rgb(0 0 0 / 0.22);
+  --eo-depth-l0: #f7f7f6;
+  --eo-depth-l1: #ffffff;
+  --eo-depth-l2: #ffffff;
+  --eo-depth-structural: #fafafa;
+  --eo-depth-l3-hover: #f4f4f2;
+  --eo-depth-l3-selected: #ececea;
+  --eo-depth-l3-pressed: #e7e7e4;
+  --eo-depth-l4: #ffffff;
+  --eo-depth-l5: #ffffff;
+  --eo-canvas: var(--eo-depth-l0);
+  --eo-surface-primary: var(--eo-depth-l1);
+  --eo-surface-secondary: var(--eo-depth-l3-hover);
+  --eo-surface-elevated: var(--eo-depth-l2);
+  --eo-surface-selected: var(--eo-depth-l3-selected);
+  --eo-text-strong: #090909;
+  --eo-text-primary: #161616;
+  --eo-text-secondary: #4d4d4b;
+  --eo-text-tertiary: #686866;
+  --eo-border: rgb(22 22 22 / 0.075);
+  --eo-border-floating: rgb(22 22 22 / 0.12);
+  --eo-border-strong: rgb(22 22 22 / 0.17);
+  --eo-focus-ring: rgb(23 23 23 / 0.22);
+  --eo-action-primary: #171717;
+  --eo-action-primary-hover: #2b2b2b;
+  --eo-action-primary-text: #ffffff;
+  --eo-action-disabled: #f2f2f0;
+  --eo-success: #16815b;
+  --eo-success-soft: rgb(22 129 91 / 0.1);
+  --eo-success-border: rgb(22 129 91 / 0.22);
+  --eo-warning: #a16207;
+  --eo-warning-soft: rgb(245 158 11 / 0.1);
+  --eo-warning-border: rgb(180 83 9 / 0.22);
+  --eo-info: #2563a8;
+  --eo-info-soft: rgb(37 99 168 / 0.09);
+  --eo-info-border: rgb(37 99 168 / 0.2);
+  --eo-danger: #b4232f;
+  --eo-danger-soft: rgb(180 35 47 / 0.09);
+  --eo-danger-border: rgb(180 35 47 / 0.2);
+  --eo-shadow-operational: 0 1px 2px rgb(0 0 0 / 0.04), 0 14px 32px -26px rgb(0 0 0 / 0.24);
+  --eo-shadow-focused: 0 1px 2px rgb(0 0 0 / 0.05), 0 20px 44px -28px rgb(0 0 0 / 0.3);
+  --eo-shadow-floating: 0 2px 8px -3px rgb(0 0 0 / 0.1), 0 22px 48px -18px rgb(0 0 0 / 0.22);
+  --eo-shadow-task: 0 4px 12px -5px rgb(0 0 0 / 0.12), 0 34px 72px -26px rgb(0 0 0 / 0.28);
+  --eo-shadow-overlay: var(--eo-shadow-floating);
+  --neo-surface-base: var(--eo-canvas);
+  --neo-surface-raised: var(--eo-surface-primary);
+  --neo-surface-muted: var(--eo-surface-secondary);
+  --neo-surface-hover: var(--eo-surface-secondary);
+  --eo-hover: var(--eo-depth-l3-hover);
+  --eo-selected: var(--eo-depth-l3-selected);
+  --neo-text-primary: var(--eo-text-primary);
+  --neo-text-secondary: var(--eo-text-secondary);
+  --neo-text-tertiary: var(--eo-text-tertiary);
+  --neo-border: var(--eo-border);
+  --neo-border-strong: var(--eo-border-strong);
+  --neo-gold: var(--eo-action-primary);
+  --neo-gold-soft: var(--eo-action-primary-hover);
+  --neo-gold-ring: var(--eo-focus-ring);
+  --neo-shadow-panel: var(--eo-shadow-overlay, 0 24px 64px rgb(0 0 0 / 0.16));
+  --neo-graphite-950: var(--eo-action-primary);
   --exp-primary: var(--neo-text-primary);
   --exp-secondary: var(--neo-text-secondary);
   --exp-border: var(--neo-border);
@@ -127,6 +471,54 @@
   background-color: var(--neo-surface-raised) !important;
   color: var(--exp-primary) !important;
   border-color: var(--exp-border) !important;
+  color-scheme: light;
+}
+
+.dark .expenses-ui-dialog {
+  --eo-depth-l0: #0a0a0a;
+  --eo-depth-l1: #111111;
+  --eo-depth-l2: #181818;
+  --eo-depth-structural: #1c1c1c;
+  --eo-depth-l3-hover: #222222;
+  --eo-depth-l3-selected: #2c2c2c;
+  --eo-depth-l3-pressed: #323232;
+  --eo-depth-l4: #252525;
+  --eo-depth-l5: #292929;
+  --eo-canvas: var(--eo-depth-l0);
+  --eo-surface-primary: var(--eo-depth-l1);
+  --eo-surface-secondary: var(--eo-depth-l3-hover);
+  --eo-surface-elevated: var(--eo-depth-l2);
+  --eo-surface-selected: var(--eo-depth-l3-selected);
+  --eo-text-strong: #ffffff;
+  --eo-text-primary: #f4f4f2;
+  --eo-text-secondary: #b8b8b4;
+  --eo-text-tertiary: #91918e;
+  --eo-border: rgb(255 255 255 / 0.085);
+  --eo-border-floating: rgb(255 255 255 / 0.13);
+  --eo-border-strong: rgb(255 255 255 / 0.17);
+  --eo-focus-ring: rgb(244 244 242 / 0.22);
+  --eo-action-primary: #f2f2ef;
+  --eo-action-primary-hover: #ffffff;
+  --eo-action-primary-text: #161616;
+  --eo-action-disabled: #222222;
+  --eo-warning: #d8a34a;
+  --eo-warning-soft: rgb(216 163 74 / 0.11);
+  --eo-warning-border: rgb(216 163 74 / 0.25);
+  --eo-success: #4caf7c;
+  --eo-success-soft: rgb(76 175 124 / 0.12);
+  --eo-success-border: rgb(76 175 124 / 0.25);
+  --eo-info: #6e9fd1;
+  --eo-info-soft: rgb(110 159 209 / 0.12);
+  --eo-info-border: rgb(110 159 209 / 0.24);
+  --eo-danger: #e36b72;
+  --eo-danger-soft: rgb(227 107 114 / 0.12);
+  --eo-danger-border: rgb(227 107 114 / 0.24);
+  --eo-shadow-operational: 0 1px 0 rgb(255 255 255 / 0.025), 0 14px 34px -26px rgb(0 0 0 / 0.84);
+  --eo-shadow-focused: 0 1px 0 rgb(255 255 255 / 0.04), 0 20px 44px -26px rgb(0 0 0 / 0.9);
+  --eo-shadow-floating: 0 1px 0 rgb(255 255 255 / 0.055), 0 20px 46px -14px rgb(0 0 0 / 0.76);
+  --eo-shadow-task: 0 1px 0 rgb(255 255 255 / 0.065), 0 32px 76px -20px rgb(0 0 0 / 0.92);
+  --eo-shadow-overlay: var(--eo-shadow-floating);
+  color-scheme: dark;
 }
 
 .expenses-ui-dialog .exp-dlg-muted {
@@ -134,8 +526,8 @@
 }
 
 .expenses-ui-dialog .exp-btn-primary {
-  background-color: var(--neo-graphite-950) !important;
-  color: #ffffff !important;
+  background-color: var(--eo-action-primary) !important;
+  color: var(--eo-action-primary-text) !important;
   border-color: transparent !important;
 }
 
@@ -165,8 +557,710 @@
   background-color: var(--neo-surface-muted) !important;
 }
 
+.expenses-ui-dialog :where(.text-zinc-950) {
+  color: var(--eo-action-primary-text) !important;
+}
+
+/* Expense Operations component contract — consistent portaled surfaces and feedback. */
+.expenses-ui-dialog
+  :where(
+    button,
+    input,
+    textarea,
+    summary,
+    a[href],
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="combobox"]
+  ) {
+  transition-property: color, background-color, border-color, opacity, box-shadow !important;
+  transition-duration: 120ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.expenses-ui-dialog
+  :where(
+    button,
+    summary,
+    a[href],
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="combobox"]
+  ):is(:hover, :active) {
+  transform: none !important;
+}
+
+.expenses-ui-dialog
+  :where(
+    button,
+    summary,
+    a[href],
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [role="option"],
+    [role="combobox"]
+  ):active {
+  opacity: 0.9;
+}
+
+.expenses-ui-dialog[data-state="open"] {
+  animation-duration: 180ms !important;
+}
+
+.expenses-ui-dialog[data-state="closed"] {
+  animation-duration: 120ms !important;
+}
+
+.expenses-ui-dialog:is([role="menu"], [role="listbox"]),
+.expenses-ui-dialog[data-expense-component-surface="filters"],
+.expenses-ui-dialog[data-expense-component-surface="date-filter"],
+.expenses-ui-dialog[data-expense-component-surface="date-picker"],
+.expenses-ui-dialog[data-expense-component-surface="combobox"],
+.expenses-ui-dialog[data-expense-component-surface="select"],
+.expenses-ui-dialog[data-expense-component-surface="issue"] {
+  background-color: var(--eo-depth-l4) !important;
+  border-color: var(--eo-border-floating) !important;
+  border-radius: 10px !important;
+  box-shadow: var(--eo-shadow-floating) !important;
+}
+
+.expenses-ui-dialog[data-expense-component-surface][data-state="open"] {
+  animation: expense-new-surface-in 180ms cubic-bezier(0.2, 0, 0, 1) both !important;
+}
+
+.expenses-ui-dialog[data-expense-component-surface][data-state="closed"] {
+  animation: expense-new-surface-out 120ms cubic-bezier(0.2, 0, 0, 1) both !important;
+  pointer-events: none;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="quick-expense"] [data-quick-expense-amount] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="quick-expense"]
+  [data-quick-expense-amount]::-webkit-inner-spin-button,
+.expenses-ui-dialog[data-expense-component-surface="quick-expense"]
+  [data-quick-expense-amount]::-webkit-outer-spin-button {
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.expenses-ui-dialog :where([role="option"], [role="menuitem"]) {
+  min-height: 36px;
+}
+
+.expense-progressive-content {
+  transform-origin: top;
+  animation: expense-progressive-reveal 180ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.expense-evidence-action {
+  background-color: var(--eo-depth-l4) !important;
+  box-shadow: var(--eo-shadow-operational);
+}
+
+.expense-evidence-action:hover {
+  background-color: var(--eo-depth-l3-hover) !important;
+  box-shadow: var(--eo-shadow-focused);
+}
+
+/* New Expense shares the workspace surface language while keeping one scroll owner. */
+body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.inset-0.z-50 {
+  background-color: rgb(9 9 9 / 0.28) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.dark body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.inset-0.z-50 {
+  background-color: rgb(0 0 0 / 0.58) !important;
+}
+
+.expense-new-dialog {
+  background-color: var(--eo-depth-l5) !important;
+  border-color: var(--eo-border-floating) !important;
+  box-shadow: var(--eo-shadow-task) !important;
+}
+
+.dark .expense-new-dialog {
+  box-shadow: var(--eo-shadow-task) !important;
+}
+
+.expense-new-dialog :where(.bg-background) {
+  background-color: var(--eo-depth-l5) !important;
+}
+
+.expense-new-dialog[data-state="open"] {
+  animation: expense-new-surface-in 180ms cubic-bezier(0.2, 0, 0, 1) both !important;
+}
+
+.expense-new-dialog[data-state="closed"] {
+  animation: expense-new-surface-out 120ms cubic-bezier(0.2, 0, 0, 1) both !important;
+}
+
+.expense-new-component-surface {
+  background-color: var(--eo-depth-l4) !important;
+  border-color: var(--eo-border-floating) !important;
+  box-shadow: var(--eo-shadow-floating) !important;
+}
+
+.dark .expense-new-component-surface {
+  box-shadow: var(--eo-shadow-floating) !important;
+}
+
+.expense-new-component-surface[data-state="open"] {
+  animation: expense-new-surface-in 180ms cubic-bezier(0.2, 0, 0, 1) both !important;
+}
+
+.expense-new-component-surface[data-state="closed"] {
+  animation: expense-new-surface-out 120ms cubic-bezier(0.2, 0, 0, 1) both !important;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="create-option"] {
+  background-color: var(--eo-depth-l5) !important;
+  border-color: var(--eo-border-floating) !important;
+  box-shadow: var(--eo-shadow-task) !important;
+}
+
+.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
+  box-shadow: var(--eo-shadow-task) !important;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="create-option"][data-state="open"] {
+  animation: expense-new-surface-in 180ms cubic-bezier(0.2, 0, 0, 1) both !important;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="create-option"][data-state="closed"] {
+  animation: expense-new-surface-out 120ms cubic-bezier(0.2, 0, 0, 1) both !important;
+}
+
+.expense-new-dialog-footer {
+  box-shadow: inset 0 1px 0 var(--eo-border);
+}
+
+.expense-new-dialog [data-new-expense-save="true"]:disabled,
+.expense-new-dialog [data-new-expense-save="true"][data-new-expense-save-readiness="incomplete"] {
+  border-color: var(--eo-border) !important;
+  background-color: var(--eo-action-disabled) !important;
+  color: var(--eo-text-tertiary) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.expense-new-dialog
+  [data-new-expense-save="true"][data-new-expense-save-readiness="ready"]:not(:disabled) {
+  border-color: transparent !important;
+  background-color: var(--eo-action-primary) !important;
+  color: var(--eo-action-primary-text) !important;
+}
+
+.expense-new-dialog [data-new-expense-save="true"]:disabled {
+  cursor: not-allowed !important;
+  pointer-events: auto !important;
+}
+
+.expense-new-dialog-scroll,
+.expense-new-component-surface,
+.expense-new-component-surface [data-expense-component-scroll="true"] {
+  scrollbar-color: rgb(115 115 115 / 0.24) transparent;
+  scrollbar-width: thin;
+}
+
+.expense-new-dialog-scroll::-webkit-scrollbar,
+.expense-new-component-surface::-webkit-scrollbar,
+.expense-new-component-surface [data-expense-component-scroll="true"]::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.expense-new-dialog-scroll::-webkit-scrollbar-track,
+.expense-new-component-surface::-webkit-scrollbar-track,
+.expense-new-component-surface [data-expense-component-scroll="true"]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.expense-new-dialog-scroll::-webkit-scrollbar-thumb,
+.expense-new-component-surface::-webkit-scrollbar-thumb,
+.expense-new-component-surface [data-expense-component-scroll="true"]::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgb(115 115 115 / 0.24);
+}
+
+.expense-new-dialog-scroll::-webkit-scrollbar-thumb:hover,
+.expense-new-component-surface::-webkit-scrollbar-thumb:hover,
+.expense-new-component-surface
+  [data-expense-component-scroll="true"]::-webkit-scrollbar-thumb:hover {
+  background: rgb(115 115 115 / 0.38);
+}
+
+/* The default `md` breakpoint begins at 768px; Expense treats that exact portrait width as a sheet. */
+@media (max-width: 768px) {
+  .expense-new-dialog {
+    position: fixed !important;
+    inset: auto 0 0 !important;
+    display: flex !important;
+    width: 100% !important;
+    min-height: 82dvh !important;
+    max-height: 94dvh !important;
+    max-width: none !important;
+    transform: none !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    border-left: 0 !important;
+    border-radius: 14px 14px 0 0 !important;
+  }
+
+  .expense-new-dialog-footer {
+    position: sticky;
+    bottom: 0;
+  }
+
+  .expense-new-mobile-actions {
+    display: flex !important;
+  }
+
+  .expense-new-desktop-actions {
+    display: none !important;
+  }
+
+  .expense-new-dialog
+    :where(
+      button:not([role="checkbox"]),
+      input:not([type="checkbox"]):not([type="file"]),
+      textarea
+    ),
+  .expense-new-component-surface :where([role="option"], [role="menuitem"], input) {
+    min-height: 44px;
+  }
+}
+
+@keyframes expense-new-surface-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes expense-new-surface-out {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes expense-progressive-reveal {
+  from {
+    opacity: 0.64;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/* Adaptive Master–Detail workspace from the approved high-fidelity handoff. */
+.expense-operations-workspace {
+  display: grid;
+  min-width: 0;
+  gap: 24px;
+}
+
+.expense-operations-workspace > [data-expenses-ledger],
+.expense-operations-workspace > [data-expense-detail-panel] {
+  min-width: 0;
+}
+
+.expense-operations-workspace .expense-operations-ledger-panel,
+.expense-detail-panel {
+  border-radius: 10px;
+}
+
+.expense-operations-workspace .expense-operations-ledger-panel {
+  background-color: var(--eo-depth-l2);
+  border-color: var(--eo-border);
+  box-shadow: var(--eo-shadow-operational);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] [data-neo-toolbar="true"] {
+  background-color: var(--eo-depth-l1) !important;
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll thead {
+  background-color: var(--eo-depth-structural);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] .expense-compact-table-scroll thead th {
+  background-color: transparent;
+  border-color: var(--eo-border);
+}
+
+.expense-detail-panel {
+  min-height: 0;
+  isolation: isolate;
+  background-color: var(--eo-depth-l2) !important;
+  border-color: var(--eo-border-floating) !important;
+  box-shadow: var(--eo-shadow-focused);
+  transition:
+    opacity 180ms cubic-bezier(0.2, 0, 0, 1),
+    background-color 180ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.expense-detail-panel-header,
+.expense-detail-actions {
+  background-color: var(--eo-depth-l1) !important;
+}
+
+.expense-detail-panel-body {
+  background-color: var(--eo-depth-l1);
+}
+
+.expense-detail-panel-body {
+  overscroll-behavior: contain;
+  scrollbar-color: rgb(127 127 127 / 0.28) transparent;
+  scrollbar-width: thin;
+}
+
+.expense-detail-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="receipt-upload"] {
+  background-color: var(--eo-depth-l5) !important;
+  border-color: var(--eo-border-floating) !important;
+  box-shadow: var(--eo-shadow-task) !important;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="receipt-upload"] :where(.bg-background) {
+  background-color: var(--eo-depth-l5) !important;
+}
+
+.expense-more-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.expense-more-details[open] > summary svg {
+  transform: rotate(180deg);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] [data-expenses-ledger] .exp-row {
+  min-height: 62px;
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] [data-expense-merchant] > p:first-child {
+  color: var(--eo-text-primary);
+  font-weight: 600;
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] [data-expense-context] {
+  color: var(--eo-text-secondary);
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] [data-expense-amount] {
+  color: var(--eo-text-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.expenses-ui[data-expenses-list-page="expenses"] [data-expense-amount] * {
+  color: var(--eo-text-primary) !important;
+}
+
+@media (min-width: 1024px) {
+  .expenses-ui[data-expense-workspace-detail-open="true"] {
+    height: calc(100dvh - 60px);
+    max-height: calc(100dvh - 60px);
+    min-height: 0;
+    overflow-y: hidden;
+  }
+
+  .expenses-ui[data-expense-workspace-detail-open="true"] > .expenses-ui-content {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .expenses-ui[data-expense-workspace-detail-open="true"] > .expenses-ui-content > div {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"] {
+    grid-template-columns: minmax(0, 63fr) minmax(0, 37fr);
+    align-items: stretch;
+    min-height: 0;
+    flex: 1;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"] [data-expenses-ledger],
+  .expense-operations-workspace[data-expense-detail-open="true"] [data-expense-detail-panel] {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"] .expense-operations-ledger-panel {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expenses-ledger]
+    [data-expenses-ledger-body],
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expenses-ledger]
+    [data-expense-ledger-content] {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+    flex-direction: column;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expenses-ledger]
+    .expense-compact-table-scroll,
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expenses-ledger]
+    [data-expense-mobile-ledger] {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-mobile-ledger]
+    > li[data-expense-id] {
+    min-height: 56px;
+    flex-shrink: 0;
+    padding: 8px 10px;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-mobile-ledger]
+    > [data-expense-date-group] {
+    flex-shrink: 0;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"] [data-expense-row-primary] {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-merchant]
+    > p:first-child {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"] [data-expense-row-description] {
+    display: none;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"] [data-expense-row-metadata] {
+    display: block;
+    margin-top: 4px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"] [data-expense-amount] {
+    width: 112px;
+    min-width: 112px;
+    max-width: 112px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-compact-row-actions] {
+    display: flex !important;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"] [data-expense-mobile-row-actions] {
+    display: none;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"] [data-expense-signal-row="quiet"] {
+    display: none;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-signal-row="attention"] {
+    margin-top: 6px;
+    flex-wrap: nowrap;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-signal-row="attention"]
+    [data-expense-receipt-state="attached"],
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-signal-row="attention"]
+    [data-expense-issue-state="clear"],
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-signal-row="attention"]
+    [data-expense-status-signal="complete"] {
+    display: none;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-header-mismatch-row] {
+    margin-top: 6px;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-header-mismatch-row]
+    [data-testid="expense-header-line-mismatch-issue"] {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 6px;
+    border-radius: 6px;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-header-mismatch-row]
+    [data-testid="expense-header-line-mismatch-issue"]
+    > div {
+    min-width: 0;
+    flex: 1;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expense-header-mismatch-row]
+    [data-testid="expense-header-line-mismatch-issue"]
+    > button {
+    height: 24px;
+    min-height: 24px;
+    margin-top: 0;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"] [data-expenses-pagination] {
+    min-width: 0;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
+
+  .expense-operations-workspace[data-expense-detail-open="true"]
+    [data-expenses-pagination-controls] {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 1023px) {
+  .expense-operations-workspace[data-expense-detail-open="true"] > [data-expenses-ledger] {
+    visibility: hidden;
+  }
+
+  .expense-detail-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    width: 100vw;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    background: var(--eo-surface-elevated);
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .expense-detail-panel-header {
+    min-height: 56px;
+  }
+
+  .expense-detail-panel-body {
+    padding-inline: clamp(16px, 4vw, 28px);
+  }
+
+  .expense-detail-actions {
+    flex-wrap: nowrap;
+    padding-inline: 16px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+  }
+
+  .expense-detail-actions button {
+    min-height: 48px;
+  }
+}
+
+@media (max-width: 479px) {
+  .expense-detail-panel-body {
+    padding: 18px 16px 24px;
+  }
+
+  .expense-detail-actions {
+    gap: 8px;
+  }
+
+  .expense-detail-actions > button {
+    min-width: 0;
+    padding-inline: 12px;
+    font-size: 12px;
+  }
+
+  .expense-detail-actions > button:last-child {
+    flex: 1;
+  }
+
+  .expense-detail-facts {
+    gap: 14px 16px;
+  }
+}
+
 /* Portal content lives under <body>, so these mobile safety rules are intentionally global. */
 @media (max-width: 767px) {
+  .expenses-ui-dialog[data-expense-component-surface="filters"] {
+    border-top-left-radius: 14px !important;
+    border-top-right-radius: 14px !important;
+  }
+
+  .expenses-ui-dialog[data-expense-component-surface="filters"] :where(button, [role="combobox"]),
+  .expenses-ui-dialog :where([role="option"], [role="menuitem"]) {
+    min-height: 44px;
+  }
+
+  .expenses-ui-dialog[data-expense-component-surface="quick-expense"] [data-quick-expense-amount] {
+    height: 48px !important;
+    min-height: 48px !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+  }
+
   .upload-receipt-mobile-overlay {
     z-index: 9998 !important;
     background: rgb(0 0 0 / 0.35) !important;
@@ -217,5 +1311,33 @@
     .upload-receipt-mobile-dialog {
       min-height: 100svh !important;
     }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expenses-ui .expense-row-continuity,
+  .expenses-ui .expense-row-continuity *,
+  .expenses-ui .expense-progressive-content,
+  .expenses-ui .expense-progressive-content *,
+  .expenses-ui-dialog,
+  .expenses-ui-dialog *,
+  .upload-receipt-mobile-dialog,
+  .upload-receipt-mobile-dialog * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .expenses-ui .animate-pulse,
+  .expenses-ui-dialog .animate-pulse {
+    animation: none !important;
+  }
+
+  .expenses-ui-dialog[data-state="open"],
+  .expenses-ui-dialog[data-state="closed"],
+  .expenses-ui-dialog[data-expense-component-surface][data-state="open"],
+  .expenses-ui-dialog[data-expense-component-surface][data-state="closed"] {
+    animation-duration: 0.01ms !important;
   }
 }

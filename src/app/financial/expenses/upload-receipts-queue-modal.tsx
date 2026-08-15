@@ -21,7 +21,6 @@ import { cn } from "@/lib/utils";
 import { createBrowserClient } from "@/lib/supabase";
 import { createInboxDraftFromReceiptFile } from "@/lib/expense-inbox-draft-upload-browser";
 import { notifyReceiptQueueChanged } from "@/lib/receipt-queue";
-import { useToast } from "@/components/toast/toast-provider";
 
 type Props = {
   open: boolean;
@@ -30,6 +29,12 @@ type Props = {
 };
 
 type PendingItem = { id: string; file: File };
+
+type UploadFeedback = {
+  tone: "error" | "success" | "neutral";
+  title: string;
+  detail?: string;
+};
 
 type StatusPhase = "ready" | "preparing" | "creating" | "added" | "failed";
 
@@ -133,7 +138,6 @@ function PendingReceiptRow({
 
 export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Props) {
   const router = useRouter();
-  const { toast } = useToast();
   const cameraInputRef = React.useRef<HTMLInputElement | null>(null);
   const uploadInputRef = React.useRef<HTMLInputElement | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
@@ -142,7 +146,9 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
   const [receiptImagePreparing, setReceiptImagePreparing] = React.useState(false);
   const [addedToQueueHint, setAddedToQueueHint] = React.useState(false);
   const [uploadFailed, setUploadFailed] = React.useState(false);
+  const [uploadFeedback, setUploadFeedback] = React.useState<UploadFeedback | null>(null);
   const addedHintTimerRef = React.useRef<number | null>(null);
+  const createdReferenceNosRef = React.useRef<string[]>([]);
   /** Ignore outside closes briefly after open — same pointer/touch can otherwise dismiss on iOS (Radix). */
   const suppressOutsideUntilRef = React.useRef(0);
 
@@ -150,10 +156,6 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     return url && anon ? createBrowserClient(url, anon) : null;
-  }, []);
-
-  const openRetryPicker = React.useCallback(() => {
-    uploadInputRef.current?.click();
   }, []);
 
   const setCameraInputNode = React.useCallback((node: HTMLInputElement | null) => {
@@ -180,6 +182,8 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
     if (!files?.length) return;
     const list = Array.from(files).filter((f) => f.size > 0);
     if (!list.length) return;
+    setUploadFailed(false);
+    setUploadFeedback(null);
     setPendingItems((prev) => appendPendingDeduped(prev, list));
   }, []);
 
@@ -190,6 +194,8 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
       setPendingItems([]);
       setAddedToQueueHint(false);
       setUploadFailed(false);
+      setUploadFeedback(null);
+      createdReferenceNosRef.current = [];
       if (addedHintTimerRef.current) {
         window.clearTimeout(addedHintTimerRef.current);
         addedHintTimerRef.current = null;
@@ -207,11 +213,19 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
   const performUpload = React.useCallback(
     async (list: File[]) => {
       if (!list.length || !supabase) {
-        if (!supabase) toast({ title: "Storage unavailable", variant: "error" });
+        if (!supabase) {
+          setUploadFailed(true);
+          setUploadFeedback({
+            tone: "error",
+            title: "Storage unavailable",
+            detail: "Receipt upload is not configured for this environment.",
+          });
+        }
         return;
       }
 
       setUploadFailed(false);
+      setUploadFeedback(null);
       setCaptureUploading(true);
       let ok = 0;
       let fail = 0;
@@ -226,18 +240,29 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
             list.map(async (file) => {
               try {
                 const r = await createInboxDraftFromReceiptFile(supabase, file);
-                if (!r.ok) return { ok: false as const, detail: r.message };
+                if (!r.ok) return { file, ok: false as const, detail: r.message };
                 if (r.duplicate)
-                  return { ok: true as const, duplicate: true, referenceNo: r.referenceNo };
+                  return {
+                    file,
+                    ok: true as const,
+                    duplicate: true,
+                    referenceNo: r.referenceNo,
+                  };
                 notifyReceiptQueueChanged();
-                return { ok: true as const, duplicate: false, referenceNo: r.referenceNo };
+                return {
+                  file,
+                  ok: true as const,
+                  duplicate: false,
+                  referenceNo: r.referenceNo,
+                };
               } catch (e) {
                 const msg = e instanceof Error ? e.message : "Could not create draft expense";
-                return { ok: false as const, detail: msg };
+                return { file, ok: false as const, detail: msg };
               }
             })
           );
 
+          const failedFiles: File[] = [];
           for (const o of outcomes) {
             if (o.ok) {
               if (o.duplicate) dup += 1;
@@ -247,71 +272,67 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
               }
             } else {
               fail += 1;
+              failedFiles.push(o.file);
               if (!firstFailDetail && "detail" in o) firstFailDetail = o.detail;
             }
+          }
+
+          if (createdReferenceNos.length > 0) {
+            createdReferenceNosRef.current = Array.from(
+              new Set([...createdReferenceNosRef.current, ...createdReferenceNos])
+            );
+          }
+
+          if (fail > 0) {
+            setPendingItems(failedFiles.map((file) => ({ id: crypto.randomUUID(), file })));
+          } else {
+            setPendingItems([]);
           }
         } finally {
           setReceiptImagePreparing(false);
         }
 
-        if (ok > 0) {
+        if (ok > 0 && fail === 0) {
           setUploadFailed(false);
           flashAddedToQueueHint();
-          if (createdReferenceNos.length > 0) {
+          setUploadFeedback({
+            tone: "success",
+            title: ok === 1 ? "1 receipt added to Inbox" : `${ok} receipts added to Inbox`,
+            detail: "Opening the new drafts for review.",
+          });
+          if (createdReferenceNosRef.current.length > 0) {
             const sp = new URLSearchParams();
-            sp.set("highlight", createdReferenceNos.join(","));
+            sp.set("highlight", createdReferenceNosRef.current.join(","));
             router.push(`/financial/inbox?${sp.toString()}`);
             onOpenChange(false);
           }
         }
 
-        if (ok > 0 && fail > 0) {
-          toast({
-            title: `${ok} added, ${fail} failed`,
-            variant: "default",
-          });
-        } else if (ok > 0 && fail === 0) {
-          toast({
-            title: ok === 1 ? "Added 1 draft to Inbox" : `Added ${ok} drafts to Inbox`,
-            variant: "success",
-          });
-        }
-
-        if (dup > 0 && ok === 0 && fail === 0) {
-          toast({
-            title: "Already uploaded",
-            description: "This file was already added as a draft.",
-            variant: "default",
-          });
-        } else if (dup > 0 && (ok > 0 || fail > 0)) {
-          toast({
-            title: `${dup} duplicate file${dup !== 1 ? "s" : ""} skipped`,
-            variant: "default",
-          });
-        }
-
         if (fail > 0) {
-          if (ok === 0) {
-            setUploadFailed(true);
-            toast({
-              title: "❌ Upload failed",
-              description:
-                fail === list.length && firstFailDetail
-                  ? `${firstFailDetail} Tap to try again.`
-                  : `${fail} of ${list.length} could not be saved. Tap to retry.`,
-              variant: "error",
-              durationMs: 8000,
-              onClick: openRetryPicker,
-            });
-          }
+          setUploadFailed(true);
+          setUploadFeedback({
+            tone: "error",
+            title:
+              ok > 0
+                ? `${ok} added · ${fail} ${fail === 1 ? "file needs" : "files need"} retry`
+                : "Upload could not complete",
+            detail:
+              firstFailDetail ||
+              "Only the files that failed remain selected. Retry when the connection is ready.",
+          });
+        } else if (dup > 0 && ok === 0) {
+          setUploadFeedback({
+            tone: "neutral",
+            title: dup === 1 ? "Receipt already in Inbox" : `${dup} receipts already in Inbox`,
+            detail: "No duplicate drafts were created.",
+          });
         }
       } finally {
         setCaptureUploading(false);
-        setPendingItems([]);
         onSuccess();
       }
     },
-    [supabase, toast, onSuccess, openRetryPicker, flashAddedToQueueHint, router, onOpenChange]
+    [supabase, onSuccess, flashAddedToQueueHint, router, onOpenChange]
   );
 
   const handleConfirmUpload = React.useCallback(() => {
@@ -345,6 +366,8 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
   const handleCancelSelection = React.useCallback(() => {
     if (busy) return;
     setPendingItems([]);
+    setUploadFailed(false);
+    setUploadFeedback(null);
   }, [busy]);
 
   return (
@@ -376,15 +399,16 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
             if (Date.now() < suppressOutsideUntilRef.current) e.preventDefault();
           }}
           className={cn(
-            "upload-receipt-mobile-dialog fixed !z-[101] flex min-h-0 w-full flex-col overflow-hidden overflow-x-hidden border border-white/10 bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] outline-none",
-            "p-0 md:rounded-[24px] md:p-6",
-            "max-md:fixed max-md:inset-x-2 max-md:bottom-0 max-md:top-auto max-md:!z-[9999] max-md:max-h-[calc(100dvh-0.75rem)] max-md:w-auto max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-[1.5rem] max-md:border-b-0",
+            "expenses-ui-dialog upload-receipt-mobile-dialog fixed !z-[101] flex min-h-0 w-full flex-col overflow-hidden overflow-x-hidden border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--eo-shadow-overlay)] outline-none",
+            "p-0 md:rounded-[14px] md:p-6",
+            "max-md:fixed max-md:inset-x-2 max-md:bottom-0 max-md:top-auto max-md:!z-[9999] max-md:max-h-[calc(100dvh-0.75rem)] max-md:w-auto max-md:max-w-none max-md:rounded-b-none max-md:rounded-t-[14px] max-md:border-b-0",
             "max-md:pt-[max(1rem,env(safe-area-inset-top))] max-md:pb-[max(1rem,env(safe-area-inset-bottom))] max-md:pl-[max(1rem,env(safe-area-inset-left))] max-md:pr-[max(1rem,env(safe-area-inset-right))]",
             "md:max-h-[min(92vh,900px)]",
             "md:left-1/2 md:top-1/2 md:max-w-[460px] md:-translate-x-1/2 md:-translate-y-1/2",
             hhNeoFocusRevealDialog,
             hhNeoFocusRevealMobileSheet
           )}
+          data-expense-component-surface="receipt-upload"
         >
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <div className="relative z-10 flex shrink-0 items-start justify-between gap-3 border-b border-border/60 bg-background pb-4 max-md:gap-2 max-md:pb-3">
@@ -454,7 +478,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                       data-testid="upload-receipt-take-photo"
                       onClick={handleTakePhotoClick}
                       className={cn(
-                        "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[transform,background-color,border-color] active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
+                        "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[background-color,border-color,opacity] duration-120 disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
                         "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
                         "touch-manipulation"
                       )}
@@ -471,7 +495,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                         </span>
                       </span>
                       <ChevronRight
-                        className="h-5 w-5 shrink-0 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5"
+                        className="h-5 w-5 shrink-0 text-muted-foreground/70"
                         strokeWidth={1.5}
                       />
                     </button>
@@ -482,7 +506,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                       data-testid="upload-receipt-upload-files"
                       onClick={handleUploadFilesClick}
                       className={cn(
-                        "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[transform,background-color,border-color] active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
+                        "group flex min-h-[76px] w-full items-center gap-4 rounded-[20px] border border-black/[0.07] bg-background px-4 py-4 text-left transition-[background-color,border-color,opacity] duration-120 disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]",
                         "hover:bg-muted/35 hover:border-black/[0.1] dark:hover:border-white/[0.12]",
                         "touch-manipulation"
                       )}
@@ -499,7 +523,7 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                         </span>
                       </span>
                       <ChevronRight
-                        className="h-5 w-5 shrink-0 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5"
+                        className="h-5 w-5 shrink-0 text-muted-foreground/70"
                         strokeWidth={1.5}
                       />
                     </button>
@@ -588,13 +612,37 @@ export function UploadReceiptsQueueModal({ open, onOpenChange, onSuccess }: Prop
                           className="h-11 rounded-xl"
                           onClick={handleConfirmUpload}
                         >
-                          Confirm Upload ({pendingItems.length})
+                          {uploadFailed ? "Retry failed" : "Confirm Upload"} ({pendingItems.length})
                         </Button>
                       </div>
                     </div>
                   ) : null}
 
                   <div className="flex flex-col gap-3">
+                    {uploadFeedback ? (
+                      <div
+                        data-upload-feedback
+                        role={uploadFeedback.tone === "error" ? "alert" : "status"}
+                        aria-live="polite"
+                        className={cn(
+                          "rounded-xl border px-3 py-2.5 text-left",
+                          uploadFeedback.tone === "error"
+                            ? "border-rose-500/25 bg-rose-500/[0.07] text-rose-700 dark:text-rose-200"
+                            : uploadFeedback.tone === "success"
+                              ? "border-emerald-500/25 bg-emerald-500/[0.07] text-emerald-700 dark:text-emerald-200"
+                              : "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]"
+                        )}
+                      >
+                        <p className="text-[13px] font-semibold text-current">
+                          {uploadFeedback.title}
+                        </p>
+                        {uploadFeedback.detail ? (
+                          <p className="mt-0.5 text-[12px] leading-snug opacity-85">
+                            {uploadFeedback.detail}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div
                       role="status"
                       aria-live="polite"

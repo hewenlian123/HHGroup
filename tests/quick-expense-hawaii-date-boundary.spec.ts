@@ -54,7 +54,7 @@ async function openQuickExpenseAtBoundary(page: Page, time = HAWAII_LATE_EVENING
   await loginAsE2EOwner(page, E2E_FINANCIAL_EXPENSES_ARCHIVE_URL);
   await waitForExpensesQuerySuccess(page);
   await clickVisibleQuickExpenseButton(page);
-  const dialog = page.getByRole("dialog", { name: /Quick expense/i });
+  const dialog = page.getByRole("dialog", { name: /New expense/i });
   await expect(dialog).toBeVisible({ timeout: 15_000 });
   return dialog;
 }

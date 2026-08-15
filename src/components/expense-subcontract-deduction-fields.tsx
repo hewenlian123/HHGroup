@@ -23,8 +23,10 @@ type Props = {
   disabled?: boolean;
   className?: string;
   triggerClassName?: string;
+  triggerContentClassName?: string;
   inputClassName?: string;
   idPrefix?: string;
+  appearance?: "panel" | "compact";
 };
 
 export function ExpenseSubcontractDeductionFields({
@@ -41,8 +43,10 @@ export function ExpenseSubcontractDeductionFields({
   disabled,
   className,
   triggerClassName,
+  triggerContentClassName,
   inputClassName,
   idPrefix = "expense-subcontract-deduction",
+  appearance = "panel",
 }: Props) {
   const trimmedProjectId = projectId?.trim() || null;
   const visibleOptions = React.useMemo(() => {
@@ -58,13 +62,23 @@ export function ExpenseSubcontractDeductionFields({
   return (
     <div
       className={cn(
-        "rounded-lg border border-border/60 bg-muted/15 p-3",
-        enabled && "border-amber-500/40 bg-amber-500/5",
+        appearance === "compact"
+          ? "border-0 bg-transparent p-0 shadow-none"
+          : "rounded-lg border border-border/60 bg-muted/15 p-3",
+        appearance === "panel" && enabled && "border-amber-500/40 bg-amber-500/5",
         className
       )}
       data-testid={`${idPrefix}-section`}
+      data-expense-subcontract-appearance={appearance}
     >
-      <label className="flex min-h-10 items-center gap-3 text-sm font-medium text-foreground">
+      <label
+        className={cn(
+          "flex items-center font-medium text-foreground",
+          appearance === "compact"
+            ? "min-h-9 gap-2.5 text-[13px] max-md:min-h-11"
+            : "min-h-10 gap-3 text-sm"
+        )}
+      >
         <input
           type="checkbox"
           checked={enabled}
@@ -76,7 +90,9 @@ export function ExpenseSubcontractDeductionFields({
         <span>Deduct from subcontractor</span>
       </label>
       {enabled ? (
-        <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <div
+          className={cn("grid gap-3 md:grid-cols-2", appearance === "compact" ? "mt-2.5" : "mt-3")}
+        >
           <div className="space-y-1.5 md:col-span-2">
             <label className="text-xs uppercase tracking-wide text-muted-foreground">
               Subcontractor
@@ -87,6 +103,7 @@ export function ExpenseSubcontractDeductionFields({
               onValueChange={(value) => onSubcontractIdChange(value === EMPTY_VALUE ? "" : value)}
               disabled={disabled}
               className={triggerClassName}
+              contentClassName={triggerContentClassName}
               placeholder="Choose subcontractor"
               searchPlaceholder="Search subcontractors..."
               emptyText={

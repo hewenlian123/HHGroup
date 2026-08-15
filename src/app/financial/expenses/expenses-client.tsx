@@ -26,17 +26,15 @@ import {
 import { createBrowserClient } from "@/lib/supabase";
 import {
   AlertCircle,
-  CalendarDays,
   ChevronLeft,
   ChevronRight,
-  DollarSign,
   Filter,
-  RefreshCw,
+  Plus,
   Search,
   Upload,
-  MoreHorizontal,
+  X,
 } from "lucide-react";
-import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
+import { uiActionLog, uiActionMark } from "@/lib/ui-action-perf";
 import {
   afterLayout,
   focusFirstFocusableInContainer,
@@ -74,18 +72,13 @@ import {
 } from "@/lib/queries/expenses";
 import type { SubcontractDeductionOption } from "@/lib/data";
 import { fetchFinancialProjects, financialProjectsQueryKey } from "@/lib/queries/receiptQueue";
-import { isDefaultExpenseListSort } from "@/lib/expenses-db";
+import { defaultExpenseListSort, isDefaultExpenseListSort } from "@/lib/expenses-db";
 import { cn } from "@/lib/utils";
+import { cleanExpenseDescriptionForDisplay } from "@/lib/expense-form-system";
 import { ExpensesListSkeleton } from "@/components/financial/expenses-list-skeleton";
 import type { ExpenseListBulkActionsApi } from "./expense-inbox-transaction-list";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   computePresetRange,
   ExpenseDateRangeFilter,
@@ -128,8 +121,9 @@ import {
 } from "@/lib/expense-receipt-api-client";
 import { UploadReceiptsQueueModal } from "./upload-receipts-queue-modal";
 import { formatCurrency, formatDate } from "@/lib/formatters";
-import { OS, TYPO } from "@/lib/typography";
+import { OS } from "@/lib/typography";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
+import { ExpenseOperationsWorkspaceNav } from "@/components/financial/expense-operations-workspace-nav";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
@@ -247,28 +241,15 @@ const ExpenseInboxTransactionList = dynamic(
 
 /** HH Finance OS — visual parity with Finance Owner dashboard (presentation only). */
 const financeOsPageWrap =
-  "financial-nums expenses-ui neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]";
-
-const financeOsCard =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] transition-[border-color,box-shadow,transform] duration-200 ease-out";
-
-const financeOsCardInteractive = "hover:-translate-y-px hover:border-[var(--neo-border-strong)]";
+  "financial-nums expenses-ui min-w-0 overflow-x-hidden bg-[var(--eo-canvas)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--eo-text-secondary)]";
 
 const financeOsListShell = "overflow-hidden p-0";
-
-const financeSectionLabelClass = cn(
-  TYPO.sectionLabel,
-  "text-[9px] leading-none text-[var(--neo-text-tertiary)]"
-);
-
-const financeMetricValueClass =
-  "mt-0.5 text-base font-semibold tabular-nums leading-none text-[var(--neo-text-primary)] md:text-xl";
 
 const financeToolbarButtonClass =
   "h-9 shrink-0 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs font-medium text-[var(--neo-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--neo-surface-muted)] focus-visible:ring-[var(--neo-gold-ring)]";
 
 const financePrimaryActionClass =
-  "border-transparent bg-[var(--neo-gold)] text-zinc-950 shadow-none hover:bg-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)]";
+  "border-transparent bg-[var(--eo-action-primary)] text-[var(--eo-action-primary-text)] shadow-none hover:bg-[var(--eo-action-primary-hover)] focus-visible:ring-[var(--eo-focus-ring)]";
 
 function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense {
   const nextLines =
@@ -291,7 +272,9 @@ function mergeExpenseReviewPatch(e: Expense, p: ExpenseReviewSavePatch): Expense
     date: p.date !== undefined ? p.date : e.date,
     vendorName: p.vendorName,
     notes:
-      p.notes !== undefined ? stripInboxUploadNoiseFromText(p.notes ?? "") || undefined : e.notes,
+      p.notes !== undefined
+        ? cleanExpenseDescriptionForDisplay(p.notes, stripInboxUploadNoiseFromText)
+        : e.notes,
     status: p.status,
     workerId: p.workerId,
     sourceType: p.sourceType !== undefined ? p.sourceType : e.sourceType,
@@ -381,6 +364,9 @@ type ExpensesAdvancedFiltersFieldsProps = {
   selectTriggerClassName: string;
 };
 
+const EXPENSE_FILTER_FIELD_LABEL_CLASS =
+  "text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]";
+
 function ExpensesAdvancedFiltersFields({
   projectFilter,
   setProjectFilter,
@@ -398,101 +384,100 @@ function ExpensesAdvancedFiltersFields({
   selectTriggerClassName,
 }: ExpensesAdvancedFiltersFieldsProps) {
   return (
-    <div className="grid grid-cols-1 gap-3">
-      <Select
-        value={projectFilter === "" ? EXPENSE_FILTER_ALL : projectFilter}
-        onValueChange={(v) => setProjectFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
-      >
-        <SelectTrigger data-expenses-filter-project className={selectTriggerClassName}>
-          <SelectValue placeholder="Project" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={EXPENSE_FILTER_ALL}>Project</SelectItem>
-          {safeProjects.map((p) => (
-            <SelectItem key={p.id} value={p.id}>
-              {p.name ?? p.id}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div className="grid grid-cols-1 gap-3.5">
+      <div className="grid gap-1.5">
+        <span className={EXPENSE_FILTER_FIELD_LABEL_CLASS}>Project</span>
+        <Select
+          value={projectFilter === "" ? EXPENSE_FILTER_ALL : projectFilter}
+          onValueChange={(v) => setProjectFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+        >
+          <SelectTrigger
+            data-expenses-filter-project
+            className={selectTriggerClassName}
+            aria-label="Filter by project"
+          >
+            <SelectValue placeholder="Project" />
+          </SelectTrigger>
+          <SelectContent className="expenses-ui-dialog" data-expense-component-surface="select">
+            <SelectItem value={EXPENSE_FILTER_ALL}>All projects</SelectItem>
+            {safeProjects.map((p) => (
+              <SelectItem key={p.id} value={p.id}>
+                {p.name ?? p.id}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {projectsError ? (
         <span className="text-[11px] text-amber-600 dark:text-amber-400">{projectsError}</span>
       ) : null}
-      <Select
-        value={categoryFilter === "" ? EXPENSE_FILTER_ALL : categoryFilter}
-        onValueChange={(v) => setCategoryFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
-      >
-        <SelectTrigger className={selectTriggerClassName}>
-          <SelectValue placeholder="Category" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={EXPENSE_FILTER_ALL}>Category</SelectItem>
-          {categoriesList.map((c) => (
-            <SelectItem key={c} value={c}>
-              {c}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <ExpenseDateRangeFilter value={expenseDateFilter} onChange={onExpenseDateChange} />
-      <Select
-        value={sourceTypeFilter === "" ? EXPENSE_FILTER_ALL : sourceTypeFilter}
-        onValueChange={(v) => setSourceTypeFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
-      >
-        <SelectTrigger className={selectTriggerClassName}>
-          <SelectValue placeholder="Source" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={EXPENSE_FILTER_ALL}>Source</SelectItem>
-          <SelectItem value="company">Manual</SelectItem>
-          <SelectItem value="receipt_upload">Receipt upload</SelectItem>
-          <SelectItem value="reimbursement">Worker reimbursement</SelectItem>
-          <SelectItem value="bank_import">Bank import</SelectItem>
-        </SelectContent>
-      </Select>
-      <Select value={`${expenseSort.field}|${expenseSort.order}`} onValueChange={onSortValueChange}>
-        <SelectTrigger className={selectTriggerClassName} aria-label="Sort expenses">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="date|desc">Sort: Date ↓</SelectItem>
-          <SelectItem value="date|asc">Sort: Date ↑</SelectItem>
-          <SelectItem value="amount|desc">Sort: Amount ↓</SelectItem>
-          <SelectItem value="amount|asc">Sort: Amount ↑</SelectItem>
-          <SelectItem value="vendor|asc">Sort: Vendor A–Z</SelectItem>
-          <SelectItem value="vendor|desc">Sort: Vendor Z–A</SelectItem>
-        </SelectContent>
-      </Select>
+      <div className="grid gap-1.5">
+        <span className={EXPENSE_FILTER_FIELD_LABEL_CLASS}>Category</span>
+        <Select
+          value={categoryFilter === "" ? EXPENSE_FILTER_ALL : categoryFilter}
+          onValueChange={(v) => setCategoryFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+        >
+          <SelectTrigger className={selectTriggerClassName} aria-label="Filter by category">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent className="expenses-ui-dialog" data-expense-component-surface="select">
+            <SelectItem value={EXPENSE_FILTER_ALL}>All categories</SelectItem>
+            {categoriesList.map((c) => (
+              <SelectItem key={c} value={c}>
+                {c}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-1.5">
+        <span className={EXPENSE_FILTER_FIELD_LABEL_CLASS}>Date</span>
+        <ExpenseDateRangeFilter value={expenseDateFilter} onChange={onExpenseDateChange} />
+      </div>
+      <div className="grid gap-1.5">
+        <span className={EXPENSE_FILTER_FIELD_LABEL_CLASS}>Source</span>
+        <Select
+          value={sourceTypeFilter === "" ? EXPENSE_FILTER_ALL : sourceTypeFilter}
+          onValueChange={(v) => setSourceTypeFilter(v === EXPENSE_FILTER_ALL ? "" : v)}
+        >
+          <SelectTrigger className={selectTriggerClassName} aria-label="Filter by source">
+            <SelectValue placeholder="Source" />
+          </SelectTrigger>
+          <SelectContent className="expenses-ui-dialog" data-expense-component-surface="select">
+            <SelectItem value={EXPENSE_FILTER_ALL}>All sources</SelectItem>
+            <SelectItem value="company">Manual</SelectItem>
+            <SelectItem value="receipt_upload">Receipt upload</SelectItem>
+            <SelectItem value="reimbursement">Worker reimbursement</SelectItem>
+            <SelectItem value="bank_import">Bank import</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-1.5">
+        <span className={EXPENSE_FILTER_FIELD_LABEL_CLASS}>Sort</span>
+        <Select
+          value={`${expenseSort.field}|${expenseSort.order}`}
+          onValueChange={onSortValueChange}
+        >
+          <SelectTrigger className={selectTriggerClassName} aria-label="Sort expenses">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="expenses-ui-dialog" data-expense-component-surface="select">
+            <SelectItem value="date|desc">Date ↓</SelectItem>
+            <SelectItem value="date|asc">Date ↑</SelectItem>
+            <SelectItem value="amount|desc">Amount ↓</SelectItem>
+            <SelectItem value="amount|asc">Amount ↑</SelectItem>
+            <SelectItem value="vendor|asc">Vendor A–Z</SelectItem>
+            <SelectItem value="vendor|desc">Vendor Z–A</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
     </div>
-  );
-}
-
-function KpiSparkline({ className }: { className?: string }) {
-  return (
-    <svg
-      className={cn(
-        "h-8 w-[4.5rem] shrink-0 text-[var(--neo-text-tertiary)] opacity-40",
-        className
-      )}
-      viewBox="0 0 72 28"
-      aria-hidden
-    >
-      <polyline
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points="2,20 14,14 26,18 38,8 50,12 62,6 70,10"
-      />
-    </svg>
   );
 }
 
 function TransactionInboxEntryActions({
   onQuick,
   onUpload,
-  onNewExpense,
   className,
   uploadLabel = "Upload receipt",
   quickButtonSize = "sm",
@@ -500,7 +485,6 @@ function TransactionInboxEntryActions({
 }: {
   onQuick: () => void;
   onUpload: () => void;
-  onNewExpense: () => void;
   className?: string;
   uploadLabel?: string;
   quickButtonSize?: "sm" | "default";
@@ -526,7 +510,8 @@ function TransactionInboxEntryActions({
         )}
         onClick={onQuick}
       >
-        Quick
+        <Plus className="mr-1 h-4 w-4 shrink-0" aria-hidden />
+        New Expense
       </Button>
       <Button
         type="button"
@@ -544,25 +529,6 @@ function TransactionInboxEntryActions({
         <Upload className={cn("h-4 w-4 shrink-0", !compact && "mr-1")} aria-hidden />
         {compact ? <span className="sr-only">{uploadLabel}</span> : uploadLabel}
       </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "shrink-0 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-secondary)] shadow-none touch-manipulation hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]",
-              compact ? "h-9 min-h-11 min-w-11 sm:min-h-9 sm:min-w-9" : "h-8 w-8"
-            )}
-            aria-label="More actions"
-          >
-            <MoreHorizontal className="h-4 w-4 shrink-0" aria-hidden />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="z-[200] w-44">
-          <DropdownMenuItem onSelect={onNewExpense}>New expense</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
     </div>
   );
 }
@@ -616,6 +582,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     isFetching: expensesQueryFetching,
     isError: expensesQueryError,
     status: expensesQueryStatus,
+    refetch: refetchExpensesQuery,
   } = useQuery({
     queryKey: buildExpensesQueryKey(expenseSort),
     queryFn: () => fetchExpenses(expenseSort),
@@ -716,6 +683,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   );
   const [sourceTypeFilter, setSourceTypeFilter] = React.useState("");
   const [activeExpenseId, setActiveExpenseId] = React.useState<string | null>(null);
+  const selectedExpenseIdFromUrl = (searchParams.get("ops_record") ?? "").trim();
+  const receiptEvidenceRequested = searchParams.get("ops_preview") === "receipt";
   const rowElsRef = React.useRef<Record<string, HTMLTableRowElement | HTMLLIElement | null>>({});
   const emptyExpensesRef = React.useRef<HTMLDivElement>(null);
   const listView: "all" | "unreviewed" = inboxMode ? "unreviewed" : "all";
@@ -758,6 +727,16 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     },
     [router, searchParams, listPath]
   );
+  const clearAdvancedFilters = React.useCallback(() => {
+    setProjectFilter("");
+    setCategoryFilter("");
+    setSourceTypeFilter("");
+    setExpenseDateFilter({ kind: "all" });
+    setExpenseSort(defaultExpenseListSort);
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.set("page", "1");
+    router.push(`${listPath}?${sp.toString()}`, { scroll: false });
+  }, [listPath, router, searchParams]);
   const appliedProjectIdFromUrl = React.useRef(false);
   React.useEffect(() => {
     if (appliedProjectIdFromUrl.current) return;
@@ -772,13 +751,30 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     index: number;
     expenseId: string;
   } | null>(null);
-  const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(false);
+  const [quickExpenseOpen, setQuickExpenseOpen] = React.useState(
+    () => searchParams.get("new_expense") === "1"
+  );
   const [uploadReceiptsOpen, setUploadReceiptsOpen] = React.useState(false);
 
   /** Open directly from the user gesture; the modal itself suppresses early outside interactions on iOS. */
   const openUploadReceiptsModal = React.useCallback(() => {
     setUploadReceiptsOpen(true);
   }, []);
+  React.useEffect(() => {
+    if (searchParams.get("new_expense") === "1") setQuickExpenseOpen(true);
+  }, [searchParams]);
+
+  const setNewExpenseOpen = React.useCallback(
+    (nextOpen: boolean) => {
+      setQuickExpenseOpen(nextOpen);
+      if (nextOpen || searchParams.get("new_expense") !== "1") return;
+      const sp = new URLSearchParams(searchParams.toString());
+      sp.delete("new_expense");
+      const qs = sp.toString();
+      router.replace(qs ? `${listPath}?${qs}` : listPath, { scroll: false });
+    },
+    [listPath, router, searchParams]
+  );
   const [filtersDrawerOpen, setFiltersDrawerOpen] = React.useState(false);
   const [filtersPopoverOpen, setFiltersPopoverOpen] = React.useState(false);
   const receiptReplaceRef = React.useRef<HTMLInputElement>(null);
@@ -791,6 +787,53 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   expensesRef.current = expenses;
   const previewExpenseRef = React.useRef<Expense | null>(null);
   previewExpenseRef.current = previewExpense;
+
+  React.useEffect(() => {
+    if (inboxMode || !previewOpen) return;
+
+    const appScrollRoot = document.querySelector<HTMLElement>("[data-app-scroll-root]");
+    if (!appScrollRoot) return;
+
+    const compactDetail = window.matchMedia("(max-width: 1023px)");
+    const prior = {
+      overflow: appScrollRoot.style.overflow,
+      overflowY: appScrollRoot.style.overflowY,
+      overscrollBehavior: appScrollRoot.style.overscrollBehavior,
+      scrollTop: appScrollRoot.scrollTop,
+    };
+    let locked = false;
+
+    const unlock = () => {
+      if (!locked) return;
+      appScrollRoot.style.overflow = prior.overflow;
+      appScrollRoot.style.overflowY = prior.overflowY;
+      appScrollRoot.style.overscrollBehavior = prior.overscrollBehavior;
+      delete appScrollRoot.dataset.expenseDetailScrollLock;
+      appScrollRoot.scrollTop = prior.scrollTop;
+      locked = false;
+    };
+
+    const syncLock = () => {
+      if (!compactDetail.matches) {
+        unlock();
+        return;
+      }
+      if (locked) return;
+      prior.scrollTop = appScrollRoot.scrollTop;
+      appScrollRoot.style.overflow = "hidden";
+      appScrollRoot.style.overflowY = "hidden";
+      appScrollRoot.style.overscrollBehavior = "none";
+      appScrollRoot.dataset.expenseDetailScrollLock = "true";
+      locked = true;
+    };
+
+    syncLock();
+    compactDetail.addEventListener("change", syncLock);
+    return () => {
+      compactDetail.removeEventListener("change", syncLock);
+      unlock();
+    };
+  }, [inboxMode, previewOpen]);
 
   const safeProjects = React.useMemo(
     () => (Array.isArray(projectsData) ? projectsData : []) as ProjectRow[],
@@ -1318,15 +1361,10 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
   const handlePreviewModalSave = React.useCallback(
     async (payload: ExpenseInboxPreviewSavePayload): Promise<Expense | null> => {
-      const prevList = expensesRef.current;
-      const target = prevList.find((e) => e.id === payload.expenseId);
+      const target = expensesRef.current.find((e) => e.id === payload.expenseId);
       if (!target) return null;
       const merged = mergeExpenseReviewPatch(target, payload);
       const t0 = uiActionMark();
-      flushSync(() => {
-        setExpenses((prev) => prev.map((e) => (e.id === payload.expenseId ? merged : e)));
-      });
-      uiActionLog("expense-preview-save-ui", t0, 100);
       try {
         const pmTrim =
           payload.paymentMethod.trim() || (target.paymentMethod ?? "").trim() || "Cash";
@@ -1351,6 +1389,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           setExpenses((prev) => prev.map((e) => (e.id === payload.expenseId ? final : e)));
           setPreviewExpense(final);
         });
+        uiActionLog("expense-preview-save-ui", t0, 100);
         queryClient.setQueryData(
           buildExpensesQueryKey(expenseSortRef.current),
           (old: Expense[] | undefined) =>
@@ -1367,9 +1406,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         }
         hotToast.success("Saved");
         return final;
-      } catch {
-        flushSync(() => setExpenses(prevList));
-        hotToast.error("Something went wrong");
+      } catch (error) {
+        hotToast.error(error instanceof Error ? error.message : "Failed to save expense");
         return null;
       }
     },
@@ -1465,9 +1503,54 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       setPreviewExpense(row);
       setPreviewEnterMode(opts?.mode ?? "preview");
       setPreviewOpen(true);
+      setActiveExpenseId(row.id);
+      if (archiveMode) {
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("ops_record", row.id);
+        params.delete("ops_preview");
+        router.push(`${listPath}?${params.toString()}`, { scroll: false });
+      }
     },
-    []
+    [archiveMode, listPath, router, searchParams]
   );
+
+  const closeExpenseWorkspaceDetail = React.useCallback(() => {
+    setPreviewOpen(false);
+    setPreviewExpense(null);
+    setActiveExpenseId(null);
+    if (!archiveMode) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("ops_record");
+    params.delete("ops_preview");
+    const query = params.toString();
+    router.push(query ? `${listPath}?${query}` : listPath, { scroll: false });
+  }, [archiveMode, listPath, router, searchParams]);
+
+  const updateWorkspaceReceiptContext = React.useCallback(
+    (open: boolean) => {
+      if (!archiveMode) return;
+      const params = new URLSearchParams(searchParams.toString());
+      if (open) params.set("ops_preview", "receipt");
+      else params.delete("ops_preview");
+      router.replace(`${listPath}?${params.toString()}`, { scroll: false });
+    },
+    [archiveMode, listPath, router, searchParams]
+  );
+
+  React.useEffect(() => {
+    if (!archiveMode) return;
+    if (!selectedExpenseIdFromUrl) {
+      setPreviewOpen(false);
+      setPreviewExpense(null);
+      setActiveExpenseId(null);
+      return;
+    }
+    const selected = expensesForListing.find((expense) => expense.id === selectedExpenseIdFromUrl);
+    if (!selected) return;
+    setActiveExpenseId(selected.id);
+    setPreviewExpense((current) => (current?.id === selected.id ? current : selected));
+    setPreviewOpen(true);
+  }, [archiveMode, expensesForListing, selectedExpenseIdFromUrl]);
 
   useOnAppSync(
     React.useCallback(() => {
@@ -1490,14 +1573,6 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     }, [queryClient]),
     []
   );
-
-  const handleNew = React.useCallback(() => {
-    const t0 = uiNavMark();
-    startTransition(() => {
-      router.push("/financial/expenses/new");
-      requestAnimationFrame(() => uiNavLog("expenses->new-expense", t0, 200));
-    });
-  }, [router]);
 
   const handleDelete = React.useCallback(
     (expense: Expense) => {
@@ -1960,14 +2035,6 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     [queryClient, toast]
   );
 
-  const bulkDownloadComingSoon = React.useCallback(() => {
-    toast({
-      title: "Download",
-      description: "Bulk download is not available yet.",
-      variant: "default",
-    });
-  }, [toast]);
-
   const bulkActionsApi = React.useMemo<ExpenseListBulkActionsApi>(
     () => ({
       pool: inboxMode ? "inbox" : "expenses",
@@ -1980,7 +2047,6 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       runSetCategory: bulkRunSetCategory,
       runSetPayment: bulkRunSetPayment,
       runDeleteMany: bulkRunDeleteMany,
-      onDownloadComingSoon: bulkDownloadComingSoon,
     }),
     [
       inboxMode,
@@ -1993,7 +2059,6 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       bulkRunSetCategory,
       bulkRunSetPayment,
       bulkRunDeleteMany,
-      bulkDownloadComingSoon,
     ]
   );
 
@@ -2024,12 +2089,28 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
   const groupDeskStart = totalDateGroups === 0 ? 0 : (curPage - 1) * pageSize + 1;
   const groupDeskEnd = Math.min(totalDateGroups, curPage * pageSize);
-  const expensesOnVisibleGroups = visibleDateGroups.reduce((s, g) => s + g.itemCount, 0);
 
   const previewExpenseLive = React.useMemo(() => {
     if (!previewExpense) return null;
     return expenses.find((e) => e.id === previewExpense.id) ?? previewExpense;
   }, [expenses, previewExpense]);
+
+  const selectWorkspaceExpense = React.useCallback(
+    (expense: Expense, history: "push" | "replace" = "push") => {
+      setPreviewExpense(expense);
+      setPreviewEnterMode("preview");
+      setPreviewOpen(true);
+      setActiveExpenseId(expense.id);
+      if (!archiveMode) return;
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("ops_record", expense.id);
+      params.delete("ops_preview");
+      const href = `${listPath}?${params.toString()}`;
+      if (history === "replace") router.replace(href, { scroll: false });
+      else router.push(href, { scroll: false });
+    },
+    [archiveMode, listPath, router, searchParams]
+  );
 
   const previewModalNav = React.useMemo(() => {
     if (!previewOpen || !previewExpenseLive) return undefined;
@@ -2040,14 +2121,14 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       canNext: idx < filteredSortedExpenses.length - 1,
       onPrev: () => {
         const prev = filteredSortedExpenses[idx - 1];
-        if (prev) setPreviewExpense(prev);
+        if (prev) selectWorkspaceExpense(prev);
       },
       onNext: () => {
         const next = filteredSortedExpenses[idx + 1];
-        if (next) setPreviewExpense(next);
+        if (next) selectWorkspaceExpense(next, "replace");
       },
     };
-  }, [previewOpen, previewExpenseLive, filteredSortedExpenses]);
+  }, [previewOpen, previewExpenseLive, filteredSortedExpenses, selectWorkspaceExpense]);
 
   const previewPossibleDuplicate =
     previewExpenseLive != null && possibleDuplicateIds.has(previewExpenseLive.id);
@@ -2062,35 +2143,43 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     : "Tracked project costs and completed expenses";
 
   return (
-    <div className={financeOsPageWrap} data-expenses-query-status={expensesQueryStatus}>
+    <div
+      className={financeOsPageWrap}
+      data-expense-depth-system="l0-l5"
+      data-expenses-query-status={expensesQueryStatus}
+      data-expenses-list-page={inboxMode ? "inbox" : "expenses"}
+      data-expense-workspace-detail-open={!inboxMode && previewOpen ? "true" : "false"}
+    >
       <div
         className={cn(
-          "expenses-ui-content page-shell-wide mx-auto w-full min-w-0 max-w-[430px] px-3 py-3 sm:max-w-[460px] md:px-8",
+          "expenses-ui-content page-shell-wide mx-auto w-full min-w-0 max-w-none px-3 py-3 md:px-6 xl:max-w-[1440px] xl:px-8",
           inboxMode ? "md:pb-7 md:pt-3" : "md:py-8"
         )}
       >
+        <ExpenseOperationsWorkspaceNav className="mb-2 md:mb-3" />
         <div
           className={cn(
             "max-md:pb-1",
-            inboxMode ? "space-y-2 md:space-y-2.5" : "space-y-4 md:space-y-6"
+            inboxMode ? "space-y-2 md:space-y-2.5" : "space-y-3 md:space-y-4"
           )}
         >
           <div
+            data-expense-surface-header="mobile"
             className={cn(
-              "flex items-start justify-between gap-3 border-b border-white/10 md:hidden",
+              "flex items-start justify-between gap-3 md:hidden",
               inboxMode ? "pb-2" : "pb-3"
             )}
           >
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <h1 className="text-[17px] font-semibold leading-tight tracking-normal text-[var(--neo-canvas-text-primary)]">
+                <h1 className="text-[17px] font-semibold leading-tight tracking-normal text-[var(--fieldbook-ink)]">
                   {pageTitle}
                 </h1>
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-9 min-h-9 shrink-0 px-2 text-[11px] font-medium text-[var(--neo-canvas-text-tertiary)] transition-colors duration-150 hover:bg-white/10 hover:text-[var(--neo-canvas-text-primary)]"
+                  className="h-9 min-h-9 shrink-0 px-2 text-[11px] font-medium text-[var(--fieldbook-muted)] transition-colors duration-150 hover:bg-black/[0.04] hover:text-[var(--fieldbook-ink)]"
                   onClick={() =>
                     startTransition(() =>
                       router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
@@ -2102,7 +2191,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               </div>
               <p
                 className={cn(
-                  "text-[11px] leading-snug text-[var(--neo-canvas-text-secondary)]",
+                  "text-[11px] leading-snug text-[var(--fieldbook-muted)]",
                   inboxMode ? "mt-0.5 line-clamp-2" : "mt-1 hidden sm:line-clamp-2"
                 )}
               >
@@ -2112,7 +2201,6 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             <TransactionInboxEntryActions
               onQuick={() => setQuickExpenseOpen(true)}
               onUpload={openUploadReceiptsModal}
-              onNewExpense={handleNew}
               compact
               className="shrink-0 justify-end"
             />
@@ -2120,7 +2208,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
           {inboxMode ? (
             <div
-              className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-white/10 pb-2 md:-mt-1 md:pb-2"
+              className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-[var(--neo-border)] pb-2 md:-mt-1 md:pb-2"
               aria-label="Inbox queue summary"
             >
               <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 py-1.5 text-[11px] text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-panel)]">
@@ -2135,7 +2223,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 </span>
                 missing info
               </span>
-              <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-2.5 py-1.5 text-[11px] text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]">
+              <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-2.5 py-1.5 text-[11px] text-[var(--eo-warning)]">
                 <span className="font-semibold tabular-nums text-[var(--neo-text-primary)]">
                   {inboxReviewStats.missingReceipt}
                 </span>
@@ -2144,10 +2232,13 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             </div>
           ) : null}
 
-          <div className={cn("hidden md:block", inboxMode && "-mt-0.5")}>
+          <div
+            data-expense-surface-header="desktop"
+            className={cn("hidden md:block", inboxMode && "-mt-0.5")}
+          >
             <PageHeader
               className={cn(
-                "border-b border-white/10 pb-3 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]",
+                "border-b-0 pb-3 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--fieldbook-ink)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--fieldbook-muted)]",
                 inboxMode ? "gap-2 lg:items-baseline lg:gap-x-4 lg:gap-y-2" : "gap-3"
               )}
               title={pageTitle}
@@ -2168,118 +2259,121 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   <TransactionInboxEntryActions
                     onQuick={() => setQuickExpenseOpen(true)}
                     onUpload={openUploadReceiptsModal}
-                    onNewExpense={handleNew}
                   />
                 </div>
               }
             />
           </div>
 
-          <div
-            className={cn(
-              "grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3",
-              inboxMode && "-mt-0.5 md:-mt-1"
-            )}
-          >
-            <div
-              className={cn(
-                financeOsCard,
-                financeOsCardInteractive,
-                "flex min-h-[52px] items-center gap-1.5 px-2 py-2 md:h-[76px] md:gap-2.5 md:px-3 md:py-2"
-              )}
+          {inboxMode ? (
+            <section
+              aria-label="Expense decision brief"
+              className="-mt-0.5 overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:-mt-1"
             >
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8">
-                <AlertCircle className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
-              </span>
-              <div className="min-w-0">
-                <p className={financeSectionLabelClass}>{inboxMode ? "In queue" : "Archived"}</p>
-                <p className={financeMetricValueClass}>
-                  {inboxMode ? summary.inboxQueueCount : summary.archivedCount}
-                </p>
-              </div>
-            </div>
-            <div
-              className={cn(
-                financeOsCard,
-                financeOsCardInteractive,
-                "flex min-h-[52px] items-center justify-between gap-1 px-2 py-2 md:h-[76px] md:gap-2 md:px-3 md:py-2"
-              )}
+              <dl className="grid grid-cols-2 md:grid-cols-4">
+                {[
+                  {
+                    label: "In queue",
+                    value: String(summary.inboxQueueCount),
+                    amount: false,
+                  },
+                  { label: "This Month", value: formatCurrency(summary.monthTotal), amount: true },
+                  {
+                    label: archiveMode ? "Total (archived)" : "Total (all)",
+                    value: formatCurrency(summary.allTotal),
+                    amount: true,
+                  },
+                  {
+                    label: "Reimbursements",
+                    value: formatCurrency(summary.reimbursementTotal),
+                    amount: true,
+                  },
+                ].map((metric, index) => (
+                  <div
+                    key={metric.label}
+                    className={cn(
+                      "min-w-0 px-3 py-2.5 md:px-4 md:py-3",
+                      index % 2 === 1 && "border-l border-[var(--neo-border)]",
+                      index >= 2 && "border-t border-[var(--neo-border)] md:border-t-0",
+                      index >= 1 && "md:border-l md:border-[var(--neo-border)]"
+                    )}
+                  >
+                    <dt className="truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--neo-text-tertiary)]">
+                      {metric.label}
+                    </dt>
+                    <dd className="mt-1 truncate text-[15px] font-semibold tabular-nums leading-none md:text-lg">
+                      {metric.amount ? <NeoAmount>{metric.value}</NeoAmount> : metric.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ) : (
+            <section
+              data-expenses-kpi-strip
+              aria-label="Expense summary"
+              className="overflow-x-auto rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
             >
-              <div className="flex min-w-0 items-center gap-1.5 md:gap-2.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8">
-                  <CalendarDays
-                    className="h-3 w-3 md:h-3.5 md:w-3.5"
-                    strokeWidth={1.75}
-                    aria-hidden
-                  />
-                </span>
-                <div className="min-w-0">
-                  <p className={financeSectionLabelClass}>This Month</p>
-                  <p className={financeMetricValueClass}>
-                    <NeoAmount tone="expense">{formatCurrency(summary.monthTotal)}</NeoAmount>
-                  </p>
-                </div>
-              </div>
-              <KpiSparkline className="hidden shrink-0 opacity-50 md:block" />
-            </div>
-            <div
-              className={cn(
-                financeOsCard,
-                financeOsCardInteractive,
-                "flex min-h-[52px] items-center justify-between gap-1 px-2 py-2 md:h-[76px] md:gap-2 md:px-3 md:py-2"
-              )}
-            >
-              <div className="flex min-w-0 items-center gap-1.5 md:gap-2.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8">
-                  <DollarSign
-                    className="h-3 w-3 md:h-3.5 md:w-3.5"
-                    strokeWidth={1.75}
-                    aria-hidden
-                  />
-                </span>
-                <div className="min-w-0">
-                  <p className={financeSectionLabelClass}>
-                    {archiveMode ? "Total (archived)" : "Total (all)"}
-                  </p>
-                  <p className={financeMetricValueClass}>
-                    <NeoAmount tone="expense">{formatCurrency(summary.allTotal)}</NeoAmount>
-                  </p>
-                </div>
-              </div>
-              <KpiSparkline className="hidden shrink-0 text-emerald-300 opacity-50 dark:text-emerald-900/40 md:block" />
-            </div>
-            <div
-              className={cn(
-                financeOsCard,
-                financeOsCardInteractive,
-                "flex min-h-[52px] items-center justify-between gap-1 px-2 py-2 md:h-[76px] md:gap-2 md:px-3 md:py-2"
-              )}
-            >
-              <div className="flex min-w-0 items-center gap-1.5 md:gap-2.5">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] md:h-8 md:w-8">
-                  <RefreshCw className="h-3 w-3 md:h-3.5 md:w-3.5" strokeWidth={1.75} aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <p className={financeSectionLabelClass}>Reimbursements</p>
-                  <p className={financeMetricValueClass}>
-                    <NeoAmount tone="expense">
-                      {formatCurrency(summary.reimbursementTotal)}
-                    </NeoAmount>
-                  </p>
-                </div>
-              </div>
-              <KpiSparkline className="hidden shrink-0 text-emerald-300 opacity-50 dark:text-emerald-900/40 md:block" />
-            </div>
-          </div>
+              <dl className="flex min-w-max items-stretch">
+                {[
+                  { label: "Archived", value: String(summary.archivedCount), amount: false },
+                  { label: "This month", value: formatCurrency(summary.monthTotal), amount: true },
+                  {
+                    label: archiveMode ? "Archived total" : "All expenses",
+                    value: formatCurrency(summary.allTotal),
+                    amount: true,
+                  },
+                  {
+                    label: "Reimbursements",
+                    value: formatCurrency(summary.reimbursementTotal),
+                    amount: true,
+                  },
+                ].map((metric) => (
+                  <div
+                    key={metric.label}
+                    className="flex min-w-40 flex-1 items-baseline justify-between gap-3 px-3 py-2.5 md:min-w-44 md:px-4"
+                  >
+                    <dt className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--neo-text-tertiary)]">
+                      {metric.label}
+                    </dt>
+                    <dd className="whitespace-nowrap text-sm font-semibold tabular-nums leading-none md:text-[15px]">
+                      {metric.amount ? <NeoAmount>{metric.value}</NeoAmount> : metric.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          )}
 
           {/* Mobile: search + filters drawer (pool switch lives in header) */}
           <NeoToolbar className="flex-row items-center gap-2 p-2 md:hidden">
-            <Input
-              placeholder="Search…"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="h-11 min-h-11 min-w-0 flex-1 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-base text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)]"
-            />
+            <div
+              data-expenses-list-toolbar={!inboxMode ? "mobile" : undefined}
+              className="relative min-w-0 flex-1"
+            >
+              <Search
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]"
+                aria-hidden
+              />
+              <Input
+                type={inboxMode ? "text" : "search"}
+                aria-label="Search expenses"
+                placeholder="Merchant, description, project…"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="h-11 min-h-11 w-full rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] pl-9 pr-11 text-base text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)]"
+              />
+              {searchInput ? (
+                <button
+                  type="button"
+                  aria-label="Clear expense search"
+                  className="absolute right-0 top-0 flex h-11 w-11 touch-manipulation items-center justify-center rounded-lg text-[var(--neo-text-tertiary)] outline-none hover:text-[var(--neo-text-primary)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--neo-gold-ring)]"
+                  onClick={() => setSearchInput("")}
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                </button>
+              ) : null}
+            </div>
             <Button
               type="button"
               variant="outline"
@@ -2291,9 +2385,11 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               <span className="truncate text-xs font-medium">
                 Filters
                 {activeAdvancedFilterCount > 0 ? (
-                  <span className="text-[var(--neo-text-secondary)]">
-                    {" "}
-                    · {activeAdvancedFilterCount}
+                  <span
+                    data-expenses-active-filter-count
+                    className="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--eo-surface-selected)] px-1 text-[10px] tabular-nums text-[var(--neo-text-secondary)]"
+                  >
+                    {activeAdvancedFilterCount}
                   </span>
                 ) : null}
               </span>
@@ -2302,10 +2398,27 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           <Sheet open={filtersDrawerOpen} onOpenChange={setFiltersDrawerOpen}>
             <SheetContent
               side="bottom"
-              className="max-h-[90vh] overflow-y-auto rounded-t-lg p-4 md:hidden"
+              data-expense-component-surface="filters"
+              className="expenses-ui-dialog max-h-[90vh] overflow-y-auto rounded-t-[14px] p-4 md:hidden"
             >
-              <SheetHeader className="text-left">
-                <SheetTitle className="text-base font-semibold">Filters & more</SheetTitle>
+              <SheetHeader className="flex-row items-center justify-between gap-3 pr-11 text-left">
+                <div>
+                  <SheetTitle className="text-base font-semibold">Expense filters</SheetTitle>
+                  <p className="mt-0.5 text-xs text-[var(--neo-text-secondary)]">
+                    Narrow the current queue without leaving context.
+                  </p>
+                </div>
+                {activeAdvancedFilterCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-11 min-h-11 shrink-0 px-2 text-xs"
+                    onClick={clearAdvancedFilters}
+                  >
+                    Clear
+                  </Button>
+                ) : null}
               </SheetHeader>
               <div className="mt-4 flex flex-col gap-4 pb-8">
                 <div className="flex flex-col gap-2 border-b border-[var(--neo-border)] pb-4">
@@ -2322,7 +2435,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       setFiltersDrawerOpen(false);
                     }}
                   >
-                    Quick
+                    <Plus className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+                    New Expense
                   </Button>
                   <Button
                     type="button"
@@ -2339,21 +2453,6 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   >
                     <Upload className="mr-2 h-4 w-4 shrink-0" aria-hidden />
                     Upload receipt
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      OS.secondaryButton,
-                      "h-10 w-full shrink-0 rounded-md shadow-none"
-                    )}
-                    onClick={() => {
-                      handleNew();
-                      setFiltersDrawerOpen(false);
-                    }}
-                  >
-                    New expense
                   </Button>
                 </div>
                 <ExpensesAdvancedFiltersFields
@@ -2383,142 +2482,289 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             </SheetContent>
           </Sheet>
 
-          <section
-            className={cn(
-              "relative",
-              expensesListRefetching &&
-                expensesForListing.length > 0 &&
-                "pointer-events-none opacity-60"
-            )}
-            aria-busy={expensesListRefetching && expensesForListing.length > 0 ? true : undefined}
+          <div
+            data-expense-operations-workspace={!inboxMode ? "" : undefined}
+            data-expense-detail-open={!inboxMode && previewOpen ? "true" : "false"}
+            className={cn("expense-operations-workspace", inboxMode && "block")}
           >
-            {expensesListRefetching && expensesForListing.length > 0 ? (
-              <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex justify-center pt-1">
-                <LoadingState
-                  text="Updating..."
-                  className="rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-1 text-xs shadow-[var(--neo-shadow-panel)]"
-                />
-              </div>
-            ) : null}
-
-            {/* Filters + table: Finance OS card shell */}
-            <NeoPanel className={financeOsListShell} bodyClassName="contents">
-              <NeoToolbar className="hidden flex-wrap items-center justify-between gap-3 rounded-none border-0 border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-4 py-3 shadow-none md:flex">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={financeToolbarButtonClass}
-                    onClick={() =>
-                      startTransition(() =>
-                        router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
-                      )
-                    }
-                  >
-                    {inboxMode ? "Expenses" : "Inbox draft"}
-                  </Button>
+            <section
+              data-expenses-ledger={!inboxMode ? "" : undefined}
+              className={cn(
+                "relative min-w-0",
+                expensesListRefetching &&
+                  expensesForListing.length > 0 &&
+                  "pointer-events-none opacity-60"
+              )}
+              aria-busy={expensesListRefetching && expensesForListing.length > 0 ? true : undefined}
+            >
+              {expensesListRefetching && expensesForListing.length > 0 ? (
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex justify-center pt-1">
+                  <LoadingState
+                    text="Updating..."
+                    className="rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-1 text-xs shadow-[var(--neo-shadow-panel)]"
+                  />
                 </div>
-                <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 lg:max-w-xl">
-                  <div className="relative min-w-[12rem] max-w-md flex-1">
-                    <Search
-                      className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--neo-text-tertiary)]"
+              ) : null}
+
+              {/* Filters + table: Finance OS card shell */}
+              <NeoPanel
+                className={cn(financeOsListShell, "expense-operations-ledger-panel")}
+                bodyClassName="contents"
+              >
+                <NeoToolbar className="hidden flex-wrap items-center justify-between gap-3 rounded-none border-0 border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 shadow-none md:flex">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={financeToolbarButtonClass}
+                      onClick={() =>
+                        startTransition(() =>
+                          router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
+                        )
+                      }
+                    >
+                      {inboxMode ? "Expenses" : "Inbox draft"}
+                    </Button>
+                  </div>
+                  <div
+                    data-expenses-list-toolbar={!inboxMode ? "desktop" : undefined}
+                    className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2 lg:max-w-xl"
+                  >
+                    <div className="relative min-w-[12rem] max-w-md flex-1">
+                      <Search
+                        className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--neo-text-tertiary)]"
+                        aria-hidden
+                      />
+                      <Input
+                        type={inboxMode ? "text" : "search"}
+                        aria-label="Search expenses"
+                        placeholder="Merchant, description, project…"
+                        value={searchInput}
+                        onChange={(e) => setSearchInput(e.target.value)}
+                        className="h-9 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] py-1 pl-8 pr-14 text-sm text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] transition-[border-color] duration-150 focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)]"
+                      />
+                      {searchInput ? (
+                        <button
+                          type="button"
+                          aria-label="Clear expense search"
+                          className="absolute right-0 top-0 flex h-9 w-9 items-center justify-center rounded-lg text-[var(--neo-text-tertiary)] outline-none hover:text-[var(--neo-text-primary)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--neo-gold-ring)]"
+                          onClick={() => setSearchInput("")}
+                        >
+                          <X className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                      ) : (
+                        <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-1.5 py-0.5 font-sans text-[10px] font-medium text-[var(--neo-text-tertiary)] lg:inline">
+                          ⌘K
+                        </kbd>
+                      )}
+                    </div>
+                    <Popover open={filtersPopoverOpen} onOpenChange={setFiltersPopoverOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className={cn(financeToolbarButtonClass, "gap-1.5 px-3")}
+                        >
+                          <Filter className="h-4 w-4 shrink-0" aria-hidden />
+                          <span className="text-xs font-medium">
+                            Filters
+                            {activeAdvancedFilterCount > 0 ? (
+                              <span
+                                data-expenses-active-filter-count
+                                className="ml-1 inline-flex min-w-4 items-center justify-center rounded-full bg-[var(--eo-surface-selected)] px-1 text-[10px] tabular-nums text-[var(--neo-text-secondary)]"
+                              >
+                                {activeAdvancedFilterCount}
+                              </span>
+                            ) : null}
+                          </span>
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        align="end"
+                        sideOffset={8}
+                        data-expense-component-surface="filters"
+                        className="expenses-ui-dialog z-50 w-[min(calc(100vw-2rem),22rem)] overflow-visible rounded-[10px] border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+                      >
+                        <div className="mb-3 flex items-center justify-between gap-3 border-b border-[var(--neo-border)] pb-2.5">
+                          <div>
+                            <p className="text-xs font-semibold text-[var(--neo-text-primary)]">
+                              Expense filters
+                            </p>
+                            <p className="mt-0.5 text-[10px] text-[var(--neo-text-tertiary)]">
+                              Refine the current queue
+                            </p>
+                          </div>
+                          {activeAdvancedFilterCount > 0 ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 shrink-0 px-2 text-[11px]"
+                              onClick={clearAdvancedFilters}
+                            >
+                              Clear
+                            </Button>
+                          ) : null}
+                        </div>
+                        <ExpensesAdvancedFiltersFields
+                          projectFilter={projectFilter}
+                          setProjectFilter={setProjectFilter}
+                          categoryFilter={categoryFilter}
+                          setCategoryFilter={setCategoryFilter}
+                          expenseDateFilter={expenseDateFilter}
+                          onExpenseDateChange={onExpenseDateFilterChange}
+                          sourceTypeFilter={sourceTypeFilter}
+                          setSourceTypeFilter={setSourceTypeFilter}
+                          expenseSort={expenseSort}
+                          onSortValueChange={applyExpenseSortValue}
+                          safeProjects={safeProjects}
+                          categoriesList={categoriesList}
+                          projectsError={projectsError}
+                          selectTriggerClassName="h-9 w-full rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs text-[var(--neo-text-primary)] shadow-none transition-colors duration-150"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </NeoToolbar>
+                {inboxMode ? (
+                  <p className="hidden border-b border-[var(--neo-border)] px-4 py-2 text-[11px] leading-snug text-[var(--neo-text-secondary)] md:block">
+                    Enter: save · Shift+Enter: save only · Tab: field · ↑↓ row · D delete · Esc
+                    cancel
+                  </p>
+                ) : null}
+                {focusedIssueNotFound ? (
+                  <div
+                    data-testid="expense-focus-not-found"
+                    className="mx-3 mt-3 flex items-start gap-2 rounded-lg border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-3 py-2.5 text-sm text-[var(--neo-text-secondary)]"
+                    role="status"
+                  >
+                    <AlertCircle
+                      className="mt-0.5 h-4 w-4 shrink-0 text-[var(--eo-warning)]"
+                      strokeWidth={1.75}
                       aria-hidden
                     />
-                    <Input
-                      placeholder="Search…"
-                      value={searchInput}
-                      onChange={(e) => setSearchInput(e.target.value)}
-                      className="h-9 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] py-1 pl-8 pr-14 text-sm text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] transition-[border-color] duration-150 focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)]"
-                    />
-                    <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 select-none rounded border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-1.5 py-0.5 font-sans text-[10px] font-medium text-[var(--neo-text-tertiary)] lg:inline">
-                      ⌘K
-                    </kbd>
+                    <div className="min-w-0">
+                      <p className="font-medium text-[var(--neo-text-primary)]">
+                        Expense issue not found on this page.
+                      </p>
+                      <p className="mt-0.5 text-xs text-[var(--neo-text-secondary)]">
+                        Try clearing filters.
+                      </p>
+                    </div>
                   </div>
-                  <Popover open={filtersPopoverOpen} onOpenChange={setFiltersPopoverOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className={cn(financeToolbarButtonClass, "gap-1.5 px-3")}
-                      >
-                        <Filter className="h-4 w-4 shrink-0" aria-hidden />
-                        <span className="text-xs font-medium">
-                          Filters
-                          {activeAdvancedFilterCount > 0 ? (
-                            <span className="text-[var(--neo-text-secondary)]">
-                              {" "}
-                              · {activeAdvancedFilterCount}
-                            </span>
-                          ) : null}
-                        </span>
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      align="end"
-                      sideOffset={8}
-                      className="z-50 w-[min(calc(100vw-2rem),22rem)] overflow-visible rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
-                    >
-                      <ExpensesAdvancedFiltersFields
-                        projectFilter={projectFilter}
-                        setProjectFilter={setProjectFilter}
-                        categoryFilter={categoryFilter}
-                        setCategoryFilter={setCategoryFilter}
-                        expenseDateFilter={expenseDateFilter}
-                        onExpenseDateChange={onExpenseDateFilterChange}
-                        sourceTypeFilter={sourceTypeFilter}
-                        setSourceTypeFilter={setSourceTypeFilter}
-                        expenseSort={expenseSort}
-                        onSortValueChange={applyExpenseSortValue}
-                        safeProjects={safeProjects}
-                        categoriesList={categoriesList}
-                        projectsError={projectsError}
-                        selectTriggerClassName="h-9 w-full rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs text-[var(--neo-text-primary)] shadow-none transition-colors duration-150"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </NeoToolbar>
-              {inboxMode ? (
-                <p className="hidden border-b border-[var(--neo-border)] px-4 py-2 text-[11px] leading-snug text-[var(--neo-text-secondary)] md:block">
-                  Enter: save · Shift+Enter: save only · Tab: field · ↑↓ row · D delete · Esc cancel
-                </p>
-              ) : null}
-              {focusedIssueNotFound ? (
-                <div
-                  data-testid="expense-focus-not-found"
-                  className="mx-3 mt-3 flex items-start gap-2 rounded-lg border border-[rgb(184_137_45_/_0.28)] bg-[rgb(184_137_45_/_0.08)] px-3 py-2.5 text-sm text-[var(--neo-text-secondary)]"
-                  role="status"
-                >
-                  <AlertCircle
-                    className="mt-0.5 h-4 w-4 shrink-0 text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]"
-                    strokeWidth={1.75}
-                    aria-hidden
-                  />
-                  <div className="min-w-0">
-                    <p className="font-medium text-[var(--neo-text-primary)]">
-                      Expense issue not found on this page.
-                    </p>
-                    <p className="mt-0.5 text-xs text-[var(--neo-text-secondary)]">
-                      Try clearing filters.
-                    </p>
-                  </div>
-                </div>
-              ) : null}
-              {showExpensesSkeleton && expenses.length === 0 ? (
-                <div className="border-t border-[var(--neo-border)] px-4 py-8 md:border-t-0">
-                  <ExpensesListSkeleton rows={8} showStatCards={false} />
-                </div>
-              ) : total === 0 ? (
-                <>
+                ) : null}
+                {expensesQueryError && expensesQueryData === undefined ? (
                   <div
-                    className="hidden min-h-[280px] flex-col justify-center border-t border-[var(--neo-border)] px-6 py-14 text-center md:flex"
-                    tabIndex={-1}
-                    data-expenses-empty
+                    data-expenses-error
+                    role="alert"
+                    aria-live="assertive"
+                    className="flex min-h-56 flex-col items-start justify-center gap-4 border-t border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-5 py-10 text-left md:min-h-72 md:flex-row md:items-center md:justify-center md:px-8"
                   >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] text-[var(--neo-gold)]">
+                      <AlertCircle className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+                    </span>
+                    <div className="min-w-0 max-w-md flex-1 md:flex-none">
+                      <p className="text-sm font-semibold text-[var(--neo-text-primary)]">
+                        Expenses couldn’t load
+                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-[var(--neo-text-secondary)]">
+                        The ledger is unavailable right now. No expense totals or empty results are
+                        being inferred.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className={cn(financeToolbarButtonClass, "h-11 min-h-11 md:h-9 md:min-h-0")}
+                      onClick={() => void refetchExpensesQuery()}
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                ) : showExpensesSkeleton && expenses.length === 0 ? (
+                  <div className="border-t border-[var(--neo-border)] px-4 py-8 md:border-t-0">
+                    <ExpensesListSkeleton
+                      rows={8}
+                      showStatCards={false}
+                      mode={inboxMode ? "default" : "ledger"}
+                    />
+                  </div>
+                ) : total === 0 ? (
+                  <>
+                    <div
+                      className="hidden min-h-[280px] flex-col justify-center border-t border-[var(--neo-border)] px-6 py-14 text-center md:flex"
+                      tabIndex={-1}
+                      data-expenses-empty
+                    >
+                      <EmptyState
+                        className="mx-auto max-w-md border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-8 py-10"
+                        title={
+                          inboxMode &&
+                          !hasNarrowingFilters &&
+                          expensesForListing.length > 0 &&
+                          summary.inboxQueueCount === 0
+                            ? "Inbox clear — all drafts reviewed"
+                            : "No transactions found"
+                        }
+                        description={
+                          inboxMode
+                            ? hasNarrowingFilters
+                              ? "Try clearing filters or search."
+                              : expensesForListing.length === 0
+                                ? "Add an expense to get started."
+                                : summary.inboxQueueCount === 0
+                                  ? "Open Expenses to view archived costs."
+                                  : "No matching items."
+                            : hasNarrowingFilters
+                              ? "Adjust filters or search."
+                              : expensesForListing.length === 0
+                                ? "Add an expense to get started."
+                                : summary.archivedCount === 0
+                                  ? "No archived expenses yet. Mark items done from Inbox."
+                                  : "No matching archived expenses."
+                        }
+                        action={
+                          showEmptyOnboardingCtas ? (
+                            <TransactionInboxEntryActions
+                              onQuick={() => setQuickExpenseOpen(true)}
+                              onUpload={openUploadReceiptsModal}
+                              className="justify-center"
+                            />
+                          ) : inboxMode &&
+                            !hasNarrowingFilters &&
+                            expensesForListing.length > 0 &&
+                            summary.inboxQueueCount === 0 ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className={financeToolbarButtonClass}
+                              onClick={() => router.push("/financial/expenses")}
+                            >
+                              View Expenses
+                            </Button>
+                          ) : archiveMode && !hasNarrowingFilters && summary.archivedCount === 0 ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className={financeToolbarButtonClass}
+                              onClick={() => router.push("/financial/inbox")}
+                            >
+                              Open Inbox
+                            </Button>
+                          ) : null
+                        }
+                      />
+                    </div>
                     <EmptyState
-                      className="mx-auto max-w-md border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-8 py-10"
+                      className="mx-2 mb-2 border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-10 md:hidden"
+                      tabIndex={-1}
+                      data-expenses-empty-mobile
+                      icon={<Upload className="h-5 w-5" aria-hidden />}
                       title={
                         inboxMode &&
                         !hasNarrowingFilters &&
@@ -2530,18 +2776,18 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       description={
                         inboxMode
                           ? hasNarrowingFilters
-                            ? "Try clearing filters or search."
+                            ? "Try filters or search."
                             : expensesForListing.length === 0
                               ? "Add an expense to get started."
                               : summary.inboxQueueCount === 0
-                                ? "Open Expenses to view archived costs."
+                                ? "Open Expenses for archived costs."
                                 : "No matching items."
                           : hasNarrowingFilters
                             ? "Adjust filters or search."
                             : expensesForListing.length === 0
                               ? "Add an expense to get started."
                               : summary.archivedCount === 0
-                                ? "No archived expenses yet. Mark items done from Inbox."
+                                ? "Nothing archived yet. Use Inbox."
                                 : "No matching archived expenses."
                       }
                       action={
@@ -2549,8 +2795,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                           <TransactionInboxEntryActions
                             onQuick={() => setQuickExpenseOpen(true)}
                             onUpload={openUploadReceiptsModal}
-                            onNewExpense={handleNew}
-                            className="justify-center"
+                            quickButtonSize="default"
+                            className="max-w-full justify-center gap-1"
                           />
                         ) : inboxMode &&
                           !hasNarrowingFilters &&
@@ -2560,7 +2806,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                             type="button"
                             size="sm"
                             variant="outline"
-                            className={financeToolbarButtonClass}
+                            className="mt-4"
                             onClick={() => router.push("/financial/expenses")}
                           >
                             View Expenses
@@ -2570,7 +2816,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                             type="button"
                             size="sm"
                             variant="outline"
-                            className={financeToolbarButtonClass}
+                            className="mt-4"
                             onClick={() => router.push("/financial/inbox")}
                           >
                             Open Inbox
@@ -2578,165 +2824,142 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                         ) : null
                       }
                     />
-                  </div>
-                  <EmptyState
-                    className="mx-2 mb-2 border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-10 md:hidden"
-                    tabIndex={-1}
-                    data-expenses-empty-mobile
-                    icon={<Upload className="h-5 w-5" aria-hidden />}
-                    title={
-                      inboxMode &&
-                      !hasNarrowingFilters &&
-                      expensesForListing.length > 0 &&
-                      summary.inboxQueueCount === 0
-                        ? "Inbox clear — all drafts reviewed"
-                        : "No transactions found"
-                    }
-                    description={
-                      inboxMode
-                        ? hasNarrowingFilters
-                          ? "Try filters or search."
-                          : expensesForListing.length === 0
-                            ? "Add an expense to get started."
-                            : summary.inboxQueueCount === 0
-                              ? "Open Expenses for archived costs."
-                              : "No matching items."
-                        : hasNarrowingFilters
-                          ? "Adjust filters or search."
-                          : expensesForListing.length === 0
-                            ? "Add an expense to get started."
-                            : summary.archivedCount === 0
-                              ? "Nothing archived yet. Use Inbox."
-                              : "No matching archived expenses."
-                    }
-                    action={
-                      showEmptyOnboardingCtas ? (
-                        <TransactionInboxEntryActions
-                          onQuick={() => setQuickExpenseOpen(true)}
-                          onUpload={openUploadReceiptsModal}
-                          onNewExpense={handleNew}
-                          quickButtonSize="default"
-                          className="max-w-full justify-center gap-1"
-                        />
-                      ) : inboxMode &&
-                        !hasNarrowingFilters &&
-                        expensesForListing.length > 0 &&
-                        summary.inboxQueueCount === 0 ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="mt-4"
-                          onClick={() => router.push("/financial/expenses")}
-                        >
-                          View Expenses
-                        </Button>
-                      ) : archiveMode && !hasNarrowingFilters && summary.archivedCount === 0 ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="mt-4"
-                          onClick={() => router.push("/financial/inbox")}
-                        >
-                          Open Inbox
-                        </Button>
-                      ) : null
-                    }
-                  />
-                </>
-              ) : (
-                <>
-                  <div className="w-full overflow-hidden bg-[var(--neo-surface-raised)]">
-                    <ExpenseInboxTransactionList
-                      dateChunks={visibleDateGroups}
-                      possibleDuplicateIds={possibleDuplicateIds}
-                      bulkActions={bulkActionsApi}
-                      api={{
-                        listView,
-                        dateGroupPool: inboxMode ? "inbox" : "expenses",
-                        autoExpandDateGroups: autoExpandDateGroupsForHighlight,
-                        forceExpandedDateKeys: forcedExpandedDateKeys,
-                        expenseIssueFocus,
-                        focusedExpenseId: expenseIssueFocus?.expenseId ?? null,
-                        highlightReferenceNos: rowHighlightRefs,
-                        activeExpenseId,
-                        setActiveExpenseId,
-                        rowElsRef,
-                        projectNameById,
-                        deletingExpenseId,
-                        toggleStatus,
-                        openReceiptPreview,
-                        prefetchReceiptUrls,
-                        openExpensePreview,
-                        handleDelete,
-                      }}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-3 border-t border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-4 py-3 text-xs text-[var(--neo-text-secondary)] md:flex-row md:items-center md:justify-between md:gap-4">
-                    <p className="tabular-nums">
-                      {total === 0
-                        ? "Showing 0 results"
-                        : `Date groups ${groupDeskStart}–${groupDeskEnd} of ${totalDateGroups} · ${expensesOnVisibleGroups} expenses on this page · ${total} total`}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-3 md:gap-4">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--neo-surface-muted)] md:h-7 md:min-h-0 md:w-7 md:min-w-0"
-                          disabled={curPage <= 1}
-                          aria-label="Previous page"
-                          onClick={() => setPage(curPage - 1)}
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span className="min-w-[2rem] text-center tabular-nums text-foreground">
-                          {curPage}
-                        </span>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--neo-surface-muted)] md:h-7 md:min-h-0 md:w-7 md:min-w-0"
-                          disabled={curPage >= totalPages}
-                          aria-label="Next page"
-                          onClick={() => setPage(curPage + 1)}
-                        >
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="whitespace-nowrap text-[var(--neo-text-secondary)]">
-                          Groups per page
-                        </span>
-                        <Select
-                          value={String(pageSize)}
-                          onValueChange={(v) => setPageSizeAndReset(Number(v))}
-                        >
-                          <SelectTrigger className="h-11 min-h-11 w-[4.25rem] rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs shadow-none transition-colors duration-150 md:h-7 md:min-h-0">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="10">10</SelectItem>
-                            <SelectItem value="25">25</SelectItem>
-                            <SelectItem value="50">50</SelectItem>
-                          </SelectContent>
-                        </Select>
+                  </>
+                ) : (
+                  <>
+                    <div
+                      data-expenses-ledger-body
+                      className="w-full min-h-0 overflow-hidden bg-[var(--neo-surface-raised)]"
+                    >
+                      <ExpenseInboxTransactionList
+                        dateChunks={visibleDateGroups}
+                        possibleDuplicateIds={possibleDuplicateIds}
+                        bulkActions={bulkActionsApi}
+                        api={{
+                          listView,
+                          dateGroupPool: inboxMode ? "inbox" : "expenses",
+                          autoExpandDateGroups: autoExpandDateGroupsForHighlight,
+                          forceExpandedDateKeys: forcedExpandedDateKeys,
+                          expenseIssueFocus,
+                          focusedExpenseId: expenseIssueFocus?.expenseId ?? null,
+                          highlightReferenceNos: rowHighlightRefs,
+                          activeExpenseId,
+                          setActiveExpenseId,
+                          rowElsRef,
+                          projectNameById,
+                          deletingExpenseId,
+                          toggleStatus,
+                          openReceiptPreview,
+                          prefetchReceiptUrls,
+                          openExpensePreview,
+                          handleDelete,
+                        }}
+                      />
+                    </div>
+                    <div
+                      data-expenses-pagination={!inboxMode ? "" : undefined}
+                      className="flex flex-col gap-3 border-t border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 text-xs text-[var(--neo-text-secondary)] md:flex-row md:items-center md:justify-between md:gap-4"
+                    >
+                      <p
+                        data-expenses-pagination-summary
+                        className="shrink-0 whitespace-nowrap tabular-nums"
+                      >
+                        {total === 0
+                          ? "Showing 0 results"
+                          : `Groups ${groupDeskStart}–${groupDeskEnd}/${totalDateGroups} · ${total} expenses`}
+                      </p>
+                      <div
+                        data-expenses-pagination-controls
+                        className="flex flex-wrap items-center gap-3 md:gap-4"
+                      >
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--neo-surface-muted)] md:h-7 md:min-h-0 md:w-7 md:min-w-0"
+                            disabled={curPage <= 1}
+                            aria-label="Previous page"
+                            onClick={() => setPage(curPage - 1)}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <span className="min-w-[2rem] text-center tabular-nums text-foreground">
+                            {curPage}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-11 min-h-11 w-11 min-w-11 shrink-0 border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] shadow-none transition-colors duration-150 hover:bg-[var(--neo-surface-muted)] md:h-7 md:min-h-0 md:w-7 md:min-w-0"
+                            disabled={curPage >= totalPages}
+                            aria-label="Next page"
+                            onClick={() => setPage(curPage + 1)}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="whitespace-nowrap text-[var(--neo-text-secondary)]">
+                            Groups/page
+                          </span>
+                          <Select
+                            value={String(pageSize)}
+                            onValueChange={(v) => setPageSizeAndReset(Number(v))}
+                          >
+                            <SelectTrigger className="h-11 min-h-11 w-[4.25rem] rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-xs shadow-none transition-colors duration-150 md:h-7 md:min-h-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent
+                              className="expenses-ui-dialog"
+                              data-expense-component-surface="select"
+                            >
+                              <SelectItem value="10">10</SelectItem>
+                              <SelectItem value="25">25</SelectItem>
+                              <SelectItem value="50">50</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </>
-              )}
-            </NeoPanel>
-          </section>
+                  </>
+                )}
+              </NeoPanel>
+            </section>
+
+            {archiveMode && previewOpen ? (
+              <ExpenseInboxPreviewModal
+                expense={previewExpenseLive}
+                open={previewOpen}
+                onOpenChange={(nextOpen) => {
+                  if (!nextOpen) closeExpenseWorkspaceDetail();
+                }}
+                enterMode={previewEnterMode}
+                presentation="panel"
+                projects={safeProjects}
+                workers={workers}
+                subcontractDeductionOptions={subcontractDeductionOptions}
+                projectNameById={projectNameById}
+                supabase={supabase}
+                setCategoriesList={setCategoriesList}
+                onSave={handlePreviewModalSave}
+                onSaveAndNext={previewModalNav?.canNext ? previewModalNav.onNext : undefined}
+                receiptEvidenceRequested={receiptEvidenceRequested}
+                onReceiptEvidenceChange={updateWorkspaceReceiptContext}
+                onMarkReviewed={handlePreviewMarkReviewed}
+                onAttachmentsUpdated={handlePreviewAttachmentsUpdated}
+                previewNav={previewModalNav}
+                possibleDuplicate={previewPossibleDuplicate}
+                issueContext={previewIssueFocus}
+              />
+            ) : null}
+          </div>
         </div>
 
         {quickExpenseOpen ? (
           <QuickExpenseModal
             open={quickExpenseOpen}
-            onOpenChange={setQuickExpenseOpen}
+            onOpenChange={setNewExpenseOpen}
             onSuccess={refresh}
             projects={safeProjects}
             subcontractDeductionOptions={subcontractDeductionOptions}
@@ -2748,7 +2971,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           onOpenChange={setUploadReceiptsOpen}
           onSuccess={refresh}
         />
-        {previewOpen ? (
+        {inboxMode && previewOpen ? (
           <ExpenseInboxPreviewModal
             expense={previewExpenseLive}
             open={previewOpen}

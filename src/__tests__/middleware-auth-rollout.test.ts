@@ -73,17 +73,16 @@ describe("middleware Auth rollout behavior", () => {
   });
 
   it.each([
-    "/api/upload-receipt/options",
-    "/api/upload-receipt/upload",
-    "/api/upload-receipt/submit",
+    ["/upload-receipt", "GET"],
+    ["/api/upload-receipt/options", "GET"],
+    ["/api/upload-receipt/upload", "POST"],
+    ["/api/upload-receipt/submit", "POST"],
   ])(
     "keeps only the documented public receipt endpoint available in strict mode: %s",
-    async (path) => {
+    async (path, method) => {
       process.env.HH_REQUIRE_LOGIN = "true";
 
-      const response = await middleware(
-        request(path, { method: path.endsWith("options") ? "GET" : "POST" })
-      );
+      const response = await middleware(request(path, { method }));
 
       expect(response.status).toBe(200);
       expect(response.headers.get("x-middleware-next")).toBe("1");

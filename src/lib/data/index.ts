@@ -1916,7 +1916,7 @@ export async function createExpense(
       }))
     : undefined;
   let paymentMethod = payload.paymentMethod ?? "Card";
-  if (payload.accountId) {
+  if (payload.accountId && !payload.paymentMethod) {
     const accounts = await accountsDb.getAccounts();
     const acc = accounts.find((a) => a.id === payload.accountId);
     if (acc) paymentMethod = acc.name;

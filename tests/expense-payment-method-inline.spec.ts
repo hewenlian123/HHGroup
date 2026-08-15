@@ -33,7 +33,7 @@ async function createReviewedQuickExpense(page: Page, vendorMark: string, amount
   }
 
   await clickVisibleQuickExpenseButton(page);
-  const q = page.getByRole("dialog", { name: /Quick expense/i });
+  const q = page.getByRole("dialog", { name: /New expense/i });
   await expect(q).toBeVisible({ timeout: 15_000 });
   await q.locator("input[type='number']").fill(amount);
   await q.locator("#quick-expense-vendor").fill(vendorMark);
@@ -119,7 +119,7 @@ test.describe("Expense inbox payment method (preview modal)", () => {
     const vendorMark = `E2E-PM-MODAL-${Date.now()}`;
 
     await clickVisibleQuickExpenseButton(page);
-    const q = page.getByRole("dialog", { name: /Quick expense/i });
+    const q = page.getByRole("dialog", { name: /New expense/i });
     await expect(q).toBeVisible({ timeout: 15_000 });
 
     if (
@@ -319,7 +319,7 @@ test.describe("Expense inbox payment method (preview modal)", () => {
     const newMethod = `ZZ-PM-${Date.now()}`;
 
     await clickVisibleQuickExpenseButton(page);
-    const q = page.getByRole("dialog", { name: /Quick expense/i });
+    const q = page.getByRole("dialog", { name: /New expense/i });
     await expect(q).toBeVisible({ timeout: 15_000 });
 
     await q.locator("input[type='number']").fill("3.02");
