@@ -22,7 +22,7 @@ async function gotoDashboard(page: Page, viewport: ViewportCase): Promise<void> 
 
 async function expectExpenseReceiptInbox(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/financial\/inbox(?:[?#].*)?$/, { timeout: 30_000 });
-  await expect(page.getByRole("heading", { name: /^Inbox$/i })).toBeVisible({
+  await expect(page.getByRole("heading", { name: /^Receipt Inbox$/i })).toBeVisible({
     timeout: 30_000,
   });
   await expect(page.getByRole("heading", { name: /^Worker Receipt Upload$/i })).toHaveCount(0);
@@ -94,10 +94,12 @@ for (const viewport of VIEWPORTS) {
   });
 }
 
-test("labor keeps an explicitly named worker receipt upload entry point", async ({ page }) => {
+test("Worker Submitted Inbox keeps an explicitly named worker upload entry point", async ({
+  page,
+}) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 900 });
-  await loginAsE2EOwner(page, "/labor/receipts");
+  await loginAsE2EOwner(page, "/financial/inbox/worker");
 
   const workerUpload = page
     .getByRole("link", {

@@ -30,9 +30,10 @@ describe("worker receipt runtime security contract", () => {
     const review = source("src/app/api/worker-receipts/view/route.ts");
     const list = source("src/app/api/worker-receipts/route.ts");
     const approve = source("src/app/api/worker-receipts/[id]/approve/route.ts");
+    const reject = source("src/app/api/worker-receipts/[id]/reject/route.ts");
     const remove = source("src/app/api/worker-receipts/[id]/route.ts");
 
-    for (const route of [sync, review, list, approve, remove]) {
+    for (const route of [sync, review, list, approve, reject, remove]) {
       expect(route).toContain("requireSupabaseOwnerOrAdmin");
       expect(route).not.toContain("requireSupabaseOwnerOrAdminWithClient");
       expect(route).toContain("getServerSupabaseAdmin");
@@ -43,6 +44,7 @@ describe("worker receipt runtime security contract", () => {
     expect(sync).not.toContain("getServerSupabase() ??");
     expect(review).toContain("createSignedStorageUrl");
     expect(list).toContain("createSignedStorageUrl");
+    expect(reject).toContain("status: 503");
   });
 
   it("keeps only documented receipt APIs public when strict middleware is enabled", () => {

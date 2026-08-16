@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
-type ExpenseOperationsSurface = "expenses" | "inbox" | "worker-receipts" | "reimbursements";
+type ExpenseOperationsSurface = "expenses" | "inbox" | "reimbursements";
 
 const SURFACES: Array<{
   id: ExpenseOperationsSurface;
@@ -14,7 +14,6 @@ const SURFACES: Array<{
 }> = [
   { id: "expenses", label: "Expenses", pathname: "/financial/expenses" },
   { id: "inbox", label: "Receipt Inbox", pathname: "/financial/inbox" },
-  { id: "worker-receipts", label: "Worker Receipts", pathname: "/labor/receipts" },
   { id: "reimbursements", label: "Reimbursements", pathname: "/labor/reimbursements" },
 ];
 
@@ -26,19 +25,26 @@ function isExpenseRecordSurface(surface: ExpenseOperationsSurface | null): boole
   return surface === "expenses" || surface === "inbox";
 }
 
-function isWorkerSurface(surface: ExpenseOperationsSurface | null): boolean {
-  return surface === "worker-receipts" || surface === "reimbursements";
-}
-
 export function ExpenseOperationsWorkspaceNav({ className }: { className?: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeSurface = surfaceForPathname(pathname);
+  const workerInboxActive = pathname.startsWith("/financial/inbox/worker");
 
   const hrefFor = (target: (typeof SURFACES)[number]) => {
     const next = new URLSearchParams();
+    const workerId = searchParams.get("workerId")?.trim();
+    const targetUsesWorkerInbox =
+      target.id === "inbox" &&
+      (workerInboxActive || (activeSurface === "reimbursements" && Boolean(workerId)));
+    const targetPathname = targetUsesWorkerInbox ? "/financial/inbox/worker" : target.pathname;
 
-    if (isExpenseRecordSurface(activeSurface) && isExpenseRecordSurface(target.id)) {
+    if (
+      isExpenseRecordSurface(activeSurface) &&
+      isExpenseRecordSurface(target.id) &&
+      !workerInboxActive &&
+      !targetUsesWorkerInbox
+    ) {
       for (const key of ["date_kind", "date_from", "date_to"] as const) {
         const value = searchParams.get(key)?.trim();
         if (value) next.set(key, value);
@@ -48,13 +54,23 @@ export function ExpenseOperationsWorkspaceNav({ className }: { className?: strin
     const projectId = searchParams.get("project_id")?.trim();
     if (projectId) next.set("project_id", projectId);
 
-    if (isWorkerSurface(activeSurface) && isWorkerSurface(target.id)) {
-      const workerId = searchParams.get("workerId")?.trim();
-      if (workerId) next.set("workerId", workerId);
+    if (
+      workerId &&
+      ((workerInboxActive && (target.id === "inbox" || target.id === "reimbursements")) ||
+        (activeSurface === "reimbursements" && targetUsesWorkerInbox))
+    ) {
+      next.set("workerId", workerId);
+    }
+
+    if (workerInboxActive && targetUsesWorkerInbox) {
+      for (const key of ["status", "date_from", "date_to"] as const) {
+        const value = searchParams.get(key)?.trim();
+        if (value) next.set(key, value);
+      }
     }
 
     const query = next.toString();
-    return query ? `${target.pathname}?${query}` : target.pathname;
+    return query ? `${targetPathname}?${query}` : targetPathname;
   };
 
   return (
@@ -86,7 +102,7 @@ export function ExpenseOperationsWorkspaceNav({ className }: { className?: strin
                 href={hrefFor(surface)}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-xs font-medium outline-none transition-colors duration-150 md:min-h-9",
+                  "inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-xs font-medium outline-none transition-colors duration-120 md:min-h-9",
                   "focus-visible:ring-2 focus-visible:ring-[var(--eo-focus,var(--neo-gold-ring))] focus-visible:ring-offset-1",
                   active
                     ? "bg-[var(--eo-selected,var(--neo-surface-muted))] text-[var(--eo-text-primary,var(--neo-text-primary))]"

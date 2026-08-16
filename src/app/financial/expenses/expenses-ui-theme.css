@@ -83,6 +83,7 @@
   --exp-border: var(--eo-border);
   --exp-icon: var(--eo-text-tertiary);
   --exp-icon-hover: var(--eo-text-secondary);
+  min-height: 100%;
   background-color: var(--eo-canvas);
   color: var(--eo-text-primary);
   color-scheme: light;
@@ -336,6 +337,207 @@
   border-color: var(--eo-border);
   background-color: var(--eo-depth-l2);
   box-shadow: var(--eo-shadow-operational);
+}
+
+/* Receipt Inbox keeps its review workflow while inheriting Design System v1 surfaces. */
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-queue-summary] {
+  border-color: var(--eo-border);
+}
+
+.expenses-ui[data-expenses-list-page="inbox"]
+  [data-inbox-queue-state]:not([data-inbox-queue-state="missing-receipt"]) {
+  min-height: 32px;
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-queue-state="missing-receipt"] {
+  min-height: 32px;
+  border-color: var(--eo-warning-border);
+  background-color: var(--eo-warning-soft);
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] {
+  border-color: var(--eo-border);
+  border-radius: 0;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] dt {
+  color: var(--eo-text-tertiary);
+  opacity: 0.88;
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] dd {
+  color: var(--eo-text-strong);
+  font-weight: 650;
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-queue-surface] {
+  border-color: var(--eo-border);
+  border-radius: 10px;
+  background-color: var(--eo-depth-l2);
+  box-shadow: var(--eo-shadow-operational);
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-toolbar],
+.expenses-ui[data-expenses-list-page="inbox"] [data-expenses-ledger-body],
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-pagination] {
+  border-color: var(--eo-border);
+  background-color: var(--eo-depth-l2) !important;
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-shortcuts] {
+  border-color: var(--eo-border);
+  color: var(--eo-text-tertiary);
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] .expense-compact-table-scroll {
+  background-color: var(--eo-depth-l2) !important;
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] .expense-compact-table-scroll thead {
+  background-color: var(--eo-depth-structural);
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] .expense-compact-table-scroll thead th {
+  border-color: var(--eo-border);
+  background-color: transparent;
+  color: var(--eo-text-tertiary);
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] [data-expense-date-group] {
+  border-color: var(--eo-border);
+  background-color: var(--eo-depth-structural);
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] .exp-row {
+  border-bottom-color: transparent !important;
+  background-color: var(--eo-depth-l2);
+  box-shadow: none !important;
+  transition-duration: 120ms;
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] .exp-row:hover,
+.expenses-ui[data-expenses-list-page="inbox"] .exp-row:focus-within {
+  background-color: var(--eo-depth-l3-hover);
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] .exp-row[data-expense-active="true"] {
+  background-color: var(--eo-depth-l3-selected);
+  box-shadow: inset 2px 0 0 var(--eo-text-secondary) !important;
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] .exp-row:has(:focus-visible) {
+  box-shadow: inset 2px 0 0 var(--eo-text-secondary) !important;
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] .exp-row:active {
+  background-color: var(--eo-depth-l3-pressed);
+}
+
+.expenses-ui[data-expenses-list-page="inbox"]
+  .exp-row:is(:hover, [data-expense-active="true"])
+  :is([data-expense-amount], [data-expense-amount] *) {
+  color: var(--eo-text-strong) !important;
+}
+
+.expenses-ui[data-expenses-list-page="inbox"] .exp-divide > .exp-row {
+  border-width: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* The full queue already has a dedicated Issues column; avoid repeating it as a third row line. */
+.expenses-ui[data-expenses-list-page="inbox"] [data-inbox-compact-attention] {
+  display: none;
+}
+
+@media (hover: hover) and (min-width: 1024px) {
+  .expenses-ui[data-expenses-list-page="inbox"] .exp-row > td:last-child {
+    opacity: 0.48;
+    transition: opacity 120ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .expenses-ui[data-expenses-list-page="inbox"]
+    .exp-row:is(:hover, :focus-within, [data-expense-active="true"])
+    > td:last-child {
+    opacity: 1;
+  }
+}
+
+.expenses-ui-dialog[data-expense-component-surface="receipt-review"] {
+  background-color: var(--eo-depth-l5) !important;
+  border-color: var(--eo-border-floating) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--eo-shadow-task) !important;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="receipt-review"] [data-expense-detail-body] {
+  overscroll-behavior: contain;
+  scrollbar-color: rgb(127 127 127 / 0.28) transparent;
+  scrollbar-width: thin;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="receipt-review"]
+  [data-expense-receipt-evidence] {
+  border-color: var(--eo-border-floating);
+  background-color: var(--eo-depth-l4) !important;
+  box-shadow: var(--eo-shadow-operational);
+}
+
+.expenses-ui-dialog[data-expense-component-surface="receipt-review"]
+  [data-expense-preview-field="amount"] {
+  grid-row: span 2;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="receipt-review"]
+  [data-expense-preview-field="amount"]
+  > div:last-child {
+  color: var(--eo-text-strong);
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="receipt-review"]
+  [data-expense-preview-field="vendor"]
+  > div:last-child {
+  color: var(--eo-text-strong);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.expenses-ui-dialog[data-expense-component-surface="receipt-review"] [data-inbox-review-evidence] {
+  border-color: var(--eo-border-floating);
+  background-color: var(--eo-depth-l4) !important;
+  box-shadow: var(--eo-shadow-operational);
+}
+
+.expenses-ui-dialog [data-expense-approval-action]:disabled {
+  opacity: 0.48;
+}
+
+@media (max-width: 767px) {
+  .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-decision-brief] {
+    box-shadow: none;
+  }
+
+  .expenses-ui[data-expenses-list-page="inbox"] [data-inbox-queue-surface] {
+    border-radius: 8px;
+    box-shadow: none;
+  }
+
+  .expenses-ui[data-expenses-list-page="inbox"] .exp-divide > .exp-row {
+    border-width: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .expenses-ui-dialog[data-expense-component-surface="receipt-review"] {
+    width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 12px !important;
+  }
 }
 
 .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] dt {
@@ -935,6 +1137,64 @@ body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.ins
   scrollbar-width: thin;
 }
 
+.expense-receipt-review-stage {
+  display: none;
+}
+
+.expense-review-workspace,
+.expense-review-panel {
+  min-height: 0;
+}
+
+.expense-review-panel {
+  container-type: inline-size;
+}
+
+[data-expense-keyboard-row] {
+  outline: none;
+}
+
+[data-expense-keyboard-row]:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--eo-border-strong);
+}
+
+.expense-review-fields {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.expense-review-fields > [data-expense-review-field="amount"],
+.expense-review-fields > [data-expense-review-field="classification"],
+.expense-review-fields > [data-expense-review-field="date"] {
+  grid-column: span 2;
+}
+
+.expense-review-fields > [data-expense-review-field="vendor"],
+.expense-review-fields > [data-expense-review-field="project"],
+.expense-review-fields > [data-expense-review-field="category"] {
+  grid-column: span 3;
+}
+
+.expense-review-fields
+  > :is(
+    [data-expense-review-field="payment-account"],
+    [data-expense-review-field="worker"],
+    [data-expense-review-field="payment-source"]
+  ) {
+  grid-column: 1 / -1;
+}
+
+@container (max-width: 359px) {
+  .expense-review-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .expense-review-fields > [data-expense-review-field] {
+    grid-column: auto;
+  }
+}
+
 .expense-detail-actions {
   position: sticky;
   bottom: 0;
@@ -984,8 +1244,8 @@ body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.ins
 
 @media (min-width: 1024px) {
   .expenses-ui[data-expense-workspace-detail-open="true"] {
-    height: calc(100dvh - 60px);
-    max-height: calc(100dvh - 60px);
+    height: 100%;
+    max-height: 100%;
     min-height: 0;
     overflow-y: hidden;
   }
@@ -1005,10 +1265,85 @@ body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.ins
   }
 
   .expense-operations-workspace[data-expense-detail-open="true"] {
+    height: 100%;
+    max-height: 100%;
     grid-template-columns: minmax(0, 63fr) minmax(0, 37fr);
+    grid-template-rows: minmax(0, 1fr);
     align-items: stretch;
     min-height: 0;
     flex: 1;
+    overflow: hidden;
+    contain: paint;
+  }
+
+  .expense-operations-workspace[data-receipt-inbox-workspace][data-expense-detail-open="true"] {
+    grid-template-columns: clamp(280px, 24vw, 320px) minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .expense-operations-workspace[data-receipt-inbox-workspace][data-expense-detail-open="true"]
+    [data-expense-detail-panel] {
+    border-color: var(--eo-border-floating) !important;
+  }
+
+  .expense-review-workspace {
+    display: grid;
+    height: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 0.62fr);
+  }
+
+  .expense-receipt-review-stage {
+    display: block;
+    border-right: 1px solid var(--eo-border);
+    background: var(--eo-depth-structural);
+  }
+
+  .expense-review-panel {
+    background: var(--eo-depth-l1);
+  }
+
+  .expense-review-inline-evidence {
+    display: none;
+  }
+
+  /* Receipt review keeps the evidence panel contextual without turning its queue into a clipped table. */
+  .expense-operations-workspace[data-receipt-inbox-workspace][data-expense-detail-open="true"]
+    .expense-compact-table-scroll
+    table {
+    width: 100%;
+    min-width: 0 !important;
+  }
+
+  .expense-operations-workspace[data-receipt-inbox-workspace][data-expense-detail-open="true"]
+    .expense-compact-table-scroll
+    :is(col, th, td):is(
+      :nth-child(1),
+      :nth-child(3),
+      :nth-child(4),
+      :nth-child(5),
+      :nth-child(6),
+      :nth-child(7),
+      :nth-child(8)
+    ) {
+    display: none;
+  }
+
+  .expense-operations-workspace[data-receipt-inbox-workspace][data-expense-detail-open="true"]
+    .expense-compact-table-scroll
+    :is(col, th, td):nth-child(9) {
+    width: 92px !important;
+  }
+
+  .expense-operations-workspace[data-receipt-inbox-workspace][data-expense-detail-open="true"]
+    .expense-compact-table-scroll
+    :is(col, th, td):nth-child(10) {
+    width: 40px !important;
+  }
+
+  /* Once the Issues column is hidden by the compact queue, retain one terse attention line. */
+  .expense-operations-workspace[data-receipt-inbox-workspace][data-expense-detail-open="true"]
+    [data-inbox-compact-attention] {
+    display: block;
   }
 
   .expense-operations-workspace[data-expense-detail-open="true"] [data-expenses-ledger],
@@ -1181,7 +1516,21 @@ body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.ins
   }
 }
 
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .expense-review-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.58fr);
+  }
+}
+
 @media (max-width: 1023px) {
+  .expense-review-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .expense-review-fields > [data-expense-review-field] {
+    grid-column: auto;
+  }
+
   .expense-operations-workspace[data-expense-detail-open="true"] > [data-expenses-ledger] {
     visibility: hidden;
   }
@@ -1197,6 +1546,20 @@ body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.ins
     border-radius: 0;
     background: var(--eo-surface-elevated);
     padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .expense-review-workspace {
+    display: flex;
+    min-height: 0;
+    flex: 1;
+  }
+
+  .expense-review-panel {
+    flex: 1;
+  }
+
+  .expense-review-inline-evidence {
+    display: block;
   }
 
   .expense-detail-panel-header {
@@ -1234,6 +1597,35 @@ body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.ins
   }
 
   .expense-detail-actions > button:last-child {
+    flex: 1;
+  }
+
+  [data-expense-inline-review-actions] {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  [data-expense-inline-review-actions] > div {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  [data-expense-inline-review-actions] > div:first-child > span {
+    margin-right: auto;
+  }
+
+  [data-expense-inline-review-actions] > div:nth-child(2) {
+    justify-self: end;
+    text-align: right;
+  }
+
+  [data-expense-inline-review-actions] > div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  [data-expense-inline-review-actions] > div:last-child > button:last-child {
+    min-width: 0;
     flex: 1;
   }
 

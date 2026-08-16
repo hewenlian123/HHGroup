@@ -124,6 +124,7 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { OS } from "@/lib/typography";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
 import { ExpenseOperationsWorkspaceNav } from "@/components/financial/expense-operations-workspace-nav";
+import { ReceiptInboxSourceNav } from "@/components/financial/receipt-inbox-source-nav";
 
 type ProjectRow = { id: string; name: string | null; status?: string | null };
 type WorkerRow = { id: string; name: string };
@@ -782,6 +783,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   const [previewExpense, setPreviewExpense] = React.useState<Expense | null>(null);
   const [previewOpen, setPreviewOpen] = React.useState(false);
   const [previewEnterMode, setPreviewEnterMode] = React.useState<"preview" | "edit">("preview");
+  const [focusReviewOnOpen, setFocusReviewOnOpen] = React.useState(false);
   const [deletingExpenseId, setDeletingExpenseId] = React.useState<string | null>(null);
   const expensesRef = React.useRef<Expense[]>([]);
   expensesRef.current = expenses;
@@ -789,7 +791,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   previewExpenseRef.current = previewExpense;
 
   React.useEffect(() => {
-    if (inboxMode || !previewOpen) return;
+    if (!previewOpen) return;
 
     const appScrollRoot = document.querySelector<HTMLElement>("[data-app-scroll-root]");
     if (!appScrollRoot) return;
@@ -833,7 +835,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       compactDetail.removeEventListener("change", syncLock);
       unlock();
     };
-  }, [inboxMode, previewOpen]);
+  }, [previewOpen]);
 
   const safeProjects = React.useMemo(
     () => (Array.isArray(projectsData) ? projectsData : []) as ProjectRow[],
@@ -1434,30 +1436,30 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
   );
 
   const handlePreviewMarkReviewed = React.useCallback(
-    async (expense: Expense) => {
+    async (expense: Expense): Promise<boolean> => {
       const inboxRef = isInboxUploadExpenseReference(expense.referenceNo);
       const gate = inboxRef
         ? validateApproveInboxUploadDraft(expense)
         : validateMarkDoneRequiresProjectAndCategory(expense);
       if (gate === "project") {
         hotToast.error("Please select a project before marking as done");
-        return;
+        return false;
       }
       if (gate === "category") {
         hotToast.error("Please select a category before marking as done");
-        return;
+        return false;
       }
       if (gate === "payment") {
         hotToast.error("Please select a payment account before approving");
-        return;
+        return false;
       }
       if (gate === "worker") {
         hotToast.error("Please select a worker before approving reimbursement");
-        return;
+        return false;
       }
       if (inboxRef && String(expense.status ?? "").toLowerCase() === "approved") {
         hotToast.error("Already approved");
-        return;
+        return false;
       }
       const targetStatus = inboxRef ? ("approved" as const) : ("reviewed" as const);
       const prevList = expensesRef.current;
@@ -1484,61 +1486,59 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           refetchType: "active",
         });
         hotToast.success(inboxRef ? "Approved" : "Marked done");
-        if (inboxMode) {
-          flushSync(() => {
-            setPreviewOpen(false);
-            setPreviewExpense(null);
-          });
-        }
+        return true;
       } catch {
         flushSync(() => setExpenses(prevList));
         hotToast.error("Status update failed");
+        return false;
       }
     },
-    [queryClient, inboxMode]
+    [queryClient]
   );
 
   const openExpensePreview = React.useCallback(
-    (row: Expense, opts?: { mode?: "preview" | "edit" }) => {
+    (row: Expense, opts?: { mode?: "preview" | "edit"; focusReview?: boolean }) => {
       setPreviewExpense(row);
       setPreviewEnterMode(opts?.mode ?? "preview");
+      setFocusReviewOnOpen(Boolean(opts?.focusReview));
       setPreviewOpen(true);
       setActiveExpenseId(row.id);
-      if (archiveMode) {
-        const params = new URLSearchParams(searchParams.toString());
-        params.set("ops_record", row.id);
-        params.delete("ops_preview");
-        router.push(`${listPath}?${params.toString()}`, { scroll: false });
-      }
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("ops_record", row.id);
+      params.delete("ops_preview");
+      router.push(`${listPath}?${params.toString()}`, { scroll: false });
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          rowElsRef.current[row.id]?.scrollIntoView({ block: "nearest" });
+        });
+      });
     },
-    [archiveMode, listPath, router, searchParams]
+    [listPath, router, searchParams]
   );
 
   const closeExpenseWorkspaceDetail = React.useCallback(() => {
     setPreviewOpen(false);
     setPreviewExpense(null);
     setActiveExpenseId(null);
-    if (!archiveMode) return;
+    setFocusReviewOnOpen(false);
     const params = new URLSearchParams(searchParams.toString());
     params.delete("ops_record");
     params.delete("ops_preview");
     const query = params.toString();
     router.push(query ? `${listPath}?${query}` : listPath, { scroll: false });
-  }, [archiveMode, listPath, router, searchParams]);
+  }, [listPath, router, searchParams]);
 
   const updateWorkspaceReceiptContext = React.useCallback(
     (open: boolean) => {
-      if (!archiveMode) return;
       const params = new URLSearchParams(searchParams.toString());
       if (open) params.set("ops_preview", "receipt");
       else params.delete("ops_preview");
       router.replace(`${listPath}?${params.toString()}`, { scroll: false });
     },
-    [archiveMode, listPath, router, searchParams]
+    [listPath, router, searchParams]
   );
 
   React.useEffect(() => {
-    if (!archiveMode) return;
     if (!selectedExpenseIdFromUrl) {
       setPreviewOpen(false);
       setPreviewExpense(null);
@@ -1550,7 +1550,12 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     setActiveExpenseId(selected.id);
     setPreviewExpense((current) => (current?.id === selected.id ? current : selected));
     setPreviewOpen(true);
-  }, [archiveMode, expensesForListing, selectedExpenseIdFromUrl]);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        rowElsRef.current[selected.id]?.scrollIntoView({ block: "nearest" });
+      });
+    });
+  }, [expensesForListing, selectedExpenseIdFromUrl]);
 
   useOnAppSync(
     React.useCallback(() => {
@@ -2099,9 +2104,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     (expense: Expense, history: "push" | "replace" = "push") => {
       setPreviewExpense(expense);
       setPreviewEnterMode("preview");
+      setFocusReviewOnOpen(false);
       setPreviewOpen(true);
       setActiveExpenseId(expense.id);
-      if (!archiveMode) return;
       const params = new URLSearchParams(searchParams.toString());
       params.set("ops_record", expense.id);
       params.delete("ops_preview");
@@ -2109,7 +2114,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       if (history === "replace") router.replace(href, { scroll: false });
       else router.push(href, { scroll: false });
     },
-    [archiveMode, listPath, router, searchParams]
+    [listPath, router, searchParams]
   );
 
   const previewModalNav = React.useMemo(() => {
@@ -2119,6 +2124,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
     return {
       canPrev: idx > 0,
       canNext: idx < filteredSortedExpenses.length - 1,
+      queuePosition: `${idx + 1} of ${filteredSortedExpenses.length}`,
       onPrev: () => {
         const prev = filteredSortedExpenses[idx - 1];
         if (prev) selectWorkspaceExpense(prev);
@@ -2137,7 +2143,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       ? expenseIssueFocus
       : null;
 
-  const pageTitle = inboxMode ? "Inbox" : "Expenses";
+  const pageTitle = inboxMode ? "Receipt Inbox" : "Expenses";
   const pageDescription = inboxMode
     ? "Review uploaded receipts and draft expenses"
     : "Tracked project costs and completed expenses";
@@ -2148,7 +2154,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
       data-expense-depth-system="l0-l5"
       data-expenses-query-status={expensesQueryStatus}
       data-expenses-list-page={inboxMode ? "inbox" : "expenses"}
-      data-expense-workspace-detail-open={!inboxMode && previewOpen ? "true" : "false"}
+      data-expense-workspace-detail-open={previewOpen ? "true" : "false"}
     >
       <div
         className={cn(
@@ -2157,6 +2163,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
         )}
       >
         <ExpenseOperationsWorkspaceNav className="mb-2 md:mb-3" />
+        {inboxMode ? <ReceiptInboxSourceNav className="mb-2 md:mb-3" /> : null}
         <div
           className={cn(
             "max-md:pb-1",
@@ -2171,24 +2178,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
             )}
           >
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <h1 className="text-[17px] font-semibold leading-tight tracking-normal text-[var(--fieldbook-ink)]">
-                  {pageTitle}
-                </h1>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-9 min-h-9 shrink-0 px-2 text-[11px] font-medium text-[var(--fieldbook-muted)] transition-colors duration-150 hover:bg-black/[0.04] hover:text-[var(--fieldbook-ink)]"
-                  onClick={() =>
-                    startTransition(() =>
-                      router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
-                    )
-                  }
-                >
-                  {inboxMode ? "Expenses" : "Inbox"}
-                </Button>
-              </div>
+              <h1 className="text-[17px] font-semibold leading-tight tracking-normal text-[var(--fieldbook-ink)]">
+                {pageTitle}
+              </h1>
               <p
                 className={cn(
                   "text-[11px] leading-snug text-[var(--fieldbook-muted)]",
@@ -2208,22 +2200,32 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
           {inboxMode ? (
             <div
-              className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-[var(--neo-border)] pb-2 md:-mt-1 md:pb-2"
+              data-inbox-queue-summary
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-[var(--neo-border)] pb-2 md:-mt-1 md:pb-2"
               aria-label="Inbox queue summary"
             >
-              <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 py-1.5 text-[11px] text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-panel)]">
+              <span
+                data-inbox-queue-state="pending"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[11px] text-[var(--neo-text-secondary)]"
+              >
                 <span className="font-semibold tabular-nums text-[var(--neo-text-primary)]">
                   {inboxReviewStats.pending}
                 </span>
                 pending
               </span>
-              <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 py-1.5 text-[11px] text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-panel)]">
+              <span
+                data-inbox-queue-state="missing-info"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[11px] text-[var(--neo-text-secondary)]"
+              >
                 <span className="font-semibold tabular-nums text-[var(--neo-text-primary)]">
                   {inboxReviewStats.missingInfo}
                 </span>
                 missing info
               </span>
-              <span className="inline-flex min-h-9 items-center gap-1.5 rounded-md border border-[var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-2.5 py-1.5 text-[11px] text-[var(--eo-warning)]">
+              <span
+                data-inbox-queue-state="missing-receipt"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[11px] text-[var(--eo-warning)]"
+              >
                 <span className="font-semibold tabular-nums text-[var(--neo-text-primary)]">
                   {inboxReviewStats.missingReceipt}
                 </span>
@@ -2245,17 +2247,6 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               description={pageDescription}
               actions={
                 <div className="flex flex-wrap items-center justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={financeToolbarButtonClass}
-                    onClick={() =>
-                      router.push(inboxMode ? "/financial/expenses" : "/financial/inbox")
-                    }
-                  >
-                    {inboxMode ? "Expenses" : "Inbox"}
-                  </Button>
                   <TransactionInboxEntryActions
                     onQuick={() => setQuickExpenseOpen(true)}
                     onUpload={openUploadReceiptsModal}
@@ -2267,8 +2258,9 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
           {inboxMode ? (
             <section
+              data-inbox-decision-brief
               aria-label="Expense decision brief"
-              className="-mt-0.5 overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:-mt-1"
+              className="-mt-0.5 overflow-hidden border-y border-[var(--neo-border)] bg-transparent text-[var(--neo-text-primary)] md:-mt-1"
             >
               <dl className="grid grid-cols-2 md:grid-cols-4">
                 {[
@@ -2292,16 +2284,16 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   <div
                     key={metric.label}
                     className={cn(
-                      "min-w-0 px-3 py-2.5 md:px-4 md:py-3",
+                      "min-w-0 px-3 py-2 md:px-3.5 md:py-2.5",
                       index % 2 === 1 && "border-l border-[var(--neo-border)]",
                       index >= 2 && "border-t border-[var(--neo-border)] md:border-t-0",
                       index >= 1 && "md:border-l md:border-[var(--neo-border)]"
                     )}
                   >
-                    <dt className="truncate text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--neo-text-tertiary)]">
+                    <dt className="truncate text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--neo-text-tertiary)]">
                       {metric.label}
                     </dt>
-                    <dd className="mt-1 truncate text-[15px] font-semibold tabular-nums leading-none md:text-lg">
+                    <dd className="mt-1 truncate text-[15px] font-semibold tabular-nums leading-none">
                       {metric.amount ? <NeoAmount>{metric.value}</NeoAmount> : metric.value}
                     </dd>
                   </div>
@@ -2483,12 +2475,13 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           </Sheet>
 
           <div
-            data-expense-operations-workspace={!inboxMode ? "" : undefined}
-            data-expense-detail-open={!inboxMode && previewOpen ? "true" : "false"}
-            className={cn("expense-operations-workspace", inboxMode && "block")}
+            data-expense-operations-workspace=""
+            data-receipt-inbox-workspace={inboxMode ? "" : undefined}
+            data-expense-detail-open={previewOpen ? "true" : "false"}
+            className="expense-operations-workspace"
           >
             <section
-              data-expenses-ledger={!inboxMode ? "" : undefined}
+              data-expenses-ledger=""
               className={cn(
                 "relative min-w-0",
                 expensesListRefetching &&
@@ -2508,10 +2501,14 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
 
               {/* Filters + table: Finance OS card shell */}
               <NeoPanel
+                data-inbox-queue-surface={inboxMode ? "" : undefined}
                 className={cn(financeOsListShell, "expense-operations-ledger-panel")}
                 bodyClassName="contents"
               >
-                <NeoToolbar className="hidden flex-wrap items-center justify-between gap-3 rounded-none border-0 border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 shadow-none md:flex">
+                <NeoToolbar
+                  data-inbox-toolbar={inboxMode ? "" : undefined}
+                  className="hidden flex-wrap items-center justify-between gap-3 rounded-none border-0 border-b border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 shadow-none md:flex"
+                >
                   <div className="flex flex-wrap items-center gap-1.5">
                     <Button
                       type="button"
@@ -2629,9 +2626,12 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                   </div>
                 </NeoToolbar>
                 {inboxMode ? (
-                  <p className="hidden border-b border-[var(--neo-border)] px-4 py-2 text-[11px] leading-snug text-[var(--neo-text-secondary)] md:block">
-                    Enter: save · Shift+Enter: save only · Tab: field · ↑↓ row · D delete · Esc
-                    cancel
+                  <p
+                    data-inbox-shortcuts
+                    className="hidden border-b border-[var(--neo-border)] px-4 py-2 text-[11px] leading-snug text-[var(--neo-text-secondary)] md:block"
+                  >
+                    ⌘/Ctrl+Enter: approve &amp; next · ⌘/Ctrl+S: save · Tab: field · Esc: protect
+                    changes
                   </p>
                 ) : null}
                 {focusedIssueNotFound ? (
@@ -2857,6 +2857,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                       />
                     </div>
                     <div
+                      data-inbox-pagination={inboxMode ? "" : undefined}
                       data-expenses-pagination={!inboxMode ? "" : undefined}
                       className="flex flex-col gap-3 border-t border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 text-xs text-[var(--neo-text-secondary)] md:flex-row md:items-center md:justify-between md:gap-4"
                     >
@@ -2927,7 +2928,7 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
               </NeoPanel>
             </section>
 
-            {archiveMode && previewOpen ? (
+            {previewOpen ? (
               <ExpenseInboxPreviewModal
                 expense={previewExpenseLive}
                 open={previewOpen}
@@ -2936,6 +2937,8 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
                 }}
                 enterMode={previewEnterMode}
                 presentation="panel"
+                evidenceFirst={inboxMode}
+                focusReviewOnOpen={focusReviewOnOpen}
                 projects={safeProjects}
                 workers={workers}
                 subcontractDeductionOptions={subcontractDeductionOptions}
@@ -2971,29 +2974,6 @@ export function ExpensesPageClient({ pool }: { pool: "inbox" | "expenses" }) {
           onOpenChange={setUploadReceiptsOpen}
           onSuccess={refresh}
         />
-        {inboxMode && previewOpen ? (
-          <ExpenseInboxPreviewModal
-            expense={previewExpenseLive}
-            open={previewOpen}
-            onOpenChange={(o) => {
-              setPreviewOpen(o);
-              if (!o) setPreviewExpense(null);
-            }}
-            enterMode={previewEnterMode}
-            projects={safeProjects}
-            workers={workers}
-            subcontractDeductionOptions={subcontractDeductionOptions}
-            projectNameById={projectNameById}
-            supabase={supabase}
-            setCategoriesList={setCategoriesList}
-            onSave={handlePreviewModalSave}
-            onMarkReviewed={handlePreviewMarkReviewed}
-            onAttachmentsUpdated={handlePreviewAttachmentsUpdated}
-            previewNav={previewModalNav}
-            possibleDuplicate={previewPossibleDuplicate}
-            issueContext={previewIssueFocus}
-          />
-        ) : null}
       </div>
     </div>
   );

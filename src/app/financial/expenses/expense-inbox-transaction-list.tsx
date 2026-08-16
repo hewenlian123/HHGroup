@@ -775,7 +775,10 @@ export type ExpenseInboxApi = {
   openReceiptPreview: (row: Expense) => void;
   /** Warm signed receipt URLs on hover / first touch (desktop / mobile). */
   prefetchReceiptUrls?: (row: Expense) => void;
-  openExpensePreview: (row: Expense, opts?: { mode?: "preview" | "edit" }) => void;
+  openExpensePreview: (
+    row: Expense,
+    opts?: { mode?: "preview" | "edit"; focusReview?: boolean }
+  ) => void;
   handleDelete: (expense: Expense) => void;
   /** `INBOX-UP-*` `referenceNo` values to flash after upload deep-link. */
   highlightReferenceNos?: ReadonlySet<string> | null;
@@ -944,7 +947,7 @@ function DateGroupDesktopHeader({
             <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-[var(--neo-text-secondary)]">
               <span className="tabular-nums">{chunk.itemCount}</span>
               <span aria-hidden>·</span>
-              <NeoAmount tone="expense" className="text-[12px]">
+              <NeoAmount tone={ledgerMode ? "expense" : "neutral"} className="text-[12px]">
                 {formatCurrency(-chunk.totalAmount)}
               </NeoAmount>
               {chunk.missingReceiptCount > 0 ? (
@@ -998,7 +1001,7 @@ function DesktopRows({
 
   const projectTextClass = cn(
     "block max-w-[10.5rem] truncate text-[13px] leading-tight text-[var(--neo-text-secondary)]",
-    ledgerMode ? "font-medium opacity-90" : "font-normal opacity-75"
+    "font-medium opacity-90"
   );
   const categoryTextClass = cn(
     "block max-w-[6.5rem] truncate text-[12px] leading-tight text-[var(--neo-text-secondary)]",
@@ -1006,7 +1009,7 @@ function DesktopRows({
   );
   const sourceClass = cn(
     "block max-w-[6.5rem] truncate text-[11px] leading-tight text-[var(--neo-text-secondary)]",
-    ledgerMode ? "font-normal opacity-85" : "font-medium"
+    "font-normal opacity-85"
   );
 
   return (
@@ -1067,6 +1070,13 @@ function DesktopRows({
                   const vendorClean = expenseVendorDisplayRaw(vendorRaw);
                   const vendorTitle = inboxPrimaryVendorTitle(vendorClean);
                   const secondaryLine = inboxSecondaryMetaLine(row);
+                  const compactQueueContext = [
+                    projLabel,
+                    catLabel,
+                    expensePaymentSourceDisplayLabel(row),
+                  ]
+                    .filter((value) => value && value !== "—")
+                    .join(" · ");
                   const rowSelected = selectedIds.has(row.id);
                   const uploadHighlight =
                     !!row.referenceNo && (a.highlightReferenceNos?.has(row.referenceNo) ?? false);
@@ -1078,6 +1088,7 @@ function DesktopRows({
                   return (
                     <tr
                       key={`desk-${row.id}`}
+                      data-expense-keyboard-row
                       data-expense-id={row.id}
                       data-expense-active={a.activeExpenseId === row.id ? "true" : "false"}
                       data-expense-has-exception={ledgerMode && hasException ? "true" : undefined}
@@ -1087,6 +1098,8 @@ function DesktopRows({
                       ref={(el) => {
                         a.rowElsRef.current[row.id] = el;
                       }}
+                      tabIndex={0}
+                      aria-label={`Review ${vendorTitle}`}
                       className={cn(
                         "expense-row-continuity exp-row group h-12 cursor-pointer bg-[var(--neo-surface-raised)] transition-[background-color,box-shadow] duration-150 ease-out hover:bg-[var(--neo-surface-muted)] [&>td]:align-middle [&>td]:px-2.5 [&>td]:py-1",
                         ledgerMode ? "border-b-0" : "border-b border-[var(--neo-border)]",
@@ -1114,6 +1127,13 @@ function DesktopRows({
                         if (inboxRowActivateIgnored(e.target)) return;
                         a.setActiveExpenseId(row.id);
                         a.openExpensePreview(row);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.target !== event.currentTarget) return;
+                        if (event.key !== "Enter" && event.key !== " ") return;
+                        event.preventDefault();
+                        a.setActiveExpenseId(row.id);
+                        a.openExpensePreview(row, { focusReview: true });
                       }}
                     >
                       <td className="w-[82px] shrink-0 whitespace-nowrap text-[12px] font-medium text-[var(--neo-text-secondary)]">
@@ -1152,18 +1172,38 @@ function DesktopRows({
                             <p
                               className={cn(
                                 "min-w-0 max-w-full truncate text-[13px] leading-tight text-[var(--neo-text-primary)]",
-                                ledgerMode ? "font-semibold" : "font-semibold md:font-medium"
+                                "font-semibold"
                               )}
                               title={vendorClean || vendorTitle}
                             >
                               {vendorTitle}
                             </p>
-                            <p
-                              className="mt-0.5 truncate text-[10px] leading-tight text-[var(--neo-text-tertiary)]"
-                              title={secondaryLine}
-                            >
-                              {secondaryLine}
-                            </p>
+                            {triageLayout ? (
+                              <p
+                                data-inbox-compact-context
+                                className="mt-0.5 truncate text-[10px] leading-tight text-[var(--neo-text-tertiary)]"
+                                title={compactQueueContext}
+                              >
+                                {compactQueueContext || "Needs classification"}
+                              </p>
+                            ) : (
+                              <p
+                                className="mt-0.5 truncate text-[10px] leading-tight text-[var(--neo-text-tertiary)]"
+                                title={secondaryLine}
+                              >
+                                {secondaryLine}
+                              </p>
+                            )}
+                            {triageLayout && hasException ? (
+                              <p
+                                data-inbox-compact-attention
+                                className="mt-1 truncate text-[10px] font-medium leading-tight text-[var(--eo-warning)]"
+                              >
+                                {missingReceipt
+                                  ? "Missing receipt"
+                                  : `${Math.max(issues.length, 1)} issue${Math.max(issues.length, 1) === 1 ? "" : "s"}`}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                       </td>
@@ -1237,10 +1277,10 @@ function DesktopRows({
                         className="w-[90px] shrink-0 whitespace-nowrap text-right tabular-nums"
                       >
                         <NeoAmount
-                          tone="expense"
+                          tone={triageLayout ? "neutral" : "expense"}
                           className={cn(
                             triageLayout
-                              ? "text-[15px] leading-none"
+                              ? "text-[15px] font-semibold leading-none text-[var(--eo-text-strong)]"
                               : "text-[15px] font-semibold leading-none"
                           )}
                         >
@@ -1331,7 +1371,7 @@ function DateGroupMobileHeader({
             <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-[var(--neo-text-secondary)]">
               <span className="tabular-nums">{chunk.itemCount} items</span>
               <span aria-hidden>·</span>
-              <NeoAmount tone="expense" className="text-[12px]">
+              <NeoAmount tone={ledgerMode ? "expense" : "neutral"} className="text-[12px]">
                 {formatCurrency(-chunk.totalAmount)}
               </NeoAmount>
               {chunk.missingReceiptCount > 0 ? (
@@ -1464,6 +1504,7 @@ function MobileRows({
                   return (
                     <NeoMobileCard asChild selected={rowSelected} key={row.id}>
                       <li
+                        data-expense-keyboard-row
                         data-expense-id={row.id}
                         data-expense-active={a.activeExpenseId === row.id ? "true" : "false"}
                         data-expense-has-exception={ledgerMode && hasException ? "true" : undefined}
@@ -1475,6 +1516,8 @@ function MobileRows({
                         ref={(el) => {
                           a.rowElsRef.current[row.id] = el;
                         }}
+                        tabIndex={0}
+                        aria-label={`Review ${vendorTitle}`}
                         className={cn(
                           "expense-row-continuity exp-row group list-none cursor-pointer rounded-none border-x-0 border-t-0 px-3 py-2.5 shadow-none",
                           ledgerMode ? "border-b-0" : "border-b border-[var(--neo-border)]",
@@ -1515,6 +1558,13 @@ function MobileRows({
                           if (inboxRowActivateIgnored(e.target)) return;
                           a.setActiveExpenseId(row.id);
                           a.openExpensePreview(row);
+                        }}
+                        onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) return;
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          a.setActiveExpenseId(row.id);
+                          a.openExpensePreview(row, { focusReview: true });
                         }}
                       >
                         <div className="flex min-w-0 gap-2">
@@ -1557,16 +1607,19 @@ function MobileRows({
                                 >
                                   {vendorTitle}
                                 </p>
-                                <p
-                                  data-expense-row-description={ledgerMode ? "" : undefined}
-                                  className="mt-0.5 truncate text-[11px] leading-tight text-[var(--neo-text-secondary)]"
-                                  title={secondaryLine}
-                                >
-                                  {secondaryLine}
-                                </p>
+                                {ledgerMode ? (
+                                  <p
+                                    data-expense-row-description=""
+                                    className="mt-0.5 truncate text-[11px] leading-tight text-[var(--neo-text-secondary)]"
+                                    title={secondaryLine}
+                                  >
+                                    {secondaryLine}
+                                  </p>
+                                ) : null}
                                 <p
                                   data-expense-context={ledgerMode ? "" : undefined}
                                   data-expense-mobile-context
+                                  data-inbox-compact-context={triageLayout ? "" : undefined}
                                   data-expense-row-metadata={ledgerMode ? "" : undefined}
                                   className="mt-1 line-clamp-1 text-[11px] leading-tight text-[var(--neo-text-tertiary)]"
                                   aria-label={`Project ${projLabel}, category ${catLabel}, source ${expensePaymentSourceDisplayLabel(row)}`}
@@ -1591,9 +1644,11 @@ function MobileRows({
                                 className="flex max-w-[42%] shrink-0 flex-col items-end gap-1 whitespace-nowrap text-right tabular-nums"
                               >
                                 <NeoAmount
-                                  tone="expense"
+                                  tone={triageLayout ? "neutral" : "expense"}
                                   className={cn(
-                                    triageLayout ? "text-base leading-none" : "text-sm"
+                                    triageLayout
+                                      ? "text-base font-semibold leading-none text-[var(--eo-text-strong)]"
+                                      : "text-sm"
                                   )}
                                 >
                                   {formatCurrency(-rowTotal)}
@@ -1687,7 +1742,6 @@ export function ExpenseInboxTransactionList({
   bulkActions?: ExpenseListBulkActionsApi;
 }) {
   const dupIds = possibleDuplicateIds ?? new Set<string>();
-  const ledgerMode = api.dateGroupPool === "expenses";
   const rootRef = React.useRef<HTMLDivElement>(null);
   const desktopLayout = useDesktopTableLayout(rootRef);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(() => new Set());
@@ -1948,7 +2002,7 @@ export function ExpenseInboxTransactionList({
           </NeoTable>
         ) : (
           <ul
-            data-expense-mobile-ledger={ledgerMode ? "" : undefined}
+            data-expense-mobile-ledger=""
             className="exp-divide flex flex-col border-y border-[var(--neo-border)]"
           >
             <MobileRows

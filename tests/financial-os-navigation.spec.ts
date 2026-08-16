@@ -59,14 +59,8 @@ const financialRoutes: FinancialRoute[] = [
   {
     label: "Receipt Inbox",
     path: "/financial/inbox",
-    heading: /^Inbox$/i,
+    heading: /^Receipt Inbox$/i,
     activeLabel: "Receipt Inbox",
-  },
-  {
-    label: "Worker Receipts",
-    path: "/labor/receipts",
-    heading: /^(Worker Receipt Uploads|Receipt Uploads)$/i,
-    activeLabel: "Worker Receipts",
   },
   {
     label: "Accounts",
@@ -153,7 +147,6 @@ async function expectFinancialGroupsVisible(page: Page) {
     "Expenses",
     "Receipt Inbox",
     "Reimbursements",
-    "Worker Receipts",
     "Commission Payments",
     "Cash",
     "Accounts",

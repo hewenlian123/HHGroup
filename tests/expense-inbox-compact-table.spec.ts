@@ -38,13 +38,7 @@ function adminClient(): SupabaseClient | null {
 
 async function cleanupCompactRows(admin: SupabaseClient, seeded: SeededCompactRows | null) {
   if (!seeded) return;
-  const { data: rows, error } = await admin
-    .from("expenses")
-    .select("id")
-    .like("reference_no", `${seeded.prefix}%`);
-  if (error) throw new Error(`compact cleanup select failed: ${error.message}`);
-
-  const ids = (rows ?? []).map((row) => String((row as { id: string }).id)).filter(Boolean);
+  const ids = Object.values(seeded.ids);
   if (ids.length > 0) {
     const lineDelete = await admin.from("expense_lines").delete().in("expense_id", ids);
     if (lineDelete.error) {
@@ -90,6 +84,17 @@ async function seedCompactRows(admin: SupabaseClient): Promise<SeededCompactRows
   const yesterday = localYmd(new Date(Date.now() - 24 * 60 * 60 * 1000));
   const longProjectName = "E2E Compact Long Project Name With A Very Specific Truncation Tail";
 
+  const paymentAccountResult = await admin
+    .from("payment_accounts")
+    .select("id")
+    .limit(1)
+    .maybeSingle();
+  if (paymentAccountResult.error || !paymentAccountResult.data?.id) {
+    throw new Error(
+      `compact payment account seed failed: ${paymentAccountResult.error?.message ?? "no account"}`
+    );
+  }
+
   const projectInsert = await admin.from("projects").insert({
     id: projectId,
     name: longProjectName,
@@ -105,13 +110,14 @@ async function seedCompactRows(admin: SupabaseClient): Promise<SeededCompactRows
       vendor_name: `${prefix} Receipt Vendor`,
       vendor: `${prefix} Receipt Vendor`,
       payment_method: "Amex",
-      reference_no: `${prefix}-receipt`,
+      reference_no: `INBOX-UP-${prefix}-receipt`,
       notes: "compact receipt row",
       total: 42.12,
       amount: 42.12,
       line_count: 1,
       status: "needs_review",
       source_type: "receipt_upload",
+      payment_account_id: paymentAccountResult.data.id,
       project_id: projectId,
       receipt_url: "https://receipt-preview.test/compact-receipt.png",
     },
@@ -185,7 +191,7 @@ async function seedCompactRows(admin: SupabaseClient): Promise<SeededCompactRows
       vendor_name: `${prefix} Missing Project Vendor`,
       vendor: `${prefix} Missing Project Vendor`,
       payment_method: "Other",
-      reference_no: `${prefix}-missing-project`,
+      reference_no: `INBOX-UP-${prefix}-missing-project`,
       notes: "compact missing project row",
       total: 77,
       amount: 77,
@@ -527,6 +533,118 @@ async function openDesktopFilters(page: Page) {
   });
 }
 
+async function expectReceiptInboxTypographyHierarchy(page: Page, row: Locator) {
+  const metrics = await row.evaluate((element) => {
+    const cells = Array.from(element.querySelectorAll<HTMLElement>(":scope > td"));
+    const type = (target: Element | null | undefined) => {
+      if (!target) throw new Error("Receipt Inbox typography target is missing.");
+      const style = window.getComputedStyle(target);
+      return {
+        fontSize: style.fontSize,
+        fontVariantNumeric: style.fontVariantNumeric,
+        fontWeight: Number(style.fontWeight),
+        lineHeight: style.lineHeight,
+        opacity: Number(style.opacity),
+      };
+    };
+
+    return {
+      amount: type(cells[8]?.querySelector("span")),
+      category: type(cells[3]?.querySelector("span")),
+      date: type(cells[0]),
+      issues: type(cells[6]?.querySelector("[data-testid='expense-inbox-issues']")),
+      merchant: type(cells[1]?.querySelector("p:first-of-type")),
+      merchantSupporting: type(cells[1]?.querySelector("p:nth-of-type(2)")),
+      project: type(cells[2]?.querySelector("span")),
+      receipt: type(cells[5]?.querySelector("[data-expense-receipt-state]")),
+      source: type(cells[4]?.querySelector("span")),
+      status: type(cells[7]?.querySelector("span")),
+    };
+  });
+
+  expect(metrics).toMatchObject({
+    amount: {
+      fontSize: "15px",
+      fontWeight: 600,
+      lineHeight: "15px",
+    },
+    category: {
+      fontSize: "12px",
+      fontWeight: 400,
+      lineHeight: "15px",
+    },
+    date: {
+      fontSize: "12px",
+      fontWeight: 500,
+      lineHeight: "20px",
+    },
+    issues: {
+      fontSize: "11px",
+      fontWeight: 500,
+      lineHeight: "20px",
+    },
+    merchant: {
+      fontSize: "13px",
+      fontWeight: 600,
+      lineHeight: "16.25px",
+    },
+    merchantSupporting: {
+      fontSize: "10px",
+      fontWeight: 400,
+      lineHeight: "12.5px",
+    },
+    project: {
+      fontSize: "13px",
+      fontWeight: 500,
+      lineHeight: "16.25px",
+      opacity: 0.9,
+    },
+    receipt: {
+      fontSize: "11px",
+      fontWeight: 500,
+    },
+    source: {
+      fontSize: "11px",
+      fontWeight: 400,
+      lineHeight: "13.75px",
+      opacity: 0.85,
+    },
+    status: {
+      fontSize: "10px",
+      fontWeight: 500,
+    },
+  });
+  expect(metrics.amount.fontVariantNumeric).toContain("tabular-nums");
+
+  const surfaceMetrics = await page
+    .locator('[data-expenses-list-page="inbox"]')
+    .evaluate((root) => {
+      const type = (selector: string) => {
+        const target = root.querySelector(selector);
+        if (!target) throw new Error(`Receipt Inbox typography target is missing: ${selector}`);
+        const style = window.getComputedStyle(target);
+        return {
+          fontSize: style.fontSize,
+          fontWeight: Number(style.fontWeight),
+          lineHeight: style.lineHeight,
+        };
+      };
+      return {
+        helper: type("[data-inbox-shortcuts]"),
+        kpi: type("[data-inbox-decision-brief] dd"),
+        label: type("[data-inbox-decision-brief] dt"),
+        tableHeader: type("thead th"),
+      };
+    });
+
+  expect(surfaceMetrics).toEqual({
+    helper: { fontSize: "11px", fontWeight: 400, lineHeight: "15.125px" },
+    kpi: { fontSize: "15px", fontWeight: 650, lineHeight: "15px" },
+    label: { fontSize: "10px", fontWeight: 600, lineHeight: "20px" },
+    tableHeader: { fontSize: "11px", fontWeight: 500, lineHeight: "20px" },
+  });
+}
+
 test.describe("Expense inbox compact table", () => {
   // These deterministic scenarios seed, exercise, reload and clean several rows across
   // multiple responsive viewports. Authentication adds enough local-dev compilation time
@@ -571,6 +689,7 @@ test.describe("Expense inbox compact table", () => {
 
       const receiptRow = expenseListRowById(page, seeded.ids.receipt);
       await expect(receiptRow).toBeVisible({ timeout: 60_000 });
+      await expectReceiptInboxTypographyHierarchy(page, receiptRow);
       await expectHeaderCellsAligned(table, receiptRow);
       await expect(receiptRow.getByRole("button", { name: /Receipt attached/i })).toHaveText(
         /^Receipt$/
@@ -694,6 +813,435 @@ test.describe("Expense inbox compact table", () => {
       await expectNoPageHorizontalOverflow(page, 390);
       await expect(expenseListRowById(page, seeded.ids.noReceipt)).toContainText("Missing");
       expect(unexpectedPageErrors(pageErrors)).toEqual([]);
+    } finally {
+      await cleanupCompactRows(admin, seeded);
+    }
+  });
+
+  test("Receipt Inbox inline review saves corrections and approves next without a mode switch", async ({
+    page,
+  }) => {
+    const admin = adminClient();
+    if (!admin) {
+      test.skip(true, "Supabase service role is not configured.");
+      return;
+    }
+    const pageErrors = collectPageErrors(page);
+
+    let seeded: SeededCompactRows | null = null;
+    try {
+      seeded = await seedCompactRows(admin);
+
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await loginAsE2EOwner(page, E2E_FINANCIAL_INBOX_URL);
+      await gotoCompactInbox(page, seeded.prefix);
+
+      const root = page.locator('[data-expenses-list-page="inbox"]');
+      const queue = root.locator("[data-expenses-ledger]");
+      const row = expenseListRowById(page, seeded.ids.receipt);
+      await expect(row).toBeVisible({ timeout: 60_000 });
+      await row.locator("td").nth(1).click();
+
+      const panel = root.locator("[data-expense-detail-panel]");
+      await expect(panel).toBeVisible();
+      await expect(queue).toBeVisible();
+      await expect(page.getByRole("dialog", { name: /Expense/i })).toHaveCount(0);
+      await expect(page).toHaveURL(
+        new RegExp(`ops_record=${encodeURIComponent(seeded.ids.receipt)}`)
+      );
+      await expect(row).toHaveAttribute("data-expense-active", "true");
+      const compactContext = root.locator(
+        `[data-expense-id="${seeded.ids.receipt}"]:visible [data-inbox-compact-context]`
+      );
+      await expect(compactContext).toBeVisible();
+      await expect(compactContext).toContainText("Materials");
+      await expect(panel.getByText(/\d+ of \d+/, { exact: true })).toBeVisible();
+
+      const evidenceStage = panel.locator("[data-expense-receipt-stage]");
+      const reviewPanel = panel.locator("[data-expense-review-panel]");
+      await expect(evidenceStage).toBeVisible();
+      await expect(reviewPanel).toBeVisible();
+      const reviewLayout = await page.evaluate(() => {
+        const queue = document.querySelector<HTMLElement>("[data-expenses-ledger]");
+        const evidence = document.querySelector<HTMLElement>("[data-expense-receipt-stage]");
+        const review = document.querySelector<HTMLElement>("[data-expense-review-panel]");
+        if (!queue || !evidence || !review) return null;
+        const queueBox = queue.getBoundingClientRect();
+        const evidenceBox = evidence.getBoundingClientRect();
+        const reviewBox = review.getBoundingClientRect();
+        return {
+          queueRight: queueBox.right,
+          evidenceLeft: evidenceBox.left,
+          evidenceRight: evidenceBox.right,
+          reviewLeft: reviewBox.left,
+          evidenceWidth: evidenceBox.width,
+        };
+      });
+      expect(reviewLayout).not.toBeNull();
+      expect(reviewLayout!.queueRight).toBeLessThanOrEqual(reviewLayout!.evidenceLeft + 2);
+      expect(reviewLayout!.evidenceRight).toBeLessThanOrEqual(reviewLayout!.reviewLeft + 2);
+      expect(reviewLayout!.evidenceWidth).toBeGreaterThan(280);
+
+      const hierarchy = await panel.evaluate((element) => {
+        const evidence = element.querySelector<HTMLElement>("[data-expense-receipt-evidence]");
+        const amount = element.querySelector<HTMLElement>("[data-expense-detail-amount]");
+        return {
+          evidenceTop: evidence?.getBoundingClientRect().top ?? Number.POSITIVE_INFINITY,
+          amountTop: amount?.getBoundingClientRect().top ?? Number.NEGATIVE_INFINITY,
+        };
+      });
+      expect(hierarchy.evidenceTop).toBeLessThan(hierarchy.amountTop);
+
+      const queueMetrics = await queue.evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+      expect(queueMetrics.scrollWidth - queueMetrics.clientWidth).toBeLessThanOrEqual(2);
+
+      await expect(panel).toHaveAttribute("data-expense-detail-mode", "review");
+      await expect(evidenceStage).toBeVisible();
+      const vendor = panel.getByTestId("edit-expense-vendor-input");
+      await expect(vendor).toBeVisible();
+      await expect(panel.getByRole("button", { name: "Edit Expense" })).toHaveCount(0);
+      await expect(panel.getByText("Payment method", { exact: true })).toBeHidden();
+      await panel.getByText("More Details", { exact: true }).click();
+      await expect(panel.getByText("Payment method", { exact: true })).toBeVisible();
+      await expect(panel.getByText("Attachments", { exact: true })).toBeVisible();
+      await panel.getByText("More Details", { exact: true }).click();
+
+      const originalVendor = await vendor.inputValue();
+      const savedVendor = `${originalVendor} inline-saved`;
+      await vendor.fill(savedVendor);
+      const saveResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/expenses/${seeded!.ids.receipt}`) &&
+          response.request().method() === "PATCH"
+      );
+      await panel.getByRole("button", { name: "Save", exact: true }).click();
+      expect((await saveResponsePromise).ok()).toBeTruthy();
+      await expect(panel).toHaveAttribute("data-expense-detail-mode", "review");
+      await expect(vendor).toHaveValue(savedVendor);
+      await expect(page).toHaveURL(
+        new RegExp(`ops_record=${encodeURIComponent(seeded.ids.receipt)}`)
+      );
+
+      const approvedVendor = `${originalVendor} inline-approved`;
+      await vendor.fill(approvedVendor);
+
+      await page.route(`**/api/expenses/${seeded.ids.receipt}`, async (route) => {
+        if (route.request().method() !== "PATCH") return route.continue();
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ ok: false, message: "Owner QA forced save failure" }),
+        });
+      });
+      await panel.getByRole("button", { name: "Approve & Next", exact: true }).click();
+      await expect(panel).toHaveAttribute("data-expense-detail-mode", "review");
+      await expect(vendor).toHaveValue(approvedVendor);
+      await expect(page).toHaveURL(
+        new RegExp(`ops_record=${encodeURIComponent(seeded.ids.receipt)}`)
+      );
+
+      await page.unroute(`**/api/expenses/${seeded.ids.receipt}`);
+      const correctionResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/expenses/${seeded!.ids.receipt}`) &&
+          response.request().method() === "PATCH"
+      );
+      const approveResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/financial/expenses/${seeded!.ids.receipt}/approve-inbox`) &&
+          response.request().method() === "POST"
+      );
+      await panel.getByRole("button", { name: "Approve & Next", exact: true }).click();
+      expect((await correctionResponsePromise).ok()).toBeTruthy();
+      expect((await approveResponsePromise).ok()).toBeTruthy();
+      await expect(page).not.toHaveURL(
+        new RegExp(`ops_record=${encodeURIComponent(seeded.ids.receipt)}(?:&|$)`)
+      );
+      await expect(panel).toHaveAttribute("data-expense-detail-mode", "review");
+      await expect(root.locator('[data-expense-active="true"]:visible')).toHaveCount(1);
+
+      const persistedInlineReview = await admin
+        .from("expenses")
+        .select("vendor_name, status")
+        .eq("id", seeded.ids.receipt)
+        .single();
+      expect(persistedInlineReview.error).toBeNull();
+      expect(persistedInlineReview.data?.vendor_name).toBe(approvedVendor);
+      expect(String(persistedInlineReview.data?.status).toLowerCase()).toBe("approved");
+
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await waitForExpensesQuerySuccess(page, 90_000);
+      await expect(root.locator("[data-expense-detail-panel]")).toBeVisible();
+
+      await page.setViewportSize({ width: 1024, height: 768 });
+      const desktopLayout = await root.evaluate((element) => {
+        const ledger = element.querySelector<HTMLElement>("[data-expenses-ledger]");
+        const detail = element.querySelector<HTMLElement>("[data-expense-detail-panel]");
+        if (!ledger || !detail) return null;
+        const ledgerBox = ledger.getBoundingClientRect();
+        const detailBox = detail.getBoundingClientRect();
+        return {
+          ledgerRight: ledgerBox.right,
+          detailLeft: detailBox.left,
+          detailWidth: detailBox.width,
+          position: getComputedStyle(detail).position,
+        };
+      });
+      expect(desktopLayout).not.toBeNull();
+      expect(desktopLayout!.ledgerRight).toBeLessThanOrEqual(desktopLayout!.detailLeft + 2);
+      expect(desktopLayout!.detailWidth).toBeGreaterThan(280);
+      expect(desktopLayout!.position).not.toBe("fixed");
+
+      await page.setViewportSize({ width: 768, height: 1024 });
+      await expect(panel.getByRole("button", { name: "Back to receipt queue" })).toBeVisible();
+      await expect(panel).toHaveCSS("position", "fixed");
+      await expect(evidenceStage).toBeHidden();
+
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expectNoPageHorizontalOverflow(page, 390);
+      const back = panel.getByRole("button", { name: "Back to receipt queue" });
+      const backBox = await back.boundingBox();
+      expect(backBox?.width).toBeGreaterThanOrEqual(44);
+      expect(backBox?.height).toBeGreaterThanOrEqual(44);
+      await back.click();
+      await expect(panel).toBeHidden();
+      await expect(page).not.toHaveURL(/ops_record=/);
+      const actionablePageErrors = unexpectedPageErrors(pageErrors).filter(
+        (message) => !message.includes("status of 500") && !message.includes("status of 404")
+      );
+      expect(actionablePageErrors).toEqual([]);
+    } finally {
+      await cleanupCompactRows(admin, seeded);
+    }
+  });
+
+  test("Receipt Inbox P0 review panel surfaces blockers and supports keyboard-only operation", async ({
+    page,
+  }) => {
+    const admin = adminClient();
+    if (!admin) {
+      test.skip(true, "Supabase service role is not configured.");
+      return;
+    }
+
+    let seeded: SeededCompactRows | null = null;
+    try {
+      seeded = await seedCompactRows(admin);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await loginAsE2EOwner(page, E2E_FINANCIAL_INBOX_URL);
+      await gotoCompactInbox(page, seeded.prefix);
+
+      const root = page.locator('[data-expenses-list-page="inbox"]');
+      const row = expenseListRowById(page, seeded.ids.receipt);
+      await row.locator("td").nth(1).click();
+
+      const panel = root.locator("[data-expense-detail-panel]");
+      await expect(panel).toBeVisible();
+      const amount = panel.locator("#edit-expense-amount-input");
+      const vendor = panel.locator("#edit-expense-vendor-input");
+      const classification = panel.locator("#edit-expense-cost-allocation-select");
+      const project = panel.locator("#edit-expense-project-select");
+      const category = panel.locator("#edit-expense-category-select");
+      const date = panel.locator("#inbox-preview-expense-date");
+      const paymentAccount = panel.locator("#edit-expense-payment-select");
+
+      await expect(amount).toBeVisible();
+      await expect(vendor).toBeVisible();
+      await expect(classification).toBeVisible();
+      await expect(project).toBeVisible();
+      await expect(category).toBeVisible();
+      await expect(date).toBeVisible();
+      await expect(paymentAccount).toBeVisible();
+      await expect(category).toBeEnabled();
+      await expect(paymentAccount).toBeEnabled();
+      await expect(panel.getByText("Payment method", { exact: true })).toBeHidden();
+
+      const fieldOrder = await panel
+        .locator("[data-expense-review-field]")
+        .evaluateAll((fields) =>
+          fields.map((field) => field.getAttribute("data-expense-review-field"))
+        );
+      expect(fieldOrder.slice(0, 7)).toEqual([
+        "amount",
+        "vendor",
+        "classification",
+        "project",
+        "category",
+        "date",
+        "payment-account",
+      ]);
+
+      const layout = await panel.evaluate((element) => {
+        const box = (name: string) =>
+          element
+            .querySelector<HTMLElement>(`[data-expense-review-field="${name}"]`)
+            ?.getBoundingClientRect();
+        const amountBox = box("amount");
+        const vendorBox = box("vendor");
+        const classificationBox = box("classification");
+        const projectBox = box("project");
+        const categoryBox = box("category");
+        const dateBox = box("date");
+        return {
+          amountWidth: amountBox?.width ?? 0,
+          vendorWidth: vendorBox?.width ?? 0,
+          amountTop: amountBox?.top ?? 0,
+          vendorTop: vendorBox?.top ?? 0,
+          classificationWidth: classificationBox?.width ?? 0,
+          projectWidth: projectBox?.width ?? 0,
+          classificationTop: classificationBox?.top ?? 0,
+          projectTop: projectBox?.top ?? 0,
+          categoryWidth: categoryBox?.width ?? 0,
+          dateWidth: dateBox?.width ?? 0,
+          categoryTop: categoryBox?.top ?? 0,
+          dateTop: dateBox?.top ?? 0,
+        };
+      });
+      expect(Math.abs(layout.amountTop - layout.vendorTop)).toBeLessThanOrEqual(2);
+      expect(layout.amountWidth).toBeLessThan(layout.vendorWidth);
+      expect(Math.abs(layout.classificationTop - layout.projectTop)).toBeLessThanOrEqual(2);
+      expect(layout.classificationWidth).toBeLessThan(layout.projectWidth);
+      expect(Math.abs(layout.categoryTop - layout.dateTop)).toBeLessThanOrEqual(2);
+      expect(layout.categoryWidth).toBeGreaterThan(layout.dateWidth);
+
+      await expect(amount).not.toBeFocused();
+      await panel.getByRole("button", { name: "Close receipt detail" }).click();
+      await expect(panel).toBeHidden();
+
+      await row.focus();
+      await row.press("Enter");
+      await expect(panel).toBeVisible();
+      await expect(amount).toBeFocused();
+      await expect(category).toBeEnabled();
+      await expect(paymentAccount).toBeEnabled();
+
+      await page.keyboard.press("Tab");
+      await expect(vendor).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(classification).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(project).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(category).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(date).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(paymentAccount).toBeFocused();
+
+      const savedVendor = `${seeded.prefix} Shortcut Saved Vendor`;
+      await vendor.fill(savedVendor);
+      const saveResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/expenses/${seeded!.ids.receipt}`) &&
+          response.request().method() === "PATCH"
+      );
+      await page.keyboard.press("ControlOrMeta+s");
+      expect((await saveResponsePromise).ok()).toBeTruthy();
+      await expect(panel.locator("[data-expense-review-status]")).toContainText("Saved");
+
+      const approveUrl = `**/api/financial/expenses/${seeded.ids.receipt}/approve-inbox`;
+      await page.route(approveUrl, async (route) => {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ ok: false, message: "Owner QA forced shortcut failure" }),
+        });
+      });
+      await page.keyboard.press("ControlOrMeta+Enter");
+      await expect(panel.getByRole("alert")).toContainText("Approval failed");
+      await expect(page).toHaveURL(
+        new RegExp(`ops_record=${encodeURIComponent(seeded.ids.receipt)}`)
+      );
+      await page.unroute(approveUrl);
+
+      await panel.getByRole("button", { name: "Close receipt detail" }).click();
+      const missingProjectRow = expenseListRowById(page, seeded.ids.missingProject);
+      await missingProjectRow.locator("td").nth(1).click();
+      await expect(panel).toBeVisible();
+      await panel.locator("#edit-expense-cost-allocation-select").click();
+      await page.getByRole("option", { name: "Project Cost", exact: true }).click();
+      const missingProjectAction = panel.getByRole("button", {
+        name: /Approve(?: & Next)?/,
+      });
+      await missingProjectAction.click();
+      await expect(panel.locator("#edit-expense-project-error")).toContainText("Choose a project");
+      await expect(panel.locator("#edit-expense-project-select")).toBeFocused();
+      await expect(page).toHaveURL(
+        new RegExp(`ops_record=${encodeURIComponent(seeded.ids.missingProject)}`)
+      );
+
+      page.once("dialog", async (dialog) => dialog.accept());
+      await panel.getByRole("button", { name: "Close receipt detail" }).click();
+      await expect(panel).toBeHidden();
+      await expensesVendorSearch(page).fill(savedVendor);
+      const finalRow = expenseListRowById(page, seeded.ids.receipt);
+      await finalRow.locator("td").nth(1).click();
+      await expect(panel.getByRole("button", { name: "Approve", exact: true })).toBeVisible();
+      await expect(panel.getByRole("button", { name: "Approve & Next", exact: true })).toHaveCount(
+        0
+      );
+    } finally {
+      await cleanupCompactRows(admin, seeded);
+    }
+  });
+
+  test("Expense Upload Approve & Next advances only after confirmed canonical success", async ({
+    page,
+  }) => {
+    const admin = adminClient();
+    if (!admin) {
+      test.skip(true, "Supabase service role is not configured.");
+      return;
+    }
+
+    let seeded: SeededCompactRows | null = null;
+    try {
+      seeded = await seedCompactRows(admin);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await loginAsE2EOwner(page, E2E_FINANCIAL_INBOX_URL);
+      await gotoCompactInbox(page, seeded.prefix);
+
+      const root = page.locator('[data-expenses-list-page="inbox"]');
+      const row = expenseListRowById(page, seeded.ids.receipt);
+      await row.locator("td").nth(1).click();
+      const panel = root.locator("[data-expense-detail-panel]");
+      const approveAndNext = panel.getByRole("button", {
+        name: "Approve & Next",
+        exact: true,
+      });
+      await expect(approveAndNext).toBeVisible();
+
+      const approveUrl = `**/api/financial/expenses/${seeded.ids.receipt}/approve-inbox`;
+      await page.route(approveUrl, async (route) => {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({ ok: false, message: "Owner QA forced approval failure" }),
+        });
+      });
+      await approveAndNext.click();
+      await expect(page).toHaveURL(
+        new RegExp(`ops_record=${encodeURIComponent(seeded.ids.receipt)}`)
+      );
+      await expect(row).toHaveAttribute("data-expense-active", "true");
+
+      await page.unroute(approveUrl);
+      await approveAndNext.click();
+      await expect(page).not.toHaveURL(
+        new RegExp(`ops_record=${encodeURIComponent(seeded.ids.receipt)}(?:&|$)`)
+      );
+      await expect(root.locator('[data-expense-active="true"]:visible')).toHaveCount(1);
+
+      const persisted = await admin
+        .from("expenses")
+        .select("status")
+        .eq("id", seeded.ids.receipt)
+        .single();
+      expect(persisted.error).toBeNull();
+      expect(String(persisted.data?.status).toLowerCase()).toBe("approved");
     } finally {
       await cleanupCompactRows(admin, seeded);
     }

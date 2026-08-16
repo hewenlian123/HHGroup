@@ -134,9 +134,13 @@ export async function deleteE2EAssistant(): Promise<void> {
 
 export async function loginAsE2EOwner(page: Page, destination = "/dashboard"): Promise<void> {
   const baseURL = (process.env.E2E_BASE_URL || "http://localhost:3000").replace(/\/$/, "");
-  await addE2ESession(page.context(), baseURL, "owner");
+  await addE2EOwnerSession(page.context(), baseURL);
   await page.goto(destination, { waitUntil: "domcontentloaded" });
   await page.waitForURL((url) => url.pathname === destination, { timeout: 60_000 });
+}
+
+export async function addE2EOwnerSession(context: BrowserContext, baseURL: string): Promise<void> {
+  await addE2ESession(context, baseURL, "owner");
 }
 
 async function addE2ESession(

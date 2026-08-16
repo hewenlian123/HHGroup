@@ -1,5 +1,8 @@
 "use client";
 
+import "../../financial/expenses/expenses-ui-theme.css";
+import "./reimbursements-ui.css";
+
 import * as React from "react";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import Link from "next/link";
@@ -49,14 +52,7 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import {
-  DeleteRowAction,
-  NeoAmount,
-  NeoMobileCard,
-  NeoStatus,
-  NeoTable,
-  NeoToolbar,
-} from "@/components/base";
+import { NeoAmount, NeoMobileCard, NeoStatus, NeoTable, NeoToolbar } from "@/components/base";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { ExpenseOperationsWorkspaceNav } from "@/components/financial/expense-operations-workspace-nav";
 import {
@@ -76,30 +72,11 @@ function todayLocalISODate(): string {
 
 const STATUS_OPTIONS: WorkerReimbursementStatus[] = ["pending", "approved", "paid", "settled"];
 
-const rbPageVars = {
-  "--rb-page": "#08090C",
-  "--rb-main": "#0D0F14",
-  "--rb-panel": "#111318",
-  "--rb-elevated": "#151820",
-  "--rb-input": "#0F1218",
-  "--rb-row": "#10141B",
-  "--rb-row-hover": "#171B24",
-  "--rb-border": "rgba(190,198,210,0.13)",
-  "--rb-border-soft": "rgba(190,198,210,0.09)",
-  "--rb-border-strong": "rgba(205,213,225,0.20)",
-  "--rb-text": "#F6F7FA",
-  "--rb-secondary": "#B5BECC",
-  "--rb-muted": "#929CAF",
-  "--rb-faint": "#737C8C",
-  "--rb-amber": "#D8B46A",
-  "--rb-green": "#8BD7B1",
-} as React.CSSProperties;
-
 const rbShell =
-  "rounded-[18px] border border-[color:var(--rb-border)] bg-[var(--rb-elevated)] text-[color:var(--rb-text)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset,0_16px_34px_rgb(0_0_0_/_0.24)] transition-[border-color,background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[color:var(--rb-border-strong)] hover:bg-[#171B24] hover:shadow-[0_1px_0_rgb(255_255_255_/_0.045)_inset,0_18px_40px_rgb(0_0_0_/_0.30)]";
+  "border border-[color:var(--rb-border)] bg-[var(--rb-elevated)] text-[color:var(--rb-text)] transition-colors duration-120";
 
 const rbKpiIcon =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[color:var(--rb-border)] bg-[var(--rb-panel)] text-[color:var(--rb-amber)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset] md:h-9 md:w-9";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--rb-input)] text-[color:var(--rb-muted)] md:h-9 md:w-9";
 
 const rbKpiCardClass =
   "flex min-h-[72px] items-center gap-2.5 px-3 py-3 md:h-[86px] md:gap-3 md:px-4 md:py-3";
@@ -113,29 +90,35 @@ const rbKpiValueClass =
 const rbKpiMetaClass = "mt-1 text-[11px] leading-none text-[color:var(--rb-faint)]";
 
 const rbSegmentedNav =
-  "inline-flex min-h-9 items-center rounded-full border border-[color:var(--rb-border-soft)] bg-[var(--rb-panel)] p-1 shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset]";
+  "inline-flex min-h-9 items-center rounded-lg border border-[color:var(--rb-border-soft)] bg-[var(--rb-panel)] p-1";
 
 const rbSegmentedNavLink =
-  "inline-flex h-7 items-center rounded-full px-3 text-[12px] font-medium text-[color:var(--rb-secondary)] transition-colors duration-150 hover:bg-[var(--rb-row-hover)] hover:text-[color:var(--rb-text)]";
+  "inline-flex h-7 items-center rounded-md px-3 text-[12px] font-medium text-[color:var(--rb-secondary)] transition-colors duration-120 hover:bg-[var(--rb-row-hover)] hover:text-[color:var(--rb-text)]";
 
 const rbHeaderActionButton =
-  "h-9 rounded-full border-[color:rgb(216_180_106_/_0.30)] bg-[rgb(216_180_106_/_0.10)] px-3 text-[13px] font-semibold text-[color:var(--rb-amber)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset] transition-colors duration-150 hover:border-[color:rgb(216_180_106_/_0.42)] hover:bg-[rgb(216_180_106_/_0.15)] hover:text-[#F0D59A]";
+  "h-9 rounded-md border-transparent bg-[var(--eo-action-primary)] px-3 text-[13px] font-semibold text-[var(--eo-action-primary-text)] shadow-none transition-colors duration-120 hover:bg-[var(--eo-action-primary-hover)] hover:text-[var(--eo-action-primary-text)]";
 
 const rbStatusChip =
-  "inline-flex h-6 items-center gap-1.5 rounded-full border bg-[var(--rb-panel)] px-2.5 text-[11px] font-semibold leading-none tracking-normal shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset]";
+  "inline-flex h-6 items-center gap-1.5 rounded-full border bg-[var(--rb-panel)] px-2.5 text-[11px] font-semibold leading-none tracking-normal";
 
 const rbChipBase =
-  "inline-flex min-h-9 items-center gap-1.5 rounded-full border bg-[var(--rb-panel)] px-3 py-1.5 text-[11px] font-medium shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset] transition-colors duration-150";
+  "inline-flex min-h-9 items-center gap-1.5 rounded-full border bg-[var(--rb-panel)] px-3 py-1.5 text-[11px] font-medium transition-colors duration-120";
+
+const rbFormLabelClass =
+  "mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]";
+
+const rbFormControlClass =
+  "h-10 rounded-md border-[color:var(--rb-border)] bg-[var(--rb-input)] text-[color:var(--rb-text)] shadow-none focus-visible:border-[color:var(--eo-focus)] focus-visible:ring-[var(--eo-focus-ring)]";
 
 function hasReceiptUrl(r: WorkerReimbursement): boolean {
   return Boolean((r.receiptUrl ?? "").trim());
 }
 
 const receiptPillAttachedInteractive =
-  "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[color:rgb(139_215_177_/_0.24)] bg-[var(--rb-panel)] px-2.5 py-1 text-[11px] font-semibold tabular-nums text-[color:var(--rb-green)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset] transition-colors duration-150 hover:border-[color:rgb(139_215_177_/_0.36)] hover:bg-[var(--rb-row-hover)] hover:text-[#B8F1D2] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(216_180_106_/_0.35)]";
+  "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-md border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-2.5 py-1 text-[11px] font-semibold tabular-nums text-[color:var(--rb-secondary)] transition-colors duration-120 hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] hover:text-[color:var(--rb-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring)]";
 
 const receiptPillMissing =
-  "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-full border border-[color:rgb(216_180_106_/_0.22)] bg-[var(--rb-panel)] px-2.5 py-1 text-[11px] font-medium tabular-nums text-[color:var(--rb-amber)]";
+  "inline-flex max-w-full shrink-0 items-center gap-1.5 rounded-md bg-[var(--eo-warning-soft)] px-2.5 py-1 text-[11px] font-medium tabular-nums text-[color:var(--rb-amber)]";
 
 function ReimbursementCheckbox({
   ariaLabel,
@@ -169,27 +152,23 @@ function ReimbursementCheckbox({
       <span
         aria-hidden
         className={cn(
-          "flex h-4 w-4 items-center justify-center rounded-[5px] border border-[color:rgb(190_198_210_/_0.28)] bg-[#0F1218]",
-          "shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset] transition-[background-color,border-color,box-shadow,transform] duration-150",
-          "group-hover/reimbursement-checkbox:border-[color:rgb(190_198_210_/_0.44)] group-hover/reimbursement-checkbox:bg-[#111318]",
-          "peer-focus-visible:border-[color:rgb(216_180_106_/_0.58)] peer-focus-visible:ring-2 peer-focus-visible:ring-[rgb(216_180_106_/_0.24)]",
-          "peer-checked:border-[color:rgb(216_180_106_/_0.72)] peer-checked:bg-[var(--rb-amber)] peer-checked:shadow-[0_0_0_1px_rgb(216_180_106_/_0.18),0_1px_0_rgb(255_255_255_/_0.16)_inset]",
-          "peer-disabled:border-[color:rgb(190_198_210_/_0.18)] peer-disabled:bg-[#0F1218]"
+          "flex h-4 w-4 items-center justify-center rounded-[5px] border border-[color:var(--rb-border-strong)] bg-[var(--rb-input)]",
+          "transition-[background-color,border-color,box-shadow] duration-120",
+          "group-hover/reimbursement-checkbox:border-[color:var(--eo-text-tertiary)] group-hover/reimbursement-checkbox:bg-[var(--rb-row-hover)]",
+          "peer-focus-visible:border-[color:var(--eo-focus)] peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--eo-focus-ring)]",
+          "peer-checked:border-[color:var(--eo-action-primary)] peer-checked:bg-[var(--eo-action-primary)]",
+          "peer-disabled:border-[color:var(--rb-border)] peer-disabled:bg-[var(--rb-input)]"
         )}
       >
-        {checked ? <Check className="h-3 w-3 text-[#08090C]" strokeWidth={3} /> : null}
+        {checked ? (
+          <Check className="h-3 w-3 text-[var(--eo-action-primary-text)]" strokeWidth={3} />
+        ) : null}
       </span>
     </label>
   );
 }
 
-function ReimbursementStatusChip({
-  status,
-  hasReceipt,
-}: {
-  status: WorkerReimbursementStatus;
-  hasReceipt?: boolean;
-}) {
+function ReimbursementStatusChip({ status }: { status: WorkerReimbursementStatus }) {
   if (status === "paid") {
     return <NeoStatus label="Paid" variant="success" />;
   }
@@ -197,26 +176,13 @@ function ReimbursementStatusChip({
     return <NeoStatus label="Settled" variant="success" />;
   }
   if (status === "approved") {
-    return <NeoStatus label="Approved" variant="warning" />;
-  }
-  if (hasReceipt) {
-    return (
-      <span
-        className={cn(
-          rbStatusChip,
-          "border-[color:rgb(139_215_177_/_0.26)] text-[color:var(--rb-green)]"
-        )}
-      >
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--rb-green)]" aria-hidden />
-        Ready to pay
-      </span>
-    );
+    return <NeoStatus label="Approved" variant="success" />;
   }
   return (
     <span
       className={cn(
         rbStatusChip,
-        "border-[color:rgb(216_180_106_/_0.26)] text-[color:var(--rb-amber)]"
+        "border-[color:var(--eo-warning-border)] text-[color:var(--rb-amber)]"
       )}
     >
       <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--rb-amber)]" aria-hidden />
@@ -710,18 +676,13 @@ export default function WorkerReimbursementsPage() {
   function ActionsDropdown({ r }: { r: WorkerReimbursement }) {
     const isBusy = busyId === r.id;
     return (
-      <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity duration-200 md:opacity-[0.48] md:group-hover:opacity-100 md:group-focus-within:opacity-100">
-        <DeleteRowAction
-          disabled={isBusy}
-          className="h-11 w-11 rounded-full text-[color:var(--rb-faint)] hover:bg-rose-400/[0.10] hover:text-rose-300 md:h-8 md:w-8"
-          onDelete={() => handleDelete(r.id)}
-        />
+      <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity duration-120 motion-reduce:transition-none md:opacity-[0.48] md:group-hover:opacity-100 md:group-focus-within:opacity-100">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-full border border-transparent text-[color:var(--rb-faint)] touch-manipulation transition-colors duration-150 hover:border-[color:var(--rb-border)] hover:bg-[var(--rb-row-hover)] hover:text-[color:var(--rb-text)] data-[state=open]:border-[color:var(--rb-border-strong)] data-[state=open]:bg-[var(--rb-row-hover)] md:h-8 md:w-8 md:min-h-8 md:min-w-8"
+              className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-md border border-transparent text-[color:var(--rb-faint)] touch-manipulation transition-colors duration-120 hover:border-[color:var(--rb-border)] hover:bg-[var(--rb-row-hover)] hover:text-[color:var(--rb-text)] data-[state=open]:border-[color:var(--rb-border-strong)] data-[state=open]:bg-[var(--rb-row-hover)] md:h-8 md:w-8 md:min-h-8 md:min-w-8"
               aria-label="Actions"
             >
               <MoreHorizontal className="h-4 w-4 opacity-80" />
@@ -729,7 +690,7 @@ export default function WorkerReimbursementsPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="min-w-[10rem] border-[color:var(--rb-border)] bg-[var(--rb-elevated)] text-[color:var(--rb-text)] shadow-[0_20px_44px_rgb(0_0_0_/_0.36)]"
+            className="expenses-ui reimbursement-floating-surface min-w-[10rem] rounded-lg"
           >
             <DropdownMenuItem onSelect={() => router.push(workerDetailHref(r.workerId))}>
               Open Worker
@@ -779,9 +740,9 @@ export default function WorkerReimbursementsPage() {
 
   return (
     <div
-      style={rbPageVars}
+      data-reimbursements-workspace
       className={cn(
-        "dark neo-page-on-graphite page-shell-wide mx-auto flex min-h-[calc(100dvh-1rem)] w-full max-w-[430px] flex-col gap-1 bg-[var(--rb-page)] px-4 py-1 pb-2.5 text-[color:var(--rb-secondary)] sm:max-w-[460px] md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
+        "expenses-ui reimbursements-ui page-shell-wide mx-auto flex min-h-[calc(100dvh-1rem)] w-full !max-w-none flex-col gap-1 bg-[var(--rb-page)] px-4 py-1 pb-2.5 text-[color:var(--rb-secondary)] md:gap-2 md:px-6 md:pb-3 md:pt-0.5",
         mobileListPagePaddingClass,
         "max-md:!gap-1"
       )}
@@ -793,7 +754,7 @@ export default function WorkerReimbursementsPage() {
             asChild
             variant="outline"
             size="sm"
-            className="min-h-11 rounded-full border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-3 text-[13px] font-semibold text-[color:var(--rb-text)] shadow-none hover:border-[color:rgb(216_180_106_/_0.36)] hover:bg-[#171B24] hover:text-[color:var(--rb-amber)] md:min-h-9"
+            className="min-h-11 rounded-md border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-3 text-[13px] font-semibold text-[color:var(--rb-text)] shadow-none hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] md:min-h-9"
           >
             <Link href={returnHref}>{returnLabel}</Link>
           </Button>
@@ -804,7 +765,7 @@ export default function WorkerReimbursementsPage() {
       </div>
       <div className="hidden md:block">
         <PageHeader
-          className="gap-2 border-b border-[color:var(--rb-border-soft)] pb-4 lg:items-end lg:gap-x-5 [&_h1]:!text-[25px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[color:var(--rb-text)] [&_p]:!mt-1.5 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[color:var(--rb-secondary)]"
+          className="gap-2 border-b border-[color:var(--rb-border-soft)] pb-4 lg:items-end lg:gap-x-5 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[color:var(--rb-text)] [&_p]:!mt-1 [&_p]:!max-w-xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[color:var(--rb-secondary)]"
           title="Worker Reimbursements"
           subtitle="Review pending reimbursements, receipts, and payouts before marking paid."
           actions={
@@ -812,9 +773,6 @@ export default function WorkerReimbursementsPage() {
               <nav className={rbSegmentedNav} aria-label="Labor navigation">
                 <Link href="/financial/workers" className={rbSegmentedNavLink}>
                   Worker Balances
-                </Link>
-                <Link href="/labor/receipts" className={rbSegmentedNavLink}>
-                  Receipt Uploads
                 </Link>
                 <Link href="/labor" className={rbSegmentedNavLink}>
                   Labor
@@ -863,10 +821,10 @@ export default function WorkerReimbursementsPage() {
         <span
           className={cn(
             rbChipBase,
-            "border-[color:rgb(216_180_106_/_0.26)] text-[color:var(--rb-amber)]"
+            "border-[color:var(--eo-warning-border)] text-[color:var(--rb-amber)]"
           )}
         >
-          <span className="font-semibold tabular-nums text-[#F0D59A]">
+          <span className="font-semibold tabular-nums text-[color:var(--rb-amber)]">
             {reimbursementStats.missingReceipt}
           </span>
           Missing receipt
@@ -874,17 +832,20 @@ export default function WorkerReimbursementsPage() {
         <span
           className={cn(
             rbChipBase,
-            "border-[color:rgb(139_215_177_/_0.28)] text-[color:var(--rb-green)]"
+            "border-[color:var(--rb-border)] text-[color:var(--rb-secondary)]"
           )}
         >
-          <span className="font-semibold tabular-nums text-[#B8F1D2]">
+          <span className="font-semibold tabular-nums text-[color:var(--rb-text)]">
             {reimbursementStats.readyToPay}
           </span>
-          Ready to pay
+          With receipt
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+      <div
+        data-reimbursements-kpis
+        className="grid grid-cols-2 overflow-hidden rounded-lg border border-[color:var(--rb-border)] bg-[var(--rb-panel)] md:grid-cols-4"
+      >
         <div className={cn(rbShell, rbKpiCardClass)}>
           <span className={rbKpiIcon}>
             <AlertCircle className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
@@ -942,7 +903,7 @@ export default function WorkerReimbursementsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Worker, project, vendor…"
-              className="h-11 min-h-[44px] rounded-full border-[color:var(--rb-border)] bg-[var(--rb-input)] pl-9 text-sm text-[color:var(--rb-text)] placeholder:text-[color:var(--rb-faint)] focus-visible:border-[color:rgb(216_180_106_/_0.38)] focus-visible:ring-[rgb(216_180_106_/_0.18)] md:h-10 md:min-h-0"
+              className="h-11 min-h-[44px] rounded-md border-[color:var(--rb-border)] bg-[var(--rb-input)] pl-9 text-sm text-[color:var(--rb-text)] placeholder:text-[color:var(--rb-faint)] focus-visible:border-[color:var(--eo-focus)] focus-visible:ring-[var(--eo-focus-ring)] md:h-10 md:min-h-0"
               aria-label="Search reimbursements"
             />
           </div>
@@ -982,7 +943,7 @@ export default function WorkerReimbursementsPage() {
           type="button"
           variant="outline"
           size="sm"
-          className="w-full rounded-sm"
+          className="w-full rounded-md"
           disabled={selectedIds.size === 0 || !selectedSameWorker || selectedRows.length === 0}
           onClick={() => {
             openCreateWorkerPayment();
@@ -992,17 +953,17 @@ export default function WorkerReimbursementsPage() {
           Create Worker Payment
           {selectedIds.size > 0 ? ` (${selectedIds.size})` : ""}
         </Button>
-        <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+        <Button type="button" className="w-full rounded-md" onClick={() => setFiltersOpen(false)}>
           Done
         </Button>
       </MobileFilterSheet>
       {schemaWarning ? (
-        <div className="rounded-lg border border-[color:rgb(216_180_106_/_0.24)] bg-[var(--rb-panel)] px-3 py-2 text-sm text-[color:var(--rb-amber)]">
+        <div className="rounded-lg border border-[color:var(--eo-warning-border)] bg-[var(--eo-warning-soft)] px-3 py-2 text-sm text-[color:var(--rb-amber)]">
           {schemaWarning} Run Labor schema migration (e.g. ensure labor tables) or check Supabase
           Project Settings → API → Reload schema.
         </div>
       ) : null}
-      <NeoToolbar className="hidden border-[color:var(--rb-border)] bg-[var(--rb-panel)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset,0_12px_30px_rgb(0_0_0_/_0.22)] md:block md:p-2.5">
+      <NeoToolbar className="hidden border-[color:var(--rb-border)] bg-[var(--rb-panel)] shadow-[var(--eo-shadow-operational)] md:block md:p-2.5">
         <div className="flex w-full flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <div className="min-w-[260px] flex-1 space-y-1.5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[color:var(--rb-muted)]">
@@ -1017,14 +978,14 @@ export default function WorkerReimbursementsPage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Worker, project, vendor…"
-                className="h-10 rounded-full border-[color:var(--rb-border)] bg-[var(--rb-input)] pl-9 text-[color:var(--rb-text)] placeholder:text-[color:var(--rb-faint)] focus-visible:border-[color:rgb(216_180_106_/_0.38)] focus-visible:ring-[rgb(216_180_106_/_0.18)]"
+                className="h-10 rounded-md border-[color:var(--rb-border)] bg-[var(--rb-input)] pl-9 text-[color:var(--rb-text)] placeholder:text-[color:var(--rb-faint)] focus-visible:border-[color:var(--eo-focus)] focus-visible:ring-[var(--eo-focus-ring)]"
               />
             </div>
           </div>
           <Button
             size="sm"
             variant="outline"
-            className="h-10 w-full rounded-full border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset] transition-colors duration-150 hover:border-[color:rgb(216_180_106_/_0.36)] hover:bg-[#171B24] hover:text-[color:var(--rb-amber)] disabled:border-[color:var(--rb-border-soft)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] sm:w-[210px]"
+            className="h-10 w-full rounded-md border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] shadow-none transition-colors duration-120 hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] disabled:border-[color:var(--rb-border-soft)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] sm:w-[210px]"
             disabled={selectedIds.size === 0 || !selectedSameWorker || selectedRows.length === 0}
             onClick={openCreateWorkerPayment}
           >
@@ -1040,32 +1001,31 @@ export default function WorkerReimbursementsPage() {
       ) : null}
 
       {showForm && (
-        <div className="border-b border-[color:var(--rb-border-soft)] pb-4">
+        <section
+          data-reimbursement-form
+          className="reimbursement-task-surface rounded-lg border border-[color:var(--rb-border)] bg-[var(--rb-elevated)] p-4 shadow-[var(--eo-shadow-task)]"
+        >
           <h2 className="mb-3 text-sm font-semibold text-[color:var(--rb-text)]">
             {editingId ? "Edit Reimbursement" : "New Reimbursement"}
           </h2>
           <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-end">
             <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">
-                Date
-              </label>
+              <label className={rbFormLabelClass}>Date</label>
               <Input
                 type="date"
                 value={form.reimbursementDate}
                 onChange={(e) => setForm((f) => ({ ...f, reimbursementDate: e.target.value }))}
-                className="h-9 w-[140px] rounded-sm"
+                className={cn(rbFormControlClass, "w-[140px]")}
                 required
                 aria-label="Reimbursement date"
               />
             </div>
             <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">
-                Worker
-              </label>
+              <label className={rbFormLabelClass}>Worker</label>
               <Select
                 value={form.workerId}
                 onChange={(e) => setForm((f) => ({ ...f, workerId: e.target.value }))}
-                className="min-w-[140px]"
+                className={cn(rbFormControlClass, "min-w-[140px]")}
                 required
               >
                 <option value="">Select worker</option>
@@ -1077,13 +1037,11 @@ export default function WorkerReimbursementsPage() {
               </Select>
             </div>
             <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">
-                Project
-              </label>
+              <label className={rbFormLabelClass}>Project</label>
               <Select
                 value={form.projectId ?? ""}
                 onChange={(e) => setForm((f) => ({ ...f, projectId: e.target.value }))}
-                className="min-w-[140px]"
+                className={cn(rbFormControlClass, "min-w-[140px]")}
                 aria-label="Project"
               >
                 <option value="">—</option>
@@ -1095,64 +1053,58 @@ export default function WorkerReimbursementsPage() {
               </Select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                Vendor
-              </label>
+              <label className={rbFormLabelClass}>Vendor</label>
               <Input
                 type="text"
+                aria-label="Vendor"
                 value={form.vendor}
                 onChange={(e) => setForm((f) => ({ ...f, vendor: e.target.value }))}
                 placeholder="Vendor"
-                className="h-9 min-w-[120px] rounded-sm"
+                className={cn(rbFormControlClass, "min-w-[120px]")}
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                Amount
-              </label>
+              <label className={rbFormLabelClass}>Amount</label>
               <Input
                 type="number"
+                aria-label="Amount"
                 min="0"
                 step="0.01"
                 value={form.amount}
                 onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
-                className="h-9 w-24 rounded-sm"
+                className={cn(rbFormControlClass, "w-24")}
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                Receipt URL
-              </label>
+              <label className={rbFormLabelClass}>Receipt URL</label>
               <Input
                 type="text"
+                aria-label="Receipt URL"
                 value={form.receiptUrl}
                 onChange={(e) => setForm((f) => ({ ...f, receiptUrl: e.target.value }))}
                 placeholder="Link"
-                className="h-9 min-w-[160px] rounded-sm"
+                className={cn(rbFormControlClass, "min-w-[160px]")}
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                Description
-              </label>
+              <label className={rbFormLabelClass}>Description</label>
               <Input
                 type="text"
+                aria-label="Description"
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 placeholder="Description"
-                className="h-9 min-w-[120px] rounded-sm"
+                className={cn(rbFormControlClass, "min-w-[120px]")}
               />
             </div>
             <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-[0.2em] block mb-1">
-                Status
-              </label>
+              <label className={rbFormLabelClass}>Status</label>
               <Select
                 value={form.status}
                 onChange={(e) =>
                   setForm((f) => ({ ...f, status: e.target.value as WorkerReimbursementStatus }))
                 }
-                className="min-w-[100px]"
+                className={cn(rbFormControlClass, "min-w-[100px]")}
               >
                 {STATUS_OPTIONS.map((s) => (
                   <option key={s} value={s}>
@@ -1174,16 +1126,16 @@ export default function WorkerReimbursementsPage() {
               Cancel
             </Button>
           </form>
-        </div>
+        </section>
       )}
 
-      <div className="md:hidden">
+      <div data-reimbursements-queue className="md:hidden">
         {loading ? (
-          <div className="rounded-[18px] border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-4 py-8 text-center text-xs text-[color:var(--rb-muted)]">
+          <div className="rounded-lg border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-4 py-8 text-center text-xs text-[color:var(--rb-muted)]">
             Loading…
           </div>
         ) : paged.length === 0 ? (
-          <div className="flex flex-col items-center rounded-[18px] border border-dashed border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-4 py-10 text-center md:hidden">
+          <div className="flex flex-col items-center rounded-lg border border-dashed border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-4 py-10 text-center md:hidden">
             <Search className="h-8 w-8 text-[color:var(--rb-muted)]" aria-hidden />
             <p className="mt-3 text-sm font-medium text-[color:var(--rb-secondary)]">
               No reimbursements yet.
@@ -1197,17 +1149,12 @@ export default function WorkerReimbursementsPage() {
             {paged.map((r) => (
               <NeoMobileCard
                 key={r.id}
+                data-reimbursement-id={r.id}
+                data-selected={selectedIds.has(r.id) ? "true" : undefined}
                 className={cn(
-                  "flex flex-col gap-2.5 rounded-[18px] border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-3 py-3 shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset,0_12px_30px_rgb(0_0_0_/_0.22)]",
-                  selectedIds.has(r.id) && "border-[color:rgb(216_180_106_/_0.42)] bg-[#171B24]",
-                  r.status === "pending" &&
-                    hasReceiptUrl(r) &&
-                    !selectedIds.has(r.id) &&
-                    "border-l-[3px] border-l-[rgb(139_215_177_/_0.34)] pl-[calc(0.75rem-3px)]",
-                  r.status === "pending" &&
-                    !hasReceiptUrl(r) &&
-                    !selectedIds.has(r.id) &&
-                    "border-l-[3px] border-l-[rgb(216_180_106_/_0.32)] pl-[calc(0.75rem-3px)]"
+                  "flex flex-col gap-2.5 rounded-lg border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-3 py-3 shadow-none",
+                  selectedIds.has(r.id) &&
+                    "border-[color:var(--rb-border-strong)] bg-[var(--eo-depth-l3-selected)]"
                 )}
               >
                 <div className="flex items-start gap-2">
@@ -1248,7 +1195,7 @@ export default function WorkerReimbursementsPage() {
                       <NeoAmount className="text-base tracking-normal">
                         {formatCurrency(r.amount)}
                       </NeoAmount>
-                      <ReimbursementStatusChip status={r.status} hasReceipt={hasReceiptUrl(r)} />
+                      <ReimbursementStatusChip status={r.status} />
                       {r.receiptUrl ? (
                         <button
                           type="button"
@@ -1307,9 +1254,9 @@ export default function WorkerReimbursementsPage() {
       </div>
 
       {/* Desktop: table */}
-      <div className="hidden md:-mt-1 md:block">
+      <div data-reimbursements-queue className="hidden md:-mt-1 md:block">
         <NeoTable
-          className="border-[color:var(--rb-border)] bg-[var(--rb-panel)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset,0_18px_42px_rgb(0_0_0_/_0.24)]"
+          className="border-[color:var(--rb-border)] bg-[var(--rb-panel)] shadow-[var(--eo-shadow-operational)]"
           tableClassName="min-w-[900px] lg:min-w-0"
         >
           <thead>
@@ -1374,7 +1321,7 @@ export default function WorkerReimbursementsPage() {
               <tr className="border-b border-[color:var(--rb-border-soft)] bg-[var(--rb-input)]">
                 <td colSpan={9} className="px-3 py-9 text-center">
                   <div className="mx-auto flex max-w-[360px] flex-col items-center">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--rb-border)] bg-[var(--rb-panel)] text-[color:var(--rb-muted)] shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset]">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-md bg-[var(--rb-input)] text-[color:var(--rb-muted)]">
                       <Search className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                     </div>
                     <p className="mt-3 text-[13px] font-medium text-[color:var(--rb-secondary)]">
@@ -1390,19 +1337,13 @@ export default function WorkerReimbursementsPage() {
               paged.map((r) => (
                 <tr
                   key={r.id}
+                  data-reimbursement-id={r.id}
+                  data-selected={selectedIds.has(r.id) ? "true" : undefined}
                   className={cn(
                     listTableRowClassName,
-                    "group border-b border-[color:var(--rb-border-soft)] bg-[var(--rb-row)] transition-[background-color,box-shadow,transform] duration-150 hover:bg-[var(--rb-row-hover)]",
+                    "group border-b border-[color:var(--rb-border-soft)] bg-[var(--rb-row)] transition-[background-color,box-shadow] duration-120 hover:bg-[var(--rb-row-hover)]",
                     selectedIds.has(r.id) &&
-                      "bg-[#171B24] shadow-[inset_2px_0_0_0_rgb(216_180_106_/_0.52)]",
-                    r.status === "pending" &&
-                      hasReceiptUrl(r) &&
-                      !selectedIds.has(r.id) &&
-                      "shadow-[inset_2px_0_0_0_rgb(139_215_177_/_0.30)]",
-                    r.status === "pending" &&
-                      !hasReceiptUrl(r) &&
-                      !selectedIds.has(r.id) &&
-                      "shadow-[inset_2px_0_0_0_rgb(216_180_106_/_0.28)]"
+                      "bg-[var(--eo-depth-l3-selected)] shadow-[inset_2px_0_0_0_var(--eo-text-tertiary)]"
                   )}
                   onClick={() => handleEdit(r)}
                 >
@@ -1473,7 +1414,7 @@ export default function WorkerReimbursementsPage() {
                     <NeoAmount className="text-[15px]">{formatCurrency(r.amount)}</NeoAmount>
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5 align-middle">
-                    <ReimbursementStatusChip status={r.status} hasReceipt={hasReceiptUrl(r)} />
+                    <ReimbursementStatusChip status={r.status} />
                   </td>
                   <td
                     className="whitespace-nowrap px-3 py-2.5 align-middle"
@@ -1532,7 +1473,7 @@ export default function WorkerReimbursementsPage() {
         </NeoTable>
       </div>
 
-      <div className="flex items-center justify-between rounded-[16px] border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-3 py-2 text-sm text-[color:var(--rb-secondary)] shadow-[0_1px_0_rgb(255_255_255_/_0.025)_inset] md:-mt-1">
+      <div className="flex items-center justify-between rounded-lg border border-[color:var(--rb-border)] bg-[var(--rb-panel)] px-3 py-2 text-sm text-[color:var(--rb-secondary)] shadow-none md:-mt-1">
         <span className="text-[13px] font-medium tabular-nums">
           {filtered.length === 0
             ? "0"
@@ -1542,7 +1483,7 @@ export default function WorkerReimbursementsPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-11 min-h-[44px] rounded-full border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] md:h-8 md:min-h-8"
+            className="h-11 min-h-[44px] rounded-md border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] md:h-8 md:min-h-8"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
@@ -1551,7 +1492,7 @@ export default function WorkerReimbursementsPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-11 min-h-[44px] rounded-full border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] md:h-8 md:min-h-8"
+            className="h-11 min-h-[44px] rounded-md border-[color:var(--rb-border)] bg-[var(--rb-elevated)] px-4 text-[13px] font-semibold text-[color:var(--rb-text)] hover:border-[color:var(--rb-border-strong)] hover:bg-[var(--rb-row-hover)] disabled:bg-[var(--rb-input)] disabled:text-[color:var(--rb-faint)] md:h-8 md:min-h-8"
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
@@ -1565,23 +1506,19 @@ export default function WorkerReimbursementsPage() {
         open={!!batchPaymentModal}
         onOpenChange={(open) => !open && setBatchPaymentModal(null)}
       >
-        <DialogContent className="max-w-md gap-3">
+        <DialogContent className="expenses-ui reimbursement-task-dialog max-w-md gap-3">
           <DialogHeader>
             <DialogTitle>Create Worker Payment</DialogTitle>
           </DialogHeader>
           {batchPaymentModal && (
             <form onSubmit={handleBatchPayment} className="flex flex-col gap-3">
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                  Worker
-                </label>
+                <label className={rbFormLabelClass}>Worker</label>
                 <p className="text-sm font-medium">{batchPaymentModal.workerName}</p>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                  Reimbursements
-                </label>
-                <ul className="text-sm border border-border/60 rounded-sm divide-y divide-border/60 max-h-40 overflow-auto">
+                <label className={rbFormLabelClass}>Reimbursements</label>
+                <ul className="max-h-40 overflow-auto rounded-md border border-[color:var(--rb-border)] text-sm divide-y divide-[color:var(--rb-border)]">
                   {batchPaymentModal.items.map((r) => (
                     <li key={r.id} className="py-2 px-3 flex justify-between gap-2">
                       <span className="truncate">
@@ -1593,35 +1530,29 @@ export default function WorkerReimbursementsPage() {
                 </ul>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                  Total
-                </label>
+                <label className={rbFormLabelClass}>Total</label>
                 <p className="text-sm font-semibold tabular-nums">
                   {formatCurrency(batchPaymentModal.totalAmount)}
                 </p>
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                  Payment Method
-                </label>
+                <label className={rbFormLabelClass}>Payment Method</label>
                 <Input
                   type="text"
                   value={batchPayMethod}
                   onChange={(e) => setBatchPayMethod(e.target.value)}
                   placeholder="e.g. Check, ACH"
-                  className="h-9 rounded-sm"
+                  className={rbFormControlClass}
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                  Note
-                </label>
+                <label className={rbFormLabelClass}>Note</label>
                 <Input
                   type="text"
                   value={batchPayNote}
                   onChange={(e) => setBatchPayNote(e.target.value)}
                   placeholder="Optional"
-                  className="h-9 rounded-sm"
+                  className={rbFormControlClass}
                 />
               </div>
               <div className="flex gap-2 justify-end pt-2">
@@ -1629,7 +1560,7 @@ export default function WorkerReimbursementsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-9 rounded-sm"
+                  className="h-9 rounded-md"
                   onClick={() => setBatchPaymentModal(null)}
                 >
                   Cancel
@@ -1637,7 +1568,7 @@ export default function WorkerReimbursementsPage() {
                 <Button
                   type="submit"
                   size="sm"
-                  className="h-9 rounded-sm"
+                  className="h-9 rounded-md"
                   disabled={batchPaySubmitting}
                 >
                   {batchPaySubmitting ? "…" : "Confirm Payment"}
@@ -1650,7 +1581,7 @@ export default function WorkerReimbursementsPage() {
 
       {/* Mark as Paid modal */}
       <Dialog open={!!payModal} onOpenChange={(open) => !open && setPayModal(null)}>
-        <DialogContent className="max-w-sm gap-3">
+        <DialogContent className="expenses-ui reimbursement-task-dialog max-w-sm gap-3">
           <DialogHeader>
             <DialogTitle>Mark as Paid</DialogTitle>
             <p className="text-xs text-muted-foreground font-normal mt-1">
@@ -1661,33 +1592,27 @@ export default function WorkerReimbursementsPage() {
           <form onSubmit={handlePay} className="flex flex-col gap-3">
             {payError && <p className="text-sm text-destructive">{payError}</p>}
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                Amount
-              </label>
+              <label className={rbFormLabelClass}>Amount</label>
               <p className="text-sm font-medium tabular-nums">${payAmount}</p>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                Payment Method
-              </label>
+              <label className={rbFormLabelClass}>Payment Method</label>
               <Input
                 type="text"
                 value={payMethod}
                 onChange={(e) => setPayMethod(e.target.value)}
                 placeholder="e.g. Check, ACH"
-                className="h-9 rounded-sm"
+                className={rbFormControlClass}
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider block mb-1">
-                Note
-              </label>
+              <label className={rbFormLabelClass}>Note</label>
               <Input
                 type="text"
                 value={payNote}
                 onChange={(e) => setPayNote(e.target.value)}
                 placeholder="Optional"
-                className="h-9 rounded-sm"
+                className={rbFormControlClass}
               />
             </div>
             <div className="flex gap-2 justify-end pt-2">
@@ -1695,12 +1620,12 @@ export default function WorkerReimbursementsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 rounded-sm"
+                className="h-9 rounded-md"
                 onClick={() => setPayModal(null)}
               >
                 Cancel
               </Button>
-              <Button type="submit" size="sm" className="h-9 rounded-sm">
+              <Button type="submit" size="sm" className="h-9 rounded-md">
                 Mark as Paid
               </Button>
             </div>

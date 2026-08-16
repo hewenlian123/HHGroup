@@ -383,4 +383,107 @@ test.describe.serial("worker receipt local RLS and private Storage", () => {
       (await request.get("/api/upload-receipt/sync", { headers: ownerHeaders })).status()
     ).toBe(200);
   });
+
+  test("allows protected Reject only for owner/admin and preserves rejection semantics", async ({
+    request,
+  }) => {
+    const reset = async () => {
+      const result = await admin
+        .from("worker_receipts")
+        .update({ status: "Pending", rejection_reason: null, reimbursement_id: null })
+        .eq("id", legacyReceiptId);
+      expect(result.error).toBeNull();
+    };
+
+    await reset();
+    try {
+      const anonymousReject = await request.post(`/api/worker-receipts/${legacyReceiptId}/reject`, {
+        data: { reason: "Anonymous attempt" },
+      });
+      expect(anonymousReject.status()).toBe(401);
+
+      const assistant = await authenticatedClient(assistantEmail, assistantPassword);
+      const assistantSession = await assistant.auth.getSession();
+      expect(assistantSession.error).toBeNull();
+      if (!assistantSession.data.session) throw new Error("Assistant fixture session is missing.");
+      const assistantReject = await request.post(`/api/worker-receipts/${legacyReceiptId}/reject`, {
+        headers: {
+          Authorization: `Bearer ${assistantSession.data.session.access_token}`,
+        },
+        data: { reason: "Assistant attempt" },
+      });
+      expect(assistantReject.status()).toBe(403);
+
+      const afterDenied = await admin
+        .from("worker_receipts")
+        .select("status, rejection_reason, reimbursement_id")
+        .eq("id", legacyReceiptId)
+        .single();
+      expect(afterDenied.error).toBeNull();
+      expect(afterDenied.data).toEqual({
+        status: "Pending",
+        rejection_reason: null,
+        reimbursement_id: null,
+      });
+
+      const ownerCredentials = await getE2EOwnerCredentials();
+      const owner = await authenticatedClient(ownerCredentials.email, ownerCredentials.password);
+      const ownerSession = await owner.auth.getSession();
+      expect(ownerSession.error).toBeNull();
+      if (!ownerSession.data.session) throw new Error("Owner fixture session is missing.");
+      const ownerReason = "Owner rejection fixture";
+      const ownerReject = await request.post(`/api/worker-receipts/${legacyReceiptId}/reject`, {
+        headers: { Authorization: `Bearer ${ownerSession.data.session.access_token}` },
+        data: { reason: ownerReason },
+      });
+      expect(ownerReject.status(), await ownerReject.text()).toBe(200);
+      expect(await ownerReject.json()).toMatchObject({
+        receipt: {
+          id: legacyReceiptId,
+          status: "Rejected",
+          rejectionReason: ownerReason,
+          reimbursementId: null,
+        },
+      });
+
+      const ownerPersisted = await admin
+        .from("worker_receipts")
+        .select("status, rejection_reason, reimbursement_id")
+        .eq("id", legacyReceiptId)
+        .single();
+      expect(ownerPersisted.error).toBeNull();
+      expect(ownerPersisted.data).toEqual({
+        status: "Rejected",
+        rejection_reason: ownerReason,
+        reimbursement_id: null,
+      });
+
+      await reset();
+
+      const adminReviewer = await authenticatedClient(adminEmail, adminPassword);
+      const adminSession = await adminReviewer.auth.getSession();
+      expect(adminSession.error).toBeNull();
+      if (!adminSession.data.session) throw new Error("Admin fixture session is missing.");
+      const adminReason = "Admin rejection fixture";
+      const adminReject = await request.post(`/api/worker-receipts/${legacyReceiptId}/reject`, {
+        headers: { Authorization: `Bearer ${adminSession.data.session.access_token}` },
+        data: { reason: adminReason },
+      });
+      expect(adminReject.status(), await adminReject.text()).toBe(200);
+
+      const adminPersisted = await admin
+        .from("worker_receipts")
+        .select("status, rejection_reason, reimbursement_id")
+        .eq("id", legacyReceiptId)
+        .single();
+      expect(adminPersisted.error).toBeNull();
+      expect(adminPersisted.data).toEqual({
+        status: "Rejected",
+        rejection_reason: adminReason,
+        reimbursement_id: null,
+      });
+    } finally {
+      await reset();
+    }
+  });
 });

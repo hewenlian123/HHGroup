@@ -178,7 +178,6 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
         icon: "reimbursements",
         aliases: ["/financial/reimbursements"],
       },
-      { href: "/labor/receipts", label: "Worker Receipts", icon: "receipts" },
       { href: "/financial/commissions", label: "Commission Payments", icon: "commission" },
       { type: "subheader", label: "Cash" },
       { href: "/financial/accounts", label: "Accounts", icon: "accounts" },
@@ -766,10 +765,10 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
   },
   {
     id: "go-worker-receipts",
-    label: "Go to Worker Receipts",
-    description: "Open worker receipts",
-    href: "/labor/receipts",
-    keywords: ["worker receipts", "receipts", "payroll", "ap"],
+    label: "Go to Worker Submitted Receipts",
+    description: "Open worker-submitted receipts in Receipt Inbox",
+    href: "/financial/inbox/worker",
+    keywords: ["worker receipts", "worker submitted", "receipt inbox", "receipts", "ap"],
     icon: "receipts",
   },
   {

@@ -37,6 +37,8 @@ export type ExpenseSearchableSelectProps = {
   searchPlaceholder?: string;
   fallbackLabel?: string;
   "aria-label"?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
   "data-queue-row-id"?: string;
   "data-queue-field"?: string;
 };
@@ -70,6 +72,8 @@ export function ExpenseSearchableSelect({
   searchPlaceholder = "Search…",
   fallbackLabel,
   "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
   "data-queue-row-id": dataQueueRowId,
   "data-queue-field": dataQueueField,
 }: ExpenseSearchableSelectProps) {
@@ -217,6 +221,8 @@ export function ExpenseSearchableSelect({
           type="button"
           role="combobox"
           aria-label={ariaLabel ?? placeholder}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid || undefined}
           aria-expanded={open}
           aria-controls={listboxId}
           aria-haspopup="listbox"

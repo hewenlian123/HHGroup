@@ -1,6 +1,6 @@
 /**
- * Expense inbox preview modal (`ExpenseInboxPreviewModal`): image attachments show thumbnails in Attachments,
- * not filename-only links (follow inbox-view-receipt-preview-ux navigation patterns).
+ * Receipt Inbox master-detail: secured image evidence opens from the contextual Detail surface,
+ * without restoring the legacy expense review modal.
  */
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
@@ -201,7 +201,7 @@ async function waitForUploadedDraftRow(
 test.describe("Expense inbox preview - attachment thumbnails", () => {
   test.describe.configure({ timeout: 300_000, retries: 0 });
 
-  test("preview modal shows img in Attachments (not filename-only)", async ({ page }) => {
+  test("master-detail opens secured image evidence from the contextual panel", async ({ page }) => {
     const diagnostics = attachPageDiagnostics(page);
     const uniqueName = `thumb-e2e-${Date.now()}.png`;
     let uploadedInboxRef: string | null = null;
@@ -258,15 +258,17 @@ test.describe("Expense inbox preview - attachment thumbnails", () => {
 
     expect(uploadedInboxRef).toMatch(/^INBOX-UP-/);
 
-    const expenseDialog = page.getByRole("dialog", { name: /^Expense$/ });
-    await expect(expenseDialog).toBeVisible({ timeout: 15_000 });
+    const detail = page.locator("[data-expense-detail-panel]");
+    await expect(detail).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("dialog", { name: /^Expense$/ })).toHaveCount(0);
 
-    const attachments = expenseDialog.getByTestId("expense-preview-attachments");
-    await expect(attachments).toBeVisible();
-    await expect(attachments.locator("img")).toBeVisible({ timeout: 120_000 });
-
-    await expect(attachments.getByText(uniqueName)).not.toBeVisible();
-    await expect(attachments.getByText(/Preview unavailable/i)).not.toBeVisible();
+    const evidence = detail.locator("[data-expense-receipt-evidence]");
+    await expect(evidence).toContainText("Open receipt preview");
+    await evidence.click();
+    const preview = page.locator("[data-attachment-preview-modal]");
+    await expect(preview).toBeVisible({ timeout: 15_000 });
+    await expect(preview.locator("img").first()).toBeVisible({ timeout: 120_000 });
+    await expect(preview.getByText(/Preview unavailable/i)).not.toBeVisible();
 
     await test.step("clean exact uploaded draft", async () => {
       await cleanupUploadedExpense(uploadedExpenseId);

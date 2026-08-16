@@ -45,6 +45,8 @@ export type PaymentAccountSelectProps = {
   fallbackDisplayName?: string;
   "data-queue-row-id"?: string;
   "data-queue-field"?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
 };
 
 export function PaymentAccountSelect({
@@ -60,6 +62,8 @@ export function PaymentAccountSelect({
   fallbackDisplayName,
   "data-queue-row-id": dataQueueRowId,
   "data-queue-field": dataQueueField,
+  "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
 }: PaymentAccountSelectProps) {
   const { toast } = useToast();
   const [accounts, setAccounts] = React.useState<PaymentAccountPickerRow[]>([]);
@@ -194,6 +198,8 @@ export function PaymentAccountSelect({
         className={cn("h-10 max-md:h-10 max-md:min-h-10 [&>span]:line-clamp-1", className)}
         contentClassName={contentClassName}
         aria-label="Payment account"
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
         autoFocus={autoFocus}
         onKeyDown={onKeyDown}
         data-queue-row-id={dataQueueRowId}

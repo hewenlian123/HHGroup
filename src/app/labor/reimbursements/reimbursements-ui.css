@@ -1,0 +1,149 @@
+.reimbursements-ui {
+  --rb-page: var(--eo-depth-l0);
+  --rb-main: var(--eo-depth-l1);
+  --rb-panel: var(--eo-depth-l2);
+  --rb-elevated: var(--eo-depth-l1);
+  --rb-input: var(--eo-depth-structural);
+  --rb-row: var(--eo-depth-l1);
+  --rb-row-hover: var(--eo-depth-l3-hover);
+  --rb-border: var(--eo-border);
+  --rb-border-soft: var(--eo-border);
+  --rb-border-strong: var(--eo-border-strong);
+  --rb-text: var(--eo-text-primary);
+  --rb-secondary: var(--eo-text-secondary);
+  --rb-muted: var(--eo-text-tertiary);
+  --rb-faint: var(--eo-text-tertiary);
+  --rb-amber: var(--eo-warning);
+  --rb-green: var(--eo-success);
+  min-height: 100%;
+  background: var(--eo-depth-l0);
+  color: var(--eo-text-primary);
+}
+
+.reimbursements-ui [data-reimbursements-kpis] {
+  background: var(--eo-depth-l2);
+  box-shadow: var(--eo-shadow-operational);
+}
+
+.reimbursements-ui [data-reimbursements-kpis] > div {
+  border: 0;
+  border-right: 1px solid var(--eo-border);
+}
+
+.reimbursements-ui [data-reimbursements-kpis] > div:last-child {
+  border-right: 0;
+}
+
+.reimbursements-ui [data-reimbursements-queue] {
+  min-width: 0;
+}
+
+.reimbursements-ui [data-reimbursement-id] {
+  background: var(--eo-depth-l2) !important;
+  transition:
+    background-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.reimbursements-ui [data-reimbursement-id][data-selected="true"] {
+  background: var(--eo-depth-l3-selected) !important;
+  box-shadow: inset 2px 0 0 var(--eo-text-tertiary) !important;
+}
+
+.reimbursements-ui [data-reimbursement-id]:hover {
+  background: var(--eo-depth-l3-hover) !important;
+}
+
+.reimbursements-ui [data-reimbursement-id]:active {
+  background: var(--eo-depth-l3-pressed) !important;
+  transform: none !important;
+}
+
+.reimbursements-ui [data-reimbursement-id]:has(:focus-visible) {
+  background: var(--eo-depth-l3-hover) !important;
+  box-shadow: inset 2px 0 0 var(--eo-text-tertiary) !important;
+}
+
+.reimbursements-ui [data-reimbursement-id] :focus-visible,
+.reimbursements-ui [data-reimbursement-form] :focus-visible {
+  outline: 2px solid var(--eo-focus-ring);
+  outline-offset: 1px;
+}
+
+.reimbursements-ui [data-reimbursement-form] {
+  background: var(--eo-depth-l5);
+  border-color: var(--eo-border-floating);
+}
+
+.reimbursements-ui [data-reimbursement-form] input,
+.reimbursements-ui [data-reimbursement-form] select {
+  border-color: var(--eo-border);
+  background: var(--eo-depth-structural);
+  color: var(--eo-text-primary);
+}
+
+.reimbursements-ui [data-reimbursement-form] input:hover,
+.reimbursements-ui [data-reimbursement-form] select:hover {
+  border-color: var(--eo-border-strong);
+}
+
+.reimbursements-ui .reimbursement-financial-nums,
+.reimbursements-ui [data-reimbursement-id] .tabular-nums {
+  font-family: var(--font-geist-sans), "Geist", "Inter", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings:
+    "tnum" 1,
+    "lnum" 1,
+    "zero" 0;
+}
+
+.expenses-ui.reimbursement-floating-surface,
+.expenses-ui.reimbursement-task-dialog {
+  border-color: var(--eo-border-floating) !important;
+  background: var(--eo-depth-l4) !important;
+  color: var(--eo-text-primary) !important;
+  box-shadow: var(--eo-shadow-floating) !important;
+}
+
+.expenses-ui.reimbursement-task-dialog {
+  background: var(--eo-depth-l5) !important;
+  box-shadow: var(--eo-shadow-task) !important;
+}
+
+.expenses-ui.reimbursement-task-dialog input,
+.expenses-ui.reimbursement-task-dialog select {
+  border-color: var(--eo-border);
+  background: var(--eo-depth-structural);
+  color: var(--eo-text-primary);
+}
+
+@media (max-width: 767px) {
+  .reimbursements-ui [data-reimbursements-kpis] > div:nth-child(2) {
+    border-right: 0;
+  }
+
+  .reimbursements-ui [data-reimbursements-kpis] > div:nth-child(-n + 2) {
+    border-bottom: 1px solid var(--eo-border);
+  }
+
+  .reimbursements-ui [data-reimbursement-form] {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .expenses-ui.reimbursement-task-dialog {
+    max-height: min(90dvh, 760px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reimbursements-ui *,
+  .expenses-ui.reimbursement-floating-surface *,
+  .expenses-ui.reimbursement-task-dialog * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

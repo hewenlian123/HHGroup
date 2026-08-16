@@ -158,7 +158,6 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Reports",
       "Customers",
       "Worker Center",
-      "Worker Receipts",
       "Payroll Summary",
       "Vendors",
       "Subcontractors",
@@ -234,7 +233,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/customers", active: "Customers" },
       { path: "/financial/vendors", active: "Vendors" },
       { path: "/workers", active: "Worker Center" },
-      { path: "/labor/receipts", active: "Worker Receipts" },
+      { path: "/financial/inbox/worker", active: "Receipt Inbox" },
       { path: "/labor/payroll", active: "Payroll Summary" },
       { path: "/subcontractors", active: "Subcontractors" },
       { path: "/documents", active: "Documents" },
@@ -269,7 +268,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/labor/payroll", bottom: "People" },
       { path: "/labor/payments", bottom: "People" },
       { path: "/labor/reimbursements", bottom: "Financial" },
-      { path: "/labor/receipts", bottom: "Financial" },
+      { path: "/financial/inbox/worker", bottom: "Financial" },
       { path: "/workers/summary", bottom: "People" },
       { path: "/dashboard/cashflow", bottom: "Financial" },
       { path: "/reports", bottom: "Reports" },
@@ -291,7 +290,7 @@ test.describe("HH Project OS sidebar final pass", () => {
     await expect(
       visibleSidebar(page).getByText("Material Selections", { exact: true })
     ).toBeVisible();
-    await expect(visibleSidebar(page).getByText("Worker Receipts", { exact: true })).toBeVisible();
+    await expect(visibleSidebar(page).getByText("Worker Receipts", { exact: true })).toHaveCount(0);
     await expect(visibleSidebar(page).getByText("Cash Flow", { exact: true })).toBeVisible();
     await expect(navLink(page, "Reports")).toBeVisible();
     await navLink(page, "Reports").click();
@@ -311,7 +310,7 @@ test.describe("HH Project OS sidebar final pass", () => {
       { query: "upload receipt", label: "Upload Receipt" },
       { query: "worker summary", label: "Go to Worker Summary" },
       { query: "worker balances", label: "Go to Worker Balances" },
-      { query: "worker receipts", label: "Go to Worker Receipts" },
+      { query: "worker submitted", label: "Go to Worker Submitted Receipts" },
       { query: "worker invoices", label: "Go to Worker Invoices" },
       { query: "cash flow", label: "Go to Cash Flow" },
       { query: "reports", label: "Go to Reports" },

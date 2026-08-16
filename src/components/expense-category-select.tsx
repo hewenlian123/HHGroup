@@ -34,6 +34,8 @@ export type ExpenseCategorySelectProps = {
   /** Forwarded to the native select for keyboard / focus navigation (e.g. receipt queue). */
   "data-queue-row-id"?: string;
   "data-queue-field"?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
 };
 
 export function ExpenseCategorySelect({
@@ -49,6 +51,8 @@ export function ExpenseCategorySelect({
   preserveArchivedValue = true,
   "data-queue-row-id": dataQueueRowId,
   "data-queue-field": dataQueueField,
+  "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
 }: ExpenseCategorySelectProps) {
   const { toast } = useToast();
   const [items, setItems] = React.useState<ExpenseOptionPickerItem[]>([]);
@@ -61,6 +65,8 @@ export function ExpenseCategorySelect({
   const loadSeqRef = React.useRef(0);
   const onCategoriesUpdatedRef = React.useRef(onCategoriesUpdated);
   onCategoriesUpdatedRef.current = onCategoriesUpdated;
+  const onValueChangeRef = React.useRef(onValueChange);
+  onValueChangeRef.current = onValueChange;
 
   const refresh = React.useCallback(async () => {
     const loadSeq = loadSeqRef.current + 1;
@@ -80,7 +86,7 @@ export function ExpenseCategorySelect({
         !next.some((item) => item.value.toLowerCase() === current) &&
         next[0]?.value
       ) {
-        onValueChange(next[0].value);
+        onValueChangeRef.current(next[0].value);
       }
     } catch (e) {
       if (loadSeq !== loadSeqRef.current) return;
@@ -92,7 +98,7 @@ export function ExpenseCategorySelect({
         setLoading(false);
       }
     }
-  }, [onValueChange, preserveArchivedValue, toast, value]);
+  }, [preserveArchivedValue, toast, value]);
 
   React.useEffect(() => {
     void refresh();
@@ -196,6 +202,8 @@ export function ExpenseCategorySelect({
         className={cn("h-9", className)}
         contentClassName={contentClassName}
         aria-label="Category"
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
         autoFocus={autoFocus}
         onKeyDown={onKeyDown}
         data-queue-row-id={dataQueueRowId}

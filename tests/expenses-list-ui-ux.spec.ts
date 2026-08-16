@@ -87,7 +87,7 @@ test.describe("Expenses list UI/UX", () => {
     return { id: id!, row };
   }
 
-  test("Expense Operations shell keeps four canonical surfaces in one workspace", async ({
+  test("Expense Operations shell keeps three peer surfaces with worker intake inside Inbox", async ({
     page,
   }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -104,7 +104,7 @@ test.describe("Expenses list UI/UX", () => {
     ).toBeVisible();
 
     const nav = shell.getByRole("navigation", { name: "Expense Operations workspace" });
-    await expect(nav.getByRole("link")).toHaveCount(4);
+    await expect(nav.getByRole("link")).toHaveCount(3);
     await expect(nav.getByRole("link", { name: "Expenses", exact: true })).toHaveAttribute(
       "aria-current",
       "page"
@@ -113,17 +113,13 @@ test.describe("Expenses list UI/UX", () => {
       "href",
       "/financial/inbox?date_kind=all&project_id=project-a"
     );
-    await expect(nav.getByRole("link", { name: "Worker Receipts", exact: true })).toHaveAttribute(
-      "href",
-      "/labor/receipts?project_id=project-a"
-    );
     await expect(nav.getByRole("link", { name: "Reimbursements", exact: true })).toHaveAttribute(
       "href",
       "/labor/reimbursements?project_id=project-a"
     );
 
     await page.goto(
-      "/labor/receipts?project_id=project-a&workerId=worker-a&date_kind=all&status=pending",
+      "/financial/inbox/worker?project_id=project-a&workerId=worker-a&status=pending",
       { waitUntil: "domcontentloaded" }
     );
     const workerShell = page.locator("[data-expense-operations-shell]");
@@ -132,7 +128,7 @@ test.describe("Expenses list UI/UX", () => {
       name: "Expense Operations workspace",
     });
     await expect(
-      workerNav.getByRole("link", { name: "Worker Receipts", exact: true })
+      workerNav.getByRole("link", { name: "Receipt Inbox", exact: true })
     ).toHaveAttribute("aria-current", "page");
     await expect(
       workerNav.getByRole("link", { name: "Reimbursements", exact: true })

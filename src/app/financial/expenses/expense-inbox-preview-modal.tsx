@@ -85,7 +85,7 @@ import {
   composeExpenseDescription,
   parseExpenseDescription,
 } from "@/lib/expense-form-system";
-import { ArrowLeft, ChevronDown, FileText, X } from "lucide-react";
+import { AlertCircle, ArrowLeft, ChevronDown, ExternalLink, FileText, X } from "lucide-react";
 
 type ProjectOption = { id: string; name: string | null };
 type WorkerOption = { id: string; name: string };
@@ -106,6 +106,65 @@ const PREVIEW_WARNING_CHIP =
   "rounded-md border border-[var(--eo-warning-border,rgb(180_83_9_/_0.22))] bg-[var(--eo-warning-soft,rgb(245_158_11_/_0.10))] px-1.5 py-0.5 text-[11px] font-medium text-[var(--eo-warning,#a16207)]";
 
 export type ExpenseInboxPreviewSavePayload = ExpenseReviewSavePatch;
+
+type ReviewDraftSignature = {
+  vendorName: string;
+  amount: string;
+  projectId: string | null;
+  costAllocation: ExpenseCostAllocation;
+  workerId: string | null;
+  category: string;
+  notes: string;
+  items: string[];
+  expenseDate: string;
+  sourceType: Expense["sourceType"];
+  paymentMethod: string;
+  paymentAccountId: string;
+  deductFromSubcontractor: boolean;
+  deductionSubcontractId: string;
+  deductionAmount: string;
+  deductionNote: string;
+};
+
+type ReviewFieldErrorKey = "amount" | "project" | "category" | "paymentAccount" | "worker";
+type ReviewFieldErrors = Partial<Record<ReviewFieldErrorKey, string>>;
+
+function ReviewFieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p
+      id={id}
+      role="alert"
+      className="flex items-start gap-1.5 text-xs leading-4 text-[var(--eo-danger)]"
+    >
+      <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
+      <span>{message}</span>
+    </p>
+  );
+}
+
+function reviewDraftSignature(value: ReviewDraftSignature): string {
+  const normalizeNumber = (raw: string) => {
+    const parsed = Number(raw);
+    return raw.trim() !== "" && Number.isFinite(parsed) ? String(parsed) : raw.trim();
+  };
+  return JSON.stringify({
+    ...value,
+    vendorName: value.vendorName.trim(),
+    amount: normalizeNumber(value.amount),
+    projectId: value.projectId || null,
+    workerId: value.workerId || null,
+    category: value.category.trim() || "Other",
+    notes: value.notes.trim(),
+    items: value.items.map((item) => item.trim()).filter(Boolean),
+    expenseDate: value.expenseDate.slice(0, 10),
+    paymentMethod: value.paymentMethod.trim(),
+    paymentAccountId: value.paymentAccountId.trim(),
+    deductionSubcontractId: value.deductionSubcontractId.trim(),
+    deductionAmount: value.deductFromSubcontractor ? normalizeNumber(value.deductionAmount) : "",
+    deductionNote: value.deductionNote.trim(),
+  });
+}
 
 function attachmentIsImage(att: ExpenseAttachment): boolean {
   const mt = (att.mimeType ?? "").trim().toLowerCase();
@@ -214,15 +273,21 @@ function WorkerEditField({
   workers,
   saving,
   onChange,
+  errorId,
+  invalid = false,
 }: {
   value: string;
   workers: WorkerOption[];
   saving: boolean;
   onChange: (workerId: string | null) => void;
+  errorId?: string;
+  invalid?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
-      <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.worker.label}</label>
+      <label htmlFor="edit-expense-worker-select" className={FIELD_LABEL}>
+        {EXPENSE_FORM_FIELDS.worker.label}
+      </label>
       <ExpenseSearchableSelect
         id="edit-expense-worker-select"
         value={value}
@@ -231,6 +296,8 @@ function WorkerEditField({
         placeholder="Worker"
         searchPlaceholder="Search workers…"
         emptyText="No matching workers"
+        aria-invalid={invalid}
+        aria-describedby={errorId}
         options={[
           { value: EXPENSE_WORKER_SELECT_NONE, label: "—", searchText: "none no worker" },
           ...workers.map((worker) => ({
@@ -259,7 +326,9 @@ function PaymentSourceEditField({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.paymentSource.label}</label>
+        <label htmlFor="edit-expense-payment-source-select" className={FIELD_LABEL}>
+          {EXPENSE_FORM_FIELDS.paymentSource.label}
+        </label>
         <Link
           href="/settings/expenses"
           className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
@@ -280,7 +349,10 @@ function PaymentSourceEditField({
 
 function PreviewRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1 py-2.5">
+    <div
+      data-expense-preview-field={label.toLowerCase().replaceAll(" ", "-")}
+      className="flex flex-col gap-1 py-2.5"
+    >
       <div className={FIELD_LABEL}>{label}</div>
       <div className="text-sm text-[var(--neo-text-primary)]">{children}</div>
     </div>
@@ -358,11 +430,13 @@ type Props = {
   supabase: SupabaseClient | null;
   setCategoriesList: React.Dispatch<React.SetStateAction<string[]>>;
   onSave: (payload: ExpenseInboxPreviewSavePayload) => Promise<Expense | null>;
-  onMarkReviewed: (expense: Expense) => Promise<void>;
+  /** Returns true only after the canonical status mutation and local reconciliation succeed. */
+  onMarkReviewed: (expense: Expense) => Promise<boolean>;
   /** Navigate within current inbox page without closing the dialog. */
   previewNav?: {
     canPrev: boolean;
     canNext: boolean;
+    queuePosition?: string;
     onPrev: () => void;
     onNext: () => void;
   };
@@ -374,6 +448,10 @@ type Props = {
   issueContext?: ExpenseIssueFocus | null;
   /** Workspace routes render the same canonical editor inline; legacy surfaces may retain Dialog. */
   presentation?: "dialog" | "panel";
+  /** Receipt Inbox promotes secured evidence ahead of financial metadata without changing its relationship. */
+  evidenceFirst?: boolean;
+  /** Keyboard queue activation requests focus in Review; pointer/touch activation leaves focus undisturbed. */
+  focusReviewOnOpen?: boolean;
   /** Invoked only after `onSave` confirms success and local/cache state is reconciled. */
   onSaveAndNext?: () => void;
   /** URL-restored request to open the contextual receipt evidence surface. */
@@ -400,12 +478,15 @@ export function ExpenseInboxPreviewModal({
   onAttachmentsUpdated,
   issueContext = null,
   presentation = "dialog",
+  evidenceFirst = false,
+  focusReviewOnOpen = false,
   onSaveAndNext,
   receiptEvidenceRequested = false,
   onReceiptEvidenceChange,
 }: Props) {
   const { toast } = useToast();
   const { openPreview, patchPreview } = useAttachmentPreview();
+  const inlineReviewWorkspace = presentation === "panel" && evidenceFirst;
   const patchPreviewRef = React.useRef(patchPreview);
   patchPreviewRef.current = patchPreview;
   const inboxPreviewSessionRef = React.useRef(0);
@@ -434,6 +515,12 @@ export function ExpenseInboxPreviewModal({
   const [deductionSubcontractId, setDeductionSubcontractId] = React.useState("");
   const [deductionAmount, setDeductionAmount] = React.useState("");
   const [deductionNote, setDeductionNote] = React.useState("");
+  const [reviewBaselineSignature, setReviewBaselineSignature] = React.useState("");
+  const [reviewErrors, setReviewErrors] = React.useState<ReviewFieldErrors>({});
+  const [reviewFeedback, setReviewFeedback] = React.useState<{
+    kind: "saved" | "error";
+    message: string;
+  } | null>(null);
   const [attachments, setAttachments] = React.useState<ExpenseAttachment[]>([]);
   const [thumbById, setThumbById] = React.useState<Record<string, string | null>>({});
   const [secureReceiptItems, setSecureReceiptItems] = React.useState<ExpenseReceiptItem[]>([]);
@@ -441,7 +528,9 @@ export function ExpenseInboxPreviewModal({
   const [previewCatArchived, setPreviewCatArchived] = React.useState(false);
   const [previewPaArchived, setPreviewPaArchived] = React.useState(false);
   const vendorInputRef = React.useRef<HTMLInputElement>(null);
+  const amountInputRef = React.useRef<HTMLInputElement>(null);
   const editActionRef = React.useRef<HTMLButtonElement>(null);
+  const focusNextReviewRef = React.useRef(false);
   /** Preview-mode attachment thumbnails: keyed by storage dedupe key (same signing path as list thumbs). */
   const [previewThumbSignedByDedupeKey, setPreviewThumbSignedByDedupeKey] = React.useState<
     Record<string, string | null>
@@ -464,6 +553,61 @@ export function ExpenseInboxPreviewModal({
   const prevOpenRef = React.useRef(false);
   const prevExpenseIdRef = React.useRef<string | null>(null);
   const expenseId = expense?.id ?? null;
+  const clearReviewFieldError = React.useCallback((key: ReviewFieldErrorKey) => {
+    setReviewErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    setReviewFeedback((current) => (current?.kind === "error" ? null : current));
+  }, []);
+  const focusReviewControl = React.useCallback((key: ReviewFieldErrorKey | "amount") => {
+    const idByKey: Record<ReviewFieldErrorKey | "amount", string> = {
+      amount: "edit-expense-amount-input",
+      project: "edit-expense-project-select",
+      category: "edit-expense-category-select",
+      paymentAccount: "edit-expense-payment-select",
+      worker: "edit-expense-worker-select",
+    };
+    window.requestAnimationFrame(() => {
+      const target =
+        key === "amount" ? amountInputRef.current : document.getElementById(idByKey[key]);
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: "nearest" });
+    });
+  }, []);
+  const focusFirstRequiredReviewControl = React.useCallback(
+    (candidate: Expense) => {
+      const candidateAmount = getExpenseTotal(candidate);
+      if (!Number.isFinite(candidateAmount) || candidateAmount < 0) {
+        focusReviewControl("amount");
+        return;
+      }
+      if (!expenseHasRequiredProjectForWorkflow(candidate)) {
+        focusReviewControl("project");
+        return;
+      }
+      if (!expenseHasCategoryForWorkflow(candidate)) {
+        focusReviewControl("category");
+        return;
+      }
+      if (expenseSourceTypeIsWorkerReimbursement(candidate.sourceType)) {
+        if (!candidate.workerId) {
+          focusReviewControl("worker");
+          return;
+        }
+      } else if (
+        isInboxUploadExpenseReference(candidate.referenceNo) &&
+        !candidate.paymentAccountId?.trim()
+      ) {
+        focusReviewControl("paymentAccount");
+        return;
+      }
+      focusReviewControl("amount");
+    },
+    [focusReviewControl]
+  );
   React.useEffect(() => {
     const wasOpen = prevOpenRef.current;
     prevOpenRef.current = open;
@@ -493,27 +637,117 @@ export function ExpenseInboxPreviewModal({
 
   React.useEffect(() => {
     if (!expense) return;
-    setVendorName(expense.vendorName ?? "");
-    setAmount(String(getExpenseTotal(expense)));
+    const nextVendorName = expense.vendorName ?? "";
+    const nextAmount = String(getExpenseTotal(expense));
     const nextProjectId = expense.lines[0]?.projectId ?? expense.headerProjectId ?? null;
-    setProjectId(nextProjectId);
-    setCostAllocation(expenseCostAllocationFromProjectId(nextProjectId));
-    setWorkerId(expense.workerId ?? null);
-    setCategory(expense.lines[0]?.category ?? "Other");
+    const nextCostAllocation = expenseCostAllocationFromProjectId(nextProjectId);
+    const nextWorkerId = expense.workerId ?? null;
+    const nextCategory = expense.lines[0]?.category ?? "Other";
     const parsedDescription = parseExpenseDescription(expense.notes ?? "");
-    setNotes(stripInboxUploadNoiseFromText(parsedDescription.description));
-    setItems(parsedDescription.items);
-    setExpenseDate((expense.date ?? "").slice(0, 10));
-    setSourceType(expense.sourceType ?? "company");
-    setPaymentMethod((expense.paymentMethod ?? "").trim());
-    setPaymentAccountId(expense.paymentAccountId ?? "");
+    const nextNotes = stripInboxUploadNoiseFromText(parsedDescription.description);
+    const nextItems = parsedDescription.items;
+    const nextExpenseDate = (expense.date ?? "").slice(0, 10);
+    const nextSourceType = expense.sourceType ?? "company";
+    const nextPaymentMethod = (expense.paymentMethod ?? "").trim();
+    const nextPaymentAccountId = expense.paymentAccountId ?? "";
     const deduction = expense.subcontractDeduction;
-    setDeductFromSubcontractor(Boolean(deduction));
-    setDeductionSubcontractId(deduction?.subcontract_id ?? "");
-    setDeductionAmount(deduction ? String(deduction.amount) : "");
-    setDeductionNote(deduction?.note ?? "");
+    const nextDeductFromSubcontractor = Boolean(deduction);
+    const nextDeductionSubcontractId = deduction?.subcontract_id ?? "";
+    const nextDeductionAmount = deduction ? String(deduction.amount) : "";
+    const nextDeductionNote = deduction?.note ?? "";
+    setVendorName(nextVendorName);
+    setAmount(nextAmount);
+    setProjectId(nextProjectId);
+    setCostAllocation(nextCostAllocation);
+    setWorkerId(nextWorkerId);
+    setCategory(nextCategory);
+    setNotes(nextNotes);
+    setItems(nextItems);
+    setExpenseDate(nextExpenseDate);
+    setSourceType(nextSourceType);
+    setPaymentMethod(nextPaymentMethod);
+    setPaymentAccountId(nextPaymentAccountId);
+    setDeductFromSubcontractor(nextDeductFromSubcontractor);
+    setDeductionSubcontractId(nextDeductionSubcontractId);
+    setDeductionAmount(nextDeductionAmount);
+    setDeductionNote(nextDeductionNote);
     setAttachments(getExpenseDisplayAttachments(expense));
+    setReviewBaselineSignature(
+      reviewDraftSignature({
+        vendorName: nextVendorName,
+        amount: nextAmount,
+        projectId: nextProjectId,
+        costAllocation: nextCostAllocation,
+        workerId: nextWorkerId,
+        category: nextCategory,
+        notes: nextNotes,
+        items: nextItems,
+        expenseDate: nextExpenseDate,
+        sourceType: nextSourceType,
+        paymentMethod: nextPaymentMethod,
+        paymentAccountId: nextPaymentAccountId,
+        deductFromSubcontractor: nextDeductFromSubcontractor,
+        deductionSubcontractId: nextDeductionSubcontractId,
+        deductionAmount: nextDeductionAmount,
+        deductionNote: nextDeductionNote,
+      })
+    );
   }, [expense]);
+
+  React.useEffect(() => {
+    setReviewErrors({});
+    setReviewFeedback(null);
+  }, [expenseId]);
+
+  React.useEffect(() => {
+    if (!open || !inlineReviewWorkspace || !expense) return;
+    if (!focusReviewOnOpen && !focusNextReviewRef.current) return;
+    focusNextReviewRef.current = false;
+    const frame = window.requestAnimationFrame(() => focusFirstRequiredReviewControl(expense));
+    return () => window.cancelAnimationFrame(frame);
+  }, [expense, focusFirstRequiredReviewControl, focusReviewOnOpen, inlineReviewWorkspace, open]);
+
+  const currentReviewSignature = React.useMemo(
+    () =>
+      reviewDraftSignature({
+        vendorName,
+        amount,
+        projectId,
+        costAllocation,
+        workerId,
+        category,
+        notes,
+        items,
+        expenseDate,
+        sourceType,
+        paymentMethod,
+        paymentAccountId,
+        deductFromSubcontractor,
+        deductionSubcontractId,
+        deductionAmount,
+        deductionNote,
+      }),
+    [
+      amount,
+      category,
+      costAllocation,
+      deductFromSubcontractor,
+      deductionAmount,
+      deductionNote,
+      deductionSubcontractId,
+      expenseDate,
+      items,
+      notes,
+      paymentAccountId,
+      paymentMethod,
+      projectId,
+      sourceType,
+      vendorName,
+      workerId,
+    ]
+  );
+  const reviewDraftDirty =
+    reviewBaselineSignature !== "" && currentReviewSignature !== reviewBaselineSignature;
 
   React.useEffect(() => {
     if (!deductFromSubcontractor) return;
@@ -852,30 +1086,49 @@ export function ExpenseInboxPreviewModal({
     openReceiptItemPreview(receiptItems[0]!);
   }, [expense, open, openReceiptItemPreview, receiptEvidenceRequested, receiptItems]);
 
-  const handleSave = async (advanceAfterSave = false) => {
-    if (!expense || saving) return;
+  const handleSave = async (advanceAfterSave = false): Promise<Expense | null> => {
+    if (!expense || saving) return null;
+    setReviewFeedback(null);
     const numAmount = parseFloat(amount);
     if (Number.isNaN(numAmount) || numAmount < 0) {
+      setReviewErrors((current) => ({
+        ...current,
+        amount: "Enter a valid amount of zero or more.",
+      }));
+      focusReviewControl("amount");
       toast({ title: "Invalid amount", variant: "error" });
-      return;
+      return null;
     }
+    clearReviewFieldError("amount");
     if (expenseCostAllocationRequiresProject(costAllocation) && !projectId) {
+      setReviewErrors((current) => ({
+        ...current,
+        project: "Choose a project for a Project Cost expense.",
+      }));
+      focusReviewControl("project");
       toast({
         title: "Missing project",
         description:
           "Project Cost expenses must be assigned to a project. Choose Overhead only for company expenses.",
         variant: "error",
       });
-      return;
+      return null;
     }
+    clearReviewFieldError("project");
     if (expenseSourceTypeIsWorkerReimbursement(sourceType) && !workerId) {
+      setReviewErrors((current) => ({
+        ...current,
+        worker: "Choose the worker who must be reimbursed.",
+      }));
+      focusReviewControl("worker");
       toast({
         title: "Missing worker",
         description: "Worker reimbursement expenses must be assigned to a worker.",
         variant: "error",
       });
-      return;
+      return null;
     }
+    clearReviewFieldError("worker");
     const selectedDeductionOption = subcontractDeductionOptions.find(
       (option) => option.subcontractId === deductionSubcontractId
     );
@@ -887,7 +1140,7 @@ export function ExpenseInboxPreviewModal({
           description: "A subcontractor deduction must be tied to a project expense.",
           variant: "error",
         });
-        return;
+        return null;
       }
       if (!selectedDeductionOption) {
         toast({
@@ -895,7 +1148,7 @@ export function ExpenseInboxPreviewModal({
           description: "Choose which subcontractor payable this expense should reduce.",
           variant: "error",
         });
-        return;
+        return null;
       }
       if (!Number.isFinite(deductionAmountValue) || deductionAmountValue <= 0) {
         toast({
@@ -903,7 +1156,7 @@ export function ExpenseInboxPreviewModal({
           description: "Deduction amount must be greater than 0.",
           variant: "error",
         });
-        return;
+        return null;
       }
     }
     flushSync(() => setSaving(true));
@@ -953,50 +1206,98 @@ export function ExpenseInboxPreviewModal({
           : null,
       });
       if (saved) {
-        setMode("preview");
+        setReviewErrors({});
+        setReviewFeedback({ kind: "saved", message: "Saved" });
+        setReviewBaselineSignature(currentReviewSignature);
+        if (!inlineReviewWorkspace) setMode("preview");
         if (advanceAfterSave) {
           onSaveAndNext?.();
-        } else {
+        } else if (!inlineReviewWorkspace) {
           window.requestAnimationFrame(() => editActionRef.current?.focus());
         }
+      } else {
+        setReviewFeedback({
+          kind: "error",
+          message: "Save failed. Your changes are still here; review the fields and try again.",
+        });
       }
+      return saved;
+    } catch {
+      setReviewFeedback({
+        kind: "error",
+        message: "Save failed. Your changes are still here; review the fields and try again.",
+      });
+      return null;
     } finally {
       setSaving(false);
     }
   };
 
-  const handleMarkReviewed = async () => {
-    if (!expense || markBusy) return;
-    if (isInboxUploadExpenseReference(expense.referenceNo)) {
-      const gate = validateApproveInboxUploadDraft(expense, costAllocation);
+  const handleMarkReviewed = async (candidate?: Expense) => {
+    const expenseToReview = candidate ?? expense;
+    if (!expenseToReview || markBusy) return;
+    if (isInboxUploadExpenseReference(expenseToReview.referenceNo)) {
+      const gate = validateApproveInboxUploadDraft(expenseToReview, costAllocation);
       if (gate === "project") {
+        setReviewErrors((current) => ({
+          ...current,
+          project: "Choose a project before approving this receipt.",
+        }));
+        setReviewFeedback({ kind: "error", message: "Choose a project to continue." });
+        focusReviewControl("project");
         toast({
           title: "Choose a project first",
-          description: "Tap Edit, set project, then save — then you can approve.",
+          description: inlineReviewWorkspace
+            ? "Choose a project in Review, then approve."
+            : "Tap Edit, set project, then save — then you can approve.",
           variant: "default",
         });
         return;
       }
       if (gate === "category") {
+        setReviewErrors((current) => ({
+          ...current,
+          category: "Choose a category before approving this receipt.",
+        }));
+        setReviewFeedback({ kind: "error", message: "Choose a category to continue." });
+        focusReviewControl("category");
         toast({
           title: "Choose a category first",
-          description: "Tap Edit, set category, then save — then you can approve.",
+          description: inlineReviewWorkspace
+            ? "Choose a category in Review, then approve."
+            : "Tap Edit, set category, then save — then you can approve.",
           variant: "default",
         });
         return;
       }
       if (gate === "payment") {
+        setReviewErrors((current) => ({
+          ...current,
+          paymentAccount: "Choose the payment account used for this expense.",
+        }));
+        setReviewFeedback({ kind: "error", message: "Choose a payment account to continue." });
+        focusReviewControl("paymentAccount");
         toast({
           title: "Choose a payment account first",
-          description: "Tap Edit, set payment account, then save — then you can approve.",
+          description: inlineReviewWorkspace
+            ? "Choose a payment account in More Details, then approve."
+            : "Tap Edit, set payment account, then save — then you can approve.",
           variant: "default",
         });
         return;
       }
       if (gate === "worker") {
+        setReviewErrors((current) => ({
+          ...current,
+          worker: "Choose the worker who must be reimbursed.",
+        }));
+        setReviewFeedback({ kind: "error", message: "Choose a worker to continue." });
+        focusReviewControl("worker");
         toast({
           title: "Choose a worker first",
-          description: "Tap Edit, set worker, then save — then you can approve.",
+          description: inlineReviewWorkspace
+            ? "Choose a worker in More Details, then approve."
+            : "Tap Edit, set worker, then save — then you can approve.",
           variant: "default",
         });
         return;
@@ -1004,10 +1305,33 @@ export function ExpenseInboxPreviewModal({
     }
     flushSync(() => setMarkBusy(true));
     try {
-      await onMarkReviewed(expense);
+      const confirmed = await onMarkReviewed(expenseToReview);
+      if (!confirmed) {
+        setReviewFeedback({
+          kind: "error",
+          message: "Approval failed. This receipt was not advanced; try again.",
+        });
+        return;
+      }
+      if (!inboxUploadPreview) return;
+      if (previewNav?.canNext) {
+        focusNextReviewRef.current = true;
+        previewNav.onNext();
+      } else onOpenChange(false);
     } finally {
       setMarkBusy(false);
     }
+  };
+
+  const handleInlineReviewComplete = async () => {
+    if (!expense || saving || markBusy) return;
+    let expenseToReview = expense;
+    if (reviewDraftDirty) {
+      const saved = await handleSave(false);
+      if (!saved) return;
+      expenseToReview = saved;
+    }
+    await handleMarkReviewed(expenseToReview);
   };
 
   const cancelEdit = () => {
@@ -1032,19 +1356,57 @@ export function ExpenseInboxPreviewModal({
     setDeductionAmount(deduction ? String(deduction.amount) : "");
     setDeductionNote(deduction?.note ?? "");
     setAttachments(getExpenseDisplayAttachments(expense));
+    setReviewBaselineSignature(
+      reviewDraftSignature({
+        vendorName: expense.vendorName ?? "",
+        amount: String(getExpenseTotal(expense)),
+        projectId: nextProjectId,
+        costAllocation: expenseCostAllocationFromProjectId(nextProjectId),
+        workerId: expense.workerId ?? null,
+        category: expense.lines[0]?.category ?? "Other",
+        notes: stripInboxUploadNoiseFromText(parsedDescription.description),
+        items: parsedDescription.items,
+        expenseDate: (expense.date ?? "").slice(0, 10),
+        sourceType: expense.sourceType ?? "company",
+        paymentMethod: (expense.paymentMethod ?? "").trim(),
+        paymentAccountId: expense.paymentAccountId ?? "",
+        deductFromSubcontractor: Boolean(deduction),
+        deductionSubcontractId: deduction?.subcontract_id ?? "",
+        deductionAmount: deduction ? String(deduction.amount) : "",
+        deductionNote: deduction?.note ?? "",
+      })
+    );
     setMode("preview");
-    window.requestAnimationFrame(() => editActionRef.current?.focus());
+    if (!inlineReviewWorkspace) {
+      window.requestAnimationFrame(() => editActionRef.current?.focus());
+    }
   };
 
   if (!expense) return null;
 
+  const renderEditSurface = mode === "edit" || inlineReviewWorkspace;
+  const detailMode = inlineReviewWorkspace ? "review" : mode;
   const showMarkDone = expenseNeedsReviewFromDb(expense.status);
   const inboxUploadPreview = isInboxUploadExpenseReference(expense.referenceNo);
+  const workerRequiredForApproval = expenseSourceTypeIsWorkerReimbursement(sourceType);
+  const showCorePaymentAccount =
+    inlineReviewWorkspace && inboxUploadPreview && !workerRequiredForApproval;
+  const showCoreWorker = inlineReviewWorkspace && workerRequiredForApproval;
+  const showCorePaymentSource = inlineReviewWorkspace && !expense.sourceType;
   const missingProject = !expenseHasRequiredProjectForWorkflow(expense);
   const missingCategory = !expenseHasCategoryForWorkflow(expense);
   const missingReceipt = receiptItems.length === 0;
   const missingWorker =
     expenseSourceTypeIsWorkerReimbursement(expense.sourceType) && !expense.workerId;
+  const reviewStatusMessage = saving
+    ? "Saving…"
+    : markBusy
+      ? "Approving…"
+      : reviewFeedback?.kind === "error"
+        ? reviewFeedback.message
+        : reviewDraftDirty
+          ? "Unsaved changes"
+          : (reviewFeedback?.message ?? "All changes saved");
   const headerLineMismatch = getExpenseHeaderLineMismatch(
     expense,
     issueContext?.expenseId === expense.id ? issueContext.issue : null
@@ -1054,17 +1416,236 @@ export function ExpenseInboxPreviewModal({
     projectId && String(projectId).trim() !== "" ? projectId : EXPENSE_PROJECT_SELECT_NONE;
   const workerRadixValue =
     workerId && String(workerId).trim() !== "" ? workerId : EXPENSE_WORKER_SELECT_NONE;
-  const previewDivide = "divide-y divide-[var(--neo-border)]";
+  const previewDivide =
+    presentation === "dialog"
+      ? "grid grid-cols-1 gap-x-5 gap-y-0 sm:grid-cols-2"
+      : "divide-y divide-[var(--neo-border)]";
   const handlePanelKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
-    if (event.key !== "Escape" || mode !== "edit") return;
+    if (
+      inlineReviewWorkspace &&
+      (event.metaKey || event.ctrlKey) &&
+      !event.altKey &&
+      !event.shiftKey
+    ) {
+      if (event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (reviewDraftDirty && !saving && !markBusy) void handleSave(false);
+        return;
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!saving && !markBusy) void handleInlineReviewComplete();
+        return;
+      }
+    }
+    if (event.key !== "Escape" || (mode !== "edit" && !(inlineReviewWorkspace && reviewDraftDirty)))
+      return;
     event.preventDefault();
     event.stopPropagation();
     if (window.confirm("Discard unsaved expense changes?")) cancelEdit();
   };
   const requestPanelClose = () => {
-    if (mode === "edit" && !window.confirm("Discard unsaved expense changes?")) return;
+    if (
+      (mode === "edit" || (inlineReviewWorkspace && reviewDraftDirty)) &&
+      !window.confirm("Discard unsaved expense changes?")
+    )
+      return;
     onOpenChange(false);
   };
+  const requestQueueNavigation = (navigate: () => void) => {
+    if (
+      inlineReviewWorkspace &&
+      reviewDraftDirty &&
+      !window.confirm("Discard unsaved expense changes?")
+    )
+      return;
+    if (inlineReviewWorkspace && reviewDraftDirty) cancelEdit();
+    navigate();
+  };
+
+  const embeddedReceiptItem = receiptItems[0] ?? null;
+  const embeddedReceiptMatch = embeddedReceiptItem
+    ? findAttachmentForReceiptItem(embeddedReceiptItem, attachments)
+    : undefined;
+  const embeddedReceiptKey = embeddedReceiptItem
+    ? expenseAttachmentStorageDedupeKey(embeddedReceiptItem.url)
+    : "";
+  const embeddedReceiptUrl = embeddedReceiptKey
+    ? previewThumbSignedByDedupeKey[embeddedReceiptKey]
+    : null;
+  const embeddedReceiptFailed = embeddedReceiptKey
+    ? Boolean(previewThumbErrorByKey[embeddedReceiptKey])
+    : false;
+  const embeddedReceiptIsImage = embeddedReceiptItem
+    ? receiptItemIsImage(embeddedReceiptItem, embeddedReceiptMatch)
+    : false;
+
+  const receiptReviewStage = (
+    <section
+      data-expense-receipt-stage
+      aria-label="Receipt preview"
+      className="expense-receipt-review-stage min-h-0 min-w-0 overflow-hidden"
+    >
+      <div className="flex min-h-0 h-full flex-col">
+        <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-2.5">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary)]">
+              Receipt preview
+            </p>
+            <p className="mt-0.5 truncate text-xs text-[var(--eo-text-secondary)]">
+              {embeddedReceiptItem
+                ? `${receiptItems.length} attachment${receiptItems.length === 1 ? "" : "s"}`
+                : "Evidence missing"}
+            </p>
+          </div>
+          {embeddedReceiptItem ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className={cn(PREVIEW_QUIET_BUTTON, "h-9 shrink-0 px-2.5")}
+              onClick={() => void openReceiptItemPreview(embeddedReceiptItem)}
+            >
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              Full view
+            </Button>
+          ) : null}
+        </div>
+        <div className="min-h-0 flex-1 p-3 pt-0">
+          <div className="flex h-full min-h-[280px] items-center justify-center overflow-hidden rounded-lg border border-[var(--eo-border-floating)] bg-white">
+            {!embeddedReceiptItem ? (
+              <div className="max-w-xs px-6 text-center">
+                <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--eo-warning-soft)] text-[var(--eo-warning)]">
+                  <FileText className="h-5 w-5" aria-hidden />
+                </span>
+                <p className="mt-3 text-sm font-semibold text-zinc-900">No receipt attached</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-600">
+                  Add evidence from Edit before completing this review.
+                </p>
+              </div>
+            ) : embeddedReceiptUrl === undefined ? (
+              <Skeleton className="h-full min-h-[280px] w-full rounded-none bg-zinc-100" />
+            ) : embeddedReceiptUrl === null || embeddedReceiptFailed ? (
+              <div className="max-w-xs px-6 text-center">
+                <FileText className="mx-auto h-6 w-6 text-zinc-500" aria-hidden />
+                <p className="mt-3 text-sm font-semibold text-zinc-900">Preview unavailable</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-600">
+                  Open the protected full preview to retry this attachment.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-4 bg-white text-zinc-900"
+                  onClick={() => void openReceiptItemPreview(embeddedReceiptItem)}
+                >
+                  Open full preview
+                </Button>
+              </div>
+            ) : embeddedReceiptIsImage ? (
+              // eslint-disable-next-line @next/next/no-img-element -- authenticated signed receipt URL
+              <img
+                src={embeddedReceiptUrl}
+                alt="Receipt evidence"
+                className="h-full max-h-full w-full object-contain"
+                onError={() =>
+                  setPreviewThumbErrorByKey((current) => ({
+                    ...current,
+                    [embeddedReceiptKey]: true,
+                  }))
+                }
+              />
+            ) : (
+              <iframe
+                src={embeddedReceiptUrl}
+                title="Receipt evidence"
+                className="h-full min-h-[420px] w-full border-0 bg-white"
+                onError={() =>
+                  setPreviewThumbErrorByKey((current) => ({
+                    ...current,
+                    [embeddedReceiptKey]: true,
+                  }))
+                }
+              />
+            )}
+          </div>
+        </div>
+        {embeddedReceiptItem ? (
+          <div className="shrink-0 px-4 pb-3 text-[11px] text-[var(--eo-text-tertiary)]">
+            <p className="truncate" title={embeddedReceiptItem.fileName}>
+              {embeddedReceiptItem.fileName}
+            </p>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+
+  const receiptEvidenceSurface = (
+    <section
+      aria-labelledby="expense-receipt-evidence-title"
+      className="expense-review-inline-evidence"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h3
+            id="expense-receipt-evidence-title"
+            className="text-[13px] font-semibold text-[var(--eo-text-primary,var(--neo-text-primary))]"
+          >
+            Receipt Evidence
+          </h3>
+          <p className="mt-0.5 text-[11px] text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+            {receiptItems.length > 0
+              ? `${receiptItems.length} attachment${receiptItems.length === 1 ? "" : "s"}`
+              : "No receipt attached"}
+          </p>
+        </div>
+        <FileText
+          className="h-4 w-4 text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]"
+          aria-hidden
+        />
+      </div>
+      <button
+        type="button"
+        data-expense-receipt-evidence
+        className="expense-evidence-action mt-3 flex min-h-20 w-full items-center justify-between gap-3 rounded-[7px] border border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-primary,var(--neo-surface-raised))] px-4 py-3 text-left transition-colors duration-120 hover:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]"
+        onClick={() => {
+          const firstReceipt = receiptItems[0];
+          if (firstReceipt) void openReceiptItemPreview(firstReceipt);
+          else setMode("edit");
+        }}
+      >
+        <span className="min-w-0">
+          <span className="block text-[13px] font-medium text-[var(--eo-text-primary,var(--neo-text-primary))]">
+            {receiptItems.length > 0 ? "Open receipt preview" : "Add receipt evidence"}
+          </span>
+          <span className="mt-1 block text-[11px] leading-4 text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+            {receiptItems.length > 0
+              ? "View the secured source document in context."
+              : "Use the existing protected attachment path."}
+          </span>
+        </span>
+        <span className="shrink-0 text-xs font-medium text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+          {receiptItems.length > 0 ? "View" : "Attach"}
+        </span>
+      </button>
+    </section>
+  );
+
+  const attentionSurface =
+    missingProject || missingCategory || missingWorker || missingReceipt || possibleDuplicate ? (
+      <section aria-label="Receipt issues" className="flex flex-wrap gap-1.5">
+        {missingProject ? <span className={PREVIEW_WARNING_CHIP}>Missing project</span> : null}
+        {missingCategory ? <span className={PREVIEW_WARNING_CHIP}>Missing category</span> : null}
+        {missingWorker ? <span className={PREVIEW_WARNING_CHIP}>Missing worker</span> : null}
+        {missingReceipt ? <span className={PREVIEW_WARNING_CHIP}>Missing receipt</span> : null}
+        {possibleDuplicate ? (
+          <span className={PREVIEW_WARNING_CHIP}>Possible duplicate</span>
+        ) : null}
+      </section>
+    ) : null;
 
   const detailSurface = (
     <>
@@ -1076,14 +1657,22 @@ export function ExpenseInboxPreviewModal({
               variant="ghost"
               size="icon"
               className="expense-detail-back h-11 w-11 shrink-0 rounded-md text-[var(--eo-text-secondary,var(--neo-text-secondary))] lg:hidden"
-              aria-label="Back to expense queue"
+              aria-label={evidenceFirst ? "Back to receipt queue" : "Back to expense queue"}
               onClick={() => onOpenChange(false)}
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
             </Button>
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]">
-                {mode === "preview" ? "Expense detail" : "Editing expense"}
+                {inlineReviewWorkspace
+                  ? "Review details"
+                  : mode === "preview"
+                    ? evidenceFirst
+                      ? "Receipt detail"
+                      : "Expense detail"
+                    : evidenceFirst
+                      ? "Editing receipt details"
+                      : "Editing expense"}
               </p>
               <p className="mt-0.5 truncate text-xs text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
                 {formatDate(expense.date)} · {expenseStatusUiLabel(expense.status)}
@@ -1094,8 +1683,8 @@ export function ExpenseInboxPreviewModal({
               variant="ghost"
               size="icon"
               className="hidden h-11 w-11 shrink-0 rounded-md text-[var(--eo-text-secondary,var(--neo-text-secondary))] hover:bg-[var(--eo-surface-selected,var(--neo-surface-muted))] hover:text-[var(--eo-text-primary,var(--neo-text-primary))] lg:inline-flex"
-              aria-label="Close expense detail"
-              title="Close expense detail"
+              aria-label={evidenceFirst ? "Close receipt detail" : "Close expense detail"}
+              title={evidenceFirst ? "Close receipt detail" : "Close expense detail"}
               disabled={saving || markBusy}
               onClick={requestPanelClose}
             >
@@ -1118,9 +1707,10 @@ export function ExpenseInboxPreviewModal({
           presentation === "panel" && "expense-detail-panel-body px-5 py-5"
         )}
       >
-        {mode === "preview" ? (
+        {!renderEditSurface ? (
           presentation === "panel" ? (
             <div className="expense-detail-view space-y-6">
+              {evidenceFirst ? receiptEvidenceSurface : null}
               <section data-expense-detail-identity aria-label="Expense identity">
                 <p
                   data-expense-detail-amount
@@ -1139,23 +1729,11 @@ export function ExpenseInboxPreviewModal({
                 >
                   {projectLabelFromExpense(expense, projectNameById)}
                 </p>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {missingProject ? (
-                    <span className={PREVIEW_WARNING_CHIP}>Missing project</span>
-                  ) : null}
-                  {missingCategory ? (
-                    <span className={PREVIEW_WARNING_CHIP}>Missing category</span>
-                  ) : null}
-                  {missingWorker ? (
-                    <span className={PREVIEW_WARNING_CHIP}>Missing worker</span>
-                  ) : null}
-                  {missingReceipt ? (
-                    <span className={PREVIEW_WARNING_CHIP}>Missing receipt</span>
-                  ) : null}
-                </div>
               </section>
 
-              {headerLineMismatch ? (
+              {!evidenceFirst ? attentionSurface : null}
+
+              {!evidenceFirst && headerLineMismatch ? (
                 <HeaderLineMismatchPanel
                   mismatch={headerLineMismatch}
                   hasReceipt={receiptItems.length > 0}
@@ -1190,51 +1768,20 @@ export function ExpenseInboxPreviewModal({
                 </div>
               </dl>
 
-              <section aria-labelledby="expense-receipt-evidence-title">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <h3
-                      id="expense-receipt-evidence-title"
-                      className="text-[13px] font-semibold text-[var(--eo-text-primary,var(--neo-text-primary))]"
-                    >
-                      Receipt Evidence
-                    </h3>
-                    <p className="mt-0.5 text-[11px] text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
-                      {receiptItems.length > 0
-                        ? `${receiptItems.length} attachment${receiptItems.length === 1 ? "" : "s"}`
-                        : "No receipt attached"}
-                    </p>
-                  </div>
-                  <FileText
-                    className="h-4 w-4 text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]"
-                    aria-hidden
-                  />
-                </div>
-                <button
-                  type="button"
-                  data-expense-receipt-evidence
-                  className="expense-evidence-action mt-3 flex min-h-20 w-full items-center justify-between gap-3 rounded-[7px] border border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-primary,var(--neo-surface-raised))] px-4 py-3 text-left transition-colors duration-120 hover:bg-[var(--eo-surface-secondary,var(--neo-surface-muted))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--eo-focus-ring,var(--neo-border-strong))]"
-                  onClick={() => {
+              {evidenceFirst ? attentionSurface : null}
+
+              {evidenceFirst && headerLineMismatch ? (
+                <HeaderLineMismatchPanel
+                  mismatch={headerLineMismatch}
+                  hasReceipt={receiptItems.length > 0}
+                  onViewReceipt={() => {
                     const firstReceipt = receiptItems[0];
-                    if (firstReceipt) void openReceiptItemPreview(firstReceipt);
-                    else setMode("edit");
+                    if (firstReceipt) openReceiptItemPreview(firstReceipt);
                   }}
-                >
-                  <span className="min-w-0">
-                    <span className="block text-[13px] font-medium text-[var(--eo-text-primary,var(--neo-text-primary))]">
-                      {receiptItems.length > 0 ? "Open receipt preview" : "Add receipt evidence"}
-                    </span>
-                    <span className="mt-1 block text-[11px] leading-4 text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
-                      {receiptItems.length > 0
-                        ? "View the secured source document in context."
-                        : "Use the existing protected attachment path."}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-xs font-medium text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
-                    {receiptItems.length > 0 ? "View" : "Attach"}
-                  </span>
-                </button>
-              </section>
+                />
+              ) : null}
+
+              {!evidenceFirst ? receiptEvidenceSurface : null}
 
               <section>
                 <h3 className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.description.label}</h3>
@@ -1330,7 +1877,7 @@ export function ExpenseInboxPreviewModal({
                     {(expense.vendorName ?? "").trim() !== "" ? expense.vendorName : "Needs Review"}
                   </PreviewRow>
                   <PreviewRow label="Amount">
-                    <span className="tabular-nums font-semibold tracking-normal text-rose-300">
+                    <span className="financial-nums tabular-nums font-semibold tracking-normal text-[var(--eo-text-strong)]">
                       {formatCurrency(-getExpenseTotal(expense))}
                     </span>
                   </PreviewRow>
@@ -1384,7 +1931,11 @@ export function ExpenseInboxPreviewModal({
               </ModalSection>
 
               <ModalSection title="Attachments">
-                <div className="pt-1" data-testid="expense-preview-attachments">
+                <div
+                  data-inbox-review-evidence
+                  className="rounded-lg border border-[var(--eo-border-floating)] bg-[var(--eo-depth-l4)] p-3"
+                  data-testid="expense-preview-attachments"
+                >
                   {receiptItems.length === 0 ? (
                     <span className="text-sm text-[var(--neo-text-secondary)]">—</span>
                   ) : (
@@ -1485,8 +2036,12 @@ export function ExpenseInboxPreviewModal({
             </div>
           )
         ) : (
-          <div className="space-y-5">
-            {presentation === "panel" ? (
+          <div
+            data-expense-inline-review={inlineReviewWorkspace || undefined}
+            className="space-y-5"
+          >
+            {evidenceFirst ? receiptEvidenceSurface : null}
+            {presentation === "panel" && !inlineReviewWorkspace ? (
               <section data-expense-inline-identity aria-label="Editing expense identity">
                 <p
                   data-expense-inline-amount
@@ -1509,32 +2064,64 @@ export function ExpenseInboxPreviewModal({
               </section>
             ) : null}
             <ModalSection title="Expense fields">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.vendor.label}</label>
+              <div
+                className={cn(
+                  inlineReviewWorkspace
+                    ? "expense-review-fields"
+                    : "grid grid-cols-1 gap-3 sm:grid-cols-2"
+                )}
+              >
+                <div
+                  data-expense-detail-amount
+                  data-expense-review-field="amount"
+                  className="space-y-1.5"
+                >
+                  <label htmlFor="edit-expense-amount-input" className={FIELD_LABEL}>
+                    {EXPENSE_FORM_FIELDS.amount.label}
+                  </label>
                   <Input
-                    ref={vendorInputRef}
-                    data-testid="edit-expense-vendor-input"
-                    value={vendorName}
-                    onChange={(e) => setVendorName(e.target.value)}
-                    className={INPUT_CLASS}
-                    disabled={saving}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.amount.label}</label>
-                  <Input
+                    ref={amountInputRef}
+                    id="edit-expense-amount-input"
                     type="number"
                     min="0"
                     step="0.01"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className={cn(INPUT_CLASS, "tabular-nums")}
+                    onChange={(event) => {
+                      setAmount(event.target.value);
+                      clearReviewFieldError("amount");
+                      setReviewFeedback(null);
+                    }}
+                    className={cn(
+                      INPUT_CLASS,
+                      "financial-nums text-base font-semibold tabular-nums"
+                    )}
+                    disabled={saving}
+                    aria-invalid={Boolean(reviewErrors.amount) || undefined}
+                    aria-describedby={reviewErrors.amount ? "edit-expense-amount-error" : undefined}
+                  />
+                  <ReviewFieldError id="edit-expense-amount-error" message={reviewErrors.amount} />
+                </div>
+                <div data-expense-review-field="vendor" className="space-y-1.5">
+                  <label htmlFor="edit-expense-vendor-input" className={FIELD_LABEL}>
+                    {EXPENSE_FORM_FIELDS.vendor.label}
+                  </label>
+                  <Input
+                    ref={vendorInputRef}
+                    id="edit-expense-vendor-input"
+                    data-testid="edit-expense-vendor-input"
+                    value={vendorName}
+                    onChange={(event) => {
+                      setVendorName(event.target.value);
+                      setReviewFeedback(null);
+                    }}
+                    className={INPUT_CLASS}
                     disabled={saving}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.classification.label}</label>
+                <div data-expense-review-field="classification" className="space-y-1.5">
+                  <label htmlFor="edit-expense-cost-allocation-select" className={FIELD_LABEL}>
+                    {EXPENSE_FORM_FIELDS.classification.label}
+                  </label>
                   <ExpenseSearchableSelect
                     id="edit-expense-cost-allocation-select"
                     value={costAllocation}
@@ -1558,12 +2145,18 @@ export function ExpenseInboxPreviewModal({
                     onValueChange={(v) => {
                       const next = v as ExpenseCostAllocation;
                       setCostAllocation(next);
-                      if (next === EXPENSE_COST_ALLOCATION_OVERHEAD) setProjectId(null);
+                      if (next === EXPENSE_COST_ALLOCATION_OVERHEAD) {
+                        setProjectId(null);
+                        clearReviewFieldError("project");
+                      }
+                      setReviewFeedback(null);
                     }}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.project.label}</label>
+                <div data-expense-review-field="project" className="space-y-1.5">
+                  <label htmlFor="edit-expense-project-select" className={FIELD_LABEL}>
+                    {EXPENSE_FORM_FIELDS.project.label}
+                  </label>
                   <ExpenseSearchableSelect
                     id="edit-expense-project-select"
                     value={projectRadixValue}
@@ -1572,6 +2165,10 @@ export function ExpenseInboxPreviewModal({
                     placeholder="Project"
                     searchPlaceholder="Search projects…"
                     emptyText="No matching projects"
+                    aria-invalid={Boolean(reviewErrors.project)}
+                    aria-describedby={
+                      reviewErrors.project ? "edit-expense-project-error" : undefined
+                    }
                     options={[
                       {
                         value: EXPENSE_PROJECT_SELECT_NONE,
@@ -1591,14 +2188,23 @@ export function ExpenseInboxPreviewModal({
                         setProjectId(v);
                         setCostAllocation(EXPENSE_COST_ALLOCATION_PROJECT_COST);
                       }
+                      clearReviewFieldError("project");
+                      setReviewFeedback(null);
                     }}
                   />
+                  <ReviewFieldError
+                    id="edit-expense-project-error"
+                    message={reviewErrors.project}
+                  />
                 </div>
-                <div className="space-y-1.5">
+                <div data-expense-review-field="category" className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
-                    <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.category.label}</label>
+                    <label htmlFor="edit-expense-category-select" className={FIELD_LABEL}>
+                      {EXPENSE_FORM_FIELDS.category.label}
+                    </label>
                     <Link
                       href="/settings/expenses"
+                      tabIndex={inlineReviewWorkspace ? -1 : undefined}
                       className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
                     >
                       Manage
@@ -1607,22 +2213,111 @@ export function ExpenseInboxPreviewModal({
                   <ExpenseCategorySelect
                     id="edit-expense-category-select"
                     value={category}
-                    onValueChange={setCategory}
+                    onValueChange={(nextCategory) => {
+                      setCategory(nextCategory);
+                      clearReviewFieldError("category");
+                      setReviewFeedback(null);
+                    }}
                     disabled={saving}
                     onCategoriesUpdated={(names) => setCategoriesList(names)}
                     className={SELECT_TRIGGER_CLASS}
+                    aria-invalid={Boolean(reviewErrors.category)}
+                    aria-describedby={
+                      reviewErrors.category ? "edit-expense-category-error" : undefined
+                    }
+                  />
+                  <ReviewFieldError
+                    id="edit-expense-category-error"
+                    message={reviewErrors.category}
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.date.label}</label>
+                <div data-expense-review-field="date" className="space-y-1.5">
+                  <label htmlFor="inbox-preview-expense-date" className={FIELD_LABEL}>
+                    {EXPENSE_FORM_FIELDS.date.label}
+                  </label>
                   <ExpenseDatePicker
                     id="inbox-preview-expense-date"
                     value={expenseDate}
-                    onChange={setExpenseDate}
+                    onChange={(nextDate) => {
+                      setExpenseDate(nextDate);
+                      setReviewFeedback(null);
+                    }}
                     className={INPUT_CLASS}
                     disabled={saving}
                   />
                 </div>
+                {showCorePaymentAccount ? (
+                  <div data-expense-review-field="payment-account" className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <label htmlFor="edit-expense-payment-select" className={FIELD_LABEL}>
+                        {EXPENSE_FORM_FIELDS.paymentAccount.label}
+                      </label>
+                      <Link
+                        href="/settings/expenses"
+                        tabIndex={-1}
+                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                      >
+                        Manage
+                      </Link>
+                    </div>
+                    <PaymentAccountSelect
+                      id="edit-expense-payment-select"
+                      value={paymentAccountId}
+                      fallbackDisplayName={expense.paymentAccountName ?? undefined}
+                      onValueChange={(id) => {
+                        setPaymentAccountId(id);
+                        persistLastExpensePaymentAccountId(id);
+                        clearReviewFieldError("paymentAccount");
+                        setReviewFeedback(null);
+                      }}
+                      disabled={saving}
+                      onAccountsUpdated={setPaymentAccountsLocal}
+                      className={SELECT_TRIGGER_CLASS}
+                      aria-invalid={Boolean(reviewErrors.paymentAccount)}
+                      aria-describedby={
+                        reviewErrors.paymentAccount
+                          ? "edit-expense-payment-account-error"
+                          : undefined
+                      }
+                    />
+                    <ReviewFieldError
+                      id="edit-expense-payment-account-error"
+                      message={reviewErrors.paymentAccount}
+                    />
+                  </div>
+                ) : null}
+                {showCoreWorker ? (
+                  <div data-expense-review-field="worker" className="space-y-1.5">
+                    <WorkerEditField
+                      value={workerRadixValue}
+                      workers={workers}
+                      saving={saving}
+                      invalid={Boolean(reviewErrors.worker)}
+                      errorId={reviewErrors.worker ? "edit-expense-worker-error" : undefined}
+                      onChange={(nextWorkerId) => {
+                        setWorkerId(nextWorkerId);
+                        clearReviewFieldError("worker");
+                        setReviewFeedback(null);
+                      }}
+                    />
+                    <ReviewFieldError
+                      id="edit-expense-worker-error"
+                      message={reviewErrors.worker}
+                    />
+                  </div>
+                ) : null}
+                {showCorePaymentSource ? (
+                  <div data-expense-review-field="payment-source" className="space-y-1.5">
+                    <PaymentSourceEditField
+                      value={sourceType}
+                      saving={saving}
+                      onChange={(nextSourceType) => {
+                        setSourceType(nextSourceType);
+                        setReviewFeedback(null);
+                      }}
+                    />
+                  </div>
+                ) : null}
                 {presentation === "dialog" ? (
                   <>
                     <WorkerEditField
@@ -1647,7 +2342,10 @@ export function ExpenseInboxPreviewModal({
                   <ExpenseItemsField
                     idPrefix="edit-expense"
                     items={items}
-                    onItemsChange={setItems}
+                    onItemsChange={(nextItems) => {
+                      setItems(nextItems);
+                      setReviewFeedback(null);
+                    }}
                     disabled={saving}
                     labelClassName={FIELD_LABEL}
                     inputClassName={INPUT_CLASS}
@@ -1657,7 +2355,10 @@ export function ExpenseInboxPreviewModal({
                     <label className={FIELD_LABEL}>{EXPENSE_FORM_FIELDS.description.label}</label>
                     <Textarea
                       value={notes}
-                      onChange={(event) => setNotes(event.target.value)}
+                      onChange={(event) => {
+                        setNotes(event.target.value);
+                        setReviewFeedback(null);
+                      }}
                       className={cn(INPUT_CLASS, "min-h-[88px] resize-y py-2")}
                       placeholder="Optional"
                       disabled={saving}
@@ -1670,17 +2371,28 @@ export function ExpenseInboxPreviewModal({
               <ModalSection title="Additional">
                 {presentation === "panel" ? (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <WorkerEditField
-                      value={workerRadixValue}
-                      workers={workers}
-                      saving={saving}
-                      onChange={setWorkerId}
-                    />
-                    <PaymentSourceEditField
-                      value={sourceType}
-                      saving={saving}
-                      onChange={setSourceType}
-                    />
+                    {!showCoreWorker ? (
+                      <WorkerEditField
+                        value={workerRadixValue}
+                        workers={workers}
+                        saving={saving}
+                        onChange={(nextWorkerId) => {
+                          setWorkerId(nextWorkerId);
+                          clearReviewFieldError("worker");
+                          setReviewFeedback(null);
+                        }}
+                      />
+                    ) : null}
+                    {!showCorePaymentSource ? (
+                      <PaymentSourceEditField
+                        value={sourceType}
+                        saving={saving}
+                        onChange={(nextSourceType) => {
+                          setSourceType(nextSourceType);
+                          setReviewFeedback(null);
+                        }}
+                      />
+                    ) : null}
                   </div>
                 ) : null}
                 <div className={presentation === "panel" ? "mt-4" : undefined}>
@@ -1725,31 +2437,35 @@ export function ExpenseInboxPreviewModal({
                       className={SELECT_TRIGGER_CLASS}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <label className={FIELD_LABEL}>
-                        {EXPENSE_FORM_FIELDS.paymentAccount.label}
-                      </label>
-                      <Link
-                        href="/settings/expenses"
-                        className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
-                      >
-                        Manage
-                      </Link>
+                  {!showCorePaymentAccount ? (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className={FIELD_LABEL}>
+                          {EXPENSE_FORM_FIELDS.paymentAccount.label}
+                        </label>
+                        <Link
+                          href="/settings/expenses"
+                          className="text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                        >
+                          Manage
+                        </Link>
+                      </div>
+                      <PaymentAccountSelect
+                        id="edit-expense-payment-select"
+                        value={paymentAccountId}
+                        fallbackDisplayName={expense.paymentAccountName ?? undefined}
+                        onValueChange={(id) => {
+                          setPaymentAccountId(id);
+                          persistLastExpensePaymentAccountId(id);
+                          clearReviewFieldError("paymentAccount");
+                          setReviewFeedback(null);
+                        }}
+                        disabled={saving}
+                        onAccountsUpdated={setPaymentAccountsLocal}
+                        className={SELECT_TRIGGER_CLASS}
+                      />
                     </div>
-                    <PaymentAccountSelect
-                      id="edit-expense-payment-select"
-                      value={paymentAccountId}
-                      fallbackDisplayName={expense.paymentAccountName ?? undefined}
-                      onValueChange={(id) => {
-                        setPaymentAccountId(id);
-                        persistLastExpensePaymentAccountId(id);
-                      }}
-                      disabled={saving}
-                      onAccountsUpdated={setPaymentAccountsLocal}
-                      className={SELECT_TRIGGER_CLASS}
-                    />
-                  </div>
+                  ) : null}
                 </div>
               </ModalSection>
 
@@ -1771,11 +2487,113 @@ export function ExpenseInboxPreviewModal({
         )}
       </div>
 
-      {mode === "preview" ? (
+      {inlineReviewWorkspace ? (
+        <div
+          data-expense-inline-review-actions
+          className="expense-detail-actions flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-elevated,var(--neo-surface-raised))] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        >
+          <div className="flex flex-wrap items-center gap-1">
+            {previewNav?.queuePosition ? (
+              <span className="mr-1 text-[11px] font-medium tabular-nums text-[var(--eo-text-secondary,var(--neo-text-secondary))]">
+                {previewNav.queuePosition}
+              </span>
+            ) : null}
+            {previewNav ? (
+              <>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(PREVIEW_QUIET_BUTTON, "h-9 px-2.5")}
+                  disabled={!previewNav.canPrev || saving || markBusy}
+                  onClick={() => requestQueueNavigation(previewNav.onPrev)}
+                >
+                  Previous
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className={cn(PREVIEW_QUIET_BUTTON, "h-9 px-2.5")}
+                  disabled={!previewNav.canNext || saving || markBusy}
+                  onClick={() => requestQueueNavigation(previewNav.onNext)}
+                >
+                  Next
+                </Button>
+              </>
+            ) : null}
+          </div>
+          <div
+            data-expense-review-status
+            role={reviewFeedback?.kind === "error" ? "alert" : "status"}
+            aria-live={reviewFeedback?.kind === "error" ? "assertive" : "polite"}
+            className={cn(
+              "min-w-0 flex-1 px-2 text-center text-[11px] leading-4",
+              reviewFeedback?.kind === "error"
+                ? "text-[var(--eo-danger)]"
+                : "text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]"
+            )}
+          >
+            {reviewStatusMessage}
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(PREVIEW_SECONDARY_BUTTON, "h-11 min-h-11 min-w-[76px] px-4")}
+              disabled={!reviewDraftDirty || saving || markBusy}
+              onClick={() => void handleSave(false)}
+              aria-keyshortcuts="Meta+S Control+S"
+            >
+              <SubmitSpinner loading={saving && !markBusy} className="mr-2" />
+              Save
+            </Button>
+            {showMarkDone ? (
+              <Button
+                type="button"
+                size="sm"
+                data-expense-approval-action
+                className="h-11 min-h-11 min-w-[132px] rounded-md border border-[var(--eo-success-border)] bg-[var(--eo-success-soft)] px-5 text-[var(--eo-success)] shadow-none hover:bg-[var(--eo-success-soft)] hover:brightness-[0.96] focus-visible:ring-[var(--eo-focus-ring)]"
+                disabled={saving || markBusy}
+                onClick={() => void handleInlineReviewComplete()}
+                aria-keyshortcuts="Meta+Enter Control+Enter"
+              >
+                <SubmitSpinner loading={saving || markBusy} className="mr-2" />
+                {inboxUploadPreview && previewNav?.canNext
+                  ? "Approve & Next"
+                  : inboxUploadPreview
+                    ? "Approve"
+                    : "Mark Done"}
+              </Button>
+            ) : onSaveAndNext ? (
+              <Button
+                type="button"
+                size="sm"
+                data-expense-save-and-next
+                className={cn(
+                  PREVIEW_PRIMARY_BUTTON,
+                  "h-11 min-h-11 min-w-[132px] justify-center px-5"
+                )}
+                disabled={!reviewDraftDirty || saving || markBusy}
+                onClick={() => void handleSave(true)}
+              >
+                <SubmitSpinner loading={saving} className="mr-2" />
+                Save & Next
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : mode === "preview" ? (
         <div className="expense-detail-actions flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-elevated,var(--neo-surface-raised))] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="flex flex-wrap gap-1">
             {previewNav ? (
               <>
+                {previewNav.queuePosition ? (
+                  <span className="mr-1 self-center text-[11px] text-[var(--eo-text-tertiary,var(--neo-text-tertiary))]">
+                    {previewNav.queuePosition}
+                  </span>
+                ) : null}
                 <Button
                   type="button"
                   variant="ghost"
@@ -1826,12 +2644,17 @@ export function ExpenseInboxPreviewModal({
                 type="button"
                 variant="outline"
                 size="sm"
-                className={cn(PREVIEW_SECONDARY_BUTTON, "h-9 min-w-[108px]")}
+                data-expense-approval-action
+                className="h-9 min-w-[108px] rounded-md border-[var(--eo-success-border)] bg-[var(--eo-success-soft)] text-[var(--eo-success)] shadow-none hover:bg-[var(--eo-success-soft)] hover:brightness-[0.96] focus-visible:ring-[var(--eo-focus-ring)]"
                 disabled={markBusy}
                 onClick={() => void handleMarkReviewed()}
               >
                 <SubmitSpinner loading={markBusy} className="mr-2" />
-                {inboxUploadPreview ? "Approve" : "Mark Done"}
+                {inboxUploadPreview && previewNav?.canNext
+                  ? "Approve & Next"
+                  : inboxUploadPreview
+                    ? "Approve"
+                    : "Mark Done"}
               </Button>
             ) : null}
           </div>
@@ -1885,12 +2708,34 @@ export function ExpenseInboxPreviewModal({
     return (
       <aside
         data-expense-detail-panel
-        data-expense-detail-mode={mode}
-        aria-label={mode === "preview" ? "Expense detail" : "Edit expense"}
+        data-expense-detail-mode={detailMode}
+        aria-label={
+          inlineReviewWorkspace
+            ? "Receipt review"
+            : mode === "preview"
+              ? evidenceFirst
+                ? "Receipt detail"
+                : "Expense detail"
+              : evidenceFirst
+                ? "Edit receipt details"
+                : "Edit expense"
+        }
         className="expense-detail-panel expenses-ui-dialog flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[10px] border border-[var(--eo-border,var(--neo-border))] bg-[var(--eo-surface-elevated,var(--neo-surface-raised))] text-[var(--eo-text-primary,var(--neo-text-primary))]"
         onKeyDown={handlePanelKeyDown}
       >
-        {detailSurface}
+        {evidenceFirst ? (
+          <div data-expense-review-workspace className="expense-review-workspace min-h-0 flex-1">
+            {receiptReviewStage}
+            <div
+              data-expense-review-panel
+              className="expense-review-panel flex min-h-0 min-w-0 flex-col overflow-hidden"
+            >
+              {detailSurface}
+            </div>
+          </div>
+        ) : (
+          detailSurface
+        )}
       </aside>
     );
   }
@@ -1898,13 +2743,14 @@ export function ExpenseInboxPreviewModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        data-expense-component-surface="receipt-review"
         onPointerDownOutside={(event) => {
           if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
         }}
         onInteractOutside={(event) => {
           if (eventTargetsAttachmentPreviewModal(event)) event.preventDefault();
         }}
-        className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden border-[var(--neo-border)] bg-[var(--neo-surface-base)] p-0 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
+        className="expenses-ui-dialog flex max-h-[min(92vh,820px)] w-full max-w-[560px] flex-col gap-0 overflow-hidden rounded-[12px] border-[var(--eo-border-floating)] bg-[var(--eo-depth-l5)] p-0 text-[var(--eo-text-primary)] shadow-[var(--eo-shadow-task)]"
       >
         {detailSurface}
       </DialogContent>
