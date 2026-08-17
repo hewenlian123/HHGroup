@@ -54,7 +54,7 @@ export type HhProjectOsIconKey =
   | "workerSummary"
   | "workers";
 
-export type HhProjectOsBadge = "expenseInbox" | "systemHealth";
+export type HhProjectOsBadge = "systemHealth";
 
 export type HhProjectOsNavItem = {
   type?: "item";
@@ -164,19 +164,17 @@ export const HH_PROJECT_OS_NAV_SECTIONS = [
       { href: "/financial/deposits", label: "Deposits", icon: "deposits" },
       { type: "subheader", label: "AP" },
       { href: "/bills", label: "Bills", icon: "bills", aliases: ["/financial/bills"] },
-      { href: "/financial/expenses", label: "Expenses", icon: "expenses" },
       {
-        href: UPLOAD_RECEIPT_ACTION.href,
-        label: "Receipt Inbox",
-        icon: "receipts",
-        badge: "expenseInbox",
-        aliases: ["/financial/receipt-queue"],
-      },
-      {
-        href: "/labor/reimbursements",
-        label: "Reimbursements",
-        icon: "reimbursements",
-        aliases: ["/financial/reimbursements"],
+        href: "/financial/expenses",
+        label: "Expense Operations",
+        icon: "expenses",
+        aliases: [
+          UPLOAD_RECEIPT_ACTION.href,
+          "/financial/receipt-queue",
+          "/labor/reimbursements",
+          "/financial/reimbursements",
+          "/labor/receipts",
+        ],
       },
       { href: "/financial/commissions", label: "Commission Payments", icon: "commission" },
       { type: "subheader", label: "Cash" },
@@ -677,10 +675,10 @@ export const HH_PROJECT_OS_COMMAND_ITEMS = [
   },
   {
     id: "go-expenses",
-    label: "Go to Expenses",
-    description: "Expenses, inbox, and receipt workflow",
+    label: "Go to Expense Operations",
+    description: "Open Expenses, Receipt Inbox, and Reimbursements",
     href: "/financial/expenses",
-    keywords: ["receipts", "costs", "ap", "inbox"],
+    keywords: ["expense operations", "expenses", "receipts", "costs", "ap", "inbox"],
     icon: "expenses",
   },
   {

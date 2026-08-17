@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
+
 const OPEN_SECTIONS = {
   DASHBOARD: true,
   PROJECTS: true,
@@ -71,10 +73,10 @@ async function expectNoVisibleAppError(page: Page) {
   ).not.toBeVisible();
 }
 
-async function waitForRouteSmoke(page: Page, path: string) {
+async function waitForRouteSmoke(page: Page, path: string, expectedPath = path) {
   await page.goto(path);
   await page.waitForLoadState("domcontentloaded");
-  await expect(page).toHaveURL(new RegExp(`${escapeRegExp(path)}(?:[?#].*)?$`), {
+  await expect(page).toHaveURL(new RegExp(`${escapeRegExp(expectedPath)}(?:[?#].*)?$`), {
     timeout: 30_000,
   });
 
@@ -120,6 +122,7 @@ async function openCommandPalette(page: Page) {
 test.describe("HH Project OS sidebar final pass", () => {
   test.beforeEach(async ({ page }) => {
     await prepareStableSidebar(page);
+    await loginAsE2EOwner(page, "/dashboard");
   });
 
   test("desktop sidebar presents the practical daily IA without losing high-use leaves", async ({
@@ -147,18 +150,16 @@ test.describe("HH Project OS sidebar final pass", () => {
       "Deposits",
       "AP",
       "Bills",
-      "Expenses",
-      "Receipt Inbox",
-      "Reimbursements",
+      "Expense Operations",
       "Commission Payments",
       "Cash",
       "Accounts",
       "Bank Transactions",
       "Cash Flow",
       "Reports",
+      "Workforce",
       "Customers",
-      "Worker Center",
-      "Payroll Summary",
+      "Workers",
       "Vendors",
       "Subcontractors",
       "Documents",
@@ -178,17 +179,22 @@ test.describe("HH Project OS sidebar final pass", () => {
         timeout: 10_000,
       });
     }
+    await expect(visibleSidebar(page).getByText("Expense Operations", { exact: true })).toHaveCount(
+      1
+    );
+    await expect(visibleSidebar(page).getByText("Expenses", { exact: true })).toHaveCount(0);
+    await expect(visibleSidebar(page).getByText("Receipt Inbox", { exact: true })).toHaveCount(0);
+    await expect(visibleSidebar(page).getByText("Reimbursements", { exact: true })).toHaveCount(0);
 
-    const workerCenterBox = await navLink(page, "Worker Center").boundingBox();
+    const workersBox = await navLink(page, "Workers").boundingBox();
     const reportsBox = await navLink(page, "Reports").boundingBox();
     const systemHealthBox = await navLink(page, "System Health").boundingBox();
-    if (!workerCenterBox || !reportsBox || !systemHealthBox) {
-      throw new Error("Expected Worker Center, Reports, and System Health sidebar links to render");
+    if (!workersBox || !reportsBox || !systemHealthBox) {
+      throw new Error("Expected Workers, Reports, and System Health sidebar links to render");
     }
-    expect(
-      reportsBox.y,
-      "Reports should sit after Worker Center in the main sidebar IA"
-    ).toBeGreaterThan(workerCenterBox.y);
+    expect(reportsBox.y, "Reports should sit after Workers in the main sidebar IA").toBeGreaterThan(
+      workersBox.y
+    );
     expect(
       reportsBox.y,
       "Reports should sit before System links in the main sidebar IA"
@@ -222,9 +228,9 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/financial/payments", active: "Payments Received" },
       { path: "/financial/deposits", active: "Deposits" },
       { path: "/bills", active: "Bills" },
-      { path: "/financial/expenses", active: "Expenses" },
-      { path: "/financial/inbox", active: "Receipt Inbox" },
-      { path: "/labor/reimbursements", active: "Reimbursements" },
+      { path: "/financial/expenses", active: "Expense Operations" },
+      { path: "/financial/inbox", active: "Expense Operations" },
+      { path: "/labor/reimbursements", active: "Expense Operations" },
       { path: "/financial/commissions", active: "Commission Payments" },
       { path: "/financial/accounts", active: "Accounts" },
       { path: "/financial/bank", active: "Bank Transactions" },
@@ -232,9 +238,9 @@ test.describe("HH Project OS sidebar final pass", () => {
       { path: "/reports", active: "Reports" },
       { path: "/customers", active: "Customers" },
       { path: "/financial/vendors", active: "Vendors" },
-      { path: "/workers", active: "Worker Center" },
-      { path: "/financial/inbox/worker", active: "Receipt Inbox" },
-      { path: "/labor/payroll", active: "Payroll Summary" },
+      { path: "/workers", active: "Workers" },
+      { path: "/financial/inbox/worker", active: "Expense Operations" },
+      { path: "/labor/payroll", expectedPath: "/reports/workforce", active: "Workforce" },
       { path: "/subcontractors", active: "Subcontractors" },
       { path: "/documents", active: "Documents" },
       { path: "/site-photos", active: "Site Photos" },
@@ -248,7 +254,7 @@ test.describe("HH Project OS sidebar final pass", () => {
 
     for (const route of routes) {
       await test.step(route.path, async () => {
-        await waitForRouteSmoke(page, route.path);
+        await waitForRouteSmoke(page, route.path, route.expectedPath);
         await expectActiveSidebarItem(page, route.active);
       });
     }
@@ -259,22 +265,22 @@ test.describe("HH Project OS sidebar final pass", () => {
     await page.setViewportSize({ width: 390, height: 844 });
 
     for (const route of [
-      { path: "/financial/vendors", bottom: "People" },
+      { path: "/financial/vendors", bottom: "Directory" },
       { path: "/bills", bottom: "Financial" },
       { path: "/site-photos", bottom: "Documents" },
       { path: "/inspection-log", bottom: "Documents" },
       { path: "/estimates", bottom: "Projects" },
       { path: "/labor", bottom: "Projects" },
-      { path: "/labor/payroll", bottom: "People" },
-      { path: "/labor/payments", bottom: "People" },
+      { path: "/labor/payroll", expectedPath: "/reports/workforce", bottom: "Reports" },
+      { path: "/labor/payments", expectedPath: "/reports/workforce", bottom: "Reports" },
       { path: "/labor/reimbursements", bottom: "Financial" },
       { path: "/financial/inbox/worker", bottom: "Financial" },
-      { path: "/workers/summary", bottom: "People" },
+      { path: "/workers/summary", expectedPath: "/reports/workforce", bottom: "Reports" },
       { path: "/dashboard/cashflow", bottom: "Financial" },
       { path: "/reports", bottom: "Reports" },
     ]) {
       await test.step(route.path, async () => {
-        await waitForRouteSmoke(page, route.path);
+        await waitForRouteSmoke(page, route.path, route.expectedPath);
         const bottom = page.getByRole("navigation", { name: "Bottom navigation" });
         await expect(
           bottom.getByRole("link", { name: new RegExp(`^${route.bottom}$`) })
@@ -291,6 +297,12 @@ test.describe("HH Project OS sidebar final pass", () => {
       visibleSidebar(page).getByText("Material Selections", { exact: true })
     ).toBeVisible();
     await expect(visibleSidebar(page).getByText("Worker Receipts", { exact: true })).toHaveCount(0);
+    await expect(visibleSidebar(page).getByText("Expense Operations", { exact: true })).toHaveCount(
+      1
+    );
+    await expect(visibleSidebar(page).getByText("Expenses", { exact: true })).toHaveCount(0);
+    await expect(visibleSidebar(page).getByText("Receipt Inbox", { exact: true })).toHaveCount(0);
+    await expect(visibleSidebar(page).getByText("Reimbursements", { exact: true })).toHaveCount(0);
     await expect(visibleSidebar(page).getByText("Cash Flow", { exact: true })).toBeVisible();
     await expect(navLink(page, "Reports")).toBeVisible();
     await navLink(page, "Reports").click();
@@ -304,12 +316,13 @@ test.describe("HH Project OS sidebar final pass", () => {
     const dialog = await openCommandPalette(page);
 
     for (const item of [
+      { query: "expense operations", label: "Go to Expense Operations" },
       { query: "material selections", label: "Go to Material Selections" },
       { query: "punch list", label: "Go to Punch List" },
       { query: "receipt inbox", label: "Go to Receipt Inbox" },
       { query: "upload receipt", label: "Upload Receipt" },
-      { query: "worker summary", label: "Go to Worker Summary" },
-      { query: "worker balances", label: "Go to Worker Balances" },
+      { query: "worker summary", label: "Go to Workforce Overview" },
+      { query: "worker balances", label: "Go to Workforce Balances" },
       { query: "worker submitted", label: "Go to Worker Submitted Receipts" },
       { query: "worker invoices", label: "Go to Worker Invoices" },
       { query: "cash flow", label: "Go to Cash Flow" },
@@ -335,15 +348,19 @@ test.describe("HH Project OS sidebar final pass", () => {
 
     for (const route of [
       { path: "/bills", title: "Financial › AP › Bills" },
-      { path: "/financial/vendors", title: "People › Vendors" },
-      { path: "/labor/payroll", title: "People › Payroll Summary" },
+      { path: "/financial/vendors", title: "Directory › Vendors" },
+      {
+        path: "/labor/payroll",
+        expectedPath: "/reports/workforce",
+        title: "Reports › Workforce",
+      },
       { path: "/materials", title: "Projects › Material Selections" },
       { path: "/dashboard/cashflow", title: "Financial › Cash › Cash Flow" },
       { path: "/reports", title: "Reports" },
       { path: "/system-health", title: "Settings › Admin Center › System Health" },
     ]) {
       await test.step(route.path, async () => {
-        await waitForRouteSmoke(page, route.path);
+        await waitForRouteSmoke(page, route.path, route.expectedPath);
         await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toHaveAttribute(
           "title",
           route.title

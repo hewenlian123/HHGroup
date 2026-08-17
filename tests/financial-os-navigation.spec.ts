@@ -1,5 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { loginAsE2EOwner } from "./e2e-auth-owner";
+
 const OPEN_SECTIONS = {
   DASHBOARD: true,
   PROJECTS: true,
@@ -14,6 +16,7 @@ type FinancialRoute = {
   label: string;
   path: string;
   heading: RegExp;
+  mobileHeading?: RegExp;
   activeLabel: string;
 };
 
@@ -54,13 +57,13 @@ const financialRoutes: FinancialRoute[] = [
     label: "Expenses",
     path: "/financial/expenses",
     heading: /^Expenses$/i,
-    activeLabel: "Expenses",
+    activeLabel: "Expense Operations",
   },
   {
     label: "Receipt Inbox",
     path: "/financial/inbox",
     heading: /^Receipt Inbox$/i,
-    activeLabel: "Receipt Inbox",
+    activeLabel: "Expense Operations",
   },
   {
     label: "Accounts",
@@ -84,13 +87,14 @@ const financialRoutes: FinancialRoute[] = [
     label: "Commission Payments",
     path: "/financial/commissions",
     heading: /^Commission Payments$/i,
+    mobileHeading: /^Commissions$/i,
     activeLabel: "Commission Payments",
   },
   {
     label: "Reimbursements",
     path: "/labor/reimbursements",
     heading: /^(Worker Reimbursements|Reimbursements)$/i,
-    activeLabel: "Reimbursements",
+    activeLabel: "Expense Operations",
   },
 ];
 
@@ -144,9 +148,7 @@ async function expectFinancialGroupsVisible(page: Page) {
     "Deposits",
     "AP",
     "Bills",
-    "Expenses",
-    "Receipt Inbox",
-    "Reimbursements",
+    "Expense Operations",
     "Commission Payments",
     "Cash",
     "Accounts",
@@ -171,7 +173,7 @@ async function expectNoVisibleAppError(page: Page) {
   ).not.toBeVisible();
 }
 
-async function waitForRouteReady(page: Page, route: FinancialRoute) {
+async function waitForRouteReady(page: Page, route: FinancialRoute, heading = route.heading) {
   await page.waitForLoadState("domcontentloaded");
   await expect(page).toHaveURL(routeUrlPattern(route.path), { timeout: 30_000 });
 
@@ -180,7 +182,7 @@ async function waitForRouteReady(page: Page, route: FinancialRoute) {
   await expect(main.getByText(/^Loading[.…]*$/).first())
     .not.toBeVisible({ timeout: 60_000 })
     .catch(() => undefined);
-  await expect(main.getByRole("heading", { name: route.heading }).first()).toBeVisible({
+  await expect(main.getByRole("heading", { name: heading }).first()).toBeVisible({
     timeout: 30_000,
   });
   await expectNoVisibleAppError(page);
@@ -215,6 +217,7 @@ async function expectNoHorizontalOverflow(page: Page) {
 test.describe("Financial OS navigation grouping", () => {
   test.beforeEach(async ({ page }) => {
     await prepareStableSidebar(page);
+    await loginAsE2EOwner(page, "/dashboard");
   });
 
   test("desktop sidebar groups Financial into final OS hubs and keeps routes compatible", async ({
@@ -251,6 +254,16 @@ test.describe("Financial OS navigation grouping", () => {
     await expect(page.getByRole("heading", { name: /^Finance Overview$/i })).toBeVisible({
       timeout: 30_000,
     });
+
+    await page.goto("/financial/receipt-queue");
+    await expect(page).toHaveURL(/\/financial\/inbox(?:[?#].*)?$/, { timeout: 30_000 });
+    await ensureFinancialSectionOpen(page);
+    await expectActiveSidebarItem(page, "Expense Operations");
+
+    await page.goto("/labor/receipts");
+    await expect(page).toHaveURL(/\/financial\/inbox\/worker(?:[?#].*)?$/, { timeout: 30_000 });
+    await ensureFinancialSectionOpen(page);
+    await expectActiveSidebarItem(page, "Expense Operations");
   });
 
   test("mobile drawer exposes Financial OS groups without horizontal overflow", async ({
@@ -275,7 +288,7 @@ test.describe("Financial OS navigation grouping", () => {
     ]) {
       await test.step(route.label, async () => {
         await page.goto(route.path);
-        await waitForRouteReady(page, route);
+        await waitForRouteReady(page, route, route.mobileHeading ?? route.heading);
         await expect(
           page
             .getByRole("navigation", { name: "Bottom navigation" })

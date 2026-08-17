@@ -43,18 +43,9 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { createBrowserClient } from "@/lib/supabase";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { readStoredExpenseSort } from "@/lib/expense-list-sort-storage";
-import { countExpensesMatchingInboxPool } from "@/lib/expense-workflow-status";
 import { prefetchFinancialRoute } from "@/lib/financial-nav-prefetch";
 import { OWNER_NAV_PREFETCH_ROUTES, prefetchRoutes, runWhenIdle } from "@/lib/route-prefetch";
 import { companyProfileQueryKey, fetchCompanyProfileForNav } from "@/lib/queries/companyProfile";
-import {
-  buildExpensesQueryKey,
-  expenseListQueryStaleMs,
-  expensesQueryKeyRoot,
-  fetchExpenses,
-} from "@/lib/queries/expenses";
-import { RECEIPT_QUEUE_CHANGED_EVENT } from "@/lib/receipt-queue";
 import { getCompanyInitials } from "@/lib/company-profile";
 import { useSystemHealth } from "@/contexts/system-health-context";
 import {
@@ -116,19 +107,6 @@ const NAV_ICON_MAP: Record<HhProjectOsIconKey, LucideIcon> = {
   workers: Users,
 };
 
-/** Bumps when `count` changes so the badge remounts and the one-shot animation runs (skip initial mount). */
-function useReceiptQueueCountAnimKey(count: number) {
-  const prev = React.useRef<number | null>(null);
-  const [animKey, setAnimKey] = React.useState(0);
-  React.useEffect(() => {
-    if (prev.current !== null && prev.current !== count) {
-      setAnimKey((k) => k + 1);
-    }
-    prev.current = count;
-  }, [count]);
-  return animKey;
-}
-
 function navIntentPrefetchProps(
   href: string,
   run: (h: string) => void
@@ -187,17 +165,6 @@ export function Sidebar({
   const orgName = companyProfile?.org_name?.trim() || "HH Group";
   const logoUrl = companyProfile?.logo_url ?? null;
 
-  const expenseSortForInboxBadge = readStoredExpenseSort();
-  const { data: expenseInboxPoolCount = 0 } = useQuery({
-    queryKey: buildExpensesQueryKey(expenseSortForInboxBadge),
-    queryFn: () => fetchExpenses(expenseSortForInboxBadge),
-    select: (rows) => countExpensesMatchingInboxPool(rows),
-    enabled: Boolean(prefetchSupabase),
-    staleTime: expenseListQueryStaleMs,
-    refetchInterval: 60_000,
-    refetchOnWindowFocus: false,
-  });
-  const expenseInboxPoolAnimKey = useReceiptQueueCountAnimKey(expenseInboxPoolCount);
   const sectionsInitDone = React.useRef(false);
 
   React.useEffect(() => {
@@ -234,17 +201,6 @@ export function Sidebar({
     }
     return null;
   }, [itemMatchesPath]);
-
-  React.useEffect(() => {
-    const onQueue = () => {
-      void queryClient.invalidateQueries({
-        queryKey: expensesQueryKeyRoot,
-        refetchType: "active",
-      });
-    };
-    window.addEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onQueue);
-    return () => window.removeEventListener(RECEIPT_QUEUE_CHANGED_EVENT, onQueue);
-  }, [queryClient]);
 
   React.useEffect(() => {
     if (sectionsInitDone.current) return;
@@ -304,12 +260,6 @@ export function Sidebar({
   }, []);
 
   const { systemHealth } = useSystemHealth();
-  const navLabelForItem = React.useCallback(
-    (item: HhProjectOsNavItem) =>
-      item.badge === "expenseInbox" ? `${item.label} (${expenseInboxPoolCount})` : item.label,
-    [expenseInboxPoolCount]
-  );
-
   /** Nav row: inactive label always readable; hover adjusts background only. */
   const navRowClass = (active: boolean) =>
     cn(
@@ -342,8 +292,6 @@ export function Sidebar({
       ? cn("h-[15px] w-[15px] shrink-0", active ? "text-amber-300" : "text-amber-400")
       : navIconClass(active);
     const iconOnly = options?.iconOnly ?? false;
-    const navLabel = navLabelForItem(item);
-
     return (
       <Link
         key={item.href}
@@ -351,43 +299,13 @@ export function Sidebar({
         prefetch={false}
         onClick={onNavigate}
         {...navIntentPrefetchProps(item.href, prefetchNavRoute)}
-        title={iconOnly ? navLabel : undefined}
-        aria-label={iconOnly ? navLabel : undefined}
+        title={iconOnly ? item.label : undefined}
+        aria-label={iconOnly ? item.label : undefined}
+        aria-current={active ? "page" : undefined}
         className={navRowClass(active)}
       >
-        {item.badge === "expenseInbox" && iconOnly ? (
-          <div className="relative flex shrink-0 items-center justify-center">
-            <Icon className={iconClass} strokeWidth={1.75} />
-            {expenseInboxPoolCount > 0 ? (
-              <span
-                key={expenseInboxPoolAnimKey}
-                className={cn(
-                  "absolute -right-2 -top-1 z-[1] flex min-h-[15px] min-w-[15px] items-center justify-center rounded-sm px-1 text-[10px] font-semibold tabular-nums leading-none animate-receipt-queue-badge",
-                  active ? "text-[var(--neo-gold-soft)]" : "text-zinc-100"
-                )}
-                aria-hidden
-              >
-                {expenseInboxPoolCount > 99 ? "99+" : expenseInboxPoolCount}
-              </span>
-            ) : null}
-          </div>
-        ) : (
-          <Icon className={iconClass} strokeWidth={1.75} />
-        )}
-        {!iconOnly && (
-          <span className="flex min-w-0 flex-1 items-baseline gap-0">
-            <span className="truncate">{item.label}</span>
-            {item.badge === "expenseInbox" ? (
-              <span
-                key={expenseInboxPoolAnimKey}
-                className="inline-block shrink-0 origin-center rounded-sm px-0.5 tabular-nums animate-receipt-queue-badge"
-              >
-                {" "}
-                ({expenseInboxPoolCount})
-              </span>
-            ) : null}
-          </span>
-        )}
+        <Icon className={iconClass} strokeWidth={1.75} />
+        {!iconOnly && <span className="min-w-0 flex-1 truncate">{item.label}</span>}
       </Link>
     );
   };
