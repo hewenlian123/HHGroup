@@ -9,6 +9,7 @@ import {
   sessionIdFromAccessToken,
   TRUSTED_DEVICE_COOKIE,
 } from "@/lib/device-unlock-token";
+import { workerReceiptInboxPath } from "@/lib/expense-operations-routing";
 import { isCompatibilityAccessEnabled } from "@/lib/owner-access-mode";
 
 const INTERNAL_ADMIN_SECRET_HEADER = "x-internal-admin-secret";
@@ -368,6 +369,20 @@ export async function middleware(request: NextRequest) {
       response.headers.set("Cache-Control", "private, no-store, max-age=0");
       authenticatedResponse = response;
     }
+  }
+
+  // This must run before the legacy Labor layout/App Router tree. The old path is a
+  // saved-link compatibility boundary, not a separately rendered workspace.
+  if (pathname === "/labor/receipts") {
+    const target = request.nextUrl.clone();
+    const destination = workerReceiptInboxPath(searchParams);
+    const [destinationPathname, destinationSearch = ""] = destination.split("?");
+    target.pathname = destinationPathname;
+    target.search = destinationSearch;
+    return copyResponseCookies(
+      authenticatedResponse ?? NextResponse.next(),
+      NextResponse.redirect(target)
+    );
   }
 
   const mode = (searchParams.get("mode") ?? "").toLowerCase();

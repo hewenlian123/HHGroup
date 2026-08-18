@@ -1,6 +1,9 @@
 import type { WorkerReceiptStatus } from "@/lib/worker-receipts-db";
 
 export type ExpenseOperationsSearchParams = Record<string, string | string[] | undefined>;
+type ExpenseOperationsSearchParamSource =
+  | ExpenseOperationsSearchParams
+  | Pick<URLSearchParams, "get">;
 
 const WORKER_RECEIPT_FILTER_KEYS = [
   "project_id",
@@ -15,6 +18,20 @@ function firstQueryValue(value: string | string[] | undefined): string {
   return candidate?.trim() ?? "";
 }
 
+function hasSearchParamGetter(
+  params: ExpenseOperationsSearchParamSource
+): params is Pick<URLSearchParams, "get"> {
+  return typeof (params as Pick<URLSearchParams, "get">).get === "function";
+}
+
+function firstWorkerReceiptFilterValue(
+  params: ExpenseOperationsSearchParamSource,
+  key: (typeof WORKER_RECEIPT_FILTER_KEYS)[number]
+): string {
+  if (hasSearchParamGetter(params)) return params.get(key)?.trim() ?? "";
+  return firstQueryValue(params[key]);
+}
+
 export function normalizeWorkerReceiptStatusFilter(
   value: string | string[] | undefined
 ): WorkerReceiptStatus | "" {
@@ -26,10 +43,10 @@ export function normalizeWorkerReceiptStatusFilter(
   return "";
 }
 
-export function workerReceiptInboxPath(params: ExpenseOperationsSearchParams = {}): string {
+export function workerReceiptInboxPath(params: ExpenseOperationsSearchParamSource = {}): string {
   const next = new URLSearchParams();
   for (const key of WORKER_RECEIPT_FILTER_KEYS) {
-    const value = firstQueryValue(params[key]);
+    const value = firstWorkerReceiptFilterValue(params, key);
     if (value) next.set(key, value);
   }
   const query = next.toString();

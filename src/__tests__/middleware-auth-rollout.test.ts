@@ -107,6 +107,30 @@ describe("middleware Auth rollout behavior", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
+  it("redirects legacy worker receipts before the Labor App Router boundary and preserves only supported filters", async () => {
+    const response = await middleware(
+      request(
+        "/labor/receipts?project_id=project-a&workerId=worker-a&status=pending&date_from=2026-08-01&date_to=2026-08-15&search=discard-me"
+      )
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://preview.hh.test/financial/inbox/worker?project_id=project-a&workerId=worker-a&status=pending&date_from=2026-08-01&date_to=2026-08-15"
+    );
+  });
+
+  it("keeps legacy worker receipts protected in strict mode", async () => {
+    process.env.HH_REQUIRE_LOGIN = "true";
+
+    const response = await middleware(request("/labor/receipts?project_id=project-a"));
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("location")).toBe(
+      "https://preview.hh.test/login?redirect=%2Flabor%2Freceipts%3Fproject_id%3Dproject-a"
+    );
+  });
+
   it.each([
     `/api/financial/expenses/${EXPENSE_ID}/receipts`,
     `/api/financial/expenses/${EXPENSE_ID}/receipts/${RECEIPT_ID}/replace`,

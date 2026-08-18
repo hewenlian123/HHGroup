@@ -49,18 +49,48 @@ test.describe("Expense Operations consolidated IA", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1024, height: 768 });
-    await loginAsE2EOwner(page, "/labor/receipts");
+    await loginAsE2EOwner(page, "/financial/expenses");
+    const legacyRedirect = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === "/labor/receipts" && response.status() === 307
+    );
     await page.goto(
-      "/labor/receipts?project_id=project-a&workerId=worker-a&status=pending&search=discard-me",
+      "/labor/receipts?project_id=project-a&workerId=worker-a&status=pending&date_from=2026-08-01&date_to=2026-08-15&search=discard-me",
       { waitUntil: "domcontentloaded" }
     );
 
+    const redirectResponse = await legacyRedirect;
+    const redirectLocation = new URL(
+      redirectResponse.headers()["location"] ?? "",
+      redirectResponse.url()
+    );
+    expect(`${redirectLocation.pathname}${redirectLocation.search}`).toBe(
+      "/financial/inbox/worker?project_id=project-a&workerId=worker-a&status=pending&date_from=2026-08-01&date_to=2026-08-15"
+    );
     await expect(page).toHaveURL(
-      /\/financial\/inbox\/worker\?project_id=project-a&workerId=worker-a&status=pending$/
+      /\/financial\/inbox\/worker\?project_id=project-a&workerId=worker-a&status=pending&date_from=2026-08-01&date_to=2026-08-15$/
     );
     await expect(
       page.getByRole("heading", { name: "Worker Submitted", exact: true })
     ).toBeVisible();
+    await expect(
+      page.locator("[data-app-sidebar]:visible").getByRole("link", {
+        name: "Expense Operations",
+        exact: true,
+      })
+    ).toHaveAttribute("aria-current", "page");
+
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(
+      /\/financial\/inbox\/worker\?project_id=project-a&workerId=worker-a&status=pending&date_from=2026-08-01&date_to=2026-08-15$/
+    );
+
+    await page.goBack({ waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/\/financial\/expenses(?:\?|$)/);
+    await page.goForward({ waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(
+      /\/financial\/inbox\/worker\?project_id=project-a&workerId=worker-a&status=pending&date_from=2026-08-01&date_to=2026-08-15$/
+    );
   });
 
   test("removes Worker Receipts from peer/sidebar navigation at mobile width", async ({ page }) => {
