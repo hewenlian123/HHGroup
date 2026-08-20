@@ -120,7 +120,7 @@ async function insertCustomSectionAfter(
     name: new RegExp(`^Add Next Section after ${escapeRegExp(afterName)}$`, "i"),
   });
   await trigger.scrollIntoViewIfNeeded();
-  const workspace = page.locator("main.estimate-builder-active");
+  const workspace = page.locator("[data-app-scroll-root]");
   const scrollTopBeforeOpen = await workspace.evaluate((element) => element.scrollTop);
 
   await trigger.click();
@@ -303,9 +303,10 @@ test("Add Next Section inserts in context, preserves order, and remains responsi
     name: new RegExp(`^Add Next Section after After Middle ${suffix}$`, "i"),
   });
   await middleTrigger.click();
-  await expect(page.getByRole("listbox")).toHaveCount(1);
+  const contextualListbox = page.getByRole("listbox");
+  await expect(contextualListbox).toHaveCount(1);
   await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("option", { selected: true })).toHaveCount(1);
+  await expect(contextualListbox.getByRole("option", { selected: true })).toHaveCount(1);
   await page.keyboard.press("Escape");
   await expect(page.getByRole("listbox")).toHaveCount(0);
   await expect(middleTrigger).toBeFocused();

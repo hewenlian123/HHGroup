@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   computeSummary,
+  groupEstimateItemsByCategoryId,
   lineTotal,
   orderedCategoryEntriesForEstimateSave,
   type EstimateItemRow,
@@ -44,6 +45,26 @@ describe("estimate line item calculations", () => {
 });
 
 describe("estimate category persistence ordering", () => {
+  it("rebuilds persisted empty categories as zero-item sections", () => {
+    const sections = groupEstimateItemsByCategoryId(
+      [estimateItem({ costCode: "010000" })],
+      [
+        { costCode: "010000", displayName: "Site Work", orderIndex: 0 },
+        { costCode: "020000", displayName: "Empty Finish Section", orderIndex: 1 },
+      ]
+    );
+
+    expect(sections).toEqual([
+      expect.objectContaining({ categoryId: "010000", title: "Site Work" }),
+      {
+        categoryId: "020000",
+        title: "Empty Finish Section",
+        rows: [],
+        sectionTotal: 0,
+      },
+    ]);
+  });
+
   it("keeps item order for six-digit cost codes that JavaScript objects reorder", () => {
     const categoryNames = {
       "010000": "Site Preparation",

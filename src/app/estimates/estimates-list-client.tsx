@@ -35,12 +35,13 @@ import {
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
 import { cn } from "@/lib/utils";
+import "./estimate-list-operational.css";
 
-const PAGE_BG = "dark neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]";
+const PAGE_BG = "estimate-list-workspace text-[var(--neo-text-secondary)]";
 const FIELD =
-  "h-10 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+  "estimate-list-search-field h-10 rounded-md border border-transparent bg-[#f4f4f2] text-[14px] text-[var(--neo-text-primary)] shadow-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-[var(--neo-text-tertiary)] hover:border-[var(--neo-border)] hover:bg-white focus-visible:border-[#171717]/45 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#171717]/15";
 const PRIMARY_ACTION =
-  "rounded-md border border-[rgb(198_165_106_/_0.28)] bg-[var(--neo-gold)] text-zinc-950 shadow-sm hover:bg-[var(--neo-gold-soft)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+  "rounded-md border border-[#171717] bg-[#171717] text-white shadow-sm hover:border-[#30302e] hover:bg-[#30302e] hover:text-white focus-visible:ring-2 focus-visible:ring-[#171717]/20";
 
 export function EstimatesListClient({
   list,
@@ -122,8 +123,9 @@ export function EstimatesListClient({
 
   return (
     <div
+      data-testid="estimate-list-workspace"
       className={cn(
-        "page-container page-shell-wide page-stack py-6",
+        "page-container page-shell-wide page-stack min-h-full py-6",
         mobileListPagePaddingClass,
         "max-md:!gap-3",
         PAGE_BG
@@ -131,11 +133,13 @@ export function EstimatesListClient({
     >
       <MobileListHeader
         title="Estimates"
+        tone="page"
         fab={<MobileFabPlus href="/estimates/new" ariaLabel="New estimate" />}
       />
 
       <div className="hidden md:block">
         <PageHeader
+          className="estimate-list-page-header"
           title="Estimates"
           description="Manage proposals, pricing, and estimate workflows."
           actions={
@@ -163,18 +167,39 @@ export function EstimatesListClient({
       {errorMessage && (
         <p
           role="alert"
-          className="rounded-lg border border-[rgb(184_137_45_/_0.28)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm font-medium text-[var(--neo-gold-soft)]"
+          className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700"
         >
           {errorMessage}
         </p>
       )}
 
       {rows.length > 0 ? (
-        <div className="hidden grid-cols-1 gap-3 md:grid sm:grid-cols-2 lg:grid-cols-4">
-          <KpiTile label="Total Estimates" value={totalEstimates} meta="Active estimate records" />
-          <KpiTile label="Draft" value={draftCount} meta="Still in preparation" />
-          <KpiTile label="Sent" value={sentCount} tone="warning" meta="Awaiting owner response" />
+        <div
+          data-testid="estimate-list-summary-rail"
+          className="estimate-list-summary-rail hidden md:grid md:grid-cols-4"
+        >
           <KpiTile
+            className="estimate-list-kpi"
+            label="Total Estimates"
+            value={totalEstimates}
+            meta="Active estimate records"
+          />
+          <KpiTile
+            className="estimate-list-kpi"
+            label="Draft"
+            value={draftCount}
+            meta="Still in preparation"
+          />
+          <KpiTile
+            className="estimate-list-kpi"
+            label="Sent"
+            value={sentCount}
+            tone="warning"
+            valueClassName="!text-[#835d18]"
+            meta="Awaiting owner response"
+          />
+          <KpiTile
+            className="estimate-list-kpi"
             label="Total Value"
             value={<NeoAmount>{formatEstimateCurrency(totalValue)}</NeoAmount>}
             meta="Current list value"
@@ -182,26 +207,71 @@ export function EstimatesListClient({
         </div>
       ) : null}
 
-      {rows.length > 0 ? (
-        <>
-          <MobileSearchFiltersRow
-            filterSheetOpen={filtersOpen}
-            onOpenFilters={() => setFiltersOpen(true)}
-            activeFilterCount={activeFilterCount}
-            searchSlot={
-              <Input
-                placeholder="Search estimates…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className={FIELD}
-              />
-            }
-          />
-          <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-[var(--neo-text-secondary)]">Status</p>
+      <section data-testid="estimate-list-records" className="estimate-list-records">
+        {rows.length > 0 ? (
+          <>
+            <MobileSearchFiltersRow
+              filterSheetOpen={filtersOpen}
+              onOpenFilters={() => setFiltersOpen(true)}
+              activeFilterCount={activeFilterCount}
+              filtersTriggerClassName="estimate-list-filter-trigger"
+              searchSlot={
+                <Input
+                  aria-label="Search estimates"
+                  placeholder="Search estimates…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className={FIELD}
+                />
+              }
+            />
+            <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
+              <div className="space-y-2">
+                <label
+                  htmlFor="estimate-mobile-status-filter"
+                  className="text-xs font-medium text-[var(--neo-text-secondary)]"
+                >
+                  Status
+                </label>
+                <select
+                  id="estimate-mobile-status-filter"
+                  className={cn(FIELD, "w-full appearance-none px-3")}
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as EstimateStatus | "all")}
+                >
+                  <option value="all">All statuses</option>
+                  <option value="Draft">Draft</option>
+                  <option value="Sent">Sent</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Converted">Converted</option>
+                </select>
+              </div>
+              <Button
+                type="button"
+                className={cn("w-full", PRIMARY_ACTION)}
+                onClick={() => setFiltersOpen(false)}
+              >
+                Done
+              </Button>
+            </MobileFilterSheet>
+            <NeoToolbar className="estimate-list-toolbar hidden gap-2 p-2 md:flex md:flex-row md:items-center md:justify-between">
+              <div className="relative min-w-[260px] max-w-md flex-1">
+                <Search
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]"
+                  aria-hidden="true"
+                />
+                <Input
+                  aria-label="Search estimates"
+                  placeholder="Search estimates…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className={cn(FIELD, "pl-9")}
+                />
+              </div>
               <select
-                className={cn(FIELD, "w-full appearance-none px-3")}
+                aria-label="Filter estimates by status"
+                className={cn(FIELD, "w-full appearance-none px-3 md:w-[180px]")}
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as EstimateStatus | "all")}
               >
@@ -212,116 +282,95 @@ export function EstimatesListClient({
                 <option value="Rejected">Rejected</option>
                 <option value="Converted">Converted</option>
               </select>
-            </div>
-            <Button
-              type="button"
-              className={cn("w-full", PRIMARY_ACTION)}
-              onClick={() => setFiltersOpen(false)}
-            >
-              Done
-            </Button>
-          </MobileFilterSheet>
-          <NeoToolbar className="hidden gap-2 p-2 md:flex md:flex-row md:items-center md:justify-between">
-            <div className="relative min-w-[260px] max-w-md flex-1">
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]"
-                aria-hidden="true"
-              />
-              <Input
-                placeholder="Search estimates…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className={cn(FIELD, "pl-9")}
-              />
-            </div>
-            <select
-              className={cn(FIELD, "w-full appearance-none px-3 md:w-[180px]")}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as EstimateStatus | "all")}
-            >
-              <option value="all">All statuses</option>
-              <option value="Draft">Draft</option>
-              <option value="Sent">Sent</option>
-              <option value="Approved">Approved</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Converted">Converted</option>
-            </select>
-          </NeoToolbar>
-        </>
-      ) : null}
+            </NeoToolbar>
+          </>
+        ) : null}
 
-      {rows.length === 0 ? (
-        <>
-          <MobileEmptyState
-            icon={<FlaskConical className="h-8 w-8 opacity-80" aria-hidden />}
-            message={
-              loadWarning
-                ? "Could not load estimates."
-                : "No estimates yet. Create one to get started."
-            }
-            action={
-              !loadWarning ? (
-                <Button asChild size="sm" variant="outline">
-                  <Link href="/estimates/new">New estimate</Link>
-                </Button>
-              ) : undefined
-            }
-          />
-          <div className="hidden md:block">
-            <EmptyState
-              title={loadWarning ? "Could not load estimates" : "No estimates yet"}
-              description={
+        {rows.length === 0 ? (
+          <>
+            <MobileEmptyState
+              icon={<FlaskConical className="h-8 w-8 opacity-80" aria-hidden />}
+              message={
                 loadWarning
-                  ? "Check your connection and database configuration, then refresh."
-                  : "Create an estimate to get started."
+                  ? "Could not load estimates."
+                  : "No estimates yet. Create one to get started."
               }
-              icon={<FlaskConical className="h-5 w-5" />}
               action={
-                <Button asChild size="sm" className="h-8">
-                  <Link href="/estimates/new">New Estimate</Link>
-                </Button>
+                !loadWarning ? (
+                  <Button asChild size="sm" variant="outline">
+                    <Link href="/estimates/new">New estimate</Link>
+                  </Button>
+                ) : undefined
               }
             />
-          </div>
-        </>
-      ) : filtered.length === 0 ? (
-        <>
-          <MobileEmptyState
-            icon={<FlaskConical className="h-8 w-8 opacity-80" aria-hidden />}
-            message="No estimates match your search."
-          />
-          <div className="hidden md:block">
-            <EmptyState
-              title="No estimates match your search"
-              description="Try a different keyword or status filter."
+            <div className="hidden md:block">
+              <EmptyState
+                title={loadWarning ? "Could not load estimates" : "No estimates yet"}
+                description={
+                  loadWarning
+                    ? "Check your connection and database configuration, then refresh."
+                    : "Create an estimate to get started."
+                }
+                icon={<FlaskConical className="h-5 w-5" />}
+                action={
+                  <Button asChild size="sm" className={cn("h-9", PRIMARY_ACTION)}>
+                    <Link href="/estimates/new">New Estimate</Link>
+                  </Button>
+                }
+              />
+            </div>
+          </>
+        ) : filtered.length === 0 ? (
+          <>
+            <MobileEmptyState
+              icon={<FlaskConical className="h-8 w-8 opacity-80" aria-hidden />}
+              message="No estimates match your search."
             />
-          </div>
-        </>
-      ) : (
-        <>
-          <EstimateMobileList list={filtered} onRequestDelete={setDeleteTarget} />
-          <div className="hidden md:block">
-            <NeoTable tableClassName="min-w-[720px] lg:min-w-0">
-              <thead>
-                <tr>
-                  <th className={tableRawThClass}>Estimate #</th>
-                  <th className={tableRawThClass}>Client</th>
-                  <th className={tableRawThClass}>Project</th>
-                  <th className={tableRawThClass}>Status</th>
-                  <th className={cn(tableRawThClass, "text-right tabular-nums")}>Total</th>
-                  <th className={tableRawThClass}>Updated</th>
-                  <th className={cn(tableRawThClass, "w-10 text-right")}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((row) => (
-                  <EstimateListRow key={row.id} row={row} onRequestDelete={setDeleteTarget} />
-                ))}
-              </tbody>
-            </NeoTable>
-          </div>
-        </>
-      )}
+            <div className="hidden md:block">
+              <EmptyState
+                title="No estimates match your search"
+                description="Try a different keyword or status filter."
+              />
+            </div>
+          </>
+        ) : (
+          <>
+            <EstimateMobileList list={filtered} onRequestDelete={setDeleteTarget} />
+            <div className="hidden lg:block">
+              <NeoTable
+                className="estimate-list-table-shell"
+                tableClassName="estimate-list-table min-w-[720px] lg:min-w-0"
+              >
+                <thead>
+                  <tr>
+                    <th className={cn(tableRawThClass, "estimate-list-col-number")}>Estimate</th>
+                    <th className={cn(tableRawThClass, "estimate-list-col-client")}>Client</th>
+                    <th className={cn(tableRawThClass, "estimate-list-col-project")}>Project</th>
+                    <th className={cn(tableRawThClass, "estimate-list-col-status")}>Status</th>
+                    <th
+                      className={cn(
+                        tableRawThClass,
+                        "estimate-list-col-total text-right tabular-nums"
+                      )}
+                    >
+                      Total
+                    </th>
+                    <th className={cn(tableRawThClass, "estimate-list-col-updated")}>Updated</th>
+                    <th className={cn(tableRawThClass, "estimate-list-col-actions text-right")}>
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((row) => (
+                    <EstimateListRow key={row.id} row={row} onRequestDelete={setDeleteTarget} />
+                  ))}
+                </tbody>
+              </NeoTable>
+            </div>
+          </>
+        )}
+      </section>
       <ConfirmDialog
         open={deleteTarget != null}
         onOpenChange={(open) => {

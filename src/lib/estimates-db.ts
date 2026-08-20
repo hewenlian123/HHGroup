@@ -13,6 +13,7 @@ import {
   type EstimateDocumentStyle,
 } from "@/lib/estimate-document-style";
 import { normalizeEstimateNoteBlocks, type EstimateNoteBlock } from "@/lib/estimate-notes";
+import { resolveDuplicateEstimateLineSortOrder } from "@/lib/estimate-line-order";
 
 // —— Types ——
 
@@ -192,8 +193,7 @@ export function groupEstimateItemsByCategoryId(
   const sections: EstimateCategorySectionRow[] = [];
 
   for (const cat of sortedPersisted) {
-    const rows = byId.get(cat.costCode);
-    if (!rows?.length) continue;
+    const rows = byId.get(cat.costCode) ?? [];
     const sectionTotal = rows.reduce((s, r) => s + lineTotal(r), 0);
     sections.push({
       categoryId: cat.costCode,
@@ -1988,6 +1988,20 @@ export async function duplicateLineItemWithClient(
   const src = (rows ?? []).find((r) => String((r as { id?: string }).id) === itemId);
   if (!src) return null;
   const row = src as Record<string, unknown>;
+  const duplicateSortOrder = resolveDuplicateEstimateLineSortOrder(
+    (rows ?? []).map((candidate) => {
+      const value = candidate as Record<string, unknown>;
+      return {
+        id: String(value.id ?? ""),
+        costCode: String(value.cost_code ?? ""),
+        sortOrder:
+          value.sort_order == null || !Number.isFinite(Number(value.sort_order))
+            ? undefined
+            : Number(value.sort_order),
+      };
+    }),
+    itemId
+  );
   return addLineItemWithClient(c, estimateId, {
     costCode: (row.cost_code as string) ?? "",
     desc: `${(row.desc as string) ?? ""} (copy)`,
@@ -1997,6 +2011,7 @@ export async function duplicateLineItemWithClient(
     markupPct: 0,
     hideAmountOnPdf: Boolean(row.hide_amount_on_pdf),
     status: normalizeLineItemStatus(row.status),
+    sortOrder: duplicateSortOrder,
   });
 }
 

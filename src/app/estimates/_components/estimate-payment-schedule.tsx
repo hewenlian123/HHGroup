@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/components/toast/toast-provider";
@@ -30,10 +30,17 @@ import {
   ProposalPaymentMilestoneList,
   type ProposalPaymentMilestoneRow,
 } from "./proposal-payment-milestone-list";
+import { useEstimateDocumentSave } from "./estimate-document-save-context";
+import {
+  appendEstimateReturnPath,
+  buildCreateDraftInvoiceHref,
+  buildEstimateMilestoneReturnHref,
+} from "./estimate-workflow-continuity";
 
-type AddAction = (formData: FormData) => Promise<void>;
-type UpdateAction = (formData: FormData) => Promise<void>;
-type DeleteAction = (formData: FormData) => Promise<void>;
+type MutationResult = { ok: boolean; error?: string };
+type AddAction = (formData: FormData) => Promise<MutationResult>;
+type UpdateAction = (formData: FormData) => Promise<MutationResult>;
+type DeleteAction = (formData: FormData) => Promise<MutationResult>;
 type MarkPaidAction = (formData: FormData) => Promise<void>;
 type ReorderAction = (formData: FormData) => Promise<void>;
 type ApplyTemplateAction = (formData: FormData) => Promise<void>;
@@ -63,6 +70,11 @@ export function EstimatePaymentSchedule(props: {
     message?: string;
   };
   invoiceSummaries?: Record<string, EstimatePaymentScheduleInvoiceSummary>;
+  invoiceContext?: {
+    estimateNumber?: string | null;
+    customerName?: string | null;
+    projectName?: string | null;
+  };
   nested?: boolean;
   paymentTemplates?: PaymentScheduleTemplate[];
   addPaymentMilestoneAction: AddAction;
@@ -80,13 +92,16 @@ export function EstimatePaymentSchedule(props: {
     isLocked,
     invoiceProjectLink,
     invoiceSummaries = {},
+    invoiceContext,
     nested = false,
     addPaymentMilestoneAction,
     updatePaymentMilestoneAction,
     deletePaymentMilestoneAction,
   } = props;
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { toast } = useToast();
+  const { markUnsaved, trackMutation } = useEstimateDocumentSave();
   const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const [editingItem, setEditingItem] = React.useState<PaymentScheduleItem | null>(null);
   const [paymentDescriptionDraft, setPaymentDescriptionDraft] = React.useState("");
@@ -105,7 +120,7 @@ export function EstimatePaymentSchedule(props: {
     const invoiceError = searchParams.get("invoiceError");
     if (!invoiceError) return;
     toast({
-      title: "Send invoice failed",
+      title: "Create draft invoice failed",
       description: invoiceError,
       variant: "error",
     });
@@ -114,6 +129,44 @@ export function EstimatePaymentSchedule(props: {
   const openScheduleDrawer = (item?: PaymentScheduleItem) => {
     setEditingItem(item ?? null);
     setScheduleOpen(true);
+  };
+
+  const savePaymentMilestone = async (formData: FormData): Promise<void> => {
+    markUnsaved();
+    const action = editingItem ? updatePaymentMilestoneAction : addPaymentMilestoneAction;
+    const result = await trackMutation(`payment:${editingItem?.id ?? "new"}`, () =>
+      action(formData)
+    );
+    if (result.ok) {
+      setScheduleOpen(false);
+      setEditingItem(null);
+      router.refresh();
+      return;
+    }
+    toast({
+      title: "Save failed",
+      description: result.error ?? "Could not save this payment milestone.",
+      variant: "error",
+    });
+  };
+
+  const deletePaymentMilestone = async (item: PaymentScheduleItem): Promise<void> => {
+    markUnsaved();
+    const formData = new FormData();
+    formData.set("estimateId", estimateId);
+    formData.set("itemId", item.id);
+    const result = await trackMutation(`payment:delete:${item.id}`, () =>
+      deletePaymentMilestoneAction(formData)
+    );
+    if (result.ok) {
+      router.refresh();
+      return;
+    }
+    toast({
+      title: "Delete failed",
+      description: result.error ?? "Could not delete this payment milestone.",
+      variant: "error",
+    });
   };
 
   const totalScheduled = paymentSchedule.reduce(
@@ -195,6 +248,38 @@ export function EstimatePaymentSchedule(props: {
           </span>
         </div>
 
+        {isLocked && paymentSchedule.length > 0 && invoiceContext ? (
+          <div
+            className="mb-2 rounded-md border border-border bg-muted/35 px-3 py-2.5"
+            data-testid="estimate-invoice-readiness"
+            role="note"
+            aria-label="Draft invoice readiness"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-foreground">Draft invoice readiness</p>
+              {invoiceContext.estimateNumber ? (
+                <span className="text-[11px] tabular-nums text-muted-foreground">
+                  {invoiceContext.estimateNumber}
+                </span>
+              ) : null}
+            </div>
+            <dl className="mt-2 grid gap-x-5 gap-y-1.5 text-xs sm:grid-cols-2">
+              <div className="min-w-0">
+                <dt className="text-muted-foreground">Customer</dt>
+                <dd className="truncate font-medium text-foreground">
+                  {invoiceContext.customerName?.trim() || "Not linked"}
+                </dd>
+              </div>
+              <div className="min-w-0">
+                <dt className="text-muted-foreground">Project</dt>
+                <dd className="truncate font-medium text-foreground">
+                  {invoiceContext.projectName?.trim() || "Not linked"}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        ) : null}
+
         <ProposalPaymentMilestoneList
           milestones={milestoneRows}
           actions={(m) => {
@@ -204,9 +289,10 @@ export function EstimatePaymentSchedule(props: {
               if (item.invoiceId) {
                 const invoice = invoiceSummaries[item.invoiceId];
                 const invoiceNo = invoiceDisplayLabel(invoice?.invoiceNo);
+                const estimateReturnHref = buildEstimateMilestoneReturnHref(estimateId, item.id);
                 return (
                   <div className="flex min-w-[9rem] flex-col items-end gap-1 text-right">
-                    <span className="text-[11.5px] font-medium leading-none text-[#929CAF]">
+                    <span className="text-[11.5px] font-medium leading-none text-muted-foreground">
                       {invoiceNo}
                       {invoice?.status ? ` · ${invoice.status}` : ""}
                     </span>
@@ -215,15 +301,23 @@ export function EstimatePaymentSchedule(props: {
                       variant="outline"
                       size="sm"
                       asChild
-                      className={cn("min-h-9 px-3 text-[12.5px]", EB.actionSecondary)}
+                      className={cn("min-h-11 px-3 text-[12.5px]", EB.actionSecondary)}
                     >
-                      <Link href={`/financial/invoices/${item.invoiceId}`}>View Invoice</Link>
+                      <Link
+                        href={appendEstimateReturnPath(
+                          `/financial/invoices/${item.invoiceId}`,
+                          estimateReturnHref
+                        )}
+                      >
+                        View Invoice
+                      </Link>
                     </Button>
                   </div>
                 );
               }
 
               const canCreate = invoiceProjectLink?.canCreateInvoice !== false;
+              const estimateReturnHref = buildEstimateMilestoneReturnHref(estimateId, item.id);
               return (
                 <Button
                   type="button"
@@ -232,18 +326,16 @@ export function EstimatePaymentSchedule(props: {
                   asChild={canCreate}
                   disabled={!canCreate}
                   title={!canCreate ? invoiceProjectLink?.message : undefined}
-                  className={cn("min-h-9 px-3 text-[12.5px]", EB.actionSecondary)}
+                  className={cn("min-h-11 px-3 text-[12.5px]", EB.actionSecondary)}
                 >
                   {canCreate ? (
                     <Link
-                      href={`/financial/invoices/new?estimateId=${encodeURIComponent(
-                        estimateId
-                      )}&paymentScheduleItemId=${encodeURIComponent(item.id)}`}
+                      href={buildCreateDraftInvoiceHref(estimateId, item.id, estimateReturnHref)}
                     >
-                      Send Invoice
+                      Create Draft Invoice
                     </Link>
                   ) : (
-                    "Send Invoice"
+                    "Create Draft Invoice"
                   )}
                 </Button>
               );
@@ -263,22 +355,21 @@ export function EstimatePaymentSchedule(props: {
                 >
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <form action={deletePaymentMilestoneAction} className="inline">
-                  <input type="hidden" name="estimateId" value={estimateId} />
-                  <input type="hidden" name="itemId" value={item.id} />
+                <div className="inline">
                   <Button
-                    type="submit"
+                    type="button"
                     variant="outline"
                     size="icon"
                     className={cn(
-                      "min-h-11 min-w-11 text-red-300 hover:bg-red-500/10 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
+                      "min-h-11 min-w-11 text-red-700 hover:bg-red-50 hover:text-red-800 md:h-8 md:min-h-8 md:w-8 md:min-w-8",
                       EB.btnGhost
                     )}
                     aria-label={`Delete ${item.title}`}
+                    onClick={() => void deletePaymentMilestone(item)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                </form>
+                </div>
               </div>
             );
           }}
@@ -287,7 +378,7 @@ export function EstimatePaymentSchedule(props: {
         invoiceProjectLink &&
         !invoiceProjectLink.canCreateInvoice ? (
           <div
-            className="mt-3 rounded-md border border-amber-300/20 bg-amber-300/[0.07] px-3 py-2 text-[13px] leading-snug text-amber-100"
+            className="estimate-payment-link-warning mt-3 rounded-md border border-[#e8d8b7] bg-[#faf4e8] px-3 py-2 text-[13px] leading-snug text-[#835d18]"
             role="note"
           >
             {invoiceProjectLink.message ??
@@ -318,7 +409,7 @@ export function EstimatePaymentSchedule(props: {
               <form
                 id={PAYMENT_MILESTONE_FORM_ID}
                 key={editingItem?.id ?? "new-payment"}
-                action={editingItem ? updatePaymentMilestoneAction : addPaymentMilestoneAction}
+                action={savePaymentMilestone}
                 className={cn(EB.sheetContentInner, "max-w-none space-y-[1.125rem]")}
               >
                 <input type="hidden" name="estimateId" value={estimateId} />

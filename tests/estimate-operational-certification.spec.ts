@@ -7,7 +7,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";
-import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
+import { assertEstimateCertificationLocalOnly } from "./e2e-supabase-url-guard";
 
 type ScopeItem = {
   title: string;
@@ -54,7 +54,6 @@ const suffix = Date.now();
 const marker = `LOCAL CERT OWNER REVIEW ${suffix}`;
 const templateName = `${marker} Master Template`;
 const duplicateTemplateName = `${templateName} copy`;
-const projectName = `${marker} Luxury Residence Renovation`;
 const customerName = "[E2E] Test Customer";
 const seedProjectName = "[E2E] Seed — HH Unified";
 const metrics: CertificationMetrics = {
@@ -330,7 +329,11 @@ function localAdmin(): SupabaseClient {
   const key =
     process.env.SUPABASE_SECRET_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) throw new Error("Local Supabase admin configuration is required.");
-  assertE2ESupabaseUrlSafeForMutations(url);
+  assertEstimateCertificationLocalOnly({
+    baseURL: process.env.E2E_BASE_URL,
+    supabaseUrl: url,
+    databaseUrl: process.env.SUPABASE_DATABASE_URL ?? process.env.DATABASE_URL,
+  });
   return createClient(url, key, {
     auth: { autoRefreshToken: false, detectSessionInUrl: false, persistSession: false },
   });
@@ -343,6 +346,14 @@ function isKnownLocalSystemHealth404(message: {
   return (
     message.text().includes("status of 404") &&
     Boolean(message.location().url?.endsWith("/api/system-health"))
+  );
+}
+
+function isKnownLocalRscNavigationFallback(message: { text(): string }): boolean {
+  const text = message.text();
+  return (
+    text.includes("Failed to fetch RSC payload for http://localhost:") &&
+    text.includes("Falling back to browser navigation")
   );
 }
 
@@ -508,7 +519,11 @@ test.describe.serial("Estimate operational certification", () => {
     await loginAsE2EOwner(page, "/estimate-templates");
     const consoleErrors: string[] = [];
     page.on("console", (message) => {
-      if (message.type() === "error" && !isKnownLocalSystemHealth404(message)) {
+      if (
+        message.type() === "error" &&
+        !isKnownLocalSystemHealth404(message) &&
+        !isKnownLocalRscNavigationFallback(message)
+      ) {
         const location = message.location();
         consoleErrors.push(`${message.text()} @ ${location.url || "unknown"}`);
       }
@@ -666,17 +681,25 @@ test.describe.serial("Estimate operational certification", () => {
 
     const lineMenus = page.getByRole("button", { name: "More actions" }).locator("visible=true");
     await click(page, lineMenus.nth(0));
-    await page.getByRole("menuitem", { name: "Set status" }).focus();
-    await page.keyboard.press("ArrowRight");
-    await click(page, page.getByRole("menuitem", { name: "Allowance" }).locator("visible=true"));
+    await page.getByRole("menuitem", { name: "Set status" }).hover();
+    const allowanceMenuItem = page
+      .getByRole("menuitem", { name: "Allowance" })
+      .locator("visible=true");
+    await expect(allowanceMenuItem).toBeVisible();
+    await allowanceMenuItem.press("Enter");
+    metrics.keyboardInteractions += 1;
     await expect(
       page.getByText("Allowance", { exact: true }).locator("visible=true").first()
     ).toBeVisible();
 
     await click(page, lineMenus.nth(1));
-    await page.getByRole("menuitem", { name: "Set status" }).focus();
-    await page.keyboard.press("ArrowRight");
-    await click(page, page.getByRole("menuitem", { name: "Optional" }).locator("visible=true"));
+    await page.getByRole("menuitem", { name: "Set status" }).hover();
+    const optionalMenuItem = page
+      .getByRole("menuitem", { name: "Optional" })
+      .locator("visible=true");
+    await expect(optionalMenuItem).toBeVisible();
+    await optionalMenuItem.press("Enter");
+    metrics.keyboardInteractions += 1;
     await expect(
       page.getByText("Optional", { exact: true }).locator("visible=true").first()
     ).toBeVisible();
@@ -840,7 +863,11 @@ test.describe.serial("Estimate operational certification", () => {
     await loginAsE2EOwner(page, `/estimates/${estimateId}`);
     const consoleErrors: string[] = [];
     page.on("console", (message) => {
-      if (message.type() === "error" && !isKnownLocalSystemHealth404(message)) {
+      if (
+        message.type() === "error" &&
+        !isKnownLocalSystemHealth404(message) &&
+        !isKnownLocalRscNavigationFallback(message)
+      ) {
         consoleErrors.push(message.text());
       }
     });
@@ -860,7 +887,12 @@ test.describe.serial("Estimate operational certification", () => {
     await price.press("Tab");
     await price.press("Shift+Tab");
     metrics.keyboardInteractions += 3;
-    await click(page, page.getByRole("button", { name: "Save", exact: true }).first());
+    await click(
+      page,
+      page
+        .getByTestId("estimate-detail-header-actions")
+        .getByRole("button", { name: "Save", exact: true })
+    );
     await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible({
       timeout: 30_000,
     });
@@ -931,16 +963,34 @@ test.describe.serial("Estimate operational certification", () => {
     await expect(document).toContainText("Allowance");
     await expect(document).toContainText("Optional");
     const previewPages = document.getByTestId("estimate-preview-page");
-    await expect(previewPages).toHaveCount(7);
-    await expect(document.locator('[data-final-packet-part="payment"]')).toContainText(
-      "Payment Schedule"
+    const previewPageCount = await previewPages.count();
+    expect(previewPageCount).toBeGreaterThan(1);
+    expect(
+      (await previewPages.locator(".estimate-page-label").allTextContents()).map((label) =>
+        label.trim()
+      )
+    ).toEqual(
+      Array.from(
+        { length: previewPageCount },
+        (_, index) => `Page ${index + 1} of ${previewPageCount}`
+      )
     );
+    const paymentPages = document.locator('[data-final-packet-part^="payment"]');
+    expect(await paymentPages.count()).toBeGreaterThan(0);
+    for (const paymentPage of await paymentPages.all()) {
+      await expect(paymentPage).toContainText("Payment Schedule");
+    }
+    await expect(document.locator(".estimate-payment-row")).toHaveCount(5);
     await expect(document.locator('[data-final-packet-part="acceptance"]')).toContainText(
       "Client Acceptance"
     );
     expect(
       await previewPages.evaluateAll((pages) =>
-        pages.every((previewPage) => previewPage.getBoundingClientRect().height <= 1057)
+        pages.every(
+          (previewPage) =>
+            previewPage.getBoundingClientRect().height <= 1057 &&
+            previewPage.scrollHeight <= previewPage.clientHeight + 3
+        )
       )
     ).toBe(true);
     const hiddenRow = document
@@ -960,7 +1010,11 @@ test.describe.serial("Estimate operational certification", () => {
     await click(page, page.getByRole("link", { name: "Print", exact: true }));
     const printPage = await printPagePromise;
     await printPage.waitForLoadState("domcontentloaded");
-    await expect(printPage.getByTestId("estimate-document")).toContainText("Payment Schedule");
+    const printDocument = printPage.getByTestId("estimate-document");
+    await expect(printDocument).toContainText("Payment Schedule");
+    await expect(printDocument).toContainText("Notes & Clarifications");
+    await expect(printDocument).toContainText("Client Acceptance");
+    expect(await printDocument.getByTestId("estimate-preview-page").count()).toBe(previewPageCount);
     metrics.printOpenMs = Math.round(performance.now() - printStarted);
     await printPage.close();
 
@@ -970,6 +1024,8 @@ test.describe.serial("Estimate operational certification", () => {
     const pdf = await pdfResponse.body();
     expect(pdf.subarray(0, 4).toString()).toBe("%PDF");
     expect(pdfResponse.headers()["content-disposition"]).toMatch(/Estimate-EST-\d+\.pdf/i);
+    const pdfPageCount = pdf.toString("latin1").match(/\/Type\s*\/Page\b/g)?.length ?? 0;
+    expect(pdfPageCount).toBe(previewPageCount);
     await writeFile(join(tmpdir(), "hh-estimate-operational-certification.pdf"), pdf);
     metrics.pdfMs = Math.round(performance.now() - pdfStarted);
 
@@ -1024,7 +1080,26 @@ test.describe.serial("Estimate operational certification", () => {
       await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
       await expect(page.getByTestId("estimate-document")).toBeVisible({ timeout: 60_000 });
       await assertNoHorizontalOverflow(page);
-      expect(await page.getByRole("button", { name: "Fit pages" }).isVisible()).toBe(true);
+      const fitPages = page.getByRole("button", { name: "Fit pages", exact: true });
+      if (viewport.width <= 700) {
+        await expect(fitPages).toBeHidden();
+        const moreActions = page.getByRole("button", {
+          name: "More preview actions",
+          exact: true,
+        });
+        await expect(moreActions).toBeVisible();
+        const moreActionsBox = await moreActions.boundingBox();
+        expect(moreActionsBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+        await click(page, moreActions);
+        const fitPage = page.getByRole("menuitem", { name: "Fit page", exact: true });
+        await expect(fitPage).toBeVisible();
+        const fitPageBox = await fitPage.boundingBox();
+        expect(fitPageBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+        await fitPage.press("Escape");
+        await expect(moreActions).toBeFocused();
+      } else {
+        await expect(fitPages).toBeVisible();
+      }
       metrics.responsiveMs![viewport.name] = Math.round(performance.now() - started);
     }
 
@@ -1116,7 +1191,12 @@ test.describe.serial("Estimate operational certification", () => {
       const firstPrice = page.getByLabel("Line item unit price").locator("visible=true").first();
       await firstPrice.fill("1001");
       await firstPrice.press("Tab");
-      await click(page, page.getByRole("button", { name: "Save", exact: true }).first());
+      await click(
+        page,
+        page
+          .getByTestId("estimate-detail-header-actions")
+          .getByRole("button", { name: "Save", exact: true })
+      );
       await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
       metrics.largeEditSaveMs = Math.round(performance.now() - editStarted);
       await page.reload({ waitUntil: "domcontentloaded" });

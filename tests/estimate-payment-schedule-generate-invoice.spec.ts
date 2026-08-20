@@ -1,11 +1,35 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { mkdir } from "node:fs/promises";
 
 import { loginAsE2EOwner } from "./e2e-auth-owner";
 import { assertE2ESupabaseUrlSafeForMutations } from "./e2e-supabase-url-guard";
 
 const createdCustomerNames = new Set<string>();
 const createdProjectNames = new Set<string>();
+const WORKFLOW_SCREENSHOT_DIR = "/private/tmp/hh-estimate-workflow-continuity-screenshots";
+const CONTINUITY_VIEWPORTS = [
+  { width: 1440, height: 1000 },
+  { width: 1280, height: 900 },
+  { width: 1180, height: 820 },
+  { width: 820, height: 1180 },
+  { width: 390, height: 844 },
+] as const;
+
+async function expectNoHorizontalOverflow(page: Page): Promise<void> {
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const root = document.documentElement;
+        const app = document.querySelector<HTMLElement>("[data-app-scroll-root]");
+        return Math.max(
+          root.scrollWidth - root.clientWidth,
+          app ? app.scrollWidth - app.clientWidth : 0
+        );
+      })
+    )
+    .toBe(0);
+}
 
 test.beforeEach(async ({ page }) => {
   await loginAsE2EOwner(page, "/estimates");
@@ -248,7 +272,9 @@ async function createEstimateWithPaymentSchedule(
   await expect(page.getByText(params.scheduleTitle, { exact: true })).toBeVisible({
     timeout: 10_000,
   });
-  await expect(page.getByText(moneyText(params.expectedAmount)).first()).toBeVisible();
+  await expect(
+    page.getByText(moneyText(params.expectedAmount)).locator("visible=true").first()
+  ).toBeVisible();
 
   await page.getByRole("button", { name: "Save Estimate" }).click();
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
@@ -330,8 +356,55 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
     expectedAmount: 1200,
   });
 
-  await page.getByRole("link", { name: /^Send Invoice$/i }).click();
+  const readiness = page.getByTestId("estimate-invoice-readiness");
+  await expect(readiness).toContainText(customerName);
+  await expect(readiness).toContainText(projectName);
+  await readiness.scrollIntoViewIfNeeded();
+  await mkdir(WORKFLOW_SCREENSHOT_DIR, { recursive: true });
+  await page.screenshot({
+    path: `${WORKFLOW_SCREENSHOT_DIR}/estimate-payment-schedule-readiness-desktop.png`,
+    fullPage: false,
+  });
+  const createDraftInvoiceLink = page.getByRole("link", { name: /^Create Draft Invoice$/i });
+  await expect(createDraftInvoiceLink).toHaveAttribute("href", /returnTo=/);
+  for (const viewport of CONTINUITY_VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    await readiness.scrollIntoViewIfNeeded();
+    await expectNoHorizontalOverflow(page);
+    const createBox = await createDraftInvoiceLink.boundingBox();
+    expect(createBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await createDraftInvoiceLink.click();
   await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
+  expect(new URL(page.url()).searchParams.get("returnTo")).toMatch(
+    /^\/estimates\/[^?]+\?returnMilestone=/
+  );
+  const originContext = page.getByTestId("invoice-estimate-origin-context");
+  await expect(originContext).toContainText(customerName);
+  await expect(originContext).toContainText(projectName);
+  await expect(originContext).toContainText("Deposit / Start Work");
+  await expect(originContext).toContainText("$1,200.00");
+  const invoiceWorkspace = page.getByTestId("invoice-estimate-origin-workspace");
+  await expect(invoiceWorkspace).toBeVisible();
+  await expect(invoiceWorkspace).not.toHaveClass(/\bdark\b|neo-page-on-graphite/);
+  await expect
+    .poll(() => invoiceWorkspace.evaluate((node) => getComputedStyle(node).backgroundColor))
+    .toBe("rgb(247, 247, 246)");
+  const invoiceBackToEstimate = page.getByTestId("invoice-new-back-to-estimate");
+  await expect(invoiceBackToEstimate).toBeVisible();
+  for (const viewport of CONTINUITY_VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    await originContext.scrollIntoViewIfNeeded();
+    await expectNoHorizontalOverflow(page);
+    const backBox = await invoiceBackToEstimate.boundingBox();
+    expect(backBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({
+    path: `${WORKFLOW_SCREENSHOT_DIR}/estimate-create-draft-invoice-origin-desktop.png`,
+    fullPage: false,
+  });
   await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
   await expect(page.getByTestId("invoice-new-client-input")).toHaveValue(customerName);
   await expect(page.getByTestId("invoice-new-due-date-input")).toBeVisible();
@@ -344,6 +417,14 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
   await expect(page.getByTestId("invoice-new-line-1-rate-input")).toHaveValue("1200");
   await page.getByRole("button", { name: "Create draft invoice" }).click();
   await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+\/preview/, { timeout: 30_000 });
+  expect(new URL(page.url()).searchParams.get("returnTo")).toMatch(
+    /^\/estimates\/[^?]+\?returnMilestone=/
+  );
+  await expect(page.getByTestId("invoice-preview-return-to-estimate")).toBeVisible();
+  await page.screenshot({
+    path: `${WORKFLOW_SCREENSHOT_DIR}/estimate-invoice-preview-return-desktop.png`,
+    fullPage: false,
+  });
   const invoiceId = invoiceIdFromUrl(page.url());
 
   const { data: invoice } = await supabase
@@ -386,11 +467,12 @@ test("creates one draft invoice from an estimate payment schedule item and syncs
   await expect(page.getByRole("link", { name: /^View Invoice$/i })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByRole("link", { name: /^Send Invoice$/i })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^Create Draft Invoice$/i })).toHaveCount(0);
   await page.getByRole("link", { name: /^View Invoice$/i }).click();
   await expect(page).toHaveURL(new RegExp(`/financial/invoices/${invoiceId}`), {
     timeout: 30_000,
   });
+  await expect(page.getByTestId("invoice-detail-return-to-estimate")).toBeVisible();
 
   const { data: duplicateCheck } = await supabase
     .from("invoices")
@@ -462,11 +544,16 @@ test("creates one draft invoice for a fixed amount payment schedule item", async
     expectedAmount: 1000,
   });
 
-  await page.getByRole("link", { name: /^Send Invoice$/i }).click();
+  await page.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
   await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
   await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
   await expect(page.getByTestId("invoice-new-line-1-item-input")).toHaveValue("Progress Payment");
   await expect(page.getByTestId("invoice-new-line-1-rate-input")).toHaveValue("1000");
+  await page.getByRole("button", { name: "Cancel and return" }).click();
+  await expect(page).toHaveURL(/\/estimates\/[^?]+\?returnMilestone=/, { timeout: 30_000 });
+  await expect(page.locator("[data-estimate-payment-milestone-id]").first()).toBeFocused();
+  await page.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
+  await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
   await page.getByRole("button", { name: "Create draft invoice" }).click();
   await expect(page).toHaveURL(/\/financial\/invoices\/[^/?#]+\/preview/, { timeout: 30_000 });
   const invoiceId = invoiceIdFromUrl(page.url());
@@ -504,7 +591,7 @@ test("creates one draft invoice for a fixed amount payment schedule item", async
   await expect(page.getByRole("link", { name: /^View Invoice$/i })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByRole("link", { name: /^Send Invoice$/i })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^Create Draft Invoice$/i })).toHaveCount(0);
   await page.getByRole("link", { name: /^View Invoice$/i }).click();
   await expect(page).toHaveURL(new RegExp(`/financial/invoices/${invoiceId}`), {
     timeout: 30_000,

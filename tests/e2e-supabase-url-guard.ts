@@ -1,4 +1,7 @@
 const PROD_WRITE_OVERRIDE = "ALLOW_PROD_TEST_WRITES";
+const LOCAL_E2E_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+const LOCAL_SUPABASE_API_PORT = "54321";
+const LOCAL_SUPABASE_DATABASE_PORT = "54322";
 
 const PRODUCTION_READ_ONLY_SPECS = [
   /(?:^|\/)tests\/production-safety\.spec\.ts$/,
@@ -76,6 +79,75 @@ export function assertE2ESupabaseUrlSafeForMutations(url: string | undefined | n
         "Override only for intentional remote staging: E2E_ALLOW_REMOTE_SUPABASE=1."
     );
   }
+}
+
+function parseRequiredE2EUrl(value: string | undefined | null, label: string): URL {
+  const raw = value?.trim();
+  if (!raw) throw new Error(`[E2E] ${label} is required for local Estimate certification.`);
+  try {
+    return new URL(raw);
+  } catch {
+    throw new Error(`[E2E] ${label} must be an absolute URL; received an invalid value.`);
+  }
+}
+
+function assertLocalHost(url: URL, label: string): void {
+  if (!LOCAL_E2E_HOSTS.has(url.hostname.toLowerCase())) {
+    throw new Error(`[E2E] ${label} must use a localhost or 127.0.0.1 host.`);
+  }
+}
+
+/**
+ * Fail-closed target proof for Estimate operational certification. This suite creates and
+ * deletes marker data through an admin client, so it cannot use the generic staging escape hatch.
+ */
+export function assertEstimateCertificationLocalOnly(params: {
+  baseURL: string | undefined | null;
+  supabaseUrl: string | undefined | null;
+  databaseUrl?: string | undefined | null;
+}): { appOrigin: string; databaseOrigin?: string; supabaseOrigin: string } {
+  if (process.env.E2E_ALLOW_REMOTE_SUPABASE?.trim()) {
+    throw new Error(
+      "[E2E] Estimate certification does not permit E2E_ALLOW_REMOTE_SUPABASE; use the local Docker target only."
+    );
+  }
+
+  const app = parseRequiredE2EUrl(params.baseURL, "E2E_BASE_URL");
+  if (app.protocol !== "http:") {
+    throw new Error("[E2E] Estimate certification requires an http local app URL.");
+  }
+  assertLocalHost(app, "E2E_BASE_URL");
+  if (!app.port) {
+    throw new Error("[E2E] Estimate certification requires an explicit local app port.");
+  }
+
+  const supabase = parseRequiredE2EUrl(params.supabaseUrl, "NEXT_PUBLIC_SUPABASE_URL");
+  if (supabase.protocol !== "http:") {
+    throw new Error("[E2E] Estimate certification requires the local Supabase API endpoint.");
+  }
+  assertLocalHost(supabase, "NEXT_PUBLIC_SUPABASE_URL");
+  if (supabase.port !== LOCAL_SUPABASE_API_PORT) {
+    throw new Error(
+      `[E2E] Estimate certification requires local Supabase API port :${LOCAL_SUPABASE_API_PORT}.`
+    );
+  }
+
+  let databaseOrigin: string | undefined;
+  if (params.databaseUrl?.trim()) {
+    const database = parseRequiredE2EUrl(params.databaseUrl, "SUPABASE_DATABASE_URL");
+    if (database.protocol !== "postgres:" && database.protocol !== "postgresql:") {
+      throw new Error("[E2E] Estimate certification requires a PostgreSQL local database URL.");
+    }
+    assertLocalHost(database, "SUPABASE_DATABASE_URL");
+    if (database.port !== LOCAL_SUPABASE_DATABASE_PORT) {
+      throw new Error(
+        `[E2E] Estimate certification requires local Supabase database port :${LOCAL_SUPABASE_DATABASE_PORT}.`
+      );
+    }
+    databaseOrigin = `${database.protocol}//${database.host}`;
+  }
+
+  return { appOrigin: app.origin, databaseOrigin, supabaseOrigin: supabase.origin };
 }
 
 /**

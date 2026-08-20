@@ -45,15 +45,18 @@ export function ProposalPaymentMilestoneList({
         return (
           <li
             key={m.id}
+            id={`estimate-payment-milestone-${m.id}`}
+            data-estimate-payment-milestone-id={m.id}
+            tabIndex={-1}
             className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 rounded-md px-0 py-2.5"
           >
             <div className="min-w-0 flex-1 space-y-0.5">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-[#F6F7FA]">
+                <p className="text-[14px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
                   {m.title.trim() || "—"}
                 </p>
                 {m.status ? (
-                  <span className="rounded-sm bg-white/[0.045] px-1.5 py-0.5 text-[10.5px] font-medium capitalize leading-none text-[#929CAF]">
+                  <span className="rounded-sm border border-border bg-muted/60 px-1.5 py-0.5 text-[10.5px] font-medium capitalize leading-none text-muted-foreground">
                     {m.status}
                   </span>
                 ) : null}
@@ -63,16 +66,21 @@ export function ProposalPaymentMilestoneList({
                   text={m.description}
                   variant="compact"
                   maxBullets={2}
-                  className="text-[13px] leading-snug text-[#929CAF]"
+                  className="text-[13px] leading-snug text-muted-foreground"
                 />
               ) : null}
               {dueLabel ? (
-                <p className="text-[13px] leading-snug text-[#929CAF]">{dueLabel}</p>
+                <p className="text-[13px] leading-snug text-muted-foreground">{dueLabel}</p>
               ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="text-[14px] font-semibold tabular-nums tracking-[-0.01em] text-[#D8DEE8] [font-feature-settings:'tnum']">
-                {formatEstimateCurrency(m.amount)}
+              <span className="text-right">
+                <span className="block text-[10px] font-medium text-muted-foreground">
+                  Milestone amount
+                </span>
+                <span className="mt-0.5 block text-[14px] font-semibold tabular-nums tracking-[-0.01em] text-foreground [font-feature-settings:'tnum']">
+                  {formatEstimateCurrency(m.amount)}
+                </span>
               </span>
               {actions ? actions(m) : null}
             </div>

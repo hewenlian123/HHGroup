@@ -67,6 +67,10 @@ import { useAttachmentPreview } from "@/contexts/attachment-preview-context";
 import { useToast } from "@/components/toast/toast-provider";
 import { voidInvoiceFromClient } from "@/lib/invoice-void-client";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import {
+  appendEstimateReturnPath,
+  safeEstimateReturnPath,
+} from "@/app/estimates/_components/estimate-workflow-continuity";
 
 type EditLineDraft = {
   description: string;
@@ -158,6 +162,7 @@ export default function InvoiceDetailPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = params?.id as string | undefined;
+  const estimateReturnPath = safeEstimateReturnPath(searchParams.get("returnTo"));
   const [invoice, setInvoice] = React.useState<InvoiceWithDerived | null>(null);
   const [notFound, setNotFound] = React.useState(false);
   const [payments, setPayments] = React.useState<InvoicePayment[]>([]);
@@ -615,11 +620,12 @@ export default function InvoiceDetailPage() {
       <div className="flex flex-col gap-4 border-b border-[var(--neo-border)] pb-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
           <Link
-            href="/financial/invoices"
-            className="mb-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:text-[var(--neo-text-primary)] sm:min-h-0"
+            href={estimateReturnPath ?? "/financial/invoices"}
+            data-testid={estimateReturnPath ? "invoice-detail-return-to-estimate" : undefined}
+            className="mb-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-lg text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:text-[var(--neo-text-primary)]"
           >
             <ArrowLeft className="h-4 w-4" />
-            Invoices
+            {estimateReturnPath ? "Back to estimate" : "Invoices"}
           </Link>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-[30px] font-semibold leading-tight tracking-normal text-[var(--neo-canvas-text-primary)] md:text-[34px]">
@@ -675,7 +681,10 @@ export default function InvoiceDetailPage() {
                 <div className="inline-flex min-h-[44px] items-center gap-1 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-1 shadow-[var(--neo-shadow-control)] sm:min-h-0">
                   <Button asChild variant="ghost" size="sm" className={toolbarButtonClass}>
                     <Link
-                      href={`/financial/invoices/${id}/preview`}
+                      href={appendEstimateReturnPath(
+                        `/financial/invoices/${id}/preview`,
+                        estimateReturnPath
+                      )}
                       prefetch={false}
                       data-testid="invoice-detail-preview-link"
                     >
@@ -743,7 +752,13 @@ export default function InvoiceDetailPage() {
                       Duplicate invoice
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href={`/financial/invoices/${id}/preview?download=1`} prefetch={false}>
+                      <Link
+                        href={appendEstimateReturnPath(
+                          `/financial/invoices/${id}/preview?download=1`,
+                          estimateReturnPath
+                        )}
+                        prefetch={false}
+                      >
                         <Download className="h-4 w-4 mr-2" />
                         Download PDF
                       </Link>

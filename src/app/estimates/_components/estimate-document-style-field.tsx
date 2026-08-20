@@ -38,12 +38,15 @@ export function EstimateDocumentStyleField({
   const current = value ?? DEFAULT_ESTIMATE_DOCUMENT_STYLE;
 
   return (
-    <fieldset className={cn(EB.sheetField, className)} disabled={disabled}>
+    <fieldset
+      className={cn(EB.sheetField, "eb-estimate-style-field", className)}
+      disabled={disabled}
+    >
       <legend className={cn(EB.sheetLabel, "mb-2")}>Estimate style</legend>
-      <p className="mb-3 text-xs leading-snug text-[#9EA8B8]">
+      <p className="eb-estimate-style-helper mb-3 text-xs leading-snug text-[var(--eb-muted)]">
         Controls customer preview, print, and PDF output only.
       </p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="eb-estimate-style-options grid grid-cols-1 gap-2 sm:grid-cols-2">
         {OPTIONS.map((option) => {
           const id = `${name}-${option.value}`;
           const checked = current === option.value;
@@ -52,10 +55,8 @@ export function EstimateDocumentStyleField({
               key={option.value}
               htmlFor={id}
               className={cn(
-                "flex cursor-pointer gap-3 rounded-md border px-3 py-2.5 transition-colors",
-                checked
-                  ? "border-[#C6A56A]/55 bg-white/[0.06]"
-                  : "border-white/[0.08] bg-transparent hover:border-white/[0.14]"
+                "eb-estimate-style-option flex cursor-pointer gap-3 rounded-md border px-3 py-2.5 transition-colors",
+                checked ? "is-selected" : undefined
               )}
             >
               <input
@@ -66,12 +67,14 @@ export function EstimateDocumentStyleField({
                 checked={checked}
                 disabled={disabled}
                 aria-label={option.label}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-[#C6A56A]"
+                className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--eb-text)]"
                 onChange={() => onChange?.(option.value)}
               />
               <span className="min-w-0">
-                <span className="block text-sm font-medium text-[#F6F7FA]">{option.label}</span>
-                <span className="mt-0.5 block text-xs leading-snug text-[#9EA8B8]">
+                <span className="block text-sm font-medium text-[var(--eb-text)]">
+                  {option.label}
+                </span>
+                <span className="mt-0.5 block text-xs leading-snug text-[var(--eb-muted)]">
                   {option.hint}
                 </span>
               </span>
@@ -91,10 +94,10 @@ export function EstimateDocumentStyleReadOnly({
   const label = normalizeEstimateDocumentStyleLabel(value);
   return (
     <div className="min-w-0">
-      <Label className="mb-0.5 block text-[11px] font-semibold uppercase tracking-[0.06em] leading-tight text-[#9EA8B8]">
+      <Label className="eb-estimate-context-label mb-0.5 block text-[12px] font-medium leading-tight text-[var(--eb-muted)]">
         Estimate style
       </Label>
-      <p className="text-[14px] font-medium leading-snug text-[#F6F7FA]">{label}</p>
+      <p className="text-[14px] font-medium leading-snug text-[var(--eb-text)]">{label}</p>
     </div>
   );
 }

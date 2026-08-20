@@ -1,8 +1,6 @@
 /**
  * Estimate Builder — Warm Graphite Premium (scoped; /estimates/new + builder shell).
  */
-@import "./estimate-builder-popover-dark.css";
-
 /* ── App chrome when builder route is active ── */
 main.estimate-builder-active {
   background: #08090c !important;
@@ -1220,7 +1218,9 @@ body.estimate-builder-active input[type="date"]::-webkit-calendar-picker-indicat
   .eb-glass-panel
   :where(button.rounded-sm, button.rounded-md):not(.eb-add-section):not(.eb-btn-primary):not(
     .eb-btn-ghost
-  ):not(.eb-btn-text):not(.eb-action-secondary) {
+  ):not(.eb-btn-text):not(.eb-action-secondary):not(.eb-line-item-mobile-summary):not(
+    .eb-scope-editor-format-button
+  ):not(.eb-scope-section-add-line):not(.eb-section-title-trigger):not(.eb-line-item-more-trigger) {
   border-color: var(--eb-border) !important;
   background: rgba(16, 19, 26, 0.55) !important;
   color: var(--eb-text-muted) !important;

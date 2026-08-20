@@ -8,33 +8,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ArrowLeft, ChevronDown, FilePlus2, MoreVertical, Trash2 } from "lucide-react";
-import {
-  EstimateBuilderSaveStatus,
-  type EstimateSaveStatus,
-} from "../_components/estimate-builder-save-status";
-import { NeoStatus, type StatusBadgeVariant } from "@/components/base";
+import { ChevronDown, FilePlus2, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import type { EstimateSaveStatus } from "../_components/estimate-builder-save-status";
 import { cn } from "@/lib/utils";
-
-const DETAIL_HEADER =
-  "dark rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:px-4";
-const BACK_LINK =
-  "inline-flex min-h-11 items-center gap-2 text-[14px] leading-snug text-[var(--neo-text-secondary)] transition-colors duration-200 hover:text-[var(--neo-gold-soft)] lg:min-h-8";
-const HEADER_BUTTON =
-  "rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-none hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
-const HEADER_PRIMARY_BUTTON =
-  "rounded-md border border-[rgb(198_165_106_/_0.28)] bg-[var(--neo-gold)] text-zinc-950 shadow-sm hover:bg-[var(--neo-gold-soft)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
-
-function estimateStatusMeta(status: string): { label: string; variant: StatusBadgeVariant } {
-  if (status === "Draft") return { label: "Draft", variant: "muted" };
-  if (status === "Sent") return { label: "Sent", variant: "warning" };
-  if (status === "Approved") return { label: "Approved", variant: "success" };
-  if (status === "Rejected") return { label: "Rejected", variant: "danger" };
-  if (status === "Converted") return { label: "Converted to Project", variant: "success" };
-  return { label: status || "Unknown", variant: "default" };
-}
+import {
+  ESTIMATE_HEADER_BUTTON,
+  ESTIMATE_HEADER_PRIMARY_BUTTON,
+  EstimateWorkspaceCommandHeader,
+} from "../_components/estimate-workspace-command-header";
 
 export function EstimateDetailHeader({
   estimateId,
@@ -48,7 +32,10 @@ export function EstimateDetailHeader({
   saveStatus = "idle",
   isLocked,
   onEdit,
+  onEditDetails,
   onSave,
+  onSaveAndPreview,
+  onPreview,
   onCancel,
   onMarkDraft,
   onSend,
@@ -69,7 +56,10 @@ export function EstimateDetailHeader({
   saveStatus?: EstimateSaveStatus;
   isLocked: boolean;
   onEdit: () => void;
+  onEditDetails?: () => void;
   onSave: () => void;
+  onSaveAndPreview: () => void;
+  onPreview?: () => void;
   onCancel: () => void;
   onMarkDraft: () => void;
   onSend: () => void;
@@ -82,7 +72,6 @@ export function EstimateDetailHeader({
 }): React.ReactElement {
   const canConvert = status === "Approved";
   const canSend = status === "Draft" && !editing;
-  const statusMeta = estimateStatusMeta(status);
   const statusActions =
     status === "Draft"
       ? [{ label: "Mark as Draft", action: onMarkDraft, destructive: false }]
@@ -95,217 +84,311 @@ export function EstimateDetailHeader({
         : status === "Approved" || status === "Rejected"
           ? [{ label: "Mark as Draft", action: onMarkDraft, destructive: false }]
           : [];
+  const hasMobileSecondaryActions =
+    canSend ||
+    statusActions.length > 0 ||
+    (canConvert && Boolean(onConvertClick)) ||
+    Boolean(onSaveAsTemplateClick);
 
   return (
-    <header
-      className={cn(DETAIL_HEADER, "eb-estimate-command-bar")}
-      data-testid="estimate-detail-header"
+    <EstimateWorkspaceCommandHeader
+      title={estimateNumber}
+      status={status}
+      context={[clientName, projectName, siteAddress]}
+      saveStatus={editing ? saveStatus : "idle"}
+      reserveSaveStatusSpace={editing}
+      testId="estimate-detail-header"
     >
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-6">
-        <div className="min-w-0 flex-1 space-y-2">
-          <Link href="/estimates" className={BACK_LINK}>
-            <ArrowLeft className="h-4 w-4" />
-            Estimates
-          </Link>
-          <div className="min-w-0 space-y-1">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <h1 className="truncate text-xl font-semibold tracking-normal text-[var(--neo-text-primary)] sm:text-2xl">
-                {estimateNumber}
-              </h1>
-              <NeoStatus
-                label={statusMeta.label}
-                variant={statusMeta.variant}
-                className="h-5 px-2 text-[11px]"
-              />
-            </div>
-            <p className="truncate text-sm text-[var(--neo-text-secondary)]">
-              {[clientName, projectName, siteAddress].filter(Boolean).join(" · ") || "Estimate"}
-            </p>
-          </div>
-          {editing ? <EstimateBuilderSaveStatus status={saveStatus} className="pt-0.5" /> : null}
-        </div>
-
-        <div
-          className="flex w-full shrink-0 flex-wrap items-center justify-start gap-2 sm:w-auto sm:justify-end lg:max-w-[58%] lg:flex-nowrap"
-          data-testid="estimate-detail-header-actions"
-        >
+      <div
+        className="flex w-full shrink-0 flex-wrap items-center justify-start gap-2 max-md:flex-nowrap sm:w-auto sm:justify-end lg:max-w-[58%] lg:flex-nowrap"
+        data-testid="estimate-detail-header-actions"
+      >
+        {editing && onEditDetails ? (
           <Button
             type="button"
             variant="outline"
             size="sm"
             className={cn(
               "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
-              HEADER_BUTTON
+              ESTIMATE_HEADER_BUTTON
+            )}
+            disabled={pending}
+            onClick={onEditDetails}
+          >
+            <Pencil className="mr-2 h-3.5 w-3.5" aria-hidden />
+            Edit details
+          </Button>
+        ) : null}
+        {editing ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(
+              "hidden min-h-11 whitespace-nowrap px-4 lg:inline-flex lg:min-h-8",
+              ESTIMATE_HEADER_BUTTON
+            )}
+            disabled={pending}
+            onClick={onSaveAndPreview}
+          >
+            Save &amp; Preview
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(
+              "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
+              ESTIMATE_HEADER_BUTTON
             )}
             disabled={pending}
             asChild
           >
-            <Link href={`/estimates/${estimateId}/preview`}>Preview</Link>
+            <Link
+              href={`/estimates/${estimateId}/preview`}
+              onClick={(event) => {
+                if (!onPreview) return;
+                event.preventDefault();
+                onPreview();
+              }}
+            >
+              Preview
+            </Link>
           </Button>
-          {!editing ? (
-            <>
-              {!isLocked ? (
-                <Button
-                  type="button"
-                  variant="default"
-                  size="sm"
-                  className={cn(
-                    "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
-                    HEADER_PRIMARY_BUTTON
-                  )}
-                  disabled={pending}
-                  onClick={onEdit}
-                >
-                  Edit
-                </Button>
-              ) : null}
-              {canSend ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  className={cn(
-                    "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
-                    HEADER_PRIMARY_BUTTON
-                  )}
-                  disabled={pending}
-                  onClick={onSend}
-                >
-                  Send
-                </Button>
-              ) : null}
-            </>
-          ) : (
-            <div className="hidden lg:contents">
+        )}
+        {!editing ? (
+          <>
+            {!isLocked ? (
               <Button
                 type="button"
+                variant="default"
                 size="sm"
                 className={cn(
-                  "min-h-11 whitespace-nowrap px-5 font-medium lg:min-h-8",
-                  HEADER_PRIMARY_BUTTON
+                  "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
+                  ESTIMATE_HEADER_PRIMARY_BUTTON
                 )}
                 disabled={pending}
-                onClick={onSave}
+                onClick={onEdit}
               >
-                <SubmitSpinner loading={pending} className="mr-2" />
-                {pending ? "Saving…" : "Save"}
+                Edit
               </Button>
+            ) : null}
+            {canSend ? (
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className={cn("min-h-11 whitespace-nowrap px-4 lg:min-h-8", HEADER_BUTTON)}
+                className={cn(
+                  "hidden min-h-11 whitespace-nowrap px-4 md:inline-flex lg:min-h-8",
+                  ESTIMATE_HEADER_BUTTON
+                )}
                 disabled={pending}
-                onClick={onCancel}
+                onClick={onSend}
               >
-                Cancel
+                Send
               </Button>
-            </div>
-          )}
-
-          {!editing && statusActions.length > 0 ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "min-h-11 whitespace-nowrap px-3 max-md:flex-1 lg:min-h-8",
-                    HEADER_BUTTON
-                  )}
-                  disabled={pending}
-                >
-                  Status <ChevronDown className="ml-2 h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="min-w-[220px] rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-1 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
-              >
-                {statusActions.map((item) => (
-                  <DropdownMenuItem
-                    key={item.label}
-                    onSelect={item.action}
-                    className={cn(
-                      "rounded-sm focus:bg-[var(--neo-surface-muted)] focus:text-[var(--neo-text-primary)]",
-                      item.destructive && "text-rose-300 focus:text-rose-300"
-                    )}
-                  >
-                    {item.label}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-
-          {!editing && canConvert && onConvertClick ? (
+            ) : null}
+          </>
+        ) : (
+          <div className="hidden lg:contents">
             <Button
               type="button"
-              variant="outline"
               size="sm"
               className={cn(
-                "min-h-11 whitespace-nowrap px-4 max-md:flex-1 lg:min-h-8",
-                HEADER_BUTTON
+                "min-h-11 whitespace-nowrap px-5 font-medium lg:min-h-8",
+                ESTIMATE_HEADER_PRIMARY_BUTTON
               )}
               disabled={pending}
-              onClick={onConvertClick}
+              onClick={onSave}
             >
-              Convert to Project
+              <SubmitSpinner loading={pending} className="mr-2" />
+              {pending ? "Saving…" : "Save"}
             </Button>
-          ) : null}
-
-          {!editing && onSaveAsTemplateClick ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    "min-h-11 w-11 shrink-0 lg:min-h-8 md:w-auto md:px-3",
-                    HEADER_BUTTON
-                  )}
-                  disabled={pending}
-                  aria-label="Estimate actions"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align="end"
-                className="min-w-[220px] rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-1 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]"
-              >
-                <DropdownMenuItem
-                  onSelect={onSaveAsTemplateClick}
-                  className="rounded-sm focus:bg-[var(--neo-surface-muted)] focus:text-[var(--neo-text-primary)]"
-                  data-testid="save-estimate-as-template-action"
-                >
-                  <FilePlus2 className="mr-2 h-4 w-4" />
-                  Save as Template
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-
-          {!editing ? (
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className={cn(
-                "min-h-11 w-11 shrink-0 lg:min-h-8 md:w-auto",
-                HEADER_BUTTON,
-                "hover:border-rose-500/30 hover:text-rose-300"
-              )}
+              className={cn("min-h-11 whitespace-nowrap px-4 lg:min-h-8", ESTIMATE_HEADER_BUTTON)}
               disabled={pending}
-              onClick={onDeleteClick}
-              aria-label="Delete estimate"
+              onClick={onCancel}
             >
-              <Trash2 className="h-4 w-4" />
+              Cancel
             </Button>
-          ) : null}
-        </div>
+          </div>
+        )}
+
+        {!editing && statusActions.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "hidden min-h-11 whitespace-nowrap px-3 md:inline-flex lg:min-h-8",
+                  ESTIMATE_HEADER_BUTTON
+                )}
+                disabled={pending}
+              >
+                Status <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="min-w-[220px] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+            >
+              {statusActions.map((item) => (
+                <DropdownMenuItem
+                  key={item.label}
+                  onSelect={item.action}
+                  className={cn(
+                    "rounded-sm focus:bg-muted focus:text-foreground",
+                    item.destructive && "text-destructive focus:text-destructive"
+                  )}
+                >
+                  {item.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+
+        {!editing && canConvert && onConvertClick ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(
+              "hidden min-h-11 whitespace-nowrap px-4 md:inline-flex lg:min-h-8",
+              ESTIMATE_HEADER_BUTTON
+            )}
+            disabled={pending}
+            onClick={onConvertClick}
+          >
+            Convert to Project
+          </Button>
+        ) : null}
+
+        {!editing && onSaveAsTemplateClick ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "hidden min-h-11 w-11 shrink-0 md:inline-flex md:w-auto md:px-3 lg:min-h-8",
+                  ESTIMATE_HEADER_BUTTON
+                )}
+                disabled={pending}
+                aria-label="Estimate actions"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="min-w-[220px] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+            >
+              <DropdownMenuItem
+                onSelect={onSaveAsTemplateClick}
+                className="rounded-sm focus:bg-muted focus:text-foreground"
+                data-testid="save-estimate-as-template-action"
+              >
+                <FilePlus2 className="mr-2 h-4 w-4" />
+                Save as Template
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+
+        {!editing ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "hidden min-h-11 w-11 shrink-0 md:inline-flex md:w-auto lg:min-h-8",
+              ESTIMATE_HEADER_BUTTON,
+              "hover:border-destructive/30 hover:text-destructive"
+            )}
+            disabled={pending}
+            onClick={onDeleteClick}
+            aria-label="Delete estimate"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        ) : null}
+
+        {!editing ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn("min-h-11 min-w-11 shrink-0 px-0 md:hidden", ESTIMATE_HEADER_BUTTON)}
+                disabled={pending}
+                aria-label="More estimate actions"
+              >
+                <MoreVertical className="h-4 w-4" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="min-w-[220px] rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+            >
+              {canSend ? (
+                <DropdownMenuItem
+                  onSelect={onSend}
+                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
+                >
+                  Send
+                </DropdownMenuItem>
+              ) : null}
+              {statusActions.map((item) => (
+                <DropdownMenuItem
+                  key={`mobile-${item.label}`}
+                  onSelect={item.action}
+                  className={cn(
+                    "min-h-11 rounded-sm focus:bg-muted focus:text-foreground",
+                    item.destructive && "text-destructive focus:text-destructive"
+                  )}
+                >
+                  {item.label}
+                </DropdownMenuItem>
+              ))}
+              {canConvert && onConvertClick ? (
+                <DropdownMenuItem
+                  onSelect={onConvertClick}
+                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
+                >
+                  Convert to Project
+                </DropdownMenuItem>
+              ) : null}
+              {onSaveAsTemplateClick ? (
+                <DropdownMenuItem
+                  onSelect={onSaveAsTemplateClick}
+                  className="min-h-11 rounded-sm focus:bg-muted focus:text-foreground"
+                  data-testid="save-estimate-as-template-action-mobile"
+                >
+                  <FilePlus2 className="mr-2 h-4 w-4" aria-hidden />
+                  Save as Template
+                </DropdownMenuItem>
+              ) : null}
+              {hasMobileSecondaryActions ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuItem
+                onSelect={onDeleteClick}
+                className="min-h-11 rounded-sm text-destructive focus:bg-muted focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" aria-hidden />
+                Delete estimate
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </div>
-    </header>
+    </EstimateWorkspaceCommandHeader>
   );
 }

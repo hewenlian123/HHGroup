@@ -595,6 +595,32 @@ export async function addPaymentMilestoneAction(formData: FormData) {
   }
 }
 
+export async function addPaymentMilestoneInlineAction(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
+  const estimateId = formData.get("estimateId");
+  if (typeof estimateId !== "string") return { ok: false, error: "Missing estimate id" };
+  try {
+    const db = await getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const item = await addPaymentMilestoneWithClient(db, estimateId, {
+      title: (formData.get("title") as string)?.trim() || "Payment",
+      description: (formData.get("description") as string)?.trim() || "",
+      amount: Number(formData.get("amount")) || 0,
+      dueDate: (formData.get("dueDate") as string)?.trim() || undefined,
+    });
+    if (!item) return { ok: false, error: "Could not add payment milestone." };
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: safeEstimateActionError(error, "Could not add payment milestone."),
+    };
+  }
+}
+
 export async function updatePaymentMilestoneAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   const itemId = formData.get("itemId");
@@ -621,6 +647,39 @@ export async function updatePaymentMilestoneAction(formData: FormData) {
   }
 }
 
+export async function updatePaymentMilestoneInlineAction(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
+  const estimateId = formData.get("estimateId");
+  const itemId = formData.get("itemId");
+  if (typeof estimateId !== "string" || typeof itemId !== "string") {
+    return { ok: false, error: "Missing estimate or payment milestone id" };
+  }
+  try {
+    const db = await getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const title = (formData.get("title") as string)?.trim();
+    const description = (formData.get("description") as string)?.trim();
+    const amount = formData.get("amount");
+    const dueDateRaw = (formData.get("dueDate") as string)?.trim() || "";
+    const ok = await updatePaymentMilestoneWithClient(db, estimateId, itemId, {
+      ...(title != null ? { title } : {}),
+      ...(description != null ? { description } : {}),
+      ...(amount != null && amount !== "" ? { amount: Number(amount) } : {}),
+      dueDate: dueDateRaw || null,
+    });
+    if (!ok) return { ok: false, error: "Could not update payment milestone." };
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: safeEstimateActionError(error, "Could not update payment milestone."),
+    };
+  }
+}
+
 export async function deletePaymentMilestoneAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   const itemId = formData.get("itemId");
@@ -634,6 +693,30 @@ export async function deletePaymentMilestoneAction(formData: FormData) {
   } catch {
     revalidateEstimatePaths(estimateId);
     redirect(`/estimates/${estimateId}`);
+  }
+}
+
+export async function deletePaymentMilestoneInlineAction(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
+  const estimateId = formData.get("estimateId");
+  const itemId = formData.get("itemId");
+  if (typeof estimateId !== "string" || typeof itemId !== "string") {
+    return { ok: false, error: "Missing estimate or payment milestone id" };
+  }
+  try {
+    const db = await getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await deletePaymentMilestoneWithClient(db, estimateId, itemId);
+    if (!ok) return { ok: false, error: "Could not delete payment milestone." };
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: safeEstimateActionError(error, "Could not delete payment milestone."),
+    };
   }
 }
 
@@ -1114,6 +1197,27 @@ export async function duplicateLineItemAction(formData: FormData) {
   }
 }
 
+export async function duplicateLineItemInlineAction(
+  formData: FormData
+): Promise<{ ok: boolean; itemId?: string; error?: string }> {
+  const estimateId = formData.get("estimateId");
+  const itemId = formData.get("itemId");
+  if (typeof estimateId !== "string" || typeof itemId !== "string") {
+    return { ok: false, error: "Missing estimate or item id" };
+  }
+  try {
+    const db = await getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const item = await duplicateLineItemWithClient(db, estimateId, itemId);
+    if (!item) return { ok: false, error: "Could not duplicate line item." };
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true, itemId: item.id };
+  } catch (error) {
+    return { ok: false, error: safeEstimateActionError(error, "Could not duplicate line item.") };
+  }
+}
+
 export async function deleteLineItemAction(formData: FormData) {
   const estimateId = formData.get("estimateId");
   const itemId = formData.get("itemId");
@@ -1126,6 +1230,27 @@ export async function deleteLineItemAction(formData: FormData) {
     redirect(`/estimates/${estimateId}`);
   } catch {
     // no-op
+  }
+}
+
+export async function deleteLineItemInlineAction(
+  formData: FormData
+): Promise<{ ok: boolean; error?: string }> {
+  const estimateId = formData.get("estimateId");
+  const itemId = formData.get("itemId");
+  if (typeof estimateId !== "string" || typeof itemId !== "string") {
+    return { ok: false, error: "Missing estimate or item id" };
+  }
+  try {
+    const db = await getEstimateWriteClient();
+    if (!db) return { ok: false, error: "Database is not configured." };
+    const ok = await deleteLineItemWithClient(db, estimateId, itemId);
+    if (!ok) return { ok: false, error: "Could not delete line item." };
+    revalidateEstimatePaths(estimateId);
+    revalidatePath("/estimates");
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: safeEstimateActionError(error, "Could not delete line item.") };
   }
 }
 

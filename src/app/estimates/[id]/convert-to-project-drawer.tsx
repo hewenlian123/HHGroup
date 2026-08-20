@@ -59,7 +59,7 @@ export function ConvertToProjectDrawer({
       onOpenChange={onOpenChange}
       title="Set up project"
       description="Edit project details, then create the project from this estimate."
-      className="border-l border-white/10 bg-slate-950/95 text-zinc-100 shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+      className="border-l border-border bg-background text-foreground shadow-lg"
     >
       <form id="convert-to-project-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input type="hidden" name="estimateId" value={estimateId} />
@@ -103,7 +103,7 @@ export function ConvertToProjectDrawer({
           <Input
             value={estimateNumber}
             readOnly
-            className={ebInput("h-11 cursor-not-allowed bg-white/[0.025] text-zinc-400")}
+            className={ebInput("h-11 cursor-not-allowed bg-muted text-muted-foreground")}
             aria-readonly
           />
           <input type="hidden" name="estimateRef" value={estimateNumber} />
@@ -151,7 +151,7 @@ export function ConvertToProjectDrawer({
             type="button"
             variant="ghost"
             className={cn(
-              "min-h-11 flex-1 border border-white/10 bg-white/[0.03] text-zinc-200 hover:bg-white/[0.08] hover:text-zinc-50",
+              "min-h-11 flex-1 border border-border bg-background text-foreground hover:bg-muted hover:text-foreground",
               EB.btnGhost
             )}
             onClick={() => onOpenChange(false)}
@@ -162,7 +162,7 @@ export function ConvertToProjectDrawer({
           <Button
             type="submit"
             className={cn(
-              "min-h-11 flex-1 border border-white/10 bg-slate-950 text-zinc-50 hover:bg-slate-900",
+              "min-h-11 flex-1 border border-foreground bg-foreground text-background hover:bg-foreground/90",
               EB.btnPrimary
             )}
             disabled={pending}

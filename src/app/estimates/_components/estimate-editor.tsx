@@ -2,7 +2,7 @@
 
 import { syncRouterNonBlocking } from "@/components/perf/sync-router-non-blocking";
 import * as React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createPortal } from "react-dom";
 import { InlineLoading } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
@@ -19,21 +19,21 @@ import { estimateLineTotal, groupEstimateItemsByCategoryId } from "@/lib/data";
 import { useToast } from "@/components/toast/toast-provider";
 import {
   saveEstimateMetaAction,
-  addLineItemAction,
   addLineItemCatalogInlineAction,
   createCustomEstimateCategoryAction,
-  updateLineItemAction,
+  updateLineItemInlineAction,
   toggleLineItemHideAmountOnPdfAction,
-  deleteLineItemAction,
-  duplicateLineItemAction,
-  addPaymentMilestoneAction,
-  updatePaymentMilestoneAction,
-  deletePaymentMilestoneAction,
+  deleteLineItemInlineAction,
+  duplicateLineItemInlineAction,
+  addPaymentMilestoneInlineAction,
+  updatePaymentMilestoneInlineAction,
+  deletePaymentMilestoneInlineAction,
   markPaymentMilestonePaidAction,
   reorderPaymentScheduleAction,
   applyPaymentTemplateAction,
   createPaymentTemplateAction,
   reorderEstimateCategoriesAction,
+  moveEstimateItemsToCostCodeAction,
   saveEstimateDocumentNotesInlineAction,
   setLineItemStatusAction,
 } from "../[id]/actions";
@@ -50,11 +50,9 @@ import {
   SortableContext,
   arrayMove,
   sortableKeyboardCoordinates,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, Plus, GripVertical } from "lucide-react";
+import { ChevronDown, EyeOff, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EstimatePaymentSchedule } from "./estimate-payment-schedule";
 import type { EstimatePaymentScheduleInvoiceSummary } from "./estimate-payment-schedule";
@@ -64,8 +62,8 @@ import {
 } from "./estimate-section-title-menu";
 import { formatEstimateCurrency, roundEstimateCurrencyValue } from "./estimate-currency";
 import {
+  EstimateBuilderCompactSummary,
   EstimateBuilderMobileSummary,
-  EstimateBuilderSummary,
   type EstimateBuilderPaymentSummary,
 } from "./estimate-builder-summary";
 import { EstimateBuilderAdvanced } from "./estimate-builder-advanced";
@@ -78,6 +76,14 @@ import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
 import { EstimateLineItemMoreMenu } from "./estimate-line-item-more-menu";
 import { EstimateLineItemStatusPill } from "./estimate-line-item-status-pill";
 import { EstimateNotesClarifications } from "./estimate-notes-clarifications";
+import { useEstimateDocumentSave } from "./estimate-document-save-context";
+import { EstimateLineItemGridHeader } from "./estimate-line-item-grid-header";
+import { EstimateScopeToolbar } from "./estimate-scope-toolbar";
+import {
+  buildEstimateSectionCollapseState,
+  shouldCommitEstimateLineFromPrice,
+} from "./estimate-builder-productivity";
+import { readEstimateBuilderReturnContext } from "./estimate-workflow-continuity";
 
 function cssEscapeAttrSelector(value: string): string {
   const winCss =
@@ -108,6 +114,9 @@ export type EstimateEditorProps = {
   paymentInvoiceSummaries?: Record<string, EstimatePaymentScheduleInvoiceSummary>;
   /** When true, enable editing in the editor UI. */
   editing?: boolean;
+  /** Controlled details-sheet state for the Existing Estimate command bar. */
+  detailsOpen?: boolean;
+  onDetailsOpenChange?: (open: boolean) => void;
   /** Persist the detail drawer through the parent edit flow when available. */
   onSaveDetails?: () => void;
 };
@@ -127,6 +136,8 @@ export function EstimateEditor({
   invoiceProjectLink,
   paymentInvoiceSummaries = {},
   editing = false,
+  detailsOpen,
+  onDetailsOpenChange,
   onSaveDetails,
 }: EstimateEditorProps) {
   const isLocked = !["Draft", "Sent"].includes(status);
@@ -134,21 +145,23 @@ export function EstimateEditor({
   const today = new Date().toISOString().slice(0, 10);
   const { toast } = useToast();
   const router = useRouter();
+  const workflowSearchParams = useSearchParams();
+  const returnContext = readEstimateBuilderReturnContext(workflowSearchParams);
+  const returnMilestoneId = workflowSearchParams.get("returnMilestone")?.trim() || null;
+  const { markUnsaved, trackMutation } = useEstimateDocumentSave();
 
   React.useEffect(() => {
     if (!editing) return;
     const form = document.getElementById("estimate-meta-form");
     if (!form) return;
-    const markDirty = (): void => {
-      window.dispatchEvent(new Event("estimate-editor-dirty"));
-    };
+    const markDirty = (): void => void markUnsaved();
     form.addEventListener("input", markDirty);
     form.addEventListener("change", markDirty);
     return () => {
       form.removeEventListener("input", markDirty);
       form.removeEventListener("change", markDirty);
     };
-  }, [editing]);
+  }, [editing, markUnsaved]);
 
   const [localCategoryNames, setLocalCategoryNames] = React.useState<Record<string, string>>(
     () => ({ ...categoryNames })
@@ -169,8 +182,13 @@ export function EstimateEditor({
     [costCodes]
   );
 
-  /** Local ordering for line items (drag-and-drop within category); synced from server `items` on refresh. */
+  /** Local line-item view model, synced from server `items` on refresh. */
   const [localItems, setLocalItems] = React.useState(items);
+  const [lineFocusTargetId, setLineFocusTargetId] = React.useState<string | null>(null);
+  const [newLineFocusTarget, setNewLineFocusTarget] = React.useState<{
+    categoryId: string;
+    previousCount: number;
+  } | null>(null);
   React.useEffect(() => {
     setLocalItems(items);
   }, [items]);
@@ -192,6 +210,33 @@ export function EstimateEditor({
     (code: string) =>
       (localCategoryNames[code] ?? catalogNameByCode[code] ?? "").trim() || "Section",
     [localCategoryNames, catalogNameByCode]
+  );
+
+  const addLineToCategory = React.useCallback(
+    async (categoryId: string): Promise<void> => {
+      markUnsaved();
+      const result = await trackMutation(`line:add:${categoryId}`, () =>
+        addLineItemCatalogInlineAction(
+          estimateId,
+          categoryId,
+          getCategoryDisplayNameHint(categoryId)
+        )
+      );
+      if (result.ok) {
+        setNewLineFocusTarget({
+          categoryId,
+          previousCount: localItems.filter((item) => item.costCode === categoryId).length,
+        });
+        syncRouterNonBlocking(router);
+        return;
+      }
+      toast({
+        title: "Could not add line item",
+        description: result.error ?? "Try again.",
+        variant: "error",
+      });
+    },
+    [estimateId, getCategoryDisplayNameHint, localItems, markUnsaved, router, toast, trackMutation]
   );
 
   const estimateCategoriesForGroup = React.useMemo(
@@ -240,17 +285,114 @@ export function EstimateEditor({
     return out;
   }, [baseCostBreakdownSections, localCategorySectionOrder]);
 
-  const [pendingSelectNewCategory, setPendingSelectNewCategory] = React.useState<{
-    code: string;
-    displayName: string;
-  } | null>(null);
-  const consumePendingSelectNewCategory = React.useCallback(
-    () => setPendingSelectNewCategory(null),
-    []
+  const estimateSectionMoveOptions = React.useMemo(
+    () =>
+      costBreakdownSections.map((section) => ({
+        code: section.categoryId,
+        label:
+          localCategoryNames[section.categoryId] ??
+          catalogNameByCode[section.categoryId] ??
+          section.title,
+      })),
+    [catalogNameByCode, costBreakdownSections, localCategoryNames]
   );
+
+  React.useLayoutEffect(() => {
+    if (!lineFocusTargetId) return;
+    const escapedId = cssEscapeAttrSelector(lineFocusTargetId);
+    let focusFrame = 0;
+    const closeFrame = window.requestAnimationFrame(() => {
+      focusFrame = window.requestAnimationFrame(() => {
+        const row = Array.from(
+          document.querySelectorAll<HTMLElement>(`[data-estimate-line-item-id="${escapedId}"]`)
+        ).find((candidate) => candidate.getClientRects().length > 0);
+        const target = row?.querySelector<HTMLElement>(
+          'input[aria-label="Line item title"], input[aria-label^="Line item "][aria-label$=" title"], .eb-line-item-mobile-summary'
+        );
+        if (!target) return;
+        target.focus({ preventScroll: false });
+        setLineFocusTargetId(null);
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(closeFrame);
+      if (focusFrame) window.cancelAnimationFrame(focusFrame);
+    };
+  }, [lineFocusTargetId, localItems]);
+
+  React.useLayoutEffect(() => {
+    if (!newLineFocusTarget) return;
+    const section = costBreakdownSections.find(
+      (candidate) => candidate.categoryId === newLineFocusTarget.categoryId
+    );
+    if (!section || section.rows.length <= newLineFocusTarget.previousCount) return;
+    const newestRow = section.rows[section.rows.length - 1];
+    if (!newestRow) return;
+    setLineFocusTargetId(newestRow.id);
+    setNewLineFocusTarget(null);
+  }, [costBreakdownSections, newLineFocusTarget]);
 
   /** Cost code of the category treated as selected after create (same id as `categoryId` in breakdown). */
   const [selectedCategoryId, setSelectedCategoryId] = React.useState<string | null>(null);
+  const restoredWorkflowContextRef = React.useRef<string | null>(null);
+
+  React.useLayoutEffect(() => {
+    const restoreKey = [
+      returnContext.sectionId ?? "",
+      returnContext.scrollTop ?? "",
+      returnMilestoneId ?? "",
+    ].join("|");
+    if (restoreKey === "||" || restoredWorkflowContextRef.current === restoreKey) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const milestoneTarget = returnMilestoneId
+        ? document.querySelector<HTMLElement>(
+            `[data-estimate-payment-milestone-id="${cssEscapeAttrSelector(returnMilestoneId)}"]`
+          )
+        : null;
+      const sectionTarget = returnContext.sectionId
+        ? (Array.from(
+            document.querySelectorAll<HTMLElement>(
+              `[data-estimate-section-id="${cssEscapeAttrSelector(
+                returnContext.sectionId
+              )}"], [data-estimate-section-mobile-id="${cssEscapeAttrSelector(
+                returnContext.sectionId
+              )}"]`
+            )
+          ).find((candidate) => candidate.getClientRects().length > 0) ?? null)
+        : null;
+      const target = milestoneTarget ?? sectionTarget;
+      if (!target) return;
+
+      if (milestoneTarget) {
+        const details = milestoneTarget.closest("details");
+        if (details instanceof HTMLDetailsElement) details.open = true;
+        milestoneTarget.scrollIntoView({ behavior: "auto", block: "center" });
+      } else {
+        setSelectedCategoryId(returnContext.sectionId);
+        const scrollRoot = document.querySelector<HTMLElement>("[data-app-scroll-root]");
+        if (scrollRoot && returnContext.scrollTop !== null) {
+          scrollRoot.scrollTo({ top: returnContext.scrollTop, behavior: "auto" });
+        } else {
+          sectionTarget?.scrollIntoView({ behavior: "auto", block: "start" });
+        }
+      }
+
+      target.dataset.estimateReturnHighlight = "true";
+      target.focus({ preventScroll: true });
+      restoredWorkflowContextRef.current = restoreKey;
+      window.setTimeout(() => {
+        delete target.dataset.estimateReturnHighlight;
+      }, 1400);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [
+    costBreakdownSections,
+    paymentSchedule,
+    returnContext.scrollTop,
+    returnContext.sectionId,
+    returnMilestoneId,
+  ]);
   /** Wait until the new section exists in the list, then scroll + flash. */
   const [categoryScrollTargetCode, setCategoryScrollTargetCode] = React.useState<string | null>(
     null
@@ -320,11 +462,13 @@ export function EstimateEditor({
       setLocalCategoryNames((prev) => ({ ...prev, [code]: displayName }));
       setLocalCategorySectionOrder(nextOrder);
       setSelectedCategoryId(code);
-      if (insertAfterCode === undefined) setPendingSelectNewCategory({ code, displayName });
       setCategoryScrollTargetCode(code);
       setActiveSectionInsertion(null);
 
-      const result = await reorderEstimateCategoriesAction(estimateId, nextOrder, nextNames);
+      markUnsaved();
+      const result = await trackMutation("sections:order", () =>
+        reorderEstimateCategoriesAction(estimateId, nextOrder, nextNames)
+      );
       if (!result.ok) {
         toast({
           title: "Could not save section order",
@@ -334,17 +478,20 @@ export function EstimateEditor({
         setLocalCategorySectionOrder(null);
       }
     },
-    [catalogNameByCode, costBreakdownSections, estimateId, localCategoryNames, toast]
+    [
+      catalogNameByCode,
+      costBreakdownSections,
+      estimateId,
+      localCategoryNames,
+      markUnsaved,
+      toast,
+      trackMutation,
+    ]
   );
   const focusExistingCategory = React.useCallback((code: string) => {
     setSelectedCategoryId(code);
     setCategoryScrollTargetCode(code);
   }, []);
-
-  const lineItemSensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
 
   const categorySensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -371,7 +518,10 @@ export function EstimateEditor({
         const dn = localCategoryNames[id] ?? catalogNameByCode[id] ?? s?.title ?? id;
         nameMap[id] = dn;
       }
-      const res = await reorderEstimateCategoriesAction(estimateId, nextOrder, nameMap);
+      markUnsaved();
+      const res = await trackMutation("sections:order", () =>
+        reorderEstimateCategoriesAction(estimateId, nextOrder, nameMap)
+      );
       if (res.ok) {
         syncRouterNonBlocking(router);
       } else {
@@ -391,22 +541,10 @@ export function EstimateEditor({
       estimateId,
       router,
       toast,
+      markUnsaved,
+      trackMutation,
     ]
   );
-
-  const handleLineItemsDragEnd = React.useCallback((categoryId: string, event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setLocalItems((prev) => {
-      const inCat = prev.filter((i) => i.costCode === categoryId);
-      const oldIndex = inCat.findIndex((i) => i.id === active.id);
-      const newIndex = inCat.findIndex((i) => i.id === over.id);
-      if (oldIndex < 0 || newIndex < 0) return prev;
-      const reordered = arrayMove(inCat, oldIndex, newIndex);
-      const q = [...reordered];
-      return prev.map((it) => (it.costCode === categoryId ? q.shift()! : it));
-    });
-  }, []);
 
   const flatPersistedRows = React.useMemo(() => {
     let idx = 0;
@@ -424,8 +562,6 @@ export function EstimateEditor({
     return out;
   }, [costBreakdownSections]);
 
-  const lastPersistedRowId = flatPersistedRows[flatPersistedRows.length - 1]?.row.id;
-
   const [collapsedSections, setCollapsedSections] = React.useState<Record<string, boolean>>({});
   const isSectionCollapsed = React.useCallback(
     (code: string) => collapsedSections[code] === true,
@@ -434,6 +570,70 @@ export function EstimateEditor({
   const toggleSectionCollapsed = React.useCallback((code: string) => {
     setCollapsedSections((prev) => ({ ...prev, [code]: !prev[code] }));
   }, []);
+
+  const collapseAllSections = React.useCallback(() => {
+    setCollapsedSections(
+      buildEstimateSectionCollapseState(
+        costBreakdownSections.map((section) => section.categoryId),
+        true
+      )
+    );
+  }, [costBreakdownSections]);
+
+  const expandAllSections = React.useCallback(() => {
+    setCollapsedSections(
+      buildEstimateSectionCollapseState(
+        costBreakdownSections.map((section) => section.categoryId),
+        false
+      )
+    );
+  }, [costBreakdownSections]);
+
+  const outlineSections = React.useMemo(
+    () =>
+      costBreakdownSections.map((section) => ({
+        id: section.categoryId,
+        name:
+          localCategoryNames[section.categoryId] ??
+          catalogNameByCode[section.categoryId] ??
+          section.title,
+        itemCount: section.rows.length,
+        subtotal: section.sectionTotal,
+        collapsed: isSectionCollapsed(section.categoryId),
+      })),
+    [catalogNameByCode, costBreakdownSections, isSectionCollapsed, localCategoryNames]
+  );
+
+  const scopeSearchEntries = React.useMemo(
+    () =>
+      outlineSections.flatMap((section) => {
+        const sourceSection = costBreakdownSections.find(
+          (candidate) => candidate.categoryId === section.id
+        );
+        const rows = sourceSection?.rows ?? [];
+        return [
+          {
+            id: `section-${section.id}`,
+            sectionId: section.id,
+            label: section.name,
+            detail: `${section.itemCount} ${section.itemCount === 1 ? "item" : "items"}`,
+            searchText: section.name,
+          },
+          ...rows.map((row, index) => {
+            const title = row.desc.split("\n", 1)[0]?.trim();
+            return {
+              id: `line-${row.id}`,
+              sectionId: section.id,
+              lineItemId: row.id,
+              label: title || `Line ${index + 1}`,
+              detail: section.name,
+              searchText: `${row.desc} ${section.name}`,
+            };
+          }),
+        ];
+      }),
+    [costBreakdownSections, outlineSections]
+  );
 
   const paymentSummary = React.useMemo((): EstimateBuilderPaymentSummary | null => {
     if (!paymentSchedule.length) return null;
@@ -449,7 +649,10 @@ export function EstimateEditor({
     (nextNotes: typeof localDocumentNotes) => {
       setLocalDocumentNotes(nextNotes);
       if (isReadOnly) return;
-      void saveEstimateDocumentNotesInlineAction(estimateId, nextNotes).then((res) => {
+      markUnsaved();
+      void trackMutation("document-notes", () =>
+        saveEstimateDocumentNotesInlineAction(estimateId, nextNotes)
+      ).then((res) => {
         if (!res.ok) {
           toast({
             title: "Could not save notes",
@@ -459,7 +662,35 @@ export function EstimateEditor({
         }
       });
     },
-    [estimateId, isReadOnly, toast]
+    [estimateId, isReadOnly, markUnsaved, toast, trackMutation]
+  );
+
+  const moveLineToSection = React.useCallback(
+    async (itemId: string, currentCode: string, nextCode: string): Promise<void> => {
+      if (currentCode === nextCode || isReadOnly) return;
+      markUnsaved();
+      const result = await trackMutation(`line:move:${itemId}:${nextCode}`, () =>
+        moveEstimateItemsToCostCodeAction(
+          estimateId,
+          [itemId],
+          nextCode,
+          getCategoryDisplayNameHint(nextCode)
+        )
+      );
+      if (!result.ok) {
+        toast({
+          title: "Could not move item",
+          description: result.error ?? "Try again.",
+          variant: "error",
+        });
+        return;
+      }
+      setLocalItems((previous) =>
+        previous.map((item) => (item.id === itemId ? { ...item, costCode: nextCode } : item))
+      );
+      syncRouterNonBlocking(router);
+    },
+    [estimateId, getCategoryDisplayNameHint, isReadOnly, markUnsaved, router, toast, trackMutation]
   );
 
   const restoreContextualActionFocus = React.useCallback((ariaLabel: string): void => {
@@ -540,20 +771,26 @@ export function EstimateEditor({
 
   return (
     <React.Fragment>
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-8 lg:items-start">
+      <div>
         <div className="min-w-0 space-y-4 pb-[calc(10rem+env(safe-area-inset-bottom))] lg:pb-0">
           <EstimateEditCustomerSection
             meta={meta}
             estimateId={estimateId}
-            estimateNumber={estimateNumber}
-            status={status}
             today={today}
             isReadOnly={isReadOnly}
+            detailsOpen={detailsOpen}
+            onDetailsOpenChange={onDetailsOpenChange}
             tax={summary?.tax ?? 0}
             discount={summary?.discount ?? 0}
             estimateSubtotal={summary?.subtotal ?? 0}
             saveEstimateMetaAction={saveEstimateMetaAction}
             onSaveDetails={onSaveDetails}
+          />
+
+          <EstimateBuilderCompactSummary
+            summary={summary}
+            showInternal={editing && !isReadOnly}
+            paymentSummary={paymentSummary}
           />
 
           <section className={EB.section}>
@@ -565,44 +802,188 @@ export function EstimateEditor({
                 </div>
               </div>
 
-              {!isReadOnly ? (
-                <AddCategoryBlock
-                  estimateId={estimateId}
-                  allCategoryCodes={sectionDropdownOptions.map((o) => o.code)}
-                  existingCategoryCodes={costBreakdownSections.map((s) => s.categoryId)}
-                  getCategoryDisplayName={getCategoryDisplayNameHint}
-                  pendingSelectNewCategory={pendingSelectNewCategory}
-                  onPendingSelectNewCategoryConsumed={consumePendingSelectNewCategory}
-                  onFocusExistingCategory={focusExistingCategory}
-                  onPostCreateCategoryUx={handleNewCategoryCreated}
-                />
-              ) : null}
+              <EstimateScopeToolbar
+                sections={outlineSections}
+                searchEntries={scopeSearchEntries}
+                initialExplicitSectionId={returnContext.sectionId}
+                onCollapseAll={collapseAllSections}
+                onExpandAll={expandAllSections}
+                onRevealSection={(sectionId) =>
+                  setCollapsedSections((previous) => ({ ...previous, [sectionId]: false }))
+                }
+                onActiveSectionChange={setSelectedCategoryId}
+                addSectionControl={
+                  !isReadOnly
+                    ? renderContextualSectionAction({
+                        actionKey: "toolbar",
+                        insertAfterCode:
+                          costBreakdownSections[costBreakdownSections.length - 1]?.categoryId ??
+                          null,
+                        label: "Add Section",
+                        ariaLabel: "Add Section",
+                        inputAriaLabel: "Search or add section",
+                      })
+                    : undefined
+                }
+              />
+              <div className="eb-scope-workspace-grid">
+                <div className="eb-scope-builder-region min-w-0">
+                  <div className="mb-4 space-y-3 lg:hidden">
+                    {costBreakdownSections.map(({ categoryId, title, rows, sectionTotal }) => {
+                      const displayName =
+                        localCategoryNames[categoryId] ?? catalogNameByCode[categoryId] ?? title;
+                      const collapsed = isSectionCollapsed(categoryId);
+                      return (
+                        <div
+                          key={categoryId}
+                          data-estimate-section-mobile-id={categoryId}
+                          className={cn(
+                            EB.scopeSectionMobile,
+                            selectedCategoryId === categoryId && "eb-scope-section-current",
+                            flashHighlightCategoryId === categoryId && EB.scopeSectionInserted
+                          )}
+                        >
+                          <ScopeSectionHeader
+                            code={categoryId}
+                            catalogName={catalogNameByCode[categoryId] ?? title}
+                            displayName={displayName}
+                            itemCount={rows.length}
+                            sectionSubtotal={sectionTotal}
+                            collapsed={collapsed}
+                            onToggleCollapse={() => toggleSectionCollapsed(categoryId)}
+                            onDisplayNameChange={() => undefined}
+                            onAddLine={
+                              isReadOnly
+                                ? undefined
+                                : () => {
+                                    setCollapsedSections((previous) => ({
+                                      ...previous,
+                                      [categoryId]: false,
+                                    }));
+                                    void addLineToCategory(categoryId);
+                                  }
+                            }
+                            addLineAriaLabel={`Add line to ${displayName}`}
+                            titleSlot={
+                              isReadOnly ? (
+                                <span className={cn(EB.scopeBlockTitle, "min-w-0 truncate")}>
+                                  {displayName.trim() || "Section"}
+                                </span>
+                              ) : (
+                                <EstimateSectionTitleMenu
+                                  estimateId={estimateId}
+                                  currentCostCode={categoryId}
+                                  displayName={displayName}
+                                  itemIds={rows.map((r) => r.id)}
+                                  sectionOptions={sectionDropdownOptions}
+                                  getDisplayNameHint={getCategoryDisplayNameHint}
+                                  onMoved={(newCode) => {
+                                    const idSet = new Set(rows.map((r) => r.id));
+                                    setLocalItems((prev) =>
+                                      prev.map((it) =>
+                                        idSet.has(it.id) ? { ...it, costCode: newCode } : it
+                                      )
+                                    );
+                                    setLocalCategoryNames((prev) => ({
+                                      ...prev,
+                                      [newCode]:
+                                        prev[newCode] ??
+                                        catalogNameByCode[newCode] ??
+                                        getCategoryDisplayNameHint(newCode),
+                                    }));
+                                  }}
+                                  onNameSaved={(code, name) =>
+                                    setLocalCategoryNames((prev) => ({ ...prev, [code]: name }))
+                                  }
+                                  onSectionCreated={handleNewCategoryCreated}
+                                />
+                              )
+                            }
+                          />
+                          <ScopeSectionCollapsibleBody collapsed={collapsed}>
+                            <div className="space-y-3 pt-2">
+                              {rows.map((row) => {
+                                const lineOrdinal =
+                                  flatPersistedRows.find((f) => f.row.id === row.id)?.rowIndex ?? 1;
+                                return (
+                                  <EstimateLineItemPersistedMobile
+                                    key={row.id}
+                                    row={row}
+                                    rowIndex={lineOrdinal}
+                                    estimateId={estimateId}
+                                    categoryId={categoryId}
+                                    isReadOnly={isReadOnly}
+                                    updateLineItemAction={updateLineItemInlineAction}
+                                    duplicateLineItemAction={duplicateLineItemInlineAction}
+                                    deleteLineItemAction={deleteLineItemInlineAction}
+                                    isLastRow={row.id === rows[rows.length - 1]?.id}
+                                    onEnterAddNext={
+                                      !isReadOnly && row.id === rows[rows.length - 1]?.id
+                                        ? () => {
+                                            void addLineToCategory(categoryId);
+                                          }
+                                        : undefined
+                                    }
+                                    sectionOptions={estimateSectionMoveOptions}
+                                    onMoveToSection={(nextCode) =>
+                                      void moveLineToSection(row.id, categoryId, nextCode)
+                                    }
+                                    onDuplicated={(itemId) => setLineFocusTargetId(itemId)}
+                                    onDeleted={() => {
+                                      const rowIndex = rows.findIndex(
+                                        (candidate) => candidate.id === row.id
+                                      );
+                                      const adjacentRow =
+                                        rows[rowIndex + 1] ?? rows[rowIndex - 1] ?? null;
+                                      if (adjacentRow) {
+                                        setLineFocusTargetId(adjacentRow.id);
+                                      } else {
+                                        setCategoryScrollTargetCode(categoryId);
+                                      }
+                                    }}
+                                  />
+                                );
+                              })}
+                              {!isReadOnly ? (
+                                <div className="px-1">
+                                  <button
+                                    type="button"
+                                    className={cn(EB.addLineLink, "w-full")}
+                                    onClick={() => void addLineToCategory(categoryId)}
+                                  >
+                                    <Plus className="h-3 w-3" aria-hidden />
+                                    Add line
+                                  </button>
+                                </div>
+                              ) : null}
+                            </div>
+                          </ScopeSectionCollapsibleBody>
+                          {!isReadOnly ? (
+                            <div className={EB.addNextSectionRow}>
+                              {renderContextualSectionAction({
+                                actionKey: `mobile:${categoryId}`,
+                                insertAfterCode: categoryId,
+                                label: "Add Next Section",
+                                ariaLabel: `Add Next Section after ${displayName}`,
+                                inputAriaLabel: `Search section after ${displayName}`,
+                              })}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
 
-              <div className="mb-4 space-y-3 md:hidden">
-                {costBreakdownSections.map(({ categoryId, title, rows, sectionTotal }) => {
-                  const displayName =
-                    localCategoryNames[categoryId] ?? catalogNameByCode[categoryId] ?? title;
-                  const collapsed = isSectionCollapsed(categoryId);
-                  return (
-                    <div
-                      key={categoryId}
-                      data-estimate-section-mobile-id={categoryId}
-                      className={cn(
-                        EB.scopeSectionMobile,
-                        flashHighlightCategoryId === categoryId && EB.scopeSectionInserted
-                      )}
-                    >
-                      <ScopeSectionHeader
-                        code={categoryId}
-                        catalogName={catalogNameByCode[categoryId] ?? title}
-                        displayName={displayName}
-                        itemCount={rows.length}
-                        sectionSubtotal={sectionTotal}
-                        collapsed={collapsed}
-                        onToggleCollapse={() => toggleSectionCollapsed(categoryId)}
-                        onDisplayNameChange={() => undefined}
-                        titleSlot={
-                          isReadOnly ? (
+                  <div className="hidden lg:block">
+                    {(() => {
+                      const categoryNodes = costBreakdownSections.map(
+                        ({ categoryId, title, rows, sectionTotal }) => {
+                          const displayName =
+                            localCategoryNames[categoryId] ??
+                            catalogNameByCode[categoryId] ??
+                            title;
+                          const collapsed = isSectionCollapsed(categoryId);
+                          const titleSlot = isReadOnly ? (
                             <span className={cn(EB.scopeBlockTitle, "min-w-0 truncate")}>
                               {displayName.trim() || "Section"}
                             </span>
@@ -634,265 +1015,208 @@ export function EstimateEditor({
                               }
                               onSectionCreated={handleNewCategoryCreated}
                             />
-                          )
-                        }
-                      />
-                      <ScopeSectionCollapsibleBody collapsed={collapsed}>
-                        <div className="space-y-3 pt-2">
-                          {rows.map((row) => {
-                            const lineOrdinal =
-                              flatPersistedRows.find((f) => f.row.id === row.id)?.rowIndex ?? 1;
-                            return (
-                              <EstimateLineItemPersistedMobile
-                                key={row.id}
-                                row={row}
-                                rowIndex={lineOrdinal}
-                                estimateId={estimateId}
-                                categoryId={categoryId}
-                                isReadOnly={isReadOnly}
-                                updateLineItemAction={updateLineItemAction}
-                                duplicateLineItemAction={duplicateLineItemAction}
-                                deleteLineItemAction={deleteLineItemAction}
-                                isLastRow={row.id === lastPersistedRowId}
-                                onEnterAddNext={
-                                  !isReadOnly && row.id === lastPersistedRowId
-                                    ? () => {
-                                        void addLineItemCatalogInlineAction(
-                                          estimateId,
-                                          categoryId,
-                                          getCategoryDisplayNameHint(categoryId)
-                                        ).then((res) => {
-                                          if (res.ok) syncRouterNonBlocking(router);
-                                        });
+                          );
+                          const categorySectionBody = (dragHandle: React.ReactNode | null) => (
+                            <React.Fragment>
+                              <ScopeSectionHeader
+                                code={categoryId}
+                                catalogName={catalogNameByCode[categoryId] ?? title}
+                                displayName={displayName}
+                                itemCount={rows.length}
+                                sectionSubtotal={sectionTotal}
+                                collapsed={collapsed}
+                                onToggleCollapse={() => toggleSectionCollapsed(categoryId)}
+                                onDisplayNameChange={() => undefined}
+                                dragHandle={dragHandle}
+                                onAddLine={
+                                  isReadOnly
+                                    ? undefined
+                                    : () => {
+                                        setCollapsedSections((previous) => ({
+                                          ...previous,
+                                          [categoryId]: false,
+                                        }));
+                                        void addLineToCategory(categoryId);
                                       }
-                                    : undefined
                                 }
+                                addLineAriaLabel={`Add line to ${displayName}`}
+                                titleSlot={titleSlot}
                               />
-                            );
-                          })}
-                          {!isReadOnly ? (
-                            <form action={addLineItemAction} className="px-1">
-                              <input type="hidden" name="estimateId" value={estimateId} />
-                              <input type="hidden" name="costCode" value={categoryId} />
-                              <button type="submit" className={cn(EB.addLineLink, "w-full")}>
-                                <Plus className="h-3 w-3" aria-hidden />
-                                Add line
-                              </button>
-                            </form>
-                          ) : null}
-                        </div>
-                      </ScopeSectionCollapsibleBody>
-                      {!isReadOnly ? (
-                        <div className={EB.addNextSectionRow}>
-                          {renderContextualSectionAction({
-                            actionKey: `mobile:${categoryId}`,
-                            insertAfterCode: categoryId,
-                            label: "Add Next Section",
-                            ariaLabel: `Add Next Section after ${displayName}`,
-                            inputAriaLabel: `Search section after ${displayName}`,
-                          })}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="hidden md:block">
-                {(() => {
-                  const categoryNodes = costBreakdownSections.map(
-                    ({ categoryId, title, rows, sectionTotal }) => {
-                      const displayName =
-                        localCategoryNames[categoryId] ?? catalogNameByCode[categoryId] ?? title;
-                      const collapsed = isSectionCollapsed(categoryId);
-                      const titleSlot = isReadOnly ? (
-                        <span className={cn(EB.scopeBlockTitle, "min-w-0 truncate")}>
-                          {displayName.trim() || "Section"}
-                        </span>
-                      ) : (
-                        <EstimateSectionTitleMenu
-                          estimateId={estimateId}
-                          currentCostCode={categoryId}
-                          displayName={displayName}
-                          itemIds={rows.map((r) => r.id)}
-                          sectionOptions={sectionDropdownOptions}
-                          getDisplayNameHint={getCategoryDisplayNameHint}
-                          onMoved={(newCode) => {
-                            const idSet = new Set(rows.map((r) => r.id));
-                            setLocalItems((prev) =>
-                              prev.map((it) =>
-                                idSet.has(it.id) ? { ...it, costCode: newCode } : it
-                              )
-                            );
-                            setLocalCategoryNames((prev) => ({
-                              ...prev,
-                              [newCode]:
-                                prev[newCode] ??
-                                catalogNameByCode[newCode] ??
-                                getCategoryDisplayNameHint(newCode),
-                            }));
-                          }}
-                          onNameSaved={(code, name) =>
-                            setLocalCategoryNames((prev) => ({ ...prev, [code]: name }))
-                          }
-                          onSectionCreated={handleNewCategoryCreated}
-                        />
-                      );
-                      const categorySectionBody = (dragHandle: React.ReactNode | null) => (
-                        <React.Fragment>
-                          <ScopeSectionHeader
-                            code={categoryId}
-                            catalogName={catalogNameByCode[categoryId] ?? title}
-                            displayName={displayName}
-                            itemCount={rows.length}
-                            sectionSubtotal={sectionTotal}
-                            collapsed={collapsed}
-                            onToggleCollapse={() => toggleSectionCollapsed(categoryId)}
-                            onDisplayNameChange={() => undefined}
-                            dragHandle={dragHandle}
-                            titleSlot={titleSlot}
-                          />
-                          <ScopeSectionCollapsibleBody collapsed={collapsed}>
-                            <div className="eb-scope-section-lines flex flex-col">
-                              {isReadOnly ? (
-                                rows.map((row) => {
-                                  const lineOrdinal =
-                                    flatPersistedRows.find((f) => f.row.id === row.id)?.rowIndex ??
-                                    1;
-                                  return (
-                                    <LineItemRow
-                                      key={row.id}
-                                      row={row}
-                                      estimateId={estimateId}
-                                      lineOrdinal={lineOrdinal}
-                                      isLocked
-                                      updateLineItemAction={updateLineItemAction}
-                                      duplicateLineItemAction={duplicateLineItemAction}
-                                      deleteLineItemAction={deleteLineItemAction}
-                                    />
-                                  );
-                                })
-                              ) : (
-                                <DndContext
-                                  sensors={lineItemSensors}
-                                  collisionDetection={closestCenter}
-                                  onDragEnd={(e) => handleLineItemsDragEnd(categoryId, e)}
-                                >
-                                  <SortableContext
-                                    items={rows.map((r) => r.id)}
-                                    strategy={verticalListSortingStrategy}
-                                  >
-                                    {rows.map((row) => {
-                                      const lineOrdinal =
-                                        flatPersistedRows.find((f) => f.row.id === row.id)
-                                          ?.rowIndex ?? 1;
-                                      return (
-                                        <SortableLineItemGroup
-                                          key={row.id}
-                                          row={row}
-                                          estimateId={estimateId}
-                                          lineOrdinal={lineOrdinal}
-                                          updateLineItemAction={updateLineItemAction}
-                                          duplicateLineItemAction={duplicateLineItemAction}
-                                          deleteLineItemAction={deleteLineItemAction}
-                                        />
-                                      );
-                                    })}
-                                  </SortableContext>
-                                </DndContext>
-                              )}
+                              <ScopeSectionCollapsibleBody collapsed={collapsed}>
+                                <div className="eb-scope-section-lines flex flex-col">
+                                  <EstimateLineItemGridHeader />
+                                  {isReadOnly
+                                    ? rows.map((row) => {
+                                        const lineOrdinal =
+                                          flatPersistedRows.find((f) => f.row.id === row.id)
+                                            ?.rowIndex ?? 1;
+                                        return (
+                                          <LineItemRow
+                                            key={row.id}
+                                            row={row}
+                                            estimateId={estimateId}
+                                            categoryId={categoryId}
+                                            lineOrdinal={lineOrdinal}
+                                            isLocked
+                                            sectionOptions={estimateSectionMoveOptions}
+                                            onMoveToSection={(nextCode) =>
+                                              void moveLineToSection(row.id, categoryId, nextCode)
+                                            }
+                                            updateLineItemAction={updateLineItemInlineAction}
+                                            duplicateLineItemAction={duplicateLineItemInlineAction}
+                                            deleteLineItemAction={deleteLineItemInlineAction}
+                                          />
+                                        );
+                                      })
+                                    : rows.map((row) => {
+                                        const lineOrdinal =
+                                          flatPersistedRows.find((f) => f.row.id === row.id)
+                                            ?.rowIndex ?? 1;
+                                        return (
+                                          <LineItemRow
+                                            key={row.id}
+                                            row={row}
+                                            estimateId={estimateId}
+                                            categoryId={categoryId}
+                                            lineOrdinal={lineOrdinal}
+                                            isLocked={false}
+                                            sectionOptions={estimateSectionMoveOptions}
+                                            onMoveToSection={(nextCode) =>
+                                              void moveLineToSection(row.id, categoryId, nextCode)
+                                            }
+                                            onCommitFromPrice={() => {
+                                              const rowIndex = rows.findIndex(
+                                                (candidate) => candidate.id === row.id
+                                              );
+                                              const nextRow =
+                                                rowIndex >= 0 ? rows[rowIndex + 1] : null;
+                                              if (nextRow) {
+                                                setLineFocusTargetId(nextRow.id);
+                                                return;
+                                              }
+                                              void addLineToCategory(categoryId);
+                                            }}
+                                            onDuplicated={(itemId) => setLineFocusTargetId(itemId)}
+                                            onDeleted={() => {
+                                              const rowIndex = rows.findIndex(
+                                                (candidate) => candidate.id === row.id
+                                              );
+                                              const adjacentRow =
+                                                rows[rowIndex + 1] ?? rows[rowIndex - 1] ?? null;
+                                              if (adjacentRow) {
+                                                setLineFocusTargetId(adjacentRow.id);
+                                              } else {
+                                                setCategoryScrollTargetCode(categoryId);
+                                              }
+                                            }}
+                                            updateLineItemAction={updateLineItemInlineAction}
+                                            duplicateLineItemAction={duplicateLineItemInlineAction}
+                                            deleteLineItemAction={deleteLineItemInlineAction}
+                                          />
+                                        );
+                                      })}
+                                  {!isReadOnly ? (
+                                    <div className="mt-2 inline-block px-1">
+                                      <button
+                                        type="button"
+                                        className={EB.addLineLink}
+                                        onClick={() => void addLineToCategory(categoryId)}
+                                      >
+                                        <Plus className="h-3 w-3" aria-hidden />
+                                        Add line
+                                      </button>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </ScopeSectionCollapsibleBody>
                               {!isReadOnly ? (
-                                <form action={addLineItemAction} className="mt-2 inline-block px-1">
-                                  <input type="hidden" name="estimateId" value={estimateId} />
-                                  <input type="hidden" name="costCode" value={categoryId} />
-                                  <button type="submit" className={EB.addLineLink}>
-                                    <Plus className="h-3 w-3" aria-hidden />
-                                    Add line
-                                  </button>
-                                </form>
+                                <div className={EB.addNextSectionRow}>
+                                  {renderContextualSectionAction({
+                                    actionKey: `desktop:${categoryId}`,
+                                    insertAfterCode: categoryId,
+                                    label: "Add Next Section",
+                                    ariaLabel: `Add Next Section after ${displayName}`,
+                                    inputAriaLabel: `Search section after ${displayName}`,
+                                  })}
+                                </div>
                               ) : null}
-                            </div>
-                          </ScopeSectionCollapsibleBody>
-                          {!isReadOnly ? (
-                            <div className={EB.addNextSectionRow}>
-                              {renderContextualSectionAction({
-                                actionKey: `desktop:${categoryId}`,
-                                insertAfterCode: categoryId,
-                                label: "Add Next Section",
-                                ariaLabel: `Add Next Section after ${displayName}`,
-                                inputAriaLabel: `Search section after ${displayName}`,
-                              })}
-                            </div>
-                          ) : null}
-                        </React.Fragment>
-                      );
+                            </React.Fragment>
+                          );
 
-                      return isReadOnly ? (
-                        <div
-                          key={categoryId}
-                          data-estimate-section-id={categoryId}
-                          className={EB.categoryGroup}
-                        >
-                          {categorySectionBody(null)}
-                        </div>
-                      ) : (
-                        <EstimateScopeSortableSection
-                          key={categoryId}
-                          id={categoryId}
-                          isDropTarget={overSectionId === categoryId}
-                          className={cn(
-                            "transition-all duration-300",
-                            selectedCategoryId === categoryId && "eb-scope-section-current",
-                            flashHighlightCategoryId === categoryId && EB.scopeSectionInserted
-                          )}
-                          ariaCurrent={selectedCategoryId === categoryId ? "true" : undefined}
-                        >
-                          {(dh) => categorySectionBody(dh)}
-                        </EstimateScopeSortableSection>
+                          return isReadOnly ? (
+                            <div
+                              key={categoryId}
+                              data-estimate-section-id={categoryId}
+                              tabIndex={-1}
+                              className={cn(
+                                EB.categoryGroup,
+                                selectedCategoryId === categoryId && "eb-scope-section-current"
+                              )}
+                              aria-current={selectedCategoryId === categoryId ? "true" : undefined}
+                            >
+                              {categorySectionBody(null)}
+                            </div>
+                          ) : (
+                            <EstimateScopeSortableSection
+                              key={categoryId}
+                              id={categoryId}
+                              isDropTarget={overSectionId === categoryId}
+                              className={cn(
+                                "transition-colors duration-150",
+                                selectedCategoryId === categoryId && "eb-scope-section-current",
+                                flashHighlightCategoryId === categoryId && EB.scopeSectionInserted
+                              )}
+                              ariaCurrent={selectedCategoryId === categoryId ? "true" : undefined}
+                            >
+                              {(dh) => categorySectionBody(dh)}
+                            </EstimateScopeSortableSection>
+                          );
+                        }
                       );
-                    }
-                  );
-                  return isReadOnly ? (
-                    <div className="eb-scope-sections-list flex flex-col">{categoryNodes}</div>
-                  ) : (
-                    <DndContext
-                      sensors={categorySensors}
-                      collisionDetection={closestCenter}
-                      onDragStart={() => setSectionDragging(true)}
-                      onDragOver={(e) => setOverSectionId(e.over ? String(e.over.id) : null)}
-                      onDragCancel={() => {
-                        setSectionDragging(false);
-                        setOverSectionId(null);
-                      }}
-                      onDragEnd={(e) => void handleCategoryDragEnd(e)}
-                    >
-                      <SortableContext
-                        items={costBreakdownSections.map((s) => s.categoryId)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <div
-                          className="eb-scope-sections-list flex flex-col"
-                          data-section-dragging={sectionDragging ? "true" : undefined}
+                      return isReadOnly ? (
+                        <div className="eb-scope-sections-list flex flex-col">{categoryNodes}</div>
+                      ) : (
+                        <DndContext
+                          sensors={categorySensors}
+                          collisionDetection={closestCenter}
+                          onDragStart={() => setSectionDragging(true)}
+                          onDragOver={(e) => setOverSectionId(e.over ? String(e.over.id) : null)}
+                          onDragCancel={() => {
+                            setSectionDragging(false);
+                            setOverSectionId(null);
+                          }}
+                          onDragEnd={(e) => void handleCategoryDragEnd(e)}
                         >
-                          {categoryNodes}
-                        </div>
-                      </SortableContext>
-                    </DndContext>
-                  );
-                })()}
-              </div>
-              {!isReadOnly && costBreakdownSections.length > 0 ? (
-                <div className={cn(EB.addNextSectionRow, EB.addFinalSectionRow)}>
-                  {renderContextualSectionAction({
-                    actionKey: "final",
-                    insertAfterCode:
-                      costBreakdownSections[costBreakdownSections.length - 1]?.categoryId ?? null,
-                    label: "Add Final Section",
-                    ariaLabel: "Add Final Section",
-                    inputAriaLabel: "Search final section",
-                  })}
+                          <SortableContext
+                            items={costBreakdownSections.map((s) => s.categoryId)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div
+                              className="eb-scope-sections-list flex flex-col"
+                              data-section-dragging={sectionDragging ? "true" : undefined}
+                            >
+                              {categoryNodes}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      );
+                    })()}
+                  </div>
+                  {!isReadOnly && costBreakdownSections.length > 0 ? (
+                    <div className={cn(EB.addNextSectionRow, EB.addFinalSectionRow)}>
+                      {renderContextualSectionAction({
+                        actionKey: "final",
+                        insertAfterCode:
+                          costBreakdownSections[costBreakdownSections.length - 1]?.categoryId ??
+                          null,
+                        label: "Add Final Section",
+                        ariaLabel: "Add Final Section",
+                        inputAriaLabel: "Search final section",
+                      })}
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              </div>
             </div>
           </section>
 
@@ -915,11 +1239,16 @@ export function EstimateEditor({
               isLocked={isReadOnly}
               invoiceProjectLink={invoiceProjectLink}
               invoiceSummaries={paymentInvoiceSummaries}
+              invoiceContext={{
+                estimateNumber,
+                customerName: meta.client.name,
+                projectName: meta.project.name,
+              }}
               nested
               paymentTemplates={paymentTemplates}
-              addPaymentMilestoneAction={addPaymentMilestoneAction}
-              updatePaymentMilestoneAction={updatePaymentMilestoneAction}
-              deletePaymentMilestoneAction={deletePaymentMilestoneAction}
+              addPaymentMilestoneAction={addPaymentMilestoneInlineAction}
+              updatePaymentMilestoneAction={updatePaymentMilestoneInlineAction}
+              deletePaymentMilestoneAction={deletePaymentMilestoneInlineAction}
               markPaymentMilestonePaidAction={markPaymentMilestonePaidAction}
               reorderPaymentScheduleAction={reorderPaymentScheduleAction}
               applyPaymentTemplateAction={applyPaymentTemplateAction}
@@ -927,21 +1256,12 @@ export function EstimateEditor({
             />
           </EstimateBuilderAdvanced>
         </div>
-
-        <aside className={cn("hidden lg:block lg:pl-1", EB.overviewStickyAside)}>
-          <EstimateBuilderSummary
-            summary={summary}
-            showInternal={editing && !isReadOnly}
-            paymentSummary={paymentSummary}
-            floating
-          />
-        </aside>
       </div>
 
       {isReadOnly ? (
         <div
           className={cn(
-            "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 py-4 lg:hidden",
+            "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-3 py-2 lg:hidden",
             EB.glassMobileBar
           )}
           aria-label="Estimate total"
@@ -953,67 +1273,40 @@ export function EstimateEditor({
   );
 }
 
-function SortableLineItemGroup({
-  row,
-  estimateId,
-  lineOrdinal,
-  updateLineItemAction,
-  duplicateLineItemAction,
-  deleteLineItemAction,
-}: {
-  row: EstimateItemRow;
-  estimateId: string;
-  lineOrdinal: number;
-  updateLineItemAction: (fd: FormData) => Promise<void>;
-  duplicateLineItemAction: (fd: FormData) => Promise<void>;
-  deleteLineItemAction: (fd: FormData) => Promise<void>;
-}): React.ReactElement {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: row.id,
-  });
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-  return (
-    <div ref={setNodeRef} style={style} className={cn("group/line", isDragging && "opacity-60")}>
-      <LineItemRow
-        row={row}
-        estimateId={estimateId}
-        lineOrdinal={lineOrdinal}
-        isLocked={false}
-        dragHandleProps={{ ...attributes, ...listeners }}
-        updateLineItemAction={updateLineItemAction}
-        duplicateLineItemAction={duplicateLineItemAction}
-        deleteLineItemAction={deleteLineItemAction}
-      />
-    </div>
-  );
-}
-
 function LineItemRow({
   row,
   estimateId,
+  categoryId,
   lineOrdinal,
   isLocked,
-  dragHandleProps,
+  sectionOptions,
+  onMoveToSection,
+  onCommitFromPrice,
+  onDuplicated,
+  onDeleted,
   updateLineItemAction,
   duplicateLineItemAction,
   deleteLineItemAction,
 }: {
   row: EstimateItemRow;
   estimateId: string;
+  categoryId: string;
   lineOrdinal: number;
   isLocked: boolean;
-  /** When set, scope card shows a drag handle (dnd-kit listeners + attributes on the button). */
-  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
-  updateLineItemAction: (fd: FormData) => Promise<void>;
-  duplicateLineItemAction: (fd: FormData) => Promise<void>;
-  deleteLineItemAction: (fd: FormData) => Promise<void>;
+  sectionOptions: EstimateSectionOption[];
+  onMoveToSection?: (costCode: string) => void;
+  onCommitFromPrice?: () => void;
+  onDuplicated?: (itemId: string) => void;
+  onDeleted?: () => void;
+  updateLineItemAction: (fd: FormData) => Promise<{ ok: boolean; error?: string }>;
+  duplicateLineItemAction: (
+    fd: FormData
+  ) => Promise<{ ok: boolean; itemId?: string; error?: string }>;
+  deleteLineItemAction: (fd: FormData) => Promise<{ ok: boolean; error?: string }>;
 }): React.ReactElement {
   const router = useRouter();
-  const duplicateFormRef = React.useRef<HTMLFormElement>(null);
-  const deleteFormRef = React.useRef<HTMLFormElement>(null);
+  const { toast } = useToast();
+  const { markUnsaved, trackMutation } = useEstimateDocumentSave();
   const [title, setTitle] = React.useState(() => {
     const i = row.desc.indexOf("\n");
     return i < 0 ? row.desc : row.desc.slice(0, i);
@@ -1025,8 +1318,8 @@ function LineItemRow({
   const [qty, setQty] = React.useState(row.qty);
   const [unit, setUnit] = React.useState(row.unit);
   const [unitCost, setUnitCost] = React.useState(roundEstimateCurrencyValue(row.unitCost));
+  const skipNextBlurRef = React.useRef(false);
   const combinedDesc = desc.trim() ? `${title}\n${desc}` : title;
-  const formId = `line-${row.id}`;
 
   React.useEffect(() => {
     const i = row.desc.indexOf("\n");
@@ -1042,21 +1335,69 @@ function LineItemRow({
     return estimateLineTotal({ ...row, qty, unit, unitCost });
   }, [isLocked, row, qty, unit, unitCost]);
 
-  const submitForm = (): void => {
-    if (isLocked) return;
-    (document.getElementById(formId) as HTMLFormElement | null)?.requestSubmit();
+  const lineItemFormData = React.useCallback((): FormData => {
+    const formData = new FormData();
+    formData.set("estimateId", estimateId);
+    formData.set("itemId", row.id);
+    formData.set("desc", combinedDesc);
+    formData.set("qty", String(qty));
+    formData.set("unit", unit);
+    formData.set("unitCost", String(unitCost));
+    return formData;
+  }, [combinedDesc, estimateId, qty, row.id, unit, unitCost]);
+
+  const submitForm = async (): Promise<boolean> => {
+    if (isLocked) return true;
+    const result = await trackMutation(`line:update:${row.id}`, () =>
+      updateLineItemAction(lineItemFormData())
+    );
+    if (!result.ok) {
+      toast({
+        title: "Save failed",
+        description: result.error ?? "Could not save this line item.",
+        variant: "error",
+      });
+      return false;
+    }
+    return true;
   };
+
+  const submitOnBlur = (): void => {
+    if (skipNextBlurRef.current) {
+      skipNextBlurRef.current = false;
+      return;
+    }
+    void submitForm();
+  };
+
+  const runLineAction = React.useCallback(
+    async (
+      action: (formData: FormData) => Promise<{ ok: boolean; itemId?: string; error?: string }>,
+      failureTitle: string,
+      operationKey: string,
+      onSuccess?: (result: { ok: boolean; itemId?: string; error?: string }) => void
+    ): Promise<void> => {
+      markUnsaved();
+      const formData = new FormData();
+      formData.set("estimateId", estimateId);
+      formData.set("itemId", row.id);
+      const result = await trackMutation(operationKey, () => action(formData));
+      if (result.ok) {
+        onSuccess?.(result);
+        router.refresh();
+        return;
+      }
+      toast({
+        title: failureTitle,
+        description: result.error ?? "Try again.",
+        variant: "error",
+      });
+    },
+    [estimateId, markUnsaved, router, row.id, toast, trackMutation]
+  );
 
   const lineActions = !isLocked ? (
     <>
-      <form ref={duplicateFormRef} action={duplicateLineItemAction} className="hidden" aria-hidden>
-        <input type="hidden" name="estimateId" value={estimateId} />
-        <input type="hidden" name="itemId" value={row.id} />
-      </form>
-      <form ref={deleteFormRef} action={deleteLineItemAction} className="hidden" aria-hidden>
-        <input type="hidden" name="estimateId" value={estimateId} />
-        <input type="hidden" name="itemId" value={row.id} />
-      </form>
       <EstimateLineItemMoreMenu
         hideAmountOnPdf={row.hideAmountOnPdf}
         showHideAmountOnPdf
@@ -1065,7 +1406,10 @@ function LineItemRow({
           fd.set("estimateId", estimateId);
           fd.set("itemId", row.id);
           fd.set("hideAmountOnPdf", row.hideAmountOnPdf ? "0" : "1");
-          void toggleLineItemHideAmountOnPdfAction(fd).then((res) => {
+          markUnsaved();
+          void trackMutation(`line:hide:${row.id}`, () =>
+            toggleLineItemHideAmountOnPdfAction(fd)
+          ).then((res) => {
             if (res.ok) router.refresh();
           });
         }}
@@ -1076,12 +1420,34 @@ function LineItemRow({
           fd.set("estimateId", estimateId);
           fd.set("itemId", row.id);
           fd.set("status", nextStatus);
-          void setLineItemStatusAction(fd).then((res) => {
-            if (res.ok) router.refresh();
-          });
+          markUnsaved();
+          void trackMutation(`line:status:${row.id}`, () => setLineItemStatusAction(fd)).then(
+            (res) => {
+              if (res.ok) router.refresh();
+            }
+          );
         }}
-        onDuplicate={() => duplicateFormRef.current?.requestSubmit()}
-        onDelete={() => deleteFormRef.current?.requestSubmit()}
+        onDuplicate={() =>
+          void runLineAction(
+            duplicateLineItemAction,
+            "Could not duplicate item",
+            `line:duplicate:${row.id}`,
+            (result) => {
+              if (result.itemId) onDuplicated?.(result.itemId);
+            }
+          )
+        }
+        onDelete={() =>
+          void runLineAction(
+            deleteLineItemAction,
+            "Could not delete item",
+            `line:delete:${row.id}`,
+            () => onDeleted?.()
+          )
+        }
+        currentSectionCode={categoryId}
+        moveSectionOptions={sectionOptions}
+        onMoveToSection={onMoveToSection}
       />
     </>
   ) : null;
@@ -1093,7 +1459,7 @@ function LineItemRow({
         {isLocked ? (
           <span
             className={cn(
-              "flex h-8 min-h-8 items-center justify-end px-2 text-[13px] text-[#D8DEE8]",
+              "flex h-8 min-h-8 items-center justify-end px-2 text-[13px] text-foreground",
               EB.inputNumeric,
               EB.lineQtyInput
             )}
@@ -1102,16 +1468,45 @@ function LineItemRow({
           </span>
         ) : (
           <Input
-            form={formId}
             type="number"
             name="qty"
             step="1"
             min={0}
             value={qty}
-            onChange={(e) => setQty(Math.max(0, Number(e.target.value) || 0))}
-            onBlur={submitForm}
+            onChange={(e) => {
+              markUnsaved();
+              setQty(Math.max(0, Number(e.target.value) || 0));
+            }}
+            onBlur={submitOnBlur}
             className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`)}
             aria-label="Line item quantity"
+          />
+        )}
+      </div>
+      <div className={cn(EB.lineFieldStackContents, EB.linePricingMeasure)}>
+        <span className={cn(EB.readLabel, EB.lineMeasureLabel)}>Unit</span>
+        {isLocked ? (
+          <span
+            className={cn(
+              "flex h-8 min-h-8 items-center px-2 text-[13px] text-foreground",
+              EB.inputMuted,
+              EB.lineMeasureInput
+            )}
+          >
+            {row.unit || "—"}
+          </span>
+        ) : (
+          <Input
+            type="text"
+            value={unit}
+            onChange={(e) => {
+              markUnsaved();
+              setUnit(e.target.value);
+            }}
+            onBlur={submitOnBlur}
+            className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.lineMeasureInput}`)}
+            aria-label="Line item unit"
+            placeholder="EA"
           />
         )}
       </div>
@@ -1120,7 +1515,7 @@ function LineItemRow({
         {isLocked ? (
           <span
             className={cn(
-              "flex h-8 min-h-8 items-center justify-end px-2 text-[13px] text-[#D8DEE8]",
+              "flex h-8 min-h-8 items-center justify-end px-2 text-[13px] text-foreground",
               EB.inputNumeric,
               EB.lineUnitInput
             )}
@@ -1129,14 +1524,25 @@ function LineItemRow({
           </span>
         ) : (
           <Input
-            form={formId}
             type="number"
             name="unitCost"
             step="0.01"
             min={0}
             value={unitCost}
-            onChange={(e) => setUnitCost(Math.max(0, Number(e.target.value) || 0))}
-            onBlur={submitForm}
+            onChange={(e) => {
+              markUnsaved();
+              setUnitCost(Math.max(0, Number(e.target.value) || 0));
+            }}
+            onBlur={submitOnBlur}
+            onKeyDown={(event) => {
+              if (!shouldCommitEstimateLineFromPrice(event)) return;
+              event.preventDefault();
+              void submitForm().then((saved) => {
+                if (!saved) return;
+                skipNextBlurRef.current = true;
+                onCommitFromPrice?.();
+              });
+            }}
             className={ebInput(`h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`)}
             aria-label="Line item unit price"
           />
@@ -1157,43 +1563,49 @@ function LineItemRow({
   );
 
   return (
-    <div className={EB.lineItemCard}>
-      {!isLocked ? (
-        <form id={formId} action={updateLineItemAction} className="hidden" aria-hidden>
-          <input type="hidden" name="estimateId" value={estimateId} />
-          <input type="hidden" name="itemId" value={row.id} />
-          <input type="hidden" name="desc" value={combinedDesc} />
-          <input type="hidden" name="qty" value={qty} />
-          <input type="hidden" name="unit" value={unit} />
-          <input type="hidden" name="unitCost" value={unitCost} />
-        </form>
-      ) : null}
+    <div className={EB.lineItemCard} data-estimate-line-item-id={row.id}>
       <ProposalScopeWorkCard
         lineItemGridLayout
         readOnly={isLocked}
         title={title}
         description={desc}
-        onTitleChange={isLocked ? undefined : (v) => setTitle(v)}
-        onDescriptionChange={isLocked ? undefined : (v) => setDesc(v)}
-        onTitleBlur={isLocked ? undefined : submitForm}
-        onDescriptionBlur={isLocked ? undefined : submitForm}
+        onTitleChange={
+          isLocked
+            ? undefined
+            : (v) => {
+                markUnsaved();
+                setTitle(v);
+              }
+        }
+        onDescriptionChange={
+          isLocked
+            ? undefined
+            : (v) => {
+                markUnsaved();
+                setDesc(v);
+              }
+        }
+        onTitleBlur={isLocked ? undefined : submitOnBlur}
+        onDescriptionBlur={isLocked ? undefined : submitOnBlur}
         titleInputAriaLabel={isLocked ? undefined : "Line item title"}
         descriptionEditorAriaLabel={isLocked ? undefined : "Line item description"}
         lineIndex={lineOrdinal}
-        titleTrailingSlot={<EstimateLineItemStatusPill status={row.status} />}
-        inlinePricing={inlinePricing}
-        dragSlot={
-          !isLocked && dragHandleProps ? (
-            <button
-              type="button"
-              {...dragHandleProps}
-              className={EB.scopeSectionDragHandle}
-              aria-label="Drag to reorder line item"
-            >
-              <GripVertical className="h-4 w-4" strokeWidth={1.5} aria-hidden />
-            </button>
-          ) : undefined
+        titleTrailingSlot={
+          <div className="flex flex-wrap items-center gap-1.5">
+            <EstimateLineItemStatusPill status={row.status} />
+            {row.hideAmountOnPdf ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/55 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                aria-label="PDF amount hidden"
+                title="This line's amount is hidden on Itemized PDF output"
+              >
+                <EyeOff className="h-3 w-3" aria-hidden />
+                PDF amount hidden
+              </span>
+            ) : null}
+          </div>
         }
+        inlinePricing={inlinePricing}
         duplicateNode={undefined}
         deleteNode={undefined}
       />
@@ -1244,6 +1656,7 @@ function AddCategoryBlock({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const { markUnsaved, trackMutation } = useEstimateDocumentSave();
   const allCodesWithLabels = React.useMemo(
     () => allCategoryCodes.map((code) => ({ code, name: getCategoryDisplayName(code) })),
     [allCategoryCodes, getCategoryDisplayName]
@@ -1435,7 +1848,10 @@ function AddCategoryBlock({
       if (!trimmed) return;
       setBusy(true);
       try {
-        const res = await createCustomEstimateCategoryAction(estimateId, trimmed);
+        markUnsaved();
+        const res = await trackMutation(`section:create:${trimmed}`, () =>
+          createCustomEstimateCategoryAction(estimateId, trimmed)
+        );
         if (res.ok && res.costCode) {
           await onPostCreateCategoryUx?.(res.costCode, trimmed, insertAfterCategoryCode);
           setSelectedCode(res.costCode);
@@ -1456,7 +1872,16 @@ function AddCategoryBlock({
         setBusy(false);
       }
     },
-    [estimateId, insertAfterCategoryCode, onDismiss, onPostCreateCategoryUx, router, toast]
+    [
+      estimateId,
+      insertAfterCategoryCode,
+      markUnsaved,
+      onDismiss,
+      onPostCreateCategoryUx,
+      router,
+      toast,
+      trackMutation,
+    ]
   );
 
   const handleInstantCreateCategory = () => {
@@ -1481,7 +1906,10 @@ function AddCategoryBlock({
       setBusy(true);
       try {
         const name = displayName?.trim() ?? "";
-        const res = await addLineItemCatalogInlineAction(estimateId, code, name);
+        markUnsaved();
+        const res = await trackMutation(`line:add:${code}`, () =>
+          addLineItemCatalogInlineAction(estimateId, code, name)
+        );
         if (res.ok) {
           const displayLabel = name || getCategoryDisplayName(code) || code;
           await onPostCreateCategoryUx?.(code, displayLabel, insertAfterCategoryCode);
@@ -1507,10 +1935,12 @@ function AddCategoryBlock({
       estimateId,
       getCategoryDisplayName,
       insertAfterCategoryCode,
+      markUnsaved,
       onDismiss,
       onPostCreateCategoryUx,
       router,
       toast,
+      trackMutation,
     ]
   );
 

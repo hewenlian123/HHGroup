@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useRouter } from "next/navigation";
 import {
@@ -16,13 +17,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { createBrowserClient } from "@/lib/supabase";
-import { Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/components/toast/toast-provider";
 import { createInvoiceDraftAction } from "./actions";
 import { getCompanyProfile } from "@/lib/company-profile";
 import { formatCurrency } from "@/lib/formatters";
 import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import type { EstimateInvoicePrefillResult } from "./estimate-prefill";
+import {
+  appendEstimateReturnPath,
+  safeEstimateReturnPath,
+} from "@/app/estimates/_components/estimate-workflow-continuity";
+import "./estimate-origin-invoice-operational.css";
 
 type ProjectOption = { id: string; name: string };
 type CustomerOption = { id: string; name: string | null };
@@ -103,7 +109,7 @@ function AutoResizeTextarea({
         resize(e.currentTarget);
       }}
       className={[
-        "block min-h-[44px] w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm leading-5 text-[var(--neo-text-secondary)] shadow-none transition-all duration-150 placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-muted)] focus:border-[var(--neo-gold)] focus:bg-[var(--neo-surface-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--neo-gold-ring)] disabled:cursor-not-allowed disabled:opacity-50",
+        "block min-h-[44px] w-full resize-none overflow-hidden rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm leading-5 text-[var(--neo-text-secondary)] shadow-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-muted)] focus:border-[var(--neo-gold)] focus:bg-[var(--neo-surface-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--neo-gold-ring)] disabled:cursor-not-allowed disabled:opacity-50",
         className,
       ].join(" ")}
       {...props}
@@ -111,31 +117,36 @@ function AutoResizeTextarea({
   );
 }
 
-const PAGE_CLASS =
-  "dark financial-nums neo-page-on-graphite mx-auto flex w-full max-w-[960px] flex-col gap-4 px-4 py-5 pb-[calc(10.5rem+env(safe-area-inset-bottom))] text-[var(--neo-canvas-text-secondary)] sm:px-6 md:gap-5 md:py-6 md:pb-[calc(6rem+env(safe-area-inset-bottom))]";
+const PAGE_LAYOUT_CLASS =
+  "financial-nums mx-auto flex w-full max-w-[960px] flex-col gap-4 px-4 py-5 pb-[calc(10.5rem+env(safe-area-inset-bottom))] sm:px-6 md:gap-5 md:py-6 md:pb-[calc(6rem+env(safe-area-inset-bottom))]";
+const PAGE_DARK_CLASS = "dark neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]";
 const FIELD_CLASS = "neo-input mt-1";
-const ERROR_TEXT_CLASS = "mt-1 text-xs font-medium text-rose-300";
+const ERROR_TEXT_CLASS = "invoice-new-error-text mt-1 text-xs font-medium text-rose-300";
 const SKELETON_CLASS = "bg-[var(--neo-surface-muted)]";
 const LINE_CARD_CLASS =
-  "group relative rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-4 py-4 shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset] transition-all duration-150 hover:border-[var(--neo-border-strong)] hover:bg-[rgb(255_255_255_/_0.045)]";
+  "invoice-new-line-card group relative rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-4 py-4 shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset] transition-[border-color,background-color] duration-150 hover:border-[var(--neo-border-strong)] hover:bg-[rgb(255_255_255_/_0.045)]";
 const LINE_CARD_INVALID_CLASS = "border-rose-400/35 bg-rose-500/10";
 const COMPACT_FIELD_CLASS =
   "neo-input h-8 min-h-8 rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2 text-right text-sm font-normal tabular-nums text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] focus-visible:bg-[var(--neo-surface-muted)]";
 const FOOTER_CLASS =
-  "-mx-4 mt-0 flex-col gap-2 rounded-t-xl border-t border-[var(--neo-border)] bg-[rgba(21,26,32,0.96)] px-4 pt-3 shadow-[0_-16px_36px_rgb(0_0_0_/_0.18)] backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-4 md:px-5 [&_button]:max-md:min-h-11 [&_button]:max-md:w-full";
+  "invoice-new-action-footer -mx-4 mt-0 flex-col gap-2 rounded-t-xl border-t border-[var(--neo-border)] bg-[rgba(21,26,32,0.96)] px-4 pt-3 shadow-[0_-16px_36px_rgb(0_0_0_/_0.18)] backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-4 md:px-5 [&_button]:max-md:min-h-11 [&_button]:max-md:w-full";
 const SECONDARY_BUTTON_CLASS =
   "rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]";
 const PRIMARY_BUTTON_CLASS =
-  "rounded-md border-transparent bg-[var(--neo-gold)] text-zinc-950 hover:bg-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)]";
+  "invoice-new-primary-action rounded-md border-transparent bg-[var(--neo-gold)] text-zinc-950 hover:bg-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)]";
 
 export default function NewInvoiceClient({
   estimatePrefill,
   projectPrefill,
+  estimateReturnPath,
 }: {
   estimatePrefill?: EstimateInvoicePrefillResult | null;
   projectPrefill?: ProjectInvoicePrefill | null;
+  estimateReturnPath?: string | null;
 }) {
   const prefill = estimatePrefill?.ok ? estimatePrefill.prefill : null;
+  const safeEstimateReturn = safeEstimateReturnPath(estimateReturnPath);
+  const isEstimateOrigin = Boolean(estimatePrefill || safeEstimateReturn);
   const projectContextPrefill = React.useMemo(
     () =>
       prefill || !projectPrefill
@@ -344,7 +355,9 @@ export default function NewInvoiceClient({
         description: "Draft invoice created.",
         variant: "success",
       });
-      router.push(`/financial/invoices/${res.invoiceId}/preview`);
+      router.push(
+        appendEstimateReturnPath(`/financial/invoices/${res.invoiceId}/preview`, safeEstimateReturn)
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to create invoice.";
       setError(msg);
@@ -388,7 +401,9 @@ export default function NewInvoiceClient({
         description: "Invoice draft saved.",
         variant: "success",
       });
-      router.push(`/financial/invoices/${res.invoiceId}`);
+      router.push(
+        appendEstimateReturnPath(`/financial/invoices/${res.invoiceId}`, safeEstimateReturn)
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to save draft.";
       setError(msg);
@@ -411,321 +426,402 @@ export default function NewInvoiceClient({
   }, []);
 
   return (
-    <div className={PAGE_CLASS}>
-      <PageHeader
-        title="New Invoice"
-        description={
-          prefill
-            ? `Invoice for ${prefill.milestoneTitle} from Estimate ${prefill.estimateNumber}.`
-            : projectContextPrefill
-              ? `Invoice for ${projectContextPrefill.projectName}.`
-              : "Create a draft invoice for a project and client."
-        }
-      />
+    <div
+      data-testid={isEstimateOrigin ? "invoice-estimate-origin-workspace" : undefined}
+      className={isEstimateOrigin ? "invoice-estimate-origin-workspace" : "min-h-full"}
+    >
+      <div className={`${PAGE_LAYOUT_CLASS} ${isEstimateOrigin ? "" : PAGE_DARK_CLASS}`}>
+        <PageHeader
+          title="New Invoice"
+          description={
+            prefill
+              ? `Invoice for ${prefill.milestoneTitle} from Estimate ${prefill.estimateNumber}.`
+              : projectContextPrefill
+                ? `Invoice for ${projectContextPrefill.projectName}.`
+                : "Create a draft invoice for a project and client."
+          }
+        />
 
-      {error ? (
-        <NeoPanel bodyClassName="p-4">
-          <p className="text-sm font-medium text-rose-300">{error}</p>
-        </NeoPanel>
-      ) : null}
-
-      {projectContextPrefill && !projectContextPrefill.customerId ? (
-        <NeoPanel bodyClassName="p-4">
-          <p className="text-sm font-medium text-[var(--neo-gold)]">Project context loaded</p>
-          <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">
-            This project is not linked to a customer yet. Add or confirm the client name before
-            saving.
-          </p>
-        </NeoPanel>
-      ) : null}
-
-      <NeoPanel bodyClassName="p-4 md:p-5">
-        {loading ? (
-          <div className="space-y-3">
-            <Skeleton className={`h-6 w-44 ${SKELETON_CLASS}`} />
-            <Skeleton className={`h-10 w-full ${SKELETON_CLASS}`} />
-            <Skeleton className={`h-10 w-full ${SKELETON_CLASS}`} />
-            <Skeleton className={`h-10 w-full ${SKELETON_CLASS}`} />
-          </div>
-        ) : (
-          <NeoFormGrid className="md:grid-cols-2">
-            <div>
-              <NeoFieldLabel required>Project</NeoFieldLabel>
-              <NeoSelect
-                data-testid="invoice-new-project-select"
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className={FIELD_CLASS}
-                aria-invalid={submitAttempted && !projectId}
-              >
-                <option value="">Select project</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </NeoSelect>
-              {submitAttempted && !projectId ? (
-                <p className={ERROR_TEXT_CLASS}>Project is required.</p>
-              ) : null}
-            </div>
-
-            <div>
-              <NeoFieldLabel>Customer (optional)</NeoFieldLabel>
-              <NeoSelect
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-                className={FIELD_CLASS}
-              >
-                <option value="">Select customer</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name || "Unnamed customer"}
-                  </option>
-                ))}
-              </NeoSelect>
-            </div>
-
-            <div>
-              <NeoFieldLabel required>Client name</NeoFieldLabel>
-              <NeoInput
-                data-testid="invoice-new-client-input"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                placeholder="Client"
-                className={FIELD_CLASS}
-                aria-invalid={submitAttempted && !clientName.trim()}
-              />
-              {submitAttempted && !clientName.trim() ? (
-                <p className={ERROR_TEXT_CLASS}>Client name is required.</p>
-              ) : null}
-            </div>
-
-            <div>
-              <NeoFieldLabel>Invoice number</NeoFieldLabel>
-              <NeoInput
-                data-testid="invoice-new-number-input"
-                value={invoiceNo}
-                onChange={(e) => setInvoiceNo(e.target.value)}
-                placeholder="Auto if blank"
-                className={FIELD_CLASS}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <NeoFieldLabel>Issue date</NeoFieldLabel>
-                <NeoInput
-                  data-testid="invoice-new-issue-date-input"
-                  type="date"
-                  value={issueDate}
-                  onChange={(e) => setIssueDate((e.target.value || issueDate).slice(0, 10))}
-                  onInput={(e) => setIssueDate((e.currentTarget.value || issueDate).slice(0, 10))}
-                  className={FIELD_CLASS}
-                />
-              </div>
-              <div>
-                <NeoFieldLabel>Due date</NeoFieldLabel>
-                <NeoInput
-                  data-testid="invoice-new-due-date-input"
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate((e.target.value || dueDate).slice(0, 10))}
-                  onInput={(e) => setDueDate((e.currentTarget.value || dueDate).slice(0, 10))}
-                  className={FIELD_CLASS}
-                />
-              </div>
-            </div>
-
-            <div>
-              <NeoFieldLabel>Tax %</NeoFieldLabel>
-              <NeoInput
-                data-testid="invoice-new-tax-input"
-                type="number"
-                min="0"
-                step="0.01"
-                value={taxPct}
-                onChange={(e) => {
-                  setTaxTouched(true);
-                  setTaxPct(safeNumber(e.target.value));
-                }}
-                className={FIELD_CLASS}
-              />
-            </div>
-
-            <div>
-              <NeoFieldLabel>Notes (optional)</NeoFieldLabel>
-              <NeoInput
-                data-testid="invoice-new-notes-input"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Terms / notes"
-                className={FIELD_CLASS}
-              />
-            </div>
-          </NeoFormGrid>
-        )}
-      </NeoPanel>
-
-      <NeoPanel className="overflow-hidden">
-        <div className="flex items-center justify-between border-b border-[var(--neo-border)] px-4 py-3">
-          <h2 className="text-sm font-semibold text-[var(--neo-text-primary)]">Line items</h2>
-          <span className="text-xs text-[var(--neo-text-tertiary)]">
-            {lines.length} item{lines.length === 1 ? "" : "s"}
-          </span>
-        </div>
-        {submitAttempted && !lines.some(lineHasContent) ? (
-          <p className="px-4 pt-3 text-xs font-medium text-rose-300">
-            At least one line item is required.
-          </p>
-        ) : null}
-        <div className="space-y-3 px-3 py-3 sm:px-4">
-          {lines.map((line, idx) => {
-            const amount =
-              Math.max(0, safeNumber(line.qty)) * Math.max(0, safeNumber(line.unitPrice));
-            const invalidLine = submitAttempted && !lineHasContent(line);
-
-            return (
-              <div
-                key={idx}
-                className={[LINE_CARD_CLASS, invalidLine ? LINE_CARD_INVALID_CLASS : ""].join(" ")}
-              >
-                <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_72px_112px_132px_32px] md:items-start">
-                  <div className="space-y-1 pr-9 md:pr-0">
-                    <NeoInput
-                      data-testid={`invoice-new-line-${idx + 1}-item-input`}
-                      value={line.itemName}
-                      onChange={(e) => updateLine(idx, { itemName: e.target.value })}
-                      placeholder="Item name"
-                      aria-label={`Line item ${idx + 1} item name`}
-                      aria-invalid={invalidLine}
-                      className="h-8 min-h-8 border-transparent bg-transparent px-2 py-1 text-[15px] font-medium leading-5 text-[var(--neo-text-primary)] placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-raised)] focus-visible:border-[var(--neo-gold)] focus-visible:bg-[var(--neo-surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] max-md:text-base"
-                    />
-                    <AutoResizeTextarea
-                      data-testid={`invoice-new-line-${idx + 1}-description-input`}
-                      value={line.description}
-                      onChange={(e) => updateLine(idx, { description: e.target.value })}
-                      placeholder="Describe the scope of work, materials, or service…"
-                      aria-label={`Line item ${idx + 1} description`}
-                      aria-invalid={invalidLine}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 md:contents">
-                    <div className="space-y-1">
-                      <NeoFieldLabel className="text-[10px]">Qty</NeoFieldLabel>
-                      <NeoInput
-                        data-testid={`invoice-new-line-${idx + 1}-qty-input`}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={line.qty}
-                        onChange={(e) => updateLine(idx, { qty: safeNumber(e.target.value) })}
-                        className={COMPACT_FIELD_CLASS}
-                        aria-label={`Line item ${idx + 1} quantity`}
-                      />
-                    </div>
-                    <span className="pb-2 text-sm text-[var(--neo-text-tertiary)] md:hidden">
-                      ×
-                    </span>
-                    <div className="space-y-1">
-                      <NeoFieldLabel className="text-[10px]">Rate</NeoFieldLabel>
-                      <NeoInput
-                        data-testid={`invoice-new-line-${idx + 1}-rate-input`}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={line.unitPrice}
-                        onChange={(e) => updateLine(idx, { unitPrice: safeNumber(e.target.value) })}
-                        className={COMPACT_FIELD_CLASS}
-                        aria-label={`Line item ${idx + 1} rate`}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-end justify-between border-t border-[var(--neo-border)] pt-3 md:block md:border-0 md:pt-0 md:text-right">
-                    <span className="text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] md:block">
-                      Amount
-                    </span>
-                    <NeoAmount className="mt-2 block text-base">{formatCurrency(amount)}</NeoAmount>
-                  </div>
-
+        {prefill ? (
+          <div data-testid="invoice-estimate-origin-context">
+            <NeoPanel bodyClassName="p-4 md:p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--neo-gold)]">
+                    Estimate milestone
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--neo-text-primary)]">
+                    Estimate {prefill.estimateNumber}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-[var(--neo-text-secondary)]">
+                    This creates one Draft invoice linked to the selected payment milestone.
+                  </p>
+                </div>
+                {safeEstimateReturn ? (
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="absolute right-3 top-3 h-8 w-8 border-transparent bg-transparent p-0 text-[var(--neo-text-tertiary)] opacity-100 transition-colors hover:border-rose-400/20 hover:bg-rose-500/10 hover:text-rose-300 md:static md:mt-5 md:opacity-0 md:group-hover:opacity-100"
-                    aria-label="Remove line item"
-                    disabled={saving || lines.length <= 1}
-                    onClick={() => removeLine(idx)}
-                    title="Remove line item"
+                    className={`min-h-11 ${SECONDARY_BUTTON_CLASS}`}
+                    asChild
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Link href={safeEstimateReturn} data-testid="invoice-new-back-to-estimate">
+                      <ArrowLeft className="mr-2 h-4 w-4" aria-hidden />
+                      Back to estimate
+                    </Link>
                   </Button>
+                ) : null}
+              </div>
+              <dl className="mt-4 grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                <div className="min-w-0">
+                  <dt className="text-[var(--neo-text-tertiary)]">Customer</dt>
+                  <dd className="mt-0.5 truncate font-medium text-[var(--neo-text-primary)]">
+                    {prefill.customerName || "—"}
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-[var(--neo-text-tertiary)]">Project</dt>
+                  <dd className="mt-0.5 truncate font-medium text-[var(--neo-text-primary)]">
+                    {prefill.projectName || "—"}
+                  </dd>
+                </div>
+                <div className="min-w-0">
+                  <dt className="text-[var(--neo-text-tertiary)]">Milestone</dt>
+                  <dd className="mt-0.5 truncate font-medium text-[var(--neo-text-primary)]">
+                    {prefill.milestoneTitle}
+                  </dd>
+                </div>
+                <div className="min-w-0 sm:text-right lg:text-left">
+                  <dt className="text-[var(--neo-text-tertiary)]">Milestone amount</dt>
+                  <dd className="mt-0.5 font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                    {formatCurrency(prefill.amount)}
+                  </dd>
+                </div>
+              </dl>
+            </NeoPanel>
+          </div>
+        ) : null}
+
+        {error ? (
+          <NeoPanel bodyClassName="p-4">
+            <p className="invoice-new-error-text text-sm font-medium text-rose-300">{error}</p>
+            {estimatePrefill && !estimatePrefill.ok && estimatePrefill.existingInvoiceId ? (
+              <Button variant="outline" className={`mt-3 ${SECONDARY_BUTTON_CLASS}`} asChild>
+                <Link
+                  href={appendEstimateReturnPath(
+                    `/financial/invoices/${estimatePrefill.existingInvoiceId}`,
+                    safeEstimateReturn
+                  )}
+                >
+                  View linked invoice
+                </Link>
+              </Button>
+            ) : null}
+          </NeoPanel>
+        ) : null}
+
+        {projectContextPrefill && !projectContextPrefill.customerId ? (
+          <NeoPanel bodyClassName="p-4">
+            <p className="text-sm font-medium text-[var(--neo-gold)]">Project context loaded</p>
+            <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">
+              This project is not linked to a customer yet. Add or confirm the client name before
+              saving.
+            </p>
+          </NeoPanel>
+        ) : null}
+
+        <NeoPanel bodyClassName="p-4 md:p-5">
+          {loading ? (
+            <div className="space-y-3">
+              <Skeleton className={`h-6 w-44 ${SKELETON_CLASS}`} />
+              <Skeleton className={`h-10 w-full ${SKELETON_CLASS}`} />
+              <Skeleton className={`h-10 w-full ${SKELETON_CLASS}`} />
+              <Skeleton className={`h-10 w-full ${SKELETON_CLASS}`} />
+            </div>
+          ) : (
+            <NeoFormGrid className="md:grid-cols-2">
+              <div>
+                <NeoFieldLabel required>Project</NeoFieldLabel>
+                <NeoSelect
+                  data-testid="invoice-new-project-select"
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  className={FIELD_CLASS}
+                  aria-invalid={submitAttempted && !projectId}
+                >
+                  <option value="">Select project</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </NeoSelect>
+                {submitAttempted && !projectId ? (
+                  <p className={ERROR_TEXT_CLASS}>Project is required.</p>
+                ) : null}
+              </div>
+
+              <div>
+                <NeoFieldLabel>Customer (optional)</NeoFieldLabel>
+                <NeoSelect
+                  value={customerId}
+                  onChange={(e) => setCustomerId(e.target.value)}
+                  className={FIELD_CLASS}
+                >
+                  <option value="">Select customer</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name || "Unnamed customer"}
+                    </option>
+                  ))}
+                </NeoSelect>
+              </div>
+
+              <div>
+                <NeoFieldLabel required>Client name</NeoFieldLabel>
+                <NeoInput
+                  data-testid="invoice-new-client-input"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="Client"
+                  className={FIELD_CLASS}
+                  aria-invalid={submitAttempted && !clientName.trim()}
+                />
+                {submitAttempted && !clientName.trim() ? (
+                  <p className={ERROR_TEXT_CLASS}>Client name is required.</p>
+                ) : null}
+              </div>
+
+              <div>
+                <NeoFieldLabel>Invoice number</NeoFieldLabel>
+                <NeoInput
+                  data-testid="invoice-new-number-input"
+                  value={invoiceNo}
+                  onChange={(e) => setInvoiceNo(e.target.value)}
+                  placeholder="Auto if blank"
+                  className={FIELD_CLASS}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <NeoFieldLabel>Issue date</NeoFieldLabel>
+                  <NeoInput
+                    data-testid="invoice-new-issue-date-input"
+                    type="date"
+                    value={issueDate}
+                    onChange={(e) => setIssueDate((e.target.value || issueDate).slice(0, 10))}
+                    onInput={(e) => setIssueDate((e.currentTarget.value || issueDate).slice(0, 10))}
+                    className={FIELD_CLASS}
+                  />
+                </div>
+                <div>
+                  <NeoFieldLabel>Due date</NeoFieldLabel>
+                  <NeoInput
+                    data-testid="invoice-new-due-date-input"
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate((e.target.value || dueDate).slice(0, 10))}
+                    onInput={(e) => setDueDate((e.currentTarget.value || dueDate).slice(0, 10))}
+                    className={FIELD_CLASS}
+                  />
                 </div>
               </div>
-            );
-          })}
 
-          <button
-            type="button"
-            onClick={addLine}
-            disabled={saving}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            Add another item
-          </button>
-        </div>
-
-        <div className="flex justify-end border-t border-[var(--neo-border)] p-4">
-          <div className="w-full max-w-sm space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-[var(--neo-text-secondary)]">Subtotal</span>
-              <NeoAmount tone="muted">{formatCurrency(computedSubtotal)}</NeoAmount>
-            </div>
-            {computedTax > 0 ? (
-              <div className="flex justify-between">
-                <span className="text-[var(--neo-text-secondary)]">Tax ({taxPct || 0}%)</span>
-                <NeoAmount tone="muted">{formatCurrency(computedTax)}</NeoAmount>
+              <div>
+                <NeoFieldLabel>Tax %</NeoFieldLabel>
+                <NeoInput
+                  data-testid="invoice-new-tax-input"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={taxPct}
+                  onChange={(e) => {
+                    setTaxTouched(true);
+                    setTaxPct(safeNumber(e.target.value));
+                  }}
+                  className={FIELD_CLASS}
+                />
               </div>
-            ) : null}
-            <div className="flex justify-between border-t border-[var(--neo-border)] pt-2 font-medium text-[var(--neo-text-primary)]">
-              <span>Total</span>
-              <NeoAmount className="text-[17px]">{formatCurrency(computedTotal)}</NeoAmount>
+
+              <div>
+                <NeoFieldLabel>Notes (optional)</NeoFieldLabel>
+                <NeoInput
+                  data-testid="invoice-new-notes-input"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Terms / notes"
+                  className={FIELD_CLASS}
+                />
+              </div>
+            </NeoFormGrid>
+          )}
+        </NeoPanel>
+
+        <NeoPanel className="overflow-hidden">
+          <div className="flex items-center justify-between border-b border-[var(--neo-border)] px-4 py-3">
+            <h2 className="text-sm font-semibold text-[var(--neo-text-primary)]">Line items</h2>
+            <span className="text-xs text-[var(--neo-text-tertiary)]">
+              {lines.length} item{lines.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          {submitAttempted && !lines.some(lineHasContent) ? (
+            <p className="invoice-new-error-text px-4 pt-3 text-xs font-medium text-rose-300">
+              At least one line item is required.
+            </p>
+          ) : null}
+          <div className="space-y-3 px-3 py-3 sm:px-4">
+            {lines.map((line, idx) => {
+              const amount =
+                Math.max(0, safeNumber(line.qty)) * Math.max(0, safeNumber(line.unitPrice));
+              const invalidLine = submitAttempted && !lineHasContent(line);
+
+              return (
+                <div
+                  key={idx}
+                  className={[LINE_CARD_CLASS, invalidLine ? LINE_CARD_INVALID_CLASS : ""].join(
+                    " "
+                  )}
+                >
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_72px_112px_132px_32px] md:items-start">
+                    <div className="space-y-1 pr-12 md:pr-0">
+                      <NeoInput
+                        data-testid={`invoice-new-line-${idx + 1}-item-input`}
+                        value={line.itemName}
+                        onChange={(e) => updateLine(idx, { itemName: e.target.value })}
+                        placeholder="Item name"
+                        aria-label={`Line item ${idx + 1} item name`}
+                        aria-invalid={invalidLine}
+                        className="h-8 min-h-8 border-transparent bg-transparent px-2 py-1 text-[15px] font-medium leading-5 text-[var(--neo-text-primary)] placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-raised)] focus-visible:border-[var(--neo-gold)] focus-visible:bg-[var(--neo-surface-raised)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] max-md:text-base"
+                      />
+                      <AutoResizeTextarea
+                        data-testid={`invoice-new-line-${idx + 1}-description-input`}
+                        value={line.description}
+                        onChange={(e) => updateLine(idx, { description: e.target.value })}
+                        placeholder="Describe the scope of work, materials, or service…"
+                        aria-label={`Line item ${idx + 1} description`}
+                        aria-invalid={invalidLine}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-end gap-2 md:contents">
+                      <div className="space-y-1">
+                        <NeoFieldLabel className="text-[10px]">Qty</NeoFieldLabel>
+                        <NeoInput
+                          data-testid={`invoice-new-line-${idx + 1}-qty-input`}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={line.qty}
+                          onChange={(e) => updateLine(idx, { qty: safeNumber(e.target.value) })}
+                          className={COMPACT_FIELD_CLASS}
+                          aria-label={`Line item ${idx + 1} quantity`}
+                        />
+                      </div>
+                      <span className="pb-2 text-sm text-[var(--neo-text-tertiary)] md:hidden">
+                        ×
+                      </span>
+                      <div className="space-y-1">
+                        <NeoFieldLabel className="text-[10px]">Rate</NeoFieldLabel>
+                        <NeoInput
+                          data-testid={`invoice-new-line-${idx + 1}-rate-input`}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={line.unitPrice}
+                          onChange={(e) =>
+                            updateLine(idx, { unitPrice: safeNumber(e.target.value) })
+                          }
+                          className={COMPACT_FIELD_CLASS}
+                          aria-label={`Line item ${idx + 1} rate`}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-end justify-between border-t border-[var(--neo-border)] pt-3 md:block md:border-0 md:pt-0 md:text-right">
+                      <span className="text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)] md:block">
+                        Amount
+                      </span>
+                      <NeoAmount className="mt-2 block text-base">
+                        {formatCurrency(amount)}
+                      </NeoAmount>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="absolute right-1.5 top-1.5 h-11 w-11 border-transparent bg-transparent p-0 text-[var(--neo-text-tertiary)] opacity-100 transition-colors hover:border-rose-400/20 hover:bg-rose-500/10 hover:text-rose-300 focus-visible:opacity-100 md:static md:mt-5 md:h-8 md:w-8 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                      aria-label="Remove line item"
+                      disabled={saving || lines.length <= 1}
+                      onClick={() => removeLine(idx)}
+                      title="Remove line item"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={addLine}
+              disabled={saving}
+              className="flex min-h-11 w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] disabled:cursor-not-allowed disabled:opacity-50 md:min-h-10"
+            >
+              <Plus className="h-4 w-4" />
+              Add another item
+            </button>
+          </div>
+
+          <div className="flex justify-end border-t border-[var(--neo-border)] p-4">
+            <div className="w-full max-w-sm space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-[var(--neo-text-secondary)]">Subtotal</span>
+                <NeoAmount tone="muted">{formatCurrency(computedSubtotal)}</NeoAmount>
+              </div>
+              {computedTax > 0 ? (
+                <div className="flex justify-between">
+                  <span className="text-[var(--neo-text-secondary)]">Tax ({taxPct || 0}%)</span>
+                  <NeoAmount tone="muted">{formatCurrency(computedTax)}</NeoAmount>
+                </div>
+              ) : null}
+              <div className="flex justify-between border-t border-[var(--neo-border)] pt-2 font-medium text-[var(--neo-text-primary)]">
+                <span>Total</span>
+                <NeoAmount className="text-[17px]">{formatCurrency(computedTotal)}</NeoAmount>
+              </div>
             </div>
           </div>
-        </div>
-      </NeoPanel>
+        </NeoPanel>
 
-      <NeoActionFooter className={FOOTER_CLASS}>
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/financial/invoices")}
-            disabled={saving}
-            className={SECONDARY_BUTTON_CLASS}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handleSaveDraft}
-            disabled={!canSubmit}
-            className={SECONDARY_BUTTON_CLASS}
-          >
-            Save draft
-          </Button>
-          <Button onClick={handleCreate} disabled={!canSubmit} className={PRIMARY_BUTTON_CLASS}>
-            <SubmitSpinner loading={saving} className="mr-2" />
-            {saving ? "Creating..." : "Create draft invoice"}
-          </Button>
-        </div>
-        {submitAttempted && validationErrors.length > 0 ? (
-          <p className="text-center text-xs font-medium text-rose-300 sm:text-right">
-            {validationErrors[0]}
-          </p>
-        ) : null}
-      </NeoActionFooter>
+        <NeoActionFooter className={FOOTER_CLASS}>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => router.push(safeEstimateReturn ?? "/financial/invoices")}
+              disabled={saving}
+              className={SECONDARY_BUTTON_CLASS}
+            >
+              {safeEstimateReturn ? "Cancel and return" : "Cancel"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleSaveDraft}
+              disabled={!canSubmit}
+              className={SECONDARY_BUTTON_CLASS}
+            >
+              Save draft
+            </Button>
+            <Button onClick={handleCreate} disabled={!canSubmit} className={PRIMARY_BUTTON_CLASS}>
+              <SubmitSpinner loading={saving} className="mr-2" />
+              {saving ? "Creating..." : "Create draft invoice"}
+            </Button>
+          </div>
+          {submitAttempted && validationErrors.length > 0 ? (
+            <p className="invoice-new-error-text text-center text-xs font-medium text-rose-300 sm:text-right">
+              {validationErrors[0]}
+            </p>
+          ) : null}
+        </NeoActionFooter>
+      </div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import * as React from "react";
 import { useSystemHealth } from "@/contexts/system-health-context";
 import { useToast } from "@/components/toast/toast-provider";
 import { usePathname, useRouter } from "next/navigation";
+import { shouldShowSystemHealthToast } from "./system-health-toast-policy";
 
 const POLL_INTERVAL_MS = 60_000;
 const STATUS_CACHE_TTL_MS = 30_000;
@@ -51,7 +52,7 @@ export function SystemHealthPoller() {
         const status = await fetchSystemHealthStatus();
         if (!cancelled) {
           setSystemHealth({ status });
-          if (status === "warning") {
+          if (status === "warning" && shouldShowSystemHealthToast(pathname)) {
             if (!hasShownToastRef.current) {
               hasShownToastRef.current = true;
               toast({
@@ -69,7 +70,7 @@ export function SystemHealthPoller() {
       } catch {
         if (!cancelled) {
           setSystemHealth({ status: "warning" });
-          if (!hasShownToastRef.current) {
+          if (!hasShownToastRef.current && shouldShowSystemHealthToast(pathname)) {
             hasShownToastRef.current = true;
             toast({
               title: "System issue detected",

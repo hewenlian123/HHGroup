@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, Download, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  appendEstimateReturnPath,
+  safeEstimateReturnPath,
+} from "@/app/estimates/_components/estimate-workflow-continuity";
 
 type InvoicePreviewShellProps = {
   invoiceId: string;
@@ -23,6 +27,11 @@ function safePdfFilename(invoiceNo: string): string {
 
 export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoicePreviewShellProps) {
   const searchParams = useSearchParams();
+  const estimateReturnPath = safeEstimateReturnPath(searchParams.get("returnTo"));
+  const invoiceReturnPath = appendEstimateReturnPath(
+    `/financial/invoices/${invoiceId}`,
+    estimateReturnPath
+  );
   const invoiceDocumentRef = React.useRef<HTMLDivElement>(null);
   const autoDownloadStarted = React.useRef(false);
   const [pdfBusy, setPdfBusy] = React.useState(false);
@@ -118,18 +127,35 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
     <div className="invoice-a4-shell financial-nums mx-auto w-full max-w-[calc(210mm+3rem)] px-3 py-5 sm:px-6 print:px-0 print:py-0">
       <div className="no-print mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="btn-outline-ghost rounded-sm h-8" asChild>
-            <Link href={`/financial/invoices/${invoiceId}`} data-testid="invoice-preview-back-link">
+          <Button
+            variant="outline"
+            size="sm"
+            className="btn-outline-ghost min-h-11 rounded-sm"
+            asChild
+          >
+            <Link href={invoiceReturnPath} data-testid="invoice-preview-back-link">
               <ArrowLeft className="h-4 w-4 mr-1" />
               Back to invoice
             </Link>
           </Button>
+          {estimateReturnPath ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="btn-outline-ghost min-h-11 rounded-sm"
+              asChild
+            >
+              <Link href={estimateReturnPath} data-testid="invoice-preview-return-to-estimate">
+                Return to estimate
+              </Link>
+            </Button>
+          ) : null}
           <div className="h-5 w-px bg-gray-200" />
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="rounded-sm h-8"
+            className="min-h-11 rounded-sm"
             onClick={() => window.print()}
           >
             <Printer className="h-4 w-4 mr-1.5" />
@@ -139,7 +165,7 @@ export function InvoicePreviewShell({ invoiceId, invoiceNo, children }: InvoiceP
             type="button"
             variant="outline"
             size="sm"
-            className="rounded-sm h-8"
+            className="min-h-11 rounded-sm"
             disabled={pdfBusy}
             onClick={() => void handleDownloadPdf()}
           >

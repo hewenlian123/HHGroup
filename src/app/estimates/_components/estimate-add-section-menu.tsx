@@ -164,8 +164,8 @@ export function EstimateAddSectionMenu({
                   }
                 }}
                 className={cn(
-                  "h-8 min-w-0 flex-1 rounded-md border border-white/[0.08] bg-white/[0.05] px-2.5 text-[13px] text-zinc-50 outline-none transition focus:border-cyan-300/35 focus:ring-2 focus:ring-cyan-300/15",
-                  "placeholder:text-zinc-500"
+                  "h-8 min-w-0 flex-1 rounded-md border border-[var(--eb-border-strong)] bg-white px-2.5 text-[13px] text-[var(--eb-text)] outline-none transition-[border-color,box-shadow] duration-150 focus:border-[#171717]/45 focus:ring-2 focus:ring-[#171717]/15",
+                  "placeholder:text-[var(--eb-placeholder)]"
                 )}
                 placeholder="Proposal section title"
                 aria-label="Custom section title"
@@ -178,8 +178,8 @@ export function EstimateAddSectionMenu({
                 className={cn(
                   "h-8 shrink-0 rounded-md px-2.5 text-[12px] font-semibold transition",
                   canSubmitCustom
-                    ? "bg-cyan-300 text-zinc-950 hover:bg-cyan-200"
-                    : "cursor-not-allowed bg-white/[0.06] text-zinc-500"
+                    ? "bg-[#171717] text-white hover:bg-[#30302e]"
+                    : "cursor-not-allowed bg-[var(--eb-bg-soft)] text-[var(--eb-muted)]"
                 )}
                 disabled={!canSubmitCustom}
                 onClick={handleAddCustom}
@@ -190,13 +190,13 @@ export function EstimateAddSectionMenu({
             {isDuplicate ? (
               <p
                 id="estimate-custom-section-error"
-                className="mt-1 px-1 text-[11px] text-amber-200"
+                className="mt-1 px-1 text-[11px] text-[#835d18]"
               >
                 A section with this name already exists.
               </p>
             ) : null}
           </div>
-          <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
+          <DropdownMenuSeparator className="my-1 bg-[var(--eb-border)]" />
           <DropdownMenuItem
             className={EB.commandMenuItem}
             disabled={disabled || !canAddSection}
@@ -208,7 +208,7 @@ export function EstimateAddSectionMenu({
           >
             Blank section
           </DropdownMenuItem>
-          <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
+          <DropdownMenuSeparator className="my-1 bg-[var(--eb-border)]" />
           <DropdownMenuLabel className={EB.builderPickerGroupLabel}>Templates</DropdownMenuLabel>
           {SECTION_TEMPLATE_NAMES.map((name) => (
             <DropdownMenuItem
@@ -227,13 +227,13 @@ export function EstimateAddSectionMenu({
             >
               <span>{name}</span>
               {hasExistingSectionName(name) ? (
-                <span className="ml-auto text-[11px] text-zinc-500">Already added</span>
+                <span className="ml-auto text-[11px] text-[var(--eb-muted)]">Already added</span>
               ) : null}
             </DropdownMenuItem>
           ))}
           {recentSections.length > 0 ? (
             <>
-              <DropdownMenuSeparator className="my-1 bg-white/[0.06]" />
+              <DropdownMenuSeparator className="my-1 bg-[var(--eb-border)]" />
               <DropdownMenuLabel className={EB.builderPickerGroupLabel}>Recent</DropdownMenuLabel>
               {recentSections.map((entry) => (
                 <DropdownMenuItem
@@ -252,7 +252,9 @@ export function EstimateAddSectionMenu({
                 >
                   <span>{entry.displayName}</span>
                   {hasExistingSectionName(entry.displayName) ? (
-                    <span className="ml-auto text-[11px] text-zinc-500">Already added</span>
+                    <span className="ml-auto text-[11px] text-[var(--eb-muted)]">
+                      Already added
+                    </span>
                   ) : null}
                 </DropdownMenuItem>
               ))}

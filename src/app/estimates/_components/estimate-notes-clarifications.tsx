@@ -88,7 +88,7 @@ export function EstimateNotesClarifications({
         >
           <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 py-1 [&::-webkit-details-marker]:hidden">
             <div className="flex min-w-0 items-center gap-1.5">
-              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#929CAF] transition-transform group-open:rotate-180" />
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
               <div className="min-w-0">
                 <h2 className={EB.scopeHeading}>Notes &amp; Clarifications</h2>
                 <p className={EB.scopeSubtitle}>Client-facing scope notes</p>
@@ -123,7 +123,7 @@ export function EstimateNotesClarifications({
               </DropdownMenuContent>
             </DropdownMenu>
           </summary>
-          <div className="mt-3 space-y-3 border-t border-white/[0.035] pt-3">
+          <div className="mt-3 space-y-3 border-t border-border pt-3">
             {notes.length === 0 ? (
               <p className={EB.scopeEmptyMessage}>
                 No notes yet. Add a client-facing clarification when needed.

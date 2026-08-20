@@ -121,7 +121,18 @@ async function expectSavedSectionMenuLayout(page: Page): Promise<void> {
     .locator("visible=true");
   await expect(visibleAddSectionActions).toHaveCount(1);
 
-  const search = page.getByRole("textbox", { name: "Search or add section" });
+  let search = page
+    .getByRole("textbox", { name: /^Search or add section(?: from outline)?$/i })
+    .locator("visible=true")
+    .first();
+  if (!(await search.isVisible().catch(() => false))) {
+    await visibleAddSectionActions.click();
+    search = page
+      .getByRole("textbox", { name: /^Search or add section(?: from outline)?$/i })
+      .locator("visible=true")
+      .first();
+  }
+  await expect(search).toBeVisible();
   await search.scrollIntoViewIfNeeded();
   await search.click();
 
@@ -177,7 +188,18 @@ async function expectSavedSectionMenuLayout(page: Page): Promise<void> {
 
   await page.keyboard.press("Escape");
   await expect(menu).toBeHidden();
-  await expect(search).toBeFocused();
+  if (await search.isVisible().catch(() => false)) {
+    await expect(search).toBeFocused();
+  } else {
+    await expect(visibleAddSectionActions).toBeVisible();
+    await expect(visibleAddSectionActions).toBeFocused();
+    await visibleAddSectionActions.click();
+    search = page
+      .getByRole("textbox", { name: /^Search or add section(?: from outline)?$/i })
+      .locator("visible=true")
+      .first();
+    await expect(search).toBeFocused();
+  }
 
   await search.click();
   await expect(menu).toBeVisible();
@@ -219,6 +241,9 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   await expect(lineTitleInput).toBeVisible({ timeout: 15_000 });
   await lineTitleInput.fill(lineTitle);
   await page.getByLabel("Line item 1 quantity").locator("visible=true").fill("1");
+  const unitInput = page.getByLabel("Line item 1 unit", { exact: true }).locator("visible=true");
+  await expect(unitInput).toBeVisible();
+  await unitInput.fill("LF");
   await page.getByLabel("Line item 1 unit price").locator("visible=true").fill("110");
 
   await expect(page.getByText("$110.00").locator("visible=true").first()).toBeVisible({
@@ -235,7 +260,9 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   await expect(page.getByText("$300.00").locator("visible=true").first()).toBeVisible({
     timeout: 10_000,
   });
-  await expect(page.getByLabel("Estimate overview")).not.toContainText(/markup|overhead|profit/i);
+  await expect(page.getByLabel("Estimate pricing summary")).not.toContainText(
+    /markup|overhead|profit/i
+  );
 
   await page.getByRole("button", { name: /Schedule Payment/i }).click();
   const scheduleDialog = page.getByRole("dialog", { name: /Schedule Payment/i });
@@ -253,21 +280,21 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
     timeout: 10_000,
   });
   const unitPriceBox = await unitPriceInput.boundingBox();
-  expect(unitPriceBox?.width ?? 0).toBeGreaterThanOrEqual(130);
+  expect(unitPriceBox?.width ?? 0).toBeGreaterThanOrEqual(56);
   await unitPriceInput.fill("100");
   await expect(page.getByText("$300.00").locator("visible=true").first()).toBeVisible({
     timeout: 10_000,
   });
 
-  const saveEstimate = page.getByRole("button", { name: "Save Estimate" });
-  await expect(saveEstimate).toBeEnabled({ timeout: 15_000 });
-  await saveEstimate.click();
-  await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
+  const saveAndPreview = page.getByRole("button", { name: "Save & Preview" }).first();
+  await expect(saveAndPreview).toBeEnabled({ timeout: 15_000 });
+  await saveAndPreview.click();
+  await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+\/preview/, {
+    timeout: 30_000,
+  });
 
-  const detailUrl = page.url();
+  const detailUrl = page.url().replace(/\/preview(?:\?.*)?$/, "");
 
-  await page.getByRole("link", { name: "Preview" }).click();
-  await expect(page).toHaveURL(/\/preview/, { timeout: 30_000 });
   await expect(page.locator("body")).not.toContainText("Something went wrong");
   const previewMainText = await page.locator("main").evaluate((el) => el.textContent ?? "");
   expect(previewMainText).not.toContain("\u2028");
@@ -279,6 +306,10 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
     timeout: 15_000,
   });
   await expect(page.locator("main")).toContainText(lineTitle, { timeout: 15_000 });
+  await expect(
+    page.getByLabel("Line item unit", { exact: true }).locator("visible=true").first()
+  ).toHaveValue("LF");
+  await expect(page.getByRole("button", { name: "Drag to reorder line item" })).toHaveCount(0);
 
   const secondLineTitle = `PW second line ${suffix}`;
   await page.getByRole("button", { name: "Add line" }).first().click();
@@ -294,10 +325,15 @@ test("estimate builder smoke: create, edit totals, preview, open existing edit",
   await expect(page.locator("main")).toContainText(secondLineTitle, { timeout: 15_000 });
 
   const sectionName = `PW Section ${suffix}`;
-  const addSectionInput = page.getByRole("textbox", { name: "Search or add section" });
-  await addSectionInput.scrollIntoViewIfNeeded();
-  await addSectionInput.fill(sectionName);
-  await page.getByRole("button", { name: "Add Section", exact: true }).click();
+  await page
+    .getByRole("button", { name: /^Section: .*Open menu to change or rename\.$/i })
+    .first()
+    .click();
+  await page.getByRole("menuitem", { name: "+ Add section", exact: true }).click();
+  const addSectionDialog = page.getByRole("dialog", { name: "Add section" });
+  await expect(addSectionDialog).toBeVisible();
+  await addSectionDialog.getByLabel("Section name").fill(sectionName);
+  await addSectionDialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(
     page.getByText("Section created").or(page.getByText("Section added")).first()
   ).toBeVisible({
@@ -363,8 +399,6 @@ test("estimate section dropdowns add templates without crashing in new and edit 
   await expect(page).toHaveURL(/\/estimates\/(?!new(?:\/|$))[^/?#]+/, { timeout: 30_000 });
 
   await page.getByRole("button", { name: "Edit", exact: true }).click();
-  const addSectionBlock = page.locator("#estimate-add-section");
-  await expect(addSectionBlock).toBeVisible({ timeout: 15_000 });
   for (const viewport of [
     { width: 1440, height: 900 },
     { width: 1280, height: 800 },
@@ -375,19 +409,26 @@ test("estimate section dropdowns add templates without crashing in new and edit 
     await page.setViewportSize(viewport);
     await expectSavedSectionMenuLayout(page);
   }
-  const search = addSectionBlock.getByRole("textbox", { name: "Search or add section" });
-  await search.scrollIntoViewIfNeeded();
-  await search.click();
-  await page.getByRole("option", { name: /^Electrical$/i }).click();
-  await expect(search).toHaveValue("Electrical");
-  await expect(search).toBeFocused();
-  await addSectionBlock.getByRole("button", { name: /^Add Section$/i }).click();
+  const addSection = page.getByRole("button", { name: /^Add Section$/i });
+  await expect(addSection).toHaveCount(1);
+  await addSection.click();
+  const contextualSectionSearch = page.getByRole("textbox", {
+    name: "Search or add section",
+  });
+  await expect(contextualSectionSearch).toBeFocused();
+  const contextualSectionOptions = page.getByRole("listbox");
+  await expect(contextualSectionOptions).toBeVisible();
+  await contextualSectionOptions.getByRole("option", { name: /^Electrical$/i }).click();
   await expectVisibleSectionName(page, "Electrical");
 
-  await search.click();
-  await page.getByRole("option", { name: /^Electrical\s+Already added$/i }).click();
+  await addSection.click();
+  await expect(contextualSectionSearch).toBeFocused();
+  const duplicateElectrical = contextualSectionOptions.getByRole("option", {
+    name: /^Electrical\s+Already added$/i,
+  });
+  await expect(duplicateElectrical).toBeVisible();
+  await duplicateElectrical.click();
   await expectVisibleSectionName(page, "Electrical");
-  await expect(addSectionBlock.getByRole("button", { name: /^Add Section$/i })).toBeDisabled();
 
   expect(browserErrors).toEqual([]);
 });

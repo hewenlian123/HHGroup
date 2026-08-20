@@ -29,6 +29,7 @@ import {
   createCustomEstimateCategoryAction,
 } from "@/app/estimates/[id]/actions";
 import { cn } from "@/lib/utils";
+import { useEstimateDocumentSave } from "./estimate-document-save-context";
 
 export type EstimateSectionOption = { code: string; label: string };
 
@@ -50,6 +51,7 @@ function AddSectionModal({
 }: AddSectionModalProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const { markUnsaved, trackMutation } = useEstimateDocumentSave();
   const [addNameDraft, setAddNameDraft] = React.useState("");
   const [addSaving, setAddSaving] = React.useState(false);
   const addDisplayNameRef = React.useRef<HTMLInputElement>(null);
@@ -79,7 +81,10 @@ function AddSectionModal({
     }
     setAddSaving(true);
     try {
-      const res = await createCustomEstimateCategoryAction(estimateId, name);
+      markUnsaved();
+      const res = await trackMutation(`section:create:${name}`, () =>
+        createCustomEstimateCategoryAction(estimateId, name)
+      );
       if (res.ok && res.costCode) {
         onSectionCreated(res.costCode, name);
         syncRouterNonBlocking(router);
@@ -95,7 +100,16 @@ function AddSectionModal({
     } finally {
       setAddSaving(false);
     }
-  }, [addNameDraft, estimateId, onSectionCreated, onOpenChange, router, toast]);
+  }, [
+    addNameDraft,
+    estimateId,
+    markUnsaved,
+    onSectionCreated,
+    onOpenChange,
+    router,
+    toast,
+    trackMutation,
+  ]);
 
   return (
     <Dialog
@@ -189,6 +203,7 @@ export function EstimateSectionTitleMenu({
   onSectionCreated,
 }: EstimateSectionTitleMenuProps): React.ReactElement {
   const { toast } = useToast();
+  const { markUnsaved, trackMutation } = useEstimateDocumentSave();
   const [moving, setMoving] = React.useState(false);
   const [renameOpen, setRenameOpen] = React.useState(false);
   const [renameDraft, setRenameDraft] = React.useState(displayName);
@@ -208,7 +223,10 @@ export function EstimateSectionTitleMenu({
       setMoving(true);
       try {
         const hint = getDisplayNameHint(newCode);
-        const res = await moveEstimateItemsToCostCodeAction(estimateId, itemIds, newCode, hint);
+        markUnsaved();
+        const res = await trackMutation(`section:move:${currentCostCode}:${newCode}`, () =>
+          moveEstimateItemsToCostCodeAction(estimateId, itemIds, newCode, hint)
+        );
         if (res.ok) {
           onMoved(newCode);
         } else {
@@ -222,7 +240,17 @@ export function EstimateSectionTitleMenu({
         setMoving(false);
       }
     },
-    [currentCostCode, moving, estimateId, itemIds, getDisplayNameHint, onMoved, toast]
+    [
+      currentCostCode,
+      moving,
+      estimateId,
+      itemIds,
+      getDisplayNameHint,
+      markUnsaved,
+      onMoved,
+      toast,
+      trackMutation,
+    ]
   );
 
   const commitRename = React.useCallback(async () => {
@@ -237,7 +265,10 @@ export function EstimateSectionTitleMenu({
     }
     setRenameSaving(true);
     try {
-      const res = await saveCostCategoryNameInlineAction(estimateId, currentCostCode, next);
+      markUnsaved();
+      const res = await trackMutation(`section:rename:${currentCostCode}`, () =>
+        saveCostCategoryNameInlineAction(estimateId, currentCostCode, next)
+      );
       if (res.ok) {
         onNameSaved(currentCostCode, next);
         setRenameOpen(false);
@@ -247,7 +278,16 @@ export function EstimateSectionTitleMenu({
     } finally {
       setRenameSaving(false);
     }
-  }, [renameDraft, displayName, estimateId, currentCostCode, onNameSaved, toast]);
+  }, [
+    renameDraft,
+    displayName,
+    estimateId,
+    currentCostCode,
+    markUnsaved,
+    onNameSaved,
+    toast,
+    trackMutation,
+  ]);
 
   const openAddModal = React.useCallback(() => {
     setAddOpen(true);
@@ -261,7 +301,7 @@ export function EstimateSectionTitleMenu({
             type="button"
             disabled={moving}
             className={cn(
-              "h-7 min-w-0 flex-1 text-left flex items-center gap-1.5 rounded-sm px-0.5 -mx-0.5",
+              "eb-section-title-trigger h-7 min-w-0 flex-1 text-left flex items-center gap-1.5 rounded-sm px-0.5 -mx-0.5",
               "text-[15px] font-semibold tracking-tight text-foreground",
               "hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               moving && "opacity-60 pointer-events-none"

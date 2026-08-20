@@ -252,7 +252,12 @@ test("estimate style persists after reload and updates preview output", async ({
 
   await setEstimateDocumentStyle(page, "itemized");
   await page.reload({ waitUntil: "domcontentloaded" });
-  await expect(page.getByText("Itemized")).toBeVisible({ timeout: 30_000 });
+  await expect(
+    page
+      .getByTestId("estimate-details-summary")
+      .getByText("Itemized", { exact: true })
+      .locator("visible=true")
+  ).toBeVisible({ timeout: 30_000 });
 
   await page.goto(`/estimates/${estimateId}/preview`, { waitUntil: "domcontentloaded" });
   await expect(page.getByTestId("estimate-document")).toHaveAttribute(

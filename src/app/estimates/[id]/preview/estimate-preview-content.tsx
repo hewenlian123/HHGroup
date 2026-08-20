@@ -24,6 +24,12 @@ import {
   DEFAULT_ESTIMATE_DOCUMENT_STYLE,
   type EstimateDocumentStyle,
 } from "@/lib/estimate-document-style";
+import {
+  buildEstimatePageIdentity,
+  estimateDocumentIdentity,
+  paginateEstimatePaymentSchedule,
+  type EstimateDocumentIdentity,
+} from "@/app/estimates/_components/estimate-document-pagination";
 
 export type EstimatePreviewProps = {
   company: DocumentCompanyProfileDTO;
@@ -57,6 +63,7 @@ function MinimalProposalHeader({
   projectName,
   clientName,
   location,
+  documentIdentity,
 }: {
   company: DocumentCompanyProfileDTO;
   estimateNumber: string;
@@ -66,10 +73,11 @@ function MinimalProposalHeader({
   projectName: string | null;
   clientName: string | null;
   location: string | null;
+  documentIdentity: EstimateDocumentIdentity;
 }) {
   return (
-    <header className="estimate-minimal-header mb-9 text-zinc-900 print:break-after-avoid">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-10">
+    <header className="estimate-minimal-header mb-5 text-zinc-900 print:break-after-avoid">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
         <div className="min-w-0 sm:max-w-[54%]">
           <div className="flex min-w-0 items-start gap-3">
             {company.logoUrl ? (
@@ -103,9 +111,9 @@ function MinimalProposalHeader({
 
         <div className="shrink-0 text-left sm:text-right">
           <p className="text-[24px] font-semibold leading-none tracking-[-0.04em] text-zinc-950">
-            Project Proposal
+            {documentIdentity.title}
           </p>
-          <div className="mt-4 space-y-1.5 text-[12px] leading-tight">
+          <div className="mt-2.5 space-y-1 text-[12px] leading-tight">
             <p className="tabular-nums">
               <span className="text-zinc-500">No.</span>{" "}
               <span className="font-semibold text-zinc-950">{estimateNumber}</span>
@@ -121,22 +129,22 @@ function MinimalProposalHeader({
               </p>
             ) : null}
           </div>
-          <span className="mt-3 inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-medium tracking-[0.04em] text-zinc-600">
+          <span className="mt-2 inline-flex rounded-full bg-zinc-100 px-2.5 py-0.5 text-[10px] font-medium tracking-[0.04em] text-zinc-600">
             {statusLabel}
           </span>
         </div>
       </div>
 
-      <div className="mt-10 max-w-[34rem]">
-        <p className="mb-2 text-[11px] font-medium tracking-[0.08em] text-zinc-500">
-          Luxury Design-Build Proposal
+      <div className="mt-4 max-w-[34rem]">
+        <p className="mb-1.5 text-[11px] font-medium tracking-[0.08em] text-zinc-500">
+          {documentIdentity.descriptor}
         </p>
         <h1 className="text-[30px] font-semibold leading-[1.08] tracking-[-0.045em] text-zinc-950">
-          {projectName ?? "Project Proposal"}
+          {projectName ?? documentIdentity.title}
         </h1>
       </div>
 
-      <div className="mt-7 grid gap-x-9 gap-y-3 border-y border-zinc-200/55 py-3 sm:grid-cols-4">
+      <div className="mt-4 grid gap-x-8 gap-y-2 border-y border-zinc-200/55 py-2 sm:grid-cols-4">
         <ProposalFact label="Prepared for">{clientName ?? "—"}</ProposalFact>
         <ProposalFact label="Project">{projectName ?? "—"}</ProposalFact>
         <ProposalFact label="Location">{location ?? "—"}</ProposalFact>
@@ -150,7 +158,7 @@ function ProposalFact({ label, children }: { label: string; children: string }) 
   return (
     <div className="min-w-0">
       <p className="text-[10px] font-medium tracking-[0.06em] text-zinc-500">{label}</p>
-      <p className="mt-1 break-words text-[12.5px] font-medium leading-snug text-zinc-900">
+      <p className="mt-0.5 break-words text-[12.5px] font-medium leading-[1.25] text-zinc-900">
         {children}
       </p>
     </div>
@@ -167,7 +175,7 @@ function ScopeLineItems({
   showLineAmounts: boolean;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {rows.map((row) => {
         const { title: itemTitle, body } = splitLineItemDesc(row.desc ?? "");
         const unitPrice = formatPdfLineUnitPrice(row, (n) => `$${fmt(n)}`);
@@ -176,7 +184,9 @@ function ScopeLineItems({
           <article
             key={row.id}
             data-testid="estimate-line-item-output"
-            className="break-inside-avoid"
+            className={`estimate-scope-item${
+              body.trim().length > 700 ? " estimate-scope-item--flow" : ""
+            }`}
           >
             {showLineAmounts ? (
               <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_9.25rem] sm:gap-8">
@@ -192,7 +202,7 @@ function ScopeLineItems({
                     ) : null}
                   </div>
                   {body.trim() ? (
-                    <div className="mt-2 max-w-[34rem] text-[13px] leading-[1.62] text-zinc-600">
+                    <div className="mt-1.5 max-w-[34rem] text-[13px] leading-[1.5] text-zinc-600">
                       <LineItemOrScopeBodyPreview body={body} variant="default" />
                     </div>
                   ) : null}
@@ -229,7 +239,7 @@ function ScopeLineItems({
                   ) : null}
                 </div>
                 {body.trim() ? (
-                  <div className="mt-2 max-w-[34rem] text-[13px] leading-[1.62] text-zinc-600">
+                  <div className="mt-1.5 max-w-[34rem] text-[13px] leading-[1.5] text-zinc-600">
                     <LineItemOrScopeBodyPreview body={body} variant="default" />
                   </div>
                 ) : null}
@@ -247,7 +257,7 @@ function PaymentMilestoneDescription({ text }: { text: string | null | undefined
   if (rows.length === 0) return null;
 
   return (
-    <div className="mt-1.5 space-y-0.5 text-[13px] leading-[1.58] text-zinc-600">
+    <div className="mt-1 space-y-0.5 text-[13px] leading-[1.5] text-zinc-600">
       {rows.map((row, index) => (
         <p
           key={`${row.text}-${index}`}
@@ -273,7 +283,7 @@ function PaymentMilestoneRow({
   fmt: (n: number) => string;
 }) {
   return (
-    <article className="estimate-payment-row relative py-2">
+    <article className="estimate-payment-row relative py-1.5">
       <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_auto] items-start gap-x-4">
         <p className="pt-0.5 text-[12px] font-semibold tabular-nums tracking-[-0.01em] text-zinc-400">
           {String(index + 1).padStart(2, "0")}
@@ -284,7 +294,7 @@ function PaymentMilestoneRow({
           </p>
           {item.description ? <PaymentMilestoneDescription text={item.description} /> : null}
           {formatEstimatePaymentDueDate(item.dueDate) ? (
-            <p className="mt-1.5 text-[11px] tabular-nums text-zinc-500">
+            <p className="mt-1 text-[11px] tabular-nums text-zinc-500">
               Due: {formatEstimatePaymentDueDate(item.dueDate)}
             </p>
           ) : null}
@@ -297,27 +307,107 @@ function PaymentMilestoneRow({
   );
 }
 
+function EstimatePageFooter({
+  estimateNumber,
+  pageNumber,
+  pageCount,
+}: {
+  estimateNumber: string;
+  pageNumber: number;
+  pageCount: number;
+}) {
+  if (pageNumber <= 1) return null;
+  const identity = buildEstimatePageIdentity(estimateNumber, pageNumber, pageCount);
+  return (
+    <footer className="estimate-page-footer" aria-label={identity}>
+      <span>{estimateNumber}</span>
+      <span className="tabular-nums">
+        Page {pageNumber} of {pageCount}
+      </span>
+    </footer>
+  );
+}
+
 type ScopeSection = ReturnType<typeof groupEstimateItemsByCategoryId>[number];
 type PaginatedScopeSection = ScopeSection & { isContinuation?: boolean };
+type FinalPacketPage = {
+  kind: "complete" | "payment" | "acceptance";
+  milestones: PaymentScheduleItem[];
+  continuation: boolean;
+};
 
 function estimateLineItemPageWeight(row: EstimateItemRow): number {
   const { title, body } = splitLineItemDesc(row.desc ?? "");
-  const titleWeight = title.trim().length > 64 ? 1 : 0;
-  const bodyLines = body.trim() ? Math.ceil(body.trim().length / 105) : 0;
-  return 3 + titleWeight + Math.min(bodyLines, 7);
+  const printableBody = body
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/?\s*(?:p|div|li|ul|ol)\b[^>]*>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\u2028/g, "\n");
+  const titleLines = Math.max(1, Math.ceil(title.trim().length / 60));
+  const bodyLines = printableBody
+    .split(/\r?\n/)
+    .filter((line) => line.trim())
+    .reduce((total, line) => total + Math.max(1, Math.ceil(line.trim().length / 70)), 0);
+
+  // A row's base accounts for its title line, bullet/grid spacing, and the inter-row gap.
+  // Text is deliberately measured against the narrower Itemized description column, not a
+  // whole-sheet character count, so Proposal and Itemized output share a safe page boundary.
+  return 2 + titleLines + bodyLines;
 }
 
-function paginateScopeSections(sections: ScopeSection[]): PaginatedScopeSection[][] {
+function scopePageRowCount(page: PaginatedScopeSection[]): number {
+  return page.reduce((count, section) => count + section.rows.length, 0);
+}
+
+function balanceTrailingScopePage(pages: PaginatedScopeSection[][]): void {
+  if (pages.length < 2) return;
+
+  const previousPage = pages[pages.length - 2];
+  const lastPage = pages[pages.length - 1];
+
+  while (scopePageRowCount(lastPage) < 4 && scopePageRowCount(previousPage) > 5) {
+    let donorIndex = previousPage.length - 1;
+    while (donorIndex >= 0 && previousPage[donorIndex].rows.length === 0) donorIndex -= 1;
+    if (donorIndex < 0) return;
+
+    const donor = previousPage[donorIndex];
+    const movedRow = donor.rows.at(-1);
+    if (!movedRow) return;
+
+    donor.rows = donor.rows.slice(0, -1);
+    const donorRemainsOnPreviousPage = donor.rows.length > 0;
+    const receiver = lastPage[0];
+
+    if (receiver?.categoryId === donor.categoryId) {
+      receiver.rows = [movedRow, ...receiver.rows];
+      receiver.isContinuation = donorRemainsOnPreviousPage ? true : donor.isContinuation;
+    } else {
+      lastPage.unshift({
+        ...donor,
+        rows: [movedRow],
+        isContinuation: donorRemainsOnPreviousPage ? true : donor.isContinuation,
+      });
+    }
+
+    if (!donorRemainsOnPreviousPage) previousPage.splice(donorIndex, 1);
+  }
+}
+
+function paginateScopeSections(
+  sections: ScopeSection[],
+  preserveFinalSummarySpace: boolean
+): PaginatedScopeSection[][] {
   if (sections.length === 0) return [[]];
 
   const pages: PaginatedScopeSection[][] = [];
   let currentPage: PaginatedScopeSection[] = [];
-  let remaining = 24;
+  let remaining = 36;
 
   const nextPage = () => {
     if (currentPage.length > 0) pages.push(currentPage);
     currentPage = [];
-    remaining = 36;
+    remaining = 50;
   };
 
   for (const section of sections) {
@@ -332,7 +422,7 @@ function paginateScopeSections(sections: ScopeSection[]): PaginatedScopeSection[
     }
 
     while (rowIndex < section.rows.length) {
-      const headerWeight = 3;
+      const headerWeight = 4;
       if (remaining < headerWeight + 3 && currentPage.length > 0) {
         nextPage();
       }
@@ -366,6 +456,7 @@ function paginateScopeSections(sections: ScopeSection[]): PaginatedScopeSection[
   }
 
   if (currentPage.length > 0) pages.push(currentPage);
+  if (!preserveFinalSummarySpace) balanceTrailingScopePage(pages);
   return pages.length ? pages : [[]];
 }
 
@@ -422,9 +513,10 @@ export function EstimatePreviewContent({
     meta?.documentStyle ?? DEFAULT_ESTIMATE_DOCUMENT_STYLE;
   const isProposalStyle = documentStyle === "proposal";
   const showLineAmounts = !isProposalStyle;
+  const documentIdentity = estimateDocumentIdentity(documentStyle);
 
   const costSections = groupEstimateItemsByCategoryId(items, categories, catalogNameByCode);
-  const scopePages = paginateScopeSections(costSections);
+  const scopePages = paginateScopeSections(costSections, Boolean(summary));
   const clientName = cleanText(meta?.client.name);
   const clientAddress = cleanText(meta?.client.address);
   const projectName = cleanText(meta?.project.name);
@@ -437,60 +529,79 @@ export function EstimatePreviewContent({
     documentNotes,
     defaultTerms: company.defaultTerms,
   });
+  const paymentSchedulePages = paginateEstimatePaymentSchedule(paymentSchedule);
+  const finalPacketPages: FinalPacketPage[] = splitFinalPacket
+    ? [
+        ...paymentSchedulePages.map((milestones, index) => ({
+          kind: "payment" as const,
+          milestones,
+          continuation: index > 0,
+        })),
+        { kind: "acceptance", milestones: [], continuation: paymentSchedulePages.length > 0 },
+      ]
+    : [{ kind: "complete", milestones: paymentSchedule, continuation: false }];
+  const totalPageCount = scopePages.length + finalPacketPages.length;
 
-  const paymentScheduleSection =
-    paymentSchedule.length > 0 ? (
+  const renderPaymentScheduleSection = (
+    milestones: PaymentScheduleItem[],
+    continuation: boolean
+  ) =>
+    milestones.length > 0 ? (
       <section className="estimate-final-packet-section">
-        <div className="mb-5 flex items-end justify-between gap-6 pb-2">
+        <div className="mb-4 flex items-end justify-between gap-6 pb-2">
           <div>
             <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
-              Payment Schedule
+              Payment Schedule{continuation ? " / Continued" : ""}
             </p>
             <h2 className="mt-1 text-[20px] font-semibold tracking-[-0.035em] text-zinc-950">
-              Milestone agreement
+              Milestone agreement{continuation ? " continued" : ""}
             </h2>
-            <p className="mt-1 text-[13px] leading-relaxed text-zinc-600">
-              Customer payment milestones tied to this proposal.
-            </p>
+            {!continuation ? (
+              <p className="mt-1 text-[13px] leading-relaxed text-zinc-600">
+                Customer payment milestones tied to this {documentIdentity.paymentContext}.
+              </p>
+            ) : null}
           </div>
-          <div className="text-right text-[11px] text-zinc-500">
-            <p>
-              Total scheduled:{" "}
-              <span className="font-semibold tabular-nums text-zinc-900">
-                $
-                {fmt(
-                  paymentSchedule.reduce(
-                    (total, item) => total + paymentMilestoneAmount(item, estimateTotal),
-                    0
-                  )
-                )}
-              </span>
-            </p>
-            <p>
-              Remaining balance:{" "}
-              <span className="font-semibold tabular-nums text-zinc-900">
-                $
-                {fmt(
-                  Math.max(
-                    0,
-                    estimateTotal -
-                      paymentSchedule.reduce(
-                        (total, item) => total + paymentMilestoneAmount(item, estimateTotal),
-                        0
-                      )
-                  )
-                )}
-              </span>
-            </p>
-          </div>
+          {!continuation ? (
+            <div className="text-right text-[11px] text-zinc-500">
+              <p>
+                Total scheduled:{" "}
+                <span className="font-semibold tabular-nums text-zinc-900">
+                  $
+                  {fmt(
+                    paymentSchedule.reduce(
+                      (total, item) => total + paymentMilestoneAmount(item, estimateTotal),
+                      0
+                    )
+                  )}
+                </span>
+              </p>
+              <p>
+                Remaining balance:{" "}
+                <span className="font-semibold tabular-nums text-zinc-900">
+                  $
+                  {fmt(
+                    Math.max(
+                      0,
+                      estimateTotal -
+                        paymentSchedule.reduce(
+                          (total, item) => total + paymentMilestoneAmount(item, estimateTotal),
+                          0
+                        )
+                    )
+                  )}
+                </span>
+              </p>
+            </div>
+          ) : null}
         </div>
-        <div className="space-y-2 text-sm">
-          {paymentSchedule.map((item, index) => (
+        <div className="space-y-1 text-sm">
+          {milestones.map((item) => (
             <PaymentMilestoneRow
               key={item.id}
               item={item}
               amount={paymentMilestoneAmount(item, estimateTotal)}
-              index={index}
+              index={paymentSchedule.findIndex((candidate) => candidate.id === item.id)}
               fmt={fmt}
             />
           ))}
@@ -562,11 +673,13 @@ export function EstimatePreviewContent({
           <section
             key={`scope-page-${pageIndex}`}
             data-testid="estimate-preview-page"
-            className="estimate-a4-page estimate-scope-page"
+            className={`estimate-a4-page estimate-scope-page${
+              pageIndex > 0 ? " estimate-a4-page--continuation" : ""
+            }`}
             aria-label={`Estimate preview page ${pageIndex + 1}`}
           >
             <div className="estimate-page-label" data-html2canvas-ignore="true">
-              Page {pageIndex + 1}
+              Page {pageIndex + 1} of {totalPageCount}
             </div>
 
             {isFirstPage ? (
@@ -580,19 +693,21 @@ export function EstimatePreviewContent({
                   projectName={projectName}
                   clientName={clientName}
                   location={jobAddress}
+                  documentIdentity={documentIdentity}
                 />
               </>
             ) : null}
 
             <section className="print:break-inside-auto">
-              <div className="mb-5 flex items-end justify-between gap-6">
+              <div className="estimate-scope-intro mb-4 flex items-end justify-between gap-6">
                 <div>
                   <p className="text-[11px] font-medium tracking-[0.08em] text-zinc-500">
                     Scope of Work{isFirstPage ? "" : " / Continued"}
                   </p>
                   {isFirstPage ? (
                     <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-zinc-600">
-                      A clear outline of the included work, organized by proposal section.
+                      A clear outline of the included work, organized by{" "}
+                      {documentIdentity.paymentContext} section.
                     </p>
                   ) : null}
                 </div>
@@ -606,9 +721,9 @@ export function EstimatePreviewContent({
                       key={`${categoryId}-${isContinuation ? "continued" : "start"}-${rows
                         .map((row) => row.id)
                         .join("-")}`}
-                      className="estimate-scope-section mb-6 last:mb-0"
+                      className="estimate-scope-section mb-5 last:mb-0"
                     >
-                      <div className="mb-3 flex items-baseline justify-between gap-4">
+                      <div className="mb-2 flex items-baseline justify-between gap-4">
                         <h3 className="text-[17px] font-semibold leading-tight tracking-[-0.025em] text-zinc-950">
                           {title}
                           {isContinuation ? (
@@ -642,37 +757,47 @@ export function EstimatePreviewContent({
                 fmt={fmt}
               />
             ) : null}
+            <EstimatePageFooter
+              estimateNumber={estimate.number}
+              pageNumber={pageIndex + 1}
+              pageCount={totalPageCount}
+            />
           </section>
         );
       })}
 
-      <section
-        data-testid="estimate-preview-page"
-        className="estimate-a4-page estimate-final-packet"
-        data-final-packet-part={splitFinalPacket ? "payment" : "complete"}
-        aria-label={`Estimate preview page ${finalPageNumber}`}
-      >
-        <div className="estimate-page-label" data-html2canvas-ignore="true">
-          Page {finalPageNumber}
-        </div>
-
-        {paymentScheduleSection}
-        {splitFinalPacket ? null : notesAndAcceptance}
-      </section>
-
-      {splitFinalPacket ? (
-        <section
-          data-testid="estimate-preview-page"
-          className="estimate-a4-page estimate-final-packet estimate-final-packet-continuation"
-          data-final-packet-part="acceptance"
-          aria-label={`Estimate preview page ${finalPageNumber + 1}`}
-        >
-          <div className="estimate-page-label" data-html2canvas-ignore="true">
-            Page {finalPageNumber + 1}
-          </div>
-          {notesAndAcceptance}
-        </section>
-      ) : null}
+      {finalPacketPages.map((packet, index) => {
+        const pageNumber = finalPageNumber + index;
+        const isContinuation = index > 0;
+        return (
+          <section
+            key={`${packet.kind}-${pageNumber}`}
+            data-testid="estimate-preview-page"
+            className={`estimate-a4-page estimate-final-packet estimate-a4-page--continuation${
+              isContinuation ? " estimate-final-packet-continuation" : ""
+            }`}
+            data-final-packet-part={
+              packet.kind === "payment" && packet.continuation
+                ? "payment-continuation"
+                : packet.kind
+            }
+            aria-label={`Estimate preview page ${pageNumber}`}
+          >
+            <div className="estimate-page-label" data-html2canvas-ignore="true">
+              Page {pageNumber} of {totalPageCount}
+            </div>
+            {packet.kind === "complete" || packet.kind === "payment"
+              ? renderPaymentScheduleSection(packet.milestones, packet.continuation)
+              : null}
+            {packet.kind === "complete" || packet.kind === "acceptance" ? notesAndAcceptance : null}
+            <EstimatePageFooter
+              estimateNumber={estimate.number}
+              pageNumber={pageNumber}
+              pageCount={totalPageCount}
+            />
+          </section>
+        );
+      })}
     </article>
   );
 }

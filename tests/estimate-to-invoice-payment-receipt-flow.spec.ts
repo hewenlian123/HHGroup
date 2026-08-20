@@ -337,7 +337,7 @@ test("estimate deposit invoice can be paid and shown on a receipt", async ({ pag
   await expect(previewMain).toContainText("Due: Jun 1, 2026");
 
   await page.goto(estimateUrl, { waitUntil: "domcontentloaded" });
-  await page.getByRole("link", { name: /^Send Invoice$/i }).click();
+  await page.getByRole("link", { name: /^Create Draft Invoice$/i }).click();
   await expect(page).toHaveURL(/\/financial\/invoices\/new\?/, { timeout: 30_000 });
   await expect(page.getByTestId("invoice-new-project-select")).toHaveValue(projectId);
   await expect(page.getByTestId("invoice-new-client-input")).toHaveValue(customerName);

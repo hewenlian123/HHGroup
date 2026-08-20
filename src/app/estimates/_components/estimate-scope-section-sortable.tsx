@@ -55,6 +55,7 @@ export function EstimateScopeSortableSection({
       data-estimate-section-id={id}
       data-sortable-over={isDropTarget ? "true" : undefined}
       aria-current={ariaCurrent}
+      tabIndex={-1}
       className={cn(
         EB.categoryGroup,
         EB.scopeSectionSortable,

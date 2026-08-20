@@ -17,7 +17,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { ChevronDown, ChevronRight, Layers } from "lucide-react";
+import { ChevronDown, ChevronRight, Layers, Plus } from "lucide-react";
 import type { CostCode } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { formatEstimateCurrency } from "./estimate-currency";
@@ -52,6 +52,13 @@ import { EB, ebGlassPanel, ebInput } from "./estimate-builder-ui";
 import { EstimateLineItemMoreMenu } from "./estimate-line-item-more-menu";
 import { ProposalScopeWorkCard } from "./proposal-scope-work-card";
 import { EstimateScopeSortableSection } from "./estimate-scope-section-sortable";
+import { EstimateLineItemGridHeader } from "./estimate-line-item-grid-header";
+import { EstimateScopeToolbar } from "./estimate-scope-toolbar";
+import {
+  buildEstimateSectionCollapseState,
+  reconcileEstimateSectionOrder,
+  shouldCommitEstimateLineFromPrice,
+} from "./estimate-builder-productivity";
 
 function formatSectionItemCount(count: number): string {
   if (count === 0) return "No items";
@@ -70,6 +77,8 @@ type ScopeSectionHeaderProps = {
   onDisplayNameChange: (name: string) => void;
   dragHandle?: React.ReactNode;
   titleSlot?: React.ReactNode;
+  onAddLine?: () => void;
+  addLineAriaLabel?: string;
   disabled?: boolean;
 };
 
@@ -111,6 +120,8 @@ export function ScopeSectionHeader({
   onDisplayNameChange,
   dragHandle,
   titleSlot,
+  onAddLine,
+  addLineAriaLabel,
   disabled = false,
 }: ScopeSectionHeaderProps): React.ReactElement {
   return (
@@ -146,11 +157,21 @@ export function ScopeSectionHeader({
           )}
         </div>
       </div>
-      <div className={cn(collapsed ? EB.scopeSectionHeaderMeta : "shrink-0")}>
-        {collapsed ? (
-          <span className={EB.scopeSectionItemCount}>{formatSectionItemCount(itemCount)}</span>
-        ) : null}
+      <div className={EB.scopeSectionHeaderMeta}>
+        <span className={EB.scopeSectionItemCount}>{formatSectionItemCount(itemCount)}</span>
         <span className={EB.scopeBlockTotal}>{formatEstimateCurrency(sectionSubtotal)}</span>
+        {onAddLine ? (
+          <button
+            type="button"
+            className={EB.scopeSectionAddLine}
+            aria-label={addLineAriaLabel ?? "Add line to section"}
+            disabled={disabled}
+            onClick={onAddLine}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            <span>Add line</span>
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -163,10 +184,17 @@ export function ScopeSectionCollapsibleBody({
   collapsed: boolean;
   children: React.ReactNode;
 }): React.ReactElement {
+  const bodyRef = React.useRef<HTMLDivElement>(null);
+
+  React.useLayoutEffect(() => {
+    if (bodyRef.current) bodyRef.current.inert = collapsed;
+  }, [collapsed]);
+
   return (
     <div
+      ref={bodyRef}
       className={cn(EB.scopeSectionBody, collapsed && EB.scopeSectionBodyCollapsed)}
-      aria-hidden={collapsed}
+      aria-hidden={collapsed ? true : undefined}
     >
       <div className={EB.scopeSectionBodyInner}>{children}</div>
     </div>
@@ -209,12 +237,10 @@ export function EstimateLineItemsLocal({
 
   const codesWithItems = Object.keys(itemsByCode);
 
-  const orderedSectionCodes = React.useMemo(() => {
-    if (sectionOrder.length === 0) return codesWithItems;
-    const kept = sectionOrder.filter((c) => codesWithItems.includes(c));
-    const added = codesWithItems.filter((c) => !kept.includes(c));
-    return [...kept, ...added];
-  }, [codesWithItems, sectionOrder]);
+  const orderedSectionCodes = React.useMemo(
+    () => reconcileEstimateSectionOrder(sectionOrder, categoryNames, codesWithItems),
+    [categoryNames, codesWithItems, sectionOrder]
+  );
 
   const [sectionDragging, setSectionDragging] = React.useState(false);
   const [overSectionId, setOverSectionId] = React.useState<string | null>(null);
@@ -222,6 +248,8 @@ export function EstimateLineItemsLocal({
   const [openSectionMenuKey, setOpenSectionMenuKey] = React.useState<string | null>(null);
   const [sectionFocusTargetCode, setSectionFocusTargetCode] = React.useState<string | null>(null);
   const [highlightSectionCode, setHighlightSectionCode] = React.useState<string | null>(null);
+  const [activeSectionCode, setActiveSectionCode] = React.useState<string | null>(null);
+  const [lineFocusTargetId, setLineFocusTargetId] = React.useState<string | null>(null);
 
   const isSectionCollapsed = React.useCallback(
     (code: string) => collapsedSections[code] === true,
@@ -231,6 +259,14 @@ export function EstimateLineItemsLocal({
   const toggleSectionCollapsed = React.useCallback((code: string) => {
     setCollapsedSections((prev) => ({ ...prev, [code]: !prev[code] }));
   }, []);
+
+  const collapseAllSections = React.useCallback(() => {
+    setCollapsedSections(buildEstimateSectionCollapseState(orderedSectionCodes, true));
+  }, [orderedSectionCodes]);
+
+  const expandAllSections = React.useCallback(() => {
+    setCollapsedSections(buildEstimateSectionCollapseState(orderedSectionCodes, false));
+  }, [orderedSectionCodes]);
 
   const [recentSections, setRecentSections] = React.useState<RecentSectionEntry[]>([]);
   const [recentLineItems, setRecentLineItems] = React.useState<
@@ -261,10 +297,7 @@ export function EstimateLineItemsLocal({
     [catalogNameByCode, categoryNames]
   );
 
-  const usedCostCodes = React.useMemo(
-    () => new Set(lineItems.map((li) => li.costCode)),
-    [lineItems]
-  );
+  const usedCostCodes = React.useMemo(() => new Set(orderedSectionCodes), [orderedSectionCodes]);
 
   const canAddSection = true;
 
@@ -272,24 +305,24 @@ export function EstimateLineItemsLocal({
     (name: string, exceptCode?: string): boolean => {
       const normalizedName = normalizeProposalSectionName(name);
       if (!normalizedName) return false;
-      return codesWithItems.some(
+      return orderedSectionCodes.some(
         (code) =>
           code !== exceptCode &&
           normalizeProposalSectionName(sectionDisplayName(code)) === normalizedName
       );
     },
-    [codesWithItems, sectionDisplayName]
+    [orderedSectionCodes, sectionDisplayName]
   );
 
   const nextBlankSectionName = React.useCallback((): string => {
-    let index = codesWithItems.length + 1;
+    let index = orderedSectionCodes.length + 1;
     let name = `Section ${index}`;
     while (sectionNameExists(name)) {
       index += 1;
       name = `Section ${index}`;
     }
     return name;
-  }, [codesWithItems.length, sectionNameExists]);
+  }, [orderedSectionCodes.length, sectionNameExists]);
 
   const existingSectionNames = React.useMemo(
     () => orderedSectionCodes.map((code) => sectionDisplayName(code)),
@@ -329,6 +362,29 @@ export function EstimateLineItemsLocal({
       if (focusFrame) window.cancelAnimationFrame(focusFrame);
     };
   }, [orderedSectionCodes, sectionFocusTargetCode]);
+
+  React.useLayoutEffect(() => {
+    if (!lineFocusTargetId) return;
+    const escapedId = lineFocusTargetId.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    let focusFrame = 0;
+    const closeFrame = window.requestAnimationFrame(() => {
+      focusFrame = window.requestAnimationFrame(() => {
+        const row = Array.from(
+          document.querySelectorAll<HTMLElement>(`[data-estimate-line-item-id="${escapedId}"]`)
+        ).find((candidate) => candidate.getClientRects().length > 0);
+        const target = row?.querySelector<HTMLElement>(
+          'input[aria-label*=" title"], .eb-line-item-mobile-summary'
+        );
+        if (!target) return;
+        target.focus({ preventScroll: false });
+        setLineFocusTargetId(null);
+      });
+    });
+    return () => {
+      window.cancelAnimationFrame(closeFrame);
+      if (focusFrame) window.cancelAnimationFrame(focusFrame);
+    };
+  }, [lineFocusTargetId, lineItems]);
 
   const addSectionWithMeta = React.useCallback(
     (costCode: string, displayName: string, insertAfterCode?: string | null): boolean => {
@@ -450,39 +506,58 @@ export function EstimateLineItemsLocal({
     return out;
   }, [orderedSectionCodes, itemsByCode]);
 
-  const lastItemId = flatWithIndex[flatWithIndex.length - 1]?.item.id;
-
   const updateItem = (id: string, patch: Partial<EditorLineItem>): void => {
     onLineItemsChange(lineItems.map((li) => (li.id === id ? { ...li, ...patch } : li)));
   };
 
   const addLineItem = (costCode: string): void => {
-    onLineItemsChange([...lineItems, createEmptyLineItem(costCode)]);
+    const nextItem = createEmptyLineItem(costCode);
+    onLineItemsChange([...lineItems, nextItem]);
+    setLineFocusTargetId(nextItem.id);
   };
 
   const duplicateItem = (id: string): void => {
-    const src = lineItems.find((li) => li.id === id);
-    if (!src) return;
-    onLineItemsChange([
-      ...lineItems,
-      {
-        ...src,
-        status: src.status ?? DEFAULT_LINE_ITEM_STATUS,
-        id: `li-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-        title: src.title ? `${src.title} (copy)` : "Copy",
-      },
-    ]);
+    const sourceIndex = lineItems.findIndex((lineItem) => lineItem.id === id);
+    const src = lineItems[sourceIndex];
+    if (!src || sourceIndex < 0) return;
+    const duplicate = {
+      ...src,
+      status: src.status ?? DEFAULT_LINE_ITEM_STATUS,
+      id: `li-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      title: src.title ? `${src.title} (copy)` : "Copy",
+    };
+    const nextItems = [...lineItems];
+    nextItems.splice(sourceIndex + 1, 0, duplicate);
+    onLineItemsChange(nextItems);
+    setLineFocusTargetId(duplicate.id);
   };
 
   const deleteItem = (id: string): void => {
+    const source = lineItems.find((lineItem) => lineItem.id === id);
+    const sectionItems = source
+      ? lineItems.filter((lineItem) => lineItem.costCode === source.costCode)
+      : [];
+    const sectionIndex = sectionItems.findIndex((lineItem) => lineItem.id === id);
+    const nextFocusId =
+      sectionItems[sectionIndex + 1]?.id ?? sectionItems[sectionIndex - 1]?.id ?? null;
     onLineItemsChange(lineItems.filter((li) => li.id !== id));
+    if (nextFocusId) {
+      window.setTimeout(() => setLineFocusTargetId(nextFocusId), 0);
+    }
   };
 
   const setCategoryName = (code: string, name: string): void => {
     onCategoryNamesChange({ ...categoryNames, [code]: name });
   };
 
-  const handleEnterAddNext = (costCode: string): void => {
+  const handleEnterAddNext = (itemId: string, costCode: string): void => {
+    const sectionItems = itemsByCode[costCode] ?? [];
+    const itemIndex = sectionItems.findIndex((item) => item.id === itemId);
+    const nextItem = itemIndex >= 0 ? sectionItems[itemIndex + 1] : undefined;
+    if (nextItem) {
+      setLineFocusTargetId(nextItem.id);
+      return;
+    }
     addLineItem(costCode);
   };
 
@@ -496,6 +571,46 @@ export function EstimateLineItemsLocal({
       setSectionFocusTargetCode(existingCode);
     },
     [orderedSectionCodes, sectionDisplayName]
+  );
+
+  const outlineSections = React.useMemo(
+    () =>
+      orderedSectionCodes.map((code) => {
+        const rows = itemsByCode[code] ?? [];
+        return {
+          id: code,
+          name: sectionDisplayName(code),
+          itemCount: rows.length,
+          subtotal: rows.reduce((sum, item) => sum + editorLineTotal(item), 0),
+          collapsed: isSectionCollapsed(code),
+        };
+      }),
+    [isSectionCollapsed, itemsByCode, orderedSectionCodes, sectionDisplayName]
+  );
+
+  const scopeSearchEntries = React.useMemo(
+    () =>
+      outlineSections.flatMap((section) => {
+        const rows = itemsByCode[section.id] ?? [];
+        return [
+          {
+            id: `section-${section.id}`,
+            sectionId: section.id,
+            label: section.name,
+            detail: formatSectionItemCount(section.itemCount),
+            searchText: section.name,
+          },
+          ...rows.map((row, index) => ({
+            id: `line-${row.id}`,
+            sectionId: section.id,
+            lineItemId: row.id,
+            label: row.title.trim() || `Line ${index + 1}`,
+            detail: section.name,
+            searchText: `${row.title} ${row.description} ${section.name}`,
+          })),
+        ];
+      }),
+    [itemsByCode, outlineSections]
   );
 
   const renderSectionMenu = React.useCallback(
@@ -522,7 +637,7 @@ export function EstimateLineItemsLocal({
         triggerLabel={label}
         triggerAriaLabel={ariaLabel}
         align={align}
-        reserveSpaceWhenOpen={menuKey !== "top"}
+        reserveSpaceWhenOpen={menuKey !== "toolbar"}
         onFocusExisting={focusExistingSection}
         onAddCustom={(title) => addCustomSection(title, insertAfterCode)}
         onAddBlank={() => addBlankSection(insertAfterCode)}
@@ -547,348 +662,441 @@ export function EstimateLineItemsLocal({
   return (
     <section className={EB.section}>
       <div className={ebGlassPanel("eb-scope-work-panel")}>
-        <div className="mb-3.5 flex flex-wrap items-end justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <h2 className={EB.scopeHeading}>Scope of work</h2>
             <p className={EB.scopeSubtitle}>Proposal sections and line totals</p>
           </div>
-          {renderSectionMenu({
-            menuKey: "top",
-            label: "Add Section",
-            ariaLabel: "Add section",
-            align: "end",
-          })}
         </div>
         {lineItemsError ? (
           <p className="mb-3 text-xs text-muted-foreground">{lineItemsError}</p>
         ) : null}
 
-        {/* Mobile: sections with collapse */}
-        <div className="md:hidden">
-          {orderedSectionCodes.length === 0 ? (
-            <div className={cn(EB.scopeEmpty, "py-6")}>
-              <p className={EB.scopeEmptyMessage}>No line items yet.</p>
-            </div>
-          ) : (
-            orderedSectionCodes.map((code) => {
-              const displayName = sectionDisplayName(code);
-              const catalogName = catalogNameByCode.get(code) ?? displayName;
-              const rows = itemsByCode[code] ?? [];
-              const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
-              const collapsed = isSectionCollapsed(code);
-              return (
-                <div
-                  key={code}
-                  data-estimate-section-mobile-id={code}
-                  className={cn(
-                    EB.scopeSectionMobile,
-                    highlightSectionCode === code && EB.scopeSectionInserted
-                  )}
-                >
-                  <ScopeSectionHeader
-                    code={code}
-                    catalogName={catalogName}
-                    displayName={displayName}
-                    itemCount={rows.length}
-                    sectionSubtotal={sectionSubtotal}
-                    collapsed={collapsed}
-                    onToggleCollapse={() => toggleSectionCollapsed(code)}
-                    onDisplayNameChange={(name) => setCategoryName(code, name)}
-                    disabled={disabled}
-                  />
-                  <ScopeSectionCollapsibleBody collapsed={collapsed}>
-                    <div className="space-y-3 pt-2">
-                      {rows.map((item) => {
-                        const rowIndex =
-                          flatWithIndex.find((f) => f.item.id === item.id)?.rowIndex ?? 0;
-                        return (
-                          <EstimateLineItemMobileCard
-                            key={item.id}
-                            item={item}
-                            rowIndex={rowIndex}
-                            disabled={disabled}
-                            submitAttempted={submitAttempted}
-                            isLastRow={item.id === lastItemId}
-                            onChange={(patch) => updateItem(item.id, patch)}
-                            onDuplicate={() => duplicateItem(item.id)}
-                            onDelete={() => deleteItem(item.id)}
-                            onToggleHideAmountOnPdf={() =>
-                              updateItem(item.id, {
-                                hideAmountOnPdf: !item.hideAmountOnPdf,
-                              })
-                            }
-                            onSetStatus={(status) => updateItem(item.id, { status })}
-                            onSaveAsReusable={() => handleSaveAsReusable(item)}
-                            onEnterAddNext={() => handleEnterAddNext(code)}
-                          />
-                        );
-                      })}
-                      <EstimateAddLineMenu
-                        className="w-full justify-center"
-                        align="center"
+        <EstimateScopeToolbar
+          sections={outlineSections}
+          searchEntries={scopeSearchEntries}
+          onCollapseAll={collapseAllSections}
+          onExpandAll={expandAllSections}
+          onRevealSection={(sectionId) =>
+            setCollapsedSections((previous) => ({ ...previous, [sectionId]: false }))
+          }
+          onActiveSectionChange={setActiveSectionCode}
+          addSectionControl={renderSectionMenu({
+            menuKey: "toolbar",
+            label: "Add Section",
+            ariaLabel: "Add Section",
+            align: "end",
+          })}
+        />
+        <div className="eb-scope-workspace-grid">
+          <div className="eb-scope-builder-region min-w-0">
+            {/* Mobile: sections with collapse */}
+            <div className="lg:hidden">
+              {orderedSectionCodes.length === 0 ? (
+                <div className={cn(EB.scopeEmpty, "py-6")}>
+                  <p className={EB.scopeEmptyMessage}>No line items yet.</p>
+                </div>
+              ) : (
+                orderedSectionCodes.map((code) => {
+                  const displayName = sectionDisplayName(code);
+                  const catalogName = catalogNameByCode.get(code) ?? displayName;
+                  const rows = itemsByCode[code] ?? [];
+                  const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
+                  const collapsed = isSectionCollapsed(code);
+                  return (
+                    <div
+                      key={code}
+                      data-estimate-section-mobile-id={code}
+                      className={cn(
+                        EB.scopeSectionMobile,
+                        activeSectionCode === code && "eb-scope-section-current",
+                        highlightSectionCode === code && EB.scopeSectionInserted
+                      )}
+                    >
+                      <ScopeSectionHeader
+                        code={code}
+                        catalogName={catalogName}
+                        displayName={displayName}
+                        itemCount={rows.length}
+                        sectionSubtotal={sectionSubtotal}
+                        collapsed={collapsed}
+                        onToggleCollapse={() => toggleSectionCollapsed(code)}
+                        onDisplayNameChange={(name) => setCategoryName(code, name)}
+                        onAddLine={
+                          disabled
+                            ? undefined
+                            : () => {
+                                setCollapsedSections((previous) => ({
+                                  ...previous,
+                                  [code]: false,
+                                }));
+                                addLineItem(code);
+                              }
+                        }
+                        addLineAriaLabel={`Add line to ${displayName}`}
                         disabled={disabled}
-                        recentItems={recentLineItems}
-                        savedItems={savedLineItems}
-                        onAddBlank={() => addLineItem(code)}
-                        onAddPreset={(preset) => addLineFromPreset(code, preset)}
                       />
+                      <ScopeSectionCollapsibleBody collapsed={collapsed}>
+                        <div className="space-y-3 pt-2">
+                          {rows.map((item) => {
+                            const rowIndex =
+                              flatWithIndex.find((f) => f.item.id === item.id)?.rowIndex ?? 0;
+                            return (
+                              <div key={item.id} data-estimate-line-item-id={item.id}>
+                                <EstimateLineItemMobileCard
+                                  item={item}
+                                  rowIndex={rowIndex}
+                                  disabled={disabled}
+                                  submitAttempted={submitAttempted}
+                                  isLastRow={item.id === rows[rows.length - 1]?.id}
+                                  onChange={(patch) => updateItem(item.id, patch)}
+                                  onDuplicate={() => duplicateItem(item.id)}
+                                  onDelete={() => deleteItem(item.id)}
+                                  onToggleHideAmountOnPdf={() =>
+                                    updateItem(item.id, {
+                                      hideAmountOnPdf: !item.hideAmountOnPdf,
+                                    })
+                                  }
+                                  onSetStatus={(status) => updateItem(item.id, { status })}
+                                  onSaveAsReusable={() => handleSaveAsReusable(item)}
+                                  onEnterAddNext={() => handleEnterAddNext(item.id, code)}
+                                  currentSectionCode={code}
+                                  moveSectionOptions={orderedSectionCodes.map((sectionCode) => ({
+                                    code: sectionCode,
+                                    label: sectionDisplayName(sectionCode),
+                                  }))}
+                                  onMoveToSection={(nextCode) =>
+                                    updateItem(item.id, { costCode: nextCode })
+                                  }
+                                />
+                              </div>
+                            );
+                          })}
+                          <EstimateAddLineMenu
+                            className="w-full justify-center"
+                            align="center"
+                            disabled={disabled}
+                            recentItems={recentLineItems}
+                            savedItems={savedLineItems}
+                            onAddBlank={() => addLineItem(code)}
+                            onAddPreset={(preset) => addLineFromPreset(code, preset)}
+                          />
+                        </div>
+                      </ScopeSectionCollapsibleBody>
+                      {!disabled ? (
+                        <div className={EB.addNextSectionRow}>
+                          {renderSectionMenu({
+                            menuKey: `mobile:${code}`,
+                            insertAfterCode: code,
+                            label: "Add Next Section",
+                            ariaLabel: `Add Next Section after ${displayName}`,
+                          })}
+                        </div>
+                      ) : null}
                     </div>
-                  </ScopeSectionCollapsibleBody>
-                  {!disabled ? (
-                    <div className={EB.addNextSectionRow}>
-                      {renderSectionMenu({
-                        menuKey: `mobile:${code}`,
-                        insertAfterCode: code,
-                        label: "Add Next Section",
-                        ariaLabel: `Add Next Section after ${displayName}`,
-                      })}
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop: scope sections (whole-section reorder via header handle) */}
+            <DndContext
+              sensors={sectionSensors}
+              collisionDetection={closestCenter}
+              onDragStart={() => setSectionDragging(true)}
+              onDragOver={(e) => setOverSectionId(e.over ? String(e.over.id) : null)}
+              onDragCancel={() => {
+                setSectionDragging(false);
+                setOverSectionId(null);
+              }}
+              onDragEnd={handleSectionDragEnd}
+            >
+              <SortableContext
+                items={orderedSectionCodes}
+                strategy={verticalListSortingStrategy}
+                disabled={disabled}
+              >
+                <div
+                  className="eb-scope-sections-list hidden flex-col lg:flex"
+                  data-section-dragging={sectionDragging ? "true" : undefined}
+                >
+                  {orderedSectionCodes.map((code) => {
+                    const displayName = sectionDisplayName(code);
+                    const catalogName = catalogNameByCode.get(code) ?? displayName;
+                    const rows = itemsByCode[code] ?? [];
+                    const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
+                    const collapsed = isSectionCollapsed(code);
+                    return (
+                      <EstimateScopeSortableSection
+                        key={code}
+                        id={code}
+                        disabled={disabled}
+                        isDropTarget={overSectionId === code}
+                        className={cn(
+                          "transition-colors duration-150",
+                          activeSectionCode === code && "eb-scope-section-current",
+                          highlightSectionCode === code && EB.scopeSectionInserted
+                        )}
+                      >
+                        {(dragHandle) => (
+                          <>
+                            <ScopeSectionHeader
+                              code={code}
+                              catalogName={catalogName}
+                              displayName={displayName}
+                              itemCount={rows.length}
+                              sectionSubtotal={sectionSubtotal}
+                              collapsed={collapsed}
+                              onToggleCollapse={() => toggleSectionCollapsed(code)}
+                              onDisplayNameChange={(name) => setCategoryName(code, name)}
+                              dragHandle={dragHandle}
+                              onAddLine={
+                                disabled
+                                  ? undefined
+                                  : () => {
+                                      setCollapsedSections((previous) => ({
+                                        ...previous,
+                                        [code]: false,
+                                      }));
+                                      addLineItem(code);
+                                    }
+                              }
+                              addLineAriaLabel={`Add line to ${displayName}`}
+                              disabled={disabled}
+                            />
+                            <ScopeSectionCollapsibleBody collapsed={collapsed}>
+                              <div className="eb-scope-section-lines flex flex-col">
+                                <EstimateLineItemGridHeader />
+                                {rows.map((row, rowIndexInCat) => {
+                                  const globalIdx =
+                                    flatWithIndex.find((f) => f.item.id === row.id)?.rowIndex ??
+                                    rowIndexInCat + 1;
+                                  return (
+                                    <div
+                                      key={row.id}
+                                      className={EB.lineItemCard}
+                                      data-estimate-line-item-id={row.id}
+                                    >
+                                      <ProposalScopeWorkCard
+                                        lineItemGridLayout
+                                        title={row.title}
+                                        description={row.description}
+                                        disabled={disabled}
+                                        onTitleChange={(v) => updateItem(row.id, { title: v })}
+                                        onDescriptionChange={(v) =>
+                                          updateItem(row.id, { description: v })
+                                        }
+                                        titleInvalid={submitAttempted && !row.title.trim()}
+                                        titleInputAriaLabel={`Line item ${globalIdx} title`}
+                                        descriptionEditorAriaLabel={`Line item ${globalIdx} description`}
+                                        lineIndex={globalIdx}
+                                        titleTrailingSlot={
+                                          <EstimateLineItemStatusPill
+                                            status={row.status ?? DEFAULT_LINE_ITEM_STATUS}
+                                          />
+                                        }
+                                        inlinePricing={
+                                          <>
+                                            <div
+                                              className={cn(
+                                                EB.lineFieldStackContents,
+                                                EB.linePricingQty
+                                              )}
+                                            >
+                                              <span className={cn(EB.readLabel, EB.lineQtyLabel)}>
+                                                Qty
+                                              </span>
+                                              <Input
+                                                type="number"
+                                                min={0}
+                                                step={0.01}
+                                                inputMode="decimal"
+                                                value={row.qty}
+                                                onChange={(e) =>
+                                                  updateItem(row.id, {
+                                                    qty: Math.max(0, Number(e.target.value) || 0),
+                                                  })
+                                                }
+                                                onWheel={(event) => event.currentTarget.blur()}
+                                                className={ebInput(
+                                                  `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`
+                                                )}
+                                                aria-label={`Line item ${globalIdx} quantity`}
+                                                disabled={disabled}
+                                              />
+                                            </div>
+                                            <div
+                                              className={cn(
+                                                EB.lineFieldStackContents,
+                                                EB.linePricingMeasure
+                                              )}
+                                            >
+                                              <span
+                                                className={cn(EB.readLabel, EB.lineMeasureLabel)}
+                                              >
+                                                Unit
+                                              </span>
+                                              <Input
+                                                type="text"
+                                                value={row.unit}
+                                                onChange={(e) =>
+                                                  updateItem(row.id, { unit: e.target.value })
+                                                }
+                                                className={ebInput(
+                                                  `h-8 min-h-8 w-full px-2 ${EB.lineMeasureInput}`
+                                                )}
+                                                aria-label={`Line item ${globalIdx} unit`}
+                                                placeholder="EA"
+                                                disabled={disabled}
+                                              />
+                                            </div>
+                                            <div
+                                              className={cn(
+                                                EB.lineFieldStackContents,
+                                                EB.linePricingUnit
+                                              )}
+                                            >
+                                              <span className={cn(EB.readLabel, EB.lineUnitLabel)}>
+                                                Unit price
+                                              </span>
+                                              <Input
+                                                type="number"
+                                                min={0}
+                                                step={0.01}
+                                                inputMode="decimal"
+                                                value={row.unitPrice}
+                                                onChange={(e) =>
+                                                  updateItem(row.id, {
+                                                    unitPrice: Math.max(
+                                                      0,
+                                                      Number(e.target.value) || 0
+                                                    ),
+                                                  })
+                                                }
+                                                onKeyDown={(e) => {
+                                                  if (shouldCommitEstimateLineFromPrice(e)) {
+                                                    e.preventDefault();
+                                                    handleEnterAddNext(row.id, code);
+                                                  }
+                                                }}
+                                                onWheel={(event) => event.currentTarget.blur()}
+                                                className={ebInput(
+                                                  `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`
+                                                )}
+                                                aria-label={`Line item ${globalIdx} unit price`}
+                                                disabled={disabled}
+                                              />
+                                            </div>
+                                            <div
+                                              className={cn(
+                                                EB.linePricingTotalCol,
+                                                EB.lineTotalActionArea
+                                              )}
+                                            >
+                                              <div className={EB.lineTotalBlock}>
+                                                <span
+                                                  className={cn(EB.readLabel, EB.lineTotalLabel)}
+                                                >
+                                                  Total
+                                                </span>
+                                                <div
+                                                  className={cn(
+                                                    EB.linePricingTotal,
+                                                    EB.lineTotalAmount
+                                                  )}
+                                                >
+                                                  <span
+                                                    className={cn(EB.lineTotal, "leading-none")}
+                                                  >
+                                                    {formatEstimateCurrency(editorLineTotal(row))}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                              <EstimateLineItemMoreMenu
+                                                onDuplicate={() => duplicateItem(row.id)}
+                                                onDelete={() => deleteItem(row.id)}
+                                                hideAmountOnPdf={row.hideAmountOnPdf}
+                                                onToggleHideAmountOnPdf={() =>
+                                                  updateItem(row.id, {
+                                                    hideAmountOnPdf: !row.hideAmountOnPdf,
+                                                  })
+                                                }
+                                                showHideAmountOnPdf
+                                                showSetStatus
+                                                currentStatus={
+                                                  row.status ?? DEFAULT_LINE_ITEM_STATUS
+                                                }
+                                                onSetStatus={(status: EstimateLineItemStatus) =>
+                                                  updateItem(row.id, { status })
+                                                }
+                                                showSaveAsReusable
+                                                onSaveAsReusable={() => handleSaveAsReusable(row)}
+                                                currentSectionCode={code}
+                                                moveSectionOptions={orderedSectionCodes.map(
+                                                  (sectionCode) => ({
+                                                    code: sectionCode,
+                                                    label: sectionDisplayName(sectionCode),
+                                                  })
+                                                )}
+                                                onMoveToSection={(nextCode) =>
+                                                  updateItem(row.id, { costCode: nextCode })
+                                                }
+                                                disabled={disabled}
+                                              />
+                                            </div>
+                                          </>
+                                        }
+                                      />
+                                    </div>
+                                  );
+                                })}
+                                <EstimateAddLineMenu
+                                  className="mt-2"
+                                  disabled={disabled}
+                                  recentItems={recentLineItems}
+                                  savedItems={savedLineItems}
+                                  onAddBlank={() => addLineItem(code)}
+                                  onAddPreset={(preset) => addLineFromPreset(code, preset)}
+                                />
+                              </div>
+                            </ScopeSectionCollapsibleBody>
+                            {!disabled ? (
+                              <div className={EB.addNextSectionRow}>
+                                {renderSectionMenu({
+                                  menuKey: `desktop:${code}`,
+                                  insertAfterCode: code,
+                                  label: "Add Next Section",
+                                  ariaLabel: `Add Next Section after ${displayName}`,
+                                })}
+                              </div>
+                            ) : null}
+                          </>
+                        )}
+                      </EstimateScopeSortableSection>
+                    );
+                  })}
+                  {codesWithItems.length === 0 && !disabled ? (
+                    <div className={EB.scopeEmpty}>
+                      <p className={EB.scopeEmptyMessage}>
+                        No line items yet. Add a section to begin.
+                      </p>
                     </div>
                   ) : null}
                 </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* Desktop: scope sections (whole-section reorder via header handle) */}
-        <DndContext
-          sensors={sectionSensors}
-          collisionDetection={closestCenter}
-          onDragStart={() => setSectionDragging(true)}
-          onDragOver={(e) => setOverSectionId(e.over ? String(e.over.id) : null)}
-          onDragCancel={() => {
-            setSectionDragging(false);
-            setOverSectionId(null);
-          }}
-          onDragEnd={handleSectionDragEnd}
-        >
-          <SortableContext
-            items={orderedSectionCodes}
-            strategy={verticalListSortingStrategy}
-            disabled={disabled}
-          >
-            <div
-              className="eb-scope-sections-list max-md:hidden flex flex-col"
-              data-section-dragging={sectionDragging ? "true" : undefined}
-            >
-              {orderedSectionCodes.map((code) => {
-                const displayName = sectionDisplayName(code);
-                const catalogName = catalogNameByCode.get(code) ?? displayName;
-                const rows = itemsByCode[code];
-                const sectionSubtotal = rows.reduce((s, li) => s + editorLineTotal(li), 0);
-                const collapsed = isSectionCollapsed(code);
-                return (
-                  <EstimateScopeSortableSection
-                    key={code}
-                    id={code}
-                    disabled={disabled}
-                    isDropTarget={overSectionId === code}
-                    className={cn(
-                      "transition-colors duration-300",
-                      highlightSectionCode === code && EB.scopeSectionInserted
-                    )}
-                  >
-                    {(dragHandle) => (
-                      <>
-                        <ScopeSectionHeader
-                          code={code}
-                          catalogName={catalogName}
-                          displayName={displayName}
-                          itemCount={rows.length}
-                          sectionSubtotal={sectionSubtotal}
-                          collapsed={collapsed}
-                          onToggleCollapse={() => toggleSectionCollapsed(code)}
-                          onDisplayNameChange={(name) => setCategoryName(code, name)}
-                          dragHandle={dragHandle}
-                          disabled={disabled}
-                        />
-                        <ScopeSectionCollapsibleBody collapsed={collapsed}>
-                          <div className="eb-scope-section-lines flex flex-col">
-                            {rows.map((row, rowIndexInCat) => {
-                              const globalIdx =
-                                flatWithIndex.find((f) => f.item.id === row.id)?.rowIndex ??
-                                rowIndexInCat + 1;
-                              const isLast = row.id === lastItemId;
-                              return (
-                                <div key={row.id} className={EB.lineItemCard}>
-                                  <ProposalScopeWorkCard
-                                    lineItemGridLayout
-                                    title={row.title}
-                                    description={row.description}
-                                    disabled={disabled}
-                                    onTitleChange={(v) => updateItem(row.id, { title: v })}
-                                    onDescriptionChange={(v) =>
-                                      updateItem(row.id, { description: v })
-                                    }
-                                    titleInvalid={submitAttempted && !row.title.trim()}
-                                    titleInputAriaLabel={`Line item ${globalIdx} title`}
-                                    descriptionEditorAriaLabel={`Line item ${globalIdx} description`}
-                                    lineIndex={globalIdx}
-                                    titleTrailingSlot={
-                                      <EstimateLineItemStatusPill
-                                        status={row.status ?? DEFAULT_LINE_ITEM_STATUS}
-                                      />
-                                    }
-                                    inlinePricing={
-                                      <>
-                                        <div
-                                          className={cn(
-                                            EB.lineFieldStackContents,
-                                            EB.linePricingQty
-                                          )}
-                                        >
-                                          <span className={cn(EB.readLabel, EB.lineQtyLabel)}>
-                                            Qty
-                                          </span>
-                                          <Input
-                                            type="number"
-                                            min={0}
-                                            step={0.01}
-                                            inputMode="decimal"
-                                            value={row.qty}
-                                            onChange={(e) =>
-                                              updateItem(row.id, {
-                                                qty: Math.max(0, Number(e.target.value) || 0),
-                                              })
-                                            }
-                                            onKeyDown={(e) => {
-                                              if (e.key === "Enter" && !e.shiftKey && isLast) {
-                                                e.preventDefault();
-                                                handleEnterAddNext(code);
-                                              }
-                                            }}
-                                            onWheel={(event) => event.currentTarget.blur()}
-                                            className={ebInput(
-                                              `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineQtyInput}`
-                                            )}
-                                            aria-label={`Line item ${globalIdx} quantity`}
-                                            disabled={disabled}
-                                          />
-                                        </div>
-                                        <div
-                                          className={cn(
-                                            EB.lineFieldStackContents,
-                                            EB.linePricingUnit
-                                          )}
-                                        >
-                                          <span className={cn(EB.readLabel, EB.lineUnitLabel)}>
-                                            Unit price
-                                          </span>
-                                          <Input
-                                            type="number"
-                                            min={0}
-                                            step={0.01}
-                                            inputMode="decimal"
-                                            value={row.unitPrice}
-                                            onChange={(e) =>
-                                              updateItem(row.id, {
-                                                unitPrice: Math.max(0, Number(e.target.value) || 0),
-                                              })
-                                            }
-                                            onKeyDown={(e) => {
-                                              if (e.key === "Enter" && !e.shiftKey && isLast) {
-                                                e.preventDefault();
-                                                handleEnterAddNext(code);
-                                              }
-                                            }}
-                                            onWheel={(event) => event.currentTarget.blur()}
-                                            className={ebInput(
-                                              `h-8 min-h-8 w-full px-2 ${EB.inputNumeric} ${EB.lineUnitInput}`
-                                            )}
-                                            aria-label={`Line item ${globalIdx} unit price`}
-                                            disabled={disabled}
-                                          />
-                                        </div>
-                                        <div
-                                          className={cn(
-                                            EB.linePricingTotalCol,
-                                            EB.lineTotalActionArea
-                                          )}
-                                        >
-                                          <div className={EB.lineTotalBlock}>
-                                            <span className={cn(EB.readLabel, EB.lineTotalLabel)}>
-                                              Total
-                                            </span>
-                                            <div
-                                              className={cn(
-                                                EB.linePricingTotal,
-                                                EB.lineTotalAmount
-                                              )}
-                                            >
-                                              <span className={cn(EB.lineTotal, "leading-none")}>
-                                                {formatEstimateCurrency(editorLineTotal(row))}
-                                              </span>
-                                            </div>
-                                          </div>
-                                          <EstimateLineItemMoreMenu
-                                            onDuplicate={() => duplicateItem(row.id)}
-                                            onDelete={() => deleteItem(row.id)}
-                                            hideAmountOnPdf={row.hideAmountOnPdf}
-                                            onToggleHideAmountOnPdf={() =>
-                                              updateItem(row.id, {
-                                                hideAmountOnPdf: !row.hideAmountOnPdf,
-                                              })
-                                            }
-                                            showHideAmountOnPdf
-                                            showSetStatus
-                                            currentStatus={row.status ?? DEFAULT_LINE_ITEM_STATUS}
-                                            onSetStatus={(status: EstimateLineItemStatus) =>
-                                              updateItem(row.id, { status })
-                                            }
-                                            showSaveAsReusable
-                                            onSaveAsReusable={() => handleSaveAsReusable(row)}
-                                            disabled={disabled}
-                                          />
-                                        </div>
-                                      </>
-                                    }
-                                  />
-                                </div>
-                              );
-                            })}
-                            <EstimateAddLineMenu
-                              className="mt-2"
-                              disabled={disabled}
-                              recentItems={recentLineItems}
-                              savedItems={savedLineItems}
-                              onAddBlank={() => addLineItem(code)}
-                              onAddPreset={(preset) => addLineFromPreset(code, preset)}
-                            />
-                          </div>
-                        </ScopeSectionCollapsibleBody>
-                        {!disabled ? (
-                          <div className={EB.addNextSectionRow}>
-                            {renderSectionMenu({
-                              menuKey: `desktop:${code}`,
-                              insertAfterCode: code,
-                              label: "Add Next Section",
-                              ariaLabel: `Add Next Section after ${displayName}`,
-                            })}
-                          </div>
-                        ) : null}
-                      </>
-                    )}
-                  </EstimateScopeSortableSection>
-                );
-              })}
-              {codesWithItems.length === 0 && !disabled ? (
-                <div className={EB.scopeEmpty}>
-                  <p className={EB.scopeEmptyMessage}>No line items yet. Add a section to begin.</p>
-                </div>
-              ) : null}
-            </div>
-          </SortableContext>
-        </DndContext>
-        {!disabled && orderedSectionCodes.length > 0 ? (
-          <div className={cn(EB.addNextSectionRow, EB.addFinalSectionRow)}>
-            {renderSectionMenu({
-              menuKey: "final",
-              insertAfterCode: orderedSectionCodes[orderedSectionCodes.length - 1],
-              label: "Add Final Section",
-              ariaLabel: "Add Final Section",
-            })}
+              </SortableContext>
+            </DndContext>
+            {!disabled && orderedSectionCodes.length > 0 ? (
+              <div className={cn(EB.addNextSectionRow, EB.addFinalSectionRow)}>
+                {renderSectionMenu({
+                  menuKey: "final",
+                  insertAfterCode: orderedSectionCodes[orderedSectionCodes.length - 1],
+                  label: "Add Final Section",
+                  ariaLabel: "Add Final Section",
+                })}
+              </div>
+            ) : null}
           </div>
-        ) : null}
+        </div>
       </div>
     </section>
   );

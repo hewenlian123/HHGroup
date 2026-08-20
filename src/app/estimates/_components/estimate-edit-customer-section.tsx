@@ -4,8 +4,6 @@ import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { EstimateStatusBadge } from "./estimate-status-badge";
-import type { EstimateStatus } from "./estimate-status-badge";
 import { FinanceDatePicker } from "@/components/ui/date-picker";
 import {
   Sheet,
@@ -27,11 +25,11 @@ import {
 } from "./estimate-document-style-field";
 import type { EstimateDocumentStyle } from "@/lib/estimate-document-style";
 import { cn } from "@/lib/utils";
-import { Pencil } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 const metaLabel =
-  "mb-0.5 block text-[11px] font-semibold uppercase tracking-[0.06em] leading-tight text-[#9EA8B8]";
-const metaPanel = cn(EB.draftPanel, "rounded-md px-3 py-2.5 sm:px-4 sm:py-3");
+  "eb-estimate-context-label mb-0.5 block text-[12px] font-medium leading-tight text-muted-foreground";
+const metaPanel = cn(EB.draftPanel, "eb-estimate-context-panel px-3 py-3 sm:px-4");
 const metaInput = ebSheetInput("text-sm");
 
 export type EstimateEditCustomerMeta = {
@@ -58,41 +56,92 @@ function ReadOnlyMetaRows({
   documentStyle: EstimateDocumentStyle;
 }): React.ReactElement {
   return (
-    <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2 lg:grid-cols-5">
-      <div className="min-w-0">
-        <dt className={metaLabel}>Customer</dt>
-        <dd className="truncate text-[14px] font-medium leading-snug text-[#F6F7FA]">
-          {customer.trim() || "—"}
-        </dd>
+    <>
+      <dl className="hidden grid-cols-2 gap-x-5 gap-y-3 md:grid lg:grid-cols-5 lg:gap-x-6">
+        <div className="eb-estimate-context-primary col-span-2 min-w-0 sm:col-span-1">
+          <dt className={metaLabel}>Customer</dt>
+          <dd className="truncate text-[14px] font-medium leading-snug text-foreground">
+            {customer.trim() || "—"}
+          </dd>
+        </div>
+        <div className="eb-estimate-context-primary col-span-2 min-w-0 sm:col-span-1">
+          <dt className={metaLabel}>Project</dt>
+          <dd className="break-words text-[14px] font-medium leading-snug text-foreground">
+            {project.trim() || "—"}
+          </dd>
+        </div>
+        <div className="eb-estimate-context-secondary col-span-2 min-w-0 lg:col-span-1">
+          <dt className={metaLabel}>Address</dt>
+          <dd className="text-[14px] leading-[1.4] text-muted-foreground">
+            {address.trim() || "—"}
+          </dd>
+        </div>
+        <div className="eb-estimate-context-secondary min-w-0">
+          <dt className={metaLabel}>Estimate date</dt>
+          <dd className="text-[14px] tabular-nums leading-snug text-muted-foreground [font-feature-settings:'tnum']">
+            {estimateDate}
+          </dd>
+        </div>
+        <EstimateDocumentStyleReadOnly value={documentStyle} />
+      </dl>
+
+      <div className="eb-estimate-context-mobile md:hidden">
+        <dl className="grid gap-2.5">
+          <div className="eb-estimate-context-primary min-w-0">
+            <dt className={metaLabel}>Customer</dt>
+            <dd className="text-[14px] font-medium leading-snug text-foreground">
+              {customer.trim() || "—"}
+            </dd>
+          </div>
+          <div className="eb-estimate-context-primary min-w-0">
+            <dt className={metaLabel}>Project</dt>
+            <dd className="break-words text-[14px] font-medium leading-snug text-foreground">
+              {project.trim() || "—"}
+            </dd>
+          </div>
+        </dl>
+        <details
+          className="eb-estimate-mobile-supporting-context"
+          data-testid="estimate-mobile-supporting-context"
+        >
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-[13px] font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+            <span>More details</span>
+            <span className="ml-auto truncate text-[12px] font-normal tabular-nums">
+              {estimateDate} · {documentStyle === "itemized" ? "Itemized" : "Proposal"}
+            </span>
+            <ChevronDown
+              className="eb-estimate-mobile-supporting-chevron h-4 w-4 shrink-0"
+              aria-hidden
+            />
+          </summary>
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 pb-1 pt-2">
+            <div className="eb-estimate-context-secondary col-span-2 min-w-0">
+              <dt className={metaLabel}>Address</dt>
+              <dd className="text-[14px] leading-[1.4] text-muted-foreground">
+                {address.trim() || "—"}
+              </dd>
+            </div>
+            <div className="eb-estimate-context-secondary min-w-0">
+              <dt className={metaLabel}>Estimate date</dt>
+              <dd className="text-[14px] tabular-nums leading-snug text-muted-foreground [font-feature-settings:'tnum']">
+                {estimateDate}
+              </dd>
+            </div>
+            <EstimateDocumentStyleReadOnly value={documentStyle} />
+          </dl>
+        </details>
       </div>
-      <div className="min-w-0">
-        <dt className={metaLabel}>Project</dt>
-        <dd className="break-words text-[14px] font-medium leading-snug text-[#F6F7FA]">
-          {project.trim() || "—"}
-        </dd>
-      </div>
-      <div className="min-w-0 sm:col-span-2 lg:col-span-1">
-        <dt className={metaLabel}>Address</dt>
-        <dd className="text-[14px] leading-[1.4] text-[#D8DEE8]">{address.trim() || "—"}</dd>
-      </div>
-      <div className="min-w-0">
-        <dt className={metaLabel}>Estimate date</dt>
-        <dd className="text-[14px] tabular-nums leading-snug text-[#D8DEE8] [font-feature-settings:'tnum']">
-          {estimateDate}
-        </dd>
-      </div>
-      <EstimateDocumentStyleReadOnly value={documentStyle} />
-    </dl>
+    </>
   );
 }
 
 export function EstimateEditCustomerSection({
   meta,
   estimateId,
-  estimateNumber,
-  status,
   today,
   isReadOnly,
+  detailsOpen: controlledDetailsOpen,
+  onDetailsOpenChange,
   tax,
   discount,
   estimateSubtotal,
@@ -101,17 +150,18 @@ export function EstimateEditCustomerSection({
 }: {
   meta: EstimateEditCustomerMeta;
   estimateId: string;
-  estimateNumber: string;
-  status: EstimateStatus | string;
   today: string;
   isReadOnly: boolean;
+  detailsOpen?: boolean;
+  onDetailsOpenChange?: (open: boolean) => void;
   tax: number;
   discount: number;
   estimateSubtotal: number;
   saveEstimateMetaAction: (formData: FormData) => Promise<void>;
   onSaveDetails?: () => void;
 }): React.ReactElement {
-  const [detailsOpen, setDetailsOpen] = React.useState(false);
+  const [uncontrolledDetailsOpen, setUncontrolledDetailsOpen] = React.useState(false);
+  const detailsOpen = controlledDetailsOpen ?? uncontrolledDetailsOpen;
   const [formResetKey, setFormResetKey] = React.useState(0);
   const [estimateDate, setEstimateDate] = React.useState(meta.estimateDate ?? today);
   const [validUntil, setValidUntil] = React.useState(meta.validUntil ?? "");
@@ -130,9 +180,17 @@ export function EstimateEditCustomerSection({
     setDocumentStyleDraft(meta.documentStyle ?? "proposal");
   }, [discount, meta.documentStyle, meta.estimateDate, meta.validUntil, tax, today]);
 
+  const setDetailsOpen = React.useCallback(
+    (open: boolean): void => {
+      if (controlledDetailsOpen === undefined) setUncontrolledDetailsOpen(open);
+      onDetailsOpenChange?.(open);
+    },
+    [controlledDetailsOpen, onDetailsOpenChange]
+  );
+
   React.useEffect(() => {
-    if (isReadOnly) setDetailsOpen(false);
-  }, [isReadOnly]);
+    if (isReadOnly && detailsOpen) setDetailsOpen(false);
+  }, [detailsOpen, isReadOnly, setDetailsOpen]);
 
   const displayDate = meta.estimateDate ?? today;
 
@@ -153,52 +211,35 @@ export function EstimateEditCustomerSection({
   };
 
   return (
-    <section className={cn(EB.section, "pb-3")}>
-      <div className={metaPanel}>
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-            <span className="text-base font-semibold tabular-nums tracking-tight text-[#F6F7FA] sm:text-lg [font-feature-settings:'tnum']">
-              {estimateNumber}
-            </span>
-            <EstimateStatusBadge
-              status={status === "Converted" ? "Converted" : (status as EstimateStatus)}
-              label={status === "Converted" ? "Converted to Project" : undefined}
-              className="shrink-0 text-[11px]"
+    <>
+      {isReadOnly ? (
+        <section
+          className={cn(EB.section, "eb-estimate-details-summary-section pb-3")}
+          data-testid="estimate-details-summary"
+        >
+          <div className={metaPanel}>
+            <ReadOnlyMetaRows
+              customer={meta.client.name}
+              project={meta.project.name}
+              address={meta.client.address}
+              estimateDate={displayDate}
+              documentStyle={meta.documentStyle ?? "proposal"}
             />
           </div>
-          {!isReadOnly ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn("min-h-11 shrink-0 gap-1.5 md:min-h-8", EB.btnText)}
-              onClick={() => setDetailsOpen(true)}
-            >
-              <Pencil className="h-3.5 w-3.5 opacity-80" aria-hidden />
-              Edit details
-            </Button>
-          ) : null}
-        </div>
-
-        <ReadOnlyMetaRows
-          customer={meta.client.name}
-          project={meta.project.name}
-          address={meta.client.address}
-          estimateDate={displayDate}
-          documentStyle={meta.documentStyle ?? "proposal"}
-        />
-      </div>
+        </section>
+      ) : null}
 
       {!isReadOnly ? (
         <Sheet open={detailsOpen} onOpenChange={handleDetailsOpenChange}>
-          <SheetContent side="right" className={ebSheetGlassWide()}>
+          <SheetContent side="right" className={ebSheetGlassWide("eb-estimate-details-sheet")}>
             <div className="flex max-h-[100dvh] min-h-0 flex-1 flex-col overflow-hidden">
               <SheetHeader className={EB.sheetHeader}>
                 <SheetTitle className={EB.sheetTitle}>
-                  Customer / project / pricing details
+                  <span aria-hidden>Estimate details</span>
+                  <span className="sr-only">Customer / project / pricing details</span>
                 </SheetTitle>
-                <SheetDescription className="sr-only">
-                  Edit customer, project, address, and pricing fields for this estimate.
+                <SheetDescription className="eb-estimate-details-subtitle">
+                  Customer, project, document context, and commercial terms.
                 </SheetDescription>
               </SheetHeader>
 
@@ -209,73 +250,108 @@ export function EstimateEditCustomerSection({
                   id="estimate-meta-form"
                   data-estimate-details-open={detailsOpen ? "true" : "false"}
                   action={saveEstimateMetaAction}
-                  className={EB.sheetContentInner}
+                  className={cn(EB.sheetContentInner, "eb-estimate-details-form")}
                 >
                   <input type="hidden" name="estimateId" value={estimateId} />
                   <input type="hidden" name="notes" value={meta.notes ?? ""} />
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <div className={cn(EB.sheetField, "min-w-0")}>
-                      <Label htmlFor="clientName" className={EB.sheetLabel}>
-                        Customer
-                      </Label>
-                      <Input
-                        id="clientName"
-                        name="clientName"
-                        defaultValue={meta.client.name}
-                        placeholder="Client or company name"
-                        className={metaInput}
-                      />
-                    </div>
-                    <div className={cn(EB.sheetField, "min-w-0")}>
-                      <Label htmlFor="projectName" className={EB.sheetLabel}>
-                        Project / reference
-                      </Label>
-                      <Input
-                        id="projectName"
-                        name="projectName"
-                        defaultValue={meta.project.name}
-                        placeholder="Project name"
-                        className={metaInput}
-                      />
-                      <p className="text-xs leading-snug text-[#9EA8B8]">
-                        Milestone invoices require this to match one existing HH project or be
-                        converted to a project after approval.
+                  <section
+                    className="eb-estimate-details-group eb-estimate-details-primary"
+                    data-testid="estimate-details-primary-relationships"
+                    aria-label="Primary relationships"
+                  >
+                    <div className="eb-estimate-details-group-heading">
+                      <p
+                        id="estimate-primary-relationships-title"
+                        className="eb-estimate-details-group-title"
+                      >
+                        Customer &amp; project
+                      </p>
+                      <p className="eb-estimate-details-group-copy">
+                        The primary relationships for this estimate.
                       </p>
                     </div>
-                    <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
-                      <Label htmlFor="address" className={EB.sheetLabel}>
-                        Address
-                      </Label>
-                      <Input
-                        id="address"
-                        name="address"
-                        defaultValue={meta.client.address}
-                        placeholder="Site or client address"
-                        className={metaInput}
-                      />
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className={cn(EB.sheetField, "min-w-0")}>
+                        <Label htmlFor="clientName" className={EB.sheetLabel}>
+                          Customer
+                        </Label>
+                        <Input
+                          id="clientName"
+                          name="clientName"
+                          defaultValue={meta.client.name}
+                          placeholder="Client or company name"
+                          className={metaInput}
+                        />
+                      </div>
+                      <div className={cn(EB.sheetField, "min-w-0")}>
+                        <Label htmlFor="projectName" className={EB.sheetLabel}>
+                          Project / reference
+                        </Label>
+                        <Input
+                          id="projectName"
+                          name="projectName"
+                          defaultValue={meta.project.name}
+                          placeholder="Project name"
+                          className={metaInput}
+                        />
+                        <p className="eb-estimate-details-helper text-xs leading-snug">
+                          Milestone invoices require this to match one existing HH project or be
+                          converted to a project after approval.
+                        </p>
+                      </div>
                     </div>
-                    <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
-                      <Label htmlFor="estimateDate" className={EB.sheetLabel}>
-                        Estimate date
-                      </Label>
-                      <input type="hidden" name="estimateDate" value={estimateDate} />
-                      <FinanceDatePicker
-                        appearance="glass"
-                        size="sm"
-                        value={estimateDate}
-                        onChange={setEstimateDate}
-                        className={ebSheetInput(cn(EB.dateField, "text-sm"))}
-                      />
+                  </section>
+
+                  <section
+                    className="eb-estimate-details-group eb-estimate-details-supporting"
+                    data-testid="estimate-details-supporting-context"
+                    aria-label="Supporting context"
+                  >
+                    <p id="estimate-supporting-context-title" className={EB.sheetSectionLabel}>
+                      Estimate context
+                    </p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
+                        <Label htmlFor="address" className={EB.sheetLabel}>
+                          Address
+                        </Label>
+                        <Input
+                          id="address"
+                          name="address"
+                          defaultValue={meta.client.address}
+                          placeholder="Site or client address"
+                          className={metaInput}
+                        />
+                      </div>
+                      <div className={cn(EB.sheetField, "min-w-0 sm:col-span-2")}>
+                        <Label htmlFor="estimateDate" className={EB.sheetLabel}>
+                          Estimate date
+                        </Label>
+                        <input type="hidden" name="estimateDate" value={estimateDate} />
+                        <FinanceDatePicker
+                          appearance="glass"
+                          size="sm"
+                          value={estimateDate}
+                          onChange={setEstimateDate}
+                          className={ebSheetInput(cn(EB.dateField, "text-sm"))}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <EstimateDocumentStyleField
-                    value={documentStyleDraft}
-                    onChange={setDocumentStyleDraft}
-                  />
+                    <EstimateDocumentStyleField
+                      value={documentStyleDraft}
+                      onChange={setDocumentStyleDraft}
+                    />
+                  </section>
 
-                  <div className="border-t border-white/[0.08] pt-4">
-                    <p className={EB.sheetSectionLabel}>Terms & pricing</p>
+                  <section
+                    className="eb-estimate-details-group eb-estimate-details-terms"
+                    data-testid="estimate-details-terms"
+                    aria-label="Commercial terms"
+                  >
+                    <p id="estimate-terms-title" className={EB.sheetSectionLabel}>
+                      Terms &amp; pricing
+                    </p>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className={cn(EB.sheetField, "min-w-0")}>
                         <Label htmlFor="validUntil" className={EB.sheetLabel}>
@@ -330,7 +406,7 @@ export function EstimateEditCustomerSection({
                             const n = Number(e.target.value);
                             setTaxDraft(Number.isFinite(n) ? Math.max(0, n) : 0);
                           }}
-                          className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
+                          className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
                         />
                       </div>
                       <div className={cn(EB.sheetField, "min-w-0")}>
@@ -355,11 +431,11 @@ export function EstimateEditCustomerSection({
                             const n = Number(e.target.value);
                             setDiscountDraft(Number.isFinite(n) ? Math.max(0, n) : 0);
                           }}
-                          className={ebSheetInput(cn("text-sm text-[#D8DEE8]", EB.inputNumeric))}
+                          className={ebSheetInput(cn("text-sm text-foreground", EB.inputNumeric))}
                         />
                       </div>
                     </div>
-                  </div>
+                  </section>
                 </form>
               </div>
 
@@ -394,6 +470,6 @@ export function EstimateEditCustomerSection({
           </SheetContent>
         </Sheet>
       ) : null}
-    </section>
+    </>
   );
 }

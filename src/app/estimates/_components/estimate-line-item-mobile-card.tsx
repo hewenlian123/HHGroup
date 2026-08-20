@@ -1,15 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ChevronDown, MoreHorizontal } from "lucide-react";
+import { ChevronDown, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EB, ebInput } from "./estimate-builder-ui";
 import { formatEstimateCurrency } from "./estimate-currency";
@@ -36,6 +29,9 @@ export type EstimateLineItemMobileCardProps = {
   onSaveAsReusable?: () => void;
   onEnterAddNext?: () => void;
   onBlurField?: () => void;
+  currentSectionCode?: string;
+  moveSectionOptions?: Array<{ code: string; label: string }>;
+  onMoveToSection?: (costCode: string) => void;
 };
 
 export function EstimateLineItemMobileCard({
@@ -53,6 +49,9 @@ export function EstimateLineItemMobileCard({
   onSaveAsReusable,
   onEnterAddNext,
   onBlurField,
+  currentSectionCode,
+  moveSectionOptions,
+  onMoveToSection,
 }: EstimateLineItemMobileCardProps): React.ReactElement {
   const [open, setOpen] = React.useState(false);
   const total = editorLineTotal(item);
@@ -74,7 +73,7 @@ export function EstimateLineItemMobileCard({
           readOnly
           title={item.title}
           description={item.description}
-          className="border border-white/[0.08]"
+          className="border border-border bg-background"
         />
       </article>
     );
@@ -85,8 +84,8 @@ export function EstimateLineItemMobileCard({
       <button
         type="button"
         className={cn(
-          "flex w-full min-h-11 items-start justify-between gap-3 rounded-md border border-white/[0.08] bg-white/[0.025] px-3 py-3 text-left transition-colors",
-          "hover:border-white/[0.11] hover:bg-white/[0.04] touch-manipulation"
+          "eb-line-item-mobile-summary flex min-h-11 w-full items-start justify-between gap-3 rounded-md border border-border bg-background px-3 py-3 text-left transition-colors",
+          "touch-manipulation hover:border-foreground/20 hover:bg-muted/40"
         )}
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
@@ -94,31 +93,43 @@ export function EstimateLineItemMobileCard({
       >
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <p className="min-w-0 text-[15px] font-semibold leading-snug tracking-tight text-zinc-50 line-clamp-2">
+            <p className="min-w-0 text-[15px] font-semibold leading-snug tracking-tight text-foreground line-clamp-2">
               {item.title.trim() || "Untitled"}
             </p>
             <EstimateLineItemStatusPill status={item.status ?? DEFAULT_LINE_ITEM_STATUS} />
+            {item.hideAmountOnPdf ? (
+              <span
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/55 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                aria-label="PDF amount hidden"
+              >
+                <EyeOff className="h-3 w-3" aria-hidden />
+                PDF hidden
+              </span>
+            ) : null}
           </div>
-          <p className="text-[11px] text-zinc-500 tabular-nums">
+          <p className="text-[11px] text-muted-foreground tabular-nums">
             {item.qty} × {formatEstimateCurrency(item.unitPrice)}
             {showUnitInline ? ` · ${item.unit}` : null}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {!open ? (
-            <span className="text-sm font-semibold tabular-nums tracking-tight text-zinc-100">
+            <span className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
               {formatEstimateCurrency(total)}
             </span>
           ) : null}
           <ChevronDown
-            className={cn("h-4 w-4 text-zinc-500 transition-transform", open && "rotate-180")}
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform",
+              open && "rotate-180"
+            )}
             aria-hidden
           />
         </div>
       </button>
 
       {open ? (
-        <div className="-mt-px overflow-hidden rounded-b-md border border-t-0 border-white/[0.08] bg-white/[0.02]">
+        <div className="eb-line-item-mobile-details -mt-px overflow-hidden rounded-b-md border border-t-0 border-border bg-background">
           <ProposalScopeWorkCard
             className="rounded-none border-0 bg-transparent shadow-none hover:bg-transparent"
             title={item.title}
@@ -132,45 +143,71 @@ export function EstimateLineItemMobileCard({
             titleInputAriaLabel={`Line item ${rowIndex} title`}
             descriptionEditorAriaLabel={`Line item ${rowIndex} description`}
             titleTrailingSlot={
-              <EstimateLineItemStatusPill status={item.status ?? DEFAULT_LINE_ITEM_STATUS} />
+              <div className="flex flex-wrap items-center gap-1.5">
+                <EstimateLineItemStatusPill status={item.status ?? DEFAULT_LINE_ITEM_STATUS} />
+                {item.hideAmountOnPdf ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/55 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+                    aria-label="PDF amount hidden"
+                  >
+                    <EyeOff className="h-3 w-3" aria-hidden />
+                    PDF hidden
+                  </span>
+                ) : null}
+              </div>
             }
             footer={
               <div className="space-y-3 px-3 pb-3 pt-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    inputMode="decimal"
-                    value={item.qty}
-                    onChange={(e) => onChange({ qty: Math.max(0, Number(e.target.value) || 0) })}
-                    onBlur={onBlurField}
-                    onKeyDown={handleEnter}
-                    onWheel={(event) => event.currentTarget.blur()}
-                    className={ebInput(`min-h-11 ${EB.inputMuted}`)}
-                    placeholder="Qty"
-                    aria-label={`Line item ${rowIndex} quantity`}
-                    disabled={disabled}
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    inputMode="decimal"
-                    value={item.unitPrice}
-                    onChange={(e) =>
-                      onChange({ unitPrice: Math.max(0, Number(e.target.value) || 0) })
-                    }
-                    onBlur={onBlurField}
-                    onKeyDown={handleEnter}
-                    onWheel={(event) => event.currentTarget.blur()}
-                    className={ebInput(`min-h-11 ${EB.inputMuted} text-right`)}
-                    placeholder="Unit price"
-                    aria-label={`Line item ${rowIndex} unit price`}
-                    disabled={disabled}
-                  />
+                <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.2fr)] gap-2">
+                  <label className="flex min-w-0 flex-col gap-1">
+                    <span className={EB.readLabel}>Qty</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      inputMode="decimal"
+                      value={item.qty}
+                      onChange={(e) => onChange({ qty: Math.max(0, Number(e.target.value) || 0) })}
+                      onBlur={onBlurField}
+                      onWheel={(event) => event.currentTarget.blur()}
+                      className={ebInput(`min-h-11 ${EB.inputMuted}`)}
+                      aria-label={`Line item ${rowIndex} quantity`}
+                      disabled={disabled}
+                    />
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-1">
+                    <span className={EB.readLabel}>Unit</span>
+                    <Input
+                      type="text"
+                      value={item.unit}
+                      onChange={(e) => onChange({ unit: e.target.value })}
+                      onBlur={onBlurField}
+                      className={ebInput(`min-h-11 ${EB.inputMuted}`)}
+                      aria-label={`Line item ${rowIndex} unit`}
+                      disabled={disabled}
+                    />
+                  </label>
+                  <label className="flex min-w-0 flex-col gap-1">
+                    <span className={cn(EB.readLabel, "text-right")}>Unit price</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      inputMode="decimal"
+                      value={item.unitPrice}
+                      onChange={(e) =>
+                        onChange({ unitPrice: Math.max(0, Number(e.target.value) || 0) })
+                      }
+                      onBlur={onBlurField}
+                      onKeyDown={handleEnter}
+                      onWheel={(event) => event.currentTarget.blur()}
+                      className={ebInput(`min-h-11 ${EB.inputMuted} text-right`)}
+                      aria-label={`Line item ${rowIndex} unit price`}
+                      disabled={disabled}
+                    />
+                  </label>
                 </div>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.05] pt-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
                   <EstimateLineItemMoreMenu
                     onDuplicate={onDuplicate}
                     onDelete={onDelete}
@@ -182,47 +219,21 @@ export function EstimateLineItemMobileCard({
                     onSetStatus={onSetStatus}
                     showSaveAsReusable={Boolean(onSaveAsReusable)}
                     onSaveAsReusable={onSaveAsReusable}
+                    currentSectionCode={currentSectionCode}
+                    moveSectionOptions={moveSectionOptions}
+                    onMoveToSection={onMoveToSection}
                     disabled={disabled}
                   />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-11 w-11 shrink-0 rounded-sm text-zinc-500"
-                        aria-label="Line item options"
-                        disabled={disabled}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-36 p-2">
-                      <Label
-                        htmlFor={`line-${item.id}-unit`}
-                        className="text-[10px] text-muted-foreground/60"
-                      >
-                        Unit
-                      </Label>
-                      <Input
-                        id={`line-${item.id}-unit`}
-                        value={item.unit}
-                        onChange={(e) => onChange({ unit: e.target.value })}
-                        onBlur={onBlurField}
-                        className={ebInput("mt-1 h-8 w-full text-xs")}
-                        placeholder="EA"
-                        disabled={disabled}
-                        aria-label={`Line item ${rowIndex} unit`}
-                      />
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                   {showUnitInline ? (
-                    <span className="text-[11px] text-zinc-500">
-                      Unit: <span className="tabular-nums text-zinc-400">{item.unit}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Unit: <span className="tabular-nums text-foreground">{item.unit}</span>
                     </span>
                   ) : null}
-                  <span className="ml-auto text-sm font-semibold tabular-nums text-zinc-200">
-                    {formatEstimateCurrency(total)}
+                  <span className="ml-auto text-right">
+                    <span className={cn(EB.readLabel, "block")}>Line total</span>
+                    <span className="mt-1 block text-sm font-semibold tabular-nums text-foreground">
+                      {formatEstimateCurrency(total)}
+                    </span>
                   </span>
                 </div>
               </div>

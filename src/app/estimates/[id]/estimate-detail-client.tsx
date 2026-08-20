@@ -28,10 +28,11 @@ import {
 import { deleteEstimateAction } from "../actions";
 import { runDeleteEstimateActionWithTimeout } from "../delete-estimate-client";
 import { EstimateDetailHeader } from "./estimate-detail-header";
+import { EstimateBuilderSaveStatus } from "../_components/estimate-builder-save-status";
 import {
-  EstimateBuilderSaveStatus,
-  type EstimateSaveStatus,
-} from "../_components/estimate-builder-save-status";
+  EstimateDocumentSaveProvider,
+  useEstimateDocumentSave,
+} from "../_components/estimate-document-save-context";
 import { useEstimateUnsavedWarning } from "../_components/use-estimate-unsaved-warning";
 import { ConvertToProjectDrawer } from "./convert-to-project-drawer";
 import { EstimateBuilderShell } from "../_components/estimate-builder-shell";
@@ -44,26 +45,15 @@ import { SubmitSpinner } from "@/components/ui/submit-spinner";
 import { cn } from "@/lib/utils";
 import { EB } from "../_components/estimate-builder-ui";
 import { EstimateBuilderMobileSummary } from "../_components/estimate-builder-summary";
+import { isEstimateSaveShortcut } from "../_components/estimate-builder-productivity";
+import {
+  buildEstimatePreviewHref,
+  captureEstimateBuilderReturnContext,
+} from "../_components/estimate-workflow-continuity";
 
-export function EstimateDetailClient({
-  estimateId,
-  estimateNumber,
-  estimateUpdatedAt,
-  initialStatus,
-  meta,
-  items,
-  estimateCategories,
-  categoryNames,
-  costCodes,
-  summary,
-  paymentSchedule,
-  paymentTemplates,
-  invoiceProjectLink,
-  paymentInvoiceSummaries,
-}: {
+type EstimateDetailClientProps = {
   estimateId: string;
   estimateNumber: string;
-  /** Bumps when server estimate row updates so editor remounts with fresh props after refresh. */
   estimateUpdatedAt: string;
   initialStatus: EstimateStatus | string;
   meta: EstimateMetaRecord;
@@ -79,42 +69,66 @@ export function EstimateDetailClient({
     message?: string;
   };
   paymentInvoiceSummaries?: Record<string, EstimatePaymentScheduleInvoiceSummary>;
-}) {
+};
+
+export function EstimateDetailClient(props: EstimateDetailClientProps): React.ReactElement {
+  return (
+    <EstimateDocumentSaveProvider>
+      <EstimateDetailClientContent {...props} />
+    </EstimateDocumentSaveProvider>
+  );
+}
+
+function EstimateDetailClientContent({
+  estimateId,
+  estimateNumber,
+  estimateUpdatedAt,
+  initialStatus,
+  meta,
+  items,
+  estimateCategories,
+  categoryNames,
+  costCodes,
+  summary,
+  paymentSchedule,
+  paymentTemplates,
+  invoiceProjectLink,
+  paymentInvoiceSummaries,
+}: EstimateDetailClientProps) {
   const { toast } = useToast();
   const router = useRouter();
   useBreadcrumbEntityLabel(estimateNumber);
   const [status, setStatus] = React.useState<string>(initialStatus);
   const [editing, setEditing] = React.useState(false);
+  const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [resetNonce, setResetNonce] = React.useState(0);
   const [convertDrawerOpen, setConvertDrawerOpen] = React.useState(false);
   const [saveTemplateOpen, setSaveTemplateOpen] = React.useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = React.useState(false);
   const [deleteBusy, setDeleteBusy] = React.useState(false);
+  const [wholeDocumentSaving, setWholeDocumentSaving] = React.useState(false);
   const [pending, startTransition] = React.useTransition();
-  const [dirty, setDirty] = React.useState(false);
-  const [saveStatus, setSaveStatus] = React.useState<EstimateSaveStatus>("idle");
-  const [savingDetails, setSavingDetails] = React.useState(false);
   const saveInFlightRef = React.useRef(false);
+  const {
+    state: documentSaveState,
+    status: saveStatus,
+    trackMutation,
+    waitForPendingSaves,
+    resetSaveState,
+  } = useEstimateDocumentSave();
 
   const isLocked = !["Draft", "Sent"].includes(status);
-  useEstimateUnsavedWarning(editing && dirty && !pending && !savingDetails);
+  const documentHasUnsavedWork =
+    documentSaveState.failedOperationKeys.length > 0 ||
+    documentSaveState.revision > documentSaveState.savedRevision;
+  const documentSaving = saveStatus === "saving";
+  useEstimateUnsavedWarning(editing && documentHasUnsavedWork && !pending && !documentSaving);
 
   React.useEffect(() => {
     if (!editing) {
-      setDirty(false);
-      setSaveStatus("idle");
+      resetSaveState();
     }
-  }, [editing]);
-
-  React.useEffect(() => {
-    if (!editing) return;
-    const onDirty = (): void => {
-      setDirty(true);
-      setSaveStatus("unsaved");
-    };
-    window.addEventListener("estimate-editor-dirty", onDirty);
-    return () => window.removeEventListener("estimate-editor-dirty", onDirty);
-  }, [editing]);
+  }, [editing, resetSaveState]);
 
   React.useEffect(() => {
     setStatus(initialStatus);
@@ -128,76 +142,88 @@ export function EstimateDetailClient({
   );
 
   const onCancelEditing = () => {
-    if (dirty && !window.confirm("Discard unsaved Estimate changes?")) return;
+    if (documentHasUnsavedWork && !window.confirm("Discard unsaved Estimate changes?")) return;
+    setDetailsOpen(false);
     setEditing(false);
     setResetNonce((n) => n + 1);
-    setDirty(false);
-    setSaveStatus("idle");
+    resetSaveState();
   };
 
-  const onSave = () => {
-    if (saveInFlightRef.current) return;
+  const persistWholeDocument = async (): Promise<boolean> => {
+    if (saveInFlightRef.current) return false;
     saveInFlightRef.current = true;
-    const finishWithoutMetaForm = () => {
-      setSaveStatus("saving");
-      startTransition(() => {
-        setEditing(false);
-        setDirty(false);
-        setSaveStatus("saved");
-        syncRouterNonBlocking(router);
-        window.setTimeout(() => setSaveStatus("idle"), 2000);
-        saveInFlightRef.current = false;
-      });
-    };
-
-    const run = (form: HTMLFormElement) => {
-      const fd = new FormData(form);
-      setSaveStatus("saving");
-      setSavingDetails(true);
-      void (async () => {
-        try {
-          const res = await saveEstimateMetaInlineAction(fd);
-          if (res.ok) {
-            toast({ title: "Saved", description: "Estimate updated.", variant: "success" });
-            setEditing(false);
-            syncRouterNonBlocking(router);
-            setDirty(false);
-            setSaveStatus("saved");
-            window.setTimeout(() => setSaveStatus("idle"), 2000);
-            return;
-          }
-          setSaveStatus("failed");
+    setWholeDocumentSaving(true);
+    try {
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+      const form = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
+      if (form?.dataset.estimateDetailsOpen === "true") {
+        const result = await trackMutation("estimate-meta", () =>
+          saveEstimateMetaInlineAction(new FormData(form))
+        );
+        if (!result.ok) {
           toast({
             title: "Save failed",
-            description: res.error ?? "Please try again.",
+            description: result.error ?? "Please try again.",
             variant: "error",
           });
-        } catch {
-          setSaveStatus("failed");
-          toast({
-            title: "Save failed",
-            description: "Please try again.",
-            variant: "error",
-          });
-        } finally {
-          setSavingDetails(false);
-          saveInFlightRef.current = false;
+          return false;
         }
-      })();
-    };
+      }
 
-    const form = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
-    if (form?.dataset.estimateDetailsOpen === "true") {
-      run(form);
-      return;
+      const settled = await waitForPendingSaves();
+      if (!settled) {
+        toast({
+          title: "Save failed",
+          description: "One or more Estimate changes were not confirmed. Try again.",
+          variant: "error",
+        });
+        return false;
+      }
+      toast({ title: "Saved", description: "Estimate updated.", variant: "success" });
+      return true;
+    } catch (error) {
+      toast({
+        title: "Save failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "error",
+      });
+      return false;
+    } finally {
+      saveInFlightRef.current = false;
+      setWholeDocumentSaving(false);
     }
-    // EstimateEditor expands Client/Project on edit in useEffect; one frame retry if Save is very fast.
-    requestAnimationFrame(() => {
-      const f = document.getElementById("estimate-meta-form") as HTMLFormElement | null;
-      if (f?.dataset.estimateDetailsOpen === "true") run(f);
-      else finishWithoutMetaForm();
-    });
   };
+
+  const onSave = async (): Promise<void> => {
+    if (!(await persistWholeDocument())) return;
+    setDetailsOpen(false);
+    setEditing(false);
+    syncRouterNonBlocking(router);
+  };
+
+  const onSaveAndPreview = async (): Promise<void> => {
+    const returnContext = captureEstimateBuilderReturnContext();
+    if (!(await persistWholeDocument())) return;
+    setDetailsOpen(false);
+    router.push(buildEstimatePreviewHref(estimateId, returnContext));
+  };
+
+  const onPreview = (): void => {
+    router.push(buildEstimatePreviewHref(estimateId, captureEstimateBuilderReturnContext()));
+  };
+
+  const onSaveShortcutRef = React.useRef(onSave);
+  onSaveShortcutRef.current = onSave;
+  React.useEffect(() => {
+    if (!editing || isLocked) return;
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      if (!isEstimateSaveShortcut(event)) return;
+      event.preventDefault();
+      void onSaveShortcutRef.current();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [editing, isLocked]);
 
   const runStatusChange = (
     next: EstimateStatus,
@@ -272,11 +298,18 @@ export function EstimateDetailClient({
         siteAddress={meta.project.siteAddress ?? meta.client.address}
         status={status}
         editing={editing}
-        pending={pending || savingDetails}
-        saveStatus={editing ? (pending || savingDetails ? "saving" : saveStatus) : "idle"}
+        pending={pending || wholeDocumentSaving}
+        saveStatus={editing ? saveStatus : "idle"}
         isLocked={isLocked}
-        onEdit={() => setEditing(true)}
-        onSave={onSave}
+        onEdit={() => {
+          resetSaveState();
+          setDetailsOpen(false);
+          setEditing(true);
+        }}
+        onEditDetails={() => setDetailsOpen(true)}
+        onSave={() => void onSave()}
+        onSaveAndPreview={() => void onSaveAndPreview()}
+        onPreview={onPreview}
         onCancel={onCancelEditing}
         onMarkDraft={() =>
           runStatusChange("Draft", () => changeEstimateStatusInlineAction(estimateId, "Draft"))
@@ -321,28 +354,27 @@ export function EstimateDetailClient({
         invoiceProjectLink={invoiceProjectLink}
         paymentInvoiceSummaries={paymentInvoiceSummaries}
         editing={editing && !isLocked}
-        onSaveDetails={onSave}
+        detailsOpen={detailsOpen}
+        onDetailsOpenChange={setDetailsOpen}
+        onSaveDetails={() => void onSave()}
       />
 
       {editing && !isLocked ? (
         <div
           className={cn(
-            "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-4 py-3 lg:hidden",
+            "fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-40 px-3 py-2 lg:hidden",
             EB.glassMobileBar
           )}
           aria-label="Estimate edit actions"
         >
-          <EstimateBuilderMobileSummary className="mb-3" summary={summary} />
-          <EstimateBuilderSaveStatus
-            status={pending || savingDetails ? "saving" : saveStatus}
-            className="mb-2 block text-center"
-          />
-          <div className="flex gap-2">
+          <EstimateBuilderMobileSummary className="mb-1" summary={summary} />
+          <EstimateBuilderSaveStatus status={saveStatus} className="mb-1 block text-center" />
+          <div className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,1.4fr)] gap-2">
             <Button
               type="button"
               variant="ghost"
               className={cn("min-h-11 min-w-[44px] flex-1", EB.btnGhost)}
-              disabled={pending || savingDetails}
+              disabled={pending || wholeDocumentSaving}
               onClick={onCancelEditing}
             >
               Cancel
@@ -350,12 +382,21 @@ export function EstimateDetailClient({
             <Button
               type="button"
               className={cn("min-h-11 min-w-[44px] flex-1 font-medium", EB.btnPrimary)}
-              disabled={pending || savingDetails}
-              aria-busy={pending || savingDetails}
-              onClick={onSave}
+              disabled={pending || wholeDocumentSaving}
+              aria-busy={pending || wholeDocumentSaving}
+              onClick={() => void onSave()}
             >
-              <SubmitSpinner loading={pending || savingDetails} className="mr-2" />
-              {pending || savingDetails ? "Saving…" : "Save"}
+              <SubmitSpinner loading={pending || wholeDocumentSaving} className="mr-2" />
+              {pending || wholeDocumentSaving ? "Saving…" : "Save"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className={cn("min-h-11 min-w-[44px] px-2 font-medium", EB.btnGhost)}
+              disabled={pending || wholeDocumentSaving}
+              onClick={() => void onSaveAndPreview()}
+            >
+              Save &amp; Preview
             </Button>
           </div>
         </div>

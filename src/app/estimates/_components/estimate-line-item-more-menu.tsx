@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Bookmark, Check, Copy, Eye, EyeOff, MoreVertical, Trash2 } from "lucide-react";
+import { Bookmark, Check, Copy, Eye, EyeOff, MoreVertical, MoveRight, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -34,6 +34,9 @@ export type EstimateLineItemMoreMenuProps = {
   onSetStatus?: (status: EstimateLineItemStatus) => void;
   showSaveAsReusable?: boolean;
   onSaveAsReusable?: () => void;
+  currentSectionCode?: string;
+  moveSectionOptions?: Array<{ code: string; label: string }>;
+  onMoveToSection?: (costCode: string) => void;
 };
 
 export function EstimateLineItemMoreMenu({
@@ -50,9 +53,13 @@ export function EstimateLineItemMoreMenu({
   onSetStatus,
   showSaveAsReusable = false,
   onSaveAsReusable,
+  currentSectionCode,
+  moveSectionOptions = [],
+  onMoveToSection,
 }: EstimateLineItemMoreMenuProps): React.ReactElement | null {
   const [open, setOpen] = React.useState(false);
   const [statusOpen, setStatusOpen] = React.useState(false);
+  const suppressCloseAutoFocusRef = React.useRef(false);
   const closeMenu = React.useCallback(() => {
     setStatusOpen(false);
     setOpen(false);
@@ -64,8 +71,10 @@ export function EstimateLineItemMoreMenu({
   const hasHide = showHideAmountOnPdf && Boolean(onToggleHideAmountOnPdf);
   const hasStatus = showSetStatus && Boolean(onSetStatus);
   const hasSave = showSaveAsReusable && Boolean(onSaveAsReusable);
-  if (!showDuplicate && !showDelete && !hasHide && !hasStatus && !hasSave) return null;
-  if (!onDuplicate && !onDelete && !hasHide && !hasStatus && !hasSave) return null;
+  const moveTargets = moveSectionOptions.filter((option) => option.code !== currentSectionCode);
+  const hasMove = Boolean(onMoveToSection) && moveTargets.length > 0;
+  if (!showDuplicate && !showDelete && !hasHide && !hasStatus && !hasSave && !hasMove) return null;
+  if (!onDuplicate && !onDelete && !hasHide && !hasStatus && !hasSave && !hasMove) return null;
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -82,13 +91,22 @@ export function EstimateLineItemMoreMenu({
           <MoreVertical className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className={cn(EB.lineItemMoreMenu, EB.commandMenu)}>
+      <DropdownMenuContent
+        align="end"
+        className={cn(EB.lineItemMoreMenu, EB.commandMenu)}
+        onCloseAutoFocus={(event) => {
+          if (!suppressCloseAutoFocusRef.current) return;
+          event.preventDefault();
+          suppressCloseAutoFocusRef.current = false;
+        }}
+      >
         {showDuplicate && onDuplicate ? (
           <DropdownMenuItem
             className={EB.lineItemMoreMenuItem}
             disabled={disabled}
             aria-label="Duplicate line item"
             onSelect={() => {
+              suppressCloseAutoFocusRef.current = true;
               onDuplicate();
               closeMenu();
             }}
@@ -110,6 +128,33 @@ export function EstimateLineItemMoreMenu({
             <Bookmark className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
             Save as reusable item
           </DropdownMenuItem>
+        ) : null}
+        {hasMove ? (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger
+              className={EB.lineItemMoreMenuItem}
+              disabled={disabled}
+              aria-label="Move to section"
+            >
+              <MoveRight className="h-3.5 w-3.5" strokeWidth={1.75} aria-hidden />
+              Move to section
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className={cn(EB.lineItemMoreMenu, EB.commandMenu)}>
+              {moveTargets.map((option) => (
+                <DropdownMenuItem
+                  key={option.code}
+                  className={EB.lineItemMoreMenuItem}
+                  disabled={disabled}
+                  onSelect={() => {
+                    onMoveToSection?.(option.code);
+                    closeMenu();
+                  }}
+                >
+                  {option.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
         ) : null}
         {hasStatus ? (
           <DropdownMenuSub open={statusOpen} onOpenChange={setStatusOpen}>
@@ -163,6 +208,7 @@ export function EstimateLineItemMoreMenu({
             disabled={disabled}
             aria-label="Remove line item"
             onSelect={() => {
+              suppressCloseAutoFocusRef.current = true;
               onDelete();
               closeMenu();
             }}

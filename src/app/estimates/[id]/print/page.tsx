@@ -14,6 +14,7 @@ import { AutoprintTrigger } from "./autoprint-trigger";
 import { PrintActionBar } from "./print-action-bar";
 import { SetBreadcrumbEntityTitle } from "@/components/layout/set-breadcrumb-entity-title";
 import { getServerSupabaseInternalNoStore } from "@/lib/supabase-server";
+import { safeEstimateReturnPath } from "@/app/estimates/_components/estimate-workflow-continuity";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +23,10 @@ export default async function EstimatePrintPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ autoprint?: string; pdf?: string }>;
+  searchParams: Promise<{ autoprint?: string; pdf?: string; returnTo?: string }>;
 }) {
   const { id } = await params;
-  const { autoprint, pdf } = await searchParams;
+  const { autoprint, pdf, returnTo } = await searchParams;
   const pdfCapture = pdf === "1";
   const readClient = getServerSupabaseInternalNoStore();
 
@@ -48,7 +49,7 @@ export default async function EstimatePrintPage({
 
   return (
     <div
-      className={`min-h-screen bg-white text-zinc-900 print:min-h-0${pdfCapture ? " estimate-print-pdf-capture" : ""}`}
+      className={`estimate-print-workspace min-h-screen bg-white text-zinc-900 print:min-h-0${pdfCapture ? " estimate-print-pdf-capture" : ""}`}
       data-read-only="true"
       data-estimate-pdf-capture={pdfCapture ? "true" : undefined}
       role="document"
@@ -56,7 +57,14 @@ export default async function EstimatePrintPage({
     >
       {!pdfCapture ? <SetBreadcrumbEntityTitle label={estimate.number} /> : null}
       {!pdfCapture ? <AutoprintTrigger enabled={autoprint === "1"} /> : null}
-      {!pdfCapture ? <PrintActionBar estimateId={id} /> : null}
+      {!pdfCapture ? (
+        <PrintActionBar
+          estimateId={id}
+          estimateNumber={estimate.number}
+          returnHref={safeEstimateReturnPath(returnTo)}
+          documentStyle={meta.documentStyle}
+        />
+      ) : null}
       <style
         dangerouslySetInnerHTML={{
           __html: `

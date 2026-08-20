@@ -44,7 +44,10 @@ export function EstimateMobileList({
   onRequestDelete: (row: EstimateListItem) => void;
 }) {
   return (
-    <div className="grid gap-3 md:hidden">
+    <div
+      data-testid="estimate-mobile-list"
+      className="estimate-list-mobile-grid grid gap-2 lg:hidden"
+    >
       {list.map((row) => (
         <EstimateListRowMobile key={row.id} row={row} onRequestDelete={onRequestDelete} />
       ))}
@@ -64,28 +67,44 @@ const EstimateListRowMobile = memo(function EstimateListRowMobile({
   const [isPending, startTransition] = useTransition();
 
   return (
-    <NeoMobileCard className="flex min-h-[76px] items-start gap-3 p-3">
+    <NeoMobileCard className="estimate-list-mobile-card flex min-h-[84px] items-start gap-1.5 p-3">
       <Link
         href={href}
-        className="flex min-w-0 flex-1 items-start gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+        className="estimate-list-mobile-link min-w-0 flex-1 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#171717]/15"
       >
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-[var(--neo-text-primary)]">
+        <div className="flex min-w-0 items-baseline justify-between gap-3">
+          <p className="truncate text-[14px] font-semibold text-[var(--neo-text-primary)]">
             {row.number}
           </p>
-          <p className="mt-1 truncate text-xs text-[var(--neo-text-secondary)]">
-            {row.client} · {row.project}
-          </p>
-          <div className="mt-2">
-            <EstimateListStatus status={row.status} />
-          </div>
+          <NeoAmount className="shrink-0 text-[14px]">
+            {formatEstimateCurrency(row.total)}
+          </NeoAmount>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <NeoAmount className="text-sm">{formatEstimateCurrency(row.total)}</NeoAmount>
+        <div className="mt-1.5 min-w-0">
+          <p className="truncate text-[12px] font-medium leading-4 text-[var(--neo-text-secondary)]">
+            {row.client}
+          </p>
+          <p className="truncate text-[12px] leading-4 text-[var(--neo-text-tertiary)]">
+            {row.project}
+          </p>
+          <div className="mt-2 flex min-w-0 items-center gap-2">
+            <EstimateListStatus status={row.status} />
+            <span aria-hidden="true" className="text-[var(--neo-border-strong)]">
+              ·
+            </span>
+            <time
+              data-testid="estimate-mobile-updated"
+              className="truncate text-[11px] tabular-nums text-[var(--neo-text-tertiary)]"
+              dateTime={row.updatedAt}
+            >
+              {row.updatedAt}
+            </time>
+          </div>
         </div>
       </Link>
       <RowActionsMenu
         appearance="list"
+        className="estimate-list-mobile-actions"
         ariaLabel={`Actions for estimate ${row.number}`}
         actions={[
           { label: "View", onClick: () => startTransition(() => router.push(href)) },
@@ -114,30 +133,56 @@ export const EstimateListRow = memo(function EstimateListRow({
 
   return (
     <tr
-      className={cn("group", listTableRowClassName)}
+      className={cn("estimate-list-row group", listTableRowClassName)}
       onClick={() => startTransition(() => router.push(href))}
     >
-      <td className={cn(tableRawTdClass, "font-medium")}>
+      <td className={cn(tableRawTdClass, "estimate-list-col-number font-medium")}>
         <Link
           href={href}
-          className="block w-full text-[var(--neo-text-primary)] transition-colors hover:text-[var(--neo-gold)] focus:outline-none focus:text-[var(--neo-gold)]"
+          className="estimate-list-number-link block w-full text-[var(--neo-text-primary)] transition-colors duration-150 hover:text-black focus:outline-none focus:text-black focus-visible:underline focus-visible:underline-offset-2"
           onClick={(e) => e.stopPropagation()}
         >
           {row.number}
         </Link>
       </td>
-      <td className={tableRawTdClass}>{row.client}</td>
-      <td className={tableRawTdClass}>{row.project}</td>
-      <td className={tableRawTdClass}>
+      <td className={cn(tableRawTdClass, "estimate-list-col-client")}>
+        <span
+          data-testid="estimate-row-client"
+          className="estimate-list-client-name"
+          title={row.client}
+        >
+          {row.client}
+        </span>
+      </td>
+      <td className={cn(tableRawTdClass, "estimate-list-col-project")}>
+        <span
+          data-testid="estimate-row-project"
+          className="estimate-list-project-name"
+          title={row.project}
+        >
+          {row.project}
+        </span>
+      </td>
+      <td className={cn(tableRawTdClass, "estimate-list-col-status")}>
         <EstimateListStatus status={row.status} />
       </td>
-      <td className={cn(tableRawTdClass, "text-right")}>
-        <NeoAmount>{formatEstimateCurrency(row.total)}</NeoAmount>
+      <td className={cn(tableRawTdClass, "estimate-list-col-total text-right")}>
+        <NeoAmount className="estimate-list-row-total">
+          {formatEstimateCurrency(row.total)}
+        </NeoAmount>
       </td>
-      <td className={cn(tableRawTdClass, "whitespace-nowrap text-[var(--neo-text-secondary)]")}>
-        {row.updatedAt}
+      <td
+        className={cn(
+          tableRawTdClass,
+          "estimate-list-col-updated whitespace-nowrap text-[var(--neo-text-secondary)]"
+        )}
+      >
+        <time dateTime={row.updatedAt}>{row.updatedAt}</time>
       </td>
-      <td className={cn(tableRawTdClass, "w-10 text-right")} onClick={(e) => e.stopPropagation()}>
+      <td
+        className={cn(tableRawTdClass, "estimate-list-col-actions text-right")}
+        onClick={(e) => e.stopPropagation()}
+      >
         <RowActionsMenu
           appearance="list"
           ariaLabel={`Actions for estimate ${row.number}`}

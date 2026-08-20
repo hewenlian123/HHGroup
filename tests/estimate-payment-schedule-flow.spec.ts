@@ -236,7 +236,9 @@ test("estimate payment schedule persists and has customer-facing payment preview
 
   await page.goto(detailUrl, { waitUntil: "domcontentloaded" });
   await expect(page.locator("body")).not.toContainText("Payment Request");
-  await expect(page.getByRole("button", { name: /^Send Invoice$/i }).first()).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: /^Create Draft Invoice$/i }).first()
+  ).toBeDisabled();
 
   await page.goto(detailUrl, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Edit", exact: true }).click();
