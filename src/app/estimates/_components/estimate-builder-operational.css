@@ -706,8 +706,8 @@
 }
 
 .estimate-builder-new {
-  --eb-estimate-line-grid: 1.75rem minmax(9.25rem, 1fr) minmax(14.5rem, 1.6fr)
-    minmax(3.625rem, 0.42fr) minmax(4rem, 0.46fr) minmax(6.5rem, 0.7fr) minmax(7rem, 0.76fr) 5.25rem;
+  --eb-estimate-line-grid: 1.75rem clamp(10rem, 13vw, 15rem) minmax(14.5rem, 1fr) 4rem 4.25rem 7rem
+    7.5rem 5.25rem;
   --eb-estimate-line-gap: 0.5rem;
 }
 

@@ -132,7 +132,7 @@ body.estimate-builder-active [role="dialog"] {
 
 .estimate-builder-page {
   width: 100%;
-  max-width: min(1536px, calc(100vw - 2rem));
+  max-width: min(1520px, calc(100vw - clamp(2rem, 3vw, 3rem)));
   margin-inline: auto;
   padding-inline: 0;
 }
