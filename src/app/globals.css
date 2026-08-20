@@ -1,3 +1,5 @@
+@import "../styles/design-tokens.generated.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -1086,12 +1088,7 @@
 
 @layer base {
   :root {
-    /* ---- HH Group Design System v1 background hierarchy ---- */
-    --hh-l0-canvas: #f7f7f6;
-    --hh-l1-workspace: #ffffff;
-    --hh-l2-operational-surface: #ffffff;
-
-    /* ---- Neo Operations OS tokens ---- */
+    /* ---- Legacy Neo compatibility aliases; HH tokens remain authoritative ---- */
     --neo-graphite-950: #07090d;
     --neo-graphite-900: #0b0f15;
     --neo-graphite-850: #0f141c;
@@ -1102,20 +1099,20 @@
     --neo-surface-raised: var(--hh-l2-operational-surface);
     --neo-surface-muted: var(--hh-l2-operational-surface);
     --neo-surface-hover: #e6e9ed;
-    --neo-text-primary: #111315;
-    --neo-text-secondary: #5f6872;
-    --neo-text-tertiary: #8a939d;
+    --neo-text-primary: var(--hh-text-primary);
+    --neo-text-secondary: var(--hh-text-secondary);
+    --neo-text-tertiary: var(--hh-text-tertiary);
     --neo-canvas-text-primary: var(--neo-text-primary);
     --neo-canvas-text-secondary: var(--neo-text-secondary);
     --neo-canvas-text-tertiary: var(--neo-text-tertiary);
-    --neo-border: rgb(17 19 21 / 0.09);
-    --neo-border-strong: rgb(17 19 21 / 0.14);
-    --neo-command-border: rgb(17 19 21 / 0.1);
+    --neo-border: var(--hh-border);
+    --neo-border-strong: var(--hh-border-strong);
+    --neo-command-border: var(--hh-border-floating);
     --neo-sidebar-border: var(--neo-border);
     --neo-gold: #b8935a;
     --neo-gold-soft: #d2b77f;
     --neo-gold-ring: rgb(184 147 90 / 0.24);
-    --neo-emerald: #059669;
+    --neo-emerald: var(--hh-success);
     --neo-emerald-soft: #ddf8ec;
     --neo-radius-control: 0.5rem;
     --neo-radius-panel: 0.75rem;
@@ -1187,22 +1184,18 @@
     --shadow-popover: var(--shadow-2);
   }
   html.dark {
-    --hh-l0-canvas: #0a0a0a;
-    --hh-l1-workspace: #111111;
-    --hh-l2-operational-surface: #181818;
-
     --neo-canvas: var(--hh-l0-canvas);
     --neo-canvas-top: var(--hh-l0-canvas);
     --neo-surface-base: var(--hh-l1-workspace);
     --neo-surface-raised: var(--hh-l2-operational-surface);
     --neo-surface-muted: var(--hh-l2-operational-surface);
     --neo-surface-hover: #1b2430;
-    --neo-text-primary: #f3f4f5;
-    --neo-text-secondary: #bac2ca;
-    --neo-text-tertiary: #87919b;
-    --neo-border: rgb(255 255 255 / 0.09);
-    --neo-border-strong: rgb(255 255 255 / 0.145);
-    --neo-command-border: rgb(255 255 255 / 0.095);
+    --neo-text-primary: var(--hh-text-primary);
+    --neo-text-secondary: var(--hh-text-secondary);
+    --neo-text-tertiary: var(--hh-text-tertiary);
+    --neo-border: var(--hh-border);
+    --neo-border-strong: var(--hh-border-strong);
+    --neo-command-border: var(--hh-border-floating);
     --neo-gold-ring: rgb(184 147 90 / 0.26);
     --neo-shadow-panel: 0 1px 0 rgb(255 255 255 / 0.035) inset, 0 20px 54px rgb(0 0 0 / 0.3);
     --neo-shadow-panel-hover: 0 1px 0 rgb(255 255 255 / 0.052) inset, 0 24px 62px rgb(0 0 0 / 0.38);

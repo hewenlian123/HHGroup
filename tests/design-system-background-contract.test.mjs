@@ -7,7 +7,7 @@ const ROOT = process.cwd();
 const source = (path) => readFileSync(resolve(ROOT, path), "utf8");
 
 test("defines the approved L0, L1, and L2 background tokens for both themes", () => {
-  const css = source("src/app/globals.css");
+  const css = source("src/styles/design-tokens.generated.css");
 
   assert.match(css, /--hh-l0-canvas:\s*#F7F7F6;/i);
   assert.match(css, /--hh-l1-workspace:\s*#FFFFFF;/i);
