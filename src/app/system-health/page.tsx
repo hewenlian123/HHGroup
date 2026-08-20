@@ -444,7 +444,7 @@ function HealthStatusLabel({ status }: { status: HealthCheckStatus }) {
 
 function QaSummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-white/10 bg-white/[0.035] px-4 py-3">
+    <div className="rounded-lg border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3">
       <p className="text-xs font-medium uppercase tracking-[0.06em] text-slate-400">{label}</p>
       <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-50">{value}</p>
     </div>
@@ -821,7 +821,7 @@ function SystemQaSectionTable({ section }: { section: SystemQaSection }) {
   const passCount = section.checks.filter((check) => check.status === "pass").length;
 
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.025] p-3 sm:p-4">
+    <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-medium text-foreground">{section.name}</h3>
@@ -1245,7 +1245,7 @@ function CodeBadge({ value, status = "info" }: { value: string; status?: DetailR
 
 function CodePath({ value, href }: { value: string; href?: string }) {
   const className =
-    "inline-flex max-w-full items-center rounded-md border border-[rgb(198_165_106_/_0.16)] bg-white/[0.045] px-2 py-1 font-mono text-[11px] leading-4 text-slate-200/78 no-underline transition hover:border-[rgb(198_165_106_/_0.34)] hover:bg-[rgb(198_165_106_/_0.08)] hover:text-slate-50";
+    "inline-flex max-w-full items-center rounded-md border border-[rgb(198_165_106_/_0.16)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 font-mono text-[11px] leading-4 text-slate-200/78 no-underline transition hover:border-[rgb(198_165_106_/_0.34)] hover:bg-[rgb(198_165_106_/_0.08)] hover:text-slate-50";
   const content = <span className="break-all">{value}</span>;
 
   if (href) {
@@ -1290,7 +1290,7 @@ function detailRowTone(status: DetailRowStatus): {
     };
   }
   return {
-    row: "border-white/[0.045] hover:bg-white/[0.035]",
+    row: "border-[var(--neo-border)] hover:bg-[var(--neo-surface-hover)]",
     accent: "border-transparent",
     title: "text-slate-200",
     detail: "text-slate-400",
@@ -1326,7 +1326,7 @@ function GuardianRefreshLine({ status }: { status: HealthCheckStatus }) {
         : "from-emerald-300 via-[#C6A56A] to-emerald-300";
 
   return (
-    <div className="guardian-refresh-line absolute inset-x-5 bottom-4 h-px overflow-hidden rounded-full bg-white/10">
+    <div className="guardian-refresh-line absolute inset-x-5 bottom-4 h-px overflow-hidden rounded-full bg-[var(--neo-border)]">
       <span className={`block h-full bg-gradient-to-r ${tone}`} />
     </div>
   );
@@ -1346,7 +1346,7 @@ function StatusOrb({ status }: { status: HealthCheckStatus }) {
       className={`relative grid h-28 w-28 shrink-0 place-items-center rounded-full bg-gradient-to-br ${ring} p-px shadow-[0_18px_40px_rgba(0,0,0,0.32)] sm:h-32 sm:w-32`}
       aria-hidden="true"
     >
-      <div className="grid h-full w-full place-items-center rounded-full border border-white/10 bg-[#0B0D12]">
+      <div className="grid h-full w-full place-items-center rounded-full border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)]">
         <div className="text-center">
           <p className="text-3xl font-semibold tabular-nums text-slate-50">{score}</p>
           <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-[#C6A56A]/75">
@@ -1483,7 +1483,7 @@ function HealthSummaryCard({
   const tone = statusToneClasses(status);
   return (
     <div
-      className={`group rounded-xl border border-white/10 bg-white/[0.035] p-4 transition duration-200 hover:border-[rgb(198_165_106_/_0.26)] hover:bg-white/[0.045] ${tone.glow}`}
+      className={`guardian-summary-card group rounded-xl border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] p-4 transition duration-200 hover:border-[rgb(198_165_106_/_0.26)] hover:bg-[var(--neo-surface-hover)] ${tone.glow}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[rgb(198_165_106_/_0.18)] bg-[rgb(198_165_106_/_0.08)] text-[#F4E6C5]">
@@ -1548,7 +1548,7 @@ function ActiveIssuesPanel({
             return (
               <div
                 key={issue.id}
-                className={`relative overflow-hidden rounded-xl border ${tone.border} bg-white/[0.035] p-3 transition duration-150 hover:bg-white/[0.05] ${tone.glow}`}
+                className={`relative overflow-hidden rounded-xl border ${tone.border} bg-[var(--hh-l2-operational-surface)] p-3 transition duration-150 hover:bg-[var(--neo-surface-hover)] ${tone.glow}`}
               >
                 <span
                   className={`absolute inset-y-3 left-0 w-px ${
@@ -1581,7 +1581,7 @@ function ActiveIssuesPanel({
                         {metaIsCode ? (
                           <CodeBadge value={issue.meta} status={issue.status} />
                         ) : (
-                          <span className="inline-flex rounded-md border border-white/10 bg-white/[0.045] px-2 py-0.5 text-[11px] text-slate-300/75">
+                          <span className="inline-flex rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-0.5 text-[11px] text-slate-300/75">
                             {issue.meta}
                           </span>
                         )}
@@ -1595,7 +1595,7 @@ function ActiveIssuesPanel({
                           </span>
                         ) : null}
                         {groupedCount > 1 ? (
-                          <span className="inline-flex rounded-md border border-white/10 bg-white/[0.045] px-2 py-0.5 text-[11px] text-slate-300/75">
+                          <span className="inline-flex rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-0.5 text-[11px] text-slate-300/75">
                             {groupedCount} active issue entries grouped
                           </span>
                         ) : null}
@@ -1667,7 +1667,7 @@ function HealthDetailCard({ row }: { row: HealthDetailRowData }) {
 
   return (
     <div
-      className={`rounded-xl border bg-white/[0.028] p-3 transition duration-150 ${tone.row} ${row.status === "warning" ? "shadow-[inset_2px_0_0_rgba(251,191,36,0.45)]" : ""}`}
+      className={`rounded-xl border bg-[var(--hh-l2-operational-surface)] p-3 transition duration-150 ${tone.row} ${row.status === "warning" ? "shadow-[inset_2px_0_0_rgba(251,191,36,0.45)]" : ""}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -1795,7 +1795,7 @@ function HealthSection({
         </span>
         <span className="ml-auto hidden items-center gap-2 sm:flex">
           {count ? (
-            <span className="rounded-md border border-[rgb(198_165_106_/_0.14)] bg-white/[0.045] px-2 py-1 font-mono text-[11px] text-slate-200/74">
+            <span className="rounded-md border border-[rgb(198_165_106_/_0.14)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 font-mono text-[11px] text-slate-200/74">
               {count}
             </span>
           ) : null}
@@ -1805,7 +1805,7 @@ function HealthSection({
       </summary>
       <div className="flex flex-wrap items-center gap-2 px-4 pb-3 sm:hidden">
         {count ? (
-          <span className="rounded-md border border-[rgb(198_165_106_/_0.14)] bg-white/[0.045] px-2 py-1 font-mono text-[11px] text-slate-200/74">
+          <span className="rounded-md border border-[rgb(198_165_106_/_0.14)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 font-mono text-[11px] text-slate-200/74">
             {count}
           </span>
         ) : null}
@@ -1820,7 +1820,10 @@ function MetadataGrid({ rows }: { rows: Array<{ label: string; value: React.Reac
   return (
     <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2 lg:grid-cols-3">
       {rows.map((row) => (
-        <div key={row.label} className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+        <div
+          key={row.label}
+          className="rounded-xl border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] p-3"
+        >
           <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
             {row.label}
           </p>
@@ -2487,34 +2490,26 @@ export default function SystemHealthPage() {
   ];
 
   return (
-    <div className="system-health-command-center min-h-screen px-3 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-4 text-slate-100 sm:px-4 lg:px-6">
+    <div className="system-health-command-center min-h-screen bg-workspace px-3 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-4 text-[var(--neo-text-secondary)] sm:px-4 lg:px-6">
       <style jsx global>{`
         .system-health-command-center {
-          color-scheme: dark;
-          background:
-            radial-gradient(circle at 20% 0%, rgba(198, 165, 106, 0.09), transparent 30rem),
-            radial-gradient(circle at 82% 8%, rgba(79, 175, 124, 0.055), transparent 24rem),
-            linear-gradient(180deg, #0b0d12 0%, #0f1218 42%, #0b0d12 100%);
+          background: var(--hh-l1-workspace);
         }
         .system-health-command-center .guardian-hero {
-          background:
-            radial-gradient(circle at 22% 10%, rgba(198, 165, 106, 0.11), transparent 28rem),
-            linear-gradient(135deg, rgba(17, 20, 27, 0.96), rgba(11, 13, 18, 0.98));
-          box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.08),
-            0 20px 60px rgba(0, 0, 0, 0.3);
+          background: var(--hh-l2-operational-surface);
+          box-shadow: var(--neo-shadow-panel);
         }
         .system-health-command-center .guardian-panel {
-          border: 1px solid rgba(148, 163, 184, 0.14);
+          border: 1px solid var(--neo-border);
           border-radius: 1rem;
-          background: linear-gradient(180deg, rgba(17, 20, 27, 0.92), rgba(11, 13, 18, 0.94));
-          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+          background: var(--hh-l2-operational-surface);
+          box-shadow: var(--neo-shadow-panel);
         }
         .system-health-command-center .guardian-hero-metric {
           min-width: 0;
           border-radius: 0.75rem;
-          border: 1px solid rgba(148, 163, 184, 0.12);
-          background: rgba(255, 255, 255, 0.035);
+          border: 1px solid var(--neo-border);
+          background: var(--hh-l2-operational-surface);
           padding: 0.65rem 0.75rem;
         }
         .system-health-command-center .guardian-hero-metric span {
@@ -2538,9 +2533,9 @@ export default function SystemHealthPage() {
         .system-health-command-center .airtable-table-wrap {
           max-width: 100%;
           overflow: hidden;
-          border-color: rgba(148, 163, 184, 0.12) !important;
+          border-color: var(--neo-border) !important;
           border-radius: 0.875rem;
-          background: rgba(11, 13, 18, 0.78) !important;
+          background: var(--hh-l2-operational-surface) !important;
         }
         .system-health-command-center .airtable-table-scroll {
           max-width: 100%;
@@ -2549,9 +2544,9 @@ export default function SystemHealthPage() {
         .system-health-command-center .guardian-table-shell {
           max-width: 100%;
           overflow: hidden;
-          border: 1px solid rgba(148, 163, 184, 0.1);
+          border: 1px solid var(--neo-border);
           border-radius: 0.875rem;
-          background: rgba(11, 13, 18, 0.62);
+          background: var(--hh-l2-operational-surface);
         }
         .system-health-command-center .guardian-detail-table,
         .system-health-command-center .airtable-table-wrap table {
@@ -2560,21 +2555,17 @@ export default function SystemHealthPage() {
         }
         .system-health-command-center .guardian-detail-table thead tr,
         .system-health-command-center .airtable-table-wrap thead tr {
-          background: linear-gradient(
-            180deg,
-            rgba(17, 20, 27, 0.94),
-            rgba(13, 16, 22, 0.94)
-          ) !important;
+          background: var(--hh-l2-operational-surface) !important;
         }
         .system-health-command-center .guardian-detail-table th,
         .system-health-command-center .airtable-table-wrap th {
-          border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
+          border-bottom: 1px solid var(--neo-border) !important;
           background: transparent !important;
-          color: rgba(148, 163, 184, 0.72) !important;
+          color: var(--neo-text-tertiary) !important;
         }
         .system-health-command-center .guardian-detail-table td,
         .system-health-command-center .airtable-table-wrap td {
-          border-color: rgba(148, 163, 184, 0.075) !important;
+          border-color: var(--neo-border) !important;
           background: transparent !important;
           box-shadow: none !important;
         }
@@ -2583,17 +2574,31 @@ export default function SystemHealthPage() {
         }
         .system-health-command-center .bg-card,
         .system-health-command-center .bg-muted {
-          background-color: rgba(255, 255, 255, 0.045) !important;
+          background-color: var(--hh-l2-operational-surface) !important;
         }
         .system-health-command-center .text-foreground {
-          color: rgb(248, 250, 252) !important;
+          color: var(--neo-text-primary) !important;
         }
         .system-health-command-center .text-muted-foreground {
-          color: rgb(148, 163, 184) !important;
+          color: var(--neo-text-secondary) !important;
         }
         .system-health-command-center .border-border\\/70,
         .system-health-command-center .border-border\\/60 {
-          border-color: rgba(148, 163, 184, 0.11) !important;
+          border-color: var(--neo-border) !important;
+        }
+        .system-health-command-center [class~="text-slate-50"],
+        .system-health-command-center [class*="text-slate-100"],
+        .system-health-command-center [class*="text-slate-200"],
+        .system-health-command-center [class*="text-[#F4E6C5]"] {
+          color: var(--neo-text-primary) !important;
+        }
+        .system-health-command-center [class*="text-slate-300"],
+        .system-health-command-center [class*="text-slate-400"],
+        .system-health-command-center [class*="text-[#9CA3AF]"] {
+          color: var(--neo-text-secondary) !important;
+        }
+        .system-health-command-center [class*="text-slate-500"] {
+          color: var(--neo-text-tertiary) !important;
         }
         @keyframes guardian-scan {
           0% {
@@ -2868,10 +2873,10 @@ export default function SystemHealthPage() {
                         compact
                         variant="calm"
                       />
-                      <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                      <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
                         Read-only scan
                       </span>
-                      <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                      <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
                         Auto-fix disabled
                       </span>
                     </div>
@@ -2915,12 +2920,12 @@ export default function SystemHealthPage() {
               </>
             ) : (
               <div className="px-4 pb-4">
-                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3 text-sm text-slate-300">
+                <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-sm text-slate-300">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                    <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
                       Read-only scan
                     </span>
-                    <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                    <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
                       Manual full scan
                     </span>
                   </div>
@@ -2968,10 +2973,10 @@ export default function SystemHealthPage() {
                         compact
                         variant="calm"
                       />
-                      <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                      <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
                         Read-only scan
                       </span>
-                      <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                      <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
                         Auto-fix disabled
                       </span>
                     </div>
@@ -3012,15 +3017,15 @@ export default function SystemHealthPage() {
               </>
             ) : (
               <div className="px-4 pb-4">
-                <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3 text-sm text-slate-300">
+                <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-sm text-slate-300">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                    <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
                       Read-only scan
                     </span>
-                    <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                    <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
                       Manual full scan
                     </span>
-                    <span className="rounded-md border border-white/10 bg-white/[0.045] px-2 py-1 text-xs text-slate-200/80">
+                    <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
                       Auto-fix disabled
                     </span>
                   </div>
@@ -3053,7 +3058,7 @@ export default function SystemHealthPage() {
             <Button
               variant="outline"
               size="sm"
-              className="min-h-[44px] w-full border-white/15 bg-white/[0.035] text-slate-100 hover:bg-white/[0.065] sm:w-auto"
+              className="min-h-[44px] w-full border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] text-slate-100 hover:bg-[var(--neo-surface-hover)] sm:w-auto"
             >
               Back to Dashboard
             </Button>

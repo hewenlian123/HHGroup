@@ -1,20 +1,7 @@
 .invoice-estimate-origin-workspace {
-  --neo-surface-base: #f7f7f6;
-  --neo-surface-raised: #ffffff;
-  --neo-surface-muted: #f4f4f2;
-  --neo-surface-hover: #eeeeeb;
-  --neo-text-primary: #171717;
-  --neo-text-secondary: #4f4f4c;
-  --neo-text-tertiary: #73736f;
-  --neo-border: rgb(22 22 22 / 9%);
-  --neo-border-strong: rgb(22 22 22 / 18%);
-  --neo-gold: #171717;
-  --neo-gold-soft: #30302e;
-  --neo-gold-ring: rgb(23 23 23 / 18%);
   min-height: 100%;
-  background: #f7f7f6;
+  background: var(--hh-l1-workspace);
   color: var(--neo-text-secondary);
-  color-scheme: light;
 }
 
 .invoice-estimate-origin-workspace [data-neo-page-header="true"] h1 {
@@ -30,30 +17,14 @@
 }
 
 .invoice-estimate-origin-workspace .invoice-new-line-card:hover {
-  background: #ffffff;
+  background: var(--hh-l2-operational-surface);
 }
 
 .invoice-estimate-origin-workspace .invoice-new-action-footer {
-  background: rgb(255 255 255 / 98%);
+  background: var(--hh-l2-operational-surface);
   box-shadow: 0 -8px 24px rgb(17 19 21 / 6%);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-}
-
-.invoice-estimate-origin-workspace .invoice-new-primary-action {
-  min-width: 10.5rem;
-  border-color: #171717 !important;
-  background: #171717 !important;
-  color: #ffffff !important;
-}
-
-.invoice-estimate-origin-workspace .invoice-new-primary-action:hover:not(:disabled) {
-  border-color: #30302e !important;
-  background: #30302e !important;
-}
-
-.invoice-estimate-origin-workspace .invoice-new-error-text {
-  color: #a13737 !important;
 }
 
 .invoice-estimate-origin-workspace [aria-label="Remove line item"]:hover:not(:disabled) {

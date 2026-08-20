@@ -242,7 +242,7 @@ const ExpenseInboxTransactionList = dynamic(
 
 /** HH Finance OS — visual parity with Finance Owner dashboard (presentation only). */
 const financeOsPageWrap =
-  "financial-nums expenses-ui min-w-0 overflow-x-hidden bg-[var(--eo-canvas)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--eo-text-secondary)]";
+  "financial-nums expenses-ui min-w-0 overflow-x-hidden bg-[var(--eo-depth-l1)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--eo-text-secondary)]";
 
 const financeOsListShell = "overflow-hidden p-0";
 

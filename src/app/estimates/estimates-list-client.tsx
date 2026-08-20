@@ -39,7 +39,7 @@ import "./estimate-list-operational.css";
 
 const PAGE_BG = "estimate-list-workspace text-[var(--neo-text-secondary)]";
 const FIELD =
-  "estimate-list-search-field h-10 rounded-md border border-transparent bg-[#f4f4f2] text-[14px] text-[var(--neo-text-primary)] shadow-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-[var(--neo-text-tertiary)] hover:border-[var(--neo-border)] hover:bg-white focus-visible:border-[#171717]/45 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-[#171717]/15";
+  "estimate-list-search-field h-10 rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] text-[14px] text-[var(--neo-text-primary)] shadow-none transition-[border-color,background-color,box-shadow] duration-150 placeholder:text-[var(--neo-text-tertiary)] hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] focus-visible:border-[var(--neo-gold)] focus-visible:bg-[var(--hh-l2-operational-surface)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
 const PRIMARY_ACTION =
   "rounded-md border border-[#171717] bg-[#171717] text-white shadow-sm hover:border-[#30302e] hover:bg-[#30302e] hover:text-white focus-visible:ring-2 focus-visible:ring-[#171717]/20";
 

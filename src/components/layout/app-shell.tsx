@@ -80,7 +80,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <AttachmentPreviewProvider>
           <ScrollLockRecovery />
           <div
-            className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-slate-50"}
+            className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-workspace"}
           >
             {children}
           </div>
@@ -97,7 +97,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <LaborAddEntryProvider>
               <ScrollLockRecovery />
               <SystemHealthPoller />
-              <div className="app-shell hh-app-shell neo-app-shell flex min-h-0 overflow-hidden sm:gap-3 sm:p-3">
+              <div className="app-shell hh-app-shell neo-app-shell flex min-h-0 overflow-hidden bg-canvas sm:gap-3 sm:p-3">
                 {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
                 <Sidebar
                   className="hidden sm:flex shrink-0 transition-[width] duration-200"
@@ -110,7 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     side="left"
                     className={cn(
                       "w-[210px] max-w-[85vw] p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
-                      "border-r border-white/[0.08] bg-[var(--neo-graphite-950)]"
+                      "border-r border-[var(--neo-border)] bg-canvas"
                     )}
                   >
                     <SheetTitle className="sr-only">Navigation menu</SheetTitle>
@@ -135,7 +135,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <main
                     data-app-scroll-root
                     className={cn(
-                      "neo-workspace-canvas min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch]",
+                      "neo-workspace-canvas min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-contain bg-workspace [-webkit-overflow-scrolling:touch]",
                       "pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
                     )}
                   >

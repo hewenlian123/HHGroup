@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: ["class"],
+  darkMode: ["selector", "html.dark"],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -23,7 +23,10 @@ const config: Config = {
         brand: {
           primary: "#B8892D",
         },
-        page: "#F8FAFC",
+        canvas: "var(--hh-l0-canvas)",
+        workspace: "var(--hh-l1-workspace)",
+        surface: "var(--hh-l2-operational-surface)",
+        page: "var(--hh-l0-canvas)",
         text: {
           primary: "#0F172A",
           secondary: "#71717A",
@@ -46,10 +49,10 @@ const config: Config = {
             800: "#1B2229",
           },
           surface: {
-            canvas: "#11161C",
-            base: "#F5F6F7",
-            raised: "#FFFFFF",
-            muted: "#EEF0F2",
+            canvas: "var(--hh-l0-canvas)",
+            base: "var(--hh-l1-workspace)",
+            raised: "var(--hh-l2-operational-surface)",
+            muted: "var(--hh-l2-operational-surface)",
           },
           gold: {
             500: "#B8892D",
@@ -70,12 +73,12 @@ const config: Config = {
         },
         /** HH Group legacy aliases (prefer brand/page/text-* above) */
         hh: {
-          page: "#F8FAFC",
-          surface: "#FFFFFF",
+          page: "var(--hh-l0-canvas)",
+          surface: "var(--hh-l2-operational-surface)",
           ink: "#0F172A",
           muted: "#71717A",
           border: "rgba(15,23,42,0.06)",
-          "row-hover": "#F8FAFC",
+          "row-hover": "var(--hh-l0-canvas)",
           primary: "#081225",
           link: "#059669",
           danger: "#E11D48",

@@ -56,19 +56,19 @@ const EMPTY_FORM: WorkerForm = {
 };
 
 const workersPageVars = {
-  "--workers-page": "#08090C",
-  "--workers-panel": "#111318",
-  "--workers-elevated": "#151820",
-  "--workers-input": "#0F1218",
-  "--workers-row": "#10141B",
-  "--workers-row-hover": "#171B24",
-  "--workers-border": "rgba(190,198,210,0.14)",
-  "--workers-border-soft": "rgba(190,198,210,0.09)",
-  "--workers-border-strong": "rgba(205,213,225,0.20)",
-  "--workers-text": "#F6F7FA",
-  "--workers-secondary": "#B5BECC",
-  "--workers-muted": "#929CAF",
-  "--workers-faint": "#737C8C",
+  "--workers-page": "var(--hh-l1-workspace)",
+  "--workers-panel": "var(--hh-l2-operational-surface)",
+  "--workers-elevated": "var(--hh-l2-operational-surface)",
+  "--workers-input": "var(--hh-l2-operational-surface)",
+  "--workers-row": "var(--hh-l2-operational-surface)",
+  "--workers-row-hover": "var(--neo-surface-hover)",
+  "--workers-border": "var(--neo-border)",
+  "--workers-border-soft": "var(--neo-border)",
+  "--workers-border-strong": "var(--neo-border-strong)",
+  "--workers-text": "var(--neo-text-primary)",
+  "--workers-secondary": "var(--neo-text-secondary)",
+  "--workers-muted": "var(--neo-text-tertiary)",
+  "--workers-faint": "var(--neo-text-tertiary)",
   "--workers-amber": "#D8B46A",
   "--workers-green": "#8BD7B1",
 } as React.CSSProperties;
@@ -368,7 +368,7 @@ export default function LaborWorkersPage() {
   return (
     <div
       style={workersPageVars}
-      className="dark neo-page-on-graphite min-w-0 overflow-x-hidden bg-[var(--workers-page)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[color:var(--workers-secondary)]"
+      className="neo-page-on-graphite min-w-0 overflow-x-hidden bg-[var(--workers-page)] pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[color:var(--workers-secondary)]"
     >
       <div
         className={cn(
@@ -541,7 +541,7 @@ export default function LaborWorkersPage() {
                     }))
                   }
                   disabled={submitting}
-                  className={cn(workerFieldClass, "rounded-lg [color-scheme:dark]")}
+                  className={cn(workerFieldClass, "rounded-lg")}
                 >
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>

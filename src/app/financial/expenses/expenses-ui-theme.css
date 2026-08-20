@@ -1,8 +1,8 @@
 /* Expense Operations — owner-approved premium monochrome Light/Dark system. */
 .expenses-ui {
-  --eo-depth-l0: #f7f7f6;
-  --eo-depth-l1: #ffffff;
-  --eo-depth-l2: #ffffff;
+  --eo-depth-l0: var(--hh-l0-canvas);
+  --eo-depth-l1: var(--hh-l1-workspace);
+  --eo-depth-l2: var(--hh-l2-operational-surface);
   --eo-depth-structural: #fafafa;
   --eo-depth-l3-hover: #f4f4f2;
   --eo-depth-l3-selected: #ececea;
@@ -46,7 +46,7 @@
   --eo-shadow-overlay: var(--eo-shadow-floating);
 
   /* Compatibility aliases for existing canonical controls on this route. */
-  --neo-surface-base: var(--eo-canvas);
+  --neo-surface-base: var(--eo-depth-l1);
   --neo-surface-raised: var(--eo-surface-primary);
   --neo-surface-muted: var(--eo-surface-secondary);
   --neo-surface-hover: var(--eo-surface-secondary);
@@ -73,7 +73,7 @@
   --fieldbook-accent: var(--eo-text-primary);
   --fieldbook-accent-strong: var(--eo-text-primary);
   --fieldbook-focus: var(--eo-focus-ring);
-  --exp-page-bg: var(--eo-canvas);
+  --exp-page-bg: var(--eo-depth-l1);
   --exp-content-bg: transparent;
   --exp-primary: var(--eo-text-primary);
   --exp-secondary: var(--eo-text-secondary);
@@ -84,15 +84,15 @@
   --exp-icon: var(--eo-text-tertiary);
   --exp-icon-hover: var(--eo-text-secondary);
   min-height: 100%;
-  background-color: var(--eo-canvas);
+  background-color: var(--eo-depth-l1);
   color: var(--eo-text-primary);
   color-scheme: light;
 }
 
-.dark .expenses-ui {
-  --eo-depth-l0: #0a0a0a;
-  --eo-depth-l1: #111111;
-  --eo-depth-l2: #181818;
+html.dark .expenses-ui {
+  --eo-depth-l0: var(--hh-l0-canvas);
+  --eo-depth-l1: var(--hh-l1-workspace);
+  --eo-depth-l2: var(--hh-l2-operational-surface);
   --eo-depth-structural: #1c1c1c;
   --eo-depth-l3-hover: #222222;
   --eo-depth-l3-selected: #2c2c2c;
@@ -550,7 +550,7 @@
   font-weight: 650;
 }
 
-.dark .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] {
+html.dark .expenses-ui[data-expenses-list-page="expenses"] [data-expenses-kpi-strip] {
   border-color: var(--eo-border);
 }
 
@@ -607,9 +607,9 @@
 
 /* Dialog when using expenses palette */
 .expenses-ui-dialog {
-  --eo-depth-l0: #f7f7f6;
-  --eo-depth-l1: #ffffff;
-  --eo-depth-l2: #ffffff;
+  --eo-depth-l0: var(--hh-l0-canvas);
+  --eo-depth-l1: var(--hh-l1-workspace);
+  --eo-depth-l2: var(--hh-l2-operational-surface);
   --eo-depth-structural: #fafafa;
   --eo-depth-l3-hover: #f4f4f2;
   --eo-depth-l3-selected: #ececea;
@@ -650,7 +650,7 @@
   --eo-shadow-floating: 0 2px 8px -3px rgb(0 0 0 / 0.1), 0 22px 48px -18px rgb(0 0 0 / 0.22);
   --eo-shadow-task: 0 4px 12px -5px rgb(0 0 0 / 0.12), 0 34px 72px -26px rgb(0 0 0 / 0.28);
   --eo-shadow-overlay: var(--eo-shadow-floating);
-  --neo-surface-base: var(--eo-canvas);
+  --neo-surface-base: var(--eo-depth-l1);
   --neo-surface-raised: var(--eo-surface-primary);
   --neo-surface-muted: var(--eo-surface-secondary);
   --neo-surface-hover: var(--eo-surface-secondary);
@@ -676,10 +676,10 @@
   color-scheme: light;
 }
 
-.dark .expenses-ui-dialog {
-  --eo-depth-l0: #0a0a0a;
-  --eo-depth-l1: #111111;
-  --eo-depth-l2: #181818;
+html.dark .expenses-ui-dialog {
+  --eo-depth-l0: var(--hh-l0-canvas);
+  --eo-depth-l1: var(--hh-l1-workspace);
+  --eo-depth-l2: var(--hh-l2-operational-surface);
   --eo-depth-structural: #1c1c1c;
   --eo-depth-l3-hover: #222222;
   --eo-depth-l3-selected: #2c2c2c;
@@ -882,7 +882,9 @@ body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.ins
   backdrop-filter: none !important;
 }
 
-.dark body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.inset-0.z-50 {
+html.dark
+  body:has(.expense-new-dialog[data-state="open"])
+  > [data-state="open"].fixed.inset-0.z-50 {
   background-color: rgb(0 0 0 / 0.58) !important;
 }
 
@@ -892,7 +894,7 @@ body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.ins
   box-shadow: var(--eo-shadow-task) !important;
 }
 
-.dark .expense-new-dialog {
+html.dark .expense-new-dialog {
   box-shadow: var(--eo-shadow-task) !important;
 }
 
@@ -914,7 +916,7 @@ body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.ins
   box-shadow: var(--eo-shadow-floating) !important;
 }
 
-.dark .expense-new-component-surface {
+html.dark .expense-new-component-surface {
   box-shadow: var(--eo-shadow-floating) !important;
 }
 
@@ -932,7 +934,7 @@ body:has(.expense-new-dialog[data-state="open"]) > [data-state="open"].fixed.ins
   box-shadow: var(--eo-shadow-task) !important;
 }
 
-.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
+html.dark .expenses-ui-dialog[data-expense-component-surface="create-option"] {
   box-shadow: var(--eo-shadow-task) !important;
 }
 

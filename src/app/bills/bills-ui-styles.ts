@@ -1,20 +1,20 @@
 /** Shared Warm Graphite / Finance OS tokens for Bills module surfaces. */
 export const billsPageWrapClass =
-  "dark financial-nums min-w-0 overflow-x-hidden text-[var(--neo-canvas-text-secondary)]";
+  "financial-nums min-w-0 overflow-x-hidden bg-workspace text-[var(--neo-canvas-text-secondary)]";
 
 export const billsContentMaxClass = "mx-auto w-full min-w-0 max-w-[1200px]";
 
 export const billsDetailMaxClass = "mx-auto w-full min-w-0 max-w-[1000px]";
 
 export const billsFormCardClass =
-  "rounded-[1.25rem] border border-[rgb(190_198_210/0.14)] bg-[#111318] shadow-[0_1px_0_rgb(255_255_255/0.04)_inset,0_18px_48px_rgb(0_0_0/0.28)]";
+  "rounded-[1.25rem] border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] shadow-[var(--neo-shadow-panel)]";
 
 export const billsFormBodyClass = "space-y-5 p-4 md:space-y-6 md:p-8";
 
 export const billsFieldClass = "mt-1.5 h-11 rounded-[0.625rem] text-[14px] max-md:min-h-11";
 
 export const billsDateInputClass =
-  "tabular-nums [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-55";
+  "tabular-nums [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:opacity-55";
 
 export const billsAmountInputClass =
   "neo-amount tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
@@ -41,7 +41,7 @@ export const billsDetailDtClass = "text-[var(--neo-text-tertiary)]";
 export const billsDetailDdClass = "min-w-0 font-medium text-[var(--neo-text-primary)]";
 
 export const billsCategoryDropdownClass =
-  "absolute z-[100] mt-1 max-h-56 w-full min-w-0 overflow-auto rounded-[0.625rem] border border-[rgb(190_198_210/0.14)] bg-[#111318] py-1 text-[var(--neo-text-primary)] shadow-[0_18px_48px_rgb(0_0_0/0.28)]";
+  "absolute z-[100] mt-1 max-h-56 w-full min-w-0 overflow-auto rounded-[0.625rem] border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] py-1 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
 
 export const billsCategoryOptionClass =
   "flex min-h-[44px] cursor-pointer items-center px-3 py-2 text-[13px] text-[var(--neo-text-primary)] transition-colors hover:bg-[var(--neo-surface-muted)]";

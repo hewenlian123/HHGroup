@@ -461,7 +461,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             type="date"
             value={dateFrom}
             onChange={(e) => setFilters({ date_from: e.target.value })}
-            className={cn("w-full tabular-nums [color-scheme:dark]", billsFilterFieldClass)}
+            className={cn("w-full tabular-nums", billsFilterFieldClass)}
           />
         </div>
         <div className="space-y-2">
@@ -470,7 +470,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             type="date"
             value={dateTo}
             onChange={(e) => setFilters({ date_to: e.target.value })}
-            className={cn("w-full tabular-nums [color-scheme:dark]", billsFilterFieldClass)}
+            className={cn("w-full tabular-nums", billsFilterFieldClass)}
           />
         </div>
         <Button
@@ -570,10 +570,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setFilters({ date_from: e.target.value })}
-                    className={cn(
-                      "w-full min-w-0 tabular-nums [color-scheme:dark] sm:flex-1",
-                      billsFilterFieldClass
-                    )}
+                    className={cn("w-full min-w-0 tabular-nums sm:flex-1", billsFilterFieldClass)}
                   />
                   <span className="hidden shrink-0 text-sm text-[var(--neo-text-tertiary)] sm:inline">
                     –
@@ -582,10 +579,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                     type="date"
                     value={dateTo}
                     onChange={(e) => setFilters({ date_to: e.target.value })}
-                    className={cn(
-                      "w-full min-w-0 tabular-nums [color-scheme:dark] sm:flex-1",
-                      billsFilterFieldClass
-                    )}
+                    className={cn("w-full min-w-0 tabular-nums sm:flex-1", billsFilterFieldClass)}
                   />
                 </div>
               </div>

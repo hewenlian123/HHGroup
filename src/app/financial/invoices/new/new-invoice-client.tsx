@@ -121,7 +121,8 @@ const PAGE_LAYOUT_CLASS =
   "financial-nums mx-auto flex w-full max-w-[960px] flex-col gap-4 px-4 py-5 pb-[calc(10.5rem+env(safe-area-inset-bottom))] sm:px-6 md:gap-5 md:py-6 md:pb-[calc(6rem+env(safe-area-inset-bottom))]";
 const PAGE_DARK_CLASS = "dark neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]";
 const FIELD_CLASS = "neo-input mt-1";
-const ERROR_TEXT_CLASS = "invoice-new-error-text mt-1 text-xs font-medium text-rose-300";
+const ERROR_TEXT_CLASS =
+  "invoice-new-error-text mt-1 text-xs font-medium text-red-700 dark:text-red-300";
 const SKELETON_CLASS = "bg-[var(--neo-surface-muted)]";
 const LINE_CARD_CLASS =
   "invoice-new-line-card group relative rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-4 py-4 shadow-[0_1px_0_rgb(255_255_255_/_0.03)_inset] transition-[border-color,background-color] duration-150 hover:border-[var(--neo-border-strong)] hover:bg-[rgb(255_255_255_/_0.045)]";
@@ -129,7 +130,7 @@ const LINE_CARD_INVALID_CLASS = "border-rose-400/35 bg-rose-500/10";
 const COMPACT_FIELD_CLASS =
   "neo-input h-8 min-h-8 rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2 text-right text-sm font-normal tabular-nums text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] focus-visible:bg-[var(--neo-surface-muted)]";
 const FOOTER_CLASS =
-  "invoice-new-action-footer -mx-4 mt-0 flex-col gap-2 rounded-t-xl border-t border-[var(--neo-border)] bg-[rgba(21,26,32,0.96)] px-4 pt-3 shadow-[0_-16px_36px_rgb(0_0_0_/_0.18)] backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-4 md:px-5 [&_button]:max-md:min-h-11 [&_button]:max-md:w-full";
+  "invoice-new-action-footer -mx-4 mt-0 flex-col gap-2 rounded-t-xl border-t border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-4 pt-3 shadow-[0_-16px_36px_rgb(0_0_0_/_0.18)] backdrop-blur sm:mx-0 sm:rounded-xl sm:border sm:px-4 md:px-5 [&_button]:max-md:min-h-11 [&_button]:max-md:w-full";
 const SECONDARY_BUTTON_CLASS =
   "rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]";
 const PRIMARY_BUTTON_CLASS =

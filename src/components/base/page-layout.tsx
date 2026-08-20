@@ -110,7 +110,7 @@ export function PageLayout({
     <div
       data-neo-page-layout="true"
       className={cn(
-        "neo-page-on-graphite page-container page-stack flex flex-col pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
+        "neo-page-on-graphite page-container page-stack flex flex-col bg-workspace pb-[calc(1.5rem+env(safe-area-inset-bottom))]",
         className
       )}
     >

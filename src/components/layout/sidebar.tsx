@@ -273,13 +273,13 @@ export function Sidebar({
             "bg-[rgb(184_147_90_/_0.12)] hover:bg-[rgb(184_147_90_/_0.17)]",
             "before:absolute before:inset-y-2 before:left-0 before:w-px before:rounded-full before:bg-[var(--neo-gold-soft)] before:content-['']"
           )
-        : "font-normal text-zinc-300 hover:bg-white/[0.038] active:bg-white/[0.055]"
+        : "font-normal text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-raised)] active:bg-[var(--neo-surface-hover)]"
     );
 
   const navIconClass = (active: boolean, extra?: string) =>
     cn(
       "h-[15px] w-[15px] shrink-0",
-      active ? "text-[var(--neo-gold-soft)]" : "text-zinc-300",
+      active ? "text-[var(--neo-gold)]" : "text-[var(--neo-text-secondary)]",
       extra
     );
 
@@ -324,19 +324,22 @@ export function Sidebar({
         aria-disabled="true"
         title={label}
         className={cn(
-          "group relative flex items-center rounded-md text-[13px] text-zinc-500",
+          "group relative flex items-center rounded-md text-[13px] text-[var(--neo-text-tertiary)]",
           "cursor-default select-none",
           collapsed
             ? "min-h-[44px] justify-center px-2 py-1.5 lg:min-h-0"
             : "max-lg:min-h-[44px] min-h-0 gap-2.5 px-2 py-1.5 lg:min-h-0"
         )}
       >
-        <Icon className="h-[15px] w-[15px] shrink-0 text-zinc-500" strokeWidth={1.75} />
+        <Icon
+          className="h-[15px] w-[15px] shrink-0 text-[var(--neo-text-tertiary)]"
+          strokeWidth={1.75}
+        />
         {!iconOnly && (
           <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
             <span className="truncate">{item.label}</span>
             {item.note ? (
-              <span className="shrink-0 rounded-sm border border-white/[0.08] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-normal text-zinc-500">
+              <span className="shrink-0 rounded-sm border border-[var(--neo-border)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
                 Future
               </span>
             ) : null}
@@ -357,22 +360,22 @@ export function Sidebar({
     >
       <div
         className={cn(
-          "relative z-[1] flex h-12 items-center gap-2 border-b border-white/[0.08] bg-white/[0.035] backdrop-blur-sm",
+          "relative z-[1] flex h-12 items-center gap-2 border-b border-[var(--neo-border)] bg-[var(--hh-l0-canvas)] backdrop-blur-sm",
           collapsed ? "px-3" : "px-3"
         )}
       >
-        <Avatar className="h-7 w-7 rounded-md ring-1 ring-inset ring-white/10">
+        <Avatar className="h-7 w-7 rounded-md ring-1 ring-inset ring-[var(--neo-border)]">
           {logoUrl ? <AvatarImage src={logoUrl} alt={orgName} className="object-contain" /> : null}
-          <AvatarFallback className="rounded-md bg-white/[0.08] text-[11px] font-semibold text-zinc-100">
+          <AvatarFallback className="rounded-md bg-[var(--neo-surface-raised)] text-[11px] font-semibold text-[var(--neo-text-primary)]">
             {getCompanyInitials(orgName)}
           </AvatarFallback>
         </Avatar>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
+            <p className="truncate text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--neo-text-tertiary)]">
               HH Unified
             </p>
-            <p className="truncate text-[13px] font-medium tracking-normal text-zinc-100">
+            <p className="truncate text-[13px] font-medium tracking-normal text-[var(--neo-text-primary)]">
               {orgName}
             </p>
           </div>
@@ -413,7 +416,7 @@ export function Sidebar({
                 <button
                   type="button"
                   onClick={() => setSectionOpen(section.key, !isOpen)}
-                  className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-300 transition-[background-color] duration-150 ease-out hover:bg-white/[0.045] active:bg-white/[0.06] lg:min-h-0"
+                  className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 py-2 text-left text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--neo-text-secondary)] transition-[background-color] duration-150 ease-out hover:bg-[var(--neo-surface-raised)] active:bg-[var(--neo-surface-hover)] lg:min-h-0"
                   aria-expanded={isOpen}
                 >
                   {isOpen ? (
@@ -443,7 +446,7 @@ export function Sidebar({
                           <div
                             key={`${section.key}-${entry.label}`}
                             className={cn(
-                              "px-2 pb-1 text-[10px] font-medium uppercase tracking-[0.14em] text-zinc-500",
+                              "px-2 pb-1 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--neo-text-tertiary)]",
                               entryIndex > 0 && "pt-3"
                             )}
                           >
@@ -462,16 +465,18 @@ export function Sidebar({
 
       {/* User footer */}
       {!collapsed && (
-        <div className="relative z-[1] border-t border-white/[0.08] px-3 py-3">
-          <div className="flex items-center gap-2.5 rounded-md border border-white/[0.06] bg-white/[0.028] px-2.5 py-2 backdrop-blur-sm">
-            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-white/[0.08]">
-              <AvatarFallback className="rounded-md bg-white/[0.06] text-[11px] font-medium text-zinc-200">
+        <div className="relative z-[1] border-t border-[var(--neo-border)] px-3 py-3">
+          <div className="flex items-center gap-2.5 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-2.5 py-2 backdrop-blur-sm">
+            <Avatar className="h-8 w-8 shrink-0 rounded-md ring-1 ring-inset ring-[var(--neo-border)]">
+              <AvatarFallback className="rounded-md bg-[var(--neo-surface-muted)] text-[11px] font-medium text-[var(--neo-text-secondary)]">
                 U
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium leading-tight text-zinc-100">User</p>
-              <p className="truncate text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400">
+              <p className="truncate text-[13px] font-medium leading-tight text-[var(--neo-text-primary)]">
+                User
+              </p>
+              <p className="truncate text-[11px] font-medium uppercase tracking-[0.16em] text-[var(--neo-text-tertiary)]">
                 Admin
               </p>
             </div>
@@ -480,12 +485,12 @@ export function Sidebar({
       )}
 
       {/* Collapse button at bottom */}
-      <div className="relative z-[1] border-t border-white/[0.08] p-2">
+      <div className="relative z-[1] border-t border-[var(--neo-border)] p-2">
         <button
           type="button"
           onClick={onToggleCollapsed}
           className={cn(
-            "flex w-full items-center rounded-md text-sm font-medium text-zinc-300 transition-[background-color] duration-150 ease-out hover:bg-white/[0.05]",
+            "flex w-full items-center rounded-md text-sm font-medium text-[var(--neo-text-secondary)] transition-[background-color] duration-150 ease-out hover:bg-[var(--neo-surface-raised)]",
             collapsed ? "min-h-[44px] justify-center px-2 py-2 sm:min-h-8" : "gap-2 px-2 py-1.5"
           )}
           aria-label="Collapse sidebar"

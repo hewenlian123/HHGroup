@@ -127,7 +127,7 @@ export function BottomNav({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        "dark neo-command-bar flex min-h-14 items-center justify-around rounded-t-xl border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] print:hidden sm:rounded-none",
+        "neo-command-bar flex min-h-14 items-center justify-around rounded-t-xl border-x-0 border-b-0 pb-[env(safe-area-inset-bottom)] print:hidden sm:rounded-none",
         className
       )}
       aria-label="Bottom navigation"

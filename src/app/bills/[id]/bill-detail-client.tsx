@@ -444,7 +444,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
                 type="date"
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
-                className="h-11 rounded-[0.625rem] tabular-nums [color-scheme:dark]"
+                className="h-11 rounded-[0.625rem] tabular-nums"
                 required
               />
             </div>
