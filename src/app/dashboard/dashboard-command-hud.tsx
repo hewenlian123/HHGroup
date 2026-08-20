@@ -116,7 +116,7 @@ export function DashboardCommandHud({
     >
       <div className="dashboard-command-hud__grid" aria-hidden />
 
-      <div className="relative z-10 flex min-w-0 flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+      <div className="relative z-10 flex min-w-0 flex-col gap-4 2xl:flex-row 2xl:items-start 2xl:justify-between">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-normal text-[var(--hud-muted)]">
             HH Neo Operations OS
@@ -129,7 +129,7 @@ export function DashboardCommandHud({
             feed.
           </p>
         </div>
-        <div className="flex shrink-0 flex-col gap-3 lg:items-end">
+        <div className="flex shrink-0 flex-col gap-3 2xl:items-end">
           <div className="flex flex-wrap gap-2">
             <StatusPill tone="emerald">Live data</StatusPill>
             <StatusPill tone={actionPressure > 0 ? "alert" : "copper"}>
