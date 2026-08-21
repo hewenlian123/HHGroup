@@ -139,7 +139,7 @@ export function FinanceDatePicker({
           styles.content,
           isGlass
             ? "rounded-[10px] border border-white/10 bg-[rgba(18,22,34,0.96)] text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.38)] backdrop-blur-[28px] backdrop-saturate-[175%]"
-            : "rounded-[10px] border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-floating)]",
+            : "rounded-[10px] border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] text-[var(--neo-text-primary)] shadow-floating",
           contentClassName
         )}
         onEscapeKeyDown={(event) => event.stopPropagation()}

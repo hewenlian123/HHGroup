@@ -76,7 +76,7 @@ export function ConfirmDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "max-w-sm rounded-[1.5rem] border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-5 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-task)]",
+          "max-w-sm rounded-[1.5rem] border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-5 text-[var(--neo-text-primary)] shadow-task",
           "max-md:rounded-b-none max-md:rounded-t-[1.5rem]",
           destructive && "border-rose-500/25",
           className

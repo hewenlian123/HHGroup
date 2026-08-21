@@ -69,7 +69,7 @@ export function SearchableSelect({
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
         className={cn(
-          "flex h-10 w-full min-w-[140px] items-center justify-between rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-left text-sm text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-operational)] transition-all duration-150 ease-out",
+          "flex h-10 w-full min-w-[140px] items-center justify-between rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-left text-sm text-[var(--neo-text-primary)] shadow-operational transition-all duration-150 ease-out",
           "hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
         )}
       >
@@ -89,7 +89,7 @@ export function SearchableSelect({
         <div
           role="listbox"
           className={cn(
-            "absolute z-[100] mt-1 w-full min-w-[200px] origin-top overflow-hidden rounded-xl border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-2 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-floating)]",
+            "absolute z-[100] mt-1 w-full min-w-[200px] origin-top overflow-hidden rounded-xl border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-2 text-[var(--neo-text-primary)] shadow-floating",
             motionPopoverLayer
           )}
         >

@@ -97,16 +97,16 @@ test("shared primitives consume semantic state and depth roles", () => {
   assert.match(table, /data-\[state=selected\]:bg-\[var\(--hh-l3-selected\)\]/);
   assert.match(tabs, /data-\[state=active\]:bg-\[var\(--hh-l3-selected\)\]/);
   assert.match(dropdown, /bg-\[var\(--hh-l4-floating-surface\)\]/);
-  assert.match(dropdown, /shadow-\[var\(--hh-shadow-floating\)\]/);
+  assert.match(dropdown, /shadow-floating/);
   assert.match(popover, /bg-\[var\(--hh-l4-floating-surface\)\]/);
   assert.match(select, /bg-\[var\(--hh-l4-floating-surface\)\]/);
   assert.match(input, /hover:bg-\[var\(--hh-l3-hover\)\]/);
   assert.match(textarea, /hover:bg-\[var\(--hh-l3-hover\)\]/);
   assert.match(dialog, /bg-\[var\(--hh-l5-task-surface\)\]/);
-  assert.match(dialog, /shadow-\[var\(--hh-shadow-task\)\]/);
+  assert.match(dialog, /shadow-task/);
   assert.match(sheet, /bg-\[var\(--hh-l5-task-surface\)\]/);
   assert.match(typography, /bg-\[var\(--hh-l2-operational-surface\)\]/);
-  assert.match(typography, /shadow-\[var\(--hh-shadow-operational\)\]/);
+  assert.match(typography, /shadow-operational/);
 });
 
 test("preserves the documented glass date picker exception", () => {

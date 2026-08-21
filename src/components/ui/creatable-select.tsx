@@ -118,7 +118,7 @@ export function CreatableSelect({
         <ul
           role="listbox"
           className={cn(
-            "absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-2 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-floating)]",
+            "absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-2 text-[var(--neo-text-primary)] shadow-floating",
             contentClassName
           )}
         >

@@ -35,7 +35,7 @@ export const listRowActionsTriggerClassName = cn(
 );
 
 export const listRowActionsContentClassName = cn(
-  "min-w-[160px] rounded-md border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-0 py-2 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-floating)]"
+  "min-w-[160px] rounded-md border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-0 py-2 text-[var(--neo-text-primary)] shadow-floating"
 );
 
 export const listRowActionsItemClassName = cn(

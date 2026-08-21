@@ -152,7 +152,7 @@ export function NeoModal({
   return (
     <DialogContent
       className={cn(
-        "flex max-w-[520px] flex-col gap-0 overflow-hidden rounded-[1.5rem] border border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-task)]",
+        "flex max-w-[520px] flex-col gap-0 overflow-hidden rounded-[1.5rem] border border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--neo-text-primary)] shadow-task",
         "max-md:max-h-[calc(100dvh-0.75rem)] max-md:rounded-b-none max-md:rounded-t-[1.5rem]",
         className
       )}
@@ -213,7 +213,7 @@ export function NeoDrawer({
     <SheetContent
       side={side}
       className={cn(
-        "flex h-full w-full flex-col gap-0 border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-task)] sm:max-w-md",
+        "flex h-full w-full flex-col gap-0 border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--neo-text-primary)] shadow-task sm:max-w-md",
         className
       )}
       {...props}

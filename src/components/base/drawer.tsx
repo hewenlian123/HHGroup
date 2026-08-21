@@ -35,7 +35,7 @@ export function Drawer({
       <SheetContent
         side="right"
         className={cn(
-          "flex h-full w-full max-w-md flex-col gap-0 border-l border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-task)] sm:max-w-md",
+          "flex h-full w-full max-w-md flex-col gap-0 border-l border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--neo-text-primary)] shadow-task sm:max-w-md",
           className
         )}
       >
