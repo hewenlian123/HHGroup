@@ -158,7 +158,7 @@ export default async function WorkerStatementPrintPage({
 
   return (
     <div
-      className="mx-auto min-h-screen bg-white px-6 py-8 text-zinc-950 print:min-h-0 print:p-0"
+      className="payroll-statement-print-root mx-auto min-h-screen bg-white px-6 py-8 text-zinc-950 print:min-h-0 print:p-0"
       style={{ maxWidth: "8.5in" }}
     >
       <div className="mb-4 flex flex-wrap items-center gap-2 print:hidden">

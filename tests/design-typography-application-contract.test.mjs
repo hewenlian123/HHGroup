@@ -39,7 +39,7 @@ function compileTypographyCss() {
       .map((className, index) => `<div class="${className}" data-role="${index}"></div>`)
       .join(
         ""
-      )}<input class="hh-type-text-entry"><span class="hh-fin"></span><section class="estimate-a4-page"></section></main>\n`,
+      )}<input class="hh-type-text-entry"><span class="hh-fin"></span><section class="estimate-a4-page"></section><section class="invoice-a4-page"></section><section class="payroll-statement-print-root"></section></main>\n`,
     "utf8"
   );
 
@@ -69,12 +69,15 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
   const compiledCss = compileTypographyCss();
   const tokenCss = source("src/styles/design-tokens.generated.css");
   const rootLayout = source("src/app/layout.tsx");
+  const workerStatementPrint = source("src/app/workers/[id]/statement/print/page.tsx");
   const roles = Object.keys(typographyMatrix);
   const htmlOpeningTag = rootLayout.slice(
     rootLayout.indexOf("<html"),
     rootLayout.indexOf(">", rootLayout.indexOf("<html")) + 1
   );
   const rootOwnsNextFontVariables = /geistSans\.variable/.test(htmlOpeningTag);
+  const workerStatementOwnsPrintException =
+    /className="[^"]*\bpayroll-statement-print-root\b[^"]*"/.test(workerStatementPrint);
   const nextFontClasses = "next-geist-contract next-inter-contract";
 
   for (const role of roles) {
@@ -107,7 +110,12 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
           ${roles.map((role) => `<div data-type="${role}" class="text-hh-${role}">HH</div>`).join("\n")}
           <input data-type="text-entry" class="hh-type-text-entry" value="HH">
           <span data-type="fin" class="hh-fin">1000-08-20</span>
-          <section data-type="document" class="estimate-a4-page">Document</section>
+          <section data-type="estimate-document" class="estimate-a4-page">Estimate</section>
+          <section data-type="invoice-document" class="invoice-a4-page">Invoice</section>
+          <section
+            data-type="worker-statement-document"
+            class="${workerStatementOwnsPrintException ? "payroll-statement-print-root" : "worker-statement-print-fixture"}"
+          >Worker Statement</section>
         </main>
       </body>
     </html>
@@ -181,10 +189,20 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
   assert.match(fin.fontFeatureSettings, /"lnum"(?: 1)?/);
   assert.match(fin.fontFeatureSettings, /"zero" 0/);
 
-  const documentFontFamily = await page
-    .locator('[data-type="document"]')
-    .evaluate((element) => getComputedStyle(element).fontFamily);
-  assert.match(documentFontFamily, /^"?Inter Contract"?/);
-  assert.doesNotMatch(documentFontFamily, /Times/i);
-  t.diagnostic(`computed document font-family: ${documentFontFamily}`);
+  for (const documentType of [
+    "worker-statement-document",
+    "estimate-document",
+    "invoice-document",
+  ]) {
+    const documentFontFamily = await page
+      .locator(`[data-type="${documentType}"]`)
+      .evaluate((element) => getComputedStyle(element).fontFamily);
+    assert.match(documentFontFamily, /^"?Inter Contract"?/, documentType);
+    assert.doesNotMatch(
+      documentFontFamily,
+      /(?:^|,\s*)(?:"?Times(?: New Roman)?"?|serif)(?:,|$)/i,
+      documentType
+    );
+    t.diagnostic(`computed ${documentType} font-family: ${documentFontFamily}`);
+  }
 });

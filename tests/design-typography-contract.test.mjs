@@ -87,6 +87,12 @@ test("document and print typography remain explicit Inter-first exceptions", () 
   );
 });
 
+test("the real Worker Statement print container owns the established print exception", () => {
+  const workerStatementPrint = source("src/app/workers/[id]/statement/print/page.tsx");
+
+  assert.match(workerStatementPrint, /className="[^"]*\bpayroll-statement-print-root\b[^"]*"/);
+});
+
 test("TYPO maps legacy shared call sites to semantic roles without mono numeric workarounds", () => {
   const typography = source("src/lib/typography.ts");
 
