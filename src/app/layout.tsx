@@ -70,14 +70,12 @@ export default async function RootLayout(
     // Schema ensure failed (e.g. DB URL missing or connection error); app still loads.
   }
   return (
-    <html lang="en">
+    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${inter.variable}`}>
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" sizes="32x32" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
       </head>
-      <body
-        className={`hh-motion-root ${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}
-      >
+      <body className="hh-motion-root antialiased">
         {process.env.NODE_ENV === "development" ? (
           <Script id="dev-unregister-sw-before-interactive" strategy="beforeInteractive">
             {`(function(){if(typeof navigator!=="undefined"&&"serviceWorker"in navigator){navigator.serviceWorker.getRegistrations().then(function(r){r.forEach(function(x){x.unregister();});});}})();`}

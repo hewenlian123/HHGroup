@@ -37,7 +37,9 @@ function compileTypographyCss() {
     contentPath,
     `<main>${classes
       .map((className, index) => `<div class="${className}" data-role="${index}"></div>`)
-      .join("")}<input class="hh-type-text-entry"><span class="hh-fin"></span></main>\n`,
+      .join(
+        ""
+      )}<input class="hh-type-text-entry"><span class="hh-fin"></span><section class="estimate-a4-page"></section></main>\n`,
     "utf8"
   );
 
@@ -66,7 +68,14 @@ function compileTypographyCss() {
 test("compiled shared typography produces the exact responsive matrix and FIN contract", async (t) => {
   const compiledCss = compileTypographyCss();
   const tokenCss = source("src/styles/design-tokens.generated.css");
+  const rootLayout = source("src/app/layout.tsx");
   const roles = Object.keys(typographyMatrix);
+  const htmlOpeningTag = rootLayout.slice(
+    rootLayout.indexOf("<html"),
+    rootLayout.indexOf(">", rootLayout.indexOf("<html")) + 1
+  );
+  const rootOwnsNextFontVariables = /geistSans\.variable/.test(htmlOpeningTag);
+  const nextFontClasses = "next-geist-contract next-inter-contract";
 
   for (const role of roles) {
     assert.match(compiledCss, new RegExp(`\\.text-hh-${role}\\s*\\{`));
@@ -85,20 +94,42 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
   t.after(() => browser.close());
   const page = await browser.newPage();
   await page.setContent(`
-    <style>${tokenCss}\n${compiledCss}</style>
-    <main>
-      ${roles.map((role) => `<div data-type="${role}" class="text-hh-${role}">HH</div>`).join("\n")}
-      <input data-type="text-entry" class="hh-type-text-entry" value="HH">
-      <span data-type="fin" class="hh-fin">1000-08-20</span>
-    </main>
+    <html class="${rootOwnsNextFontVariables ? nextFontClasses : ""}">
+      <head>
+        <style>
+          .next-geist-contract { --font-geist-sans: "Geist Contract"; }
+          .next-inter-contract { --font-inter: "Inter Contract"; }
+          ${tokenCss}\n${compiledCss}
+        </style>
+      </head>
+      <body class="${rootOwnsNextFontVariables ? "" : nextFontClasses}">
+        <main>
+          ${roles.map((role) => `<div data-type="${role}" class="text-hh-${role}">HH</div>`).join("\n")}
+          <input data-type="text-entry" class="hh-type-text-entry" value="HH">
+          <span data-type="fin" class="hh-fin">1000-08-20</span>
+          <section data-type="document" class="estimate-a4-page">Document</section>
+        </main>
+      </body>
+    </html>
   `);
-  await page.evaluate(() => {
-    document.documentElement.style.setProperty("--font-geist-sans", '"Geist Contract"');
-    document.documentElement.style.setProperty("--font-inter", '"Inter Contract"');
+
+  const ownership = await page.evaluate(() => {
+    const root = getComputedStyle(document.documentElement);
+    const body = getComputedStyle(document.body);
+    return {
+      semanticToken: root.getPropertyValue("--hh-font-family-sans").trim(),
+      bodyFontFamily: body.fontFamily,
+    };
   });
+  assert.match(ownership.semanticToken, /^"?Geist Contract"?/);
+  assert.match(ownership.bodyFontFamily, /^"?Geist Contract"?/);
+  assert.doesNotMatch(ownership.bodyFontFamily, /Times/i);
+  t.diagnostic(`computed root semantic token: ${ownership.semanticToken}`);
+  t.diagnostic(`computed operational body font-family: ${ownership.bodyFontFamily}`);
 
   for (const viewport of [
     { name: "mobile", width: 390, height: 844 },
+    { name: "tablet", width: 834, height: 1112 },
     { name: "desktop", width: 1440, height: 900 },
   ]) {
     await page.setViewportSize(viewport);
@@ -113,7 +144,8 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
           fontFamily: computed.fontFamily,
         };
       });
-      const expected = typographyMatrix[role][viewport.name];
+      const responsiveMode = viewport.width < 768 ? "mobile" : "desktop";
+      const expected = typographyMatrix[role][responsiveMode];
       assert.deepEqual([styles.fontSize, styles.lineHeight], expected, `${viewport.name} ${role}`);
       assert.equal(styles.fontWeight, typographyMatrix[role].weight, `${viewport.name} ${role}`);
       assert.ok(
@@ -121,6 +153,7 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
         `${viewport.name} ${role} letter spacing is not zero`
       );
       assert.match(styles.fontFamily, /^"?Geist Contract"?/);
+      assert.doesNotMatch(styles.fontFamily, /Times/i);
     }
 
     const textEntry = await page.locator('[data-type="text-entry"]').evaluate((element) => {
@@ -129,7 +162,7 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
     });
     assert.deepEqual(
       textEntry,
-      viewport.name === "mobile" ? ["16px", "24px", "500"] : ["14px", "20px", "500"]
+      viewport.width < 768 ? ["16px", "24px", "500"] : ["14px", "20px", "500"]
     );
   }
 
@@ -147,4 +180,11 @@ test("compiled shared typography produces the exact responsive matrix and FIN co
   assert.match(fin.fontFeatureSettings, /"tnum"(?: 1)?/);
   assert.match(fin.fontFeatureSettings, /"lnum"(?: 1)?/);
   assert.match(fin.fontFeatureSettings, /"zero" 0/);
+
+  const documentFontFamily = await page
+    .locator('[data-type="document"]')
+    .evaluate((element) => getComputedStyle(element).fontFamily);
+  assert.match(documentFontFamily, /^"?Inter Contract"?/);
+  assert.doesNotMatch(documentFontFamily, /Times/i);
+  t.diagnostic(`computed document font-family: ${documentFontFamily}`);
 });

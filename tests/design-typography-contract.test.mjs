@@ -51,6 +51,23 @@ test("global typography applies the generated sans, FIN, and responsive text-ent
   );
 });
 
+test("root layout owns the Next font variables used by the root semantic font token", () => {
+  const layout = source("src/app/layout.tsx");
+  const htmlOpeningTag = layout.slice(
+    layout.indexOf("<html"),
+    layout.indexOf(">", layout.indexOf("<html")) + 1
+  );
+  const bodyOpeningTag = layout.slice(
+    layout.indexOf("<body"),
+    layout.indexOf(">", layout.indexOf("<body")) + 1
+  );
+
+  assert.match(htmlOpeningTag, /geistSans\.variable/);
+  assert.match(htmlOpeningTag, /geistMono\.variable/);
+  assert.match(htmlOpeningTag, /inter\.variable/);
+  assert.doesNotMatch(bodyOpeningTag, /geistSans\.variable|geistMono\.variable|inter\.variable/);
+});
+
 test("document and print typography remain explicit Inter-first exceptions", () => {
   const css = source("src/app/globals.css");
 
