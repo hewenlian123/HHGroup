@@ -196,10 +196,136 @@ const config: Config = {
         "hh-standard": "var(--hh-radius-standard)",
         "hh-task": "var(--hh-radius-task)",
       },
+      fontFamily: {
+        sans: ["var(--hh-font-family-sans)"],
+      },
       fontSize: {
-        /** Body 14px, labels 12px */
-        body: ["0.875rem", { lineHeight: "1.45" }],
-        label: ["0.75rem", { lineHeight: "1.35" }],
+        "hh-page-title": [
+          "var(--hh-type-page-title-font-size)",
+          {
+            lineHeight: "var(--hh-type-page-title-line-height)",
+            fontWeight: "var(--hh-type-page-title-font-weight)",
+            letterSpacing: "var(--hh-type-page-title-letter-spacing)",
+          },
+        ],
+        "hh-section-title": [
+          "var(--hh-type-section-title-font-size)",
+          {
+            lineHeight: "var(--hh-type-section-title-line-height)",
+            fontWeight: "var(--hh-type-section-title-font-weight)",
+            letterSpacing: "var(--hh-type-section-title-letter-spacing)",
+          },
+        ],
+        "hh-panel-title": [
+          "var(--hh-type-panel-title-font-size)",
+          {
+            lineHeight: "var(--hh-type-panel-title-line-height)",
+            fontWeight: "var(--hh-type-panel-title-font-weight)",
+            letterSpacing: "var(--hh-type-panel-title-letter-spacing)",
+          },
+        ],
+        "hh-body": [
+          "var(--hh-type-body-font-size)",
+          {
+            lineHeight: "var(--hh-type-body-line-height)",
+            fontWeight: "var(--hh-type-body-font-weight)",
+            letterSpacing: "var(--hh-type-body-letter-spacing)",
+          },
+        ],
+        "hh-body-strong": [
+          "var(--hh-type-body-strong-font-size)",
+          {
+            lineHeight: "var(--hh-type-body-strong-line-height)",
+            fontWeight: "var(--hh-type-body-strong-font-weight)",
+            letterSpacing: "var(--hh-type-body-strong-letter-spacing)",
+          },
+        ],
+        "hh-label": [
+          "var(--hh-type-label-font-size)",
+          {
+            lineHeight: "var(--hh-type-label-line-height)",
+            fontWeight: "var(--hh-type-label-font-weight)",
+            letterSpacing: "var(--hh-type-label-letter-spacing)",
+          },
+        ],
+        "hh-metadata": [
+          "var(--hh-type-metadata-font-size)",
+          {
+            lineHeight: "var(--hh-type-metadata-line-height)",
+            fontWeight: "var(--hh-type-metadata-font-weight)",
+            letterSpacing: "var(--hh-type-metadata-letter-spacing)",
+          },
+        ],
+        "hh-table-header": [
+          "var(--hh-type-table-header-font-size)",
+          {
+            lineHeight: "var(--hh-type-table-header-line-height)",
+            fontWeight: "var(--hh-type-table-header-font-weight)",
+            letterSpacing: "var(--hh-type-table-header-letter-spacing)",
+          },
+        ],
+        "hh-table-cell": [
+          "var(--hh-type-table-cell-font-size)",
+          {
+            lineHeight: "var(--hh-type-table-cell-line-height)",
+            fontWeight: "var(--hh-type-table-cell-font-weight)",
+            letterSpacing: "var(--hh-type-table-cell-letter-spacing)",
+          },
+        ],
+        "hh-financial": [
+          "var(--hh-type-financial-font-size)",
+          {
+            lineHeight: "var(--hh-type-financial-line-height)",
+            fontWeight: "var(--hh-type-financial-font-weight)",
+            letterSpacing: "var(--hh-type-financial-letter-spacing)",
+          },
+        ],
+        "hh-financial-total": [
+          "var(--hh-type-financial-total-font-size)",
+          {
+            lineHeight: "var(--hh-type-financial-total-line-height)",
+            fontWeight: "var(--hh-type-financial-total-font-weight)",
+            letterSpacing: "var(--hh-type-financial-total-letter-spacing)",
+          },
+        ],
+        "hh-control": [
+          "var(--hh-type-control-font-size)",
+          {
+            lineHeight: "var(--hh-type-control-line-height)",
+            fontWeight: "var(--hh-type-control-font-weight)",
+            letterSpacing: "var(--hh-type-control-letter-spacing)",
+          },
+        ],
+        "hh-helper": [
+          "var(--hh-type-helper-font-size)",
+          {
+            lineHeight: "var(--hh-type-helper-line-height)",
+            fontWeight: "var(--hh-type-helper-font-weight)",
+            letterSpacing: "var(--hh-type-helper-letter-spacing)",
+          },
+        ],
+        "hh-error": [
+          "var(--hh-type-error-font-size)",
+          {
+            lineHeight: "var(--hh-type-error-line-height)",
+            fontWeight: "var(--hh-type-error-font-weight)",
+            letterSpacing: "var(--hh-type-error-letter-spacing)",
+          },
+        ],
+        "hh-status": [
+          "var(--hh-type-status-font-size)",
+          {
+            lineHeight: "var(--hh-type-status-line-height)",
+            fontWeight: "var(--hh-type-status-font-weight)",
+            letterSpacing: "var(--hh-type-status-letter-spacing)",
+          },
+        ],
+        /** Retained compatibility aliases. */
+        body: ["var(--hh-type-body-font-size)", { lineHeight: "var(--hh-type-body-line-height)" }],
+        label: [
+          "var(--hh-type-label-font-size)",
+          { lineHeight: "var(--hh-type-label-line-height)" },
+        ],
       },
       boxShadow: {
         operational: "var(--hh-shadow-operational)",

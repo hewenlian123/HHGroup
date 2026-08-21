@@ -7,6 +7,7 @@ import { X } from "lucide-react";
 
 import { hhNeoFocusRevealOverlay } from "@/lib/motion-system";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 
 const Sheet = SheetPrimitive.Root;
 
@@ -29,7 +30,10 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 gap-hh-section overflow-y-auto overscroll-y-contain border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-hh-task-mobile text-[var(--neo-text-primary)] shadow-task outline-none [-webkit-overflow-scrolling:touch] motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none md:p-hh-task-desktop",
+  cn(
+    "fixed z-50 gap-hh-section overflow-y-auto overscroll-y-contain border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-hh-task-mobile text-[var(--neo-text-primary)] shadow-task outline-none [-webkit-overflow-scrolling:touch] motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none md:p-hh-task-desktop",
+    TYPO.body
+  ),
   {
     variants: {
       side: {
@@ -99,11 +103,7 @@ const SheetTitle = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title>
 >(({ className, ...props }, ref) => (
-  <SheetPrimitive.Title
-    ref={ref}
-    className={cn("text-lg font-semibold text-[var(--neo-text-primary)]", className)}
-    {...props}
-  />
+  <SheetPrimitive.Title ref={ref} className={cn(TYPO.sectionTitle, className)} {...props} />
 ));
 SheetTitle.displayName = SheetPrimitive.Title.displayName;
 
@@ -113,7 +113,7 @@ const SheetDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-[var(--neo-text-secondary)]", className)}
+    className={cn(TYPO.body, "text-[var(--neo-text-secondary)]", className)}
     {...props}
   />
 ));

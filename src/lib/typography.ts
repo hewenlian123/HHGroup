@@ -1,46 +1,28 @@
 export const TYPO = {
-  /** 1. Page title */
-  pageTitle:
-    "text-[34px] leading-tight font-semibold tracking-normal text-[var(--neo-text-primary)] md:text-[36px]",
-
-  /** 2. Page subtitle */
-  pageSubtitle: "text-[15px] leading-relaxed text-[var(--neo-text-secondary)]",
-
-  /** 3. Section label */
-  sectionLabel: "text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]",
-
-  /** 4. KPI value */
-  kpiValue: "tabular-nums tracking-normal font-semibold text-[var(--neo-text-primary)]",
-
-  /** 5. KPI subtitle */
-  kpiSubtitle: "text-[13px] font-medium text-[var(--neo-text-secondary)]",
-
-  /** 5a. KPI label */
-  kpiLabel: "text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]",
-
-  /** 6. Table headers */
-  tableHeader: "text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]",
-
-  /** 7. Primary names */
-  primaryName: "text-[15px] font-medium tracking-normal text-[var(--neo-text-primary)]",
-
-  /** 8. Secondary IDs */
-  secondaryId: "font-mono text-[11px] tabular-nums text-[var(--neo-text-tertiary)]",
-
-  /** 9. Financial amounts */
-  amount: "tabular-nums tracking-normal font-semibold text-[var(--neo-text-primary)]",
-
-  /** 10. Dates */
-  date: "font-mono text-[13px] tabular-nums tracking-normal text-[var(--neo-text-secondary)]",
-
-  /** 11. Status chips */
-  chip: "text-[12px] font-medium tracking-normal",
-
-  /** 12. Buttons */
-  button: "text-[14px] font-medium tracking-normal",
-
-  /** 13. Muted body copy */
-  mutedText: "text-sm leading-relaxed text-[var(--neo-text-secondary)]",
+  pageTitle: "text-hh-page-title text-[var(--neo-text-primary)]",
+  pageSubtitle: "text-hh-body text-[var(--neo-text-secondary)]",
+  sectionTitle: "text-hh-section-title text-[var(--neo-text-primary)]",
+  panelTitle: "text-hh-panel-title text-[var(--neo-text-primary)]",
+  body: "text-hh-body text-[var(--neo-text-primary)]",
+  bodyStrong: "text-hh-body-strong text-[var(--neo-text-primary)]",
+  label: "text-hh-label text-[var(--neo-text-secondary)]",
+  metadata: "text-hh-metadata text-[var(--neo-text-secondary)]",
+  helper: "text-hh-helper text-[var(--neo-text-secondary)]",
+  error: "text-hh-error text-[var(--hh-danger)]",
+  sectionLabel: "text-hh-label uppercase text-[var(--neo-text-tertiary)]",
+  kpiValue: "hh-fin text-hh-financial text-[var(--neo-text-primary)]",
+  kpiTotal: "hh-fin text-hh-financial-total text-[var(--neo-text-primary)]",
+  kpiSubtitle: "text-hh-metadata text-[var(--neo-text-secondary)]",
+  kpiLabel: "text-hh-label uppercase text-[var(--neo-text-tertiary)]",
+  tableHeader: "text-hh-table-header uppercase text-[var(--neo-text-tertiary)]",
+  tableCell: "text-hh-table-cell text-[var(--neo-text-primary)]",
+  primaryName: "text-hh-body-strong text-[var(--neo-text-primary)]",
+  secondaryId: "hh-fin text-hh-metadata text-[var(--neo-text-tertiary)]",
+  amount: "hh-fin text-hh-financial text-[var(--neo-text-primary)]",
+  date: "hh-fin text-hh-metadata text-[var(--neo-text-secondary)]",
+  chip: "text-hh-status",
+  button: "text-hh-control",
+  mutedText: "text-hh-body text-[var(--neo-text-secondary)]",
 } as const;
 
 export const NEO = {

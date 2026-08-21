@@ -689,11 +689,9 @@
   }
 
   .neo-amount {
-    font-family: var(--font-geist-sans), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-    font-variant-numeric: tabular-nums;
-    font-feature-settings:
-      "tnum" 1,
-      "zero" 0;
+    font-family: var(--hh-font-family-sans);
+    font-variant-numeric: var(--hh-fin-variant);
+    font-feature-settings: var(--hh-fin-features);
   }
 
   .hh-motion-root .exp-row.hh-row-flash-success {
@@ -763,6 +761,24 @@
 }
 
 @layer utilities {
+  .hh-fin {
+    font-family: var(--hh-font-family-sans);
+    font-variant-numeric: var(--hh-fin-variant);
+    font-feature-settings: var(--hh-fin-features);
+  }
+  .hh-type-text-entry {
+    font-family: var(--hh-font-family-sans);
+    font-size: var(--hh-type-text-entry-size-mobile);
+    font-weight: var(--hh-type-control-font-weight);
+    line-height: var(--hh-type-text-entry-line-height-mobile);
+    letter-spacing: var(--hh-type-control-letter-spacing);
+  }
+  @media (min-width: 768px) {
+    .hh-type-text-entry {
+      font-size: var(--hh-type-text-entry-size-desktop);
+      line-height: var(--hh-type-text-entry-line-height-desktop);
+    }
+  }
   .text-balance {
     text-wrap: balance;
   }
@@ -842,7 +858,7 @@
     gap: var(--hh-gap-related);
   }
   .table-head-label {
-    @apply text-[11px] font-medium uppercase tracking-[0.12em];
+    @apply text-hh-table-header uppercase;
     color: var(--neo-text-tertiary);
   }
   .table-row-compact {
@@ -864,22 +880,15 @@
   .num,
   .kpi-metric-value,
   .hh-motion-root main :where(.font-mono.tabular-nums) {
-    font-family:
-      var(--font-geist-sans),
-      var(--font-inter),
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      sans-serif;
-    font-variant-numeric: tabular-nums;
-    font-feature-settings:
-      "tnum" 1,
-      "zero" 0;
+    font-family: var(--hh-font-family-sans);
+    font-variant-numeric: var(--hh-fin-variant);
+    font-feature-settings: var(--hh-fin-features);
   }
   .date-text {
-    @apply font-mono text-[13px] tabular-nums tracking-normal;
+    @apply text-hh-metadata;
+    font-family: var(--hh-font-family-sans);
+    font-variant-numeric: var(--hh-fin-variant);
+    font-feature-settings: var(--hh-fin-features);
     color: var(--neo-text-secondary);
   }
   /* Summary / KPI — dense on mobile (muted tint), card on md+ */
@@ -890,16 +899,24 @@
     box-shadow: var(--neo-shadow-panel);
   }
   .kpi-metric-label {
-    @apply text-[11px] font-medium uppercase tracking-[0.16em];
+    @apply text-hh-label uppercase;
     color: var(--neo-text-tertiary);
   }
   .kpi-metric-value {
-    @apply text-lg font-semibold tabular-nums tracking-normal md:text-xl;
+    @apply text-hh-financial;
+    font-family: var(--hh-font-family-sans);
+    font-variant-numeric: var(--hh-fin-variant);
+    font-feature-settings: var(--hh-fin-features);
     color: var(--neo-text-primary);
   }
   /** Filter bar: native inputs / selects */
   .filter-field {
-    @apply h-9 min-h-9 w-full rounded-md border px-3 text-sm shadow-none outline-none transition-colors placeholder:text-zinc-400;
+    @apply h-9 min-h-9 w-full rounded-md border px-3 shadow-none outline-none transition-colors placeholder:text-zinc-400;
+    font-family: var(--hh-font-family-sans);
+    font-size: var(--hh-type-text-entry-size-mobile);
+    font-weight: var(--hh-type-control-font-weight);
+    line-height: var(--hh-type-text-entry-line-height-mobile);
+    letter-spacing: var(--hh-type-control-letter-spacing);
     border-color: var(--neo-border);
     background: var(--neo-surface-raised);
     color: var(--neo-text-primary);
@@ -907,6 +924,12 @@
   .filter-field:focus-visible {
     border-color: var(--neo-gold);
     box-shadow: 0 0 0 3px var(--neo-gold-ring);
+  }
+  @media (min-width: 768px) {
+    .filter-field {
+      font-size: var(--hh-type-text-entry-size-desktop);
+      line-height: var(--hh-type-text-entry-line-height-desktop);
+    }
   }
   /** Positive profit / margin figures (deep green, not tailwind green-600) */
   .text-hh-profit-positive {
@@ -917,31 +940,31 @@
   }
   /* Unified status pills */
   .hh-pill-success {
-    @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tracking-normal;
+    @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
     border-color: rgb(5 150 105 / 0.2);
     background-color: var(--neo-emerald-soft);
     color: var(--neo-emerald);
   }
   .hh-pill-warning {
-    @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tracking-normal;
+    @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
     border-color: rgb(184 147 90 / 0.24);
     background-color: rgb(184 147 90 / 0.1);
     color: var(--neo-gold);
   }
   .hh-pill-neutral {
-    @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tracking-normal;
+    @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
     border-color: var(--neo-border);
     background-color: var(--neo-surface-muted);
     color: var(--neo-text-secondary);
   }
   .hh-pill-danger {
-    @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tracking-normal;
+    @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
     border-color: rgb(225 29 72 / 0.2);
     background-color: rgb(255 228 230);
     color: rgb(190 18 60);
   }
   .hh-pill-info {
-    @apply inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium tracking-normal;
+    @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
     border-color: var(--neo-border);
     background-color: var(--neo-surface-muted);
     color: var(--neo-text-secondary);
@@ -1062,7 +1085,7 @@
     @apply py-2;
   }
   .ui-section-label {
-    @apply text-[11px] font-medium uppercase tracking-[0.16em] text-zinc-400;
+    @apply text-hh-label uppercase text-zinc-400;
   }
 }
 
@@ -1287,9 +1310,21 @@
   body {
     @apply text-foreground overflow-x-hidden text-sm antialiased;
     background: var(--hh-l0-canvas);
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--hh-font-family-sans);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
+  }
+
+  /* Explicit document/print typography exceptions retain their established Inter-first output. */
+  :where(
+    .estimate-a4-page,
+    .invoice-a4-page,
+    .material-selection-a4-page,
+    .receipt,
+    .receipt-print-shell,
+    .payroll-statement-print-root
+  ) {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   }
 
   .hh-app-shell {

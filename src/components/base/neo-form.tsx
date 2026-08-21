@@ -25,10 +25,7 @@ export function NeoFieldLabel({
 }: React.LabelHTMLAttributes<HTMLLabelElement> & { required?: boolean }) {
   return (
     <label
-      className={cn(
-        "block text-[11px] font-medium uppercase leading-none tracking-normal text-[var(--neo-text-tertiary)]",
-        className
-      )}
+      className={cn("block uppercase text-[var(--neo-text-tertiary)]", TYPO.label, className)}
       {...props}
     >
       {children}
@@ -58,14 +55,8 @@ export function NeoFormSection({
     <section className={cn("min-w-0 space-y-3", className)}>
       {(title || description) && (
         <div className="min-w-0">
-          {title ? (
-            <h3 className="text-[12px] font-semibold uppercase tracking-normal text-[var(--neo-text-primary)]">
-              {title}
-            </h3>
-          ) : null}
-          {description ? (
-            <p className={cn(TYPO.mutedText, "mt-1 text-[12px] leading-snug")}>{description}</p>
-          ) : null}
+          {title ? <h3 className={TYPO.panelTitle}>{title}</h3> : null}
+          {description ? <p className={cn(TYPO.helper, "mt-1")}>{description}</p> : null}
         </div>
       )}
       <div className={cn("grid gap-3", bodyClassName)}>{children}</div>
@@ -78,11 +69,7 @@ export const NeoInput = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof Input>
 >(function NeoInput({ className, ...props }, ref) {
   return (
-    <Input
-      ref={ref}
-      className={cn("h-10 rounded-md text-[14px] max-md:min-h-11", className)}
-      {...props}
-    />
+    <Input ref={ref} className={cn("h-10 rounded-md max-md:min-h-11", className)} {...props} />
   );
 });
 
@@ -93,7 +80,7 @@ export const NeoTextarea = React.forwardRef<
   return (
     <Textarea
       ref={ref}
-      className={cn("min-h-[88px] rounded-md text-[14px] max-md:min-h-[104px]", className)}
+      className={cn("min-h-[88px] rounded-md max-md:min-h-[104px]", className)}
       {...props}
     />
   );
@@ -103,9 +90,7 @@ export const NeoSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
   { className, ...props },
   ref
 ) {
-  return (
-    <NativeSelect ref={ref} className={cn("h-10 rounded-md text-[14px]", className)} {...props} />
-  );
+  return <NativeSelect ref={ref} className={cn("h-10 rounded-md", className)} {...props} />;
 });
 
 export function NeoDatePicker({ className, size = "md", ...props }: FinanceDatePickerProps) {
@@ -165,15 +150,9 @@ export function NeoModal({
             headerClassName
           )}
         >
-          {title ? (
-            <DialogTitle className="text-base font-semibold tracking-normal text-[var(--neo-text-primary)]">
-              {title}
-            </DialogTitle>
-          ) : null}
+          {title ? <DialogTitle className={TYPO.sectionTitle}>{title}</DialogTitle> : null}
           {description ? (
-            <DialogDescription className="text-[13px] leading-snug text-[var(--neo-text-secondary)]">
-              {description}
-            </DialogDescription>
+            <DialogDescription className={TYPO.body}>{description}</DialogDescription>
           ) : null}
         </DialogHeader>
       )}
@@ -220,15 +199,9 @@ export function NeoDrawer({
     >
       {(title || description) && (
         <SheetHeader className="border-b border-[var(--hh-border)] px-5 py-4 pr-12 text-left">
-          {title ? (
-            <SheetTitle className="text-base font-semibold tracking-normal text-[var(--neo-text-primary)]">
-              {title}
-            </SheetTitle>
-          ) : null}
+          {title ? <SheetTitle className={TYPO.sectionTitle}>{title}</SheetTitle> : null}
           {description ? (
-            <SheetDescription className="text-[13px] leading-snug text-[var(--neo-text-secondary)]">
-              {description}
-            </SheetDescription>
+            <SheetDescription className={TYPO.body}>{description}</SheetDescription>
           ) : null}
         </SheetHeader>
       )}
@@ -247,9 +220,11 @@ export function NeoDrawer({
 
 export const neoFormFieldClassName = cn("space-y-1.5");
 export const neoFormNoticeClassName = cn(
-  "rounded-lg border border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.10)] px-3 py-2 text-[12px] leading-snug text-[var(--neo-text-primary)]"
+  "rounded-lg border border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.10)] px-3 py-2 text-[var(--neo-text-primary)]",
+  TYPO.helper
 );
 export const neoFormErrorClassName = cn(
-  "rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-[12px] font-medium text-rose-200"
+  "rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-rose-200",
+  TYPO.error
 );
 export const neoFormPanelClassName = cn(NEO.surface, "p-5");

@@ -58,7 +58,7 @@ export function DataTable<T>({
     <>
       {/* Desktop/Tablet: table */}
       <div className={cn("relative hidden w-full md:block", className)}>
-        <NeoTable tableClassName="min-w-[640px] caption-bottom text-sm lg:min-w-0">
+        <NeoTable tableClassName="min-w-[640px] caption-bottom lg:min-w-0">
           <TableHeader>
             <TableRow className="hover:!translate-y-0 hover:!bg-transparent active:!scale-100 dark:hover:!bg-transparent">
               {columns.map((col) => (
@@ -118,7 +118,7 @@ export function DataTable<T>({
                     {columns.map((col) => (
                       <TableCell
                         key={col.key}
-                        className={cn(col.numeric && "num font-semibold", col.className)}
+                        className={cn(col.numeric && TYPO.amount, col.className)}
                       >
                         {col.cell
                           ? col.cell(row)
@@ -174,7 +174,7 @@ export function DataTable<T>({
                 </div>
                 <dl className="mt-3 space-y-2">
                   {columns.slice(1).map((col) => (
-                    <div key={col.key} className="flex justify-between gap-2 text-sm">
+                    <div key={col.key} className={cn("flex justify-between gap-2", TYPO.body)}>
                       <dt className={TYPO.tableHeader}>{col.header}</dt>
                       <dd
                         className={cn(

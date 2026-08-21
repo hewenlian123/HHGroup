@@ -41,11 +41,7 @@ export function Drawer({
       >
         {(title || description) && (
           <SheetHeader className="border-b border-[var(--hh-border)] p-hh-task-mobile pr-12 text-left md:p-hh-task-desktop md:pr-12">
-            {title && (
-              <SheetTitle className="text-base font-semibold text-[var(--neo-text-primary)]">
-                {title}
-              </SheetTitle>
-            )}
+            {title && <SheetTitle className={TYPO.sectionTitle}>{title}</SheetTitle>}
             {description && (
               <SheetDescription className={TYPO.mutedText}>{description}</SheetDescription>
             )}

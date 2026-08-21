@@ -60,7 +60,7 @@ function main() {
     writeFileSync(CSS_ARTIFACT, generatedCss, "utf8");
     writeFileSync(JSON_ARTIFACT, generatedJson, "utf8");
     console.log(
-      `Synchronized ${contract.tokens.length} themed tokens and ${contract.dimensions.length} invariant geometry tokens from ${sourcePath}.`
+      `Synchronized ${contract.tokens.length} themed tokens, ${contract.dimensions.length} invariant geometry tokens, ${contract.typography.length} typography roles, and ${contract.typographyContracts.length} typography contracts from ${sourcePath}.`
     );
     return;
   }
@@ -72,7 +72,7 @@ function main() {
     tailwindConfig: readRequired(resolve(REPO_ROOT, "tailwind.config.ts"), "Tailwind config"),
   });
   console.log(
-    `Design token check passed for ${contract.tokens.length} themed tokens and ${contract.dimensions.length} invariant geometry tokens.`
+    `Design token check passed for ${contract.tokens.length} themed tokens, ${contract.dimensions.length} invariant geometry tokens, ${contract.typography.length} typography roles, and ${contract.typographyContracts.length} typography contracts.`
   );
 }
 

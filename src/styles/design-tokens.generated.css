@@ -56,6 +56,73 @@
   --hh-gap-related: 12px;
   --hh-gap-section: 16px;
   --hh-gap-region: 24px;
+  --hh-type-page-title-font-size: 20px;
+  --hh-type-page-title-line-height: 26px;
+  --hh-type-page-title-font-weight: 600;
+  --hh-type-page-title-letter-spacing: 0;
+  --hh-type-section-title-font-size: 16px;
+  --hh-type-section-title-line-height: 22px;
+  --hh-type-section-title-font-weight: 600;
+  --hh-type-section-title-letter-spacing: 0;
+  --hh-type-panel-title-font-size: 14px;
+  --hh-type-panel-title-line-height: 20px;
+  --hh-type-panel-title-font-weight: 600;
+  --hh-type-panel-title-letter-spacing: 0;
+  --hh-type-body-font-size: 14px;
+  --hh-type-body-line-height: 20px;
+  --hh-type-body-font-weight: 400;
+  --hh-type-body-letter-spacing: 0;
+  --hh-type-body-strong-font-size: 14px;
+  --hh-type-body-strong-line-height: 20px;
+  --hh-type-body-strong-font-weight: 600;
+  --hh-type-body-strong-letter-spacing: 0;
+  --hh-type-label-font-size: 12px;
+  --hh-type-label-line-height: 16px;
+  --hh-type-label-font-weight: 500;
+  --hh-type-label-letter-spacing: 0;
+  --hh-type-metadata-font-size: 12px;
+  --hh-type-metadata-line-height: 16px;
+  --hh-type-metadata-font-weight: 400;
+  --hh-type-metadata-letter-spacing: 0;
+  --hh-type-table-header-font-size: 11px;
+  --hh-type-table-header-line-height: 16px;
+  --hh-type-table-header-font-weight: 600;
+  --hh-type-table-header-letter-spacing: 0;
+  --hh-type-table-cell-font-size: 13px;
+  --hh-type-table-cell-line-height: 18px;
+  --hh-type-table-cell-font-weight: 400;
+  --hh-type-table-cell-letter-spacing: 0;
+  --hh-type-financial-font-size: 14px;
+  --hh-type-financial-line-height: 20px;
+  --hh-type-financial-font-weight: 500;
+  --hh-type-financial-letter-spacing: 0;
+  --hh-type-financial-total-font-size: 20px;
+  --hh-type-financial-total-line-height: 24px;
+  --hh-type-financial-total-font-weight: 600;
+  --hh-type-financial-total-letter-spacing: 0;
+  --hh-type-control-font-size: 14px;
+  --hh-type-control-line-height: 20px;
+  --hh-type-control-font-weight: 500;
+  --hh-type-control-letter-spacing: 0;
+  --hh-type-helper-font-size: 12px;
+  --hh-type-helper-line-height: 16px;
+  --hh-type-helper-font-weight: 400;
+  --hh-type-helper-letter-spacing: 0;
+  --hh-type-error-font-size: 12px;
+  --hh-type-error-line-height: 16px;
+  --hh-type-error-font-weight: 500;
+  --hh-type-error-letter-spacing: 0;
+  --hh-type-status-font-size: 11px;
+  --hh-type-status-line-height: 16px;
+  --hh-type-status-font-weight: 500;
+  --hh-type-status-letter-spacing: 0;
+  --hh-font-family-sans: var(--font-geist-sans), var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --hh-fin-variant: tabular-nums lining-nums;
+  --hh-fin-features: "tnum" 1, "lnum" 1, "zero" 0;
+  --hh-type-text-entry-size-mobile: 16px;
+  --hh-type-text-entry-line-height-mobile: 24px;
+  --hh-type-text-entry-size-desktop: 14px;
+  --hh-type-text-entry-line-height-desktop: 20px;
 }
 
 html.dark {
@@ -83,4 +150,11 @@ html.dark {
   --hh-warning: #d8a34a;
   --hh-information: #6e9fd1;
   --hh-danger: #e36b72;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --hh-type-page-title-font-size: 24px;
+    --hh-type-page-title-line-height: 30px;
+  }
 }

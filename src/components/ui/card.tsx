@@ -1,7 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
-import { OS } from "@/lib/typography";
+import { OS, TYPO } from "@/lib/typography";
 import { motionCardHover } from "@/lib/motion-system";
 
 export type CardProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -13,7 +13,13 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, interactive, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(OS.card, "text-foreground", interactive && motionCardHover, className)}
+      className={cn(
+        OS.card,
+        TYPO.body,
+        "text-foreground",
+        interactive && motionCardHover,
+        className
+      )}
       {...props}
     />
   )
@@ -33,21 +39,18 @@ CardHeader.displayName = "CardHeader";
 
 const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div
-      ref={ref}
-      className={cn(
-        "text-sm font-medium leading-none tracking-normal text-[var(--neo-text-primary)]",
-        className
-      )}
-      {...props}
-    />
+    <div ref={ref} className={cn(TYPO.panelTitle, className)} {...props} />
   )
 );
 CardTitle.displayName = "CardTitle";
 
 const CardDescription = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("text-sm text-zinc-500", className)} {...props} />
+    <div
+      ref={ref}
+      className={cn(TYPO.body, "text-[var(--neo-text-secondary)]", className)}
+      {...props}
+    />
   )
 );
 CardDescription.displayName = "CardDescription";

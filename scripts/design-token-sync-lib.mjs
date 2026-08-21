@@ -99,11 +99,123 @@ const INVARIANT_GEOMETRY_DEFINITIONS = [
   { role: "Major-region gap", name: "gap-region" },
 ];
 
+const TYPOGRAPHY_ROLE_DEFINITIONS = [
+  { role: "Page Title", name: "page-title", numericLabel: "none", numericContract: "none" },
+  {
+    role: "Section Title",
+    name: "section-title",
+    numericLabel: "none",
+    numericContract: "none",
+  },
+  {
+    role: "Panel Title",
+    name: "panel-title",
+    numericLabel: "none",
+    numericContract: "none",
+  },
+  { role: "Body", name: "body", numericLabel: "none", numericContract: "none" },
+  {
+    role: "Body Strong",
+    name: "body-strong",
+    numericLabel: "none",
+    numericContract: "none",
+  },
+  { role: "Label", name: "label", numericLabel: "none", numericContract: "none" },
+  {
+    role: "Metadata",
+    name: "metadata",
+    numericLabel: "FIN when used for dates or IDs",
+    numericContract: "contextual FIN",
+  },
+  {
+    role: "Table Header",
+    name: "table-header",
+    numericLabel: "FIN for numeric columns",
+    numericContract: "contextual FIN",
+  },
+  {
+    role: "Table Cell",
+    name: "table-cell",
+    numericLabel: "FIN for dates, IDs, and numeric columns",
+    numericContract: "contextual FIN",
+  },
+  {
+    role: "Numeric / Financial",
+    name: "financial",
+    numericLabel: "FIN",
+    numericContract: "FIN",
+  },
+  {
+    role: "Financial Total",
+    name: "financial-total",
+    numericLabel: "FIN",
+    numericContract: "FIN",
+  },
+  {
+    role: "Button / Control",
+    name: "control",
+    numericLabel: "none",
+    numericContract: "none",
+  },
+  { role: "Helper", name: "helper", numericLabel: "none", numericContract: "none" },
+  { role: "Error", name: "error", numericLabel: "none", numericContract: "none" },
+  {
+    role: "Status / Badge",
+    name: "status",
+    numericLabel: "none",
+    numericContract: "none",
+  },
+];
+
+const TYPOGRAPHY_CONTRACT_DEFINITIONS = [
+  {
+    contract: "Operational font family",
+    name: "font-family-sans",
+    value:
+      'var(--font-geist-sans), var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+  { contract: "FIN variant", name: "fin-variant", value: "tabular-nums lining-nums" },
+  {
+    contract: "FIN features",
+    name: "fin-features",
+    value: '"tnum" 1, "lnum" 1, "zero" 0',
+  },
+  {
+    contract: "Text-entry mobile size",
+    name: "type-text-entry-size-mobile",
+    value: "16px",
+  },
+  {
+    contract: "Text-entry mobile line height",
+    name: "type-text-entry-line-height-mobile",
+    value: "24px",
+  },
+  {
+    contract: "Text-entry desktop size",
+    name: "type-text-entry-size-desktop",
+    value: "14px",
+  },
+  {
+    contract: "Text-entry desktop line height",
+    name: "type-text-entry-line-height-desktop",
+    value: "20px",
+  },
+];
+
 const ROLE_LOOKUP = new Map(
   ROLE_DEFINITIONS.map((definition) => [normalizeRole(definition.role), definition])
 );
 const INVARIANT_GEOMETRY_LOOKUP = new Map(
   INVARIANT_GEOMETRY_DEFINITIONS.map((definition) => [normalizeRole(definition.role), definition])
+);
+const TYPOGRAPHY_ROLE_LOOKUP = new Map(
+  TYPOGRAPHY_ROLE_DEFINITIONS.map((definition) => [normalizeRole(definition.role), definition])
+);
+const TYPOGRAPHY_CONTRACT_LOOKUP = new Map(
+  TYPOGRAPHY_CONTRACT_DEFINITIONS.map((definition) => [
+    normalizeRole(definition.contract),
+    definition,
+  ])
 );
 
 export function defaultDesignSystemSourcePath() {
@@ -225,12 +337,106 @@ export function parseDesignSystemTokens(markdown) {
     throw new Error(`Duplicate invariant geometry token name: ${duplicateDimensionNames[0]}.`);
   }
 
+  const typographyRows = extractTypographyRows(markdown);
+  const requiredTypographyRows = new Map();
+  for (const row of typographyRows) {
+    const definition = TYPOGRAPHY_ROLE_LOOKUP.get(normalizeRole(row.role));
+    if (!definition) {
+      throw new Error(`Unknown typography role: ${row.role}.`);
+    }
+    if (requiredTypographyRows.has(definition.role)) {
+      throw new Error(`Duplicate typography role: ${definition.role}.`);
+    }
+    requiredTypographyRows.set(definition.role, row);
+  }
+
+  const typography = TYPOGRAPHY_ROLE_DEFINITIONS.map((definition) => {
+    const row = requiredTypographyRows.get(definition.role);
+    if (!row) {
+      throw new Error(`Missing required typography role: ${definition.role}.`);
+    }
+
+    const expectedToken = `--hh-type-${definition.name}`;
+    const token = stripCodeTicks(row.token);
+    if (token !== expectedToken) {
+      throw new Error(
+        `Typography token mismatch for ${definition.role}: expected ${expectedToken}, received ${token}.`
+      );
+    }
+
+    const mobile = parseTypographyScale(row.mobile, definition.role, "mobile");
+    const desktop = parseTypographyScale(row.desktop, definition.role, "desktop");
+    const fontWeight = parseTypographyWeight(row.weight, definition.role);
+    const letterSpacing = parseTypographyLetterSpacing(row.letterSpacing, definition.role);
+    const numericLabel = stripCodeTicks(row.numericContract);
+    if (numericLabel !== definition.numericLabel) {
+      throw new Error(
+        `Malformed typography numeric contract for ${definition.role}: expected "${definition.numericLabel}", received "${numericLabel}".`
+      );
+    }
+
+    return {
+      role: definition.role,
+      name: definition.name,
+      cssVariablePrefix: expectedToken,
+      mobile,
+      desktop,
+      fontWeight,
+      letterSpacing,
+      numericContract: definition.numericContract,
+    };
+  });
+
+  const typographyContractRows = extractTypographyContractRows(markdown);
+  const requiredTypographyContractRows = new Map();
+  for (const row of typographyContractRows) {
+    const definition = TYPOGRAPHY_CONTRACT_LOOKUP.get(normalizeRole(row.contract));
+    if (!definition) {
+      throw new Error(`Unknown typography contract: ${row.contract}.`);
+    }
+    if (requiredTypographyContractRows.has(definition.contract)) {
+      throw new Error(`Duplicate typography contract: ${definition.contract}.`);
+    }
+    requiredTypographyContractRows.set(definition.contract, row);
+  }
+
+  const typographyContracts = TYPOGRAPHY_CONTRACT_DEFINITIONS.map((definition) => {
+    const row = requiredTypographyContractRows.get(definition.contract);
+    if (!row) {
+      throw new Error(`Missing required typography contract: ${definition.contract}.`);
+    }
+
+    const expectedToken = `--hh-${definition.name}`;
+    const token = stripCodeTicks(row.token);
+    if (token !== expectedToken) {
+      throw new Error(
+        `Typography contract token mismatch for ${definition.contract}: expected ${expectedToken}, received ${token}.`
+      );
+    }
+
+    const value = stripCodeTicks(row.value);
+    if (value !== definition.value) {
+      throw new Error(
+        `Malformed typography contract value for ${definition.contract}: expected "${definition.value}", received "${value}".`
+      );
+    }
+
+    return {
+      contract: definition.contract,
+      name: definition.name,
+      cssVariable: expectedToken,
+      value,
+    };
+  });
+
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     authority: AUTHORITY_NAME,
     source: AUTHORITY_SOURCE_LABEL,
     tokens,
     dimensions,
+    typography,
+    typographyContracts,
   };
 }
 
@@ -246,6 +452,19 @@ export function renderGeneratedJson(contract) {
     dimensions: Object.fromEntries(
       contract.dimensions.map(({ cssVariable, value }) => [cssVariable, value])
     ),
+    typography: {
+      roles: Object.fromEntries(
+        contract.typography.map(
+          ({ cssVariablePrefix, mobile, desktop, fontWeight, letterSpacing, numericContract }) => [
+            cssVariablePrefix,
+            { mobile, desktop, fontWeight, letterSpacing, numericContract },
+          ]
+        )
+      ),
+      contracts: Object.fromEntries(
+        contract.typographyContracts.map(({ cssVariable, value }) => [cssVariable, value])
+      ),
+    },
   };
 
   return `${JSON.stringify(artifact, null, 2)}\n`;
@@ -261,6 +480,27 @@ export function renderGeneratedCss(contract) {
   const dimensions = contract.dimensions
     .map(({ cssVariable, value }) => `  ${cssVariable}: ${formatCssValue(value)};`)
     .join("\n");
+  const typography = contract.typography
+    .flatMap(({ cssVariablePrefix, mobile, fontWeight, letterSpacing }) => [
+      `  ${cssVariablePrefix}-font-size: ${mobile.fontSize};`,
+      `  ${cssVariablePrefix}-line-height: ${mobile.lineHeight};`,
+      `  ${cssVariablePrefix}-font-weight: ${fontWeight};`,
+      `  ${cssVariablePrefix}-letter-spacing: ${letterSpacing};`,
+    ])
+    .join("\n");
+  const typographyContracts = contract.typographyContracts
+    .map(({ cssVariable, value }) => `  ${cssVariable}: ${value};`)
+    .join("\n");
+  const desktopTypography = contract.typography
+    .filter(
+      ({ mobile, desktop }) =>
+        mobile.fontSize !== desktop.fontSize || mobile.lineHeight !== desktop.lineHeight
+    )
+    .flatMap(({ cssVariablePrefix, desktop }) => [
+      `    ${cssVariablePrefix}-font-size: ${desktop.fontSize};`,
+      `    ${cssVariablePrefix}-line-height: ${desktop.lineHeight};`,
+    ])
+    .join("\n");
 
   return [
     "/* AUTO-GENERATED by npm run design:sync. DO NOT EDIT BY HAND. */",
@@ -269,10 +509,18 @@ export function renderGeneratedCss(contract) {
     ":root {",
     light,
     dimensions,
+    typography,
+    typographyContracts,
     "}",
     "",
     "html.dark {",
     dark,
+    "}",
+    "",
+    "@media (min-width: 768px) {",
+    "  :root {",
+    desktopTypography,
+    "  }",
     "}",
     "",
   ].join("\n");
@@ -300,6 +548,11 @@ export function validateRepositoryWiring({ globalsCss, tailwindConfig }) {
     "--space-6: var(--hh-space-6);",
     "--space-8: var(--hh-space-8);",
     "--space-10: var(--hh-space-10);",
+    "font-family: var(--hh-font-family-sans);",
+    "font-variant-numeric: var(--hh-fin-variant);",
+    "font-feature-settings: var(--hh-fin-features);",
+    "font-size: var(--hh-type-text-entry-size-mobile);",
+    "font-size: var(--hh-type-text-entry-size-desktop);",
   ];
   const requiredTailwindVariables = [
     "--hh-l0-canvas",
@@ -327,6 +580,13 @@ export function validateRepositoryWiring({ globalsCss, tailwindConfig }) {
     "--hh-information",
     "--hh-danger",
     ...INVARIANT_GEOMETRY_DEFINITIONS.map(({ name }) => `--hh-${name}`),
+    "--hh-font-family-sans",
+    ...TYPOGRAPHY_ROLE_DEFINITIONS.flatMap(({ name }) => [
+      `--hh-type-${name}-font-size`,
+      `--hh-type-${name}-line-height`,
+      `--hh-type-${name}-font-weight`,
+      `--hh-type-${name}-letter-spacing`,
+    ]),
   ];
 
   for (const snippet of requiredGlobalSnippets) {
@@ -346,6 +606,12 @@ export function validateRepositoryWiring({ globalsCss, tailwindConfig }) {
       names.map((name) => ({ cssVariable: `--hh-${name}` }))
     ),
     ...INVARIANT_GEOMETRY_DEFINITIONS.map(({ name }) => ({ cssVariable: `--hh-${name}` })),
+    ...TYPOGRAPHY_ROLE_DEFINITIONS.flatMap(({ name }) =>
+      ["font-size", "line-height", "font-weight", "letter-spacing"].map((property) => ({
+        cssVariable: `--hh-type-${name}-${property}`,
+      }))
+    ),
+    ...TYPOGRAPHY_CONTRACT_DEFINITIONS.map(({ name }) => ({ cssVariable: `--hh-${name}` })),
   ];
   for (const { cssVariable } of generatedVariables) {
     const declaration = new RegExp(`${escapeRegExp(cssVariable)}\\s*:`);
@@ -353,6 +619,78 @@ export function validateRepositoryWiring({ globalsCss, tailwindConfig }) {
       throw new Error(`globals.css must not redeclare generated token: ${cssVariable}`);
     }
   }
+}
+
+function extractTypographyRows(markdown) {
+  const lines = markdown.split(/\r?\n/);
+  const headingIndex = lines.findIndex(
+    (line) => line.trim() === "### Semantic typography mappings"
+  );
+  if (headingIndex === -1) {
+    throw new Error('Missing required "Semantic typography mappings" section.');
+  }
+
+  const headerIndex = lines.findIndex(
+    (line, index) =>
+      index > headingIndex &&
+      /^\|\s*Role\s*\|\s*Token\s*\|\s*Mobile size \/ line height\s*\|\s*Desktop size \/ line height\s*\|\s*Weight\s*\|\s*Letter spacing\s*\|\s*Numeric contract\s*\|\s*Use\s*\|\s*$/.test(
+        line
+      )
+  );
+  if (headerIndex === -1) {
+    throw new Error("Missing semantic typography token table header.");
+  }
+
+  const rows = [];
+  for (let index = headerIndex + 2; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.trim().startsWith("|")) break;
+    const cells = splitMarkdownRow(line);
+    if (cells.length !== 8) {
+      throw new Error(`Malformed typography row at line ${index + 1}.`);
+    }
+    rows.push({
+      role: cells[0],
+      token: cells[1],
+      mobile: cells[2],
+      desktop: cells[3],
+      weight: cells[4],
+      letterSpacing: cells[5],
+      numericContract: cells[6],
+    });
+  }
+  return rows;
+}
+
+function extractTypographyContractRows(markdown) {
+  const lines = markdown.split(/\r?\n/);
+  const headingIndex = lines.findIndex(
+    (line) => line.trim() === "### Typography contract mappings"
+  );
+  if (headingIndex === -1) {
+    throw new Error('Missing required "Typography contract mappings" section.');
+  }
+
+  const headerIndex = lines.findIndex(
+    (line, index) =>
+      index > headingIndex &&
+      /^\|\s*Contract\s*\|\s*Token\s*\|\s*Value\s*\|\s*Use\s*\|\s*$/.test(line)
+  );
+  if (headerIndex === -1) {
+    throw new Error("Missing typography contract table header.");
+  }
+
+  const rows = [];
+  for (let index = headerIndex + 2; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.trim().startsWith("|")) break;
+    const cells = splitMarkdownRow(line);
+    if (cells.length !== 4) {
+      throw new Error(`Malformed typography contract row at line ${index + 1}.`);
+    }
+    rows.push({ contract: cells[0], token: cells[1], value: cells[2] });
+  }
+  return rows;
 }
 
 function extractInvariantGeometryRows(markdown) {
@@ -512,6 +850,37 @@ function parseInvariantDimension(value, role) {
     );
   }
   return `${Number(match[1])}px`;
+}
+
+function parseTypographyScale(value, role, viewport) {
+  const normalized = stripCodeTicks(value);
+  const match = normalized.match(/^(\d+)px\s*\/\s*(\d+)px$/);
+  if (!match || Number(match[1]) <= 0 || Number(match[2]) <= 0) {
+    throw new Error(
+      `Malformed ${viewport} typography value for ${role}: expected positive whole-pixel size / line height, received "${normalized}".`
+    );
+  }
+  return { fontSize: `${Number(match[1])}px`, lineHeight: `${Number(match[2])}px` };
+}
+
+function parseTypographyWeight(value, role) {
+  const normalized = stripCodeTicks(value);
+  if (!/^(400|500|600)$/.test(normalized)) {
+    throw new Error(
+      `Malformed typography weight for ${role}: expected 400, 500, or 600, received "${normalized}".`
+    );
+  }
+  return normalized;
+}
+
+function parseTypographyLetterSpacing(value, role) {
+  const normalized = stripCodeTicks(value);
+  if (normalized !== "0") {
+    throw new Error(
+      `Malformed typography letter spacing for ${role}: expected 0, received "${normalized}".`
+    );
+  }
+  return normalized;
 }
 
 function validateCssColor(value, role, mode) {

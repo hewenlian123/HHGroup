@@ -1,9 +1,12 @@
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 
 export type StatusBadgeVariant = "default" | "success" | "warning" | "danger" | "muted";
 
-const badgeBaseClass =
-  "inline-flex h-5 items-center gap-1.5 rounded-full border px-2 text-[11px] font-medium leading-none tracking-normal";
+const badgeBaseClass = cn(
+  "inline-flex h-5 items-center gap-1.5 rounded-full border px-2",
+  TYPO.chip
+);
 
 const variantPillClass: Record<StatusBadgeVariant, string> = {
   default:

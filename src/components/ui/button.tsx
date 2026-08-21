@@ -18,7 +18,7 @@ import {
  */
 const buttonVariants = cva(
   cn(
-    "inline-flex items-center justify-center gap-hh-2 whitespace-nowrap rounded-hh-standard text-sm font-medium touch-manipulation outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+    "inline-flex items-center justify-center gap-hh-2 whitespace-nowrap rounded-hh-standard touch-manipulation outline-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
     TYPO.button,
     motionTransition,
     motionInteractiveHover,
@@ -39,10 +39,10 @@ const buttonVariants = cva(
       size: {
         /* Touch-friendly: the shared utility applies the 44px minimum on touch/small screens. */
         default: "hh-touch-min h-hh-control-comfortable px-hh-4",
-        sm: "hh-touch-min h-hh-control-compact rounded-hh-compact px-hh-3 text-xs",
+        sm: "hh-touch-min h-hh-control-compact rounded-hh-compact px-hh-3",
         lg: "hh-touch-min h-hh-control-touch px-hh-5",
         icon: "hh-touch-square h-hh-control-comfortable w-hh-10",
-        touch: "hh-touch-square min-h-hh-touch min-w-hh-touch px-hh-4 text-sm",
+        touch: "hh-touch-square min-h-hh-touch min-w-hh-touch px-hh-4",
       },
     },
     defaultVariants: {

@@ -7,6 +7,7 @@ import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { hawaiiTodayYmd } from "@/lib/hawaii-calendar-date";
+import { TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 import styles from "./date-picker.module.css";
 
@@ -107,13 +108,12 @@ export function FinanceDatePicker({
           type="button"
           disabled={disabled}
           className={cn(
-            "hh-touch-min inline-flex w-full items-center justify-between gap-hh-2 rounded-hh-standard border px-hh-3 text-left font-medium tracking-normal transition-[background-color,border-color,box-shadow,color] duration-120 ease-out focus-visible:outline-none motion-reduce:transition-none",
+            "hh-fin hh-touch-min inline-flex w-full items-center justify-between gap-hh-2 rounded-hh-standard border px-hh-3 text-left transition-[background-color,border-color,box-shadow,color] duration-120 ease-out focus-visible:outline-none motion-reduce:transition-none",
+            TYPO.button,
             isGlass
               ? "eb-date-field border-white/[0.06] bg-white/[0.02] text-zinc-100 hover:border-white/[0.09] hover:bg-white/[0.035] focus-visible:border-white/[0.14] focus-visible:shadow-[0_0_0_2px_rgba(255,255,255,0.05)]"
               : "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)] hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-text-tertiary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-border-strong)]",
-            size === "md"
-              ? "h-hh-control-touch min-h-hh-touch text-sm"
-              : "h-hh-control-standard text-sm",
+            size === "md" ? "h-hh-control-touch min-h-hh-touch" : "h-hh-control-standard",
             disabled && "pointer-events-none opacity-60",
             className
           )}
@@ -177,7 +177,8 @@ export function FinanceDatePicker({
             ),
             caption_label: cn(
               rdp.caption_label,
-              "flex items-center justify-center text-[13px] font-semibold leading-none tracking-[-0.01em]",
+              "flex items-center justify-center",
+              TYPO.panelTitle,
               isGlass ? "text-zinc-50" : "text-[var(--neo-text-primary)]"
             ),
             nav: cn(rdp.nav, "gap-1 items-center"),
@@ -197,18 +198,21 @@ export function FinanceDatePicker({
             ),
             weekdays: cn(
               rdp.weekdays,
-              "text-[10px] font-medium uppercase tracking-[0.04em]",
+              TYPO.tableHeader,
               isGlass ? "text-zinc-500" : "text-[var(--neo-text-tertiary)]"
             ),
             weekday: cn(rdp.weekday, "w-10 py-1 text-center sm:w-8"),
             week: cn(rdp.week, "gap-1"),
             day: cn(
               rdp.day,
-              "h-10 w-10 rounded-hh-compact bg-transparent text-sm shadow-none sm:h-8 sm:w-8"
+              "h-10 w-10 rounded-hh-compact bg-transparent shadow-none sm:h-8 sm:w-8",
+              TYPO.metadata,
+              "hh-fin"
             ),
             day_button: cn(
               (rdp as unknown as Record<string, string>).day_button ?? "",
-              "flex h-10 w-10 items-center justify-center rounded-hh-compact border border-transparent text-sm font-medium leading-none shadow-none transition-[background-color,border-color,color,box-shadow,opacity] duration-120 ease-out active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 motion-reduce:transition-none sm:h-8 sm:w-8",
+              "hh-fin flex h-10 w-10 items-center justify-center rounded-hh-compact border border-transparent shadow-none transition-[background-color,border-color,color,box-shadow,opacity] duration-120 ease-out active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 motion-reduce:transition-none sm:h-8 sm:w-8",
+              TYPO.metadata,
               isGlass
                 ? "text-zinc-300 hover:bg-white/[0.08] active:bg-white/[0.12] focus-visible:ring-white/30 focus-visible:ring-offset-[#121622]"
                 : "text-[var(--neo-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:ring-[var(--neo-text-tertiary)] focus-visible:ring-offset-[var(--hh-l4-floating-surface)]"
@@ -257,7 +261,8 @@ export function FinanceDatePicker({
                 <button
                   type="button"
                   className={cn(
-                    "hh-touch-min inline-flex min-h-hh-control-comfortable items-center rounded-hh-compact px-hh-2 text-xs font-medium transition-colors duration-120 ease-out focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-35 motion-reduce:transition-none lg:min-h-hh-control-compact",
+                    "hh-touch-min inline-flex min-h-hh-control-comfortable items-center rounded-hh-compact px-hh-2 transition-colors duration-120 ease-out focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-35 motion-reduce:transition-none lg:min-h-hh-control-compact",
+                    TYPO.button,
                     isGlass
                       ? "text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100 focus-visible:ring-white/20"
                       : "text-[var(--neo-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)] focus-visible:ring-[var(--hh-border-strong)]"
@@ -273,7 +278,8 @@ export function FinanceDatePicker({
                 <button
                   type="button"
                   className={cn(
-                    "hh-touch-min inline-flex min-h-hh-control-comfortable items-center rounded-hh-compact px-hh-2 text-xs font-medium transition-colors duration-120 ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none lg:min-h-hh-control-compact",
+                    "hh-touch-min inline-flex min-h-hh-control-comfortable items-center rounded-hh-compact px-hh-2 transition-colors duration-120 ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none lg:min-h-hh-control-compact",
+                    TYPO.button,
                     isGlass
                       ? "text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100 focus-visible:ring-white/20"
                       : "text-[var(--neo-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)] focus-visible:ring-[var(--hh-border-strong)]"

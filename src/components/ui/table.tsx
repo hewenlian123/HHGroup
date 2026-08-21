@@ -16,7 +16,8 @@ export const tableRawThClass = cn(
 );
 
 export const tableRawTdClass = cn(
-  "hh-touch-table-cell h-hh-row-standard px-hh-3 py-0 align-middle text-sm text-[var(--neo-text-primary)]",
+  "hh-touch-table-cell h-hh-row-standard px-hh-3 py-0 align-middle",
+  TYPO.tableCell,
   "border-b border-[var(--hh-border)] last:border-b-0"
 );
 
@@ -27,7 +28,8 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
         <table
           ref={ref}
           className={cn(
-            "w-full caption-bottom border-collapse text-sm text-zinc-900 dark:text-foreground",
+            "w-full caption-bottom border-collapse text-zinc-900 dark:text-foreground",
+            TYPO.tableCell,
             className
           )}
           {...props}
@@ -125,7 +127,8 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "hh-touch-table-cell h-hh-row-standard px-hh-3 py-0 align-middle text-sm text-[var(--neo-text-primary)]",
+      "hh-touch-table-cell h-hh-row-standard px-hh-3 py-0 align-middle",
+      TYPO.tableCell,
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
@@ -140,7 +143,7 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("mt-3 text-sm text-[var(--neo-text-secondary)]", className)}
+    className={cn("mt-3", TYPO.metadata, "text-[var(--neo-text-secondary)]", className)}
     {...props}
   />
 ));

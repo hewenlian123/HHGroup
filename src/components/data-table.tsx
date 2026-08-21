@@ -238,7 +238,7 @@ export function DataTable<T>({
                   {cardColumns
                     .filter((col) => col.key !== titleKey)
                     .map((col) => (
-                      <div key={col.key} className="flex justify-between gap-2 text-sm">
+                      <div key={col.key} className={cn("flex justify-between gap-2", TYPO.body)}>
                         <dt className={TYPO.tableHeader}>{col.header}</dt>
                         <dd
                           className={cn(

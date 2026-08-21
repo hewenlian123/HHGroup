@@ -6,7 +6,7 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { motionPopoverLayer } from "@/lib/motion-system";
-import { NEO } from "@/lib/typography";
+import { NEO, TYPO } from "@/lib/typography";
 
 const Select = SelectPrimitive.Root;
 
@@ -21,7 +21,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "hh-touch-min flex h-hh-control-standard w-full items-center justify-between whitespace-nowrap rounded-hh-standard border px-hh-3 py-hh-2 text-sm shadow-none transition-all duration-150 ease-out data-[placeholder]:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-md:text-base md:text-sm [&>span]:line-clamp-1",
+      "hh-type-text-entry hh-touch-min flex h-hh-control-standard w-full items-center justify-between whitespace-nowrap rounded-hh-standard border px-hh-3 py-hh-2 shadow-none transition-all duration-150 ease-out data-[placeholder]:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       NEO.input,
       "active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96]",
       className
@@ -110,7 +110,7 @@ const SelectLabel = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-sm font-semibold", className)}
+    className={cn("px-2 py-1.5", TYPO.panelTitle, className)}
     {...props}
   />
 ));
@@ -123,7 +123,8 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "hh-touch-row relative flex min-h-hh-row-dense w-full cursor-default select-none items-center rounded-hh-compact py-1.5 pl-hh-2 pr-hh-8 text-sm outline-none transition-all duration-150 ease-out focus:bg-[var(--hh-l3-hover)] focus:text-[var(--neo-text-primary)] hover:bg-[var(--hh-l3-hover)] active:scale-[0.99] active:bg-[var(--hh-l3-pressed)] active:duration-100 data-[state=checked]:bg-[var(--hh-l3-selected)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "hh-touch-row relative flex min-h-hh-row-dense w-full cursor-default select-none items-center rounded-hh-compact py-1.5 pl-hh-2 pr-hh-8 outline-none transition-all duration-150 ease-out focus:bg-[var(--hh-l3-hover)] focus:text-[var(--neo-text-primary)] hover:bg-[var(--hh-l3-hover)] active:scale-[0.99] active:bg-[var(--hh-l3-pressed)] active:duration-100 data-[state=checked]:bg-[var(--hh-l3-selected)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      TYPO.body,
       className
     )}
     {...props}

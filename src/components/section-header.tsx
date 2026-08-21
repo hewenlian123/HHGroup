@@ -13,7 +13,7 @@ export function SectionHeader({
   return (
     <div className="flex items-center justify-between gap-3">
       <div>
-        <h2 className="text-sm font-semibold text-[var(--neo-text-primary)]">{title}</h2>
+        <h2 className={TYPO.sectionTitle}>{title}</h2>
         {subtitle ? <p className={TYPO.mutedText}>{subtitle}</p> : null}
       </div>
       {actions ? <div>{actions}</div> : null}

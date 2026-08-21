@@ -5,6 +5,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 
 import { cn } from "@/lib/utils";
 import { motionPopoverLayer } from "@/lib/motion-system";
+import { TYPO } from "@/lib/typography";
 
 const Popover = PopoverPrimitive.Root;
 
@@ -29,6 +30,7 @@ const PopoverContent = React.forwardRef<
       className={cn(
         themeScope === "dark" && "dark",
         "z-50 w-auto overflow-visible rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-0 text-[var(--neo-text-primary)] shadow-floating outline-none",
+        TYPO.body,
         motionPopoverLayer,
         "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         className

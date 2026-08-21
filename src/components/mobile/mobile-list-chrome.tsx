@@ -6,7 +6,7 @@ import { Filter, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { OS } from "@/lib/typography";
+import { OS, TYPO } from "@/lib/typography";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 /** Vertical rhythm on small screens; horizontal padding comes from `.page-container`. */
@@ -28,7 +28,7 @@ export function MobileListHeader({
     >
       <h1
         className={cn(
-          "text-base font-medium tracking-normal",
+          "text-base font-medium leading-6 tracking-normal",
           tone === "canvas" ? "text-[var(--neo-canvas-text-primary)]" : "text-text-primary"
         )}
       >
@@ -94,7 +94,7 @@ export function MobileFilterSheet({
         className="max-h-[90vh] overflow-y-auto rounded-t-[1.5rem] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:hidden"
       >
         <SheetHeader className="text-left">
-          <SheetTitle className="text-base font-semibold">{title}</SheetTitle>
+          <SheetTitle className={TYPO.sectionTitle}>{title}</SheetTitle>
         </SheetHeader>
         <div className="mt-4 flex flex-col gap-4">{children}</div>
       </SheetContent>
@@ -131,10 +131,7 @@ export function MobileSearchFiltersRow({
         <Filter className="h-4 w-4 shrink-0" aria-hidden />
         <span>Filters</span>
         {activeFilterCount > 0 ? (
-          <Badge
-            variant="secondary"
-            className="h-5 min-w-5 justify-center px-1.5 text-[10px] tabular-nums"
-          >
+          <Badge variant="secondary" className="hh-fin h-5 min-w-5 justify-center px-1.5">
             {activeFilterCount}
           </Badge>
         ) : null}
@@ -155,7 +152,9 @@ export function MobileEmptyState({
   return (
     <div className={cn(OS.emptyState, "flex flex-col items-center px-4 py-10 md:hidden")}>
       <div className="text-[var(--neo-text-secondary)]">{icon}</div>
-      <p className="mt-3 text-center text-sm text-[var(--neo-text-secondary)]">{message}</p>
+      <p className={cn("mt-3 text-center", TYPO.body, "text-[var(--neo-text-secondary)]")}>
+        {message}
+      </p>
       {action ? <div className="mt-4">{action}</div> : null}
     </div>
   );

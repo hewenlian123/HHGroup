@@ -14,14 +14,16 @@ async function loadContract() {
   }
 }
 
-test("parses the current Design System v1 color and invariant geometry contract", async () => {
+test("parses the current Design System v1 color, geometry, and typography contract", async () => {
   const { defaultDesignSystemSourcePath, parseDesignSystemTokens } = await loadContract();
   const markdown = readFileSync(defaultDesignSystemSourcePath(), "utf8");
   const contract = parseDesignSystemTokens(markdown);
 
-  assert.equal(contract.schemaVersion, 3);
+  assert.equal(contract.schemaVersion, 4);
   assert.equal(contract.tokens.length, 24);
   assert.equal(contract.dimensions.length, 30);
+  assert.equal(contract.typography.length, 15);
+  assert.equal(contract.typographyContracts.length, 7);
   assert.deepEqual(contract.tokens[0], {
     role: "L0 Canvas",
     name: "l0-canvas",
@@ -158,6 +160,74 @@ test("parses the current Design System v1 color and invariant geometry contract"
     cssVariable: "--hh-gap-region",
     value: "24px",
   });
+  assert.deepEqual(contract.typography[0], {
+    role: "Page Title",
+    name: "page-title",
+    cssVariablePrefix: "--hh-type-page-title",
+    mobile: { fontSize: "20px", lineHeight: "26px" },
+    desktop: { fontSize: "24px", lineHeight: "30px" },
+    fontWeight: "600",
+    letterSpacing: "0",
+    numericContract: "none",
+  });
+  assert.deepEqual(
+    contract.typography.find(({ name }) => name === "financial-total"),
+    {
+      role: "Financial Total",
+      name: "financial-total",
+      cssVariablePrefix: "--hh-type-financial-total",
+      mobile: { fontSize: "20px", lineHeight: "24px" },
+      desktop: { fontSize: "20px", lineHeight: "24px" },
+      fontWeight: "600",
+      letterSpacing: "0",
+      numericContract: "FIN",
+    }
+  );
+  assert.deepEqual(contract.typographyContracts, [
+    {
+      contract: "Operational font family",
+      name: "font-family-sans",
+      cssVariable: "--hh-font-family-sans",
+      value:
+        'var(--font-geist-sans), var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+    },
+    {
+      contract: "FIN variant",
+      name: "fin-variant",
+      cssVariable: "--hh-fin-variant",
+      value: "tabular-nums lining-nums",
+    },
+    {
+      contract: "FIN features",
+      name: "fin-features",
+      cssVariable: "--hh-fin-features",
+      value: '"tnum" 1, "lnum" 1, "zero" 0',
+    },
+    {
+      contract: "Text-entry mobile size",
+      name: "type-text-entry-size-mobile",
+      cssVariable: "--hh-type-text-entry-size-mobile",
+      value: "16px",
+    },
+    {
+      contract: "Text-entry mobile line height",
+      name: "type-text-entry-line-height-mobile",
+      cssVariable: "--hh-type-text-entry-line-height-mobile",
+      value: "24px",
+    },
+    {
+      contract: "Text-entry desktop size",
+      name: "type-text-entry-size-desktop",
+      cssVariable: "--hh-type-text-entry-size-desktop",
+      value: "14px",
+    },
+    {
+      contract: "Text-entry desktop line height",
+      name: "type-text-entry-line-height-desktop",
+      cssVariable: "--hh-type-text-entry-line-height-desktop",
+      value: "20px",
+    },
+  ]);
 });
 
 test("fails closed for missing, duplicate, malformed, and incomplete authority rows", async () => {
@@ -237,6 +307,91 @@ test("fails closed for missing, duplicate, malformed, unknown, and mismatched ge
   );
 });
 
+test("fails closed for missing, duplicate, malformed, unknown, and mismatched typography roles", async () => {
+  const { defaultDesignSystemSourcePath, parseDesignSystemTokens } = await loadContract();
+  const markdown = readFileSync(defaultDesignSystemSourcePath(), "utf8");
+  const row = markdown.match(/^\| Table Cell \|.*$/m)?.[0];
+
+  assert.ok(row, "expected the authority Table Cell row fixture");
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(`${row}\n`, "")),
+    /missing required typography role: Table Cell/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(row, `${row}\n${row}`)),
+    /duplicate typography role: Table Cell/i
+  );
+  assert.throws(
+    () =>
+      parseDesignSystemTokens(
+        markdown.replace(row, row.replace("13px / 18px", "0.8125rem / 18px"))
+      ),
+    /malformed mobile typography value for Table Cell/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(row, row.replace("`400`", "`450`"))),
+    /malformed typography weight for Table Cell/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(row, row.replace("`0`", "`0.02em`"))),
+    /malformed typography letter spacing for Table Cell/i
+  );
+  assert.throws(
+    () =>
+      parseDesignSystemTokens(
+        markdown.replace(
+          row,
+          `${row}\n| Display Hero | \`--hh-type-display-hero\` | \`48px / 52px\` | \`48px / 52px\` | \`700\` | \`0\` | none | Not approved. |`
+        )
+      ),
+    /unknown typography role: Display Hero/i
+  );
+  assert.throws(
+    () =>
+      parseDesignSystemTokens(
+        markdown.replace(row, row.replace("--hh-type-table-cell", "--hh-type-dense-cell"))
+      ),
+    /typography token mismatch for Table Cell/i
+  );
+});
+
+test("fails closed for missing, duplicate, malformed, unknown, and mismatched typography contracts", async () => {
+  const { defaultDesignSystemSourcePath, parseDesignSystemTokens } = await loadContract();
+  const markdown = readFileSync(defaultDesignSystemSourcePath(), "utf8");
+  const row = markdown.match(/^\| FIN features \|.*$/m)?.[0];
+
+  assert.ok(row, "expected the authority FIN features row fixture");
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(`${row}\n`, "")),
+    /missing required typography contract: FIN features/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(row, `${row}\n${row}`)),
+    /duplicate typography contract: FIN features/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(row, row.replace('"zero" 0', '"zero" 1'))),
+    /malformed typography contract value for FIN features/i
+  );
+  assert.throws(
+    () =>
+      parseDesignSystemTokens(
+        markdown.replace(
+          row,
+          `${row}\n| Display font family | \`--hh-font-family-display\` | \`serif\` | Not approved. |`
+        )
+      ),
+    /unknown typography contract: Display font family/i
+  );
+  assert.throws(
+    () =>
+      parseDesignSystemTokens(
+        markdown.replace(row, row.replace("--hh-fin-features", "--hh-fin-settings"))
+      ),
+    /typography contract token mismatch for FIN features/i
+  );
+});
+
 test("generated artifacts exactly equal the authoritative model", async () => {
   const {
     defaultDesignSystemSourcePath,
@@ -258,9 +413,29 @@ test("generated artifacts exactly equal the authoritative model", async () => {
       `${cssVariable} must be emitted exactly once`
     );
   }
+  for (const { cssVariablePrefix } of contract.typography) {
+    for (const suffix of ["font-size", "line-height", "font-weight", "letter-spacing"]) {
+      assert.ok(css.includes(`${cssVariablePrefix}-${suffix}:`));
+    }
+  }
+  for (const { cssVariable } of contract.typographyContracts) {
+    assert.equal(
+      css.match(new RegExp(`${cssVariable}:`, "g"))?.length,
+      1,
+      `${cssVariable} must be emitted exactly once`
+    );
+  }
+  assert.match(
+    css,
+    /@media \(min-width: 768px\) \{[\s\S]*--hh-type-page-title-font-size: 24px;[\s\S]*--hh-type-page-title-line-height: 30px;/
+  );
   assert.doesNotMatch(
     css.slice(css.indexOf("html.dark")),
     /--hh-(?:space|radius|touch|control|row|panel|task-padding|page-gutter|gap)-/
+  );
+  assert.doesNotMatch(
+    css.slice(css.indexOf("html.dark"), css.indexOf("@media")),
+    /--hh-(?:type|font-family|fin)-/
   );
 });
 

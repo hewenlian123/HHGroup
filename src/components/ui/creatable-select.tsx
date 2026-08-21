@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 
 export interface CreatableSelectProps {
   label?: string;
@@ -96,7 +97,7 @@ export function CreatableSelect({
   return (
     <div ref={containerRef} className="relative">
       {label ? (
-        <label className="text-[10px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+        <label className={cn(TYPO.label, "uppercase text-[var(--neo-text-tertiary)]")}>
           {label}
         </label>
       ) : null}
@@ -109,7 +110,7 @@ export function CreatableSelect({
         onBlur={handleBlur}
         placeholder={value ? undefined : placeholder}
         className={cn(
-          "hh-touch-min flex h-hh-control-comfortable w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-hh-3 py-hh-2 text-sm text-[var(--neo-text-primary)] shadow-none transition-all duration-150 ease-out placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
+          "hh-type-text-entry hh-touch-min flex h-hh-control-comfortable w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-hh-3 py-hh-2 text-[var(--neo-text-primary)] shadow-none transition-all duration-150 ease-out placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
           label ? "mt-1" : ""
         )}
         aria-autocomplete="list"
@@ -128,7 +129,8 @@ export function CreatableSelect({
               role="option"
               aria-selected={opt === value}
               className={cn(
-                "hh-touch-row flex min-h-hh-row-standard cursor-pointer items-center px-hh-3 py-hh-2 text-sm transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
+                "hh-touch-row flex min-h-hh-row-standard cursor-pointer items-center px-hh-3 py-hh-2 transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
+                TYPO.body,
                 opt === value &&
                   (selectedOptionClassName ??
                     "bg-[var(--hh-l3-selected)] text-[var(--neo-text-primary)]")
@@ -145,7 +147,10 @@ export function CreatableSelect({
             <li
               role="option"
               aria-selected={false}
-              className="hh-touch-row flex min-h-hh-row-standard cursor-pointer items-center px-hh-3 py-hh-2 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]"
+              className={cn(
+                "hh-touch-row flex min-h-hh-row-standard cursor-pointer items-center px-hh-3 py-hh-2 text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
+                TYPO.body
+              )}
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleAdd();
@@ -155,7 +160,9 @@ export function CreatableSelect({
             </li>
           )}
           {filtered.length === 0 && !showAddOption && (
-            <li className="px-3 py-2.5 text-sm text-[var(--neo-text-secondary)]">No options</li>
+            <li className={cn("px-3 py-2.5", TYPO.body, "text-[var(--neo-text-secondary)]")}>
+              No options
+            </li>
           )}
         </ul>
       )}

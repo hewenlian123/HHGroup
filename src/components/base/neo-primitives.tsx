@@ -34,14 +34,16 @@ export function NeoPanel({
   const hasHeader = eyebrow || title || description || action;
 
   return (
-    <section className={cn(OS.card, "min-w-0 overflow-hidden", className)}>
+    <section className={cn(OS.card, TYPO.body, "min-w-0 overflow-hidden", className)}>
       {hasHeader ? (
         <div className="flex flex-col gap-2 border-b border-[var(--neo-border)] px-4 py-3 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             {eyebrow ? <p className={TYPO.sectionLabel}>{eyebrow}</p> : null}
-            {title ? <h2 className={cn(TYPO.primaryName, "text-[16px]")}>{title}</h2> : null}
+            {title ? <h2 className={TYPO.panelTitle}>{title}</h2> : null}
             {description ? (
-              <p className={cn(TYPO.mutedText, "mt-0.5 text-[13px] leading-snug")}>{description}</p>
+              <p className={cn(TYPO.body, "mt-0.5 text-[var(--neo-text-secondary)]")}>
+                {description}
+              </p>
             ) : null}
           </div>
           {action ? <div className="shrink-0">{action}</div> : null}
@@ -77,19 +79,10 @@ export function KpiTile({
       )}
     >
       <p className={TYPO.kpiLabel}>{label}</p>
-      <p
-        className={cn(
-          TYPO.kpiValue,
-          "mt-2 break-words text-[18px] leading-tight tabular-nums",
-          kpiToneClass[tone],
-          valueClassName
-        )}
-      >
+      <p className={cn(TYPO.kpiValue, "mt-2 break-words", kpiToneClass[tone], valueClassName)}>
         {value}
       </p>
-      {meta ? (
-        <p className={cn(TYPO.kpiSubtitle, "mt-auto pt-2 text-[12px] leading-snug")}>{meta}</p>
-      ) : null}
+      {meta ? <p className={cn(TYPO.kpiSubtitle, "mt-auto pt-2")}>{meta}</p> : null}
     </div>
   );
 }
@@ -137,10 +130,7 @@ export function NeoTable({
     <TableShell data-neo-table="true" aria-busy={busy || undefined} className={className} {...rest}>
       <div className={cn("airtable-table-scroll", scrollClassName)}>
         <table
-          className={cn(
-            "w-full min-w-[880px] border-collapse text-[13px] text-[var(--neo-text-primary)]",
-            tableClassName
-          )}
+          className={cn("w-full min-w-[880px] border-collapse", TYPO.tableCell, tableClassName)}
         >
           {children}
         </table>
@@ -163,6 +153,7 @@ export function MobileListRow({
     <Comp
       className={cn(
         "group flex min-h-[56px] min-w-0 items-center gap-3 px-3 py-3",
+        TYPO.body,
         "transition-colors duration-150 ease-out hover:bg-[var(--hh-l3-hover)] active:scale-[0.99] active:bg-[var(--hh-l3-pressed)] active:duration-100",
         className
       )}
@@ -263,7 +254,7 @@ export function NeoBulkActions({
       role="status"
       {...rest}
     >
-      <p className="text-[13px] font-medium tabular-nums">
+      <p className={cn(TYPO.tableCell, "hh-fin font-medium")}>
         {count.toLocaleString("en-US")} selected
       </p>
       <div className="flex flex-wrap items-center gap-2">{children}</div>

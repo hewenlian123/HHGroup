@@ -21,9 +21,7 @@ export function KpiCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className={TYPO.kpiLabel}>{label}</p>
-          <p className={cn("mt-2 text-2xl leading-tight", TYPO.kpiValue, emphasis && "text-3xl")}>
-            {value}
-          </p>
+          <p className={cn("mt-2", TYPO.kpiValue, emphasis && "text-3xl leading-9")}>{value}</p>
         </div>
         {Icon ? (
           <div className={OS.iconWell}>
