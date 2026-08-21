@@ -23,15 +23,15 @@ export const listTablePrimaryCellClassName =
 
 /** Currency / numeric emphasis columns (beats per-column color on hover). */
 export const listTableAmountCellClassName = cn(
-  "tabular-nums tracking-normal font-semibold transition-colors duration-200 group-hover:!text-[var(--neo-text-primary)]"
+  "hh-fin font-medium tracking-normal transition-colors duration-200 group-hover:!text-[var(--neo-text-primary)]"
 );
 
 /** Row actions trigger: hidden until row hover/focus on desktop; always visible on touch (<md). */
 export const listRowActionsTriggerClassName = cn(
   "hh-touch-square h-auto w-auto min-h-0 min-w-0 shrink-0 rounded-hh-standard p-hh-2 text-[var(--neo-text-secondary)]",
-  "opacity-0 transition-all duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100",
-  "hover:-translate-y-px hover:bg-[var(--hh-l3-hover)] hover:text-[var(--neo-text-primary)] hover:shadow-sm active:scale-[0.97] active:bg-[var(--hh-l3-pressed)] active:duration-100 max-md:active:scale-[0.96]",
-  "data-[state=open]:!opacity-100 data-[state=open]:bg-[var(--hh-l3-selected)] data-[state=open]:shadow-sm"
+  "opacity-0 transition-colors duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100",
+  "hover:bg-[var(--hh-l3-hover)] hover:text-[var(--neo-text-primary)] active:bg-[var(--hh-l3-pressed)] active:duration-100",
+  "data-[state=open]:!opacity-100 data-[state=open]:bg-[var(--hh-l3-selected)]"
 );
 
 export const listRowActionsContentClassName = cn(
@@ -44,5 +44,5 @@ export const listRowActionsItemClassName = cn(
 );
 
 export const listRowActionsDestructiveClassName = cn(
-  "text-rose-600 focus:text-rose-600 hover:bg-rose-600 hover:text-white dark:text-rose-400 dark:focus:text-rose-400"
+  "text-[var(--hh-danger)] focus:bg-[var(--hh-danger-soft-fill)] focus:text-[var(--hh-danger)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]"
 );

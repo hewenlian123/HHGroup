@@ -7,7 +7,6 @@ import { Topbar } from "./topbar";
 import { BottomNav } from "./bottom-nav";
 import { FloatingActionButton } from "./floating-action-button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { ToastProvider } from "../toast/toast-provider";
 import { PWAInstallPrompt } from "../pwa-install-prompt";
 import { SystemHealthProvider } from "@/contexts/system-health-context";
 import { BreadcrumbOverrideProvider } from "@/contexts/breadcrumb-override-context";
@@ -76,81 +75,75 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (barePage) {
     const printReceiptBg = pathname?.startsWith("/receipt/print/");
     return (
-      <ToastProvider>
-        <AttachmentPreviewProvider>
-          <ScrollLockRecovery />
-          <div
-            className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-workspace"}
-          >
-            {children}
-          </div>
-        </AttachmentPreviewProvider>
-      </ToastProvider>
+      <AttachmentPreviewProvider>
+        <ScrollLockRecovery />
+        <div className={printReceiptBg ? "min-h-screen bg-[#f5f5f5]" : "min-h-screen bg-workspace"}>
+          {children}
+        </div>
+      </AttachmentPreviewProvider>
     );
   }
 
   return (
-    <ToastProvider>
-      <AttachmentPreviewProvider>
-        <BreadcrumbOverrideProvider>
-          <SystemHealthProvider>
-            <LaborAddEntryProvider>
-              <ScrollLockRecovery />
-              <SystemHealthPoller />
-              <div className="app-shell hh-app-shell neo-app-shell flex min-h-0 overflow-hidden bg-canvas sm:gap-3 sm:p-3">
-                {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
-                <Sidebar
-                  className="hidden sm:flex shrink-0 transition-[width] duration-200"
-                  collapsed={isTabletNav ? !tabletSidebarExpanded : collapsed}
-                  onToggleCollapsed={handleToggleSidebar}
-                />
-                {/* Mobile (<640px): slide-out drawer (hamburger menu). */}
-                <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-                  <SheetContent
-                    side="left"
-                    className={cn(
-                      "w-[210px] max-w-[85vw] p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
-                      "border-r border-[var(--neo-border)] bg-canvas"
-                    )}
-                  >
-                    <SheetTitle className="sr-only">Navigation menu</SheetTitle>
-                    <SheetDescription className="sr-only">
-                      Main HH Project OS navigation sections and module links.
-                    </SheetDescription>
-                    <Sidebar
-                      className="h-full w-full !rounded-none !border-none !shadow-none"
-                      onNavigate={() => setMobileOpen(false)}
-                    />
-                  </SheetContent>
-                </Sheet>
-                <div
-                  data-app-main-column
-                  className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+    <AttachmentPreviewProvider>
+      <BreadcrumbOverrideProvider>
+        <SystemHealthProvider>
+          <LaborAddEntryProvider>
+            <ScrollLockRecovery />
+            <SystemHealthPoller />
+            <div className="app-shell hh-app-shell neo-app-shell flex min-h-0 overflow-hidden bg-canvas sm:gap-3 sm:p-3">
+              {/* Tablet/Desktop (640px+): sidebar fixed left, collapsible. */}
+              <Sidebar
+                className="hidden sm:flex shrink-0 transition-[width] duration-200"
+                collapsed={isTabletNav ? !tabletSidebarExpanded : collapsed}
+                onToggleCollapsed={handleToggleSidebar}
+              />
+              {/* Mobile (<640px): slide-out drawer (hamburger menu). */}
+              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                <SheetContent
+                  side="left"
+                  className={cn(
+                    "w-[210px] max-w-[85vw] p-0 shadow-none transition-transform duration-200 data-[state=open]:slide-in-from-left data-[state=closed]:slide-out-to-left",
+                    "border-r border-[var(--neo-border)] bg-canvas"
+                  )}
                 >
-                  <Topbar
-                    onOpenSidebar={() => setMobileOpen(true)}
-                    onToggleSidebar={handleToggleSidebar}
-                    onOpenCommandPalette={() => setCommandOpen(true)}
+                  <SheetTitle className="sr-only">Navigation menu</SheetTitle>
+                  <SheetDescription className="sr-only">
+                    Main HH Project OS navigation sections and module links.
+                  </SheetDescription>
+                  <Sidebar
+                    className="h-full w-full !rounded-none !border-none !shadow-none"
+                    onNavigate={() => setMobileOpen(false)}
                   />
-                  <main
-                    data-app-scroll-root
-                    className={cn(
-                      "neo-workspace-canvas min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-contain bg-workspace [-webkit-overflow-scrolling:touch]",
-                      "pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
-                    )}
-                  >
-                    {children}
-                  </main>
-                  <BottomNav className="fixed bottom-0 left-0 right-0 z-30 sm:hidden" />
-                  <FloatingActionButton />
-                  <NeoCommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
-                </div>
+                </SheetContent>
+              </Sheet>
+              <div
+                data-app-main-column
+                className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+              >
+                <Topbar
+                  onOpenSidebar={() => setMobileOpen(true)}
+                  onToggleSidebar={handleToggleSidebar}
+                  onOpenCommandPalette={() => setCommandOpen(true)}
+                />
+                <main
+                  data-app-scroll-root
+                  className={cn(
+                    "neo-workspace-canvas min-h-0 flex-1 scroll-smooth overflow-y-auto overflow-x-hidden overscroll-y-contain bg-workspace [-webkit-overflow-scrolling:touch]",
+                    "pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0"
+                  )}
+                >
+                  {children}
+                </main>
+                <BottomNav className="fixed bottom-0 left-0 right-0 z-30 sm:hidden" />
+                <FloatingActionButton />
+                <NeoCommandPalette open={commandOpen} onOpenChange={setCommandOpen} />
               </div>
-              <PWAInstallPrompt />
-            </LaborAddEntryProvider>
-          </SystemHealthProvider>
-        </BreadcrumbOverrideProvider>
-      </AttachmentPreviewProvider>
-    </ToastProvider>
+            </div>
+            <PWAInstallPrompt />
+          </LaborAddEntryProvider>
+        </SystemHealthProvider>
+      </BreadcrumbOverrideProvider>
+    </AttachmentPreviewProvider>
   );
 }

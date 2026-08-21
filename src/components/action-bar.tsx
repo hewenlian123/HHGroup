@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { ActionGroup, Toolbar } from "@/components/ui/toolbar";
 
 export function ActionBar({
   left,
@@ -13,18 +14,13 @@ export function ActionBar({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-2 border-b border-zinc-200/70 pb-3 sm:flex-row sm:items-center sm:justify-between dark:border-border",
-        className
-      )}
-    >
+    <Toolbar variant="actions" className={cn("gap-hh-2", className)}>
       {children ?? (
         <>
-          <div className="flex min-w-0 flex-wrap items-center gap-2">{left}</div>
-          <div className="flex items-center gap-2">{right}</div>
+          <ActionGroup className="min-w-0">{left}</ActionGroup>
+          <ActionGroup>{right}</ActionGroup>
         </>
       )}
-    </div>
+    </Toolbar>
   );
 }

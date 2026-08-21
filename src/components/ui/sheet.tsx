@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 import { hhNeoFocusRevealOverlay } from "@/lib/motion-system";
 import { cn } from "@/lib/utils";
 import { TYPO } from "@/lib/typography";
+import { TaskFooter } from "@/components/ui/task-footer";
 
 const Sheet = SheetPrimitive.Root;
 
@@ -72,7 +73,7 @@ const SheetContent = React.forwardRef<
       )}
       {...props}
     >
-      <SheetPrimitive.Close className="hh-touch-square absolute right-hh-4 top-hh-4 flex items-center justify-center rounded-hh-compact opacity-70 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--hh-l3-hover)] hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0 active:scale-[0.97] active:bg-[var(--hh-l3-pressed)] active:duration-100 max-md:active:scale-[0.96] disabled:pointer-events-none touch-manipulation data-[state=open]:bg-[var(--hh-l3-selected)]">
+      <SheetPrimitive.Close className="hh-focus-ring hh-touch-square absolute right-hh-4 top-hh-4 flex items-center justify-center rounded-hh-compact opacity-70 transition-colors duration-150 ease-out hover:bg-[var(--hh-l3-hover)] hover:opacity-100 active:bg-[var(--hh-l3-pressed)] disabled:pointer-events-none touch-manipulation data-[state=open]:bg-[var(--hh-l3-selected)]">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>
@@ -88,14 +89,7 @@ const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
 SheetHeader.displayName = "SheetHeader";
 
 const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col-reverse gap-2 pb-[env(safe-area-inset-bottom)] sm:flex-row sm:justify-end sm:space-x-2 sm:pb-0",
-      "hh-touch-footer",
-      className
-    )}
-    {...props}
-  />
+  <TaskFooter variant="sheet" className={className} {...props} />
 );
 SheetFooter.displayName = "SheetFooter";
 

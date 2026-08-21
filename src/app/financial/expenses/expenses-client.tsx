@@ -53,7 +53,7 @@ import type { ExpenseInboxPreviewSavePayload } from "./expense-inbox-preview-mod
 import { useOnAppSync } from "@/hooks/use-on-app-sync";
 import { useDelayedPending } from "@/hooks/use-delayed-pending";
 import { useInboxUploadHighlight } from "@/hooks/use-inbox-upload-highlight";
-import hotToast from "react-hot-toast";
+import { toast as hotToast } from "@/lib/toast";
 import { useToast } from "@/components/toast/toast-provider";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { EXPENSE_SORT_STORAGE_KEY, readStoredExpenseSort } from "@/lib/expense-list-sort-storage";

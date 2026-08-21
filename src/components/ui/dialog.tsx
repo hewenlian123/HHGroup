@@ -10,6 +10,7 @@ import {
 } from "@/lib/motion-system";
 import { cn } from "@/lib/utils";
 import { TYPO } from "@/lib/typography";
+import { TaskFooter } from "@/components/ui/task-footer";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -28,10 +29,15 @@ const DialogOverlay = React.forwardRef<
 ));
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
+type DialogContentProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+  closeDisabled?: boolean;
+  hideCloseButton?: boolean;
+};
+
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  DialogContentProps
+>(({ className, children, closeDisabled = false, hideCloseButton = false, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -47,10 +53,15 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
-      <DialogPrimitive.Close className="hh-touch-square absolute right-hh-4 top-hh-4 flex items-center justify-center rounded-hh-compact opacity-70 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--hh-l3-hover)] hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0 active:scale-[0.97] active:bg-[var(--hh-l3-pressed)] active:duration-100 max-md:active:scale-[0.96] disabled:pointer-events-none touch-manipulation">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
+      {!hideCloseButton ? (
+        <DialogPrimitive.Close
+          disabled={closeDisabled}
+          className="hh-focus-ring hh-touch-square absolute right-hh-4 top-hh-4 flex items-center justify-center rounded-hh-compact opacity-70 transition-colors duration-150 ease-out hover:bg-[var(--hh-l3-hover)] hover:opacity-100 active:bg-[var(--hh-l3-pressed)] disabled:pointer-events-none disabled:opacity-40 touch-manipulation"
+        >
+          <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
+      ) : null}
       {children}
     </DialogPrimitive.Content>
   </DialogPortal>
@@ -62,11 +73,11 @@ export function DialogDestructiveStrip({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex items-center justify-center border-b border-red-100 bg-red-50 py-3.5 dark:border-red-900/50 dark:bg-red-950/40",
+        "flex items-center justify-center border-b border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] py-hh-3",
         className
       )}
     >
-      <AlertTriangle className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" aria-hidden />
+      <AlertTriangle className="h-5 w-5 shrink-0 text-[var(--hh-danger)]" aria-hidden />
     </div>
   );
 }
@@ -77,14 +88,7 @@ const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
 DialogHeader.displayName = "DialogHeader";
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "sticky bottom-0 mt-2 flex flex-col-reverse gap-2 border-t border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] pt-4 pb-[env(safe-area-inset-bottom)] lg:flex-row lg:justify-end",
-      "hh-touch-footer lg:[&>button]:w-auto",
-      className
-    )}
-    {...props}
-  />
+  <TaskFooter variant="dialog" className={className} {...props} />
 );
 DialogFooter.displayName = "DialogFooter";
 

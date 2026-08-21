@@ -60,11 +60,26 @@ const ROLE_DEFINITIONS = [
     names: ["action-primary", "action-primary-foreground"],
     parser: parsePrimaryAction,
   },
+  { role: "Focus Ring", names: ["focus-ring"], parser: parseCssColor },
   { role: "Success", names: ["success"], parser: parseSingleColor },
   { role: "Warning", names: ["warning"], parser: parseSingleColor },
   { role: "Information", names: ["information"], parser: parseSingleColor },
   { role: "Danger", names: ["danger"], parser: parseSingleColor },
 ];
+
+const SEMANTIC_STATE_DEFINITIONS = [
+  { role: "Success", name: "success" },
+  { role: "Warning", name: "warning" },
+  { role: "Information", name: "information" },
+  { role: "Danger", name: "danger" },
+].map((definition) => ({
+  ...definition,
+  foregroundToken: `--hh-${definition.name}`,
+  softFillToken: `--hh-${definition.name}-soft-fill`,
+  borderToken: `--hh-${definition.name}-border`,
+  softFillAlpha: "8%",
+  borderAlpha: "22%",
+}));
 
 const INVARIANT_GEOMETRY_DEFINITIONS = [
   { role: "Space 1", name: "space-1" },
@@ -205,6 +220,9 @@ const TYPOGRAPHY_CONTRACT_DEFINITIONS = [
 const ROLE_LOOKUP = new Map(
   ROLE_DEFINITIONS.map((definition) => [normalizeRole(definition.role), definition])
 );
+const SEMANTIC_STATE_LOOKUP = new Map(
+  SEMANTIC_STATE_DEFINITIONS.map((definition) => [normalizeRole(definition.role), definition])
+);
 const INVARIANT_GEOMETRY_LOOKUP = new Map(
   INVARIANT_GEOMETRY_DEFINITIONS.map((definition) => [normalizeRole(definition.role), definition])
 );
@@ -286,6 +304,71 @@ export function parseDesignSystemTokens(markdown) {
       });
     }
   }
+
+  const semanticStateRows = extractSemanticStateRows(markdown);
+  const requiredSemanticStateRows = new Map();
+  for (const row of semanticStateRows) {
+    const definition = SEMANTIC_STATE_LOOKUP.get(normalizeRole(row.role));
+    if (!definition) {
+      throw new Error(`Unknown semantic state role: ${row.role}.`);
+    }
+    if (requiredSemanticStateRows.has(definition.role)) {
+      throw new Error(`Duplicate semantic state role: ${definition.role}.`);
+    }
+    requiredSemanticStateRows.set(definition.role, row);
+  }
+
+  const semanticStateTokens = SEMANTIC_STATE_DEFINITIONS.flatMap((definition) => {
+    const row = requiredSemanticStateRows.get(definition.role);
+    if (!row) {
+      throw new Error(`Missing required semantic state role: ${definition.role}.`);
+    }
+
+    const actualTokens = [row.foregroundToken, row.softFillToken, row.borderToken].map(
+      stripCodeTicks
+    );
+    const expectedTokens = [
+      definition.foregroundToken,
+      definition.softFillToken,
+      definition.borderToken,
+    ];
+    if (actualTokens.some((token, index) => token !== expectedTokens[index])) {
+      throw new Error(`Semantic state token mismatch for ${definition.role}.`);
+    }
+
+    const softFillAlpha = stripCodeTicks(row.softFillAlpha);
+    const borderAlpha = stripCodeTicks(row.borderAlpha);
+    if (softFillAlpha !== definition.softFillAlpha) {
+      throw new Error(`Malformed semantic soft fill alpha for ${definition.role}.`);
+    }
+    if (borderAlpha !== definition.borderAlpha) {
+      throw new Error(`Malformed semantic border alpha for ${definition.role}.`);
+    }
+
+    const foreground = tokens.find(({ cssVariable }) => cssVariable === definition.foregroundToken);
+    if (!foreground) {
+      throw new Error(`Missing semantic foreground token for ${definition.role}.`);
+    }
+
+    return [
+      {
+        role: `${definition.role} soft fill`,
+        name: `${definition.name}-soft-fill`,
+        cssVariable: definition.softFillToken,
+        light: colorWithAlpha(foreground.light, definition.softFillAlpha),
+        dark: colorWithAlpha(foreground.dark, definition.softFillAlpha),
+      },
+      {
+        role: `${definition.role} semantic border`,
+        name: `${definition.name}-border`,
+        cssVariable: definition.borderToken,
+        light: colorWithAlpha(foreground.light, definition.borderAlpha),
+        dark: colorWithAlpha(foreground.dark, definition.borderAlpha),
+      },
+    ];
+  });
+
+  tokens.push(...semanticStateTokens);
 
   const duplicateNames = tokens
     .map(({ name }) => name)
@@ -430,7 +513,7 @@ export function parseDesignSystemTokens(markdown) {
   });
 
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     authority: AUTHORITY_NAME,
     source: AUTHORITY_SOURCE_LABEL,
     tokens,
@@ -540,6 +623,7 @@ export function validateRepositoryWiring({ globalsCss, tailwindConfig }) {
     "--neo-border-strong: var(--hh-border-strong);",
     "--neo-shadow-panel: var(--hh-shadow-operational);",
     "--neo-shadow-command: var(--hh-shadow-floating);",
+    "--neo-gold-ring: var(--hh-focus-ring);",
     "--space-1: var(--hh-space-1);",
     "--space-2: var(--hh-space-2);",
     "--space-3: var(--hh-space-3);",
@@ -575,10 +659,19 @@ export function validateRepositoryWiring({ globalsCss, tailwindConfig }) {
     "--hh-shadow-task",
     "--hh-action-primary",
     "--hh-action-primary-foreground",
+    "--hh-focus-ring",
     "--hh-success",
+    "--hh-success-soft-fill",
+    "--hh-success-border",
     "--hh-warning",
+    "--hh-warning-soft-fill",
+    "--hh-warning-border",
     "--hh-information",
+    "--hh-information-soft-fill",
+    "--hh-information-border",
     "--hh-danger",
+    "--hh-danger-soft-fill",
+    "--hh-danger-border",
     ...INVARIANT_GEOMETRY_DEFINITIONS.map(({ name }) => `--hh-${name}`),
     "--hh-font-family-sans",
     ...TYPOGRAPHY_ROLE_DEFINITIONS.flatMap(({ name }) => [
@@ -605,6 +698,10 @@ export function validateRepositoryWiring({ globalsCss, tailwindConfig }) {
     ...ROLE_DEFINITIONS.flatMap(({ names }) =>
       names.map((name) => ({ cssVariable: `--hh-${name}` }))
     ),
+    ...SEMANTIC_STATE_DEFINITIONS.flatMap(({ softFillToken, borderToken }) => [
+      { cssVariable: softFillToken },
+      { cssVariable: borderToken },
+    ]),
     ...INVARIANT_GEOMETRY_DEFINITIONS.map(({ name }) => ({ cssVariable: `--hh-${name}` })),
     ...TYPOGRAPHY_ROLE_DEFINITIONS.flatMap(({ name }) =>
       ["font-size", "line-height", "font-weight", "letter-spacing"].map((property) => ({
@@ -721,6 +818,44 @@ function extractInvariantGeometryRows(markdown) {
   return rows;
 }
 
+function extractSemanticStateRows(markdown) {
+  const lines = markdown.split(/\r?\n/);
+  const headingIndex = lines.findIndex((line) => line.trim() === "### Semantic state mappings");
+  if (headingIndex === -1) {
+    throw new Error('Missing required "Semantic state mappings" section.');
+  }
+
+  const headerIndex = lines.findIndex(
+    (line, index) =>
+      index > headingIndex &&
+      /^\|\s*State\s*\|\s*Foreground token\s*\|\s*Soft fill token\s*\|\s*Border token\s*\|\s*Soft fill alpha\s*\|\s*Border alpha\s*\|\s*Use\s*\|\s*$/.test(
+        line
+      )
+  );
+  if (headerIndex === -1) {
+    throw new Error("Missing semantic state token table header.");
+  }
+
+  const rows = [];
+  for (let index = headerIndex + 2; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.trim().startsWith("|")) break;
+    const cells = splitMarkdownRow(line);
+    if (cells.length !== 7) {
+      throw new Error(`Malformed semantic state row at line ${index + 1}.`);
+    }
+    rows.push({
+      role: cells[0],
+      foregroundToken: cells[1],
+      softFillToken: cells[2],
+      borderToken: cells[3],
+      softFillAlpha: cells[4],
+      borderAlpha: cells[5],
+    });
+  }
+  return rows;
+}
+
 function extractMappingRows(markdown) {
   const lines = markdown.split(/\r?\n/);
   const headingIndex = lines.findIndex((line) => line.trim() === "### Light and dark mappings");
@@ -772,6 +907,10 @@ function parseSingleColor(value) {
     throw new Error(`expected one six-digit hex color, received "${normalized}".`);
   }
   return [normalized.toUpperCase()];
+}
+
+function parseCssColor(value) {
+  return [stripCodeTicks(value).replace(/\s+/g, " ")];
 }
 
 function parseHexSequence(value) {
@@ -928,6 +1067,15 @@ function validateCssShadow(value, role, mode) {
       throw new Error(`Malformed ${mode} value for ${role}: "${value}" is out of range.`);
     }
   }
+}
+
+function colorWithAlpha(hex, alpha) {
+  const match = hex.match(/^#([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2})$/i);
+  if (!match) {
+    throw new Error(`Cannot derive semantic alpha color from "${hex}".`);
+  }
+  const channels = match.slice(1).map((channel) => Number.parseInt(channel, 16));
+  return `rgb(${channels.join(" ")} / ${alpha})`;
 }
 
 function stripCodeTicks(value) {

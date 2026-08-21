@@ -1,114 +1,153 @@
 "use client";
 
 import * as React from "react";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { TYPO } from "@/lib/typography";
 
 export interface ConfirmDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  title: string;
-  description?: React.ReactNode;
-  /** Primary action (e.g. "Delete"). Uses danger variant when destructive. */
-  confirmLabel: string;
   cancelLabel?: string;
-  onConfirm: () => void | Promise<void>;
-  /** Use danger button style for confirm. */
-  destructive?: boolean;
-  /** Disable confirm while async onConfirm is running. */
-  loading?: boolean;
-  /**
-   * When true (default), closes the dialog immediately on confirm, then runs onConfirm.
-   * Parent should perform optimistic UI updates inside onConfirm and handle rollback on failure.
-   */
-  dismissBeforeAsync?: boolean;
   children?: React.ReactNode;
   className?: string;
+  confirmLabel: string;
+  description?: React.ReactNode;
+  destructive?: boolean;
+  /** @deprecated Confirmation now follows the fail-safe async contract. */
+  dismissBeforeAsync?: boolean;
+  loading?: boolean;
+  onConfirm: () => void | Promise<void>;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  title: string;
 }
 
-/** Simple confirmation modal. Minimal design, consistent action buttons. */
+function confirmationErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return "The action could not be completed. Try again or cancel safely.";
+}
+
+/** Canonical consequential-action confirmation with fail-safe async ownership. */
 export function ConfirmDialog({
-  open,
-  onOpenChange,
-  title,
-  description,
-  confirmLabel,
   cancelLabel = "Cancel",
-  onConfirm,
-  destructive,
-  loading = false,
-  dismissBeforeAsync = true,
   children,
   className,
+  confirmLabel,
+  description,
+  destructive,
+  loading = false,
+  onConfirm,
+  onOpenChange,
+  open,
+  title,
 }: ConfirmDialogProps) {
   const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const restoreFocusRef = React.useRef<HTMLElement | null>(null);
   const isBusy = loading || busy;
 
-  const handleConfirm = () => {
-    if (dismissBeforeAsync) {
-      onOpenChange(false);
-      void Promise.resolve(onConfirm()).catch((err) => {
-        console.error("[ConfirmDialog] onConfirm failed:", err);
-      });
-      return;
+  React.useEffect(() => {
+    if (open) return;
+    const rememberFocus = (event: FocusEvent) => {
+      if (event.target instanceof HTMLElement) restoreFocusRef.current = event.target;
+    };
+    if (
+      !restoreFocusRef.current &&
+      document.activeElement instanceof HTMLElement &&
+      document.activeElement !== document.body
+    ) {
+      restoreFocusRef.current = document.activeElement;
     }
-    void (async () => {
-      setBusy(true);
-      try {
-        await Promise.resolve(onConfirm());
-        onOpenChange(false);
-      } finally {
-        setBusy(false);
-      }
-    })();
+    document.addEventListener("focusin", rememberFocus);
+    return () => document.removeEventListener("focusin", rememberFocus);
+  }, [open]);
+
+  React.useEffect(() => {
+    if (open) setError(null);
+  }, [open]);
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (isBusy && !nextOpen) return;
+    if (!nextOpen) setError(null);
+    onOpenChange(nextOpen);
+  };
+
+  const handleConfirm = async () => {
+    if (isBusy) return;
+    setError(null);
+    setBusy(true);
+    try {
+      await Promise.resolve(onConfirm());
+      onOpenChange(false);
+    } catch (cause) {
+      setError(confirmationErrorMessage(cause));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
+        closeDisabled={isBusy}
         className={cn(
-          "max-w-sm rounded-[1.5rem] border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-5 text-[var(--neo-text-primary)] shadow-task",
-          "max-md:rounded-b-none max-md:rounded-t-[1.5rem]",
-          destructive && "border-rose-500/25",
+          "max-w-sm border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] text-[var(--neo-text-primary)] shadow-task",
+          destructive && "border-[var(--hh-danger-border)]",
           className
         )}
+        onEscapeKeyDown={(event) => {
+          if (isBusy) event.preventDefault();
+        }}
+        onPointerDownOutside={(event) => {
+          if (isBusy) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          if (isBusy) event.preventDefault();
+        }}
+        onCloseAutoFocus={(event) => {
+          const focusTarget = restoreFocusRef.current;
+          if (!focusTarget?.isConnected) return;
+          event.preventDefault();
+          focusTarget.focus({ preventScroll: true });
+        }}
       >
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold text-[var(--neo-text-primary)]">
-            {title}
-          </DialogTitle>
-          {description && (
-            <DialogDescription className={TYPO.mutedText}>{description}</DialogDescription>
-          )}
+          <DialogTitle>{title}</DialogTitle>
+          {description ? <DialogDescription>{description}</DialogDescription> : null}
         </DialogHeader>
         {children}
-        <DialogFooter className="gap-2 border-t border-[var(--hh-border)] pt-3">
+        {error ? (
+          <p
+            role="alert"
+            className="rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] p-hh-3 text-hh-error text-[var(--hh-danger)]"
+          >
+            {error}
+          </p>
+        ) : null}
+        <DialogFooter>
           <Button
-            variant="outline"
-            size="default"
-            className="btn-outline-ghost"
-            onClick={() => onOpenChange(false)}
+            type="button"
+            variant="quiet"
+            onClick={() => handleOpenChange(false)}
             disabled={isBusy}
           >
             {cancelLabel}
           </Button>
           <Button
-            variant={destructive ? "outline" : "default"}
-            className={destructive ? "btn-outline-destructive" : undefined}
-            size="default"
-            onClick={handleConfirm}
+            type="button"
+            variant={destructive ? "destructive" : "primary"}
+            onClick={() => void handleConfirm()}
             disabled={isBusy}
+            aria-busy={isBusy || undefined}
           >
-            {isBusy ? "..." : confirmLabel}
+            {isBusy ? "Working…" : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

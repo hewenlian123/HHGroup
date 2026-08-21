@@ -47,7 +47,7 @@ const TableHeader = React.forwardRef<
   <thead
     ref={ref}
     className={cn(
-      "[&_tr]:border-0 [&_tr]:hover:!translate-y-0 [&_tr]:hover:!bg-transparent dark:[&_tr]:hover:!bg-transparent [&_tr]:active:!scale-100",
+      "[&_tr]:border-0 [&_tr]:hover:!bg-transparent dark:[&_tr]:hover:!bg-transparent",
       className
     )}
     {...props}
@@ -105,9 +105,10 @@ TableRow.displayName = "TableRow";
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
+>(({ className, scope, ...props }, ref) => (
   <th
     ref={ref}
+    scope={scope ?? "col"}
     className={cn(
       "h-hh-row-standard bg-[var(--hh-l2-operational-surface)] px-hh-3 text-left align-middle",
       TYPO.tableHeader,

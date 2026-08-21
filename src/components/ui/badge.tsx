@@ -5,21 +5,27 @@ import { cn } from "@/lib/utils";
 import { TYPO } from "@/lib/typography";
 
 const badgeVariants = cva(
-  cn(
-    "inline-flex items-center rounded-full px-2 py-0.5 transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--neo-gold-ring)]",
-    TYPO.chip
-  ),
+  cn("inline-flex items-center rounded-full border px-hh-2 py-0.5", TYPO.chip),
   {
     variants: {
       variant: {
         default:
-          "border border-transparent bg-[var(--neo-graphite-950)] text-white dark:bg-[var(--neo-gold)] dark:text-zinc-950",
+          "border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--neo-text-secondary)]",
         secondary:
-          "border border-transparent bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]",
+          "border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--neo-text-secondary)]",
         destructive:
-          "border border-transparent bg-[#FEE2E2] text-[#991B1B] dark:bg-red-950/40 dark:text-red-300",
-        outline:
-          "border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)]",
+          "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
+        outline: "border-[var(--hh-border-strong)] bg-transparent text-[var(--neo-text-primary)]",
+        neutral:
+          "border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--neo-text-secondary)]",
+        success:
+          "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
+        warning:
+          "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]",
+        information:
+          "border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] text-[var(--hh-information)]",
+        danger:
+          "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
       },
     },
     defaultVariants: {
@@ -29,10 +35,10 @@ const badgeVariants = cva(
 );
 
 export interface BadgeProps
-  extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
+  extends React.HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {}
 
 function Badge({ className, variant, ...props }: BadgeProps) {
-  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+  return <span className={cn(badgeVariants({ variant }), className)} {...props} />;
 }
 
 export { Badge, badgeVariants };

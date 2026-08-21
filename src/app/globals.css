@@ -37,6 +37,15 @@
 }
 
 @layer components {
+  .hh-focus-ring {
+    outline: none;
+  }
+
+  .hh-focus-ring:focus-visible {
+    outline: 2px solid var(--hh-focus-ring);
+    outline-offset: 2px;
+  }
+
   .neo-app-shell {
     background: var(--hh-l0-canvas);
   }
@@ -684,8 +693,8 @@
   }
 
   .neo-input:focus-visible {
-    border-color: var(--neo-gold);
-    box-shadow: 0 0 0 3px var(--neo-gold-ring);
+    border-color: var(--hh-border-strong);
+    box-shadow: none;
   }
 
   .neo-amount {
@@ -922,8 +931,8 @@
     color: var(--neo-text-primary);
   }
   .filter-field:focus-visible {
-    border-color: var(--neo-gold);
-    box-shadow: 0 0 0 3px var(--neo-gold-ring);
+    border-color: var(--hh-border-strong);
+    box-shadow: none;
   }
   @media (min-width: 768px) {
     .filter-field {
@@ -941,15 +950,15 @@
   /* Unified status pills */
   .hh-pill-success {
     @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
-    border-color: rgb(5 150 105 / 0.2);
-    background-color: var(--neo-emerald-soft);
-    color: var(--neo-emerald);
+    border-color: var(--hh-success-border);
+    background-color: var(--hh-success-soft-fill);
+    color: var(--hh-success);
   }
   .hh-pill-warning {
     @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
-    border-color: rgb(184 147 90 / 0.24);
-    background-color: rgb(184 147 90 / 0.1);
-    color: var(--neo-gold);
+    border-color: var(--hh-warning-border);
+    background-color: var(--hh-warning-soft-fill);
+    color: var(--hh-warning);
   }
   .hh-pill-neutral {
     @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
@@ -959,27 +968,15 @@
   }
   .hh-pill-danger {
     @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
-    border-color: rgb(225 29 72 / 0.2);
-    background-color: rgb(255 228 230);
-    color: rgb(190 18 60);
+    border-color: var(--hh-danger-border);
+    background-color: var(--hh-danger-soft-fill);
+    color: var(--hh-danger);
   }
   .hh-pill-info {
     @apply text-hh-status inline-flex items-center rounded-full border px-2 py-0.5;
-    border-color: var(--neo-border);
-    background-color: var(--neo-surface-muted);
-    color: var(--neo-text-secondary);
-  }
-  html.dark .hh-pill-success {
-    border-color: rgb(16 185 129 / 0.24);
-    background-color: rgb(16 185 129 / 0.15);
-    color: rgb(110 231 183);
-  }
-  html.dark .hh-pill-warning {
-    color: var(--neo-gold-soft);
-  }
-  html.dark .hh-pill-danger {
-    background-color: rgb(225 29 72 / 0.15);
-    color: rgb(253 164 175);
+    border-color: var(--hh-information-border);
+    background-color: var(--hh-information-soft-fill);
+    color: var(--hh-information);
   }
   /**
    * Interactive list rows / links: desktop hover, mobile press.
@@ -1178,7 +1175,7 @@
     --neo-sidebar-border: var(--neo-border);
     --neo-gold: #b8935a;
     --neo-gold-soft: #d2b77f;
-    --neo-gold-ring: rgb(184 147 90 / 0.24);
+    --neo-gold-ring: var(--hh-focus-ring);
     --neo-emerald: var(--hh-success);
     --neo-emerald-soft: #ddf8ec;
     --neo-radius-control: var(--hh-radius-standard);
@@ -1209,7 +1206,7 @@
     --destructive-foreground: 0 0% 100%;
     --border: 220 13% 91%;
     --input: 220 13% 91%;
-    --ring: 39 60% 45%;
+    --ring: 0 0% 9%;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
@@ -1268,7 +1265,7 @@
     --neo-border-floating: var(--hh-border-floating);
     --neo-border-strong: var(--hh-border-strong);
     --neo-command-border: var(--hh-border-floating);
-    --neo-gold-ring: rgb(184 147 90 / 0.26);
+    --neo-gold-ring: var(--hh-focus-ring);
     --neo-shadow-panel: var(--hh-shadow-operational);
     --neo-shadow-panel-hover: var(--hh-shadow-operational);
     --neo-shadow-control: var(--hh-shadow-operational);
@@ -1292,7 +1289,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
-    --ring: 39 60% 54%;
+    --ring: 60 7% 94%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;

@@ -1,18 +1,13 @@
-import { Slot } from "@radix-ui/react-slot";
 import { forwardRef, type ComponentPropsWithoutRef, type ReactNode } from "react";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/base/status-badge";
+import { FinancialText } from "@/components/ui/financial-text";
+import { Kpi, type KpiTone } from "@/components/ui/kpi";
+import { MobileListRow as CanonicalMobileListRow } from "@/components/ui/mobile-list-row";
+import { Panel } from "@/components/ui/panel";
 import { TableShell } from "@/components/ui/table";
-import { amountClass, OS, TYPO, type AmountTone } from "@/lib/typography";
+import { Toolbar } from "@/components/ui/toolbar";
+import { OS, TYPO, type AmountTone } from "@/lib/typography";
 import { cn } from "@/lib/utils";
-
-type Tone = "neutral" | "positive" | "negative" | "warning";
-
-const kpiToneClass: Record<Tone, string> = {
-  neutral: "text-[var(--neo-text-primary)]",
-  positive: OS.emeraldAccent,
-  negative: OS.dangerAmount,
-  warning: "text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]",
-};
 
 export function NeoPanel({
   children,
@@ -31,26 +26,17 @@ export function NeoPanel({
   description?: ReactNode;
   action?: ReactNode;
 }) {
-  const hasHeader = eyebrow || title || description || action;
-
   return (
-    <section className={cn(OS.card, TYPO.body, "min-w-0 overflow-hidden", className)}>
-      {hasHeader ? (
-        <div className="flex flex-col gap-2 border-b border-[var(--neo-border)] px-4 py-3 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0">
-            {eyebrow ? <p className={TYPO.sectionLabel}>{eyebrow}</p> : null}
-            {title ? <h2 className={TYPO.panelTitle}>{title}</h2> : null}
-            {description ? (
-              <p className={cn(TYPO.body, "mt-0.5 text-[var(--neo-text-secondary)]")}>
-                {description}
-              </p>
-            ) : null}
-          </div>
-          {action ? <div className="shrink-0">{action}</div> : null}
-        </div>
-      ) : null}
-      <div className={bodyClassName}>{children}</div>
-    </section>
+    <Panel
+      className={className}
+      bodyClassName={bodyClassName}
+      eyebrow={eyebrow}
+      title={title}
+      description={description}
+      action={action}
+    >
+      {children}
+    </Panel>
   );
 }
 
@@ -65,25 +51,19 @@ export function KpiTile({
   label: ReactNode;
   value: ReactNode;
   meta?: ReactNode;
-  tone?: Tone;
+  tone?: KpiTone;
   className?: string;
   valueClassName?: string;
 }) {
   return (
-    <div
-      className={cn(
-        OS.card,
-        "relative flex min-h-[108px] min-w-0 flex-col overflow-hidden px-3 py-3 md:px-3.5 md:py-3.5",
-        "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--hh-border-strong)]",
-        className
-      )}
-    >
-      <p className={TYPO.kpiLabel}>{label}</p>
-      <p className={cn(TYPO.kpiValue, "mt-2 break-words", kpiToneClass[tone], valueClassName)}>
-        {value}
-      </p>
-      {meta ? <p className={cn(TYPO.kpiSubtitle, "mt-auto pt-2")}>{meta}</p> : null}
-    </div>
+    <Kpi
+      label={label}
+      value={value}
+      meta={meta}
+      tone={tone}
+      className={className}
+      valueClassName={valueClassName}
+    />
   );
 }
 
@@ -99,7 +79,8 @@ export function FilterToolbar({
 
 export function NeoToolbar({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div
+    <Toolbar
+      variant="filters"
       data-neo-toolbar="true"
       className={cn(
         OS.filterSurface,
@@ -108,7 +89,7 @@ export function NeoToolbar({ children, className }: { children: ReactNode; class
       )}
     >
       {children}
-    </div>
+    </Toolbar>
   );
 }
 
@@ -148,18 +129,10 @@ export function MobileListRow({
   className?: string;
   asChild?: boolean;
 }) {
-  const Comp = asChild ? Slot : "div";
   return (
-    <Comp
-      className={cn(
-        "group flex min-h-[56px] min-w-0 items-center gap-3 px-3 py-3",
-        TYPO.body,
-        "transition-colors duration-150 ease-out hover:bg-[var(--hh-l3-hover)] active:scale-[0.99] active:bg-[var(--hh-l3-pressed)] active:duration-100",
-        className
-      )}
-    >
+    <CanonicalMobileListRow asChild={asChild} className={cn("min-h-[56px]", className)}>
       {children}
-    </Comp>
+    </CanonicalMobileListRow>
   );
 }
 
@@ -174,23 +147,17 @@ export const NeoMobileCard = forwardRef<HTMLDivElement, NeoMobileCardProps>(func
   { children, className, asChild = false, selected = false, ...rest },
   ref
 ) {
-  const Comp = asChild ? Slot : "div";
   return (
-    <Comp
+    <CanonicalMobileListRow
       ref={ref}
+      asChild={asChild}
       data-neo-mobile-card="true"
-      data-state={selected ? "selected" : undefined}
-      aria-selected={selected || undefined}
-      className={cn(
-        OS.card,
-        "group min-w-0 transition-colors duration-150 ease-out hover:bg-[var(--hh-l3-hover)] active:scale-[0.99] active:bg-[var(--hh-l3-pressed)] active:duration-100",
-        selected && "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)]",
-        className
-      )}
+      selected={selected}
+      className={cn(OS.card, "block min-w-0", className)}
       {...rest}
     >
       {children}
-    </Comp>
+    </CanonicalMobileListRow>
   );
 });
 
@@ -203,11 +170,15 @@ export function NeoAmount({
   tone?: AmountTone;
   className?: string;
 }) {
-  return <span className={cn(amountClass(tone), className)}>{children}</span>;
+  return (
+    <FinancialText tone={tone} className={className}>
+      {children}
+    </FinancialText>
+  );
 }
 
 export function AmountCell(props: { children: ReactNode; tone?: AmountTone; className?: string }) {
-  return <NeoAmount {...props} />;
+  return <FinancialText {...props} />;
 }
 
 export function NeoStatus({
@@ -247,7 +218,7 @@ export function NeoBulkActions({
     <div
       data-neo-bulk-actions="true"
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-3 py-2 text-[var(--neo-text-primary)] shadow-operational",
+        "flex flex-col gap-hh-3 rounded-hh-standard border border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-hh-3 py-hh-2 text-[var(--neo-text-primary)] shadow-operational",
         "sm:flex-row sm:items-center sm:justify-between",
         className
       )}
@@ -257,7 +228,7 @@ export function NeoBulkActions({
       <p className={cn(TYPO.tableCell, "hh-fin font-medium")}>
         {count.toLocaleString("en-US")} selected
       </p>
-      <div className="flex flex-wrap items-center gap-2">{children}</div>
+      <div className="flex flex-wrap items-center gap-hh-2">{children}</div>
     </div>
   );
 }

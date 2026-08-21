@@ -1,7 +1,7 @@
-import { LucideIcon } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { TYPO } from "@/lib/typography";
+import { type LucideIcon } from "lucide-react";
+
+import { Kpi } from "@/components/ui/kpi";
+import { OS } from "@/lib/typography";
 
 export type KpiItem = {
   key: string;
@@ -13,31 +13,23 @@ export type KpiItem = {
 
 export function KpiRow({ items }: { items: KpiItem[] }) {
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid gap-hh-4 sm:grid-cols-2 xl:grid-cols-4">
       {items.map((item) => {
         const Icon = item.icon;
         return (
-          <Card
+          <Kpi
             key={item.key}
-            className={cn(
-              "min-h-[116px] p-4 transition-colors duration-150 hover:bg-muted/20",
-              item.emphasis && "border-zinc-300/70"
-            )}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className={cn(TYPO.kpiLabel, "text-muted-foreground")}>{item.label}</p>
-                <p className={cn("mt-2", TYPO.kpiValue, item.emphasis && "text-[32px] leading-9")}>
-                  {item.value}
-                </p>
-              </div>
-              {Icon ? (
-                <div className="rounded-full border border-zinc-200/70 bg-zinc-100/70 p-2 dark:border-zinc-700 dark:bg-zinc-900/70">
-                  <Icon className="h-4 w-4 text-muted-foreground" />
+            label={item.label}
+            value={item.value}
+            emphasis={item.emphasis}
+            icon={
+              Icon ? (
+                <div className={OS.iconWell}>
+                  <Icon className="h-4 w-4" />
                 </div>
-              ) : null}
-            </div>
-          </Card>
+              ) : undefined
+            }
+          />
         );
       })}
     </section>

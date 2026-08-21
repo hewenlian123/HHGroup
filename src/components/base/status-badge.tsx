@@ -1,30 +1,26 @@
+import type { ComponentProps } from "react";
+
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { TYPO } from "@/lib/typography";
 
-export type StatusBadgeVariant = "default" | "success" | "warning" | "danger" | "muted";
+export type StatusBadgeVariant = "default" | "success" | "warning" | "danger" | "muted" | "info";
 
-const badgeBaseClass = cn(
-  "inline-flex h-5 items-center gap-1.5 rounded-full border px-2",
-  TYPO.chip
-);
-
-const variantPillClass: Record<StatusBadgeVariant, string> = {
-  default:
-    "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]",
-  success:
-    "border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)] dark:bg-emerald-500/15 dark:text-emerald-300",
-  warning:
-    "border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.12)] text-[var(--neo-gold)] dark:text-[var(--neo-gold-soft)]",
-  danger: "border-rose-500/20 bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
-  muted: "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]",
+const variantPillClass: Record<StatusBadgeVariant, ComponentProps<typeof Badge>["variant"]> = {
+  default: "neutral",
+  success: "success",
+  warning: "warning",
+  danger: "danger",
+  muted: "neutral",
+  info: "information",
 };
 
 const variantDotClass: Record<StatusBadgeVariant, string> = {
   default: "bg-[var(--neo-text-tertiary)]",
-  success: "bg-[var(--neo-emerald)] dark:bg-emerald-300",
-  warning: "bg-[var(--neo-gold)] dark:bg-[var(--neo-gold-soft)]",
-  danger: "bg-rose-600 dark:bg-rose-300",
+  success: "bg-[var(--hh-success)]",
+  warning: "bg-[var(--hh-warning)]",
+  danger: "bg-[var(--hh-danger)]",
   muted: "bg-[var(--neo-text-tertiary)]",
+  info: "bg-[var(--hh-information)]",
 };
 
 export interface StatusBadgeProps {
@@ -35,7 +31,7 @@ export interface StatusBadgeProps {
 }
 
 export function statusBadgeVariantClass(variant: StatusBadgeVariant = "default") {
-  return cn(badgeBaseClass, variantPillClass[variant] ?? variantPillClass.default);
+  return variantPillClass[variant] ?? variantPillClass.default;
 }
 
 export function statusBadgeDotClass(variant: StatusBadgeVariant = "default") {
@@ -49,7 +45,7 @@ export function StatusBadge({
   showDot = true,
 }: StatusBadgeProps) {
   return (
-    <span className={cn(statusBadgeVariantClass(variant), className)}>
+    <Badge variant={statusBadgeVariantClass(variant)} className={cn("h-hh-5 gap-hh-1", className)}>
       {showDot ? (
         <span
           aria-hidden="true"
@@ -57,6 +53,6 @@ export function StatusBadge({
         />
       ) : null}
       {label}
-    </span>
+    </Badge>
   );
 }

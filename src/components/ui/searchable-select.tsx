@@ -1,9 +1,7 @@
 "use client";
 
-import * as React from "react";
+import { Combobox } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
-import { motionPopoverLayer } from "@/lib/motion-system";
-import { TYPO } from "@/lib/typography";
 
 export interface SearchableSelectOption {
   id: string;
@@ -19,6 +17,7 @@ export interface SearchableSelectProps {
   "aria-label"?: string;
 }
 
+/** Compatibility wrapper over the canonical Combobox selection mode. */
 export function SearchableSelect({
   value,
   options,
@@ -27,112 +26,17 @@ export function SearchableSelect({
   className,
   "aria-label": ariaLabel = "Select option",
 }: SearchableSelectProps) {
-  const [open, setOpen] = React.useState(false);
-  const [query, setQuery] = React.useState("");
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
-
-  const q = query.trim().toLowerCase();
-  const filtered =
-    q === "" ? options : options.filter((opt) => opt.label.toLowerCase().includes(q));
-
-  const selectedOption = options.find((o) => o.id === value);
-  const displayLabel = selectedOption?.label ?? "";
-
-  React.useEffect(() => {
-    if (!open) setQuery("");
-  }, [open]);
-
-  React.useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleSelect = (id: string) => {
-    onChange(id);
-    setOpen(false);
-  };
-
   return (
-    <div ref={containerRef} className={cn("relative", className)}>
-      <button
-        type="button"
-        aria-label={ariaLabel}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        onClick={() => {
-          setOpen(true);
-          setTimeout(() => inputRef.current?.focus(), 0);
-        }}
-        className={cn(
-          "hh-type-text-entry hh-touch-min flex h-hh-control-comfortable w-full min-w-[140px] items-center justify-between rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-hh-3 text-left text-[var(--neo-text-primary)] shadow-operational transition-all duration-150 ease-out",
-          "hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
-        )}
-      >
-        <span className={!displayLabel ? "text-muted-foreground/70" : ""}>
-          {displayLabel || placeholder}
-        </span>
-        <svg
-          className="h-4 w-4 shrink-0 text-muted-foreground"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      {open && (
-        <div
-          role="listbox"
-          className={cn(
-            "absolute z-[100] mt-hh-1 w-full min-w-[200px] origin-top overflow-hidden rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-hh-2 text-[var(--neo-text-primary)] shadow-floating",
-            motionPopoverLayer
-          )}
-        >
-          <div className="border-b border-[var(--hh-border)] px-2 pb-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search…"
-              className="hh-type-text-entry hh-touch-min h-hh-control-standard w-full rounded-hh-standard border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-hh-2 text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus:border-[var(--neo-gold)] focus:outline-none focus:ring-2 focus:ring-[var(--neo-gold-ring)]"
-            />
-          </div>
-          <ul className="max-h-48 overflow-auto py-1">
-            {filtered.length === 0 ? (
-              <li className={cn("px-3 py-2", TYPO.body, "text-[var(--neo-text-secondary)]")}>
-                No options
-              </li>
-            ) : (
-              filtered.map((opt) => (
-                <li
-                  key={opt.id}
-                  role="option"
-                  aria-selected={opt.id === value}
-                  className={cn(
-                    "hh-touch-row flex min-h-hh-row-standard cursor-pointer items-center px-hh-3 py-hh-2 text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
-                    TYPO.body,
-                    opt.id === value &&
-                      "bg-[var(--hh-l3-selected)] font-medium text-[var(--neo-text-primary)]"
-                  )}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleSelect(opt.id);
-                  }}
-                >
-                  {opt.label}
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-      )}
-    </div>
+    <Combobox
+      mode="select"
+      value={value}
+      options={options.map((option) => ({ value: option.id, label: option.label }))}
+      onValueChange={onChange}
+      placeholder={placeholder}
+      className={cn("hh-type-text-entry hh-touch-min", className)}
+      controlClassName="transition-colors shadow-operational"
+      contentClassName="overflow-hidden shadow-floating"
+      aria-label={ariaLabel}
+    />
   );
 }

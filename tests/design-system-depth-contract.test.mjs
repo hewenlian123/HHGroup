@@ -36,6 +36,38 @@ test("generates the approved Phase 2 depth, border, and shadow tokens", () => {
   }
 });
 
+test("generates the approved Phase 5 focus and semantic soft-state tokens", () => {
+  const css = source("src/styles/design-tokens.generated.css");
+
+  for (const declaration of [
+    "--hh-focus-ring: rgb(23 23 23 / 32%);",
+    "--hh-success-soft-fill: rgb(22 129 91 / 8%);",
+    "--hh-success-border: rgb(22 129 91 / 22%);",
+    "--hh-warning-soft-fill: rgb(161 98 7 / 8%);",
+    "--hh-warning-border: rgb(161 98 7 / 22%);",
+    "--hh-information-soft-fill: rgb(37 99 168 / 8%);",
+    "--hh-information-border: rgb(37 99 168 / 22%);",
+    "--hh-danger-soft-fill: rgb(180 35 47 / 8%);",
+    "--hh-danger-border: rgb(180 35 47 / 22%);",
+  ]) {
+    assert.ok(css.includes(declaration), `missing light declaration: ${declaration}`);
+  }
+
+  for (const declaration of [
+    "--hh-focus-ring: rgb(242 242 239 / 38%);",
+    "--hh-success-soft-fill: rgb(76 175 124 / 8%);",
+    "--hh-success-border: rgb(76 175 124 / 22%);",
+    "--hh-warning-soft-fill: rgb(216 163 74 / 8%);",
+    "--hh-warning-border: rgb(216 163 74 / 22%);",
+    "--hh-information-soft-fill: rgb(110 159 209 / 8%);",
+    "--hh-information-border: rgb(110 159 209 / 22%);",
+    "--hh-danger-soft-fill: rgb(227 107 114 / 8%);",
+    "--hh-danger-border: rgb(227 107 114 / 22%);",
+  ]) {
+    assert.ok(css.includes(declaration), `missing dark declaration: ${declaration}`);
+  }
+});
+
 test("maps Phase 2 tokens through global compatibility aliases and Tailwind", () => {
   const css = source("src/app/globals.css");
   const tailwind = source("tailwind.config.ts");

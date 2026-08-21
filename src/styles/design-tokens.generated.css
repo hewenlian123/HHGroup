@@ -22,10 +22,19 @@
   --hh-border-strong: rgb(22 22 22 / 17%);
   --hh-action-primary: #171717;
   --hh-action-primary-foreground: #ffffff;
+  --hh-focus-ring: rgb(23 23 23 / 32%);
   --hh-success: #16815b;
   --hh-warning: #a16207;
   --hh-information: #2563a8;
   --hh-danger: #b4232f;
+  --hh-success-soft-fill: rgb(22 129 91 / 8%);
+  --hh-success-border: rgb(22 129 91 / 22%);
+  --hh-warning-soft-fill: rgb(161 98 7 / 8%);
+  --hh-warning-border: rgb(161 98 7 / 22%);
+  --hh-information-soft-fill: rgb(37 99 168 / 8%);
+  --hh-information-border: rgb(37 99 168 / 22%);
+  --hh-danger-soft-fill: rgb(180 35 47 / 8%);
+  --hh-danger-border: rgb(180 35 47 / 22%);
   --hh-space-1: 4px;
   --hh-space-2: 8px;
   --hh-space-3: 12px;
@@ -146,10 +155,19 @@ html.dark {
   --hh-border-strong: rgb(255 255 255 / 17%);
   --hh-action-primary: #f2f2ef;
   --hh-action-primary-foreground: #161616;
+  --hh-focus-ring: rgb(242 242 239 / 38%);
   --hh-success: #4caf7c;
   --hh-warning: #d8a34a;
   --hh-information: #6e9fd1;
   --hh-danger: #e36b72;
+  --hh-success-soft-fill: rgb(76 175 124 / 8%);
+  --hh-success-border: rgb(76 175 124 / 22%);
+  --hh-warning-soft-fill: rgb(216 163 74 / 8%);
+  --hh-warning-border: rgb(216 163 74 / 22%);
+  --hh-information-soft-fill: rgb(110 159 209 / 8%);
+  --hh-information-border: rgb(110 159 209 / 22%);
+  --hh-danger-soft-fill: rgb(227 107 114 / 8%);
+  --hh-danger-border: rgb(227 107 114 / 22%);
 }
 
 @media (min-width: 768px) {

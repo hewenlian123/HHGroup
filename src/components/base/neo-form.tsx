@@ -11,9 +11,11 @@ import {
 } from "@/components/ui/dialog";
 import { FinanceDatePicker, type FinanceDatePickerProps } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { NativeSelect, type NativeSelectProps } from "@/components/ui/native-select";
 import { SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { TaskFooter } from "@/components/ui/task-footer";
 import { NEO, TYPO } from "@/lib/typography";
 import { cn } from "@/lib/utils";
 
@@ -24,13 +26,13 @@ export function NeoFieldLabel({
   ...props
 }: React.LabelHTMLAttributes<HTMLLabelElement> & { required?: boolean }) {
   return (
-    <label
+    <Label
       className={cn("block uppercase text-[var(--neo-text-tertiary)]", TYPO.label, className)}
       {...props}
     >
       {children}
-      {required ? <span className="ml-1 text-[var(--neo-gold)]">*</span> : null}
-    </label>
+      {required ? <span className="ml-hh-1 text-[var(--hh-danger)]">*</span> : null}
+    </Label>
   );
 }
 
@@ -93,6 +95,7 @@ export const NeoSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
   return <NativeSelect ref={ref} className={cn("h-10 rounded-md", className)} {...props} />;
 });
 
+/** @deprecated Use `FinanceDatePicker`; retained as a compatibility wrapper. */
 export function NeoDatePicker({ className, size = "md", ...props }: FinanceDatePickerProps) {
   return <FinanceDatePicker size={size} className={className} {...props} />;
 }
@@ -105,16 +108,17 @@ export function NeoActionFooter({
   className?: string;
 }) {
   return (
-    <div
+    <TaskFooter
+      variant="sticky"
       className={cn(
-        "sticky bottom-0 z-10 -mx-5 mt-2 flex flex-col-reverse gap-2 border-t border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
-        "sm:mx-0 sm:flex-row sm:items-center sm:justify-end sm:px-0 sm:pb-4",
+        "-mx-5 mt-hh-2 px-5 py-hh-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
+        "sm:mx-0 sm:flex-row sm:items-center sm:justify-end sm:px-0 sm:pb-hh-4",
         "max-md:[&>button]:min-h-11 max-md:[&>button]:w-full",
         className
       )}
     >
       {children}
-    </div>
+    </TaskFooter>
   );
 }
 
@@ -137,8 +141,8 @@ export function NeoModal({
   return (
     <DialogContent
       className={cn(
-        "flex max-w-[520px] flex-col gap-0 overflow-hidden rounded-[1.5rem] border border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--neo-text-primary)] shadow-task",
-        "max-md:max-h-[calc(100dvh-0.75rem)] max-md:rounded-b-none max-md:rounded-t-[1.5rem]",
+        "flex max-w-[520px] flex-col gap-0 overflow-hidden p-0",
+        "max-md:max-h-[calc(100dvh-0.75rem)] max-md:rounded-b-none",
         className
       )}
       {...props}
@@ -173,6 +177,7 @@ export function NeoModal({
   );
 }
 
+/** @deprecated Use `Drawer`; retained as a compatibility wrapper. */
 export function NeoDrawer({
   children,
   className,
@@ -220,11 +225,11 @@ export function NeoDrawer({
 
 export const neoFormFieldClassName = cn("space-y-1.5");
 export const neoFormNoticeClassName = cn(
-  "rounded-lg border border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.10)] px-3 py-2 text-[var(--neo-text-primary)]",
+  "rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-hh-3 py-hh-2 text-[var(--hh-information)]",
   TYPO.helper
 );
 export const neoFormErrorClassName = cn(
-  "rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-rose-200",
+  "rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-hh-3 py-hh-2 text-[var(--hh-danger)]",
   TYPO.error
 );
 export const neoFormPanelClassName = cn(NEO.surface, "p-5");

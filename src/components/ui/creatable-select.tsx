@@ -1,8 +1,7 @@
 "use client";
 
-import * as React from "react";
+import { Combobox } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
-import { TYPO } from "@/lib/typography";
 
 export interface CreatableSelectProps {
   label?: string;
@@ -11,12 +10,11 @@ export interface CreatableSelectProps {
   placeholder?: string;
   onChange: (value: string) => void;
   onCreate: (newValue: string) => void | Promise<void>;
-  /** Optional theme scope for the dropdown surface. */
   contentClassName?: string;
-  /** Optional selected-option treatment for a scoped visual system. */
   selectedOptionClassName?: string;
 }
 
+/** Compatibility wrapper over the canonical Combobox creatable mode. */
 export function CreatableSelect({
   label,
   value,
@@ -27,145 +25,20 @@ export function CreatableSelect({
   contentClassName,
   selectedOptionClassName,
 }: CreatableSelectProps) {
-  const [query, setQuery] = React.useState("");
-  const [isOpen, setIsOpen] = React.useState(false);
-  const [isCreating, setIsCreating] = React.useState(false);
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
-
-  const q = query.trim().toLowerCase();
-  const filtered = q === "" ? options : options.filter((opt) => opt.toLowerCase().includes(q));
-  const hasExactMatch = q !== "" && options.some((opt) => opt.toLowerCase() === q);
-  const showAddOption = q !== "" && !hasExactMatch;
-
-  React.useEffect(() => {
-    if (!isOpen) setQuery("");
-  }, [isOpen]);
-
-  React.useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleSelect = (option: string) => {
-    onChange(option);
-    setIsOpen(false);
-    setQuery("");
-    inputRef.current?.blur();
-  };
-
-  const handleAdd = async () => {
-    const toAdd = query.trim();
-    if (!toAdd) return;
-    setIsCreating(true);
-    try {
-      await Promise.resolve(onCreate(toAdd));
-      setIsOpen(false);
-      setQuery("");
-      inputRef.current?.blur();
-    } finally {
-      setIsCreating(false);
-    }
-  };
-
-  const displayValue = isOpen ? query : value;
-
-  const openDropdown = () => {
-    if (!isOpen) setQuery(value);
-    setIsOpen(true);
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value;
-    setQuery(v);
-    onChange(v);
-    if (!isOpen) setIsOpen(true);
-  };
-
-  const handleBlur = () => {
-    if (!showAddOption && filtered.length === 0) {
-      setIsOpen(false);
-      setQuery(value);
-    }
-  };
-
   return (
-    <div ref={containerRef} className="relative">
-      {label ? (
-        <label className={cn(TYPO.label, "uppercase text-[var(--neo-text-tertiary)]")}>
-          {label}
-        </label>
-      ) : null}
-      <input
-        ref={inputRef}
-        type="text"
-        value={displayValue}
-        onChange={handleInputChange}
-        onFocus={openDropdown}
-        onBlur={handleBlur}
-        placeholder={value ? undefined : placeholder}
-        className={cn(
-          "hh-type-text-entry hh-touch-min flex h-hh-control-comfortable w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-hh-3 py-hh-2 text-[var(--neo-text-primary)] shadow-none transition-all duration-150 ease-out placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
-          label ? "mt-1" : ""
-        )}
-        aria-autocomplete="list"
-      />
-      {isOpen && (
-        <ul
-          role="listbox"
-          className={cn(
-            "absolute z-[100] mt-hh-1 max-h-56 w-full overflow-auto rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-hh-2 text-[var(--neo-text-primary)] shadow-floating",
-            contentClassName
-          )}
-        >
-          {filtered.map((opt) => (
-            <li
-              key={opt}
-              role="option"
-              aria-selected={opt === value}
-              className={cn(
-                "hh-touch-row flex min-h-hh-row-standard cursor-pointer items-center px-hh-3 py-hh-2 transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
-                TYPO.body,
-                opt === value &&
-                  (selectedOptionClassName ??
-                    "bg-[var(--hh-l3-selected)] text-[var(--neo-text-primary)]")
-              )}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                handleSelect(opt);
-              }}
-            >
-              {opt}
-            </li>
-          ))}
-          {showAddOption && (
-            <li
-              role="option"
-              aria-selected={false}
-              className={cn(
-                "hh-touch-row flex min-h-hh-row-standard cursor-pointer items-center px-hh-3 py-hh-2 text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
-                TYPO.body
-              )}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                handleAdd();
-              }}
-            >
-              {isCreating ? "Adding…" : `+ Add "${query.trim()}"`}
-            </li>
-          )}
-          {filtered.length === 0 && !showAddOption && (
-            <li className={cn("px-3 py-2.5", TYPO.body, "text-[var(--neo-text-secondary)]")}>
-              No options
-            </li>
-          )}
-        </ul>
-      )}
-    </div>
+    <Combobox
+      mode="creatable"
+      className="hh-type-text-entry hh-touch-min"
+      label={label}
+      value={value}
+      options={options.map((option) => ({ value: option, label: option }))}
+      placeholder={placeholder}
+      onQueryChange={onChange}
+      onValueChange={onChange}
+      onCreate={onCreate}
+      contentClassName={cn("overflow-hidden shadow-floating", contentClassName)}
+      selectedOptionClassName={selectedOptionClassName}
+      aria-label={label ?? placeholder}
+    />
   );
 }

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { ErrorRetry } from "@/components/ui/system-state";
 
 /** Minimal full-page fallback when a server route cannot load required data (avoids error boundary). */
 export function ServerDataLoadFallback({
@@ -12,15 +14,15 @@ export function ServerDataLoadFallback({
 }) {
   return (
     <div className="min-h-[40vh] p-6">
-      <p className="border-b border-border/60 pb-3 text-sm text-muted-foreground" role="alert">
-        {message}
-      </p>
-      <Link
-        href={backHref}
-        className="mt-4 inline-block text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-      >
-        {backLabel}
-      </Link>
+      <ErrorRetry
+        title="Unable to load data"
+        description={message}
+        action={
+          <Button asChild variant="secondary">
+            <Link href={backHref}>{backLabel}</Link>
+          </Button>
+        }
+      />
     </div>
   );
 }

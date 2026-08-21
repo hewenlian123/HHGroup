@@ -1,8 +1,9 @@
-import { LucideIcon } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { OS, TYPO } from "@/lib/typography";
+import { type LucideIcon } from "lucide-react";
 
+import { Kpi } from "@/components/ui/kpi";
+import { OS } from "@/lib/typography";
+
+/** Compatibility wrapper for the former KPI card name. */
 export function KpiCard({
   label,
   value,
@@ -17,18 +18,18 @@ export function KpiCard({
   className?: string;
 }) {
   return (
-    <Card className={cn("min-h-[108px] p-5", emphasis && "border-emerald-500/20", className)}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className={TYPO.kpiLabel}>{label}</p>
-          <p className={cn("mt-2", TYPO.kpiValue, emphasis && "text-3xl leading-9")}>{value}</p>
-        </div>
-        {Icon ? (
+    <Kpi
+      label={label}
+      value={value}
+      emphasis={emphasis}
+      className={className}
+      icon={
+        Icon ? (
           <div className={OS.iconWell}>
-            <Icon className="h-4 w-4 text-muted-foreground" />
+            <Icon className="h-4 w-4" />
           </div>
-        ) : null}
-      </div>
-    </Card>
+        ) : undefined
+      }
+    />
   );
 }

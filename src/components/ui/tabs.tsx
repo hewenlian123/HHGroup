@@ -30,7 +30,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "hh-touch-min inline-flex items-center justify-center whitespace-nowrap rounded-hh-compact px-hh-3 py-1.5 touch-manipulation transition-all duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--hh-l3-selected)] data-[state=active]:text-[var(--neo-text-primary)] data-[state=inactive]:hover:-translate-y-px data-[state=inactive]:hover:bg-[var(--hh-l3-hover)] data-[state=inactive]:hover:text-[var(--neo-text-primary)] active:scale-[0.97] active:bg-[var(--hh-l3-pressed)] active:duration-100 max-md:active:scale-[0.96]",
+      "hh-touch-min inline-flex items-center justify-center whitespace-nowrap rounded-hh-compact px-hh-3 py-1.5 touch-manipulation transition-colors duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--hh-l3-selected)] data-[state=active]:text-[var(--neo-text-primary)] data-[state=inactive]:hover:bg-[var(--hh-l3-hover)] data-[state=inactive]:hover:text-[var(--neo-text-primary)] active:bg-[var(--hh-l3-pressed)] active:duration-100",
       TYPO.button,
       motionInputFocus,
       className
@@ -44,14 +44,7 @@ const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
 >(({ className, ...props }, ref) => (
-  <TabsPrimitive.Content
-    ref={ref}
-    className={cn(
-      "mt-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
-      className
-    )}
-    {...props}
-  />
+  <TabsPrimitive.Content ref={ref} className={cn("hh-focus-ring mt-4", className)} {...props} />
 ));
 TabsContent.displayName = TabsPrimitive.Content.displayName;
 

@@ -10,22 +10,18 @@ import { cn } from "@/lib/utils";
 export const motionTransition = "transition-all duration-150 ease-out";
 
 /** Hover on buttons, links, list tiles (not heavy cards). */
-export const motionInteractiveHover = cn(
-  "hover:-translate-y-px hover:bg-[var(--neo-surface-hover)]"
-);
+export const motionInteractiveHover = cn("hover:bg-[var(--hh-l3-hover)]");
 
 /** Press feedback for clickable controls (desktop + mobile scale). */
-export const motionClickableActive = cn(
-  "active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96]"
-);
+export const motionClickableActive = cn("active:bg-[var(--hh-l3-pressed)] active:duration-100");
 
 /** Dense icon-only controls (toolbar, ghost icons). */
-export const motionIconButtonHover = "hover:bg-[var(--neo-surface-hover)]";
+export const motionIconButtonHover = "hover:bg-[var(--hh-l3-hover)]";
 
-export const motionIconButtonActive = "active:scale-[0.95] active:duration-100";
+export const motionIconButtonActive = "active:bg-[var(--hh-l3-pressed)] active:duration-100";
 
 /** Table / dense list rows — subtler press than full click targets. */
-export const motionRowPress = "active:scale-[0.99] active:duration-100";
+export const motionRowPress = "active:bg-[var(--hh-l3-pressed)] active:duration-100";
 
 /** Data table rows — no vertical nudge; Linear-style flat hover. */
 export const motionListTableRow = cn(
@@ -36,27 +32,27 @@ export const motionListTableRow = cn(
 );
 
 /** Form controls — ring only, no layout jump. */
-export const motionInputFocus = cn(
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0"
-);
+export const motionInputFocus = cn("hh-focus-ring");
 
 /** Optional: bordered cards / image tiles that should feel “lifted”. */
-export const motionCardHover = cn(motionTransition, "hover:scale-[1.02] hover:shadow-md");
+export const motionCardHover = cn(
+  motionTransition,
+  "hover:border-[var(--hh-border-strong)] hover:shadow-operational"
+);
 
 /**
- * Shared popover / menu surface: fade + zoom (matches dropdown spec).
+ * Shared popover / menu surface: restrained fade only.
  * Pair with slide-in-from-* from Radix side if needed.
  */
 export const motionPopoverLayer = cn(
   "duration-150 ease-out",
   "data-[state=open]:animate-in data-[state=closed]:animate-out",
-  "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-  "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+  "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
 );
 
 /** HH Neo Focus Reveal: shared modal overlay. */
 export const hhNeoFocusRevealOverlay = cn(
-  "bg-neutral-950/45 backdrop-blur-[8px]",
+  "bg-neutral-950/45",
   "data-[state=open]:animate-hh-modal-fade-in data-[state=closed]:animate-hh-modal-fade-out",
   "motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out",
   "data-[state=closed]:pointer-events-none"

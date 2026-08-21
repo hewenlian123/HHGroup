@@ -1,55 +1,33 @@
 "use client";
 
+import { StatusBadge, type StatusBadgeVariant } from "@/components/base/status-badge";
 import { cn } from "@/lib/utils";
 
 /** Semantic colors for ledger / reconciliation / OCR review flows. */
 export type MatchStatusKind = "matched" | "unmatched" | "suggested" | "ignored";
 
-const KIND_META: Record<MatchStatusKind, { label: string; dot: string; text: string }> = {
-  matched: {
-    label: "Matched",
-    dot: "bg-emerald-600 dark:bg-emerald-400",
-    text: "text-emerald-800 dark:text-emerald-200",
-  },
-  unmatched: {
-    label: "Unmatched",
-    dot: "bg-amber-500 dark:bg-amber-400",
-    text: "text-amber-900 dark:text-amber-100",
-  },
-  suggested: {
-    label: "Suggested",
-    dot: "bg-blue-600 dark:bg-blue-400",
-    text: "text-blue-900 dark:text-blue-100",
-  },
-  ignored: {
-    label: "Ignored",
-    dot: "bg-zinc-400 dark:bg-zinc-500",
-    text: "text-zinc-600 dark:text-zinc-400",
-  },
+const KIND_META: Record<MatchStatusKind, { label: string; variant: StatusBadgeVariant }> = {
+  matched: { label: "Matched", variant: "success" },
+  unmatched: { label: "Unmatched", variant: "warning" },
+  suggested: { label: "Suggested", variant: "info" },
+  ignored: { label: "Ignored", variant: "muted" },
 };
 
 export interface MatchStatusBadgeProps {
   kind: MatchStatusKind;
-  /** Override visible label (e.g. "Reconciled" → still use kind `matched` colors). */
+  /** Override visible label while retaining the domain mapping. */
   label?: string;
   className?: string;
 }
 
-/** Dot + label; use for bank rows, expense review, and suggestion lists. */
 export function MatchStatusBadge({ kind, label, className }: MatchStatusBadgeProps) {
-  const m = KIND_META[kind];
-  const text = label ?? m.label;
+  const metadata = KIND_META[kind];
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 text-xs font-medium tabular-nums",
-        m.text,
-        className
-      )}
-    >
-      <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", m.dot)} aria-hidden />
-      {text}
-    </span>
+    <StatusBadge
+      label={label ?? metadata.label}
+      variant={metadata.variant}
+      className={cn("hh-fin", className)}
+    />
   );
 }
 

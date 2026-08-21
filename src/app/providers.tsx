@@ -2,8 +2,7 @@
 
 import * as React from "react";
 import { keepPreviousData, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HotToaster } from "@/components/hot-toast-root";
-import { Toaster } from "@/components/ui/sonner";
+import { ToastProvider } from "@/components/toast/toast-provider";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = React.useState(
@@ -21,9 +20,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
-      <HotToaster />
-      <Toaster position="bottom-right" closeButton />
+      <ToastProvider>{children}</ToastProvider>
     </QueryClientProvider>
   );
 }

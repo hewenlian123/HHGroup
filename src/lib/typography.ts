@@ -39,13 +39,12 @@ export const NEO = {
   surfaceMuted:
     "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)]",
   buttonPrimary:
-    "border-transparent bg-[var(--neo-graphite-950)] text-white hover:bg-[var(--neo-graphite-800)] focus-visible:ring-[var(--neo-gold-ring)] dark:bg-[var(--neo-gold)] dark:text-zinc-950 dark:hover:bg-[var(--neo-gold-soft)]",
+    "border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 active:bg-[var(--hh-action-primary)]",
   buttonSecondary:
     "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]",
   buttonGhost:
     "border-0 bg-transparent text-[var(--neo-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--neo-text-primary)] active:bg-[var(--hh-l3-pressed)]",
-  focusRing:
-    "focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0",
+  focusRing: "hh-focus-ring",
   status: {
     success: "hh-pill-success",
     warning: "hh-pill-warning",
@@ -59,9 +58,9 @@ export const OS = {
   workspace: NEO.workspace,
   card: NEO.surface,
   cardHover:
-    "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--hh-border-strong)] hover:shadow-operational",
+    "transition-[border-color,box-shadow] duration-200 ease-out hover:border-[var(--hh-border-strong)] hover:shadow-operational",
   iconWell:
-    "rounded-hh-compact border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-hh-2 text-[var(--neo-text-secondary)]",
+    "rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-hh-2 text-[var(--neo-text-secondary)]",
   tableShell: `relative w-full overflow-hidden ${NEO.surface}`,
   tableDivider: "border-[var(--neo-border)]",
   filterSurface: NEO.surface,
@@ -69,8 +68,8 @@ export const OS = {
     "rounded-hh-standard border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] px-hh-5 py-12 text-center shadow-operational",
   primaryButton: NEO.buttonPrimary,
   secondaryButton: NEO.buttonSecondary,
-  emeraldAccent: "text-emerald-700 dark:text-emerald-400",
-  dangerAmount: "text-rose-600 dark:text-rose-400",
+  emeraldAccent: "text-[var(--hh-success)]",
+  dangerAmount: "text-[var(--hh-danger)]",
   neutralAmount: "text-[var(--neo-text-primary)]",
 } as const;
 
@@ -93,9 +92,9 @@ export type AmountTone = "neutral" | "muted" | "income" | "expense" | "danger";
 export const AMOUNT_TONE_CLASS: Record<AmountTone, string> = {
   neutral: OS.neutralAmount,
   muted: "text-[var(--neo-text-secondary)]",
-  income: "text-emerald-700 dark:text-emerald-400",
-  expense: OS.dangerAmount,
-  danger: OS.dangerAmount,
+  income: "text-[var(--hh-success)]",
+  expense: "text-[var(--hh-danger)]",
+  danger: "text-[var(--hh-danger)]",
 };
 
 export function amountClass(tone: AmountTone = "neutral"): string {

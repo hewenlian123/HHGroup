@@ -14,14 +14,14 @@ const PopoverTrigger = PopoverPrimitive.Trigger;
 const PopoverAnchor = PopoverPrimitive.Anchor;
 
 type PopoverContentProps = React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & {
-  /** Preserve the legacy dark portal by default; shared theme-aware controls may opt out. */
+  /** Explicit scope only for bounded exceptions such as the estimate glass calendar. */
   themeScope?: "dark" | "light" | "inherit";
 };
 
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   PopoverContentProps
->(({ className, align = "start", sideOffset = 4, themeScope = "dark", ...props }, ref) => (
+>(({ className, align = "start", sideOffset = 4, themeScope = "inherit", ...props }, ref) => (
   <PopoverPrimitive.Portal>
     <PopoverPrimitive.Content
       ref={ref}

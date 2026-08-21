@@ -14,13 +14,13 @@ async function loadContract() {
   }
 }
 
-test("parses the current Design System v1 color, geometry, and typography contract", async () => {
+test("parses the current Design System v1 color, state, geometry, and typography contract", async () => {
   const { defaultDesignSystemSourcePath, parseDesignSystemTokens } = await loadContract();
   const markdown = readFileSync(defaultDesignSystemSourcePath(), "utf8");
   const contract = parseDesignSystemTokens(markdown);
 
-  assert.equal(contract.schemaVersion, 4);
-  assert.equal(contract.tokens.length, 24);
+  assert.equal(contract.schemaVersion, 5);
+  assert.equal(contract.tokens.length, 33);
   assert.equal(contract.dimensions.length, 30);
   assert.equal(contract.typography.length, 15);
   assert.equal(contract.typographyContracts.length, 7);
@@ -40,6 +40,35 @@ test("parses the current Design System v1 color, geometry, and typography contra
       light: "#FFFFFF",
       dark: "#161616",
     }
+  );
+  assert.deepEqual(
+    contract.tokens.find(({ name }) => name === "focus-ring"),
+    {
+      role: "Focus Ring",
+      name: "focus-ring",
+      cssVariable: "--hh-focus-ring",
+      light: "rgb(23 23 23 / 32%)",
+      dark: "rgb(242 242 239 / 38%)",
+    }
+  );
+  assert.deepEqual(
+    contract.tokens.filter(({ name }) => name.startsWith("success-")),
+    [
+      {
+        role: "Success soft fill",
+        name: "success-soft-fill",
+        cssVariable: "--hh-success-soft-fill",
+        light: "rgb(22 129 91 / 8%)",
+        dark: "rgb(76 175 124 / 8%)",
+      },
+      {
+        role: "Success semantic border",
+        name: "success-border",
+        cssVariable: "--hh-success-border",
+        light: "rgb(22 129 91 / 22%)",
+        dark: "rgb(76 175 124 / 22%)",
+      },
+    ]
   );
   assert.equal(
     contract.tokens.find(({ name }) => name === "border-floating").light,
@@ -264,6 +293,54 @@ test("fails closed for missing, duplicate, malformed, and incomplete authority r
         )
       ),
     /malformed Light value for Task Shadow/i
+  );
+
+  const focusRow = markdown.match(/^\| Focus Ring \|.*$/m)?.[0];
+  assert.ok(focusRow, "expected the authority Focus Ring row fixture");
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(`${focusRow}\n`, "")),
+    /missing required token role: Focus Ring/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace("rgb(23 23 23 / 32%)", "rgb(23 23 / 32%)")),
+    /malformed Light value for Focus Ring/i
+  );
+});
+
+test("fails closed for missing, duplicate, malformed, unknown, and mismatched semantic state rows", async () => {
+  const { defaultDesignSystemSourcePath, parseDesignSystemTokens } = await loadContract();
+  const markdown = readFileSync(defaultDesignSystemSourcePath(), "utf8");
+  const row = markdown.match(/^\| Success \| `--hh-success` \|.*$/m)?.[0];
+
+  assert.ok(row, "expected the authority Success semantic state row fixture");
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(`${row}\n`, "")),
+    /missing required semantic state role: Success/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(row, `${row}\n${row}`)),
+    /duplicate semantic state role: Success/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(row, row.replace("`8%`", "`10%`"))),
+    /malformed semantic soft fill alpha for Success/i
+  );
+  assert.throws(
+    () =>
+      parseDesignSystemTokens(
+        markdown.replace(
+          row,
+          `${row}\n| Decorative | \`--hh-decorative\` | \`--hh-decorative-soft-fill\` | \`--hh-decorative-border\` | \`8%\` | \`22%\` | Not approved. |`
+        )
+      ),
+    /unknown semantic state role: Decorative/i
+  );
+  assert.throws(
+    () =>
+      parseDesignSystemTokens(
+        markdown.replace(row, row.replace("--hh-success-soft-fill", "--hh-success-muted"))
+      ),
+    /semantic state token mismatch for Success/i
   );
 });
 

@@ -4,6 +4,7 @@ import * as React from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -88,10 +89,10 @@ export function RowActionsMenu({
       <DropdownMenuTrigger asChild>
         <Button
           type="button"
-          variant="outline"
+          variant="quiet"
           size="icon"
           className={cn(
-            "btn-outline-ghost h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground",
+            "h-hh-control-compact w-hh-8 shrink-0 text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]",
             touchFriendly && "min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 md:h-8 md:w-8",
             appearance === "list" && listRowActionsTriggerClassName,
             className
@@ -115,10 +116,8 @@ export function RowActionsMenu({
         )}
       >
         {visibleActions.map((action, i) => (
-          <button
+          <DropdownMenuItem
             key={i}
-            type="button"
-            role="menuitem"
             disabled={action.disabled}
             className={cn(
               "flex w-full items-center border-0 bg-transparent text-left outline-none disabled:pointer-events-none disabled:opacity-50",
@@ -130,17 +129,13 @@ export function RowActionsMenu({
                     ? listRowActionsDestructiveClassName
                     : "text-destructive focus:text-destructive"))
             )}
-            onClick={(e) => {
-              e.stopPropagation();
-              runAction(action);
-            }}
-            onPointerDown={(e) => {
+            onSelect={(e) => {
               e.stopPropagation();
               runAction(action);
             }}
           >
             {action.label}
-          </button>
+          </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>

@@ -6,6 +6,7 @@ import { Check, ChevronRight, Circle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { motionPopoverLayer } from "@/lib/motion-system";
+import { TYPO } from "@/lib/typography";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
@@ -28,7 +29,8 @@ const DropdownMenuSubTrigger = React.forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      "flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-[var(--neo-text-primary)] outline-none transition-all duration-150 ease-out focus:bg-[var(--hh-l3-hover)] data-[state=open]:bg-[var(--hh-l3-selected)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+      "hh-touch-row flex min-h-hh-row-dense cursor-default select-none items-center gap-hh-2 rounded-hh-compact px-hh-2 py-hh-2 text-[var(--neo-text-primary)] outline-none transition-colors duration-150 ease-out focus:bg-[var(--hh-l3-hover)] data-[state=open]:bg-[var(--hh-l3-selected)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+      TYPO.body,
       inset && "pl-8",
       className
     )}
@@ -47,7 +49,7 @@ const DropdownMenuSubContent = React.forwardRef<
   <DropdownMenuPrimitive.SubContent
     ref={ref}
     className={cn(
-      "z-[100] min-w-[8rem] overflow-hidden rounded-md border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-1 py-2 text-[var(--neo-text-primary)] shadow-floating origin-[--radix-dropdown-menu-content-transform-origin]",
+      "z-[100] min-w-[8rem] overflow-hidden rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-hh-1 py-hh-2 text-[var(--neo-text-primary)] shadow-floating origin-[--radix-dropdown-menu-content-transform-origin]",
       motionPopoverLayer,
       "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
       className
@@ -66,7 +68,7 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        "z-[100] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-1 py-2 text-[var(--neo-text-primary)] shadow-floating origin-[--radix-dropdown-menu-content-transform-origin]",
+        "z-[100] max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-hh-1 py-hh-2 text-[var(--neo-text-primary)] shadow-floating origin-[--radix-dropdown-menu-content-transform-origin]",
         motionPopoverLayer,
         "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         className
@@ -86,7 +88,8 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-pointer select-none items-center gap-2 rounded-md px-3 py-2 text-sm text-[var(--neo-text-primary)] outline-none transition-all duration-150 ease-out focus:bg-[var(--hh-l3-hover)] focus:text-[var(--neo-text-primary)] hover:-translate-y-px hover:bg-[var(--hh-l3-hover)] active:scale-[0.97] active:bg-[var(--hh-l3-pressed)] active:duration-100 max-md:active:scale-[0.96] data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0",
+      "hh-touch-row relative flex min-h-hh-row-dense cursor-pointer select-none items-center gap-hh-2 rounded-hh-compact px-hh-3 py-hh-2 text-[var(--neo-text-primary)] outline-none transition-colors duration-150 ease-out focus:bg-[var(--hh-l3-hover)] focus:text-[var(--neo-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] active:duration-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0",
+      TYPO.body,
       inset && "pl-8",
       className
     )}
@@ -102,7 +105,8 @@ const DropdownMenuCheckboxItem = React.forwardRef<
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm text-[var(--neo-text-primary)] outline-none transition-colors duration-75 ease-out focus:bg-[var(--hh-l3-hover)] focus:text-[var(--neo-text-primary)] active:bg-[var(--hh-l3-pressed)] data-[state=checked]:bg-[var(--hh-l3-selected)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "hh-touch-row relative flex min-h-hh-row-dense cursor-default select-none items-center rounded-hh-compact py-hh-2 pl-hh-8 pr-hh-2 text-[var(--neo-text-primary)] outline-none transition-colors duration-150 ease-out focus:bg-[var(--hh-l3-hover)] focus:text-[var(--neo-text-primary)] active:bg-[var(--hh-l3-pressed)] data-[state=checked]:bg-[var(--hh-l3-selected)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      TYPO.body,
       className
     )}
     checked={checked}
@@ -125,7 +129,8 @@ const DropdownMenuRadioItem = React.forwardRef<
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm text-[var(--neo-text-primary)] outline-none transition-colors duration-75 ease-out focus:bg-[var(--hh-l3-hover)] focus:text-[var(--neo-text-primary)] active:bg-[var(--hh-l3-pressed)] data-[state=checked]:bg-[var(--hh-l3-selected)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "hh-touch-row relative flex min-h-hh-row-dense cursor-default select-none items-center rounded-hh-compact py-hh-2 pl-hh-8 pr-hh-2 text-[var(--neo-text-primary)] outline-none transition-colors duration-150 ease-out focus:bg-[var(--hh-l3-hover)] focus:text-[var(--neo-text-primary)] active:bg-[var(--hh-l3-pressed)] data-[state=checked]:bg-[var(--hh-l3-selected)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      TYPO.body,
       className
     )}
     {...props}
@@ -149,7 +154,8 @@ const DropdownMenuLabel = React.forwardRef<
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={cn(
-      "px-2 py-1.5 text-sm font-semibold text-[var(--neo-text-secondary)]",
+      "px-hh-2 py-hh-2 text-[var(--neo-text-secondary)]",
+      TYPO.label,
       inset && "pl-8",
       className
     )}
@@ -171,9 +177,7 @@ const DropdownMenuSeparator = React.forwardRef<
 DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 
 const DropdownMenuShortcut = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => {
-  return (
-    <span className={cn("ml-auto text-xs tracking-widest opacity-60", className)} {...props} />
-  );
+  return <span className={cn("ml-auto opacity-60", TYPO.metadata, className)} {...props} />;
 };
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";
 

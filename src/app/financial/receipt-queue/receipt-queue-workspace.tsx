@@ -47,7 +47,7 @@ import {
   MobileSearchFiltersRow,
   mobileListPagePaddingClass,
 } from "@/components/mobile/mobile-list-chrome";
-import hotToast from "react-hot-toast";
+import { toast as hotToast } from "@/lib/toast";
 import { useToast } from "@/components/toast/toast-provider";
 import { uiActionLog, uiActionMark, uiNavLog, uiNavMark } from "@/lib/ui-action-perf";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

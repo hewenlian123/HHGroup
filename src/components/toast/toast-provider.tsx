@@ -1,121 +1,159 @@
 "use client";
 
 import * as React from "react";
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from "lucide-react";
+
+import { publishToast, subscribeToToasts, type ToastInput, type ToastVariant } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { TYPO } from "@/lib/typography";
 
-export type ToastVariant = "default" | "success" | "error" | "system";
-
-export type ToastInput = {
-  title: string;
-  description?: string;
-  variant?: ToastVariant;
-  durationMs?: number;
-  /** When set, the toast is clickable and navigates or runs this action. */
-  onClick?: () => void;
-};
+export type { ToastInput, ToastVariant } from "@/lib/toast";
 
 type ToastRecord = ToastInput & {
-  id: string;
-  createdAt: number;
-  onClick?: () => void;
   exiting?: boolean;
+  id: string;
 };
 
 type ToastContextValue = {
-  toast: (t: ToastInput) => void;
+  toast: (input: ToastInput) => void;
 };
 
 const ToastContext = React.createContext<ToastContextValue | null>(null);
 
-function variantClasses(v: ToastVariant) {
-  switch (v) {
-    case "success":
-      return "border-[#DCFCE7] bg-[#DCFCE7] text-[#166534] dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-50";
-    case "error":
-      return "border-red-200 bg-red-50 text-red-950 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-50";
-    case "system":
-      return "border-[rgb(184_147_90_/_0.28)] bg-[rgb(16_22_31_/_0.94)] text-[#f3f4f5] shadow-[0_18px_48px_rgb(0_0_0_/_0.28)] backdrop-blur-xl";
-    default:
-      return "border-zinc-200 bg-background text-foreground dark:border-border";
-  }
+function normalizedVariant(variant: ToastVariant | undefined) {
+  if (variant === "error") return "danger";
+  if (variant === "system" || variant === "default" || !variant) return "information";
+  return variant;
 }
 
-function variantDescriptionClasses(v: ToastVariant) {
-  if (v === "system") return "text-[#c4c9cf]";
-  return "text-muted-foreground";
-}
+const variantPresentation = {
+  success: {
+    className:
+      "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
+    Icon: CheckCircle2,
+    label: "Success",
+  },
+  warning: {
+    className:
+      "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]",
+    Icon: AlertTriangle,
+    label: "Warning",
+  },
+  information: {
+    className:
+      "border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] text-[var(--hh-information)]",
+    Icon: Info,
+    label: "Information",
+  },
+  danger: {
+    className:
+      "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
+    Icon: XCircle,
+    label: "Error",
+  },
+};
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = React.useState<ToastRecord[]>([]);
+  const timeoutsRef = React.useRef<Set<number>>(new Set());
 
-  const toast = React.useCallback((t: ToastInput) => {
-    const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    const rec: ToastRecord = {
-      id,
-      createdAt: Date.now(),
-      variant: t.variant ?? "default",
-      durationMs: t.durationMs ?? 2000,
-      title: t.title,
-      description: t.description,
-      onClick: t.onClick,
-    };
-    setToasts((prev) => [rec, ...prev].slice(0, 4));
-
-    const total = rec.durationMs ?? 2000;
-    const exitLead = Math.max(0, total - 180);
-    window.setTimeout(() => {
-      setToasts((prev) => prev.map((x) => (x.id === id ? { ...x, exiting: true } : x)));
-    }, exitLead);
-    window.setTimeout(() => {
-      setToasts((prev) => prev.filter((x) => x.id !== id));
-    }, total);
+  const dismiss = React.useCallback((id: string) => {
+    setToasts((current) => current.filter((toast) => toast.id !== id));
   }, []);
 
-  const value = React.useMemo<ToastContextValue>(() => ({ toast }), [toast]);
+  const enqueue = React.useCallback(
+    (input: ToastInput) => {
+      const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+      const duration = input.durationMs ?? 2600;
+      setToasts((current) => [{ ...input, id }, ...current].slice(0, 4));
+
+      const exitTimer = window.setTimeout(
+        () => {
+          setToasts((current) =>
+            current.map((toast) => (toast.id === id ? { ...toast, exiting: true } : toast))
+          );
+        },
+        Math.max(0, duration - 180)
+      );
+      const removeTimer = window.setTimeout(() => dismiss(id), duration);
+      timeoutsRef.current.add(exitTimer);
+      timeoutsRef.current.add(removeTimer);
+    },
+    [dismiss]
+  );
+
+  React.useEffect(() => subscribeToToasts(enqueue), [enqueue]);
+  React.useEffect(
+    () => () => {
+      for (const timeout of timeoutsRef.current) window.clearTimeout(timeout);
+      timeoutsRef.current.clear();
+    },
+    []
+  );
+
+  const value = React.useMemo<ToastContextValue>(() => ({ toast: publishToast }), []);
 
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-[calc(7.25rem+env(safe-area-inset-bottom))] right-3 z-50 flex w-[min(264px,calc(100vw-1.5rem))] flex-col gap-2 sm:bottom-4 sm:right-4 sm:w-[340px]">
-        {toasts.map((t) => {
-          const Wrapper = t.onClick ? "button" : "div";
-          const variant = t.variant ?? "default";
+      <div
+        aria-live="polite"
+        aria-label="Notifications"
+        aria-relevant="additions text"
+        className="pointer-events-none fixed bottom-[calc(7.25rem+env(safe-area-inset-bottom))] right-hh-3 z-[250] flex w-[min(340px,calc(100vw-1.5rem))] flex-col gap-hh-2 sm:bottom-hh-4 sm:right-hh-4"
+      >
+        {toasts.map((toast) => {
+          const presentation = variantPresentation[normalizedVariant(toast.variant)];
+          const Icon = presentation.Icon;
+          const content = (
+            <>
+              <Icon className="mt-px h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="min-w-0 flex-1">
+                <span className={cn("block", TYPO.bodyStrong)}>{toast.title}</span>
+                {toast.description ? (
+                  <span className={cn("mt-hh-1 block text-current opacity-85", TYPO.helper)}>
+                    {toast.description}
+                  </span>
+                ) : null}
+              </span>
+            </>
+          );
+
           return (
-            <Wrapper
-              key={t.id}
-              type={t.onClick ? "button" : undefined}
-              onClick={t.onClick}
+            <div
+              key={toast.id}
+              data-toast="true"
+              aria-label={`${presentation.label}: ${toast.title}`}
               className={cn(
-                "pointer-events-auto w-full rounded-md border px-3 py-2 text-left shadow-[var(--shadow-1)] will-change-transform",
-                variantClasses(variant),
-                variant === "system" &&
-                  "max-sm:rounded-lg max-sm:bg-[rgb(18_22_27_/_0.92)] max-sm:px-2.5 max-sm:py-1.5 max-sm:shadow-[0_10px_30px_rgb(0_0_0_/_0.22)]",
-                t.onClick && !t.exiting && "cursor-pointer hover:opacity-90",
-                t.exiting ? "animate-toast-out" : "animate-toast-in"
+                "pointer-events-auto flex min-h-hh-touch items-start gap-hh-2 rounded-hh-standard border px-hh-3 py-hh-2 shadow-floating",
+                presentation.className,
+                toast.exiting ? "animate-toast-out" : "animate-toast-in",
+                "motion-reduce:animate-none"
               )}
-              role="status"
-              aria-live="polite"
             >
-              <div
-                className={cn(
-                  "text-sm font-medium",
-                  variant === "system" && "max-sm:text-[13px] max-sm:leading-4"
-                )}
-              >
-                {t.title}
-              </div>
-              {t.description ? (
-                <div
-                  className={cn(
-                    "mt-0.5 text-sm",
-                    variantDescriptionClasses(variant),
-                    variant === "system" && "max-sm:mt-0 max-sm:text-xs max-sm:leading-4"
-                  )}
+              {toast.onClick ? (
+                <button
+                  type="button"
+                  className="hh-focus-ring flex min-w-0 flex-1 items-start gap-hh-2 rounded-hh-compact text-left"
+                  onClick={() => {
+                    toast.onClick?.();
+                    dismiss(toast.id);
+                  }}
                 >
-                  {t.description}
-                </div>
-              ) : null}
-            </Wrapper>
+                  {content}
+                </button>
+              ) : (
+                content
+              )}
+              <button
+                type="button"
+                className="hh-focus-ring hh-touch-square -mr-hh-1 flex h-hh-control-compact w-hh-control-compact shrink-0 items-center justify-center rounded-hh-compact text-current opacity-70 hover:bg-[var(--hh-l3-hover)] hover:opacity-100"
+                onClick={() => dismiss(toast.id)}
+                aria-label={`Dismiss ${presentation.label.toLowerCase()} notification`}
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
           );
         })}
       </div>
@@ -124,7 +162,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useToast() {
-  const ctx = React.useContext(ToastContext);
-  if (!ctx) throw new Error("useToast must be used within ToastProvider");
-  return ctx;
+  const context = React.useContext(ToastContext);
+  if (!context) throw new Error("useToast must be used within ToastProvider");
+  return context;
 }

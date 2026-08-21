@@ -3,6 +3,7 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { NEO, TYPO } from "@/lib/typography";
+import { ActionGroup, Toolbar } from "@/components/ui/toolbar";
 
 /** Page-level title and optional description. */
 export function PageHeader({
@@ -65,7 +66,8 @@ export function ActionBar({
   className?: string;
 }) {
   return (
-    <div
+    <Toolbar
+      variant="actions"
       className={cn(
         NEO.toolbar,
         "flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between",
@@ -74,11 +76,11 @@ export function ActionBar({
     >
       {children ?? (
         <>
-          <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">{left}</div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">{right}</div>
+          <ActionGroup className="min-w-0 sm:gap-3">{left}</ActionGroup>
+          <ActionGroup className="sm:gap-3">{right}</ActionGroup>
         </>
       )}
-    </div>
+    </Toolbar>
   );
 }
 

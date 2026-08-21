@@ -1,2 +1,2 @@
-/** Re-export Sonner for `toast.success` / `toast.error` (ensure `<Toaster />` is mounted in `providers.tsx`). */
-export { toast } from "sonner";
+/** @deprecated Import the canonical adapter from `@/lib/toast`. */
+export { toast } from "@/lib/toast";

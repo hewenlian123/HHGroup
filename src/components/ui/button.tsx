@@ -6,15 +6,16 @@ import { cn } from "@/lib/utils";
 import { NEO, TYPO } from "@/lib/typography";
 import {
   motionClickableActive,
-  motionIconButtonActive,
   motionInteractiveHover,
   motionTransition,
 } from "@/lib/motion-system";
 
+const primaryActionClass =
+  "border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] hover:opacity-90 active:bg-[var(--hh-action-primary)]";
+
 /**
- * Button variants — only `default`, `secondary`, and `outline`.
- * Icon-only / toolbar: `variant="ghost"` (or legacy `outline` + `btn-outline-ghost`).
- * For destructive text actions: `variant="outline" className="btn-outline-destructive"`.
+ * Canonical operational action primitive. Workflow components compose this
+ * primitive rather than owning a separate visual button system.
  */
 const buttonVariants = cva(
   cn(
@@ -28,13 +29,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: cn("border shadow-none", NEO.buttonPrimary),
+        default: cn("border shadow-none", primaryActionClass),
+        primary: cn("border shadow-none", primaryActionClass),
         secondary: cn("border shadow-none", NEO.buttonSecondary),
         outline: cn("border shadow-none", NEO.buttonSecondary),
-        ghost: cn(
-          "shadow-none hover:!translate-y-0 hover:!shadow-none active:!scale-[0.97] active:!duration-100 max-md:active:!scale-[0.96]",
-          NEO.buttonGhost
-        ),
+        quiet: cn("shadow-none", NEO.buttonGhost),
+        ghost: cn("shadow-none", NEO.buttonGhost),
+        destructive:
+          "border border-transparent bg-[var(--hh-danger)] text-white shadow-none hover:opacity-90 active:bg-[var(--hh-danger)]",
       },
       size: {
         /* Touch-friendly: the shared utility applies the 44px minimum on touch/small screens. */
@@ -49,16 +51,6 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-    compoundVariants: [
-      {
-        size: "icon",
-        class: cn(
-          "hover:!-translate-y-px hover:!bg-[var(--neo-surface-hover)]",
-          motionIconButtonActive,
-          "max-md:active:!scale-[0.95]"
-        ),
-      },
-    ],
   }
 );
 
