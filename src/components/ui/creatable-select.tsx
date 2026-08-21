@@ -109,7 +109,7 @@ export function CreatableSelect({
         onBlur={handleBlur}
         placeholder={value ? undefined : placeholder}
         className={cn(
-          "flex h-10 min-h-[44px] w-full rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-2 text-sm text-[var(--neo-text-primary)] shadow-none transition-all duration-150 ease-out placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] lg:min-h-10",
+          "flex h-10 min-h-[44px] w-full rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-sm text-[var(--neo-text-primary)] shadow-none transition-all duration-150 ease-out placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] lg:min-h-10",
           label ? "mt-1" : ""
         )}
         aria-autocomplete="list"
@@ -118,7 +118,7 @@ export function CreatableSelect({
         <ul
           role="listbox"
           className={cn(
-            "dark absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] py-2 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+            "absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-2 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-floating)]",
             contentClassName
           )}
         >
@@ -128,10 +128,10 @@ export function CreatableSelect({
               role="option"
               aria-selected={opt === value}
               className={cn(
-                "min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]",
+                "min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
                 opt === value &&
                   (selectedOptionClassName ??
-                    "bg-[rgb(184_147_90_/_0.12)] text-[var(--neo-gold-soft)]")
+                    "bg-[var(--hh-l3-selected)] text-[var(--neo-text-primary)]")
               )}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -145,7 +145,7 @@ export function CreatableSelect({
             <li
               role="option"
               aria-selected={false}
-              className="min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+              className="min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]"
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleAdd();

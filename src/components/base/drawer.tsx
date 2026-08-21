@@ -35,12 +35,12 @@ export function Drawer({
       <SheetContent
         side="right"
         className={cn(
-          "dark flex h-full w-full max-w-md flex-col gap-0 border-l border-white/10 bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] sm:max-w-md",
+          "flex h-full w-full max-w-md flex-col gap-0 border-l border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-task)] sm:max-w-md",
           className
         )}
       >
         {(title || description) && (
-          <SheetHeader className="border-b border-[var(--neo-border)] px-5 py-4 pr-12 text-left">
+          <SheetHeader className="border-b border-[var(--hh-border)] px-5 py-4 pr-12 text-left">
             {title && (
               <SheetTitle className="text-base font-semibold text-[var(--neo-text-primary)]">
                 {title}

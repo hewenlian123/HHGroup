@@ -1098,7 +1098,11 @@
     --neo-surface-base: var(--hh-l1-workspace);
     --neo-surface-raised: var(--hh-l2-operational-surface);
     --neo-surface-muted: var(--hh-l2-operational-surface);
-    --neo-surface-hover: #e6e9ed;
+    --neo-surface-hover: var(--hh-l3-hover);
+    --neo-surface-selected: var(--hh-l3-selected);
+    --neo-surface-pressed: var(--hh-l3-pressed);
+    --neo-surface-floating: var(--hh-l4-floating-surface);
+    --neo-surface-task: var(--hh-l5-task-surface);
     --neo-text-primary: var(--hh-text-primary);
     --neo-text-secondary: var(--hh-text-secondary);
     --neo-text-tertiary: var(--hh-text-tertiary);
@@ -1106,6 +1110,7 @@
     --neo-canvas-text-secondary: var(--neo-text-secondary);
     --neo-canvas-text-tertiary: var(--neo-text-tertiary);
     --neo-border: var(--hh-border);
+    --neo-border-floating: var(--hh-border-floating);
     --neo-border-strong: var(--hh-border-strong);
     --neo-command-border: var(--hh-border-floating);
     --neo-sidebar-border: var(--neo-border);
@@ -1116,11 +1121,11 @@
     --neo-emerald-soft: #ddf8ec;
     --neo-radius-control: 0.5rem;
     --neo-radius-panel: 0.75rem;
-    --neo-shadow-panel: 0 1px 2px rgb(17 19 21 / 0.05), 0 18px 44px rgb(17 19 21 / 0.05);
-    --neo-shadow-panel-hover: 0 1px 2px rgb(17 19 21 / 0.06), 0 20px 48px rgb(17 19 21 / 0.08);
-    --neo-shadow-control: 0 1px 0 rgb(255 255 255 / 0.62) inset, 0 10px 24px rgb(17 19 21 / 0.06);
-    --neo-shadow-command: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 14px 34px rgb(17 19 21 / 0.08);
-    --neo-shadow-sidebar: 0 22px 68px rgb(0 0 0 / 0.34);
+    --neo-shadow-panel: var(--hh-shadow-operational);
+    --neo-shadow-panel-hover: var(--hh-shadow-operational);
+    --neo-shadow-control: var(--hh-shadow-operational);
+    --neo-shadow-command: var(--hh-shadow-floating);
+    --neo-shadow-sidebar: var(--hh-shadow-operational);
 
     /* ---- HH Group color tokens (HSL components for hsl()) ---- */
     /* Legacy shadcn aliases: workspace and operational surfaces, not the outer canvas. */
@@ -1179,9 +1184,9 @@
 
     /* ---- Shadow tokens ---- */
     --shadow-0: none;
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
-    --shadow-2: 0 10px 24px rgba(0, 0, 0, 0.12);
-    --shadow-popover: var(--shadow-2);
+    --shadow-1: var(--hh-shadow-operational);
+    --shadow-2: var(--hh-shadow-floating);
+    --shadow-popover: var(--hh-shadow-floating);
   }
   html.dark {
     --neo-canvas: var(--hh-l0-canvas);
@@ -1189,18 +1194,23 @@
     --neo-surface-base: var(--hh-l1-workspace);
     --neo-surface-raised: var(--hh-l2-operational-surface);
     --neo-surface-muted: var(--hh-l2-operational-surface);
-    --neo-surface-hover: #1b2430;
+    --neo-surface-hover: var(--hh-l3-hover);
+    --neo-surface-selected: var(--hh-l3-selected);
+    --neo-surface-pressed: var(--hh-l3-pressed);
+    --neo-surface-floating: var(--hh-l4-floating-surface);
+    --neo-surface-task: var(--hh-l5-task-surface);
     --neo-text-primary: var(--hh-text-primary);
     --neo-text-secondary: var(--hh-text-secondary);
     --neo-text-tertiary: var(--hh-text-tertiary);
     --neo-border: var(--hh-border);
+    --neo-border-floating: var(--hh-border-floating);
     --neo-border-strong: var(--hh-border-strong);
     --neo-command-border: var(--hh-border-floating);
     --neo-gold-ring: rgb(184 147 90 / 0.26);
-    --neo-shadow-panel: 0 1px 0 rgb(255 255 255 / 0.035) inset, 0 20px 54px rgb(0 0 0 / 0.3);
-    --neo-shadow-panel-hover: 0 1px 0 rgb(255 255 255 / 0.052) inset, 0 24px 62px rgb(0 0 0 / 0.38);
-    --neo-shadow-control: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 12px 30px rgb(0 0 0 / 0.22);
-    --neo-shadow-command: 0 1px 0 rgb(255 255 255 / 0.048) inset, 0 18px 42px rgb(0 0 0 / 0.32);
+    --neo-shadow-panel: var(--hh-shadow-operational);
+    --neo-shadow-panel-hover: var(--hh-shadow-operational);
+    --neo-shadow-control: var(--hh-shadow-operational);
+    --neo-shadow-command: var(--hh-shadow-floating);
 
     --background: 0 0% 6.7%;
     --foreground: 0 0% 98%;
@@ -1228,9 +1238,9 @@
     --chart-5: 340 75% 55%;
 
     /* ---- Shadow tokens (dark) ---- */
-    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
-    --shadow-2: 0 12px 30px rgba(0, 0, 0, 0.55);
-    --shadow-popover: var(--shadow-2);
+    --shadow-1: var(--hh-shadow-operational);
+    --shadow-2: var(--hh-shadow-floating);
+    --shadow-popover: var(--hh-shadow-floating);
   }
 }
 

@@ -53,15 +53,15 @@ export const NEO = {
   input: "neo-input",
   amount: "neo-amount",
   surface:
-    "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+    "rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-operational)]",
   surfaceMuted:
-    "rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-primary)]",
+    "rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)]",
   buttonPrimary:
     "border-transparent bg-[var(--neo-graphite-950)] text-white hover:bg-[var(--neo-graphite-800)] focus-visible:ring-[var(--neo-gold-ring)] dark:bg-[var(--neo-gold)] dark:text-zinc-950 dark:hover:bg-[var(--neo-gold-soft)]",
   buttonSecondary:
-    "border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)] dark:border-[var(--neo-border)] dark:bg-[var(--neo-surface-raised)] dark:text-[var(--neo-text-primary)] dark:hover:bg-[var(--neo-surface-muted)]",
+    "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]",
   buttonGhost:
-    "border-0 bg-transparent text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]",
+    "border-0 bg-transparent text-[var(--neo-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--neo-text-primary)] active:bg-[var(--hh-l3-pressed)]",
   focusRing:
     "focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0",
   status: {
@@ -77,14 +77,14 @@ export const OS = {
   workspace: NEO.workspace,
   card: NEO.surface,
   cardHover:
-    "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--neo-border-strong)] hover:shadow-[var(--neo-shadow-panel-hover)]",
+    "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--hh-border-strong)] hover:shadow-[var(--hh-shadow-operational)]",
   iconWell:
     "rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-2 text-[var(--neo-text-secondary)]",
   tableShell: `relative w-full overflow-hidden ${NEO.surface}`,
   tableDivider: "border-[var(--neo-border)]",
   filterSurface: NEO.surface,
   emptyState:
-    "rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-5 py-12 text-center shadow-[var(--neo-shadow-control)]",
+    "rounded-xl border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] px-5 py-12 text-center shadow-[var(--hh-shadow-operational)]",
   primaryButton: NEO.buttonPrimary,
   secondaryButton: NEO.buttonSecondary,
   emeraldAccent: "text-emerald-700 dark:text-emerald-400",

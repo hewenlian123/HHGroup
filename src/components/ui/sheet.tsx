@@ -29,7 +29,7 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "dark fixed z-50 gap-4 overflow-y-auto overscroll-y-contain border-white/10 bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] outline-none [-webkit-overflow-scrolling:touch] motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none",
+  "fixed z-50 gap-4 overflow-y-auto overscroll-y-contain border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-6 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-task)] outline-none [-webkit-overflow-scrolling:touch] motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none",
   {
     variants: {
       side: {
@@ -68,7 +68,7 @@ const SheetContent = React.forwardRef<
       )}
       {...props}
     >
-      <SheetPrimitive.Close className="absolute right-4 top-4 flex items-center justify-center rounded-sm opacity-70 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--neo-surface-muted)] hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0 active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96] disabled:pointer-events-none touch-manipulation data-[state=open]:bg-[var(--neo-surface-muted)] max-lg:min-h-[44px] max-lg:min-w-[44px] lg:min-h-0 lg:min-w-0">
+      <SheetPrimitive.Close className="absolute right-4 top-4 flex items-center justify-center rounded-sm opacity-70 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--hh-l3-hover)] hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0 active:scale-[0.97] active:bg-[var(--hh-l3-pressed)] active:duration-100 max-md:active:scale-[0.96] disabled:pointer-events-none touch-manipulation data-[state=open]:bg-[var(--hh-l3-selected)] max-lg:min-h-[44px] max-lg:min-w-[44px] lg:min-h-0 lg:min-w-0">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>

@@ -13,6 +13,39 @@ const ROLE_DEFINITIONS = [
     parser: parseSingleColor,
   },
   {
+    role: "L3 Interactive Surface",
+    names: ["l3-hover", "l3-selected", "l3-pressed"],
+    parser: parseInteractiveSurface,
+  },
+  {
+    role: "L4 Floating Surface",
+    names: ["l4-floating-surface"],
+    parser: parseSingleColor,
+  },
+  {
+    role: "L5 Task Surface",
+    names: ["l5-task-surface"],
+    parser: parseSingleColor,
+  },
+  {
+    role: "Operational Shadow",
+    names: ["shadow-operational"],
+    parser: parseShadow,
+    validator: validateCssShadow,
+  },
+  {
+    role: "Floating Shadow",
+    names: ["shadow-floating"],
+    parser: parseShadow,
+    validator: validateCssShadow,
+  },
+  {
+    role: "Task Shadow",
+    names: ["shadow-task"],
+    parser: parseShadow,
+    validator: validateCssShadow,
+  },
+  {
     role: "Text strong / primary / secondary / tertiary",
     names: ["text-strong", "text-primary", "text-secondary", "text-tertiary"],
     parser: parseHexSequence,
@@ -93,8 +126,9 @@ export function parseDesignSystemTokens(markdown) {
       const name = definition.names[index];
       const light = lightValues[index];
       const dark = darkValues[index];
-      validateCssColor(light, definition.role, "Light");
-      validateCssColor(dark, definition.role, "Dark");
+      const validate = definition.validator ?? validateCssColor;
+      validate(light, definition.role, "Light");
+      validate(dark, definition.role, "Dark");
       tokens.push({
         role: definition.role,
         name,
@@ -113,7 +147,7 @@ export function parseDesignSystemTokens(markdown) {
   }
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     authority: AUTHORITY_NAME,
     source: AUTHORITY_SOURCE_LABEL,
     tokens,
@@ -163,16 +197,24 @@ export function validateRepositoryWiring({ globalsCss, tailwindConfig }) {
     "--neo-canvas: var(--hh-l0-canvas);",
     "--neo-surface-base: var(--hh-l1-workspace);",
     "--neo-surface-raised: var(--hh-l2-operational-surface);",
+    "--neo-surface-hover: var(--hh-l3-hover);",
     "--neo-text-primary: var(--hh-text-primary);",
     "--neo-text-secondary: var(--hh-text-secondary);",
     "--neo-text-tertiary: var(--hh-text-tertiary);",
     "--neo-border: var(--hh-border);",
     "--neo-border-strong: var(--hh-border-strong);",
+    "--neo-shadow-panel: var(--hh-shadow-operational);",
+    "--neo-shadow-command: var(--hh-shadow-floating);",
   ];
   const requiredTailwindVariables = [
     "--hh-l0-canvas",
     "--hh-l1-workspace",
     "--hh-l2-operational-surface",
+    "--hh-l3-hover",
+    "--hh-l3-selected",
+    "--hh-l3-pressed",
+    "--hh-l4-floating-surface",
+    "--hh-l5-task-surface",
     "--hh-text-strong",
     "--hh-text-primary",
     "--hh-text-secondary",
@@ -180,6 +222,9 @@ export function validateRepositoryWiring({ globalsCss, tailwindConfig }) {
     "--hh-border",
     "--hh-border-floating",
     "--hh-border-strong",
+    "--hh-shadow-operational",
+    "--hh-shadow-floating",
+    "--hh-shadow-task",
     "--hh-action-primary",
     "--hh-action-primary-foreground",
     "--hh-success",
@@ -276,6 +321,24 @@ function parseHexSequence(value) {
   return match.slice(1).map((color) => color.toUpperCase());
 }
 
+function parseInteractiveSurface(value) {
+  const normalized = stripCodeTicks(value);
+  const match = normalized.match(
+    /^hover\s+(#[0-9A-F]{6})\s*;\s*selected\s+(#[0-9A-F]{6})\s*;\s*pressed\s+(#[0-9A-F]{6})$/i
+  );
+  if (!match) {
+    throw new Error(
+      `expected hover, selected, and pressed six-digit hex colors, received "${normalized}".`
+    );
+  }
+  return match.slice(1).map((color) => color.toUpperCase());
+}
+
+function parseShadow(value) {
+  const normalized = stripCodeTicks(value).replace(/\s+/g, " ");
+  return [normalized];
+}
+
 function parseBorderSequence(value) {
   const normalized = stripCodeTicks(value);
   const match = normalized.match(
@@ -327,6 +390,35 @@ function validateCssColor(value, role, mode) {
   const alpha = Number(match[4]);
   if (channels.some((channel) => channel > 255) || alpha > 100) {
     throw new Error(`Malformed ${mode} value for ${role}: "${value}" is out of range.`);
+  }
+}
+
+function validateCssShadow(value, role, mode) {
+  const layers = value.split(/\s*,\s*/);
+  if (layers.length !== 2) {
+    throw new Error(
+      `Malformed ${mode} value for ${role}: expected exactly two neutral shadow layers.`
+    );
+  }
+
+  const length = "(?:0|-?\\d+(?:\\.\\d+)?px)";
+  const layerPattern = new RegExp(
+    `^(${length}(?:\\s+${length}){2,3})\\s+rgb\\(\\s*(\\d{1,3})\\s+(\\d{1,3})\\s+(\\d{1,3})\\s*\\/\\s*(\\d+(?:\\.\\d+)?)\\s*\\)$`,
+    "i"
+  );
+
+  for (const layer of layers) {
+    const match = layer.match(layerPattern);
+    if (!match) {
+      throw new Error(
+        `Malformed ${mode} value for ${role}: "${value}" is not a supported neutral CSS shadow.`
+      );
+    }
+    const channels = match.slice(2, 5).map(Number);
+    const alpha = Number(match[5]);
+    if (channels.some((channel) => channel > 255) || alpha > 1) {
+      throw new Error(`Malformed ${mode} value for ${role}: "${value}" is out of range.`);
+    }
   }
 }
 

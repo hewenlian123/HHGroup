@@ -69,8 +69,8 @@ export function SearchableSelect({
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
         className={cn(
-          "flex h-10 w-full min-w-[140px] items-center justify-between rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-left text-sm text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-control)] transition-all duration-150 ease-out",
-          "hover:bg-[var(--neo-surface-hover)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+          "flex h-10 w-full min-w-[140px] items-center justify-between rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-left text-sm text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-operational)] transition-all duration-150 ease-out",
+          "hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
         )}
       >
         <span className={!displayLabel ? "text-muted-foreground/70" : ""}>
@@ -89,11 +89,11 @@ export function SearchableSelect({
         <div
           role="listbox"
           className={cn(
-            "dark absolute z-[100] mt-1 w-full min-w-[200px] origin-top overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] py-2 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+            "absolute z-[100] mt-1 w-full min-w-[200px] origin-top overflow-hidden rounded-xl border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-2 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-floating)]",
             motionPopoverLayer
           )}
         >
-          <div className="border-b border-[var(--neo-border)] px-2 pb-2">
+          <div className="border-b border-[var(--hh-border)] px-2 pb-2">
             <input
               ref={inputRef}
               type="text"
@@ -113,9 +113,9 @@ export function SearchableSelect({
                   role="option"
                   aria-selected={opt.id === value}
                   className={cn(
-                    "cursor-pointer px-3 py-2 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-text-primary)]",
+                    "cursor-pointer px-3 py-2 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
                     opt.id === value &&
-                      "bg-[rgb(184_147_90_/_0.12)] font-medium text-[var(--neo-gold-soft)]"
+                      "bg-[var(--hh-l3-selected)] font-medium text-[var(--neo-text-primary)]"
                   )}
                   onMouseDown={(e) => {
                     e.preventDefault();

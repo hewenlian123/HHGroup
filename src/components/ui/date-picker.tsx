@@ -110,7 +110,7 @@ export function FinanceDatePicker({
             "inline-flex w-full items-center justify-between gap-2 rounded-md border px-3 text-left font-medium tracking-normal transition-[background-color,border-color,box-shadow,color] duration-120 ease-out focus-visible:outline-none motion-reduce:transition-none",
             isGlass
               ? "eb-date-field border-white/[0.06] bg-white/[0.02] text-zinc-100 hover:border-white/[0.09] hover:bg-white/[0.035] focus-visible:border-white/[0.14] focus-visible:shadow-[0_0_0_2px_rgba(255,255,255,0.05)]"
-              : "border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-text-tertiary)] focus-visible:ring-2 focus-visible:ring-[var(--neo-border-strong)]",
+              : "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)] hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-text-tertiary)] focus-visible:ring-2 focus-visible:ring-[var(--hh-border-strong)]",
             size === "md" ? "h-11 min-h-[44px] text-sm" : "h-9 text-sm",
             disabled && "pointer-events-none opacity-60",
             className
@@ -139,7 +139,7 @@ export function FinanceDatePicker({
           styles.content,
           isGlass
             ? "rounded-[10px] border border-white/10 bg-[rgba(18,22,34,0.96)] text-zinc-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_44px_rgba(0,0,0,0.38)] backdrop-blur-[28px] backdrop-saturate-[175%]"
-            : "rounded-[10px] border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[0_14px_36px_rgb(0_0_0_/_0.12)] dark:shadow-[0_18px_44px_rgb(0_0_0_/_0.38)]",
+            : "rounded-[10px] border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-floating)]",
           contentClassName
         )}
         onEscapeKeyDown={(event) => event.stopPropagation()}
@@ -184,14 +184,14 @@ export function FinanceDatePicker({
               "flex h-10 w-10 items-center justify-center rounded-md border-0 bg-transparent transition-colors duration-120 ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none sm:h-8 sm:w-8",
               isGlass
                 ? "text-zinc-400 hover:bg-white/[0.08] focus-visible:ring-white/20"
-                : "text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] focus-visible:ring-[var(--neo-border-strong)]"
+                : "text-[var(--neo-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:ring-[var(--hh-border-strong)]"
             ),
             button_next: cn(
               rdp.button_next,
               "flex h-10 w-10 items-center justify-center rounded-md border-0 bg-transparent transition-colors duration-120 ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none sm:h-8 sm:w-8",
               isGlass
                 ? "text-zinc-400 hover:bg-white/[0.08] focus-visible:ring-white/20"
-                : "text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] focus-visible:ring-[var(--neo-border-strong)]"
+                : "text-[var(--neo-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:ring-[var(--hh-border-strong)]"
             ),
             weekdays: cn(
               rdp.weekdays,
@@ -209,19 +209,19 @@ export function FinanceDatePicker({
               "flex h-10 w-10 items-center justify-center rounded-md border border-transparent text-sm font-medium leading-none shadow-none transition-[background-color,border-color,color,box-shadow,opacity] duration-120 ease-out active:duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 motion-reduce:transition-none sm:h-8 sm:w-8",
               isGlass
                 ? "text-zinc-300 hover:bg-white/[0.08] active:bg-white/[0.12] focus-visible:ring-white/30 focus-visible:ring-offset-[#121622]"
-                : "text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)] active:bg-[var(--neo-surface-hover)] focus-visible:ring-[var(--neo-text-tertiary)] focus-visible:ring-offset-[var(--neo-surface-raised)]"
+                : "text-[var(--neo-text-primary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:ring-[var(--neo-text-tertiary)] focus-visible:ring-offset-[var(--hh-l4-floating-surface)]"
             ),
             today: cn(
               rdp.today,
               isGlass
                 ? "font-semibold [&:not([data-selected=true])_button]:border-white/20"
-                : "font-semibold [&:not([data-selected=true])_button]:border-[var(--neo-border-strong)]"
+                : "font-semibold [&:not([data-selected=true])_button]:border-[var(--hh-border-strong)]"
             ),
             selected: cn(
               rdp.selected,
               isGlass
                 ? "bg-transparent shadow-none [&_button]:border-transparent [&_button]:bg-zinc-100 [&_button]:text-zinc-950 [&_button:hover]:bg-white"
-                : "bg-transparent shadow-none [&_button]:border-transparent [&_button]:bg-[var(--neo-text-primary)] [&_button]:text-[var(--neo-surface-raised)] [&_button:hover]:bg-[var(--neo-text-primary)]"
+                : "bg-transparent shadow-none [&_button]:border-[var(--hh-border-strong)] [&_button]:bg-[var(--hh-l3-selected)] [&_button]:text-[var(--neo-text-primary)] [&_button:hover]:bg-[var(--hh-l3-selected)]"
             ),
             outside: cn(
               rdp.outside,
@@ -258,7 +258,7 @@ export function FinanceDatePicker({
                     "inline-flex min-h-10 items-center rounded-md px-2 text-xs font-medium transition-colors duration-120 ease-out focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-35 motion-reduce:transition-none sm:min-h-8",
                     isGlass
                       ? "text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100 focus-visible:ring-white/20"
-                      : "text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] focus-visible:ring-[var(--neo-border-strong)]"
+                      : "text-[var(--neo-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)] focus-visible:ring-[var(--hh-border-strong)]"
                   )}
                   disabled={!allowClear || !selected}
                   onClick={() => {
@@ -274,7 +274,7 @@ export function FinanceDatePicker({
                     "inline-flex min-h-10 items-center rounded-md px-2 text-xs font-medium transition-colors duration-120 ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none sm:min-h-8",
                     isGlass
                       ? "text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-100 focus-visible:ring-white/20"
-                      : "text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)] focus-visible:ring-[var(--neo-border-strong)]"
+                      : "text-[var(--neo-text-secondary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)] focus-visible:ring-[var(--hh-border-strong)]"
                   )}
                   onClick={() => {
                     const todayYmd = hawaiiTodayYmd();

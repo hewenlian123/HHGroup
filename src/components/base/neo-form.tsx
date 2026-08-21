@@ -122,7 +122,7 @@ export function NeoActionFooter({
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-10 -mx-5 mt-2 flex flex-col-reverse gap-2 border-t border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
+        "sticky bottom-0 z-10 -mx-5 mt-2 flex flex-col-reverse gap-2 border-t border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
         "sm:mx-0 sm:flex-row sm:items-center sm:justify-end sm:px-0 sm:pb-4",
         "max-md:[&>button]:min-h-11 max-md:[&>button]:w-full",
         className
@@ -152,7 +152,7 @@ export function NeoModal({
   return (
     <DialogContent
       className={cn(
-        "dark flex max-w-[520px] flex-col gap-0 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)]",
+        "flex max-w-[520px] flex-col gap-0 overflow-hidden rounded-[1.5rem] border border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-task)]",
         "max-md:max-h-[calc(100dvh-0.75rem)] max-md:rounded-b-none max-md:rounded-t-[1.5rem]",
         className
       )}
@@ -161,7 +161,7 @@ export function NeoModal({
       {(title || description) && (
         <DialogHeader
           className={cn(
-            "border-b border-[var(--neo-border)] px-5 py-4 pr-12 text-left",
+            "border-b border-[var(--hh-border)] px-5 py-4 pr-12 text-left",
             headerClassName
           )}
         >
@@ -186,7 +186,7 @@ export function NeoModal({
         {children}
       </div>
       {footer ? (
-        <DialogFooter className="border-t border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <DialogFooter className="border-t border-[var(--hh-border)] bg-[var(--hh-l5-task-surface)] px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
           {footer}
         </DialogFooter>
       ) : null}
@@ -213,13 +213,13 @@ export function NeoDrawer({
     <SheetContent
       side={side}
       className={cn(
-        "dark flex h-full w-full flex-col gap-0 border-white/10 bg-[var(--neo-surface-raised)] p-0 text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] sm:max-w-md",
+        "flex h-full w-full flex-col gap-0 border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-task)] sm:max-w-md",
         className
       )}
       {...props}
     >
       {(title || description) && (
-        <SheetHeader className="border-b border-[var(--neo-border)] px-5 py-4 pr-12 text-left">
+        <SheetHeader className="border-b border-[var(--hh-border)] px-5 py-4 pr-12 text-left">
           {title ? (
             <SheetTitle className="text-base font-semibold tracking-normal text-[var(--neo-text-primary)]">
               {title}

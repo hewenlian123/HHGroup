@@ -7,17 +7,17 @@ import { OS, TYPO } from "@/lib/typography";
 const tableShellClass = OS.tableShell;
 
 /** Legacy raw table cell borders — light row dividers only (prefer `Table` primitives). */
-export const tableCellBorderClass = "border-b border-[var(--neo-border)] last:border-b-0";
+export const tableCellBorderClass = "border-b border-[var(--hh-border)] last:border-b-0";
 
 export const tableRawThClass = cn(
-  "h-9 bg-[var(--neo-surface-muted)] px-3 text-left align-middle",
+  "h-9 bg-[var(--hh-l2-operational-surface)] px-3 text-left align-middle",
   TYPO.tableHeader,
-  "border-b border-[var(--neo-border)]"
+  "border-b border-[var(--hh-border)]"
 );
 
 export const tableRawTdClass = cn(
   "h-9 max-md:min-h-[44px] px-3 py-0 align-middle text-sm text-[var(--neo-text-primary)]",
-  "border-b border-[var(--neo-border)] last:border-b-0"
+  "border-b border-[var(--hh-border)] last:border-b-0"
 );
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
@@ -60,7 +60,7 @@ const TableBody = React.forwardRef<
   <tbody
     ref={ref}
     className={cn(
-      "[&>tr]:border-b [&>tr]:border-[var(--neo-border)] [&>tr:last-child]:border-b-0",
+      "[&>tr]:border-b [&>tr]:border-[var(--hh-border)] [&>tr:last-child]:border-b-0",
       className
     )}
     {...props}
@@ -75,7 +75,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t border-[var(--neo-border)] font-medium [&>tr]:last:border-b-0",
+      "border-t border-[var(--hh-border)] font-medium [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -90,7 +90,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
       className={cn(
         listTableRowStaticClassName,
         "border-l-2 border-l-transparent transition-colors",
-        "data-[state=selected]:border-l-[var(--neo-gold)] data-[state=selected]:bg-[rgb(184_147_90_/_0.08)]",
+        "data-[state=selected]:border-l-[var(--hh-border-strong)] data-[state=selected]:bg-[var(--hh-l3-selected)]",
         "[&>td:first-child]:font-medium",
         className
       )}
@@ -107,9 +107,9 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-9 bg-[var(--neo-surface-muted)] px-3 text-left align-middle",
+      "h-9 bg-[var(--hh-l2-operational-surface)] px-3 text-left align-middle",
       TYPO.tableHeader,
-      "border-b border-[var(--neo-border)]",
+      "border-b border-[var(--hh-border)]",
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}

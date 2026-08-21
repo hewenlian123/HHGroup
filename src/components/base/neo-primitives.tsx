@@ -72,7 +72,7 @@ export function KpiTile({
       className={cn(
         OS.card,
         "relative flex min-h-[108px] min-w-0 flex-col overflow-hidden px-3 py-3 md:px-3.5 md:py-3.5",
-        "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--neo-border-strong)]",
+        "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--hh-border-strong)]",
         className
       )}
     >
@@ -163,7 +163,7 @@ export function MobileListRow({
     <Comp
       className={cn(
         "group flex min-h-[56px] min-w-0 items-center gap-3 px-3 py-3",
-        "transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-muted)] active:scale-[0.99] active:duration-100",
+        "transition-colors duration-150 ease-out hover:bg-[var(--hh-l3-hover)] active:scale-[0.99] active:bg-[var(--hh-l3-pressed)] active:duration-100",
         className
       )}
     >
@@ -192,8 +192,8 @@ export const NeoMobileCard = forwardRef<HTMLDivElement, NeoMobileCardProps>(func
       aria-selected={selected || undefined}
       className={cn(
         OS.card,
-        "group min-w-0 transition-colors duration-150 ease-out hover:bg-[var(--neo-surface-hover)] active:scale-[0.99] active:duration-100",
-        selected && "border-[var(--neo-gold)] bg-[rgb(184_147_90_/_0.08)]",
+        "group min-w-0 transition-colors duration-150 ease-out hover:bg-[var(--hh-l3-hover)] active:scale-[0.99] active:bg-[var(--hh-l3-pressed)] active:duration-100",
+        selected && "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)]",
         className
       )}
       {...rest}
@@ -256,7 +256,7 @@ export function NeoBulkActions({
     <div
       data-neo-bulk-actions="true"
       className={cn(
-        "flex flex-col gap-3 rounded-xl border border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.10)] px-3 py-2 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+        "flex flex-col gap-3 rounded-xl border border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-3 py-2 text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-operational)]",
         "sm:flex-row sm:items-center sm:justify-between",
         className
       )}

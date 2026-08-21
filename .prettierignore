@@ -13,6 +13,10 @@ test-results
 pnpm-lock.yaml
 yarn.lock
 
+# Generator-owned Design System artifacts — verify byte-exact output with `npm run design:check`
+src/styles/design-tokens.generated.css
+src/styles/design-tokens.generated.json
+
 # Binaries under src/ — `prettier --check "src/**"` (or similar globs) would otherwise error: No parser could be inferred
 **/*.ico
 **/*.woff

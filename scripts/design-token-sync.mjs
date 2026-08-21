@@ -59,7 +59,9 @@ function main() {
   if (command === "sync") {
     writeFileSync(CSS_ARTIFACT, generatedCss, "utf8");
     writeFileSync(JSON_ARTIFACT, generatedJson, "utf8");
-    console.log(`Synchronized ${contract.tokens.length} semantic color tokens from ${sourcePath}.`);
+    console.log(
+      `Synchronized ${contract.tokens.length} semantic design tokens from ${sourcePath}.`
+    );
     return;
   }
 
@@ -69,7 +71,7 @@ function main() {
     globalsCss: readRequired(resolve(REPO_ROOT, "src/app/globals.css"), "globals.css"),
     tailwindConfig: readRequired(resolve(REPO_ROOT, "tailwind.config.ts"), "Tailwind config"),
   });
-  console.log(`Design token check passed for ${contract.tokens.length} semantic color tokens.`);
+  console.log(`Design token check passed for ${contract.tokens.length} semantic design tokens.`);
 }
 
 try {

@@ -21,7 +21,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border px-3 py-2 text-sm shadow-none transition-all duration-150 ease-out data-[placeholder]:text-[var(--neo-text-tertiary)] hover:bg-[var(--neo-surface-muted)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-[44px] max-md:text-base md:text-sm [&>span]:line-clamp-1",
+      "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border px-3 py-2 text-sm shadow-none transition-all duration-150 ease-out data-[placeholder]:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 max-md:min-h-[44px] max-md:text-base md:text-sm [&>span]:line-clamp-1",
       NEO.input,
       "active:scale-[0.97] active:duration-100 max-md:active:scale-[0.96]",
       className
@@ -72,7 +72,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "dark relative z-[999] max-h-[--radix-select-content-available-height] min-w-[8rem] origin-[--radix-select-content-transform-origin] overflow-y-auto overflow-x-hidden rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+        "relative z-[999] max-h-[--radix-select-content-available-height] min-w-[8rem] origin-[--radix-select-content-transform-origin] overflow-y-auto overflow-x-hidden rounded-md border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] text-[var(--neo-text-primary)] shadow-[var(--hh-shadow-floating)]",
         motionPopoverLayer,
         "data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         position === "popper" &&
@@ -117,7 +117,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none transition-all duration-150 ease-out focus:bg-[var(--neo-surface-muted)] focus:text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-muted)] active:scale-[0.99] active:duration-100 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none transition-all duration-150 ease-out focus:bg-[var(--hh-l3-hover)] focus:text-[var(--neo-text-primary)] hover:bg-[var(--hh-l3-hover)] active:scale-[0.99] active:bg-[var(--hh-l3-pressed)] active:duration-100 data-[state=checked]:bg-[var(--hh-l3-selected)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
       className
     )}
     {...props}
@@ -138,7 +138,7 @@ const SelectSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-muted", className)}
+    className={cn("-mx-1 my-1 h-px bg-[var(--hh-border)]", className)}
     {...props}
   />
 ));
