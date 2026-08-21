@@ -1,5 +1,6 @@
 import { PageLayout, PageHeader, Divider } from "@/components/base";
 import { getDocumentsPaged, getProjectsDashboard } from "@/lib/data";
+import { createServerSupabaseClient } from "@/lib/supabase-server";
 import { DocumentsListClient } from "./documents-list-client";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,9 @@ type Props = {
 };
 
 export default async function DocumentsPage({ searchParams }: Props) {
+  const supabase = await createServerSupabaseClient({ noStore: true });
+  if (!supabase) throw new Error("Authenticated Documents session is not configured.");
+
   const sp = await searchParams;
   const page = Math.max(1, Number(sp.page ?? "1") || 1);
   const filters = {
@@ -26,8 +30,8 @@ export default async function DocumentsPage({ searchParams }: Props) {
     date_to: sp.date_to ?? undefined,
   };
   const [{ rows: documents, total }, projects] = await Promise.all([
-    getDocumentsPaged({ ...filters, page, pageSize: 20 }),
-    getProjectsDashboard(500),
+    getDocumentsPaged({ ...filters, page, pageSize: 20 }, supabase),
+    getProjectsDashboard(500, supabase),
   ]);
   const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }));
 

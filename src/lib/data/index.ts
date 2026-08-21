@@ -951,9 +951,10 @@ export async function getDocuments(filters: import("../documents-db").DocumentFi
   return documentsDb.getDocuments(filters);
 }
 export async function getDocumentsPaged(
-  input: Parameters<typeof documentsDb.getDocumentsPaged>[0]
+  input: Parameters<typeof documentsDb.getDocumentsPaged>[0],
+  explicitClient?: SupabaseClient
 ) {
-  return documentsDb.getDocumentsPaged(input);
+  return documentsDb.getDocumentsPaged(input, explicitClient);
 }
 export async function getDocumentsByProject(projectId: string) {
   return documentsDb.getDocumentsByProject(projectId);

@@ -3,6 +3,7 @@
  */
 
 import { getSupabaseClient } from "@/lib/supabase";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const DOCUMENT_FILE_TYPES = [
   "Contract",
@@ -61,8 +62,8 @@ export type DocumentDraft = {
 
 const BUCKET = "attachments";
 
-function client() {
-  const c = getSupabaseClient();
+function client(explicitClient?: SupabaseClient) {
+  const c = explicitClient ?? getSupabaseClient();
   if (!c) throw new Error("Supabase is not configured.");
   return c;
 }
@@ -145,9 +146,10 @@ export async function getDocuments(filters: DocumentFilters = {}): Promise<Docum
 }
 
 export async function getDocumentsPaged(
-  input: DocumentFilters & { page?: number; pageSize?: number } = {}
+  input: DocumentFilters & { page?: number; pageSize?: number } = {},
+  explicitClient?: SupabaseClient
 ): Promise<{ rows: DocumentWithProject[]; total: number }> {
-  const c = client();
+  const c = client(explicitClient);
   const page = Math.max(1, Math.floor(input.page ?? 1));
   const pageSize = Math.max(1, Math.min(100, Math.floor(input.pageSize ?? 20)));
   const from = (page - 1) * pageSize;
