@@ -119,7 +119,7 @@ function AddSectionModal({
         if (!o) setAddSaving(false);
       }}
     >
-      <DialogContent className="gap-0 sm:max-w-md rounded-sm border-border/60 p-4 shadow-[var(--shadow-popover)]">
+      <DialogContent className="gap-0 sm:max-w-md rounded-sm border-border/60 p-4 shadow-task">
         <DialogHeader className="space-y-1 pb-3">
           <DialogTitle className="text-base">Add section</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
@@ -356,7 +356,7 @@ export function EstimateSectionTitleMenu({
       />
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent className="gap-0 sm:max-w-md rounded-sm border-border/60 p-4 shadow-[var(--shadow-popover)]">
+        <DialogContent className="gap-0 sm:max-w-md rounded-sm border-border/60 p-4 shadow-task">
           <DialogHeader className="space-y-1 pb-3">
             <DialogTitle className="text-base">Rename section</DialogTitle>
             <DialogDescription className="sr-only">Rename this estimate section.</DialogDescription>

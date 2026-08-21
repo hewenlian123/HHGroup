@@ -264,10 +264,11 @@ function StatusPill({
       className={cn(
         "inline-flex h-8 items-center rounded-full border px-3 text-[10px] font-semibold uppercase tracking-normal",
         tone === "emerald" &&
-          "border-[rgb(79_175_124_/_0.24)] bg-[rgb(79_175_124_/_0.10)] text-[var(--hud-emerald)]",
-        tone === "alert" && "border-rose-500/20 bg-rose-500/10 text-rose-300",
+          "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
+        tone === "alert" &&
+          "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
         tone === "copper" &&
-          "border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.09)] text-[var(--hud-gold)]"
+          "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
       )}
     >
       {children}

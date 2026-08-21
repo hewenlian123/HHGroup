@@ -28,7 +28,6 @@ const roleSources = {
   task: [
     "src/components/base/confirm-dialog.tsx",
     "src/components/base/drawer.tsx",
-    "src/components/base/neo-form.tsx",
     "src/components/ui/dialog.tsx",
     "src/components/ui/sheet.tsx",
   ],

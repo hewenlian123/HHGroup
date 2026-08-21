@@ -43,7 +43,7 @@ export function MobileFabPlus({ href, ariaLabel }: { href: string; ariaLabel: st
   return (
     <Link
       href={href}
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[var(--neo-graphite-900)] text-white shadow-[0_10px_26px_rgba(0,0,0,0.22)] ring-1 ring-black/10"
+      className="hh-focus-ring flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border-floating)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-floating"
       aria-label={ariaLabel}
     >
       <Plus className="h-5 w-5" strokeWidth={2} aria-hidden />
@@ -65,7 +65,7 @@ export function MobileFabButton({
     <button
       type="button"
       className={cn(
-        "flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/[0.08] bg-[var(--neo-graphite-900)] text-white shadow-[0_10px_26px_rgba(0,0,0,0.22)] ring-1 ring-black/10",
+        "hh-focus-ring flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-[var(--hh-border-floating)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-floating",
         className
       )}
       aria-label={ariaLabel}

@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const KPI_COUNT = 6;
 
 const kpiSkeletonCard =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
+  "rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-[var(--hh-text-primary)] shadow-operational";
 
 /** Matches KPI strip card height so layout does not shift when data arrives. */
 export function DashboardKpiSkeleton() {
@@ -30,7 +30,7 @@ const ROW_SKELETONS = 5;
  */
 export function DashboardMainSkeleton() {
   const block =
-    "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-[var(--neo-shadow-panel)]";
+    "rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-operational";
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5" aria-hidden>
       <div className={cnPad(block, "lg:col-span-12")}>

@@ -51,8 +51,8 @@ export function DashboardQuickActions({ className }: { className?: string }) {
             className={cn(
               "dashboard-action-button h-11 min-h-[44px] rounded-lg px-3 text-[12px] font-semibold tracking-normal",
               action.primary
-                ? "border border-[rgb(184_147_90_/_0.42)] bg-[var(--hud-gold)] text-[#07090D] shadow-none hover:bg-[var(--hud-gold-soft)]"
-                : "border-[var(--hud-line)] bg-[var(--hud-surface)] text-[var(--hud-text)] hover:border-[rgb(184_147_90_/_0.3)] hover:bg-[var(--hud-surface-muted)]"
+                ? "border border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90"
+                : "border-[var(--hud-line)] bg-[var(--hud-surface)] text-[var(--hud-text)] hover:border-[var(--hh-border-strong)] hover:bg-[var(--hud-surface-muted)]"
             )}
           >
             <Link href={action.href}>

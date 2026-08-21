@@ -53,7 +53,7 @@ export function WorkerAdvanceActionsMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="min-w-[10rem] rounded-md border border-border/60 bg-popover p-1 shadow-[var(--shadow-popover)]"
+        className="min-w-[10rem] rounded-md border border-border/60 bg-popover p-1 shadow-floating"
       >
         {onOpenWorker ? (
           <DropdownMenuItem className="cursor-pointer text-sm" onSelect={() => onOpenWorker()}>

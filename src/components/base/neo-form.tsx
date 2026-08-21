@@ -9,11 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FinanceDatePicker, type FinanceDatePickerProps } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect, type NativeSelectProps } from "@/components/ui/native-select";
-import { SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { TaskFooter } from "@/components/ui/task-footer";
 import { NEO, TYPO } from "@/lib/typography";
@@ -95,11 +93,6 @@ export const NeoSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
   return <NativeSelect ref={ref} className={cn("h-10 rounded-md", className)} {...props} />;
 });
 
-/** @deprecated Use `FinanceDatePicker`; retained as a compatibility wrapper. */
-export function NeoDatePicker({ className, size = "md", ...props }: FinanceDatePickerProps) {
-  return <FinanceDatePicker size={size} className={className} {...props} />;
-}
-
 export function NeoActionFooter({
   children,
   className,
@@ -174,52 +167,6 @@ export function NeoModal({
         </DialogFooter>
       ) : null}
     </DialogContent>
-  );
-}
-
-/** @deprecated Use `Drawer`; retained as a compatibility wrapper. */
-export function NeoDrawer({
-  children,
-  className,
-  bodyClassName,
-  footer,
-  title,
-  description,
-  side = "right",
-  ...props
-}: React.ComponentPropsWithoutRef<typeof SheetContent> & {
-  bodyClassName?: string;
-  footer?: ReactNode;
-  title?: ReactNode;
-  description?: ReactNode;
-}) {
-  return (
-    <SheetContent
-      side={side}
-      className={cn(
-        "flex h-full w-full flex-col gap-0 border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-0 text-[var(--neo-text-primary)] shadow-task sm:max-w-md",
-        className
-      )}
-      {...props}
-    >
-      {(title || description) && (
-        <SheetHeader className="border-b border-[var(--hh-border)] px-5 py-4 pr-12 text-left">
-          {title ? <SheetTitle className={TYPO.sectionTitle}>{title}</SheetTitle> : null}
-          {description ? (
-            <SheetDescription className={TYPO.body}>{description}</SheetDescription>
-          ) : null}
-        </SheetHeader>
-      )}
-      <div
-        className={cn(
-          "mobile-native-scroll min-h-0 flex-1 overflow-y-auto px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]",
-          bodyClassName
-        )}
-      >
-        {children}
-      </div>
-      {footer ? <NeoActionFooter className="mx-0 px-5 sm:px-5">{footer}</NeoActionFooter> : null}
-    </SheetContent>
   );
 }
 

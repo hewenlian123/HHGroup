@@ -29,13 +29,13 @@ export function DashboardAttentionFeed({
             Next signal
           </h2>
         </div>
-        <Activity className="h-4 w-4 shrink-0 text-[var(--hud-gold)]" aria-hidden />
+        <Activity className="h-4 w-4 shrink-0 text-[var(--hh-warning)]" aria-hidden />
       </div>
 
       {firstTask ? (
-        <div className="mt-4 rounded-lg border border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.075)] p-3">
+        <div className="mt-4 rounded-lg border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] p-3">
           <div className="flex items-start gap-2">
-            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--hud-gold)]" aria-hidden />
+            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-[var(--hh-warning)]" aria-hidden />
             <div className="min-w-0">
               <p className="line-clamp-2 text-[13px] font-semibold leading-snug text-[var(--hud-text)]">
                 {firstTask.title}
@@ -45,12 +45,12 @@ export function DashboardAttentionFeed({
               </p>
             </div>
           </div>
-          <p className="mt-3 text-[11px] font-semibold uppercase tracking-normal text-[var(--hud-gold)]">
+          <p className="mt-3 text-[11px] font-semibold uppercase tracking-normal text-[var(--hh-warning)]">
             {firstTask.due}
           </p>
         </div>
       ) : (
-        <div className="mt-4 rounded-lg border border-[rgb(79_175_124_/_0.22)] bg-[rgb(79_175_124_/_0.08)] p-3">
+        <div className="mt-4 rounded-lg border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] p-3">
           <p className="text-[13px] font-semibold text-[var(--hud-text)]">No urgent signals</p>
           <p className="mt-1 text-[12px] leading-snug text-[var(--hud-muted)]">
             The current dashboard feed has no risk-driven action queued.
@@ -81,7 +81,7 @@ export function DashboardAttentionFeed({
 
       <Link
         href="/financial/owner"
-        className="dashboard-attention-link mt-4 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[var(--hud-line)] bg-[var(--hud-surface)] px-3 text-[12px] font-semibold text-[var(--hud-text)] transition-colors hover:border-[rgb(184_147_90_/_0.3)] hover:bg-[var(--hud-surface-muted)]"
+        className="dashboard-attention-link mt-4 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[var(--hud-line)] bg-[var(--hud-surface)] px-3 text-[12px] font-semibold text-[var(--hud-text)] transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hud-surface-muted)]"
       >
         Owner view
         <ArrowRight className="h-3.5 w-3.5" aria-hidden />

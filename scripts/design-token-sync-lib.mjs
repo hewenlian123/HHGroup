@@ -612,7 +612,6 @@ export function renderGeneratedCss(contract) {
 export function validateRepositoryWiring({ globalsCss, tailwindConfig }) {
   const requiredGlobalSnippets = [
     '@import "../styles/design-tokens.generated.css";',
-    "--neo-canvas: var(--hh-l0-canvas);",
     "--neo-surface-base: var(--hh-l1-workspace);",
     "--neo-surface-raised: var(--hh-l2-operational-surface);",
     "--neo-surface-hover: var(--hh-l3-hover);",

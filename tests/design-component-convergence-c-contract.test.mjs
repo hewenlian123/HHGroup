@@ -105,7 +105,6 @@ test("DatePicker preserves Hawaii YMD and scoped glass while using inherited gen
   assert.match(datePicker, /function toYmd/);
   assert.match(datePicker, /appearance === "glass"/);
   assert.match(datePicker, /themeScope=\{isGlass \? "dark" : "inherit"\}/);
-  assert.match(neoForm, /@deprecated Use `FinanceDatePicker`/);
-  assert.match(neoForm, /@deprecated Use `Drawer`/);
+  assert.doesNotMatch(neoForm, /NeoDatePicker|NeoDrawer/);
   assert.match(neoForm, /<TaskFooter/);
 });

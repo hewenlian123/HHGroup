@@ -74,9 +74,8 @@ test("maps Phase 2 tokens through global compatibility aliases and Tailwind", ()
 
   assert.match(css, /--neo-surface-hover:\s*var\(--hh-l3-hover\);/);
   assert.match(css, /--neo-shadow-panel:\s*var\(--hh-shadow-operational\);/);
-  assert.match(css, /--neo-shadow-panel-hover:\s*var\(--hh-shadow-operational\);/);
   assert.match(css, /--neo-shadow-command:\s*var\(--hh-shadow-floating\);/);
-  assert.match(css, /--shadow-popover:\s*var\(--hh-shadow-floating\);/);
+  assert.doesNotMatch(css, /--shadow-popover:/);
 
   for (const variable of [
     "--hh-l3-hover",

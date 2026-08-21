@@ -732,7 +732,7 @@ export default function TasksPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-[var(--shadow-popover)]"
+                          className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-floating"
                         >
                           <DropdownMenuItem
                             onSelect={() => openDrawer(t)}
@@ -863,7 +863,7 @@ export default function TasksPage() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent
                                 align="end"
-                                className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-[var(--shadow-popover)]"
+                                className="min-w-[160px] rounded-md border border-border/60 bg-popover text-xs shadow-floating"
                               >
                                 <DropdownMenuItem
                                   onSelect={() => openDrawer(t)}

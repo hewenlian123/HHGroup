@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
  */
 
 /** App-wide default easing + duration (Linear / iOS-like). */
-export const motionTransition = "transition-all duration-150 ease-out";
+export const motionTransition =
+  "transition-[background-color,border-color,color,box-shadow,opacity] duration-150 ease-out";
 
 /** Hover on buttons, links, list tiles (not heavy cards). */
 export const motionInteractiveHover = cn("hover:bg-[var(--hh-l3-hover)]");

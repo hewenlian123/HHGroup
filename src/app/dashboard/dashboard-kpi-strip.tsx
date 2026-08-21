@@ -10,7 +10,7 @@ type ApBillsSummaryKpi = {
 };
 
 const dashboardKpiTileClass =
-  "dashboard-kpi-tile-premium max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:min-h-[118px] max-md:snap-start max-md:snap-always md:min-h-[116px] ring-1 ring-transparent hover:ring-[var(--neo-gold-ring)]";
+  "dashboard-kpi-tile-premium max-md:w-[min(100%,calc(100vw-2.5rem))] max-md:min-w-[min(100%,calc(100vw-2.5rem))] max-md:max-w-[calc(100vw-2.5rem)] max-md:min-h-[118px] max-md:snap-start max-md:snap-always md:min-h-[116px] ring-1 ring-transparent hover:ring-[var(--hh-border-strong)]";
 
 /** Command-center KPIs: collections, payables, labor, margin stress, risk flags, ledger pulse. */
 export function DashboardKpiStrip({

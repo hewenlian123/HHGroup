@@ -266,11 +266,10 @@ function NeoCommandItem({
       aria-selected={active}
       data-active={active ? "true" : "false"}
       className={cn(
-        "group flex min-h-[48px] w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left outline-none transition-all duration-150 ease-out",
+        "hh-focus-ring group flex min-h-[48px] w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left outline-none transition-[background-color,border-color,color] duration-150 ease-out",
         "text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]",
-        "focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
         active &&
-          "bg-[rgb(184_147_90_/_0.12)] text-[var(--neo-text-primary)] ring-1 ring-[rgb(184_147_90_/_0.24)]"
+          "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)] ring-1 ring-[var(--hh-border-strong)]"
       )}
       onPointerMove={onPointerMove}
       onClick={onSelect}
@@ -278,7 +277,7 @@ function NeoCommandItem({
       <span
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]",
-          active && "border-[rgb(184_147_90_/_0.34)] text-[var(--neo-gold-soft)]"
+          active && "border-[var(--hh-border-strong)] text-[var(--hh-text-primary)]"
         )}
       >
         <Icon className="h-4 w-4" aria-hidden />
@@ -413,7 +412,7 @@ export function NeoCommandPalette({
         <DialogPrimitive.Content
           data-command-dialog
           className={cn(
-            "dark fixed top-[max(5rem,env(safe-area-inset-top))] z-[91] w-[min(640px,calc(100vw-2rem))] overflow-hidden rounded-[1.5rem] border border-white/10 bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)] outline-none sm:left-1/2 sm:-translate-x-1/2",
+            "fixed top-[max(5rem,env(safe-area-inset-top))] z-[91] w-[min(640px,calc(100vw-2rem))] overflow-hidden rounded-[1.5rem] border border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] text-[var(--hh-text-primary)] shadow-task outline-none sm:left-1/2 sm:-translate-x-1/2",
             hhNeoFocusRevealCommand,
             "max-sm:inset-x-2 max-sm:bottom-[calc(1rem+env(safe-area-inset-bottom))] max-sm:top-[max(0.75rem,env(safe-area-inset-top))] max-sm:w-auto max-sm:rounded-[1.5rem]"
           )}

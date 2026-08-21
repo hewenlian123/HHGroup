@@ -21,7 +21,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "hh-type-text-entry hh-touch-min flex h-hh-control-standard w-full items-center justify-between whitespace-nowrap rounded-hh-standard border px-hh-3 py-hh-2 shadow-none transition-all duration-150 ease-out data-[placeholder]:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "hh-type-text-entry hh-touch-min flex h-hh-control-standard w-full items-center justify-between whitespace-nowrap rounded-hh-standard border px-hh-3 py-hh-2 shadow-none transition-[background-color,border-color,box-shadow,color] duration-150 ease-out data-[placeholder]:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       NEO.input,
       className
     )}

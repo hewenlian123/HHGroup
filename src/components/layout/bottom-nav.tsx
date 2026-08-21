@@ -95,8 +95,10 @@ const BottomNavItem = React.memo(function BottomNavItem({
       onPointerEnter={onPointerEnterNav}
       className={cn(
         "flex min-h-[44px] min-w-[40px] flex-1 flex-col items-center justify-center gap-0.5 text-xs touch-manipulation cursor-pointer",
-        "transition-[color_transform_opacity] duration-75 active:opacity-80 active:scale-[0.97]",
-        active ? "font-medium text-[var(--neo-gold)]" : "text-sm text-[var(--neo-text-secondary)]"
+        "transition-[background-color,color,opacity] duration-100 active:bg-[var(--hh-l3-pressed)] active:opacity-80",
+        active
+          ? "font-medium text-[var(--hh-text-primary)]"
+          : "text-sm text-[var(--neo-text-secondary)]"
       )}
       aria-current={active ? "page" : undefined}
     >

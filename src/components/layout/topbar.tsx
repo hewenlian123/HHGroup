@@ -270,7 +270,7 @@ export function Topbar({
           type="button"
           variant="outline"
           size="icon"
-          className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md shadow-none transition-all duration-150 ease-out sm:hidden"
+          className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md shadow-none sm:hidden"
           aria-label="Open command palette"
           onClick={onOpenCommandPalette}
         >
@@ -278,12 +278,12 @@ export function Topbar({
         </Button>
         <button
           type="button"
-          className="group relative hidden h-8 min-w-0 items-center rounded-[10px] outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] sm:flex sm:w-[210px] md:w-[260px]"
+          className="hh-focus-ring group relative hidden h-8 min-w-0 items-center rounded-[10px] outline-none sm:flex sm:w-[210px] md:w-[260px]"
           aria-label="Open command palette"
           onClick={onOpenCommandPalette}
         >
           <Search
-            className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[var(--neo-canvas-text-tertiary)] transition-colors duration-150 group-hover:text-[var(--neo-gold-soft)]"
+            className="absolute left-2.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 shrink-0 text-[var(--neo-canvas-text-tertiary)] transition-colors duration-150 group-hover:text-[var(--hh-text-primary)]"
             strokeWidth={1.75}
             aria-hidden
           />
@@ -301,7 +301,7 @@ export function Topbar({
           <Button
             variant="outline"
             size="icon"
-            className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md shadow-none transition-all duration-150 ease-out sm:h-[30px] sm:w-[30px] sm:min-h-0 sm:min-w-0"
+            className="btn-outline-ghost flex h-11 w-11 min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-md shadow-none sm:h-[30px] sm:w-[30px] sm:min-h-0 sm:min-w-0"
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4 text-[var(--neo-text-secondary)]" />
@@ -322,14 +322,14 @@ export function Topbar({
             <Button
               variant="outline"
               size="sm"
-              className="h-9 min-h-[44px] rounded-[10px] border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.09)] px-3.5 py-2.5 text-sm font-medium text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-control)] transition-all duration-150 ease-out hover:-translate-y-px hover:border-[rgb(184_147_90_/_0.34)] hover:bg-[rgb(184_147_90_/_0.12)] active:scale-[0.97] active:duration-100 sm:min-h-0"
+              className="h-9 min-h-[44px] rounded-[10px] border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3.5 py-2.5 text-sm font-medium text-[var(--hh-text-primary)] shadow-operational transition-[background-color,border-color,box-shadow,color] duration-150 ease-out hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] active:duration-100 sm:min-h-0"
             >
               <Plus className="mr-2 h-4 w-4" />
               New
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#9ca3af]">
+            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--hh-text-tertiary)]">
               Projects
             </DropdownMenuLabel>
             <DropdownMenuItem asChild>
@@ -339,7 +339,7 @@ export function Topbar({
               <Link href="/estimates/new">New Estimate</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#9ca3af]">
+            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--hh-text-tertiary)]">
               Work
             </DropdownMenuLabel>
             <DropdownMenuItem asChild>
@@ -352,7 +352,7 @@ export function Topbar({
               <Link href="/site-photos/upload">Upload Site Photo</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#9ca3af]">
+            <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-[0.08em] text-[var(--hh-text-tertiary)]">
               Finance
             </DropdownMenuLabel>
             <DropdownMenuItem asChild>
@@ -394,7 +394,7 @@ export function Topbar({
                 {logoUrl ? (
                   <AvatarImage src={logoUrl} alt={orgName} className="object-contain" />
                 ) : null}
-                <AvatarFallback className="border border-[var(--neo-border)] bg-[rgb(184_147_90_/_0.12)] text-[13px] font-medium text-[var(--neo-gold)]">
+                <AvatarFallback className="border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[13px] font-medium text-[var(--hh-text-primary)]">
                   {getCompanyInitials(orgName)}
                 </AvatarFallback>
               </Avatar>

@@ -114,7 +114,7 @@ export function PWAInstallPrompt() {
   return (
     <div
       className={cn(
-        "fixed bottom-4 left-4 right-4 z-50 rounded-lg border border-border bg-background p-4 shadow-[var(--shadow-2)]",
+        "fixed bottom-4 left-4 right-4 z-50 rounded-lg border border-border bg-background p-4 shadow-floating",
         "md:left-auto md:right-4 md:max-w-sm"
       )}
       role="dialog"

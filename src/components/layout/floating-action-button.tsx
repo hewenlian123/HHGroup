@@ -13,7 +13,6 @@ import {
   DollarSign,
   FolderKanban,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useLaborAddEntry } from "@/contexts/labor-add-entry-context";
@@ -23,7 +22,7 @@ import { UPLOAD_RECEIPT_ACTION } from "@/lib/navigation/actions";
 
 /**
  * FAB: mobile and tablet only (screen width < 1024px).
- * 56px circle, black, white "+", shadow.
+ * Canonical floating action with the shared action and depth roles.
  * Opens bottom sheet menu with quick actions.
  * Desktop layout unchanged (hidden lg:).
  */
@@ -41,12 +40,10 @@ const LINK_ACTIONS_REST = [
   { label: "New Expense", href: "/financial/expenses/new", icon: DollarSign },
 ] as const;
 
-const FAB_SPRING = { type: "spring" as const, stiffness: 260, damping: 20 };
-
 const quickActionRowClass = cn(
   "hh-row-interactive flex min-h-[48px] w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-medium text-foreground max-lg:py-3",
   "cursor-pointer touch-manipulation relative z-[1] select-none border-0 bg-transparent",
-  "rounded-none transition-[transform] duration-75 max-lg:active:scale-[0.99]"
+  "rounded-none transition-colors duration-100 active:bg-[var(--hh-l3-pressed)]"
 );
 
 function QuickActionNavButton({
@@ -111,22 +108,19 @@ export function FloatingActionButton() {
         )}
         aria-label="Quick actions"
       >
-        <motion.button
+        <button
           type="button"
           onClick={() => {
             setOpen(true);
           }}
-          whileTap={{ scale: 0.9 }}
-          transition={FAB_SPRING}
           className={cn(
-            "flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-[var(--neo-graphite-900)] text-white shadow-[0_14px_34px_rgb(0_0_0_/_0.28)]",
-            "cursor-pointer touch-manipulation hover:bg-[var(--neo-graphite-800)]",
-            "focus:outline-none focus:ring-2 focus:ring-[var(--neo-gold-ring)] focus:ring-offset-2 focus:ring-offset-[var(--neo-canvas)] sm:h-14 sm:w-14"
+            "hh-focus-ring flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border-floating)] bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-floating",
+            "cursor-pointer touch-manipulation transition-opacity duration-100 hover:opacity-90 active:opacity-80 sm:h-14 sm:w-14"
           )}
           aria-label="Open quick actions"
         >
           <Plus className="h-6 w-6 pointer-events-none" aria-hidden />
-        </motion.button>
+        </button>
       </div>
 
       <Sheet open={open} onOpenChange={setOpen}>
@@ -139,12 +133,7 @@ export function FloatingActionButton() {
             "[&>button]:max-lg:min-h-[44px] [&>button]:max-lg:min-w-[44px]"
           )}
         >
-          <motion.div
-            className="flex max-h-[inherit] flex-col"
-            initial={{ opacity: 0, scale: 0.96, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={FAB_SPRING}
-          >
+          <div className="flex max-h-[inherit] flex-col">
             <SheetHeader className="border-b border-border/60 px-4 py-3 text-left">
               <SheetTitle className="text-base font-medium">Quick actions</SheetTitle>
             </SheetHeader>
@@ -196,7 +185,7 @@ export function FloatingActionButton() {
                 />
               ))}
             </nav>
-          </motion.div>
+          </div>
         </SheetContent>
       </Sheet>
     </>

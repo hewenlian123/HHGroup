@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 
@@ -52,7 +52,6 @@ test("toast convergence leaves one app-facing API and one rendered live region",
   const api = source("src/lib/toast.ts");
   const providers = source("src/app/providers.tsx");
   const shell = source("src/components/layout/app-shell.tsx");
-  const sonnerAdapter = source("src/lib/sonner-toast.ts");
   const expense = source("src/app/financial/expenses/expenses-client.tsx");
   const receiptQueue = source("src/app/financial/receipt-queue/receipt-queue-workspace.tsx");
 
@@ -64,7 +63,7 @@ test("toast convergence leaves one app-facing API and one rendered live region",
   assert.match(providers, /<ToastProvider>/);
   assert.doesNotMatch(providers, /HotToaster|components\/ui\/sonner/);
   assert.doesNotMatch(shell, /<ToastProvider>|toast\/toast-provider/);
-  assert.match(sonnerAdapter, /@\/lib\/toast/);
+  assert.equal(existsSync(resolve(ROOT, "src/lib/sonner-toast.ts")), false);
   assert.doesNotMatch(expense, /react-hot-toast/);
   assert.doesNotMatch(receiptQueue, /react-hot-toast/);
 });

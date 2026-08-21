@@ -46,8 +46,6 @@ export {
 
 export {
   NeoActionFooter,
-  NeoDatePicker,
-  NeoDrawer,
   NeoFieldLabel,
   NeoFormGrid,
   NeoFormSection,

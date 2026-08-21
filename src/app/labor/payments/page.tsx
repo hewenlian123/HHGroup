@@ -156,7 +156,7 @@ function PaymentRowActionsMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="min-w-[10rem] rounded-md border border-border/60 bg-popover p-1 shadow-[var(--shadow-popover)]"
+        className="min-w-[10rem] rounded-md border border-border/60 bg-popover p-1 shadow-floating"
       >
         <DropdownMenuItem
           className="cursor-pointer text-sm"

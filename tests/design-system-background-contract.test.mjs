@@ -34,7 +34,6 @@ test("maps semantic backgrounds through Tailwind, the shared shell, and Neo comp
   assert.match(shell, /hh-app-shell[^"\n]*bg-canvas/);
   assert.match(shell, /neo-workspace-canvas[^"\n]*bg-workspace/);
   assert.match(pageLayout, /neo-page-on-graphite[^"\n]*bg-workspace/);
-  assert.match(css, /--neo-canvas:\s*var\(--hh-l0-canvas\);/);
   assert.match(css, /--neo-surface-base:\s*var\(--hh-l1-workspace\);/);
   assert.match(css, /--neo-surface-raised:\s*var\(--hh-l2-operational-surface\);/);
 });
