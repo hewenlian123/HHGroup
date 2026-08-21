@@ -515,7 +515,11 @@ export function EstimatePreviewContent({
   const showLineAmounts = !isProposalStyle;
   const documentIdentity = estimateDocumentIdentity(documentStyle);
 
-  const costSections = groupEstimateItemsByCategoryId(items, categories, catalogNameByCode);
+  // Builder persistence intentionally retains empty Sections. Customer documents normalize those
+  // records out so historical placeholders cannot consume page capacity or render orphan headings.
+  const costSections = groupEstimateItemsByCategoryId(items, categories, catalogNameByCode).filter(
+    (section) => section.rows.length > 0
+  );
   const scopePages = paginateScopeSections(costSections, Boolean(summary));
   const clientName = cleanText(meta?.client.name);
   const clientAddress = cleanText(meta?.client.address);

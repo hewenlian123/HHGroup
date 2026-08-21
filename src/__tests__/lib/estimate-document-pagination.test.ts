@@ -7,6 +7,41 @@ import {
 } from "@/app/estimates/_components/estimate-document-pagination";
 
 describe("Estimate customer document pagination", () => {
+  it("keeps the observed historical seven-milestone shape on one payment page", () => {
+    const productionShape = [
+      { titleChars: 12, descriptionChars: 51 },
+      { titleChars: 18, descriptionChars: 70 },
+      { titleChars: 19, descriptionChars: 42 },
+      { titleChars: 35, descriptionChars: 63 },
+      { titleChars: 56, descriptionChars: 137 },
+      { titleChars: 22, descriptionChars: 104 },
+      { titleChars: 37, descriptionChars: 113 },
+    ];
+    const milestones = productionShape.map((shape, index) => ({
+      id: `historical-milestone-${index + 1}`,
+      title: "T".repeat(shape.titleChars),
+      description: "D".repeat(shape.descriptionChars),
+    }));
+
+    expect(paginateEstimatePaymentSchedule(milestones).map((page) => page.length)).toEqual([7]);
+  });
+
+  it("balances an unavoidable split instead of isolating the final milestone", () => {
+    const milestones = Array.from({ length: 7 }, (_, index) => ({
+      id: `balanced-milestone-${index + 1}`,
+      title: `Milestone ${index + 1}`,
+      description: "D".repeat(index === 6 ? 1_500 : 100),
+    }));
+
+    const pages = paginateEstimatePaymentSchedule(milestones);
+
+    expect(pages).toHaveLength(2);
+    expect(pages.map((page) => page.length)).toEqual([4, 3]);
+    expect(pages.flat().map((milestone) => milestone.id)).toEqual(
+      milestones.map((milestone) => milestone.id)
+    );
+  });
+
   it("keeps five normal construction milestones on one payment page", () => {
     const milestones = [
       {
