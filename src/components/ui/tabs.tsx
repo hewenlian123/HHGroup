@@ -14,7 +14,7 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-9 items-center gap-1 rounded-md border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-1 text-[var(--neo-text-secondary)]",
+      "hh-touch-min inline-flex h-hh-control-standard items-center gap-hh-1 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-hh-1 text-[var(--neo-text-secondary)]",
       className
     )}
     {...props}
@@ -29,7 +29,7 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium touch-manipulation transition-all duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--hh-l3-selected)] data-[state=active]:text-[var(--neo-text-primary)] data-[state=inactive]:hover:-translate-y-px data-[state=inactive]:hover:bg-[var(--hh-l3-hover)] data-[state=inactive]:hover:text-[var(--neo-text-primary)] active:scale-[0.97] active:bg-[var(--hh-l3-pressed)] active:duration-100 max-md:active:scale-[0.96]",
+      "hh-touch-min inline-flex items-center justify-center whitespace-nowrap rounded-hh-compact px-hh-3 py-1.5 text-sm font-medium touch-manipulation transition-all duration-150 ease-out disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-[var(--hh-l3-selected)] data-[state=active]:text-[var(--neo-text-primary)] data-[state=inactive]:hover:-translate-y-px data-[state=inactive]:hover:bg-[var(--hh-l3-hover)] data-[state=inactive]:hover:text-[var(--neo-text-primary)] active:scale-[0.97] active:bg-[var(--hh-l3-pressed)] active:duration-100 max-md:active:scale-[0.96]",
       motionInputFocus,
       className
     )}

@@ -53,9 +53,9 @@ export const NEO = {
   input: "neo-input",
   amount: "neo-amount",
   surface:
-    "rounded-xl border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)] shadow-operational",
+    "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)] shadow-operational",
   surfaceMuted:
-    "rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)]",
+    "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--neo-text-primary)]",
   buttonPrimary:
     "border-transparent bg-[var(--neo-graphite-950)] text-white hover:bg-[var(--neo-graphite-800)] focus-visible:ring-[var(--neo-gold-ring)] dark:bg-[var(--neo-gold)] dark:text-zinc-950 dark:hover:bg-[var(--neo-gold-soft)]",
   buttonSecondary:
@@ -79,12 +79,12 @@ export const OS = {
   cardHover:
     "transition-[border-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:border-[var(--hh-border-strong)] hover:shadow-operational",
   iconWell:
-    "rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-2 text-[var(--neo-text-secondary)]",
+    "rounded-hh-compact border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-hh-2 text-[var(--neo-text-secondary)]",
   tableShell: `relative w-full overflow-hidden ${NEO.surface}`,
   tableDivider: "border-[var(--neo-border)]",
   filterSurface: NEO.surface,
   emptyState:
-    "rounded-xl border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] px-5 py-12 text-center shadow-operational",
+    "rounded-hh-standard border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l2-operational-surface)] px-hh-5 py-12 text-center shadow-operational",
   primaryButton: NEO.buttonPrimary,
   secondaryButton: NEO.buttonSecondary,
   emeraldAccent: "text-emerald-700 dark:text-emerald-400",

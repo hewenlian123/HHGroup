@@ -40,7 +40,7 @@ export function Drawer({
         )}
       >
         {(title || description) && (
-          <SheetHeader className="border-b border-[var(--hh-border)] px-5 py-4 pr-12 text-left">
+          <SheetHeader className="border-b border-[var(--hh-border)] p-hh-task-mobile pr-12 text-left md:p-hh-task-desktop md:pr-12">
             {title && (
               <SheetTitle className="text-base font-semibold text-[var(--neo-text-primary)]">
                 {title}
@@ -51,7 +51,7 @@ export function Drawer({
             )}
           </SheetHeader>
         )}
-        <div className="mobile-native-scroll min-h-0 flex-1 overflow-y-auto px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+        <div className="mobile-native-scroll min-h-0 flex-1 overflow-y-auto p-hh-task-mobile pb-[calc(var(--hh-task-padding-mobile)+env(safe-area-inset-bottom))] md:p-hh-task-desktop md:pb-[calc(var(--hh-task-padding-desktop)+env(safe-area-inset-bottom))]">
           {children}
         </div>
       </SheetContent>

@@ -29,16 +29,16 @@ const SheetOverlay = React.forwardRef<
 SheetOverlay.displayName = SheetPrimitive.Overlay.displayName;
 
 const sheetVariants = cva(
-  "fixed z-50 gap-4 overflow-y-auto overscroll-y-contain border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-6 text-[var(--neo-text-primary)] shadow-task outline-none [-webkit-overflow-scrolling:touch] motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none",
+  "fixed z-50 gap-hh-section overflow-y-auto overscroll-y-contain border-[var(--hh-border-strong)] bg-[var(--hh-l5-task-surface)] p-hh-task-mobile text-[var(--neo-text-primary)] shadow-task outline-none [-webkit-overflow-scrolling:touch] motion-reduce:data-[state=open]:animate-hh-modal-fade-in motion-reduce:data-[state=closed]:animate-hh-modal-fade-out max-md:max-h-[100dvh] max-md:w-full max-md:max-w-none md:p-hh-task-desktop",
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b rounded-b-[1.5rem] data-[state=open]:animate-hh-sheet-top-in data-[state=closed]:animate-hh-sheet-top-out",
+        top: "inset-x-0 top-0 rounded-b-hh-task border-b data-[state=open]:animate-hh-sheet-top-in data-[state=closed]:animate-hh-sheet-top-out",
         bottom:
-          "inset-x-2 bottom-0 border-t rounded-b-none rounded-t-[1.5rem] data-[state=open]:animate-hh-sheet-in data-[state=closed]:animate-hh-sheet-out md:inset-x-0",
-        left: "inset-y-0 left-0 h-full w-full border-r rounded-r-[1.5rem] data-[state=open]:animate-hh-sheet-left-in data-[state=closed]:animate-hh-sheet-left-out md:w-3/4 md:max-w-sm",
+          "inset-x-2 bottom-0 rounded-b-none rounded-t-hh-task border-t data-[state=open]:animate-hh-sheet-in data-[state=closed]:animate-hh-sheet-out md:inset-x-0",
+        left: "inset-y-0 left-0 h-full w-full rounded-r-hh-task border-r data-[state=open]:animate-hh-sheet-left-in data-[state=closed]:animate-hh-sheet-left-out md:w-3/4 md:max-w-sm",
         right:
-          "inset-y-0 right-0 h-full w-full border-l rounded-l-[1.5rem] data-[state=open]:animate-hh-sheet-right-in data-[state=closed]:animate-hh-sheet-right-out md:w-3/4 md:max-w-sm",
+          "inset-y-0 right-0 h-full w-full rounded-l-hh-task border-l data-[state=open]:animate-hh-sheet-right-in data-[state=closed]:animate-hh-sheet-right-out md:w-3/4 md:max-w-sm",
       },
     },
     defaultVariants: {
@@ -68,7 +68,7 @@ const SheetContent = React.forwardRef<
       )}
       {...props}
     >
-      <SheetPrimitive.Close className="absolute right-4 top-4 flex items-center justify-center rounded-sm opacity-70 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--hh-l3-hover)] hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0 active:scale-[0.97] active:bg-[var(--hh-l3-pressed)] active:duration-100 max-md:active:scale-[0.96] disabled:pointer-events-none touch-manipulation data-[state=open]:bg-[var(--hh-l3-selected)] max-lg:min-h-[44px] max-lg:min-w-[44px] lg:min-h-0 lg:min-w-0">
+      <SheetPrimitive.Close className="hh-touch-square absolute right-hh-4 top-hh-4 flex items-center justify-center rounded-hh-compact opacity-70 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--hh-l3-hover)] hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] focus-visible:ring-offset-0 active:scale-[0.97] active:bg-[var(--hh-l3-pressed)] active:duration-100 max-md:active:scale-[0.96] disabled:pointer-events-none touch-manipulation data-[state=open]:bg-[var(--hh-l3-selected)]">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
       </SheetPrimitive.Close>
@@ -87,7 +87,7 @@ const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
   <div
     className={cn(
       "flex flex-col-reverse gap-2 pb-[env(safe-area-inset-bottom)] sm:flex-row sm:justify-end sm:space-x-2 sm:pb-0",
-      "max-lg:[&>button]:min-h-11 max-lg:[&>button]:w-full",
+      "hh-touch-footer",
       className
     )}
     {...props}

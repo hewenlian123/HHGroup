@@ -109,7 +109,7 @@ export function CreatableSelect({
         onBlur={handleBlur}
         placeholder={value ? undefined : placeholder}
         className={cn(
-          "flex h-10 min-h-[44px] w-full rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-sm text-[var(--neo-text-primary)] shadow-none transition-all duration-150 ease-out placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] lg:min-h-10",
+          "hh-touch-min flex h-hh-control-comfortable w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-hh-3 py-hh-2 text-sm text-[var(--neo-text-primary)] shadow-none transition-all duration-150 ease-out placeholder:text-[var(--neo-text-tertiary)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
           label ? "mt-1" : ""
         )}
         aria-autocomplete="list"
@@ -118,7 +118,7 @@ export function CreatableSelect({
         <ul
           role="listbox"
           className={cn(
-            "absolute z-[100] mt-1 max-h-56 w-full overflow-auto rounded-xl border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-2 text-[var(--neo-text-primary)] shadow-floating",
+            "absolute z-[100] mt-hh-1 max-h-56 w-full overflow-auto rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-hh-2 text-[var(--neo-text-primary)] shadow-floating",
             contentClassName
           )}
         >
@@ -128,7 +128,7 @@ export function CreatableSelect({
               role="option"
               aria-selected={opt === value}
               className={cn(
-                "min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
+                "hh-touch-row flex min-h-hh-row-standard cursor-pointer items-center px-hh-3 py-hh-2 text-sm transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
                 opt === value &&
                   (selectedOptionClassName ??
                     "bg-[var(--hh-l3-selected)] text-[var(--neo-text-primary)]")
@@ -145,7 +145,7 @@ export function CreatableSelect({
             <li
               role="option"
               aria-selected={false}
-              className="min-h-[44px] flex cursor-pointer items-center px-3 py-2.5 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]"
+              className="hh-touch-row flex min-h-hh-row-standard cursor-pointer items-center px-hh-3 py-hh-2 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]"
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleAdd();

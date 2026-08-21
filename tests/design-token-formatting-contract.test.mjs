@@ -26,6 +26,7 @@ test("keeps authored design-token sources and consumers formatter-owned", async 
     "scripts/design-token-sync.mjs",
     "src/app/globals.css",
     "tailwind.config.ts",
+    "tests/design-geometry-contract.test.mjs",
     "tests/design-token-sync-contract.test.mjs",
   ]) {
     assert.equal(await isIgnored(authoredFile), false, `${authoredFile} must remain formatted`);

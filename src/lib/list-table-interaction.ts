@@ -28,18 +28,18 @@ export const listTableAmountCellClassName = cn(
 
 /** Row actions trigger: hidden until row hover/focus on desktop; always visible on touch (<md). */
 export const listRowActionsTriggerClassName = cn(
-  "h-auto w-auto min-h-0 min-w-0 shrink-0 rounded-lg p-2 text-[var(--neo-text-secondary)]",
+  "hh-touch-square h-auto w-auto min-h-0 min-w-0 shrink-0 rounded-hh-standard p-hh-2 text-[var(--neo-text-secondary)]",
   "opacity-0 transition-all duration-150 ease-out group-hover:opacity-100 group-focus-within:opacity-100 max-md:opacity-100",
   "hover:-translate-y-px hover:bg-[var(--hh-l3-hover)] hover:text-[var(--neo-text-primary)] hover:shadow-sm active:scale-[0.97] active:bg-[var(--hh-l3-pressed)] active:duration-100 max-md:active:scale-[0.96]",
   "data-[state=open]:!opacity-100 data-[state=open]:bg-[var(--hh-l3-selected)] data-[state=open]:shadow-sm"
 );
 
 export const listRowActionsContentClassName = cn(
-  "min-w-[160px] rounded-md border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-0 py-2 text-[var(--neo-text-primary)] shadow-floating"
+  "min-w-[160px] rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] p-0 py-hh-2 text-[var(--neo-text-primary)] shadow-floating"
 );
 
 export const listRowActionsItemClassName = cn(
-  "cursor-pointer rounded-none px-4 py-2 text-sm",
+  "hh-touch-row min-h-hh-row-dense cursor-pointer rounded-hh-compact px-hh-4 py-hh-2 text-sm",
   "focus:bg-[var(--hh-l3-hover)] hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)]"
 );
 

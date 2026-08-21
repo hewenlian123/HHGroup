@@ -14,13 +14,14 @@ async function loadContract() {
   }
 }
 
-test("parses the current Design System v1 color contract", async () => {
+test("parses the current Design System v1 color and invariant geometry contract", async () => {
   const { defaultDesignSystemSourcePath, parseDesignSystemTokens } = await loadContract();
   const markdown = readFileSync(defaultDesignSystemSourcePath(), "utf8");
   const contract = parseDesignSystemTokens(markdown);
 
-  assert.equal(contract.schemaVersion, 2);
+  assert.equal(contract.schemaVersion, 3);
   assert.equal(contract.tokens.length, 24);
+  assert.equal(contract.dimensions.length, 30);
   assert.deepEqual(contract.tokens[0], {
     role: "L0 Canvas",
     name: "l0-canvas",
@@ -122,6 +123,41 @@ test("parses the current Design System v1 color contract", async () => {
       dark: "0 1px 0 rgb(255 255 255 / 0.065), 0 32px 76px -20px rgb(0 0 0 / 0.92)",
     }
   );
+  assert.deepEqual(contract.dimensions.slice(0, 3), [
+    {
+      role: "Space 1",
+      name: "space-1",
+      cssVariable: "--hh-space-1",
+      value: "4px",
+    },
+    {
+      role: "Space 2",
+      name: "space-2",
+      cssVariable: "--hh-space-2",
+      value: "8px",
+    },
+    {
+      role: "Space 3",
+      name: "space-3",
+      cssVariable: "--hh-space-3",
+      value: "12px",
+    },
+  ]);
+  assert.deepEqual(
+    contract.dimensions.find(({ name }) => name === "control-height-comfortable"),
+    {
+      role: "Comfortable control height",
+      name: "control-height-comfortable",
+      cssVariable: "--hh-control-height-comfortable",
+      value: "40px",
+    }
+  );
+  assert.deepEqual(contract.dimensions.at(-1), {
+    role: "Major-region gap",
+    name: "gap-region",
+    cssVariable: "--hh-gap-region",
+    value: "24px",
+  });
 });
 
 test("fails closed for missing, duplicate, malformed, and incomplete authority rows", async () => {
@@ -161,6 +197,46 @@ test("fails closed for missing, duplicate, malformed, and incomplete authority r
   );
 });
 
+test("fails closed for missing, duplicate, malformed, unknown, and mismatched geometry rows", async () => {
+  const { defaultDesignSystemSourcePath, parseDesignSystemTokens } = await loadContract();
+  const markdown = readFileSync(defaultDesignSystemSourcePath(), "utf8");
+  const row = markdown.match(/^\| Standard control height \|.*$/m)?.[0];
+
+  assert.ok(row, "expected the authority Standard control height row fixture");
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(`${row}\n`, "")),
+    /missing required invariant geometry role: Standard control height/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(row, `${row}\n${row}`)),
+    /duplicate invariant geometry role: Standard control height/i
+  );
+  assert.throws(
+    () => parseDesignSystemTokens(markdown.replace(row, row.replace("36px", "2.25rem"))),
+    /malformed invariant geometry value for Standard control height/i
+  );
+  assert.throws(
+    () =>
+      parseDesignSystemTokens(
+        markdown.replace(
+          row,
+          `${row}\n| Decorative inset | \`--hh-decorative-inset\` | \`18px\` | Not approved. |`
+        )
+      ),
+    /unknown invariant geometry role: Decorative inset/i
+  );
+  assert.throws(
+    () =>
+      parseDesignSystemTokens(
+        markdown.replace(
+          row,
+          row.replace("--hh-control-height-standard", "--hh-control-height-default")
+        )
+      ),
+    /token mismatch for Standard control height/i
+  );
+});
+
 test("generated artifacts exactly equal the authoritative model", async () => {
   const {
     defaultDesignSystemSourcePath,
@@ -173,6 +249,19 @@ test("generated artifacts exactly equal the authoritative model", async () => {
 
   assert.equal(source("src/styles/design-tokens.generated.css"), renderGeneratedCss(contract));
   assert.equal(source("src/styles/design-tokens.generated.json"), renderGeneratedJson(contract));
+
+  const css = renderGeneratedCss(contract);
+  for (const { cssVariable } of contract.dimensions) {
+    assert.equal(
+      css.match(new RegExp(`${cssVariable}:`, "g"))?.length,
+      1,
+      `${cssVariable} must be emitted exactly once`
+    );
+  }
+  assert.doesNotMatch(
+    css.slice(css.indexOf("html.dark")),
+    /--hh-(?:space|radius|touch|control|row|panel|task-padding|page-gutter|gap)-/
+  );
 });
 
 test("globals and Tailwind consume canonical tokens while compatibility aliases remain wired", async () => {

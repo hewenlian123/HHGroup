@@ -69,7 +69,7 @@ export function SearchableSelect({
           setTimeout(() => inputRef.current?.focus(), 0);
         }}
         className={cn(
-          "flex h-10 w-full min-w-[140px] items-center justify-between rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-left text-sm text-[var(--neo-text-primary)] shadow-operational transition-all duration-150 ease-out",
+          "hh-touch-min flex h-hh-control-comfortable w-full min-w-[140px] items-center justify-between rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-hh-3 text-left text-sm text-[var(--neo-text-primary)] shadow-operational transition-all duration-150 ease-out",
           "hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
         )}
       >
@@ -89,7 +89,7 @@ export function SearchableSelect({
         <div
           role="listbox"
           className={cn(
-            "absolute z-[100] mt-1 w-full min-w-[200px] origin-top overflow-hidden rounded-xl border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-2 text-[var(--neo-text-primary)] shadow-floating",
+            "absolute z-[100] mt-hh-1 w-full min-w-[200px] origin-top overflow-hidden rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] py-hh-2 text-[var(--neo-text-primary)] shadow-floating",
             motionPopoverLayer
           )}
         >
@@ -100,7 +100,7 @@ export function SearchableSelect({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search…"
-              className="h-9 w-full rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 text-sm text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus:border-[var(--neo-gold)] focus:outline-none focus:ring-2 focus:ring-[var(--neo-gold-ring)]"
+              className="hh-touch-min h-hh-control-standard w-full rounded-hh-standard border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-hh-2 text-sm text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus:border-[var(--neo-gold)] focus:outline-none focus:ring-2 focus:ring-[var(--neo-gold-ring)]"
             />
           </div>
           <ul className="max-h-48 overflow-auto py-1">
@@ -113,7 +113,7 @@ export function SearchableSelect({
                   role="option"
                   aria-selected={opt.id === value}
                   className={cn(
-                    "cursor-pointer px-3 py-2 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
+                    "hh-touch-row flex min-h-hh-row-standard cursor-pointer items-center px-hh-3 py-hh-2 text-sm text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--hh-l3-hover)] active:bg-[var(--hh-l3-pressed)] hover:text-[var(--neo-text-primary)]",
                     opt.id === value &&
                       "bg-[var(--hh-l3-selected)] font-medium text-[var(--neo-text-primary)]"
                   )}

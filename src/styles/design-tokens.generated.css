@@ -26,6 +26,36 @@
   --hh-warning: #a16207;
   --hh-information: #2563a8;
   --hh-danger: #b4232f;
+  --hh-space-1: 4px;
+  --hh-space-2: 8px;
+  --hh-space-3: 12px;
+  --hh-space-4: 16px;
+  --hh-space-5: 20px;
+  --hh-space-6: 24px;
+  --hh-space-8: 32px;
+  --hh-space-10: 40px;
+  --hh-radius-compact: 6px;
+  --hh-radius-standard: 8px;
+  --hh-radius-task: 12px;
+  --hh-touch-min: 44px;
+  --hh-control-height-compact: 32px;
+  --hh-control-height-standard: 36px;
+  --hh-control-height-comfortable: 40px;
+  --hh-control-height-touch: 44px;
+  --hh-row-height-dense: 32px;
+  --hh-row-height-standard: 36px;
+  --hh-row-min-height-touch: 44px;
+  --hh-panel-padding-compact: 12px;
+  --hh-panel-padding-standard: 16px;
+  --hh-task-padding-mobile: 16px;
+  --hh-task-padding-desktop: 24px;
+  --hh-page-gutter-mobile: 16px;
+  --hh-page-gutter-tablet: 24px;
+  --hh-page-gutter-desktop: 32px;
+  --hh-page-gutter-wide: 40px;
+  --hh-gap-related: 12px;
+  --hh-gap-section: 16px;
+  --hh-gap-region: 24px;
 }
 
 html.dark {

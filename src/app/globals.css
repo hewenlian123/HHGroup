@@ -771,11 +771,13 @@
     width: 100%;
     max-width: 430px;
     margin-inline: auto;
-    padding: 0.75rem 1rem 1.25rem;
+    padding-block: var(--hh-space-3) var(--hh-space-5);
+    padding-inline: var(--hh-page-gutter-mobile);
   }
   @media (min-width: 640px) {
     .page-container {
       max-width: 460px;
+      padding-inline: var(--hh-page-gutter-tablet);
     }
   }
   @media (min-width: 768px) {
@@ -784,7 +786,17 @@
       max-width: min(1536px, calc(100vw - 2rem));
     }
     .page-container {
-      padding: 1rem clamp(1.5rem, 2vw, 2.5rem) 2rem;
+      padding-block: var(--hh-space-4) var(--hh-space-8);
+    }
+  }
+  @media (min-width: 1024px) {
+    .page-container {
+      padding-inline: var(--hh-page-gutter-desktop);
+    }
+  }
+  @media (min-width: 1536px) {
+    .page-container {
+      padding-inline: var(--hh-page-gutter-wide);
     }
   }
   .page-shell-fluid,
@@ -814,20 +826,27 @@
     }
   }
   .section-padding {
-    @apply px-4 py-3;
+    padding: var(--hh-panel-padding-compact) var(--hh-panel-padding-standard);
   }
   .page-stack {
-    @apply flex flex-col gap-3 md:gap-6;
+    @apply flex flex-col;
+    gap: var(--hh-gap-related);
+  }
+  @media (min-width: 768px) {
+    .page-stack {
+      gap: var(--hh-gap-region);
+    }
   }
   .section-stack {
-    @apply flex flex-col gap-3;
+    @apply flex flex-col;
+    gap: var(--hh-gap-related);
   }
   .table-head-label {
     @apply text-[11px] font-medium uppercase tracking-[0.12em];
     color: var(--neo-text-tertiary);
   }
   .table-row-compact {
-    @apply h-9;
+    height: var(--hh-row-height-standard);
   }
   /** Default data tables: comfortable row height */
   .table-row-relaxed td,
@@ -957,7 +976,9 @@
     }
   }
   .hh-modal-shell {
-    @apply w-full max-w-[480px] rounded-xl border p-6;
+    @apply w-full max-w-[480px] border;
+    border-radius: var(--hh-radius-task);
+    padding: var(--hh-task-padding-desktop);
     border-color: var(--neo-border);
     background: var(--neo-surface-raised);
     box-shadow: var(--neo-shadow-panel);
@@ -973,6 +994,24 @@
   }
   .touch-target {
     @apply min-h-[44px] min-w-[44px];
+  }
+  @media (max-width: 1023px), (pointer: coarse) {
+    .hh-touch-min {
+      min-height: var(--hh-touch-min);
+    }
+    .hh-touch-square {
+      min-height: var(--hh-touch-min);
+      min-width: var(--hh-touch-min);
+    }
+    .hh-touch-row {
+      min-height: var(--hh-row-min-height-touch);
+    }
+    .hh-touch-table-cell {
+      height: var(--hh-row-min-height-touch);
+    }
+    .hh-touch-footer > button {
+      min-height: var(--hh-touch-min);
+    }
   }
   .mobile-safe-action-bar {
     @apply sticky bottom-0 border-t px-4 py-3;
@@ -1119,8 +1158,8 @@
     --neo-gold-ring: rgb(184 147 90 / 0.24);
     --neo-emerald: var(--hh-success);
     --neo-emerald-soft: #ddf8ec;
-    --neo-radius-control: 0.5rem;
-    --neo-radius-panel: 0.75rem;
+    --neo-radius-control: var(--hh-radius-standard);
+    --neo-radius-panel: var(--hh-radius-standard);
     --neo-shadow-panel: var(--hh-shadow-operational);
     --neo-shadow-panel-hover: var(--hh-shadow-operational);
     --neo-shadow-control: var(--hh-shadow-operational);
@@ -1156,18 +1195,18 @@
 
     /* ---- Spacing tokens ---- */
     --space-0: 0px;
-    --space-1: 0.25rem; /* 4 */
-    --space-2: 0.5rem; /* 8 */
-    --space-3: 0.75rem; /* 12 */
-    --space-4: 1rem; /* 16 */
-    --space-5: 1.25rem; /* 20 */
-    --space-6: 1.5rem; /* 24 */
-    --space-8: 2rem; /* 32 */
-    --space-10: 2.5rem; /* 40 */
+    --space-1: var(--hh-space-1);
+    --space-2: var(--hh-space-2);
+    --space-3: var(--hh-space-3);
+    --space-4: var(--hh-space-4);
+    --space-5: var(--hh-space-5);
+    --space-6: var(--hh-space-6);
+    --space-8: var(--hh-space-8);
+    --space-10: var(--hh-space-10);
     --space-12: 3rem; /* 48 */
 
     /* ---- Radius tokens ---- */
-    --radius: 0.5rem; /* 8px — buttons, inputs */
+    --radius: var(--hh-radius-standard);
     --radius-sm: 0.25rem;
     --radius-md: 0.375rem;
     --radius-lg: 0.75rem; /* 12px — cards, modals */

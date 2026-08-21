@@ -16,7 +16,42 @@ const config: Config = {
         desktop: "1024px",
       },
       minHeight: {
-        touch: "44px",
+        touch: "var(--hh-touch-min)",
+        "hh-touch": "var(--hh-touch-min)",
+        "hh-row-touch": "var(--hh-row-min-height-touch)",
+      },
+      minWidth: {
+        "hh-touch": "var(--hh-touch-min)",
+      },
+      height: {
+        "hh-control-compact": "var(--hh-control-height-compact)",
+        "hh-control-standard": "var(--hh-control-height-standard)",
+        "hh-control-comfortable": "var(--hh-control-height-comfortable)",
+        "hh-control-touch": "var(--hh-control-height-touch)",
+        "hh-row-dense": "var(--hh-row-height-dense)",
+        "hh-row-standard": "var(--hh-row-height-standard)",
+        "hh-row-touch": "var(--hh-row-min-height-touch)",
+      },
+      spacing: {
+        "hh-1": "var(--hh-space-1)",
+        "hh-2": "var(--hh-space-2)",
+        "hh-3": "var(--hh-space-3)",
+        "hh-4": "var(--hh-space-4)",
+        "hh-5": "var(--hh-space-5)",
+        "hh-6": "var(--hh-space-6)",
+        "hh-8": "var(--hh-space-8)",
+        "hh-10": "var(--hh-space-10)",
+        "hh-panel-compact": "var(--hh-panel-padding-compact)",
+        "hh-panel-standard": "var(--hh-panel-padding-standard)",
+        "hh-task-mobile": "var(--hh-task-padding-mobile)",
+        "hh-task-desktop": "var(--hh-task-padding-desktop)",
+        "hh-page-mobile": "var(--hh-page-gutter-mobile)",
+        "hh-page-tablet": "var(--hh-page-gutter-tablet)",
+        "hh-page-desktop": "var(--hh-page-gutter-desktop)",
+        "hh-page-wide": "var(--hh-page-gutter-wide)",
+        "hh-gap-related": "var(--hh-gap-related)",
+        "hh-gap-section": "var(--hh-gap-section)",
+        "hh-gap-region": "var(--hh-gap-region)",
       },
       colors: {
         /** Semantic UI tokens — single source of truth (Linear / Apple SaaS) */
@@ -157,6 +192,9 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
         card: "12px",
         modal: "14px",
+        "hh-compact": "var(--hh-radius-compact)",
+        "hh-standard": "var(--hh-radius-standard)",
+        "hh-task": "var(--hh-radius-task)",
       },
       fontSize: {
         /** Body 14px, labels 12px */

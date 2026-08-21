@@ -10,13 +10,13 @@ const tableShellClass = OS.tableShell;
 export const tableCellBorderClass = "border-b border-[var(--hh-border)] last:border-b-0";
 
 export const tableRawThClass = cn(
-  "h-9 bg-[var(--hh-l2-operational-surface)] px-3 text-left align-middle",
+  "h-hh-row-standard bg-[var(--hh-l2-operational-surface)] px-hh-3 text-left align-middle",
   TYPO.tableHeader,
   "border-b border-[var(--hh-border)]"
 );
 
 export const tableRawTdClass = cn(
-  "h-9 max-md:min-h-[44px] px-3 py-0 align-middle text-sm text-[var(--neo-text-primary)]",
+  "hh-touch-table-cell h-hh-row-standard px-hh-3 py-0 align-middle text-sm text-[var(--neo-text-primary)]",
   "border-b border-[var(--hh-border)] last:border-b-0"
 );
 
@@ -107,7 +107,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-9 bg-[var(--hh-l2-operational-surface)] px-3 text-left align-middle",
+      "h-hh-row-standard bg-[var(--hh-l2-operational-surface)] px-hh-3 text-left align-middle",
       TYPO.tableHeader,
       "border-b border-[var(--hh-border)]",
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
@@ -125,7 +125,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "h-9 max-md:min-h-[44px] px-3 py-0 align-middle text-sm text-[var(--neo-text-primary)]",
+      "hh-touch-table-cell h-hh-row-standard px-hh-3 py-0 align-middle text-sm text-[var(--neo-text-primary)]",
       "[&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
