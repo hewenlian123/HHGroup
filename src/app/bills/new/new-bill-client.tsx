@@ -186,7 +186,7 @@ export function NewBillClient({
     <div className="mx-auto w-full min-w-0 max-w-[1000px]">
       {dataLoadWarning ? (
         <p
-          className="mb-4 rounded-lg border border-[rgb(184_147_90/0.24)] bg-[rgb(184_147_90/0.10)] px-3 py-2 text-[12px] leading-snug text-[var(--neo-text-primary)]"
+          className="mb-4 rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2 text-hh-helper text-[var(--hh-warning)]"
           role="status"
         >
           {dataLoadWarning}
@@ -346,7 +346,7 @@ export function NewBillClient({
 
           <div
             className={cn(
-              "flex flex-col gap-2 border-t border-[var(--neo-border)] pt-5 sm:flex-row sm:items-center",
+              "flex flex-col gap-2 border-t border-[var(--hh-border)] pt-5 sm:flex-row sm:items-center",
               "max-md:[&_button]:min-h-11 max-md:[&_button]:w-full"
             )}
           >

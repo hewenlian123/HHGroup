@@ -44,7 +44,7 @@ export default async function MaterialSelectionsPage() {
   return (
     <PageLayout
       divider={false}
-      className="dark md:max-w-6xl"
+      className="md:max-w-6xl"
       header={
         <PageHeader
           title="Material Selections"
@@ -77,10 +77,10 @@ export default async function MaterialSelectionsPage() {
               <NeoMobileCard key={selection.id} className="p-3">
                 <div className="flex min-w-0 items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-[var(--neo-text-primary)]">
+                    <p className="truncate text-sm font-semibold text-[var(--hh-text-primary)]">
                       {selection.title}
                     </p>
-                    <p className="mt-1 truncate text-xs text-[var(--neo-text-secondary)]">
+                    <p className="mt-1 truncate text-xs text-[var(--hh-text-secondary)]">
                       {selection.selectionNumber || "Draft"} · {customerProjectLine(selection)}
                     </p>
                   </div>
@@ -90,16 +90,20 @@ export default async function MaterialSelectionsPage() {
                   />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="h-8 rounded-sm" asChild>
+                  <Button variant="outline" size="sm" className="h-11 rounded-hh-compact" asChild>
                     <Link href={`/materials/${selection.id}`}>View/Edit</Link>
                   </Button>
-                  <Button variant="outline" size="sm" className="h-8 rounded-sm" asChild>
+                  <Button variant="outline" size="sm" className="h-11 rounded-hh-compact" asChild>
                     <Link href={`/materials/${selection.id}/preview`}>Preview</Link>
                   </Button>
-                  <Button variant="outline" size="sm" className="h-8 rounded-sm" asChild>
+                  <Button variant="outline" size="sm" className="h-11 rounded-hh-compact" asChild>
                     <Link href={`/api/materials/${selection.id}/pdf`}>PDF</Link>
                   </Button>
-                  <MaterialSelectionDeleteButton id={selection.id} title={selection.title} />
+                  <MaterialSelectionDeleteButton
+                    id={selection.id}
+                    title={selection.title}
+                    className="h-11"
+                  />
                 </div>
               </NeoMobileCard>
             ))}
@@ -120,18 +124,18 @@ export default async function MaterialSelectionsPage() {
             <tbody>
               {selections.map((selection) => (
                 <tr key={selection.id} className={listTableRowStaticClassName}>
-                  <td className="h-11 px-3 py-0 align-middle text-[13px] font-medium tabular-nums text-[var(--neo-text-primary)]">
+                  <td className="h-11 px-3 py-0 align-middle text-hh-table-cell font-medium tabular-nums text-[var(--hh-text-primary)]">
                     {selection.selectionNumber || "Draft"}
                   </td>
-                  <td className="h-11 px-3 py-0 align-middle text-[13px] font-medium text-[var(--neo-text-primary)]">
+                  <td className="h-11 px-3 py-0 align-middle text-hh-table-cell font-medium text-[var(--hh-text-primary)]">
                     <Link className="hover:underline" href={`/materials/${selection.id}`}>
                       {selection.title}
                     </Link>
                   </td>
-                  <td className="h-11 px-3 py-0 align-middle text-[13px] text-[var(--neo-text-secondary)]">
+                  <td className="h-11 px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                     {selection.customerName ?? "—"}
                   </td>
-                  <td className="h-11 px-3 py-0 align-middle text-[13px] text-[var(--neo-text-secondary)]">
+                  <td className="h-11 px-3 py-0 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]">
                     {selection.projectName ?? "—"}
                   </td>
                   <td className="h-11 px-3 py-0 align-middle">
@@ -140,18 +144,33 @@ export default async function MaterialSelectionsPage() {
                       variant={statusVariant(selection.status)}
                     />
                   </td>
-                  <td className="h-11 px-3 py-0 align-middle text-[13px] tabular-nums text-[var(--neo-text-secondary)]">
+                  <td className="h-11 px-3 py-0 align-middle text-hh-table-cell tabular-nums text-[var(--hh-text-secondary)]">
                     {formatDate(selection.updatedAt)}
                   </td>
                   <td className="h-11 px-3 py-0 text-right align-middle">
                     <div className="flex justify-end gap-1.5">
-                      <Button variant="outline" size="sm" className="h-8 rounded-sm px-2" asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-hh-compact px-2"
+                        asChild
+                      >
                         <Link href={`/materials/${selection.id}`}>View/Edit</Link>
                       </Button>
-                      <Button variant="outline" size="sm" className="h-8 rounded-sm px-2" asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-hh-compact px-2"
+                        asChild
+                      >
                         <Link href={`/materials/${selection.id}/preview`}>Preview</Link>
                       </Button>
-                      <Button variant="outline" size="sm" className="h-8 rounded-sm px-2" asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 rounded-hh-compact px-2"
+                        asChild
+                      >
                         <Link href={`/api/materials/${selection.id}/pdf`}>PDF</Link>
                       </Button>
                       <MaterialSelectionDeleteButton id={selection.id} title={selection.title} />

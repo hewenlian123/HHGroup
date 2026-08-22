@@ -150,34 +150,34 @@ export function MaterialSelectionLinkedRecordCombobox({
           aria-haspopup="listbox"
           onKeyDown={handleTriggerKeyDown}
           className={cn(
-            "flex h-10 min-h-10 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-left text-[14px] text-[var(--neo-text-primary)] shadow-none transition-colors duration-150",
-            "hover:bg-[var(--neo-surface-hover)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]",
-            "max-md:min-h-11 max-md:text-base"
+            "flex h-10 min-h-11 w-full min-w-0 items-center justify-between gap-2 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-left text-hh-body text-[var(--hh-text-primary)] shadow-none transition-colors duration-150 md:min-h-10",
+            "hh-focus-ring hover:bg-[var(--hh-l3-hover)]",
+            "max-md:text-base"
           )}
         >
           <span
             className={cn(
               "min-w-0 flex-1 truncate",
-              !selected && !value && "text-[var(--neo-text-secondary)]"
+              !selected && !value && "text-[var(--hh-text-secondary)]"
             )}
           >
             {selectedLabel}
           </span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-[var(--neo-text-tertiary)]" aria-hidden />
+          <ChevronDown className="h-4 w-4 shrink-0 text-[var(--hh-text-tertiary)]" aria-hidden />
         </button>
       </PopoverTrigger>
       <PopoverContent
         align="start"
         sideOffset={5}
-        className="z-[220] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-0 shadow-[var(--neo-shadow-panel)]"
+        className="z-[220] w-[var(--radix-popover-trigger-width)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-0 shadow-operational"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           inputRef.current?.focus();
         }}
       >
-        <div className="border-b border-[var(--neo-border)] p-2">
-          <div className="flex h-10 items-center gap-2 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2.5 transition-colors focus-within:border-[var(--neo-gold)] focus-within:ring-2 focus-within:ring-[var(--neo-gold-ring)] max-md:h-11">
-            <Search className="h-4 w-4 shrink-0 text-[var(--neo-text-tertiary)]" aria-hidden />
+        <div className="border-b border-[var(--hh-border)] p-2">
+          <div className="flex h-10 items-center gap-2 rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-2.5 transition-colors focus-within:border-[var(--hh-focus-ring)] focus-within:ring-2 focus-within:ring-[var(--hh-focus-ring)] max-md:h-11">
+            <Search className="h-4 w-4 shrink-0 text-[var(--hh-text-tertiary)]" aria-hidden />
             <input
               ref={inputRef}
               role="searchbox"
@@ -189,13 +189,13 @@ export function MaterialSelectionLinkedRecordCombobox({
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={handleSearchKeyDown}
               placeholder={searchPlaceholder}
-              className="h-full min-w-0 flex-1 bg-transparent text-sm text-[var(--neo-text-primary)] outline-none placeholder:text-[var(--neo-text-tertiary)] max-md:text-base"
+              className="h-full min-w-0 flex-1 bg-transparent text-sm text-[var(--hh-text-primary)] outline-none placeholder:text-[var(--hh-text-tertiary)] max-md:text-base"
             />
           </div>
         </div>
         <div id={listboxId} role="listbox" className="max-h-64 overflow-y-auto py-1">
           {filteredOptions.length === 0 && queryText ? (
-            <div className="px-3 py-2 text-sm text-[var(--neo-text-tertiary)]">{emptyText}</div>
+            <div className="px-3 py-2 text-sm text-[var(--hh-text-tertiary)]">{emptyText}</div>
           ) : null}
           {visibleOptions.map((option, index) => {
             const selectedOption = option.value === value;
@@ -210,9 +210,9 @@ export function MaterialSelectionLinkedRecordCombobox({
                 className={cn(
                   "flex min-h-10 w-full min-w-0 items-center gap-2 px-3 py-2 text-left text-sm transition-colors max-md:min-h-11 max-md:text-base",
                   active
-                    ? "bg-[rgb(198_165_106_/_0.12)] text-[var(--neo-text-primary)]"
-                    : "text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-text-primary)]",
-                  selectedOption && "text-[var(--neo-text-primary)]"
+                    ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+                    : "text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]",
+                  selectedOption && "text-[var(--hh-text-primary)]"
                 )}
                 onMouseEnter={() => setActiveIndex(index)}
                 onMouseDown={(event) => event.preventDefault()}
@@ -220,7 +220,7 @@ export function MaterialSelectionLinkedRecordCombobox({
               >
                 <span className="min-w-0 flex-1 truncate">{option.label}</span>
                 {selectedOption ? (
-                  <Check className="h-4 w-4 shrink-0 text-[var(--neo-gold)]" aria-hidden />
+                  <Check className="h-4 w-4 shrink-0 text-[var(--hh-text-primary)]" aria-hidden />
                 ) : null}
               </button>
             );

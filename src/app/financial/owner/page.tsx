@@ -58,13 +58,12 @@ const EMPTY_OWNER_DASHBOARD: Awaited<ReturnType<typeof getFinanceOwnerDashboard>
   },
 };
 
-const pageBg = "dark neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]";
+const pageBg = "text-[var(--hh-text-secondary)]";
 
 const cardBase =
-  "rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] transition-[transform,box-shadow,border-color] duration-200 ease-out";
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational transition-[box-shadow,border-color] duration-200 ease-out";
 
-const cardHover =
-  "hover:-translate-y-px hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)]";
+const cardHover = "hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-selected)]";
 
 function fmtCount(n: number): string {
   return formatInteger(n);
@@ -88,11 +87,11 @@ function HealthStripe({ row }: { row: FinanceOwnerProjectRow }) {
         : "—";
 
   const dotClass = (i: number) => {
-    if (row.revenue <= 0 || !pctOk) return "bg-zinc-200 dark:bg-muted";
-    if (atRisk) return i === 0 ? "bg-rose-500" : "bg-zinc-200 dark:bg-muted";
-    if (strong) return "bg-emerald-500";
-    if (watch) return i <= 1 ? "bg-amber-400" : "bg-zinc-200 dark:bg-muted";
-    return "bg-zinc-200 dark:bg-muted";
+    if (row.revenue <= 0 || !pctOk) return "bg-[var(--hh-border-strong)]";
+    if (atRisk) return i === 0 ? "bg-[var(--hh-danger)]" : "bg-[var(--hh-border-strong)]";
+    if (strong) return "bg-[var(--hh-success)]";
+    if (watch) return i <= 1 ? "bg-[var(--hh-warning)]" : "bg-[var(--hh-border-strong)]";
+    return "bg-[var(--hh-border-strong)]";
   };
 
   const healthTip =
@@ -117,10 +116,10 @@ function HealthStripe({ row }: { row: FinanceOwnerProjectRow }) {
       </div>
       <span
         className={cn(
-          "max-w-[5.5rem] truncate text-right text-[11px] font-semibold tabular-nums tracking-tight sm:max-w-none",
-          atRisk && "text-rose-600 dark:text-rose-400",
-          strong && "text-emerald-700 dark:text-emerald-400",
-          watch && !atRisk && "text-amber-700 dark:text-amber-400",
+          "max-w-[5.5rem] truncate text-right text-hh-status font-semibold tabular-nums tracking-normal sm:max-w-none",
+          atRisk && "text-[var(--hh-danger)]",
+          strong && "text-[var(--hh-success)]",
+          watch && !atRisk && "text-[var(--hh-warning)]",
           row.revenue <= 0 && "font-normal text-muted-foreground"
         )}
       >
@@ -154,19 +153,19 @@ function ProfitMarginTrack({ row }: { row: FinanceOwnerProjectRow }) {
 
   return (
     <div className="w-full max-w-[168px] min-w-0 sm:max-w-none">
-      <div className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="mb-1.5 flex items-center justify-between gap-2 text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
         <span>Margin</span>
         <span
           className={cn(
             "max-w-[5rem] shrink-0 truncate tabular-nums normal-case sm:max-w-none",
-            positive ? "text-emerald-700 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+            positive ? "text-[var(--hh-success)]" : "text-[var(--hh-danger)]"
           )}
           title={pctFullTooltip(Number.isFinite(row.profitPct) ? row.profitPct : NaN)}
         >
           {pctLabel}
         </span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-[var(--neo-surface-muted)]">
+      <div className="h-2 overflow-hidden rounded-full bg-[var(--hh-l3-selected)]">
         <div
           className={cn(
             "h-full max-w-full rounded-full transition-[width] duration-300 ease-out",
@@ -184,7 +183,7 @@ function ProfitMarginTrack({ row }: { row: FinanceOwnerProjectRow }) {
 const projectCols =
   "md:grid md:grid-cols-[minmax(0,1.35fr)_minmax(0,0.72fr)_minmax(0,0.72fr)_minmax(0,0.78fr)_minmax(0,1fr)_minmax(0,0.85fr)] md:gap-x-4 md:gap-y-0";
 
-const projectHeaderGrid = cn(projectCols, "hidden border-b border-[var(--neo-border)] pb-3");
+const projectHeaderGrid = cn(projectCols, "hidden border-b border-[var(--hh-border)] pb-3");
 
 const projectRowGridMd = cn(projectCols, "md:items-center md:py-5");
 
@@ -202,8 +201,8 @@ function OwnerProjectList({
   if (rows.length === 0) {
     return (
       <div data-testid={testId} className="min-w-0">
-        <div className="flex flex-col items-center rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-5 py-12 text-center transition-colors duration-200 ease-out max-md:px-4 max-md:py-14">
-          <Layers className="h-10 w-10 text-[var(--neo-text-tertiary)]" aria-hidden />
+        <div className="flex flex-col items-center rounded-hh-standard border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-5 py-12 text-center transition-colors duration-200 ease-out max-md:px-4 max-md:py-14">
+          <Layers className="h-10 w-10 text-[var(--hh-text-tertiary)]" aria-hidden />
           <p className="mt-4 text-sm font-semibold text-foreground">{emptyTitle}</p>
           <p className="mt-2 max-w-sm text-xs leading-relaxed text-muted-foreground">{emptyBody}</p>
         </div>
@@ -216,7 +215,7 @@ function OwnerProjectList({
       <div
         className={cn(
           projectHeaderGrid,
-          "text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:grid"
+          "text-hh-table-header font-semibold uppercase tracking-normal text-muted-foreground md:grid"
         )}
       >
         <div>Project</div>
@@ -227,12 +226,12 @@ function OwnerProjectList({
         <div className="text-right">Health</div>
       </div>
 
-      <div className="divide-y divide-[var(--neo-border)]">
+      <div className="divide-y divide-[var(--hh-border)]">
         {rows.map((r) => (
           <div
             key={r.projectId}
             className={cn(
-              "flex flex-col gap-4 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-4 py-4 transition-colors duration-200 ease-out hover:bg-[var(--neo-surface-raised)] max-md:gap-3 md:border-0 md:bg-transparent md:px-0 md:hover:bg-[var(--neo-surface-muted)]",
+              "flex flex-col gap-4 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-4 py-4 transition-colors duration-200 ease-out hover:bg-[var(--hh-l2-operational-surface)] max-md:gap-3 md:border-0 md:bg-transparent md:px-0 md:hover:bg-[var(--hh-l3-selected)]",
               projectRowGridMd,
               "md:border-transparent"
             )}
@@ -252,7 +251,7 @@ function OwnerProjectList({
 
               <div className="grid grid-cols-2 gap-3 text-sm md:contents">
                 <div className="text-muted-foreground md:text-right">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide md:hidden">
+                  <span className="text-hh-table-header font-semibold uppercase tracking-normal md:hidden">
                     Revenue
                   </span>
                   <div
@@ -263,7 +262,7 @@ function OwnerProjectList({
                   </div>
                 </div>
                 <div className="text-muted-foreground md:text-right">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide md:hidden">
+                  <span className="text-hh-table-header font-semibold uppercase tracking-normal md:hidden">
                     Expense
                   </span>
                   <div
@@ -274,14 +273,14 @@ function OwnerProjectList({
                   </div>
                 </div>
                 <div className="text-muted-foreground md:text-right">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide md:hidden">
+                  <span className="text-hh-table-header font-semibold uppercase tracking-normal md:hidden">
                     Profit
                   </span>
                   <div
                     className={cn(
                       "mt-0.5 max-w-full truncate text-right tabular-nums font-semibold md:mt-0 md:truncate md:text-sm whitespace-nowrap",
-                      r.profit > 0 && "text-emerald-700 dark:text-emerald-400",
-                      r.profit < 0 && "text-rose-600 dark:text-rose-400",
+                      r.profit > 0 && "text-[var(--hh-success)]",
+                      r.profit < 0 && "text-[var(--hh-danger)]",
                       r.profit === 0 && "font-medium text-muted-foreground"
                     )}
                     title={fmtUsdSignedFull(r.profit)}
@@ -290,7 +289,7 @@ function OwnerProjectList({
                   </div>
                 </div>
                 <div className="col-span-2 min-w-0 md:col-span-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                  <span className="text-hh-table-header font-semibold uppercase tracking-normal text-muted-foreground md:hidden">
                     Margin
                   </span>
                   <div className="mt-1 md:mt-0 md:py-0.5">
@@ -298,7 +297,7 @@ function OwnerProjectList({
                   </div>
                 </div>
                 <div className="col-span-2 flex items-center justify-between gap-2 md:col-span-1 md:justify-end">
-                  <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:hidden">
+                  <span className="text-hh-table-header font-semibold uppercase tracking-normal text-muted-foreground md:hidden">
                     Health
                   </span>
                   <HealthStripe row={r} />
@@ -350,21 +349,21 @@ export default async function FinanceOwnerDashboardPage() {
       label: "Cash collected",
       value: data.kpis.cashCollectedThisMonth,
       icon: CircleDollarSign,
-      iconWrap: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+      iconWrap: "bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
       accent: "neutral",
     },
     {
       label: "Invoiced",
       value: data.kpis.invoicedThisMonth,
       icon: FileText,
-      iconWrap: "bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]",
+      iconWrap: "bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]",
       accent: "neutral",
     },
     {
       label: "Expense",
       value: data.kpis.expenseThisMonth,
       icon: Receipt,
-      iconWrap: "bg-rose-500/10 text-rose-700 dark:text-rose-400",
+      iconWrap: "bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
       accent: "expense",
     },
     {
@@ -374,22 +373,22 @@ export default async function FinanceOwnerDashboardPage() {
       icon: data.kpis.profitThisMonth >= 0 ? TrendingUp : TrendingDown,
       iconWrap:
         data.kpis.profitThisMonth >= 0
-          ? "bg-emerald-500/12 text-emerald-700 dark:text-emerald-400"
-          : "bg-rose-500/12 text-rose-700 dark:text-rose-400",
+          ? "bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
+          : "bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
       accent: "profit",
     },
     {
       label: "Unpaid invoices",
       value: data.kpis.unpaidInvoices,
       icon: FileWarning,
-      iconWrap: "bg-amber-500/12 text-amber-800 dark:text-amber-400",
+      iconWrap: "bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]",
       accent: "warning",
     },
     {
       label: "Pending payments",
       value: data.kpis.pendingPayments,
       icon: Wallet,
-      iconWrap: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+      iconWrap: "bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
       accent: "pending",
       sub: pendingSubCompact,
       subTitle: pendingSubFull,
@@ -397,13 +396,13 @@ export default async function FinanceOwnerDashboardPage() {
   ];
 
   const accentInset = (a: KpiKey) => {
-    if (a === "expense") return "shadow-[inset_0_0_0_1px_rgba(248,113,113,0.12)] dark:shadow-none";
+    if (a === "expense") return "border-[var(--hh-danger-border)]";
     if (a === "profit")
       return data.kpis.profitThisMonth >= 0
-        ? "shadow-[inset_0_0_0_1px_rgba(52,211,153,0.18)] dark:shadow-none"
-        : "shadow-[inset_0_0_0_1px_rgba(248,113,113,0.22)] dark:shadow-none";
-    if (a === "pending") return "shadow-[inset_0_0_0_1px_rgba(16,185,129,0.16)] dark:shadow-none";
-    if (a === "warning") return "shadow-[inset_0_0_0_1px_rgba(251,191,36,0.18)] dark:shadow-none";
+        ? "border-[var(--hh-success-border)]"
+        : "border-[var(--hh-danger-border)]";
+    if (a === "pending") return "border-[var(--hh-success-border)]";
+    if (a === "warning") return "border-[var(--hh-warning-border)]";
     return "";
   };
 
@@ -504,14 +503,14 @@ export default async function FinanceOwnerDashboardPage() {
   const alertIconCircle = (tone: (typeof alertRows)[number]["tone"], active: boolean) => {
     const map = {
       rose: active
-        ? "bg-rose-500/15 text-rose-700 dark:text-rose-400"
-        : "bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]",
+        ? "bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]"
+        : "bg-[var(--hh-l3-selected)] text-[var(--hh-text-tertiary)]",
       amber: active
-        ? "bg-amber-500/15 text-amber-800 dark:text-amber-400"
-        : "bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]",
+        ? "bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
+        : "bg-[var(--hh-l3-selected)] text-[var(--hh-text-tertiary)]",
       slate: active
-        ? "bg-zinc-200/80 text-zinc-800 dark:text-zinc-300"
-        : "bg-[var(--neo-surface-muted)] text-[var(--neo-text-tertiary)]",
+        ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+        : "bg-[var(--hh-l3-selected)] text-[var(--hh-text-tertiary)]",
     };
     return cn(
       "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors duration-200 ease-out",
@@ -528,7 +527,7 @@ export default async function FinanceOwnerDashboardPage() {
           title="Finance dashboard"
           description={
             <>
-              <span className="block text-[15px] leading-relaxed text-zinc-600 dark:text-zinc-400 sm:inline sm:text-base">
+              <span className="block text-hh-body leading-relaxed text-[var(--hh-text-secondary)] sm:inline sm:text-base">
                 Snapshot for <span className="font-medium text-foreground">{monthLabel}</span>.
               </span>{" "}
               <span className="mt-1 block text-sm leading-relaxed text-muted-foreground sm:mt-0 sm:inline">
@@ -554,7 +553,7 @@ export default async function FinanceOwnerDashboardPage() {
       <div className="flex flex-col gap-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top,0px))] lg:gap-12 lg:pb-[max(3rem,env(safe-area-inset-bottom))] lg:pt-4 print:gap-6">
         {dataLoadWarning ? (
           <p
-            className="rounded-2xl border border-amber-500/25 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:bg-amber-950/25 dark:text-amber-50"
+            className="rounded-hh-task border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-4 py-3 text-sm text-[var(--hh-warning)]"
             role="status"
           >
             {dataLoadWarning}
@@ -568,31 +567,46 @@ export default async function FinanceOwnerDashboardPage() {
               const Icon = k.icon;
               const valueTone =
                 k.accent === "expense"
-                  ? "text-rose-700 dark:text-rose-400"
+                  ? "text-[var(--hh-danger)]"
                   : k.accent === "profit"
                     ? data.kpis.profitThisMonth >= 0
-                      ? "text-emerald-800 dark:text-emerald-400"
-                      : "text-rose-600 dark:text-rose-400"
+                      ? "text-[var(--hh-success)]"
+                      : "text-[var(--hh-danger)]"
                     : k.accent === "pending"
-                      ? "text-emerald-800 dark:text-emerald-400"
+                      ? "text-[var(--hh-success)]"
                       : k.accent === "warning"
-                        ? "text-amber-900 dark:text-amber-300"
-                        : "text-[var(--neo-text-primary)]";
+                        ? "text-[var(--hh-warning)]"
+                        : "text-[var(--hh-text-primary)]";
 
               const pulse =
                 k.accent === "expense"
-                  ? { outer: "bg-rose-400/30", inner: "bg-rose-500/85" }
+                  ? {
+                      outer: "bg-[var(--hh-danger-soft-fill)]",
+                      inner: "bg-[var(--hh-danger)]",
+                    }
                   : k.accent === "profit"
                     ? data.kpis.profitThisMonth >= 0
-                      ? { outer: "bg-emerald-400/40", inner: "bg-emerald-500/90" }
-                      : { outer: "bg-rose-400/35", inner: "bg-rose-500/90" }
+                      ? {
+                          outer: "bg-[var(--hh-success-soft-fill)]",
+                          inner: "bg-[var(--hh-success)]",
+                        }
+                      : {
+                          outer: "bg-[var(--hh-danger-soft-fill)]",
+                          inner: "bg-[var(--hh-danger)]",
+                        }
                     : k.accent === "pending"
-                      ? { outer: "bg-emerald-400/35", inner: "bg-emerald-600/90" }
+                      ? {
+                          outer: "bg-[var(--hh-success-soft-fill)]",
+                          inner: "bg-[var(--hh-success)]",
+                        }
                       : k.accent === "warning"
-                        ? { outer: "bg-amber-400/35", inner: "bg-amber-500/90" }
+                        ? {
+                            outer: "bg-[var(--hh-warning-soft-fill)]",
+                            inner: "bg-[var(--hh-warning)]",
+                          }
                         : {
-                            outer: "bg-[var(--neo-surface-muted)]",
-                            inner: "bg-[var(--neo-text-tertiary)]",
+                            outer: "bg-[var(--hh-l3-selected)]",
+                            inner: "bg-[var(--hh-text-tertiary)]",
                           };
 
               return (
@@ -606,28 +620,25 @@ export default async function FinanceOwnerDashboardPage() {
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="kpi-metric-label font-normal leading-snug text-[13px] text-zinc-500 dark:text-zinc-400">
+                    <span className="kpi-metric-label font-normal leading-snug text-hh-table-cell text-[var(--hh-text-secondary)]">
                       {k.label}
                     </span>
                     <span
-                      className={cn(
-                        "rounded-full p-2 ring-1 ring-black/[0.04] transition-transform duration-200 ease-out group-hover:scale-[1.03] dark:ring-white/10",
-                        k.iconWrap
-                      )}
+                      className={cn("rounded-full p-2 ring-1 ring-[var(--hh-border)]", k.iconWrap)}
                     >
                       <Icon className="h-4 w-4" aria-hidden />
                     </span>
                   </div>
                   <span
                     className={cn(
-                      "kpi-metric-value mt-4 block max-w-full truncate text-[clamp(1.25rem,4.5vw,2rem)] font-semibold leading-none tracking-tight tabular-nums sm:mt-5 sm:text-[2rem]",
+                      "kpi-metric-value mt-4 block max-w-full truncate text-hh-financial-total font-semibold tracking-normal hh-fin sm:mt-5",
                       valueTone
                     )}
                     title={fmtUsdSignedFull(k.value)}
                   >
                     {fmtUsdAdaptive(k.value)}
                   </span>
-                  <div className="mt-4 flex items-center gap-2 border-t border-[var(--neo-border)] pt-3">
+                  <div className="mt-4 flex items-center gap-2 border-t border-[var(--hh-border)] pt-3">
                     <span className="relative flex h-2 w-2">
                       <span
                         className={cn(
@@ -639,13 +650,13 @@ export default async function FinanceOwnerDashboardPage() {
                         className={cn("relative inline-flex h-2 w-2 rounded-full", pulse.inner)}
                       />
                     </span>
-                    <span className="text-[11px] font-medium tracking-wide text-zinc-400 dark:text-zinc-500">
+                    <span className="text-hh-status font-medium tracking-normal text-[var(--hh-text-tertiary)]">
                       {k.sub ? "Breakdown below" : "Month to date"}
                     </span>
                   </div>
                   {k.sub ? (
                     <span
-                      className="mt-2 line-clamp-3 text-[10px] leading-snug text-muted-foreground"
+                      className="mt-2 line-clamp-3 text-hh-table-header leading-snug text-muted-foreground"
                       title={k.subTitle ?? k.sub}
                     >
                       {k.sub}
@@ -662,17 +673,17 @@ export default async function FinanceOwnerDashboardPage() {
           <div className={cn("min-w-0 xl:col-span-8", cardBase, "p-4 sm:p-8 lg:p-10")}>
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                <p className="text-hh-status font-semibold uppercase tracking-normal text-muted-foreground">
                   Liquidity
                 </p>
-                <h2 className="text-xl font-semibold tracking-tight text-[var(--neo-text-primary)] sm:text-2xl">
+                <h2 className="text-xl font-semibold tracking-normal text-[var(--hh-text-primary)] sm:text-2xl">
                   Cash flow
                 </h2>
                 <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
                   Payments received vs. expense lines + labor — trailing six months.
                 </p>
               </div>
-              <span className="rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-1.5 text-[11px] font-semibold text-muted-foreground">
+              <span className="rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-1.5 text-hh-status font-semibold text-muted-foreground">
                 Last 6 months
               </span>
             </div>
@@ -682,15 +693,15 @@ export default async function FinanceOwnerDashboardPage() {
             </div>
 
             {data.cashFlow.length > 0 ? (
-              <div className="mt-10 border-t border-[var(--neo-border)] pt-8">
-                <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              <div className="mt-10 border-t border-[var(--hh-border)] pt-8">
+                <p className="mb-4 text-hh-status font-semibold uppercase tracking-normal text-muted-foreground">
                   Period detail
                 </p>
                 <div className="flex flex-col gap-1">
                   {data.cashFlow.map((row) => (
                     <div
                       key={row.label}
-                      className="flex flex-col gap-2 rounded-xl px-3 py-3 text-sm transition-colors duration-200 ease-out hover:bg-[var(--neo-surface-muted)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6"
+                      className="flex flex-col gap-2 rounded-hh-standard px-3 py-3 text-sm transition-colors duration-200 ease-out hover:bg-[var(--hh-l3-selected)] sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-6"
                     >
                       <span className="shrink-0 font-semibold tabular-nums text-foreground">
                         {row.label}
@@ -699,7 +710,7 @@ export default async function FinanceOwnerDashboardPage() {
                         <span className="min-w-0 text-muted-foreground">
                           In{" "}
                           <span
-                            className="inline-block font-semibold whitespace-nowrap text-emerald-700 dark:text-emerald-400"
+                            className="inline-block font-semibold whitespace-nowrap text-[var(--hh-success)]"
                             title={fmtUsdFull(row.income)}
                           >
                             {fmtUsdAdaptive(row.income)}
@@ -708,7 +719,7 @@ export default async function FinanceOwnerDashboardPage() {
                         <span className="min-w-0 text-muted-foreground">
                           Out{" "}
                           <span
-                            className="inline-block whitespace-nowrap font-semibold text-rose-600 dark:text-rose-400"
+                            className="inline-block whitespace-nowrap font-semibold text-[var(--hh-danger)]"
                             title={fmtUsdFull(row.expense)}
                           >
                             {fmtUsdAdaptive(row.expense)}
@@ -726,10 +737,10 @@ export default async function FinanceOwnerDashboardPage() {
             <div className={cn(cardBase, cardHover, "flex flex-col p-5 sm:p-6")}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  <p className="text-hh-status font-semibold uppercase tracking-normal text-muted-foreground">
                     Attention
                   </p>
-                  <h2 className="mt-1 text-lg font-semibold tracking-tight text-[var(--neo-text-primary)]">
+                  <h2 className="mt-1 text-lg font-semibold tracking-normal text-[var(--hh-text-primary)]">
                     Alerts
                   </h2>
                 </div>
@@ -749,8 +760,8 @@ export default async function FinanceOwnerDashboardPage() {
                         href={a.href}
                         title={a.detailTitle}
                         className={cn(
-                          "group flex min-h-[44px] items-center gap-3 rounded-2xl border border-transparent px-3 py-3 transition-all duration-200 ease-out",
-                          "hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)]"
+                          "group flex min-h-[44px] items-center gap-3 rounded-hh-task border border-transparent px-3 py-3 transition-colors duration-200 ease-out",
+                          "hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-selected)]"
                         )}
                       >
                         <span className={alertIconCircle(a.tone, a.active)}>
@@ -765,7 +776,7 @@ export default async function FinanceOwnerDashboardPage() {
                           </p>
                         </div>
                         <ChevronRight
-                          className="h-4 w-4 shrink-0 text-zinc-400 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:text-zinc-600 dark:group-hover:text-zinc-300"
+                          className="h-4 w-4 shrink-0 text-[var(--hh-text-tertiary)] transition-colors duration-200 ease-out group-hover:text-[var(--hh-text-secondary)]"
                           aria-hidden
                         />
                       </Link>
@@ -774,11 +785,11 @@ export default async function FinanceOwnerDashboardPage() {
                 })}
               </ul>
               {!anyAlertHot ? (
-                <div className="mt-5 rounded-xl border border-emerald-200/70 bg-emerald-50/50 px-4 py-3 transition-colors duration-200 ease-out dark:border-emerald-900/40 dark:bg-emerald-950/25">
-                  <p className="text-xs font-semibold text-emerald-900 dark:text-emerald-100">
+                <div className="mt-5 rounded-hh-standard border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] px-4 py-3 transition-colors duration-200 ease-out">
+                  <p className="text-xs font-semibold text-[var(--hh-success)]">
                     Inbox zero on alerts
                   </p>
-                  <p className="mt-1 text-[11px] leading-relaxed text-emerald-800/90 dark:text-emerald-200/90">
+                  <p className="mt-1 text-hh-status leading-relaxed text-[var(--hh-success)]">
                     Nothing here requires owner attention — overdue invoices, unpaid workers,
                     receipt gaps, and losing projects are all quiet for this snapshot.
                   </p>
@@ -793,15 +804,15 @@ export default async function FinanceOwnerDashboardPage() {
                 "p-4 transition-[box-shadow,border-color] duration-200 ease-out sm:p-5"
               )}
             >
-              <div className="flex items-start justify-between gap-3 border-b border-[var(--neo-border)] pb-4">
+              <div className="flex items-start justify-between gap-3 border-b border-[var(--hh-border)] pb-4">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  <p className="text-hh-table-header font-semibold uppercase tracking-normal text-muted-foreground">
                     Outstanding
                   </p>
-                  <h2 className="mt-1 text-base font-semibold tracking-tight">Pending payments</h2>
+                  <h2 className="mt-1 text-base font-semibold tracking-normal">Pending payments</h2>
                 </div>
               </div>
-              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+              <p className="mt-3 text-hh-status leading-relaxed text-muted-foreground">
                 Composition of worker, reimb., and AP buckets — overlap possible vs. headline KPI.
               </p>
               <div className="mt-4">
@@ -820,7 +831,7 @@ export default async function FinanceOwnerDashboardPage() {
             <div
               className={cn(
                 cardBase,
-                "rounded-xl border-amber-200/80 bg-amber-50/75 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100"
+                "rounded-hh-standard border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-4 py-3 text-sm text-[var(--hh-warning)]"
               )}
               role="status"
             >

@@ -336,7 +336,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             ) : null}
             {canDelete ? (
               <DropdownMenuItem
-                className="text-rose-300 focus:text-rose-200"
+                className="text-[var(--hh-danger)] focus:text-[var(--hh-danger)]"
                 onSelect={(e) => {
                   e.preventDefault();
                   setDeleteConfirmId(bill.id);
@@ -348,7 +348,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             ) : null}
             {canVoid ? (
               <DropdownMenuItem
-                className="text-[var(--neo-text-secondary)]"
+                className="text-[var(--hh-text-secondary)]"
                 onSelect={(e) => {
                   e.preventDefault();
                   setVoidConfirmId(bill.id);
@@ -368,7 +368,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-col gap-4 overflow-x-hidden text-[var(--neo-text-primary)] md:gap-5",
+        "flex min-w-0 flex-col gap-4 overflow-x-hidden text-[var(--hh-text-primary)] md:gap-5",
         mobileListPagePaddingClass,
         "max-md:!gap-3"
       )}
@@ -401,6 +401,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         <div className="space-y-2">
           <NeoFieldLabel>Status</NeoFieldLabel>
           <NeoSelect
+            aria-label="Bill status"
             value={status}
             onChange={(e) => setFilters({ status: e.target.value })}
             className={cn("w-full", billsFilterFieldClass)}
@@ -413,21 +414,23 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             ))}
           </NeoSelect>
         </div>
-        <label className="flex min-h-11 items-center gap-3 rounded-[0.625rem] border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)]">
+        <label className="flex min-h-11 items-center gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-body text-[var(--hh-text-primary)]">
           <input
+            aria-label="Show void bills"
             type="checkbox"
             checked={showVoidInput}
             onChange={(e) => {
               setShowVoidInput(e.target.checked);
               setFilters({ show_void_bills: e.target.checked });
             }}
-            className="h-4 w-4 rounded border-[var(--neo-border)] accent-[var(--neo-gold)]"
+            className="h-4 w-4 rounded-hh-compact border-[var(--hh-border)] accent-[var(--hh-action-primary)]"
           />
           Show void bills
         </label>
         <div className="space-y-2">
           <NeoFieldLabel>Type</NeoFieldLabel>
           <NeoSelect
+            aria-label="Bill type"
             value={billType}
             onChange={(e) => setFilters({ bill_type: e.target.value })}
             className={cn("w-full", billsFilterFieldClass)}
@@ -443,6 +446,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         <div className="space-y-2">
           <NeoFieldLabel>Project</NeoFieldLabel>
           <NeoSelect
+            aria-label="Bill project"
             value={projectId}
             onChange={(e) => setFilters({ project_id: e.target.value })}
             className={cn("w-full", billsFilterFieldClass)}
@@ -458,6 +462,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         <div className="space-y-2">
           <NeoFieldLabel>Date from</NeoFieldLabel>
           <NeoInput
+            aria-label="Bills date from"
             type="date"
             value={dateFrom}
             onChange={(e) => setFilters({ date_from: e.target.value })}
@@ -467,6 +472,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         <div className="space-y-2">
           <NeoFieldLabel>Date to</NeoFieldLabel>
           <NeoInput
+            aria-label="Bills date to"
             type="date"
             value={dateTo}
             onChange={(e) => setFilters({ date_to: e.target.value })}
@@ -475,7 +481,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         </div>
         <Button
           type="button"
-          className={cn("w-full rounded-[0.625rem]", billsPrimaryButtonClass)}
+          className={cn("w-full rounded-hh-standard", billsPrimaryButtonClass)}
           onClick={() => setFiltersOpen(false)}
         >
           Done
@@ -484,7 +490,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
 
       {actionError ? (
         <p
-          className="rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-[12px] font-medium text-rose-200"
+          className="rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2 text-hh-error text-[var(--hh-danger)]"
           role="alert"
         >
           {actionError}
@@ -508,6 +514,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             <div className="min-w-0 space-y-1.5">
               <NeoFieldLabel>Search</NeoFieldLabel>
               <NeoInput
+                aria-label="Search bills"
                 type="text"
                 placeholder="Vendor, reference…"
                 value={searchInput}
@@ -521,6 +528,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               <div className="min-w-0 space-y-1.5">
                 <NeoFieldLabel>Status</NeoFieldLabel>
                 <NeoSelect
+                  aria-label="Bill status"
                   value={status}
                   onChange={(e) => setFilters({ status: e.target.value })}
                   className={billsFilterFieldClass}
@@ -536,6 +544,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               <div className="min-w-0 space-y-1.5">
                 <NeoFieldLabel>Type</NeoFieldLabel>
                 <NeoSelect
+                  aria-label="Bill type"
                   value={billType}
                   onChange={(e) => setFilters({ bill_type: e.target.value })}
                   className={billsFilterFieldClass}
@@ -551,6 +560,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
               <div className="min-w-0 space-y-1.5">
                 <NeoFieldLabel>Project</NeoFieldLabel>
                 <NeoSelect
+                  aria-label="Bill project"
                   value={projectId}
                   onChange={(e) => setFilters({ project_id: e.target.value })}
                   className={billsFilterFieldClass}
@@ -567,15 +577,17 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 <NeoFieldLabel>Date range</NeoFieldLabel>
                 <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
                   <NeoInput
+                    aria-label="Bills date from"
                     type="date"
                     value={dateFrom}
                     onChange={(e) => setFilters({ date_from: e.target.value })}
                     className={cn("w-full min-w-0 tabular-nums sm:flex-1", billsFilterFieldClass)}
                   />
-                  <span className="hidden shrink-0 text-sm text-[var(--neo-text-tertiary)] sm:inline">
+                  <span className="hidden shrink-0 text-sm text-[var(--hh-text-tertiary)] sm:inline">
                     –
                   </span>
                   <NeoInput
+                    aria-label="Bills date to"
                     type="date"
                     value={dateTo}
                     onChange={(e) => setFilters({ date_to: e.target.value })}
@@ -584,15 +596,16 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                 </div>
               </div>
             </div>
-            <label className="flex min-h-10 w-fit items-center gap-2 rounded-[0.625rem] border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-[13px] font-medium text-[var(--neo-text-secondary)]">
+            <label className="flex min-h-10 w-fit items-center gap-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-table-cell font-medium text-[var(--hh-text-secondary)]">
               <input
+                aria-label="Show void bills"
                 type="checkbox"
                 checked={showVoidInput}
                 onChange={(e) => {
                   setShowVoidInput(e.target.checked);
                   setFilters({ show_void_bills: e.target.checked });
                 }}
-                className="h-4 w-4 rounded border-[var(--neo-border)] accent-[var(--neo-gold)]"
+                className="h-4 w-4 rounded-hh-compact border-[var(--hh-border)] accent-[var(--hh-action-primary)]"
               />
               Show void bills
             </label>
@@ -616,8 +629,8 @@ export function BillsListClient({ bills, summary, projects }: Props) {
             className="hidden md:flex"
             bodyClassName="flex min-h-[240px] flex-col items-center justify-center px-6 py-10 text-center"
           >
-            <p className="text-[15px] font-medium text-[var(--neo-text-primary)]">No bills yet</p>
-            <p className="mt-1 max-w-sm text-[13px] text-[var(--neo-text-secondary)]">
+            <p className="text-hh-panel-title text-[var(--hh-text-primary)]">No bills yet</p>
+            <p className="mt-1 max-w-sm text-hh-table-cell text-[var(--hh-text-secondary)]">
               Track vendor, labor, and other payables in one place.
             </p>
             <Button asChild size="touch" className={cn("mt-5", billsPrimaryButtonClass)}>
@@ -627,7 +640,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
         </>
       ) : (
         <>
-          <div className="min-w-0 divide-y divide-[var(--neo-border)] md:hidden">
+          <div className="min-w-0 divide-y divide-[var(--hh-border)] md:hidden">
             {localBills.map((bill) => {
               const s = statusPill(bill);
               return (
@@ -640,10 +653,10 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                     className="flex min-w-0 flex-1 items-center gap-3 pr-12 text-left"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+                      <p className="truncate text-sm font-medium text-[var(--hh-text-primary)]">
                         {bill.vendor_name}
                       </p>
-                      <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                      <p className="truncate text-xs text-[var(--hh-text-secondary)]">
                         {[
                           bill.bill_no,
                           bill.project_name ?? "No project",
@@ -656,7 +669,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                     </div>
                     <div className="flex shrink-0 flex-col items-end gap-1">
                       <NeoAmount className="text-sm">{formatCurrency(bill.amount)}</NeoAmount>
-                      <span className="text-[11px] text-[var(--neo-text-tertiary)]">
+                      <span className="text-hh-status text-[var(--hh-text-tertiary)]">
                         Bal {formatCurrency(bill.balance_amount)}
                       </span>
                       <StatusBadge label={s.label} variant={s.variant} />
@@ -701,14 +714,14 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                     <td className={cn(tableRawTdClass, "max-w-[220px]")}>
                       <span
                         className={cn(
-                          "block truncate font-medium text-[var(--neo-text-primary)] hover:underline",
+                          "block truncate font-medium text-[var(--hh-text-primary)] hover:underline",
                           listTablePrimaryCellClassName
                         )}
                       >
                         {bill.vendor_name}
                       </span>
                       {bill.bill_no ? (
-                        <span className="mt-0.5 block truncate font-mono text-[11px] text-[var(--neo-text-tertiary)]">
+                        <span className="hh-fin mt-0.5 block truncate text-hh-status text-[var(--hh-text-tertiary)]">
                           {bill.bill_no}
                         </span>
                       ) : null}
@@ -716,7 +729,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                     <td
                       className={cn(
                         tableRawTdClass,
-                        "max-w-[240px] text-[var(--neo-text-secondary)]"
+                        "max-w-[240px] text-[var(--hh-text-secondary)]"
                       )}
                     >
                       <span className="block truncate">{bill.project_name ?? "—"}</span>
@@ -724,7 +737,7 @@ export function BillsListClient({ bills, summary, projects }: Props) {
                         <Link
                           href={`/projects/${bill.project_id}/subcontracts/${bill.subcontract_id}`}
                           onClick={(event) => event.stopPropagation()}
-                          className="mt-0.5 block truncate text-[11px] text-[var(--neo-gold)] underline-offset-2 hover:underline"
+                          className="mt-0.5 block truncate text-hh-status text-[var(--hh-information)] underline-offset-2 hover:underline"
                         >
                           {bill.subcontractor_name
                             ? `Subcontract: ${bill.subcontractor_name}`

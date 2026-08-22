@@ -42,8 +42,8 @@ export default async function FinanceLaborCostPage() {
             href={item.href}
             className={
               item.href === "/finance/labor-cost"
-                ? "font-medium text-foreground"
-                : "text-muted-foreground hover:text-foreground"
+                ? "inline-flex min-h-11 items-center font-medium text-foreground md:min-h-8"
+                : "inline-flex min-h-11 items-center text-muted-foreground hover:text-foreground md:min-h-8"
             }
           >
             {item.label}
@@ -54,7 +54,7 @@ export default async function FinanceLaborCostPage() {
 
       <div className="flex flex-col gap-1 border-b border-border/60 pb-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <span className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
             Total labor cost
           </span>
           <Clock className="h-4 w-4 text-muted-foreground" />
@@ -70,7 +70,7 @@ export default async function FinanceLaborCostPage() {
       <div className="mt-4">
         <Link
           href="/labor/entries"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          className="inline-flex min-h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground md:min-h-8"
         >
           View labor entries
           <ArrowRight className="h-3.5 w-3.5" />

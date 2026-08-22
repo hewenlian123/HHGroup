@@ -163,7 +163,7 @@ export default function WorkerProfileEditPage() {
       <div className="mx-auto flex max-w-[680px] flex-col gap-6 p-6">
         <PageHeader title="Worker Not Found" description="This worker does not exist." />
         <Link href="/workers">
-          <Button variant="outline" className="w-fit rounded-sm">
+          <Button variant="outline" className="w-fit rounded-hh-compact">
             Back
           </Button>
         </Link>
@@ -176,7 +176,7 @@ export default function WorkerProfileEditPage() {
       <div className="mx-auto flex max-w-[680px] flex-col gap-6 p-6">
         <p className="text-muted-foreground">Loading…</p>
         <Link href={`/workers/${id}`}>
-          <Button variant="outline" className="w-fit rounded-sm">
+          <Button variant="outline" className="w-fit rounded-hh-compact">
             Back
           </Button>
         </Link>
@@ -189,7 +189,7 @@ export default function WorkerProfileEditPage() {
       <div className="mx-auto flex max-w-[680px] flex-col gap-6 p-6">
         <PageHeader title="Worker Not Found" description="This worker does not exist." />
         <Link href="/workers">
-          <Button variant="outline" className="w-fit rounded-sm">
+          <Button variant="outline" className="w-fit rounded-hh-compact">
             Back
           </Button>
         </Link>
@@ -204,47 +204,51 @@ export default function WorkerProfileEditPage() {
         description={`Editing ${worker.name}`}
         actions={
           <Link href={`/workers/${id}`}>
-            <Button variant="outline" size="sm" className="rounded-sm">
+            <Button variant="outline" size="sm" className="rounded-hh-compact">
               Back
             </Button>
           </Link>
         }
       />
       {message ? (
-        <p className="border-b border-gray-100 pb-3 text-sm text-muted-foreground dark:border-border">
+        <p className="border-b border-[var(--hh-border)] pb-3 text-sm text-muted-foreground">
           {message}
         </p>
       ) : null}
-      <section className="border-b border-gray-100 pb-6 dark:border-border">
+      <section className="border-b border-[var(--hh-border)] pb-6">
         <div className="grid gap-4">
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
               Name *
             </label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} className="rounded-sm" />
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="rounded-hh-compact"
+            />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
               Phone
             </label>
             <Input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="rounded-sm"
+              className="rounded-hh-compact"
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
               Trade
             </label>
             <Input
               value={trade}
               onChange={(e) => setTrade(e.target.value)}
-              className="rounded-sm"
+              className="rounded-hh-compact"
             />
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
               Status
             </label>
             <Select
@@ -256,13 +260,13 @@ export default function WorkerProfileEditPage() {
             </Select>
           </div>
           <div className="grid gap-1.5">
-            <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            <label className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
               Notes
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="min-h-[88px] rounded-sm border border-input bg-transparent px-3 py-2 text-sm"
+              className="min-h-[88px] rounded-hh-compact border border-input bg-transparent px-3 py-2 text-sm"
             />
           </div>
           <p className="text-xs text-muted-foreground">
@@ -272,7 +276,7 @@ export default function WorkerProfileEditPage() {
         </div>
         <div className="mt-6 flex flex-wrap justify-end gap-2">
           <Link href={`/workers/${id}`}>
-            <Button variant="outline" size="sm" className="rounded-sm">
+            <Button variant="outline" size="sm" className="rounded-hh-compact">
               Cancel
             </Button>
           </Link>
@@ -280,18 +284,28 @@ export default function WorkerProfileEditPage() {
             <Button
               variant="outline"
               size="sm"
-              className="rounded-sm"
+              className="rounded-hh-compact"
               disabled={status === "inactive"}
               onClick={handleDisable}
             >
               Disable
             </Button>
           ) : (
-            <Button variant="outline" size="sm" className="rounded-sm" onClick={handleDelete}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-hh-compact"
+              onClick={handleDelete}
+            >
               Delete
             </Button>
           )}
-          <Button size="sm" className="rounded-sm" onClick={handleSave} disabled={!name.trim()}>
+          <Button
+            size="sm"
+            className="rounded-hh-compact"
+            onClick={handleSave}
+            disabled={!name.trim()}
+          >
             Save Changes
           </Button>
         </div>

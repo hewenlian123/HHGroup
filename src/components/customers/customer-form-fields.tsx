@@ -107,19 +107,17 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="text-[11px] font-medium uppercase leading-none tracking-normal text-[var(--neo-text-tertiary)]"
+      className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]"
     >
       {children}
-      {required ? <span className="ml-1 text-[var(--neo-gold)]">*</span> : null}
+      {required ? <span className="ml-1 text-[var(--hh-danger)]">*</span> : null}
     </label>
   );
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }): React.ReactElement {
   return (
-    <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
-      {children}
-    </p>
+    <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">{children}</p>
   );
 }
 
@@ -154,7 +152,7 @@ export function CustomerFormFields({
         />
       </div>
 
-      <div className="flex flex-col gap-1.5 border-t border-[var(--neo-border)] pt-2.5">
+      <div className="flex flex-col gap-1.5 border-t border-[var(--hh-border)] pt-2.5">
         <SectionLabel>Contact</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="flex flex-col gap-1">
@@ -190,7 +188,7 @@ export function CustomerFormFields({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5 border-t border-[var(--neo-border)] pt-2.5">
+      <div className="flex flex-col gap-1.5 border-t border-[var(--hh-border)] pt-2.5">
         <SectionLabel>Address</SectionLabel>
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-1">
@@ -244,7 +242,7 @@ export function CustomerFormFields({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5 border-t border-[var(--neo-border)] pt-2.5">
+      <div className="flex flex-col gap-1.5 border-t border-[var(--hh-border)] pt-2.5">
         <SectionLabel>Additional</SectionLabel>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           <div className="flex flex-col gap-1">
@@ -272,7 +270,7 @@ export function CustomerFormFields({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1 border-t border-[var(--neo-border)] pt-2.5">
+      <div className="flex flex-col gap-1 border-t border-[var(--hh-border)] pt-2.5">
         <FieldLabel htmlFor={`${idPrefix}-notes`}>Internal notes</FieldLabel>
         <NeoTextarea
           id={`${idPrefix}-notes`}

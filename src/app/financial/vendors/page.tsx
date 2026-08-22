@@ -70,8 +70,9 @@ const toNullable = (value: string): string | null => {
 };
 
 const vendorHeadClass =
-  "h-9 px-3 text-left align-middle text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]";
-const vendorCellClass = "border-b border-[var(--neo-border)] px-3 py-2 align-middle text-[13px]";
+  "h-9 px-3 text-left align-middle text-hh-status font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]";
+const vendorCellClass =
+  "border-b border-[var(--hh-border)] px-3 py-2 align-middle text-hh-table-cell";
 
 function vendorStatus(status: VendorRow["status"] | null | undefined) {
   return status === "inactive" ? "inactive" : "active";
@@ -253,7 +254,7 @@ export default function VendorsPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("dark", mobileListPagePaddingClass, "max-md:!gap-3")}
+      className={cn(mobileListPagePaddingClass, "max-md:!gap-3")}
       header={
         <>
           <div className="hidden md:block">
@@ -262,12 +263,12 @@ export default function VendorsPage() {
               description="Manage material and service vendors used by AP bills."
               actions={
                 <div className="flex items-center gap-2">
-                  <Button asChild variant="outline" size="sm" className="rounded-sm">
+                  <Button asChild variant="outline" size="sm" className="rounded-hh-compact">
                     <Link href="/settings/lists?tab=vendors">Open Lists View</Link>
                   </Button>
                   <Button
                     size="sm"
-                    className="rounded-sm"
+                    className="rounded-hh-compact"
                     onClick={openCreate}
                     disabled={submitting || !!deletingId}
                   >
@@ -297,7 +298,7 @@ export default function VendorsPage() {
         activeFilterCount={activeMobileFilterCount}
         searchSlot={
           <div className="relative w-full">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
             <NeoInput
               placeholder="Search name, contact, phone…"
               value={query}
@@ -325,12 +326,12 @@ export default function VendorsPage() {
             <option value="inactive">Inactive</option>
           </NeoSelect>
         </div>
-        <Button asChild variant="outline" size="sm" className="h-9 w-full rounded-sm">
+        <Button asChild variant="outline" size="sm" className="h-9 w-full rounded-hh-compact">
           <Link href="/settings/lists?tab=vendors">Lists view</Link>
         </Button>
         <Button
           type="button"
-          className="w-full rounded-sm"
+          className="w-full rounded-hh-compact"
           onClick={() => setMobileFiltersOpen(false)}
         >
           Done
@@ -339,7 +340,7 @@ export default function VendorsPage() {
 
       <NeoToolbar className="hidden justify-between md:flex">
         <div className="relative w-full max-w-md">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
           <NeoInput
             placeholder="Search name, contact, phone, email"
             value={query}
@@ -348,14 +349,14 @@ export default function VendorsPage() {
             aria-label="Search vendors"
           />
         </div>
-        <p className="shrink-0 text-xs text-[var(--neo-text-secondary)]">
-          Vendors: <span className="font-medium text-[var(--neo-text-primary)]">{rows.length}</span>
+        <p className="shrink-0 text-xs text-[var(--hh-text-secondary)]">
+          Vendors: <span className="font-medium text-[var(--hh-text-primary)]">{rows.length}</span>
         </p>
       </NeoToolbar>
 
       {message ? (
         <p
-          className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]"
+          className="rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-3 py-2 text-hh-body text-[var(--hh-information)]"
           role="status"
         >
           {message}
@@ -430,11 +431,11 @@ export default function VendorsPage() {
               </NeoSelect>
             </div>
           </div>
-          <div className="-mx-4 mt-4 flex flex-col-reverse justify-end gap-2 border-t border-[var(--neo-border)] px-4 pt-4 sm:flex-row sm:items-center">
+          <div className="-mx-4 mt-4 flex flex-col-reverse justify-end gap-2 border-t border-[var(--hh-border)] px-4 pt-4 sm:flex-row sm:items-center">
             <Button
               variant="outline"
               size="sm"
-              className="rounded-sm"
+              className="rounded-hh-compact"
               onClick={() => setEditorOpen(false)}
               disabled={submitting}
             >
@@ -442,7 +443,7 @@ export default function VendorsPage() {
             </Button>
             <Button
               size="sm"
-              className="rounded-sm"
+              className="rounded-hh-compact"
               onClick={() => void handleSave()}
               disabled={submitting}
             >
@@ -471,12 +472,10 @@ export default function VendorsPage() {
               className="flex min-h-[84px] flex-col justify-center gap-3 p-3"
             >
               <div className="min-w-0">
-                <p className="font-medium text-[var(--neo-text-primary)]">{row.name}</p>
-                <p className="text-xs text-[var(--neo-text-secondary)]">
-                  {row.contact_name || "—"}
-                </p>
-                <p className="text-xs text-[var(--neo-text-secondary)]">{row.phone || "—"}</p>
-                <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                <p className="font-medium text-[var(--hh-text-primary)]">{row.name}</p>
+                <p className="text-xs text-[var(--hh-text-secondary)]">{row.contact_name || "—"}</p>
+                <p className="text-xs text-[var(--hh-text-secondary)]">{row.phone || "—"}</p>
+                <p className="truncate text-xs text-[var(--hh-text-secondary)]">
                   {row.email || "—"}
                 </p>
                 <div className="mt-1">
@@ -490,7 +489,7 @@ export default function VendorsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 flex-1 rounded-sm px-3"
+                  className="h-11 flex-1 rounded-hh-compact px-3"
                   onClick={() => openEdit(row)}
                 >
                   Edit
@@ -498,7 +497,7 @@ export default function VendorsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 flex-1 rounded-sm px-3"
+                  className="h-11 flex-1 rounded-hh-compact px-3"
                   onClick={() => void handleDelete(row)}
                   disabled={deletingId === row.id}
                 >
@@ -531,16 +530,16 @@ export default function VendorsPage() {
           ) : null}
           {filtered.map((row) => (
             <tr key={row.id} className={listTableRowStaticClassName}>
-              <td className={cn(vendorCellClass, "font-medium text-[var(--neo-text-primary)]")}>
+              <td className={cn(vendorCellClass, "font-medium text-[var(--hh-text-primary)]")}>
                 {row.name}
               </td>
-              <td className={cn(vendorCellClass, "text-[var(--neo-text-secondary)]")}>
+              <td className={cn(vendorCellClass, "text-[var(--hh-text-secondary)]")}>
                 {row.contact_name || "—"}
               </td>
-              <td className={cn(vendorCellClass, "text-[var(--neo-text-secondary)]")}>
+              <td className={cn(vendorCellClass, "text-[var(--hh-text-secondary)]")}>
                 {row.phone || "—"}
               </td>
-              <td className={cn(vendorCellClass, "text-[var(--neo-text-secondary)]")}>
+              <td className={cn(vendorCellClass, "text-[var(--hh-text-secondary)]")}>
                 {row.email || "—"}
               </td>
               <td className={vendorCellClass}>
@@ -554,7 +553,7 @@ export default function VendorsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-sm px-3"
+                    className="h-8 rounded-hh-compact px-3"
                     onClick={() => openEdit(row)}
                   >
                     Edit
@@ -562,7 +561,7 @@ export default function VendorsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 rounded-sm px-3"
+                    className="h-8 rounded-hh-compact px-3"
                     onClick={() => void handleDelete(row)}
                     disabled={deletingId === row.id}
                   >

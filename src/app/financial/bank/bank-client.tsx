@@ -675,12 +675,12 @@ export default function BankReconcileClient() {
   const isLinkedToExpense = !!selectedTxFromList?.linkedExpenseId;
 
   return (
-    <div className="dark neo-page-on-graphite page-container page-stack py-6 text-[var(--neo-canvas-text-secondary)]">
+    <div className="page-container page-stack py-6 text-[var(--hh-text-secondary)]">
       <PageHeader title="Bank Reconcile" subtitle="Import CSV and reconcile each transaction." />
 
       {error ? (
         <Card className="p-5">
-          <p className="text-sm text-red-600">{error}</p>
+          <p className="text-sm text-[var(--hh-danger)]">{error}</p>
         </Card>
       ) : null}
 
@@ -688,7 +688,7 @@ export default function BankReconcileClient() {
         <Card
           ref={bankListRef}
           tabIndex={0}
-          className="overflow-hidden p-4 outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          className="hh-focus-ring overflow-hidden p-4"
           onKeyDown={handleBankListKeyDown}
         >
           <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between mb-4">
@@ -711,6 +711,7 @@ export default function BankReconcileClient() {
               </Button>
             </div>
             <Input
+              aria-label="Search bank transactions"
               placeholder="Search description..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -731,10 +732,10 @@ export default function BankReconcileClient() {
                 type="button"
                 onClick={() => setTab(t)}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-colors",
+                  "min-h-11 rounded-hh-standard px-3 py-1.5 text-sm font-medium capitalize transition-colors md:min-h-8",
                   tab === t
-                    ? "bg-[var(--neo-gold)] text-zinc-950"
-                    : "bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-raised)] hover:text-[var(--neo-text-primary)]"
+                    ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+                    : "bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l2-operational-surface)] hover:text-[var(--hh-text-primary)]"
                 )}
               >
                 {t}
@@ -755,23 +756,23 @@ export default function BankReconcileClient() {
             ) : null}
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-[var(--neo-border)]">
+          <div className="overflow-x-auto rounded-hh-standard border border-[var(--hh-border)]">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-10 text-center">
                     <span className="sr-only">Select</span>
                   </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                  <TableHead className="text-xs uppercase tracking-normal text-muted-foreground">
                     Date
                   </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground">
+                  <TableHead className="text-xs uppercase tracking-normal text-muted-foreground">
                     Description
                   </TableHead>
-                  <TableHead className="text-xs uppercase tracking-wider text-muted-foreground text-right tabular-nums">
+                  <TableHead className="text-xs uppercase tracking-normal text-muted-foreground text-right tabular-nums">
                     Amount
                   </TableHead>
-                  <TableHead className="text-right text-xs uppercase tracking-wider text-muted-foreground">
+                  <TableHead className="text-right text-xs uppercase tracking-normal text-muted-foreground">
                     Status
                   </TableHead>
                 </TableRow>
@@ -796,9 +797,9 @@ export default function BankReconcileClient() {
                       <TableRow
                         key={tx.id}
                         className={cn(
-                          "hh-row-interactive cursor-pointer border-b border-[var(--neo-border)]",
+                          "hh-row-interactive cursor-pointer border-b border-[var(--hh-border)]",
                           selectedIds.has(tx.id) &&
-                            "border-l-[var(--neo-gold)] bg-[rgb(184_137_45_/_0.08)]"
+                            "border-l-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)]"
                         )}
                         onClick={() => setSelectedIds(new Set([tx.id]))}
                       >
@@ -861,11 +862,11 @@ export default function BankReconcileClient() {
                   }}
                 />
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                     Project
                   </label>
                   <select
-                    className="mt-1 flex h-10 w-full rounded-[10px] border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)]"
+                    className="mt-1 flex h-10 w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)]"
                     value={bulkProjectId}
                     onChange={(e) => setBulkProjectId(e.target.value)}
                   >
@@ -935,11 +936,11 @@ export default function BankReconcileClient() {
                   className={cn(
                     "inline-block text-xs font-medium px-2 py-1 rounded mb-4",
                     selectedTxFromList?.reconcileType === "Expense" &&
-                      "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-400",
+                      "bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
                     selectedTxFromList?.reconcileType === "Income" &&
-                      "bg-[#DCFCE7] text-[#166534] dark:bg-emerald-900/40 dark:text-emerald-400",
+                      "bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
                     selectedTxFromList?.reconcileType === "Transfer" &&
-                      "border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]"
+                      "border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]"
                   )}
                 >
                   {selectedTxFromList?.reconcileType ?? "Reconciled"}
@@ -955,7 +956,7 @@ export default function BankReconcileClient() {
                   {isLinkedToExpense ? (
                     <Button
                       variant="outline"
-                      className="text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-600"
+                      className="text-[var(--hh-warning)] border-[var(--hh-warning-border)]"
                       onClick={() => void handleUnlink()}
                       disabled={busy}
                     >
@@ -974,11 +975,11 @@ export default function BankReconcileClient() {
                   </span>
                 </p>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                     Type
                   </label>
                   <select
-                    className="mt-1 flex h-10 w-full rounded-[10px] border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)]"
+                    className="mt-1 flex h-10 w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)]"
                     value={reconcileType}
                     onChange={(e) =>
                       setReconcileType(e.target.value as "Expense" | "Income" | "Transfer")
@@ -993,7 +994,7 @@ export default function BankReconcileClient() {
                 {reconcileType === "Expense" ? (
                   <>
                     {suggestions.length > 0 ? (
-                      <Card className="mt-4 p-4 rounded-xl border border-[var(--neo-border)]">
+                      <Card className="mt-4 p-4 rounded-hh-standard border border-[var(--hh-border)]">
                         <h3 className="text-sm font-semibold text-foreground mb-3">
                           Match Existing Expense
                         </h3>
@@ -1004,7 +1005,7 @@ export default function BankReconcileClient() {
                           {suggestions.map((s) => (
                             <div
                               key={s.expense.id}
-                              className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-2 text-sm"
+                              className="flex flex-wrap items-center gap-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] p-2 text-sm"
                             >
                               <span className={cn("w-20", LEDGER_DATE_CLASS)}>
                                 {formatLedgerDate(s.expense.expense_date)}

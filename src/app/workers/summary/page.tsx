@@ -30,37 +30,38 @@ import { deleteWorkerAction } from "../actions";
 import { useToast } from "@/components/toast/toast-provider";
 
 const neoControlClass =
-  "h-11 min-h-[44px] rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] transition-colors hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] md:h-10 md:min-h-10";
+  "hh-focus-ring h-11 min-h-[44px] rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] transition-colors hover:bg-[var(--hh-l3-selected)] md:h-10 md:min-h-10";
 
 const neoDateControlClass = cn(neoControlClass, "[color-scheme:dark]");
 
 const neoSelectClass =
-  "h-11 min-h-[44px] w-full rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)] shadow-none transition-colors hover:bg-[var(--neo-surface-muted)] focus:border-[var(--neo-gold)] focus:outline-none focus:ring-2 focus:ring-[var(--neo-gold-ring)] md:h-10 md:min-h-10";
+  "hh-focus-ring h-11 min-h-[44px] w-full rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] shadow-none transition-colors hover:bg-[var(--hh-l3-selected)] md:h-10 md:min-h-10";
 
 const neoRefreshButtonClass =
-  "h-11 min-h-[44px] w-full gap-1.5 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-none transition-colors hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-gold-soft)] focus-visible:ring-[var(--neo-gold-ring)] md:h-10 md:min-h-10 lg:w-auto";
+  "hh-focus-ring h-11 min-h-[44px] w-full gap-1.5 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-table-cell font-semibold text-[var(--hh-text-primary)] shadow-none transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-primary)] md:h-10 md:min-h-10 lg:w-auto";
 
 const neoPaginationButtonClass =
-  "h-9 min-h-[40px] rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-none hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)] disabled:bg-[var(--neo-surface-muted)] disabled:text-[var(--neo-text-tertiary)] max-md:min-h-[44px]";
+  "h-9 min-h-[40px] rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-table-cell font-semibold text-[var(--hh-text-primary)] shadow-none hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-selected)] disabled:bg-[var(--hh-l3-selected)] disabled:text-[var(--hh-text-tertiary)] max-md:min-h-[44px]";
 
 const kpiTileClass =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] transition-[border-color,background-color,transform] duration-150 hover:-translate-y-px hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)]";
+  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-[var(--hh-text-primary)] shadow-operational transition-[border-color,background-color] duration-150 hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)]";
 
 const kpiIconClass =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-gold-soft)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset]";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)] shadow-operational";
 
 const tableHeaderCellClass =
-  "px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]";
+  "px-3 py-2.5 text-left text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]";
 
 const tableHeaderCellRightClass = cn(tableHeaderCellClass, "text-right tabular-nums");
 
 const tableRowClass =
-  "cursor-pointer border-b border-[var(--neo-border)] bg-[var(--neo-surface-base)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--neo-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+  "hh-focus-ring cursor-pointer border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] transition-colors duration-150 last:border-b-0 hover:bg-[var(--hh-l3-hover)]";
 
-const tableCellClass = "px-3 py-2.5 align-middle text-[13px] text-[var(--neo-text-secondary)]";
+const tableCellClass =
+  "px-3 py-2.5 align-middle text-hh-table-cell text-[var(--hh-text-secondary)]";
 
 const tableAmountCellClass =
-  "px-3 py-2.5 text-right align-middle text-[13px] font-semibold tabular-nums text-[var(--neo-text-primary)] whitespace-nowrap";
+  "px-3 py-2.5 text-right align-middle text-hh-table-cell font-semibold tabular-nums text-[var(--hh-text-primary)] whitespace-nowrap";
 
 function fmtUsd(n: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -92,7 +93,7 @@ function SortGlyph({ active, dir }: { active: boolean; dir: "asc" | "desc" }) {
   if (!active) return <span className="ml-1 inline-block w-3" aria-hidden />;
   return (
     <span
-      className="ml-0.5 inline-block w-3 text-[10px] font-normal text-[var(--neo-text-tertiary)]"
+      className="ml-0.5 inline-block w-3 text-hh-table-header font-normal text-[var(--hh-text-tertiary)]"
       aria-hidden
     >
       {dir === "asc" ? "↑" : "↓"}
@@ -113,30 +114,30 @@ function SummaryKpi({
 }) {
   const valueClass =
     tone === "rose"
-      ? "text-rose-300"
+      ? "text-[var(--hh-danger)]"
       : tone === "emerald"
-        ? "text-emerald-300"
+        ? "text-[var(--hh-success)]"
         : tone === "gold"
-          ? "text-[var(--neo-gold-soft)]"
-          : "text-[var(--neo-text-primary)]";
+          ? "text-[var(--hh-text-primary)]"
+          : "text-[var(--hh-text-primary)]";
 
   return (
     <div className={cn(kpiTileClass, "flex min-h-[76px] items-center gap-3")}>
       <span
         className={cn(
           kpiIconClass,
-          tone === "rose" && "text-rose-300",
-          tone === "emerald" && "text-emerald-300"
+          tone === "rose" && "text-[var(--hh-danger)]",
+          tone === "emerald" && "text-[var(--hh-success)]"
         )}
         aria-hidden
       >
         {icon}
       </span>
       <div className="min-w-0">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+        <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
           {label}
         </p>
-        <p className={cn("mt-1 text-[18px] font-semibold tabular-nums leading-none", valueClass)}>
+        <p className={cn("mt-1 text-hh-financial-total font-semibold hh-fin", valueClass)}>
           {value}
         </p>
       </div>
@@ -249,26 +250,26 @@ export default function WorkerSummaryPage() {
   return (
     <div
       className={cn(
-        "dark neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
+        "min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
       )}
     >
       <div
         className={cn(
-          "neo-page-on-graphite page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-3 px-4 py-3 pb-4 sm:max-w-[460px] md:max-w-none md:gap-3 md:px-6 md:pb-6 md:pt-4",
+          "page-shell-wide mx-auto flex w-full max-w-[430px] flex-1 flex-col gap-3 px-4 py-3 pb-4 sm:max-w-[460px] md:max-w-none md:gap-3 md:px-6 md:pb-6 md:pt-4",
           mobileListPagePaddingClass,
           "max-md:!gap-3"
         )}
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-white/10 pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-[24px] [&_h1]:!font-semibold [&_h1]:!leading-none [&_h1]:!tracking-normal [&_h1]:!text-[var(--neo-canvas-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-3xl [&_p]:!text-[14px] [&_p]:!leading-snug [&_p]:!text-[var(--neo-canvas-text-secondary)]"
+            className="gap-1 border-b border-[var(--hh-border)] pb-3 lg:items-baseline lg:gap-x-4 [&_h1]:!text-hh-page-title [&_h1]:!font-semibold [&_h1]:!text-[var(--hh-text-primary)] [&_p]:!mt-1 [&_p]:!max-w-3xl [&_p]:!text-hh-body [&_p]:!text-[var(--hh-text-secondary)]"
             title="Worker Summary"
             subtitle="Labor entry count (work days), earned vs paid, and outstanding in the selected range. Click a row to open the worker dashboard."
             actions={
               <Link
                 href="/workers"
-                className="inline-flex min-h-9 items-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-none transition-colors hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-gold-soft)]"
+                className="inline-flex min-h-9 items-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-table-cell font-semibold text-[var(--hh-text-primary)] shadow-none transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-primary)]"
               >
                 Worker Profile
               </Link>
@@ -286,7 +287,7 @@ export default function WorkerSummaryPage() {
           activeFilterCount={activeMobileFilterCount}
           searchSlot={
             <div className="relative w-full">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
               <Input
                 type="text"
                 placeholder="Search worker…"
@@ -304,7 +305,7 @@ export default function WorkerSummaryPage() {
           title="Filters"
         >
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+            <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               From
             </p>
             <Input
@@ -315,7 +316,7 @@ export default function WorkerSummaryPage() {
             />
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+            <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               To
             </p>
             <Input
@@ -326,7 +327,7 @@ export default function WorkerSummaryPage() {
             />
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+            <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               Sort by
             </p>
             <select
@@ -347,7 +348,7 @@ export default function WorkerSummaryPage() {
             </select>
           </div>
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+            <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               Direction
             </p>
             <select
@@ -372,16 +373,16 @@ export default function WorkerSummaryPage() {
           </Button>
           <Button
             type="button"
-            className="min-h-[44px] w-full rounded-lg bg-[var(--neo-gold)] text-[13px] font-semibold text-zinc-950 hover:bg-[var(--neo-gold-soft)]"
+            className="min-h-[44px] w-full rounded-hh-standard bg-[var(--hh-action-primary)] text-hh-control text-[var(--hh-action-primary-foreground)] hover:opacity-90"
             onClick={() => setMobileFiltersOpen(false)}
           >
             Done
           </Button>
         </MobileFilterSheet>
 
-        <div className="hidden items-end gap-3 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-3 shadow-[var(--neo-shadow-panel)] md:flex">
+        <div className="hidden items-end gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 shadow-operational md:flex">
           <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+            <label className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               From
             </label>
             <Input
@@ -392,7 +393,7 @@ export default function WorkerSummaryPage() {
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+            <label className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
               To
             </label>
             <Input
@@ -403,7 +404,7 @@ export default function WorkerSummaryPage() {
             />
           </div>
           <div className="relative min-w-[220px] flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -425,7 +426,7 @@ export default function WorkerSummaryPage() {
         </div>
 
         {message ? (
-          <p className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-3 text-sm text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-control)]">
+          <p className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 text-sm text-[var(--hh-text-secondary)] shadow-operational">
             {message}
           </p>
         ) : null}
@@ -458,11 +459,11 @@ export default function WorkerSummaryPage() {
 
         <div className="md:hidden">
           {loading ? (
-            <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-4 py-8 text-center text-sm text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-panel)]">
+            <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-8 text-center text-sm text-[var(--hh-text-secondary)] shadow-operational">
               Loading…
             </div>
           ) : paged.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-8">
+            <div className="rounded-hh-standard border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-4 py-8">
               <MobileEmptyState
                 icon={<Users className="h-5 w-5" />}
                 message="No workers in this range."
@@ -475,7 +476,7 @@ export default function WorkerSummaryPage() {
                   key={r.workerId}
                   role="button"
                   tabIndex={0}
-                  className="flex min-h-[84px] cursor-pointer flex-col justify-center gap-2 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 text-left shadow-[var(--neo-shadow-control)] transition-colors hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                  className="hh-focus-ring flex min-h-[84px] cursor-pointer flex-col justify-center gap-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-left shadow-operational transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)]"
                   onClick={() => router.push(`/workers/${r.workerId}`)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
@@ -485,7 +486,7 @@ export default function WorkerSummaryPage() {
                   }}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold text-[var(--neo-text-primary)]">{r.workerName}</p>
+                    <p className="font-semibold text-[var(--hh-text-primary)]">{r.workerName}</p>
                     <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                       <RowActionsMenu
                         appearance="list"
@@ -524,14 +525,16 @@ export default function WorkerSummaryPage() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs tabular-nums text-[var(--neo-text-secondary)]">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs tabular-nums text-[var(--hh-text-secondary)]">
                     <span>{r.workDays} days</span>
                     <span className="text-right">Earned {fmtUsd(r.earned)}</span>
                     <span>Paid {fmtUsd(r.paid)}</span>
                     <span
                       className={cn(
                         "text-right font-medium",
-                        r.outstanding > 0.005 ? "text-rose-300" : "text-[var(--neo-text-secondary)]"
+                        r.outstanding > 0.005
+                          ? "text-[var(--hh-danger)]"
+                          : "text-[var(--hh-text-secondary)]"
                       )}
                     >
                       Out {fmtUsd(r.outstanding)}
@@ -543,7 +546,7 @@ export default function WorkerSummaryPage() {
           )}
         </div>
 
-        <div className="flex items-center justify-between rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-2 text-sm text-[var(--neo-text-secondary)] shadow-[var(--neo-shadow-control)] md:hidden">
+        <div className="flex items-center justify-between rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-sm text-[var(--hh-text-secondary)] shadow-operational md:hidden">
           <span className="tabular-nums">
             {filtered.length === 0
               ? "0"
@@ -572,11 +575,11 @@ export default function WorkerSummaryPage() {
           </div>
         </div>
 
-        <div className="hidden overflow-hidden rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:block">
+        <div className="hidden overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:block">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] border-collapse text-sm md:min-w-0">
               <thead>
-                <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l3-selected)]">
                   <th
                     className={cn(tableHeaderCellClass, "cursor-pointer select-none pl-4")}
                     onClick={() => toggleSort("workerName")}
@@ -658,7 +661,7 @@ export default function WorkerSummaryPage() {
                   <tr>
                     <td
                       colSpan={6}
-                      className="px-3 py-8 text-center text-sm text-[var(--neo-text-secondary)]"
+                      className="px-3 py-8 text-center text-sm text-[var(--hh-text-secondary)]"
                     >
                       Loading…
                     </td>
@@ -666,11 +669,11 @@ export default function WorkerSummaryPage() {
                 ) : paged.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-6">
-                      <div className="rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-8 text-center">
-                        <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+                      <div className="rounded-hh-standard border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-4 py-8 text-center">
+                        <p className="text-sm font-medium text-[var(--hh-text-primary)]">
                           No workers in this range.
                         </p>
-                        <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">
+                        <p className="mt-1 text-xs text-[var(--hh-text-secondary)]">
                           Adjust the dates or search to review worker totals.
                         </p>
                       </div>
@@ -695,7 +698,7 @@ export default function WorkerSummaryPage() {
                       <td
                         className={cn(
                           tableCellClass,
-                          "pl-4 font-semibold text-[var(--neo-text-primary)]"
+                          "pl-4 font-semibold text-[var(--hh-text-primary)]"
                         )}
                       >
                         {r.workerName}
@@ -704,13 +707,15 @@ export default function WorkerSummaryPage() {
                         {r.workDays} days
                       </td>
                       <td className={tableAmountCellClass}>{fmtUsd(r.earned)}</td>
-                      <td className={cn(tableAmountCellClass, "text-[var(--neo-text-secondary)]")}>
+                      <td className={cn(tableAmountCellClass, "text-[var(--hh-text-secondary)]")}>
                         {fmtUsd(r.paid)}
                       </td>
                       <td
                         className={cn(
                           tableAmountCellClass,
-                          r.outstanding > 0.005 ? "text-rose-300" : "text-[var(--neo-text-primary)]"
+                          r.outstanding > 0.005
+                            ? "text-[var(--hh-danger)]"
+                            : "text-[var(--hh-text-primary)]"
                         )}
                       >
                         {fmtUsd(r.outstanding)}
@@ -762,7 +767,7 @@ export default function WorkerSummaryPage() {
             </table>
           </div>
 
-          <div className="flex items-center justify-between border-t border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-4 py-3 text-sm text-[var(--neo-text-secondary)]">
+          <div className="flex items-center justify-between border-t border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-4 py-3 text-sm text-[var(--hh-text-secondary)]">
             <span className="tabular-nums">
               {filtered.length === 0
                 ? "0"

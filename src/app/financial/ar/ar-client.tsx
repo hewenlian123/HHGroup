@@ -193,7 +193,7 @@ export function ArClient() {
 
       {error ? (
         <Card className="p-5">
-          <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
+          <p className="text-sm text-[var(--hh-danger)]">{error}</p>
         </Card>
       ) : null}
 
@@ -212,10 +212,8 @@ export function ArClient() {
                       className={cn(
                         "mt-1 text-2xl",
                         TYPO.kpiValue,
-                        label === "Overdue AR" && value > 0 && "text-amber-600 dark:text-amber-400",
-                        label === "Paid This Month" &&
-                          value > 0 &&
-                          "text-emerald-700 dark:text-emerald-400"
+                        label === "Overdue AR" && value > 0 && "text-[var(--hh-warning)]",
+                        label === "Paid This Month" && value > 0 && "text-[var(--hh-success)]"
                       )}
                     >
                       {formatCurrency(value)}
@@ -247,7 +245,7 @@ export function ArClient() {
           <div className="space-y-6">
             {sortedBuckets.map((bucket) => (
               <Card key={bucket} className="overflow-hidden">
-                <h3 className="border-b border-slate-900/[0.06] bg-slate-50/80 px-4 py-3 text-sm font-semibold text-foreground dark:border-border dark:bg-muted/20">
+                <h3 className="border-b border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-4 py-3 text-sm font-semibold text-[var(--hh-text-primary)]">
                   {bucket} {bucket === "Current" ? "" : "days overdue"}
                 </h3>
                 <Table>
@@ -277,7 +275,7 @@ export function ArClient() {
                             {inv.invoice_no}
                           </Link>
                         </TableCell>
-                        <TableCell className="text-zinc-500 dark:text-zinc-400">
+                        <TableCell className="text-[var(--hh-text-secondary)]">
                           {normalizeProject(inv.projects)?.name ?? "—"}
                         </TableCell>
                         <TableCell className={TYPO.primaryName}>{inv.client_name}</TableCell>

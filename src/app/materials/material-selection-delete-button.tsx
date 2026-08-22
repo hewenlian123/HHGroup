@@ -52,7 +52,7 @@ export function MaterialSelectionDeleteButton({
         variant="outline"
         size="sm"
         className={cn(
-          "h-8 rounded-sm border-rose-500/30 px-2 text-rose-300 hover:border-rose-400/50 hover:bg-rose-500/10 hover:text-rose-100",
+          "h-8 rounded-hh-compact border-[var(--hh-danger-border)] px-2 text-[var(--hh-danger)] hover:border-[var(--hh-danger-border)] hover:bg-[var(--hh-danger-soft-fill)] hover:text-[var(--hh-danger)]",
           className
         )}
         aria-label={`Delete ${title}`}
@@ -67,9 +67,9 @@ export function MaterialSelectionDeleteButton({
       </Button>
 
       <Dialog open={open} onOpenChange={(next) => !busy && setOpen(next)}>
-        <DialogContent className="max-w-sm rounded-sm border-rose-500/25 bg-[var(--neo-surface-raised)] p-5 text-[var(--neo-text-primary)] shadow-[0_30px_90px_rgb(0_0_0_/_0.46),inset_0_1px_0_rgb(255_255_255_/_0.05)]">
+        <DialogContent className="max-w-sm rounded-hh-task border-[var(--hh-danger-border)] bg-[var(--hh-l5-task-surface)] p-5 text-[var(--hh-text-primary)] shadow-task">
           <DialogHeader>
-            <DialogTitle className="text-base font-semibold text-[var(--neo-text-primary)]">
+            <DialogTitle className="text-base font-semibold text-[var(--hh-text-primary)]">
               Delete material selection?
             </DialogTitle>
             <DialogDescription className={TYPO.mutedText}>
@@ -77,11 +77,11 @@ export function MaterialSelectionDeleteButton({
             </DialogDescription>
           </DialogHeader>
           {error ? (
-            <p className="rounded-sm border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+            <p className="rounded-hh-compact border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2 text-sm text-[var(--hh-danger)]">
               {error}
             </p>
           ) : null}
-          <DialogFooter className="gap-2 border-t border-[var(--neo-border)] pt-3">
+          <DialogFooter className="gap-2 border-t border-[var(--hh-border)] pt-3">
             <Button
               type="button"
               variant="outline"

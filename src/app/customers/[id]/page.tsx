@@ -222,7 +222,7 @@ export default function CustomerDetailPage() {
 
   if (loading) {
     return (
-      <PageLayout header={null} divider={false} className="dark">
+      <PageLayout header={null} divider={false}>
         <LoadingState text="Loading customer..." />
       </PageLayout>
     );
@@ -232,7 +232,6 @@ export default function CustomerDetailPage() {
     return (
       <PageLayout
         divider={false}
-        className="dark"
         header={
           <PageHeader
             title="Customer not found"
@@ -254,7 +253,6 @@ export default function CustomerDetailPage() {
   return (
     <PageLayout
       divider={false}
-      className="dark"
       header={
         <PageHeader
           title={form.name?.trim() || "Customer"}
@@ -274,7 +272,7 @@ export default function CustomerDetailPage() {
       }
     >
       {message ? (
-        <div className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]">
+        <div className="rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-3 py-2 text-hh-body text-[var(--hh-information)]">
           {message}
         </div>
       ) : null}
@@ -350,19 +348,19 @@ export default function CustomerDetailPage() {
       <NeoPanel bodyClassName="p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-[var(--neo-text-primary)]">Related work</h2>
-            <p className="text-xs text-[var(--neo-text-secondary)]">
+            <h2 className="text-sm font-semibold text-[var(--hh-text-primary)]">Related work</h2>
+            <p className="text-xs text-[var(--hh-text-secondary)]">
               Projects, estimates, and change orders connected to this customer.
             </p>
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="space-y-2">
-            <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+            <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
               Projects
             </p>
             {relatedWork.projects.length === 0 ? (
-              <p className="text-sm text-[var(--neo-text-secondary)]">No related projects.</p>
+              <p className="text-sm text-[var(--hh-text-secondary)]">No related projects.</p>
             ) : (
               <div className="divide-y divide-border/60">
                 {relatedWork.projects.map((project) => (
@@ -371,7 +369,7 @@ export default function CustomerDetailPage() {
                     href={`/projects/${project.id}`}
                     className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
                   >
-                    <span className="min-w-0 truncate font-medium text-[var(--neo-text-primary)]">
+                    <span className="min-w-0 truncate font-medium text-[var(--hh-text-primary)]">
                       {project.name ?? "Untitled project"}
                     </span>
                     <NeoStatus label={project.status ?? "—"} variant="default" />
@@ -381,11 +379,11 @@ export default function CustomerDetailPage() {
             )}
           </div>
           <div className="space-y-2">
-            <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+            <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
               Estimates
             </p>
             {relatedWork.estimates.length === 0 ? (
-              <p className="text-sm text-[var(--neo-text-secondary)]">No related estimates.</p>
+              <p className="text-sm text-[var(--hh-text-secondary)]">No related estimates.</p>
             ) : (
               <div className="divide-y divide-border/60">
                 {relatedWork.estimates.map((estimate) => (
@@ -394,7 +392,7 @@ export default function CustomerDetailPage() {
                     href={`/estimates/${estimate.id}`}
                     className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
                   >
-                    <span className="min-w-0 truncate font-medium text-[var(--neo-text-primary)]">
+                    <span className="min-w-0 truncate font-medium text-[var(--hh-text-primary)]">
                       {estimate.number ?? "Estimate"}
                     </span>
                     <NeoStatus label={estimate.status ?? "—"} variant="default" />
@@ -404,11 +402,11 @@ export default function CustomerDetailPage() {
             )}
           </div>
           <div className="space-y-2">
-            <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+            <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
               Change Orders
             </p>
             {relatedWork.changeOrders.length === 0 ? (
-              <p className="text-sm text-[var(--neo-text-secondary)]">No related change orders.</p>
+              <p className="text-sm text-[var(--hh-text-secondary)]">No related change orders.</p>
             ) : (
               <div className="divide-y divide-border/60">
                 {relatedWork.changeOrders.map((co) => (
@@ -417,7 +415,7 @@ export default function CustomerDetailPage() {
                     href={`/projects/${co.project_id}/change-orders/${co.id}`}
                     className="flex items-center justify-between gap-3 py-2 text-sm underline-offset-2 hover:underline"
                   >
-                    <span className="min-w-0 truncate font-medium text-[var(--neo-text-primary)]">
+                    <span className="min-w-0 truncate font-medium text-[var(--hh-text-primary)]">
                       {co.title ?? co.number ?? "Change order"}
                     </span>
                     <NeoStatus label={co.status ?? "—"} variant="default" />

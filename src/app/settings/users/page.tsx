@@ -131,15 +131,15 @@ export default function SettingsUsersPage() {
             {rows.map((row) => (
               <NeoMobileCard key={row.id} className="space-y-3 p-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+                  <p className="truncate text-sm font-medium text-[var(--hh-text-primary)]">
                     {row.email || row.id}
                   </p>
-                  <p className="text-xs text-[var(--neo-text-secondary)]">
+                  <p className="text-xs text-[var(--hh-text-secondary)]">
                     Created {new Date(row.created_at).toLocaleDateString()}
                   </p>
                 </div>
                 {row.role === "owner" ? (
-                  <span className="text-sm font-medium text-[var(--neo-text-primary)]">owner</span>
+                  <span className="text-sm font-medium text-[var(--hh-text-primary)]">owner</span>
                 ) : (
                   <NeoSelect
                     value={row.role}
@@ -170,12 +170,10 @@ export default function SettingsUsersPage() {
             <tbody>
               {rows.map((row) => (
                 <tr key={row.id}>
-                  <td className="px-3 py-2 text-[var(--neo-text-primary)]">
-                    {row.email || row.id}
-                  </td>
+                  <td className="px-3 py-2 text-[var(--hh-text-primary)]">{row.email || row.id}</td>
                   <td className="px-4 py-3">
                     {row.role === "owner" ? (
-                      <span className="text-sm font-medium text-[var(--neo-text-primary)]">
+                      <span className="text-sm font-medium text-[var(--hh-text-primary)]">
                         owner
                       </span>
                     ) : (
@@ -195,7 +193,7 @@ export default function SettingsUsersPage() {
                       </NeoSelect>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-[var(--neo-text-secondary)]">
+                  <td className="px-3 py-2 text-[var(--hh-text-secondary)]">
                     {new Date(row.created_at).toLocaleDateString()}
                   </td>
                 </tr>

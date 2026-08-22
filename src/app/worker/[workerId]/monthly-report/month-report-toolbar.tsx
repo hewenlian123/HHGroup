@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { NeoSelect } from "@/components/base";
 
 const toolbarSelectClass =
-  "h-9 min-w-[10rem] rounded-[0.625rem] border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[13px] text-[var(--neo-text-primary)] shadow-none hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11 max-md:w-full";
+  "hh-focus-ring h-9 min-h-11 min-w-[10rem] rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-table-cell text-[var(--hh-text-primary)] shadow-none hover:bg-[var(--hh-l3-selected)] md:min-h-9 max-md:w-full";
 
 const toolbarPrimaryButtonClass =
-  "h-9 rounded-[0.625rem] border-transparent bg-[var(--neo-gold)] px-3 text-[13px] font-semibold text-zinc-950 shadow-none hover:bg-[var(--neo-gold-soft)] hover:text-zinc-950 focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11 max-md:w-full";
+  "h-9 rounded-hh-standard border-transparent bg-[var(--hh-action-primary)] px-3 text-hh-control text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90 focus-visible:ring-[var(--hh-focus-ring)] max-md:min-h-11 max-md:w-full";
 
 function monthOptions(count = 24): { value: string; label: string }[] {
   const out: { value: string; label: string }[] = [];

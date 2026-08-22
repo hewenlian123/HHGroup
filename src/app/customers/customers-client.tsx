@@ -244,7 +244,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
     <div className={cn("space-y-4", mobileListPagePaddingClass, "max-md:!space-y-3")}>
       {dataLoadWarning ? (
         <p
-          className="border-b border-white/10 pb-3 text-sm text-[var(--neo-canvas-text-secondary)]"
+          className="border-b border-[var(--hh-border)] pb-3 text-sm text-[var(--hh-text-secondary)]"
           role="status"
         >
           {dataLoadWarning}
@@ -259,15 +259,9 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
       <div className="hidden flex-col gap-3 md:flex">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className={cn(TYPO.pageTitle, "text-[var(--neo-canvas-text-primary)]")}>
-              Customers
-            </h1>
+            <h1 className={cn(TYPO.pageTitle, "text-[var(--hh-text-primary)]")}>Customers</h1>
             <p
-              className={cn(
-                "mt-1 max-w-2xl",
-                TYPO.pageSubtitle,
-                "text-[var(--neo-canvas-text-secondary)]"
-              )}
+              className={cn("mt-1 max-w-2xl", TYPO.pageSubtitle, "text-[var(--hh-text-secondary)]")}
             >
               Manage your clients and contacts.
             </p>
@@ -282,7 +276,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
         </div>
         <NeoToolbar className="justify-between">
           <div className="relative w-full max-w-md">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
             <NeoInput
               aria-label="Search customers"
               placeholder="Search customers…"
@@ -291,17 +285,18 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
               className="h-9 pl-8 text-sm"
             />
           </div>
-          <p className="shrink-0 text-xs text-[var(--neo-text-secondary)]">
+          <p className="shrink-0 text-xs text-[var(--hh-text-secondary)]">
             Total customers:{" "}
-            <span className="font-medium text-[var(--neo-text-primary)]">{items.length}</span>
+            <span className="font-medium text-[var(--hh-text-primary)]">{items.length}</span>
           </p>
         </NeoToolbar>
       </div>
 
       <div className="md:hidden">
         <div className="relative w-full">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
           <NeoInput
+            aria-label="Search customers"
             placeholder="Search customers…"
             value={search}
             onChange={(e) => startTransition(() => setSearch(e.target.value))}
@@ -353,17 +348,17 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                 <NeoMobileCard key={c.id} className="flex min-h-[64px] items-center gap-2 p-3">
                   <Link
                     href={`/customers/${c.id}`}
-                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                    className="flex min-h-11 min-w-0 flex-1 items-center gap-3 self-stretch text-left"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+                      <p className="truncate text-sm font-medium text-[var(--hh-text-primary)]">
                         {c.name}
                       </p>
-                      <p className="truncate text-xs text-[var(--neo-text-secondary)]">
+                      <p className="truncate text-xs text-[var(--hh-text-secondary)]">
                         {customerListSubtitle(c)}
                       </p>
                     </div>
-                    <span className="shrink-0 text-sm font-medium tabular-nums text-[var(--neo-text-primary)]">
+                    <span className="shrink-0 text-sm font-medium tabular-nums text-[var(--hh-text-primary)]">
                       {c.phone?.trim() ? c.phone : "—"}
                     </span>
                   </Link>
@@ -373,7 +368,6 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                       { label: "Edit", onClick: () => openEdit(c) },
                       { label: "Delete…", onClick: () => confirmDelete(c), destructive: true },
                     ]}
-                    contentClassName="dark border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)]"
                   />
                 </NeoMobileCard>
               ))}
@@ -396,24 +390,24 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                     <td className="min-h-[44px] px-3 py-2 align-middle font-medium">
                       <Link
                         href={`/customers/${c.id}`}
-                        className="text-[var(--neo-text-primary)] underline-offset-2 hover:underline"
+                        className="text-[var(--hh-text-primary)] underline-offset-2 hover:underline"
                       >
                         {c.name}
                       </Link>
                     </td>
-                    <td className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+                    <td className="px-3 py-2 text-xs text-[var(--hh-text-secondary)]">
                       {c.company_name?.trim() ? c.company_name : "—"}
                     </td>
-                    <td className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+                    <td className="px-3 py-2 text-xs text-[var(--hh-text-secondary)]">
                       {c.email ?? "—"}
                     </td>
-                    <td className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+                    <td className="px-3 py-2 text-xs text-[var(--hh-text-secondary)]">
                       {c.phone ?? "—"}
                     </td>
-                    <td className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+                    <td className="px-3 py-2 text-xs text-[var(--hh-text-secondary)]">
                       {truncateText(formatCustomerAddressLine(c), 40)}
                     </td>
-                    <td className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+                    <td className="px-3 py-2 text-xs text-[var(--hh-text-secondary)]">
                       {c.created_at ? new Date(c.created_at).toLocaleDateString() : "—"}
                     </td>
                     <td className="px-2 py-2 text-right">
@@ -428,7 +422,6 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                           },
                         ]}
                         className="h-7 w-7 md:h-7 md:w-7"
-                        contentClassName="dark border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)]"
                       />
                     </td>
                   </tr>
@@ -461,7 +454,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
                 onChange={(patch) => setDraft((d) => (d ? { ...d, ...patch } : d))}
               />
               {error ? <p className={neoFormErrorClassName}>{error}</p> : null}
-              <div className="-mx-5 mt-2 flex flex-col-reverse gap-2 border-t border-[var(--neo-border)] px-5 pt-4 sm:flex-row sm:justify-end">
+              <div className="-mx-5 mt-2 flex flex-col-reverse gap-2 border-t border-[var(--hh-border)] px-5 pt-4 sm:flex-row sm:justify-end">
                 <Button
                   type="button"
                   variant="outline"
@@ -496,7 +489,7 @@ export function CustomersClient({ initialCustomers, dataLoadWarning = null }: Pr
             Customers with linked projects cannot be deleted.
           </p>
           {deleteError ? <p className={neoFormErrorClassName}>{deleteError}</p> : null}
-          <div className="-mx-5 mt-1 flex flex-col-reverse gap-2 border-t border-[var(--neo-border)] px-5 pt-4 sm:flex-row sm:justify-end">
+          <div className="-mx-5 mt-1 flex flex-col-reverse gap-2 border-t border-[var(--hh-border)] px-5 pt-4 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"

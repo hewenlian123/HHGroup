@@ -58,10 +58,10 @@ export default async function BillsPage({ searchParams }: Props) {
       <div className={billsContentMaxClass}>
         {!available ? (
           <NeoPanel bodyClassName="px-4 py-5 md:px-6">
-            <p className="text-sm font-medium text-[var(--neo-text-primary)]">
+            <p className="text-hh-body-strong text-[var(--hh-text-primary)]">
               Bills/AP is unavailable
             </p>
-            <p className="mt-1 text-[13px] text-[var(--neo-text-secondary)]">
+            <p className="mt-1 text-hh-table-cell text-[var(--hh-text-secondary)]">
               {message ?? "Bills/AP module is not configured in this environment."}
             </p>
           </NeoPanel>

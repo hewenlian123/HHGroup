@@ -57,7 +57,6 @@ export default async function FinanceOverviewPage() {
 
   return (
     <PageLayout
-      className="dark"
       header={
         <PageHeader
           title="Finance Overview"
@@ -72,8 +71,8 @@ export default async function FinanceOverviewPage() {
             href={item.href}
             className={
               item.href === "/finance"
-                ? "rounded-md bg-[rgb(184_137_45_/_0.12)] px-2.5 py-1.5 text-sm font-medium text-[var(--neo-gold-soft)]"
-                : "rounded-md px-2.5 py-1.5 text-sm font-medium text-[var(--neo-text-secondary)] transition-colors hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+                ? "inline-flex min-h-11 items-center rounded-hh-compact bg-[var(--hh-l3-selected)] px-2.5 py-1.5 text-hh-control text-[var(--hh-text-primary)] md:min-h-8"
+                : "inline-flex min-h-11 items-center rounded-hh-compact px-2.5 py-1.5 text-sm font-medium text-[var(--hh-text-secondary)] transition-colors hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-primary)] md:min-h-8"
             }
           >
             {item.label}
@@ -89,7 +88,7 @@ export default async function FinanceOverviewPage() {
               label={
                 <span className="flex items-center justify-between gap-2">
                   <span>{label}</span>
-                  <Icon className="h-4 w-4 text-[var(--neo-text-tertiary)]" />
+                  <Icon className="h-4 w-4 text-[var(--hh-text-tertiary)]" />
                 </span>
               }
               value={fmtUsd(value)}
@@ -110,7 +109,7 @@ export default async function FinanceOverviewPage() {
       <NeoPanel
         eyebrow={
           <span className="inline-flex items-center gap-2">
-            <Activity className="h-4 w-4 text-[var(--neo-text-tertiary)]" />
+            <Activity className="h-4 w-4 text-[var(--hh-text-tertiary)]" />
             Recent financial activity
           </span>
         }
@@ -119,9 +118,7 @@ export default async function FinanceOverviewPage() {
         bodyClassName="p-3 md:p-0"
       >
         {recent.length === 0 ? (
-          <p className="py-6 text-sm text-[var(--neo-canvas-text-secondary)]">
-            No recent activity.
-          </p>
+          <p className="py-6 text-sm text-[var(--hh-text-secondary)]">No recent activity.</p>
         ) : (
           <>
             <div className="grid gap-3 md:hidden">
@@ -130,7 +127,7 @@ export default async function FinanceOverviewPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className={TYPO.primaryName}>{tx.description}</p>
-                      <p className="mt-1 text-xs capitalize text-[var(--neo-text-secondary)]">
+                      <p className="mt-1 text-xs capitalize text-[var(--hh-text-secondary)]">
                         {tx.type} / {tx.projectName ?? "No project"}
                       </p>
                     </div>
@@ -138,7 +135,7 @@ export default async function FinanceOverviewPage() {
                       {fmtUsd(tx.amount)}
                     </NeoAmount>
                   </div>
-                  <p className="mt-3 text-xs text-[var(--neo-text-secondary)]">
+                  <p className="mt-3 text-xs text-[var(--hh-text-secondary)]">
                     {tx.date ? new Date(tx.date).toLocaleDateString() : "—"}
                   </p>
                 </NeoMobileCard>
@@ -161,18 +158,18 @@ export default async function FinanceOverviewPage() {
                 {recent.map((tx) => (
                   <tr key={`${tx.type}-${tx.id}`} className={listTableRowStaticClassName}>
                     <td
-                      className={cn(tableRawTdClass, "capitalize text-[var(--neo-text-secondary)]")}
+                      className={cn(tableRawTdClass, "capitalize text-[var(--hh-text-secondary)]")}
                     >
                       {tx.type}
                     </td>
                     <td className={tableRawTdClass}>{tx.description}</td>
-                    <td className={cn(tableRawTdClass, "text-[var(--neo-text-secondary)]")}>
+                    <td className={cn(tableRawTdClass, "text-[var(--hh-text-secondary)]")}>
                       {tx.projectName ?? "—"}
                     </td>
                     <td className={cn(tableRawTdClass, "text-right", TYPO.amount)}>
                       <NeoAmount>{fmtUsd(tx.amount)}</NeoAmount>
                     </td>
-                    <td className={cn(tableRawTdClass, "text-[var(--neo-text-secondary)]")}>
+                    <td className={cn(tableRawTdClass, "text-[var(--hh-text-secondary)]")}>
                       {tx.date ? new Date(tx.date).toLocaleDateString() : "—"}
                     </td>
                   </tr>

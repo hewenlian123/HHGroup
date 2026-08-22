@@ -198,7 +198,7 @@ export function EditBillClient({ bill, projects, learnedCategories = [] }: Props
             {amountLocked ? (
               <p
                 id="bill-amount-lock-note"
-                className="text-[12px] text-[var(--neo-text-secondary)]"
+                className="text-hh-helper text-[var(--hh-text-secondary)]"
               >
                 Paid bills are locked to protect AP history.
               </p>
@@ -238,7 +238,7 @@ export function EditBillClient({ bill, projects, learnedCategories = [] }: Props
 
           <div
             className={cn(
-              "flex flex-col gap-2 border-t border-[var(--neo-border)] pt-5 sm:flex-row sm:items-center",
+              "flex flex-col gap-2 border-t border-[var(--hh-border)] pt-5 sm:flex-row sm:items-center",
               "max-md:[&_button]:min-h-11 max-md:[&_button]:w-full"
             )}
           >

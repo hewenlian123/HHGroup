@@ -56,21 +56,22 @@ import { amountClass, TYPO } from "@/lib/typography";
 const ACCOUNT_TYPES: AccountType[] = ["Credit Card", "Debit Card", "Bank", "Cash", "Other"];
 
 const accountsShell =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-2xl";
+  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const kpiTile =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
+  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational";
 
 const kpiIcon =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]";
 
 function typeChipClass(t: AccountType): string {
   if (t === "Bank")
-    return "border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
-  if (t === "Cash") return "border border-emerald-500/20 bg-emerald-500/15 text-emerald-300";
+    return "border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]";
+  if (t === "Cash")
+    return "border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]";
   if (t === "Credit Card" || t === "Debit Card")
-    return "border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] text-[var(--neo-gold-soft)]";
-  return "border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
+    return "border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] text-[var(--hh-information)]";
+  return "border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]";
 }
 
 function AccountTypeIcon({ type }: { type: AccountType }) {
@@ -106,7 +107,7 @@ function BankReconciliationOverview({ cashOverview, dataLoadWarnings }: Accounts
           </p>
         </div>
         {cashOverview.recentUnreconciled.length > 0 ? (
-          <Button asChild variant="outline" size="sm" className="h-8 rounded-sm">
+          <Button asChild variant="outline" size="sm" className="h-8 rounded-hh-compact">
             <Link href="/financial/bank">Reconcile in Bank</Link>
           </Button>
         ) : null}
@@ -126,7 +127,7 @@ function BankReconciliationOverview({ cashOverview, dataLoadWarnings }: Accounts
         {kpis.map(({ label, value, icon: Icon }) => (
           <div key={label} className={cn(kpiTile, "p-4")}>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              <span className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                 {label}
               </span>
               <span className={kpiIcon}>
@@ -146,10 +147,8 @@ function BankReconciliationOverview({ cashOverview, dataLoadWarnings }: Accounts
       </div>
 
       {cashOverview.cashDifference !== 0 ? (
-        <div className="mt-4 border-b border-amber-400/40 pb-3 dark:border-amber-600/40">
-          <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
-            Cash mismatch detected
-          </p>
+        <div className="mt-4 border-b border-[var(--hh-warning-border)] pb-3">
+          <p className="text-sm font-medium text-[var(--hh-warning)]">Cash mismatch detected</p>
         </div>
       ) : null}
 
@@ -400,7 +399,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
   return (
     <div
       className={cn(
-        "dark neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
+        "min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
       )}
     >
@@ -412,7 +411,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-white/10 pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--neo-canvas-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--neo-canvas-text-secondary)]"
+            className="gap-1 border-b border-[var(--hh-border)] pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--hh-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--hh-text-secondary)]"
             title="Accounts"
             subtitle="Manage payment sources: credit cards, debit cards, bank accounts, cash."
             actions={
@@ -436,7 +435,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
 
         {/* KPI summary */}
         <section className="border-b border-border/60 pb-4">
-          <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+          <p className="mb-3 text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
             Summary
           </p>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -445,7 +444,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
                 <Wallet className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   Total accounts
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
@@ -458,7 +457,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
                 <Landmark className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   Bank accounts
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
@@ -471,7 +470,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
                 <CreditCard className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   Cards
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
@@ -484,7 +483,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
                 <Banknote className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   Cash accounts
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
@@ -499,7 +498,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
         <div className={cn(accountsShell, "p-3 md:p-3")}>
           <div className="flex w-full flex-wrap items-end gap-3 md:flex-nowrap">
             <div className="flex min-w-[220px] flex-1 flex-col gap-1">
-              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 Search
               </label>
               <div className="relative w-full">
@@ -514,10 +513,11 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
               </div>
             </div>
             <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 Type
               </label>
               <Select
+                aria-label="Filter accounts by type"
                 value={typeFilter}
                 onChange={(e) => setTypeFilter((e.target.value || "") as "" | AccountType)}
                 className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[220px]"
@@ -537,14 +537,18 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : accounts.length === 0 ? (
           <div className={cn(accountsShell, "px-4 py-10 text-center")}>
-            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]">
+            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]">
               <CreditCard className="h-5 w-5" aria-hidden />
             </span>
             <p className="text-sm font-medium text-foreground">No payment accounts yet</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Add a bank account, card, or cash account to track company finances.
             </p>
-            <Button size="sm" className="mt-4 h-9 rounded-sm shadow-none" onClick={openModal}>
+            <Button
+              size="sm"
+              className="mt-4 h-9 rounded-hh-compact shadow-none"
+              onClick={openModal}
+            >
               <Plus className="mr-2 h-3.5 w-3.5" aria-hidden />
               Add first account
             </Button>
@@ -558,7 +562,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
               <Button
                 size="sm"
                 variant="outline"
-                className="h-9 rounded-sm shadow-none"
+                className="h-9 rounded-hh-compact shadow-none"
                 onClick={() => {
                   setSearchQuery("");
                   setTypeFilter("");
@@ -571,7 +575,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
         ) : (
           <section className={cn(accountsShell, "overflow-hidden p-0")}>
             {/* Desktop header row */}
-            <div className="hidden md:grid grid-cols-[minmax(240px,1.6fr)_minmax(120px,0.7fr)_minmax(90px,0.5fr)_minmax(90px,0.5fr)_44px] gap-3 border-b border-border/60 px-3 py-2.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+            <div className="hidden md:grid grid-cols-[minmax(240px,1.6fr)_minmax(120px,0.7fr)_minmax(90px,0.5fr)_minmax(90px,0.5fr)_44px] gap-3 border-b border-border/60 px-3 py-2.5 text-hh-status font-medium uppercase tracking-normal text-muted-foreground/70">
               <div>Account</div>
               <div>Type</div>
               <div className="text-right">Last 4</div>
@@ -588,7 +592,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
                   {/* ACCOUNT */}
                   <button type="button" className="min-w-0 text-left" onClick={() => openEdit(row)}>
                     <div className="flex items-start gap-3">
-                      <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]">
+                      <span className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]">
                         <AccountTypeIcon type={row.type} />
                       </span>
                       <div className="min-w-0">
@@ -612,7 +616,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
                   <div className="md:pl-0">
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-hh-status font-medium",
                         typeChipClass(row.type)
                       )}
                     >
@@ -621,13 +625,13 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
                   </div>
 
                   {/* LAST 4 */}
-                  <div className="text-right tabular-nums font-mono text-xs text-muted-foreground">
+                  <div className="text-right tabular-nums hh-fin text-xs text-muted-foreground">
                     {row.lastFour ? `•••• ${row.lastFour}` : "—"}
                   </div>
 
                   {/* STATUS (no backend field; all current rows are active) */}
                   <div>
-                    <span className="inline-flex items-center rounded-full border border-emerald-500/20 bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-300">
+                    <span className="inline-flex items-center rounded-full border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] px-2 py-0.5 text-hh-status font-medium text-[var(--hh-success)]">
                       Active
                     </span>
                   </div>
@@ -657,13 +661,13 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
                   <div className="flex flex-wrap items-center gap-2 md:hidden">
                     <span
                       className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                        "inline-flex items-center rounded-full px-2 py-0.5 text-hh-status font-medium",
                         typeChipClass(row.type)
                       )}
                     >
                       {row.type}
                     </span>
-                    <span className="text-xs font-mono tabular-nums text-muted-foreground">
+                    <span className="text-xs hh-fin tabular-nums text-muted-foreground">
                       {row.lastFour ? `•••• ${row.lastFour}` : "Last 4 —"}
                     </span>
                     <span className="text-xs text-muted-foreground">·</span>
@@ -705,7 +709,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-3">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                 Account Name
               </label>
               <Input
@@ -718,10 +722,14 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                 Type
               </label>
-              <Select value={type} onChange={(e) => setType(e.target.value as AccountType)}>
+              <Select
+                aria-label="Account type"
+                value={type}
+                onChange={(e) => setType(e.target.value as AccountType)}
+              >
                 {ACCOUNT_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {t}
@@ -730,7 +738,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                 Last 4 digits (optional)
               </label>
               <Input
@@ -742,7 +750,7 @@ function AccountsPageInner({ cashOverview, dataLoadWarnings }: AccountsClientPro
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-normal">
                 Notes (optional)
               </label>
               <Input

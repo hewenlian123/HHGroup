@@ -269,17 +269,17 @@ export function SecurityClient() {
         description="Supabase Auth is the canonical account identity."
         className="xl:col-span-2"
         action={<NeoStatus label={account?.status || "Active"} variant="success" />}
-        bodyClassName="grid gap-px bg-[var(--neo-border)] sm:grid-cols-2"
+        bodyClassName="grid gap-px bg-[var(--hh-border)] sm:grid-cols-2"
       >
-        <div className="bg-[var(--neo-surface-raised)] px-4 py-3">
-          <p className="text-xs text-[var(--neo-text-tertiary)]">Email</p>
-          <p className="mt-1 break-all text-sm font-medium text-[var(--neo-text-primary)]">
+        <div className="bg-[var(--hh-l2-operational-surface)] px-4 py-3">
+          <p className="text-xs text-[var(--hh-text-tertiary)]">Email</p>
+          <p className="mt-1 break-all text-sm font-medium text-[var(--hh-text-primary)]">
             {account?.email || "—"}
           </p>
         </div>
-        <div className="bg-[var(--neo-surface-raised)] px-4 py-3">
-          <p className="text-xs text-[var(--neo-text-tertiary)]">Role</p>
-          <p className="mt-1 text-sm font-medium text-[var(--neo-text-primary)]">
+        <div className="bg-[var(--hh-l2-operational-surface)] px-4 py-3">
+          <p className="text-xs text-[var(--hh-text-tertiary)]">Role</p>
+          <p className="mt-1 text-sm font-medium text-[var(--hh-text-primary)]">
             {roleLabel(account?.role)}
           </p>
         </div>
@@ -342,7 +342,7 @@ export function SecurityClient() {
               />
             </div>
           </NeoFormGrid>
-          <p className="text-xs leading-5 text-[var(--neo-text-tertiary)]">
+          <p className="text-xs leading-5 text-[var(--hh-text-tertiary)]">
             12–128 characters; include uppercase, lowercase, a number, and a symbol.
           </p>
           <Button type="submit" className="min-h-11" disabled={passwordPending}>
@@ -423,7 +423,7 @@ export function SecurityClient() {
               />
             </div>
           </NeoFormGrid>
-          <p className="text-xs leading-5 text-[var(--neo-text-tertiary)]">
+          <p className="text-xs leading-5 text-[var(--hh-text-tertiary)]">
             Common and repeating PINs are blocked. Password sign-in always remains available.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -459,14 +459,17 @@ export function SecurityClient() {
       >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 text-sm font-medium text-[var(--neo-text-primary)]">
-              <MonitorSmartphone className="h-4 w-4 text-[var(--neo-gold)]" aria-hidden="true" />
+            <div className="flex items-center gap-2 text-sm font-medium text-[var(--hh-text-primary)]">
+              <MonitorSmartphone
+                className="h-4 w-4 text-[var(--hh-text-secondary)]"
+                aria-hidden="true"
+              />
               This browser
             </div>
-            <p className="mt-1 break-all text-xs text-[var(--neo-text-secondary)]">
+            <p className="mt-1 break-all text-xs text-[var(--hh-text-secondary)]">
               {session?.current?.email || account?.email || "Authenticated owner"}
             </p>
-            <p className="mt-2 max-w-2xl text-xs leading-5 text-[var(--neo-text-tertiary)]">
+            <p className="mt-2 max-w-2xl text-xs leading-5 text-[var(--hh-text-tertiary)]">
               {session?.limitation}
             </p>
           </div>

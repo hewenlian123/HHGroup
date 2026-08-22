@@ -19,7 +19,7 @@ export default async function CustomersPage() {
   }
 
   return (
-    <PageLayout header={null} divider={false} className="dark">
+    <PageLayout header={null} divider={false}>
       <div className="page-stack py-6">
         <CustomersClient initialCustomers={customers} dataLoadWarning={dataLoadWarning} />
       </div>

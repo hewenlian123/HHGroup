@@ -3,12 +3,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 const cardSkeleton =
-  "rounded-2xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
+  "rounded-hh-task border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational";
 
 export default function FinanceOwnerDashboardLoading() {
   return (
     <PageLayout
-      className="dark neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]"
+      className="text-[var(--hh-text-secondary)]"
       divider={false}
       header={
         <PageHeader
@@ -16,8 +16,8 @@ export default function FinanceOwnerDashboardLoading() {
           description="Loading your financial overview…"
           actions={
             <div className="flex flex-wrap gap-2">
-              <Skeleton className="h-9 w-[140px] rounded-lg" />
-              <Skeleton className="h-9 w-[88px] rounded-lg" />
+              <Skeleton className="h-9 w-[140px] rounded-hh-standard" />
+              <Skeleton className="h-9 w-[88px] rounded-hh-standard" />
             </div>
           }
         />
@@ -43,10 +43,10 @@ export default function FinanceOwnerDashboardLoading() {
             <Skeleton className="h-3 w-20" />
             <Skeleton className="mt-3 h-7 w-48 max-w-full" />
             <Skeleton className="mt-2 h-4 w-full max-w-md" />
-            <Skeleton className="mt-10 min-h-[260px] w-full rounded-xl" />
-            <div className="mt-10 space-y-2 border-t border-[var(--neo-border)] pt-8">
+            <Skeleton className="mt-10 min-h-[260px] w-full rounded-hh-standard" />
+            <div className="mt-10 space-y-2 border-t border-[var(--hh-border)] pt-8">
               {Array.from({ length: 4 }).map((_, j) => (
-                <Skeleton key={j} className="h-12 w-full rounded-xl" />
+                <Skeleton key={j} className="h-12 w-full rounded-hh-standard" />
               ))}
             </div>
           </div>
@@ -55,12 +55,12 @@ export default function FinanceOwnerDashboardLoading() {
               <Skeleton className="h-4 w-24" />
               <Skeleton className="mt-2 h-6 w-20" />
               {Array.from({ length: 4 }).map((_, k) => (
-                <Skeleton key={k} className="mt-4 h-[72px] w-full rounded-2xl" />
+                <Skeleton key={k} className="mt-4 h-[72px] w-full rounded-hh-task" />
               ))}
             </div>
             <div className={cn("p-4 sm:p-5", cardSkeleton)}>
               <Skeleton className="h-4 w-40" />
-              <Skeleton className="mt-4 h-24 w-full rounded-lg" />
+              <Skeleton className="mt-4 h-24 w-full rounded-hh-standard" />
             </div>
           </div>
         </div>
@@ -68,7 +68,7 @@ export default function FinanceOwnerDashboardLoading() {
         <div className={cn("p-5 sm:p-8", cardSkeleton)}>
           <Skeleton className="h-4 w-32" />
           <Skeleton className="mt-3 h-4 w-96 max-w-full" />
-          <Skeleton className="mt-6 h-56 w-full rounded-lg" />
+          <Skeleton className="mt-6 h-56 w-full rounded-hh-standard" />
         </div>
       </div>
     </PageLayout>

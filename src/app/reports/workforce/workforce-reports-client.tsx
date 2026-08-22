@@ -61,14 +61,13 @@ export function WorkforceReportsClient({
 
   return (
     <PageLayout
-      className="dark"
       header={
         <PageHeader
           title="Workforce Reports"
           description="Worker payroll, balances, payments, advances, reimbursements, and statements."
           actions={
-            <div className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 text-sm text-[var(--neo-text-secondary)]">
-              <BarChart3 className="h-4 w-4 text-[var(--neo-gold)]" aria-hidden />
+            <div className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 text-sm text-[var(--hh-text-secondary)]">
+              <BarChart3 className="h-4 w-4 text-[var(--hh-text-secondary)]" aria-hidden />
               <span className="truncate">Workforce</span>
             </div>
           }
@@ -83,15 +82,15 @@ export function WorkforceReportsClient({
               <button
                 key={shortcut.tab}
                 type="button"
-                className="group flex min-h-[72px] min-w-0 items-center gap-3 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 text-left text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] transition-colors hover:border-[rgb(184_147_90_/_0.36)] hover:bg-[var(--neo-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]"
+                className="hh-focus-ring group flex min-h-[72px] min-w-0 items-center gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-left text-[var(--hh-text-primary)] shadow-operational transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)]"
                 onClick={() => handleTabChange(shortcut.tab)}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-gold)]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] text-[var(--hh-text-secondary)]">
                   <Icon className="h-4 w-4" aria-hidden />
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold">{shortcut.label}</span>
-                  <span className="mt-0.5 block truncate text-xs text-[var(--neo-text-secondary)]">
+                  <span className="mt-0.5 block truncate text-xs text-[var(--hh-text-secondary)]">
                     Workforce
                   </span>
                 </span>

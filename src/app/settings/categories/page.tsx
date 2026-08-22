@@ -355,10 +355,10 @@ export default function CategoriesPage() {
                   className="block w-full min-w-0 text-left"
                   onClick={() => openEdit(row)}
                 >
-                  <p className="truncate text-sm font-medium text-[var(--neo-text-primary)]">
+                  <p className="truncate text-sm font-medium text-[var(--hh-text-primary)]">
                     {row.name}
                   </p>
-                  <p className="text-xs text-[var(--neo-text-secondary)]">
+                  <p className="text-xs text-[var(--hh-text-secondary)]">
                     {row.type} · {row.description || "No description"}
                   </p>
                 </button>
@@ -403,11 +403,11 @@ export default function CategoriesPage() {
                   className={cn(listTableRowClassName, "group")}
                   onClick={() => openEdit(row)}
                 >
-                  <td className="px-3 py-2 font-medium text-[var(--neo-text-primary)] hover:underline">
+                  <td className="px-3 py-2 font-medium text-[var(--hh-text-primary)] hover:underline">
                     {row.name}
                   </td>
-                  <td className="px-3 py-2 text-[var(--neo-text-secondary)]">{row.type}</td>
-                  <td className="px-3 py-2 text-[var(--neo-text-secondary)]">
+                  <td className="px-3 py-2 text-[var(--hh-text-secondary)]">{row.type}</td>
+                  <td className="px-3 py-2 text-[var(--hh-text-secondary)]">
                     {row.description || "—"}
                   </td>
                   <td className="px-3 py-2">

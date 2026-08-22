@@ -366,26 +366,26 @@ function SummaryTile({
   return (
     <div
       className={cn(
-        "min-h-[76px] rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-2.5",
-        "flex min-w-0 flex-col justify-between text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]",
+        "min-h-[76px] rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2.5",
+        "flex min-w-0 flex-col justify-between text-[var(--hh-text-primary)] shadow-operational",
         emphasis &&
-          "border-[color:rgb(184_147_90_/_0.36)] bg-[rgb(184_147_90_/_0.12)] shadow-[0_1px_0_rgba(255,255,255,0.055)_inset,0_16px_34px_rgba(0,0,0,0.26)]",
+          "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] shadow-operational",
         className
       )}
     >
-      <p className="truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+      <p className="truncate text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
         {label}
       </p>
       <p
         className={cn(
-          "mt-1 truncate text-[17px] font-semibold leading-tight tabular-nums text-[var(--neo-text-primary)]",
-          emphasis && "text-[var(--neo-gold-soft)]"
+          "mt-1 truncate text-hh-section-title font-semibold text-[var(--hh-text-primary)] hh-fin",
+          emphasis && "text-[var(--hh-text-primary)]"
         )}
       >
         {value}
       </p>
       {meta ? (
-        <p className="mt-1 truncate text-[11px] text-[var(--neo-text-secondary)]">{meta}</p>
+        <p className="mt-1 truncate text-hh-status text-[var(--hh-text-secondary)]">{meta}</p>
       ) : null}
     </div>
   );
@@ -401,13 +401,15 @@ function DetailSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-md border border-border/60 bg-background/80">
+    <section className="rounded-hh-compact border border-border/60 bg-background/80">
       <header className="border-b border-border/60 px-4 py-3">
-        <h2 className="text-[12px] font-semibold uppercase tracking-wider text-foreground">
+        <h2 className="text-hh-metadata font-semibold uppercase tracking-normal text-foreground">
           {title}
         </h2>
         {description ? (
-          <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{description}</p>
+          <p className="mt-1 text-hh-table-cell leading-snug text-muted-foreground">
+            {description}
+          </p>
         ) : null}
       </header>
       <div className="p-4">{children}</div>
@@ -417,7 +419,7 @@ function DetailSection({
 
 function EmptyPanel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-md border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
+    <div className="rounded-hh-compact border border-dashed border-border/70 px-4 py-8 text-center text-sm text-muted-foreground">
       {children}
     </div>
   );
@@ -439,7 +441,7 @@ function QuickActionLink({
       asChild
       size="sm"
       variant={primary ? "default" : "outline"}
-      className="h-9 min-h-[44px] shrink-0 gap-1.5 rounded-sm md:min-h-9"
+      className="h-9 min-h-[44px] shrink-0 gap-1.5 rounded-hh-compact md:min-h-9"
     >
       <Link href={href}>
         <Icon className="h-3.5 w-3.5" aria-hidden />
@@ -886,7 +888,7 @@ export default function WorkerDashboardPage() {
       <div className="mx-auto flex w-full max-w-[430px] sm:max-w-[460px] flex-col gap-6 px-4 py-6 md:max-w-5xl md:p-6">
         <PageHeader title="Worker Not Found" description="This worker does not exist." />
         <Link href="/workers">
-          <Button variant="outline" className="w-fit rounded-sm">
+          <Button variant="outline" className="w-fit rounded-hh-compact">
             Back
           </Button>
         </Link>
@@ -899,7 +901,7 @@ export default function WorkerDashboardPage() {
       <div className="mx-auto flex w-full max-w-[430px] sm:max-w-[460px] flex-col gap-6 px-4 py-6 md:max-w-5xl md:p-6">
         <p className="text-muted-foreground">Loading…</p>
         <Link href="/workers">
-          <Button variant="outline" className="w-fit rounded-sm">
+          <Button variant="outline" className="w-fit rounded-hh-compact">
             Back
           </Button>
         </Link>
@@ -912,7 +914,7 @@ export default function WorkerDashboardPage() {
       <div className="mx-auto flex w-full max-w-[430px] sm:max-w-[460px] flex-col gap-6 px-4 py-6 md:max-w-5xl md:p-6">
         <PageHeader title="Worker Not Found" description="This worker does not exist." />
         <Link href="/workers">
-          <Button variant="outline" className="w-fit rounded-sm">
+          <Button variant="outline" className="w-fit rounded-hh-compact">
             Back
           </Button>
         </Link>
@@ -953,20 +955,20 @@ export default function WorkerDashboardPage() {
   };
 
   return (
-    <div className="dark neo-page-on-graphite mx-auto flex w-full max-w-[430px] flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:max-w-[460px] md:max-w-6xl md:gap-5 md:p-6">
+    <div className="mx-auto flex w-full max-w-[430px] flex-col gap-4 overflow-x-hidden px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom,0px))] sm:max-w-[460px] md:max-w-6xl md:gap-5 md:p-6">
       <PageHeader
         title={worker.name}
         description="Worker Center detail — work, receipts, advances, payments, statements, and rate history."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Link href={returnToPath || "/workers"}>
-              <Button variant="outline" size="sm" className="rounded-sm">
+              <Button variant="outline" size="sm" className="rounded-hh-compact">
                 {returnToPath ? <ArrowLeft className="mr-1.5 h-3.5 w-3.5" aria-hidden /> : null}
                 {returnToLabel ?? "Back"}
               </Button>
             </Link>
             <Link href={`/workers/${id}/edit`}>
-              <Button size="sm" className="rounded-sm">
+              <Button size="sm" className="rounded-hh-compact">
                 Edit Profile
               </Button>
             </Link>
@@ -975,7 +977,7 @@ export default function WorkerDashboardPage() {
       />
 
       {detailMessage ? (
-        <p className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+        <p className="rounded-hh-compact border border-border/60 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
           {detailMessage}
         </p>
       ) : null}
@@ -1088,13 +1090,16 @@ export default function WorkerDashboardPage() {
             <DetailSection title="Alerts" description="Operational items to clear.">
               <div className="space-y-2 text-sm">
                 {balanceSummary.balance > 0.005 ? (
-                  <div className="flex gap-2 rounded-md border border-amber-500/25 bg-amber-500/[0.06] p-2">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden />
+                  <div className="flex gap-2 rounded-hh-compact border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] p-2">
+                    <AlertTriangle
+                      className="mt-0.5 h-4 w-4 shrink-0 text-[var(--hh-warning)]"
+                      aria-hidden
+                    />
                     <span>Unpaid balance exists: {fmtUsd(balanceSummary.balance)}.</span>
                   </div>
                 ) : null}
                 {balanceSummary.advances > 0.005 ? (
-                  <div className="flex gap-2 rounded-md border border-border/60 p-2">
+                  <div className="flex gap-2 rounded-hh-compact border border-border/60 p-2">
                     <HandCoins
                       className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
                       aria-hidden
@@ -1103,7 +1108,7 @@ export default function WorkerDashboardPage() {
                   </div>
                 ) : null}
                 {missingReceiptCount > 0 ? (
-                  <div className="flex gap-2 rounded-md border border-border/60 p-2">
+                  <div className="flex gap-2 rounded-hh-compact border border-border/60 p-2">
                     <ReceiptText
                       className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
                       aria-hidden
@@ -1114,7 +1119,7 @@ export default function WorkerDashboardPage() {
                 {balanceSummary.balance <= 0.005 &&
                 balanceSummary.advances <= 0.005 &&
                 missingReceiptCount === 0 ? (
-                  <p className="rounded-md border border-border/60 p-2 text-muted-foreground">
+                  <p className="rounded-hh-compact border border-border/60 p-2 text-muted-foreground">
                     No open alerts.
                   </p>
                 ) : null}
@@ -1224,7 +1229,7 @@ export default function WorkerDashboardPage() {
                       Add this worker&apos;s first labor row from Daily Labor.
                     </p>
                   </div>
-                  <Button asChild size="sm" className="h-9 rounded-sm">
+                  <Button asChild size="sm" className="h-9 rounded-hh-compact">
                     <Link href={`/labor?workerId=${encodeURIComponent(id)}&addDaily=1`}>
                       Add Time Entry
                     </Link>
@@ -1233,12 +1238,12 @@ export default function WorkerDashboardPage() {
               </EmptyPanel>
             ) : (
               <div className="space-y-3" data-testid="worker-work-month-groups">
-                <div className="flex flex-col gap-3 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                    <p className="text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Work Ledger
                     </p>
-                    <p className="mt-1 text-sm text-[var(--neo-text-secondary)]">
+                    <p className="mt-1 text-sm text-[var(--hh-text-secondary)]">
                       {fmtCountLabel(workMonthGroups.length, "month")} ·{" "}
                       {fmtDayLabel(workTabSummary.days)} · {fmtUsd(workTabSummary.earned)} ·{" "}
                       {fmtCountLabel(workTabSummary.entries, "entry", "entries")}
@@ -1249,7 +1254,7 @@ export default function WorkerDashboardPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-9 min-h-[44px] rounded-sm border-[var(--neo-border)] bg-[var(--neo-surface)] text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-hover)] md:min-h-9"
+                      className="h-9 min-h-[44px] rounded-hh-compact border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] md:min-h-9"
                       onClick={() =>
                         setExpandedMonthKeys(workMonthGroups.map((group) => group.monthKey))
                       }
@@ -1260,7 +1265,7 @@ export default function WorkerDashboardPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="h-9 min-h-[44px] rounded-sm border-[var(--neo-border)] bg-transparent text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-text-primary)] md:min-h-9"
+                      className="h-9 min-h-[44px] rounded-hh-compact border-[var(--hh-border)] bg-transparent text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)] md:min-h-9"
                       onClick={() => setExpandedMonthKeys([])}
                     >
                       Collapse all
@@ -1278,10 +1283,10 @@ export default function WorkerDashboardPage() {
                         key={group.monthKey}
                         data-testid={`worker-work-month-${group.monthKey}`}
                         className={cn(
-                          "overflow-hidden rounded-lg border bg-[var(--neo-surface)] shadow-[var(--neo-shadow-panel)]",
+                          "overflow-hidden rounded-hh-standard border bg-[var(--hh-l2-operational-surface)] shadow-operational",
                           open
                             ? "border-[color:rgb(184_147_90_/_0.34)]"
-                            : "border-[var(--neo-border)]"
+                            : "border-[var(--hh-border)]"
                         )}
                       >
                         <button
@@ -1290,27 +1295,27 @@ export default function WorkerDashboardPage() {
                           aria-controls={panelId}
                           className={cn(
                             "flex min-h-[64px] w-full items-center justify-between gap-3 px-3 py-3 text-left transition-colors",
-                            "hover:bg-[var(--neo-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:rgb(184_147_90_/_0.52)]",
-                            open && "bg-[rgb(184_147_90_/_0.08)]"
+                            "hover:bg-[var(--hh-l3-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:rgb(184_147_90_/_0.52)]",
+                            open && "bg-[var(--hh-l3-selected)]"
                           )}
                           onClick={() => toggleMonth(group.monthKey)}
                         >
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-[var(--neo-text-primary)]">
+                            <p className="text-sm font-semibold text-[var(--hh-text-primary)]">
                               {group.label}
                             </p>
-                            <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">
+                            <p className="mt-1 text-xs text-[var(--hh-text-secondary)]">
                               {fmtDayLabel(group.workDays)} · {fmtUsd(group.earned)} ·{" "}
                               {projectSummary}
                             </p>
                           </div>
                           <div className="flex shrink-0 items-center gap-3">
-                            <span className="hidden text-right text-xs text-[var(--neo-text-tertiary)] sm:block">
+                            <span className="hidden text-right text-xs text-[var(--hh-text-tertiary)] sm:block">
                               {fmtCountLabel(group.entries.length, "entry", "entries")}
                             </span>
                             <ChevronRight
                               className={cn(
-                                "h-4 w-4 text-[var(--neo-gold-soft)] transition-transform duration-200",
+                                "h-4 w-4 text-[var(--hh-text-primary)] transition-transform duration-200",
                                 open && "rotate-90"
                               )}
                               aria-hidden
@@ -1321,22 +1326,22 @@ export default function WorkerDashboardPage() {
                         {open ? (
                           <div
                             id={panelId}
-                            className="border-t border-[var(--neo-border)] bg-black/10"
+                            className="border-t border-[var(--hh-border)] bg-[var(--hh-l3-selected)]"
                           >
                             <div className="hidden md:block">
                               <table className="w-full border-collapse text-sm table-row-compact">
                                 <thead>
-                                  <tr className="border-b border-[var(--neo-border)] bg-white/[0.02]">
-                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                                  <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
+                                    <th className="px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                                       Date
                                     </th>
-                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                                    <th className="px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                                       Project
                                     </th>
-                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                                    <th className="px-3 py-2 text-left text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                                       Session
                                     </th>
-                                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                                    <th className="px-3 py-2 text-right text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                                       Earned
                                     </th>
                                   </tr>
@@ -1347,21 +1352,21 @@ export default function WorkerDashboardPage() {
                                       key={entry.id}
                                       data-testid="worker-work-entry-row"
                                       className={cn(
-                                        "border-b border-[var(--neo-border)] last:border-b-0",
+                                        "border-b border-[var(--hh-border)] last:border-b-0",
                                         targetedWorkEntryId === entry.id &&
-                                          "bg-[rgb(184_147_90_/_0.08)]"
+                                          "bg-[var(--hh-l3-selected)]"
                                       )}
                                     >
-                                      <td className="px-3 py-2 tabular-nums text-[var(--neo-text-secondary)]">
+                                      <td className="px-3 py-2 tabular-nums text-[var(--hh-text-secondary)]">
                                         {formatDate(entry.work_date)}
                                       </td>
-                                      <td className="px-3 py-2 font-medium text-[var(--neo-text-primary)]">
+                                      <td className="px-3 py-2 font-medium text-[var(--hh-text-primary)]">
                                         {entry.project_name ?? "—"}
                                       </td>
-                                      <td className="px-3 py-2 text-[var(--neo-text-secondary)]">
+                                      <td className="px-3 py-2 text-[var(--hh-text-secondary)]">
                                         {sessionLabelWithOvertimeForEntry(entry)}
                                       </td>
-                                      <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                                      <td className="px-3 py-2 text-right font-semibold tabular-nums text-[var(--hh-text-primary)]">
                                         {fmtUsd(entryEarned(entry))}
                                       </td>
                                     </tr>
@@ -1376,25 +1381,25 @@ export default function WorkerDashboardPage() {
                                   key={entry.id}
                                   data-testid="worker-work-entry-card"
                                   className={cn(
-                                    "rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-3",
+                                    "rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3",
                                     targetedWorkEntryId === entry.id &&
-                                      "border-[color:rgb(184_147_90_/_0.34)] bg-[rgb(184_147_90_/_0.08)]"
+                                      "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)]"
                                   )}
                                 >
                                   <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0">
-                                      <p className="text-sm font-semibold text-[var(--neo-text-primary)]">
+                                      <p className="text-sm font-semibold text-[var(--hh-text-primary)]">
                                         {formatDate(entry.work_date, "compact")}
                                       </p>
-                                      <p className="mt-1 truncate text-xs text-[var(--neo-text-secondary)]">
+                                      <p className="mt-1 truncate text-xs text-[var(--hh-text-secondary)]">
                                         {entry.project_name ?? "—"}
                                       </p>
                                     </div>
-                                    <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                                    <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--hh-text-primary)]">
                                       {fmtUsd(entryEarned(entry))}
                                     </p>
                                   </div>
-                                  <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[var(--neo-text-tertiary)]">
+                                  <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[var(--hh-text-tertiary)]">
                                     <span>{sessionLabelWithOvertimeForEntry(entry)}</span>
                                     <span>
                                       {fmtDayLabel(
@@ -1450,16 +1455,16 @@ export default function WorkerDashboardPage() {
                 <table className="w-full min-w-[680px] border-collapse text-sm table-row-compact">
                   <thead>
                     <tr className="border-b border-border/60">
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Date
                       </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Vendor
                       </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Status
                       </th>
-                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Amount
                       </th>
                     </tr>
@@ -1494,19 +1499,19 @@ export default function WorkerDashboardPage() {
                 <table className="w-full min-w-[680px] border-collapse text-sm table-row-compact">
                   <thead>
                     <tr className="border-b border-border/60">
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Date
                       </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Vendor
                       </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Project
                       </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Status
                       </th>
-                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Amount
                       </th>
                     </tr>
@@ -1553,16 +1558,16 @@ export default function WorkerDashboardPage() {
                 <table className="w-full min-w-[620px] border-collapse text-sm table-row-compact">
                   <thead>
                     <tr className="border-b border-border/60">
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Date
                       </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Project
                       </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Status
                       </th>
-                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Amount
                       </th>
                     </tr>
@@ -1600,26 +1605,26 @@ export default function WorkerDashboardPage() {
                   {(balanceDetail?.payments ?? []).map((p) => (
                     <div
                       key={p.id}
-                      className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-3 shadow-[var(--neo-shadow-panel)]"
+                      className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 shadow-operational"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold text-[var(--neo-text-primary)]">
+                          <p className="text-sm font-semibold text-[var(--hh-text-primary)]">
                             {formatDate(p.date, "compact")}
                           </p>
-                          <p className="mt-1 truncate text-xs text-[var(--neo-text-secondary)]">
+                          <p className="mt-1 truncate text-xs text-[var(--hh-text-secondary)]">
                             {p.paymentMethod ?? "No method"}
                           </p>
                         </div>
-                        <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--neo-gold-soft)]">
+                        <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--hh-text-primary)]">
                           {fmtUsd(p.amount)}
                         </p>
                       </div>
-                      <p className="mt-2 line-clamp-2 text-xs text-[var(--neo-text-tertiary)]">
+                      <p className="mt-2 line-clamp-2 text-xs text-[var(--hh-text-tertiary)]">
                         {p.notes ?? "No notes"}
                       </p>
                       <Link
-                        className="mt-3 inline-flex min-h-[44px] items-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-base)] px-3 text-xs font-semibold text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-control)] transition-colors hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-hover)] hover:text-[var(--neo-gold-soft)]"
+                        className="mt-3 inline-flex min-h-[44px] items-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-xs font-semibold text-[var(--hh-text-primary)] shadow-operational transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
                         href={`/labor/payments/${p.id}/receipt`}
                       >
                         Preview receipt
@@ -1628,24 +1633,24 @@ export default function WorkerDashboardPage() {
                   ))}
                 </div>
 
-                <div className="hidden overflow-hidden rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] shadow-[var(--neo-shadow-panel)] md:block">
+                <div className="hidden overflow-hidden rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] shadow-operational md:block">
                   <div className="airtable-table-scroll overflow-x-auto">
                     <table className="w-full min-w-[680px] border-collapse text-sm table-row-compact">
                       <thead>
-                        <tr className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
-                          <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                        <tr className="border-b border-[var(--hh-border)] bg-[var(--hh-l3-selected)]">
+                          <th className="px-3 py-2.5 text-left text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                             Date
                           </th>
-                          <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                          <th className="px-3 py-2.5 text-left text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                             Method
                           </th>
-                          <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                          <th className="px-3 py-2.5 text-left text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                             Notes
                           </th>
-                          <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                          <th className="px-3 py-2.5 text-right text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                             Amount
                           </th>
-                          <th className="px-3 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                          <th className="px-3 py-2.5 text-right text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                             Receipt
                           </th>
                         </tr>
@@ -1654,15 +1659,15 @@ export default function WorkerDashboardPage() {
                         {(balanceDetail?.payments ?? []).map((p) => (
                           <tr
                             key={p.id}
-                            className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-base)] transition-colors last:border-b-0 hover:bg-[var(--neo-surface-hover)]"
+                            className="border-b border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] transition-colors last:border-b-0 hover:bg-[var(--hh-l3-hover)]"
                           >
-                            <td className="px-3 py-2.5 tabular-nums text-[var(--neo-text-secondary)]">
+                            <td className="px-3 py-2.5 tabular-nums text-[var(--hh-text-secondary)]">
                               {formatDate(p.date)}
                             </td>
-                            <td className="px-3 py-2.5 font-medium text-[var(--neo-text-primary)]">
+                            <td className="px-3 py-2.5 font-medium text-[var(--hh-text-primary)]">
                               {p.paymentMethod ?? "—"}
                             </td>
-                            <td className="px-3 py-2.5 text-[var(--neo-text-secondary)]">
+                            <td className="px-3 py-2.5 text-[var(--hh-text-secondary)]">
                               <span
                                 className="block max-w-[420px] truncate"
                                 title={p.notes ?? undefined}
@@ -1670,12 +1675,12 @@ export default function WorkerDashboardPage() {
                                 {p.notes ?? "—"}
                               </span>
                             </td>
-                            <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[var(--neo-gold-soft)]">
+                            <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-[var(--hh-text-primary)]">
                               {fmtUsd(p.amount)}
                             </td>
                             <td className="px-3 py-2.5 text-right">
                               <Link
-                                className="text-xs font-semibold text-[var(--neo-gold-soft)] underline-offset-4 hover:underline"
+                                className="text-xs font-semibold text-[var(--hh-text-primary)] underline-offset-4 hover:underline"
                                 href={`/labor/payments/${p.id}/receipt`}
                               >
                                 Preview
@@ -1698,10 +1703,10 @@ export default function WorkerDashboardPage() {
             description="Worker statement and legacy worker invoices. Payroll Summary remains company-level."
           >
             <div className="mb-4 flex flex-wrap gap-2">
-              <Button asChild size="sm" className="h-9 rounded-sm">
+              <Button asChild size="sm" className="h-9 rounded-hh-compact">
                 <Link href={`/workers/${id}/statement`}>Create Statement</Link>
               </Button>
-              <Button asChild size="sm" variant="outline" className="h-9 rounded-sm">
+              <Button asChild size="sm" variant="outline" className="h-9 rounded-hh-compact">
                 <Link href={`/worker/${id}/monthly-report`}>Monthly Payroll Statement</Link>
               </Button>
             </div>
@@ -1712,13 +1717,13 @@ export default function WorkerDashboardPage() {
                 <table className="w-full min-w-[620px] border-collapse text-sm table-row-compact">
                   <thead>
                     <tr className="border-b border-border/60">
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Date
                       </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Status
                       </th>
-                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-right text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Amount
                       </th>
                     </tr>
@@ -1745,7 +1750,7 @@ export default function WorkerDashboardPage() {
         <TabsContent value="rates" className="space-y-4">
           <DetailSection title="Current Daily Rate">
             <div className="grid gap-4 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-              <div className="rounded-md border border-border/70 bg-card/30 p-4">
+              <div className="rounded-hh-compact border border-border/70 bg-card/30 p-4">
                 <p className="text-xs text-muted-foreground">Current Daily Rate</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">
                   {fmtUsd(worker.dailyRate)}
@@ -1754,8 +1759,8 @@ export default function WorkerDashboardPage() {
                   Effective since {effectiveSince}
                 </p>
               </div>
-              <div className="rounded-md border border-border/70 bg-card/30 p-4">
-                <p className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <div className="rounded-hh-compact border border-border/70 bg-card/30 p-4">
+                <p className="mb-3 text-xs font-medium uppercase tracking-normal text-muted-foreground">
                   Change Daily Rate
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -1767,7 +1772,7 @@ export default function WorkerDashboardPage() {
                       step="0.01"
                       value={rateDaily}
                       onChange={(e) => setRateDaily(e.target.value)}
-                      className="h-9 rounded-sm border border-input bg-transparent px-3 text-sm text-foreground tabular-nums"
+                      className="h-9 rounded-hh-compact border border-input bg-transparent px-3 text-sm text-foreground tabular-nums"
                     />
                   </label>
                   <label className="grid gap-1.5 text-xs text-muted-foreground">
@@ -1776,7 +1781,7 @@ export default function WorkerDashboardPage() {
                       type="date"
                       value={rateEffectiveFrom}
                       onChange={(e) => setRateEffectiveFrom(e.target.value)}
-                      className="h-9 rounded-sm border border-input bg-transparent px-3 text-sm text-foreground tabular-nums"
+                      className="h-9 rounded-hh-compact border border-input bg-transparent px-3 text-sm text-foreground tabular-nums"
                     />
                   </label>
                   <label className="grid gap-1.5 text-xs text-muted-foreground sm:col-span-2">
@@ -1784,12 +1789,12 @@ export default function WorkerDashboardPage() {
                     <input
                       value={rateNotes}
                       onChange={(e) => setRateNotes(e.target.value)}
-                      className="h-9 rounded-sm border border-input bg-transparent px-3 text-sm text-foreground"
+                      className="h-9 rounded-hh-compact border border-input bg-transparent px-3 text-sm text-foreground"
                     />
                   </label>
                 </div>
-                <div className="mt-3 rounded-md border border-border/60 bg-background/30 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                <div className="mt-3 rounded-hh-compact border border-border/60 bg-background/30 p-3">
+                  <p className="text-hh-status font-semibold uppercase tracking-normal text-muted-foreground">
                     Existing future rates
                   </p>
                   {laterRateCount > 0 ? (
@@ -1805,7 +1810,7 @@ export default function WorkerDashboardPage() {
                     </p>
                   )}
                   <div className="mt-3 grid gap-2">
-                    <label className="flex min-h-[44px] items-start gap-2 rounded-sm border border-border/50 bg-background/25 px-3 py-2 text-sm text-foreground">
+                    <label className="flex min-h-[44px] items-start gap-2 rounded-hh-compact border border-border/50 bg-background/25 px-3 py-2 text-sm text-foreground">
                       <input
                         type="radio"
                         name="worker-rate-range-mode"
@@ -1824,7 +1829,7 @@ export default function WorkerDashboardPage() {
                         </span>
                       </span>
                     </label>
-                    <label className="flex min-h-[44px] items-start gap-2 rounded-sm border border-border/50 bg-background/25 px-3 py-2 text-sm text-foreground">
+                    <label className="flex min-h-[44px] items-start gap-2 rounded-hh-compact border border-border/50 bg-background/25 px-3 py-2 text-sm text-foreground">
                       <input
                         type="radio"
                         name="worker-rate-range-mode"
@@ -1851,7 +1856,7 @@ export default function WorkerDashboardPage() {
                   <p className="text-xs text-muted-foreground">{rateMessage ?? " "}</p>
                   <Button
                     size="sm"
-                    className="rounded-sm"
+                    className="rounded-hh-compact"
                     onClick={handleChangeDailyRate}
                     disabled={rateBusy}
                   >
@@ -1859,10 +1864,10 @@ export default function WorkerDashboardPage() {
                   </Button>
                 </div>
                 {rateApplyPreview ? (
-                  <div className="mt-4 rounded-md border border-amber-400/25 bg-amber-400/10 p-4">
+                  <div className="mt-4 rounded-hh-compact border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] p-4">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-200">
+                        <p className="text-xs font-semibold uppercase tracking-normal text-[var(--hh-warning)]">
                           Apply this rate to unpaid entries?
                         </p>
                         <p className="mt-1 text-sm text-foreground">
@@ -1885,24 +1890,24 @@ export default function WorkerDashboardPage() {
                     </div>
 
                     <div className="mt-4 grid gap-2 sm:grid-cols-3">
-                      <div className="rounded-sm border border-border/60 bg-background/35 p-3">
-                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      <div className="rounded-hh-compact border border-border/60 bg-background/35 p-3">
+                        <p className="text-hh-status uppercase tracking-normal text-muted-foreground">
                           Old total
                         </p>
                         <p className="mt-1 font-semibold tabular-nums text-foreground">
                           {fmtUsd(rateApplyPreview.oldTotal)}
                         </p>
                       </div>
-                      <div className="rounded-sm border border-border/60 bg-background/35 p-3">
-                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      <div className="rounded-hh-compact border border-border/60 bg-background/35 p-3">
+                        <p className="text-hh-status uppercase tracking-normal text-muted-foreground">
                           New total
                         </p>
                         <p className="mt-1 font-semibold tabular-nums text-foreground">
                           {fmtUsd(rateApplyPreview.newTotal)}
                         </p>
                       </div>
-                      <div className="rounded-sm border border-border/60 bg-background/35 p-3">
-                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      <div className="rounded-hh-compact border border-border/60 bg-background/35 p-3">
+                        <p className="text-hh-status uppercase tracking-normal text-muted-foreground">
                           Difference
                         </p>
                         <p className="mt-1 font-semibold tabular-nums text-foreground">
@@ -1920,7 +1925,7 @@ export default function WorkerDashboardPage() {
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="rounded-sm"
+                        className="rounded-hh-compact"
                         onClick={() => {
                           setRateApplyPreview(null);
                           setRateMessage("Skipped unpaid entry snapshot updates.");
@@ -1932,7 +1937,7 @@ export default function WorkerDashboardPage() {
                       <Button
                         type="button"
                         size="sm"
-                        className="rounded-sm"
+                        className="rounded-hh-compact"
                         onClick={handleApplyRateToUnpaidEntries}
                         disabled={rateApplyBusy || rateApplyPreview.affectedCount === 0}
                       >
@@ -1953,13 +1958,13 @@ export default function WorkerDashboardPage() {
                 <table className="w-full min-w-[460px] border-collapse text-sm table-row-compact">
                   <thead>
                     <tr className="border-b border-border/60">
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Rate
                       </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Effective
                       </th>
-                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      <th className="px-2 py-2 text-left text-xs font-medium uppercase tracking-normal text-muted-foreground">
                         Note
                       </th>
                     </tr>

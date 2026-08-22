@@ -87,13 +87,13 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
         <Button
           variant="outline"
           size="sm"
-          className="btn-outline-ghost h-8 text-red-600"
+          className="btn-outline-ghost h-8 text-[var(--hh-danger)]"
           onClick={handleDelete}
           disabled={busy}
         >
           Delete
         </Button>
-        {error ? <span className="text-xs text-red-600 dark:text-red-400">{error}</span> : null}
+        {error ? <span className="text-hh-error text-[var(--hh-danger)]">{error}</span> : null}
       </div>
 
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
@@ -154,7 +154,7 @@ export function SubcontractorDetailClient({ subcontractor }: { subcontractor: Su
             </div>
             {error ? <p className={neoFormErrorClassName}>{error}</p> : null}
           </div>
-          <div className="-mx-5 mt-2 flex flex-col-reverse gap-2 border-t border-[var(--neo-border)] px-5 pt-4 sm:flex-row sm:justify-end">
+          <div className="-mx-5 mt-2 flex flex-col-reverse gap-2 border-t border-[var(--hh-border)] px-5 pt-4 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"

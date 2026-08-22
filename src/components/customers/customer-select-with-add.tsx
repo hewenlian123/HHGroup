@@ -123,7 +123,7 @@ export function CustomerSelectWithAdd({
         {current ? (
           <button
             type="button"
-            className="text-[11px] text-[var(--neo-text-secondary)] transition-colors hover:text-[var(--neo-text-primary)]"
+            className="text-hh-status text-[var(--hh-text-secondary)] transition-colors hover:text-[var(--hh-text-primary)]"
             onClick={() => onChange(null, null)}
           >
             Clear
@@ -134,7 +134,7 @@ export function CustomerSelectWithAdd({
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "flex h-10 w-full items-center justify-between rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-left text-sm text-[var(--neo-text-primary)] transition-all duration-150 ease-out hover:bg-[var(--neo-surface-muted)] focus-visible:border-[var(--neo-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11",
+          "hh-focus-ring flex h-10 w-full items-center justify-between rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-left text-hh-body text-[var(--hh-text-primary)] transition-colors duration-150 ease-out hover:bg-[var(--hh-l3-hover)] max-md:min-h-11",
           triggerClassName
         )}
       >
@@ -143,11 +143,11 @@ export function CustomerSelectWithAdd({
             <>
               {current.name}
               {current.email ? (
-                <span className="text-xs text-[var(--neo-text-secondary)]"> · {current.email}</span>
+                <span className="text-xs text-[var(--hh-text-secondary)]"> · {current.email}</span>
               ) : null}
             </>
           ) : (
-            <span className="text-[var(--neo-text-tertiary)]">Select customer</span>
+            <span className="text-[var(--hh-text-tertiary)]">Select customer</span>
           )}
         </span>
       </button>
@@ -160,11 +160,11 @@ export function CustomerSelectWithAdd({
             onChange={(e) => setSearch(e.target.value)}
             className="h-9 text-sm"
           />
-          <div className="max-h-64 overflow-y-auto rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+          <div className="max-h-64 overflow-y-auto rounded-hh-standard border border-[var(--hh-border-floating)] bg-[var(--hh-l4-floating-surface)] shadow-floating">
             {loading ? (
-              <div className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">Loading…</div>
+              <div className="px-3 py-2 text-xs text-[var(--hh-text-secondary)]">Loading…</div>
             ) : filtered.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-[var(--neo-text-secondary)]">
+              <div className="px-3 py-2 text-xs text-[var(--hh-text-secondary)]">
                 No customers found.
               </div>
             ) : (
@@ -172,7 +172,7 @@ export function CustomerSelectWithAdd({
                 <button
                   type="button"
                   key={c.id}
-                  className="flex w-full flex-col items-start px-3 py-2 text-left text-sm text-[var(--neo-text-primary)] transition-colors hover:bg-[var(--neo-surface-raised)]"
+                  className="flex w-full flex-col items-start px-3 py-2 text-left text-sm text-[var(--hh-text-primary)] transition-colors hover:bg-[var(--hh-l2-operational-surface)]"
                   onClick={() => {
                     onChange(c.id, c);
                     setOpen(false);
@@ -180,7 +180,7 @@ export function CustomerSelectWithAdd({
                 >
                   <span className="font-medium">{c.name}</span>
                   {c.email ? (
-                    <span className="text-xs text-[var(--neo-text-secondary)]">{c.email}</span>
+                    <span className="text-xs text-[var(--hh-text-secondary)]">{c.email}</span>
                   ) : null}
                 </button>
               ))

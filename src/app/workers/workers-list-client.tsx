@@ -92,20 +92,23 @@ type WorkerCenterRow = WorkerRow & {
 };
 
 const workerCenterPrimaryAction =
-  "rounded-[0.625rem] border border-[rgb(198_165_106_/_0.28)] bg-[var(--neo-gold)] text-zinc-950 shadow-sm hover:bg-[var(--neo-gold-soft)] hover:text-zinc-950 focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+  "rounded-hh-standard border border-transparent bg-[var(--hh-action-primary)] text-[var(--hh-action-primary-foreground)] shadow-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--hh-focus-ring)]";
 
 const workerCenterFieldClass =
-  "h-10 rounded-[0.625rem] border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] text-[var(--neo-text-primary)] shadow-none placeholder:text-[var(--neo-text-tertiary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-[44px]";
+  "hh-focus-ring h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body text-[var(--hh-text-primary)] shadow-none placeholder:text-[var(--hh-text-tertiary)] max-md:min-h-[44px]";
 
 const workerCenterKpiIconClass =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-gold-soft)] shadow-[0_1px_0_rgb(255_255_255_/_0.035)_inset]";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)] shadow-operational";
 
 const workerCenterTableHeadClass = cn(
   tableRawThClass,
-  "h-10 whitespace-nowrap text-[11px] font-semibold tracking-[0.06em]"
+  "h-10 whitespace-nowrap text-hh-status font-semibold tracking-normal"
 );
 
-const workerCenterTableCellClass = cn(tableRawTdClass, "h-[56px] py-2 text-[13px] md:text-[14px]");
+const workerCenterTableCellClass = cn(
+  tableRawTdClass,
+  "h-[56px] py-2 text-hh-table-cell md:text-hh-body"
+);
 
 function fmtRate(n: number): string {
   if (n === 0) return "—";
@@ -208,25 +211,25 @@ function PayStatusPill({
 }) {
   const tone =
     status === "Ready to pay"
-      ? "border-[rgb(216_180_106_/_0.30)] bg-[rgb(216_180_106_/_0.10)] text-[#E3C27E]"
+      ? "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
       : status === "Settled"
-        ? "border-[rgb(16_185_129_/_0.28)] bg-[rgb(16_185_129_/_0.08)] text-[#8BD7B1]"
+        ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
         : status === "Overpaid"
-          ? "border-[rgb(99_179_237_/_0.24)] bg-[rgb(99_179_237_/_0.08)] text-[#9AC7EF]"
-          : "border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
+          ? "border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] text-[var(--hh-information)]"
+          : "border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]";
   const dot =
     status === "Ready to pay"
-      ? "bg-[#E3C27E]"
+      ? "bg-[var(--hh-warning)]"
       : status === "Settled"
-        ? "bg-[#8BD7B1]"
+        ? "bg-[var(--hh-success)]"
         : status === "Overpaid"
-          ? "bg-[#9AC7EF]"
-          : "bg-[var(--neo-text-tertiary)]";
+          ? "bg-[var(--hh-information)]"
+          : "bg-[var(--hh-text-tertiary)]";
 
   return (
     <span
       className={cn(
-        "inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold leading-none tracking-normal shadow-[0_1px_0_rgb(255_255_255_/_0.025)_inset]",
+        "inline-flex h-6 items-center gap-1.5 rounded-full border px-2.5 text-hh-status font-semibold leading-none tracking-normal",
         tone,
         className
       )}
@@ -246,15 +249,17 @@ function LastPaymentCell({
 }) {
   const parts = paymentDisplayParts(payment);
   if (!parts) {
-    return <span className={cn("text-[var(--neo-text-tertiary)]", className)}>—</span>;
+    return <span className={cn("text-[var(--hh-text-tertiary)]", className)}>—</span>;
   }
 
   return (
     <span className={cn("block leading-tight", className)}>
-      <span className="block font-semibold tabular-nums text-[var(--neo-text-primary)]">
+      <span className="block font-semibold tabular-nums text-[var(--hh-text-primary)]">
         {parts.amount}
       </span>
-      <span className="mt-0.5 block text-[12px] text-[var(--neo-text-tertiary)]">{parts.date}</span>
+      <span className="mt-0.5 block text-hh-metadata text-[var(--hh-text-tertiary)]">
+        {parts.date}
+      </span>
     </span>
   );
 }
@@ -427,7 +432,7 @@ export function WorkersListClient({
   const searchField = (
     <div className="relative w-full min-w-0">
       <Search
-        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]"
+        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]"
         aria-hidden
       />
       <Input
@@ -620,7 +625,7 @@ export function WorkersListClient({
               <option value="inactive">Inactive</option>
             </select>
           </div>
-          <Button asChild variant="outline" size="sm" className="h-9 w-full rounded-sm">
+          <Button asChild variant="outline" size="sm" className="h-9 w-full rounded-hh-compact">
             <Link href="/labor/payroll">Payroll Summary</Link>
           </Button>
           <Button
@@ -637,7 +642,7 @@ export function WorkersListClient({
           action={
             <Button
               size="sm"
-              className={cn("h-10 rounded-[0.625rem]", workerCenterPrimaryAction)}
+              className={cn("h-10 rounded-hh-standard", workerCenterPrimaryAction)}
               onClick={() => setAddOpen(true)}
             >
               Add Worker
@@ -675,7 +680,7 @@ export function WorkersListClient({
         filterSheetOpen={filtersOpen}
         onOpenFilters={() => setFiltersOpen(true)}
         activeFilterCount={activeDrawerFilterCount}
-        filtersTriggerClassName="h-11 min-h-[44px] rounded-[0.625rem]"
+        filtersTriggerClassName="h-11 min-h-[44px] rounded-hh-standard"
         searchSlot={searchField}
       />
       <MobileFilterSheet open={filtersOpen} onOpenChange={setFiltersOpen} title="Filters">
@@ -691,7 +696,7 @@ export function WorkersListClient({
             <option value="inactive">Inactive</option>
           </select>
         </div>
-        <Button asChild variant="outline" size="sm" className="h-9 w-full rounded-sm">
+        <Button asChild variant="outline" size="sm" className="h-9 w-full rounded-hh-compact">
           <Link href="/labor/payroll">Payroll Summary</Link>
         </Button>
         <Button
@@ -723,7 +728,7 @@ export function WorkersListClient({
           value={centerSummary.readyToPay}
           meta="Workers with a positive net balance"
           tone="warning"
-          className="min-h-[94px] rounded-[18px]"
+          className="min-h-[94px] rounded-hh-standard"
         />
         <KpiTile
           label={
@@ -734,14 +739,16 @@ export function WorkersListClient({
           value={
             <NeoAmount
               tone={centerSummary.totalNetToPay > 0.005 ? "danger" : "neutral"}
-              className={centerSummary.totalNetToPay > 0.005 ? "text-rose-300/90" : undefined}
+              className={
+                centerSummary.totalNetToPay > 0.005 ? "text-[var(--hh-danger)]" : undefined
+              }
             >
               {formatCurrency(centerSummary.totalNetToPay)}
             </NeoAmount>
           }
           meta="Labor + reimbursements - advances - payments"
           tone="neutral"
-          className="min-h-[94px] rounded-[18px]"
+          className="min-h-[94px] rounded-hh-standard"
         />
         <KpiTile
           label={
@@ -751,7 +758,7 @@ export function WorkersListClient({
           }
           value={<NeoAmount>{formatCurrency(centerSummary.unpaidLabor)}</NeoAmount>}
           meta="Open labor snapshot total"
-          className="min-h-[94px] rounded-[18px]"
+          className="min-h-[94px] rounded-hh-standard"
         />
         <KpiTile
           label={
@@ -762,12 +769,14 @@ export function WorkersListClient({
           value={
             <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <NeoAmount>{formatCurrency(centerSummary.reimbursements)}</NeoAmount>
-              <span className="text-[13px] font-medium text-[var(--neo-text-tertiary)]">/</span>
+              <span className="text-hh-table-cell font-medium text-[var(--hh-text-tertiary)]">
+                /
+              </span>
               <NeoAmount>{formatCurrency(centerSummary.advances)}</NeoAmount>
             </span>
           }
           meta="Open reimbursement and advance totals"
-          className="min-h-[94px] rounded-[18px]"
+          className="min-h-[94px] rounded-hh-standard"
         />
       </div>
 
@@ -808,83 +817,93 @@ export function WorkersListClient({
             >
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-[15px] font-semibold text-[var(--neo-text-primary)]">
+                  <p className="truncate text-hh-body font-semibold text-[var(--hh-text-primary)]">
                     {r.name}
                   </p>
-                  <p className="mt-1 truncate text-[12px] text-[var(--neo-text-tertiary)]">
+                  <p className="mt-1 truncate text-hh-metadata text-[var(--hh-text-tertiary)]">
                     {workerSecondaryInfo(r)}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                  <p className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Net to pay
                   </p>
                   <NeoAmount
                     tone={r.netToPay > 0.005 ? "danger" : "neutral"}
                     className={cn(
-                      "block text-[18px] leading-tight",
-                      r.netToPay > 0.005 && "text-rose-300/90"
+                      "block text-hh-financial-total",
+                      r.netToPay > 0.005 && "text-[var(--hh-danger)]"
                     )}
                   >
                     {formatCurrency(r.netToPay)}
                   </NeoAmount>
                 </div>
               </div>
-              <dl className="grid grid-cols-2 gap-2 text-[12px]">
-                <div className="rounded-[0.75rem] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+              <dl className="grid grid-cols-2 gap-2 text-hh-metadata">
+                <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Daily rate
                   </dt>
-                  <dd className="mt-1 font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                  <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
                     {fmtRate(r.daily_rate)}
                   </dd>
                 </div>
-                <div className="rounded-[0.75rem] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Unpaid labor
                   </dt>
-                  <dd className="mt-1 font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                  <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
                     {formatCurrency(r.unpaidLabor)}
                   </dd>
                 </div>
-                <div className="rounded-[0.75rem] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Reimb.
                   </dt>
-                  <dd className="mt-1 font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                  <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
                     {formatCurrency(r.reimbursements)}
                   </dd>
                 </div>
-                <div className="rounded-[0.75rem] border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2">
+                  <dt className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                     Advances
                   </dt>
-                  <dd className="mt-1 font-semibold tabular-nums text-[var(--neo-text-primary)]">
+                  <dd className="mt-1 font-semibold tabular-nums text-[var(--hh-text-primary)]">
                     {formatCurrency(r.advances)}
                   </dd>
                 </div>
               </dl>
               <div
-                className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--neo-border)] pt-3"
+                className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--hh-border)] pt-3"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="min-w-0">
                   <PayStatusPill status={r.payStatus} />
                   <div className="mt-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]">
+                    <p className="text-hh-table-header font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Last payment
                     </p>
-                    <LastPaymentCell payment={r.lastPayment} className="text-[12px]" />
+                    <LastPaymentCell payment={r.lastPayment} className="text-hh-metadata" />
                   </div>
                 </div>
                 <div className="flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto">
-                  <Button asChild variant="outline" size="sm" className="h-8 shrink-0 rounded-sm">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 rounded-hh-compact"
+                  >
                     <Link href={`/labor?workerId=${encodeURIComponent(r.id)}&addDaily=1`}>
                       <CalendarPlus className="mr-1 h-3.5 w-3.5" aria-hidden />
                       Time
                     </Link>
                   </Button>
-                  <Button asChild variant="outline" size="sm" className="h-8 shrink-0 rounded-sm">
+                  <Button
+                    asChild
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 rounded-hh-compact"
+                  >
                     <Link href={`/upload-receipt?workerId=${encodeURIComponent(r.id)}`}>
                       <Upload className="mr-1 h-3.5 w-3.5" aria-hidden />
                       Upload Worker Receipt
@@ -902,7 +921,7 @@ export function WorkersListClient({
         )}
       </div>
       <NeoTable
-        className="hidden rounded-[18px] md:block"
+        className="hidden rounded-hh-standard md:block"
         tableClassName="min-w-[1100px] table-fixed"
       >
         <thead>
@@ -936,10 +955,10 @@ export function WorkersListClient({
         </thead>
         <tbody>
           {filteredRows.length === 0 ? (
-            <tr className="border-b border-[var(--neo-border)]">
+            <tr className="border-b border-[var(--hh-border)]">
               <td
                 colSpan={10}
-                className="px-6 py-10 text-center text-sm text-[var(--neo-text-secondary)]"
+                className="px-6 py-10 text-center text-sm text-[var(--hh-text-secondary)]"
               >
                 No workers match your search or filters.
               </td>
@@ -955,7 +974,7 @@ export function WorkersListClient({
                 aria-label={`Open worker ${r.name}`}
                 className={cn(
                   listTableRowClassName,
-                  "border-b border-[var(--neo-border)] last:border-b-0"
+                  "border-b border-[var(--hh-border)] last:border-b-0"
                 )}
                 onClick={() => router.push(`/workers/${r.id}`)}
                 onKeyDown={(e) => {
@@ -972,8 +991,8 @@ export function WorkersListClient({
                     listTablePrimaryCellClassName
                   )}
                 >
-                  <span className="block truncate text-[var(--neo-text-primary)]">{r.name}</span>
-                  <span className="mt-0.5 block truncate text-[12px] font-normal text-[var(--neo-text-tertiary)]">
+                  <span className="block truncate text-[var(--hh-text-primary)]">{r.name}</span>
+                  <span className="mt-0.5 block truncate text-hh-metadata font-normal text-[var(--hh-text-tertiary)]">
                     {workerSecondaryInfo(r)}
                   </span>
                 </td>
@@ -1030,12 +1049,12 @@ export function WorkersListClient({
                 >
                   <NeoAmount
                     tone={r.netToPay > 0.005 ? "danger" : "neutral"}
-                    className={cn("text-[14px]", r.netToPay > 0.005 && "text-rose-300/90")}
+                    className={cn("text-hh-body", r.netToPay > 0.005 && "text-[var(--hh-danger)]")}
                   >
                     {formatCurrency(r.netToPay)}
                   </NeoAmount>
                 </td>
-                <td className={cn(workerCenterTableCellClass, "text-[var(--neo-text-secondary)]")}>
+                <td className={cn(workerCenterTableCellClass, "text-[var(--hh-text-secondary)]")}>
                   <LastPaymentCell payment={r.lastPayment} />
                 </td>
                 <td className={workerCenterTableCellClass}>
@@ -1123,7 +1142,7 @@ export function WorkersListClient({
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as WorkerStatus)}
-                className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                className="h-9 w-full rounded-hh-compact border border-input bg-transparent px-3 text-sm"
               >
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>

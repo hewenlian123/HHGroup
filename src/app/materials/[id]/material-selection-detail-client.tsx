@@ -195,7 +195,7 @@ export function MaterialSelectionDetailClient({
   return (
     <PageLayout
       divider={false}
-      className="dark md:max-w-6xl"
+      className="md:max-w-6xl"
       header={
         <PageHeader
           title={selection.title}
@@ -208,13 +208,13 @@ export function MaterialSelectionDetailClient({
           }
           actions={
             <>
-              <Button variant="outline" size="sm" className="rounded-sm" asChild>
+              <Button variant="outline" size="sm" className="rounded-hh-compact" asChild>
                 <Link href="/materials">
                   <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
                   Back
                 </Link>
               </Button>
-              <Button variant="outline" size="sm" className="rounded-sm" asChild>
+              <Button variant="outline" size="sm" className="rounded-hh-compact" asChild>
                 <Link href={`/materials/${selection.id}/preview`}>
                   <Eye className="mr-1.5 h-4 w-4" aria-hidden />
                   Preview
@@ -223,14 +223,14 @@ export function MaterialSelectionDetailClient({
               <Button
                 variant="outline"
                 size="sm"
-                className="rounded-sm"
+                className="rounded-hh-compact"
                 type="button"
                 onClick={() => window.print()}
               >
                 <Printer className="mr-1.5 h-4 w-4" aria-hidden />
                 Print
               </Button>
-              <Button variant="outline" size="sm" className="rounded-sm" asChild>
+              <Button variant="outline" size="sm" className="rounded-hh-compact" asChild>
                 <Link href={`/api/materials/${selection.id}/pdf`}>
                   <Download className="mr-1.5 h-4 w-4" aria-hidden />
                   Download PDF
@@ -250,17 +250,17 @@ export function MaterialSelectionDetailClient({
                   label={formatMaterialSelectionStatus(selection.status)}
                   variant={sheetStatusVariant(selection.status)}
                 />
-                <span className="text-xs text-[var(--neo-text-secondary)]">
+                <span className="text-xs text-[var(--hh-text-secondary)]">
                   {items.length} item{items.length === 1 ? "" : "s"}
                 </span>
               </div>
               {selection.notes ? (
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--neo-text-secondary)]">
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--hh-text-secondary)]">
                   {selection.notes}
                 </p>
               ) : null}
             </div>
-            <Button type="button" className="rounded-sm" onClick={() => setModalOpen(true)}>
+            <Button type="button" className="rounded-hh-compact" onClick={() => setModalOpen(true)}>
               <Plus className="mr-1.5 h-4 w-4" aria-hidden />
               Add Item
             </Button>
@@ -271,17 +271,17 @@ export function MaterialSelectionDetailClient({
           <NeoPanel bodyClassName="p-6">
             <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <h2 className="text-sm font-semibold text-[var(--neo-text-primary)]">
+                <h2 className="text-sm font-semibold text-[var(--hh-text-primary)]">
                   No material items yet
                 </h2>
-                <p className="mt-1 text-sm text-[var(--neo-text-secondary)]">
+                <p className="mt-1 text-sm text-[var(--hh-text-secondary)]">
                   Add selected materials by area, such as bathrooms, kitchen, or living room.
                 </p>
               </div>
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-sm"
+                className="rounded-hh-compact"
                 onClick={() => setModalOpen(true)}
               >
                 Add First Item
@@ -297,10 +297,10 @@ export function MaterialSelectionDetailClient({
                 className="min-w-0 space-y-2"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-semibold uppercase tracking-normal text-[var(--neo-text-secondary)]">
+                  <h2 className="text-sm font-semibold uppercase tracking-normal text-[var(--hh-text-secondary)]">
                     {group.area}
                   </h2>
-                  <span className="text-xs tabular-nums text-[var(--neo-text-tertiary)]">
+                  <span className="text-xs tabular-nums text-[var(--hh-text-tertiary)]">
                     {group.items.length} item{group.items.length === 1 ? "" : "s"}
                   </span>
                 </div>
@@ -310,7 +310,7 @@ export function MaterialSelectionDetailClient({
                     return (
                       <NeoMobileCard key={item.id} className="p-3">
                         <div className="flex min-w-0 gap-3">
-                          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)]">
+                          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l3-selected)]">
                             {item.imageUrl ? (
                               // eslint-disable-next-line @next/next/no-img-element -- customer selection photos can be external or data URLs
                               <img
@@ -323,7 +323,7 @@ export function MaterialSelectionDetailClient({
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               {item.category ? (
-                                <span className="rounded-sm border border-[var(--neo-border)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--neo-text-secondary)]">
+                                <span className="rounded-hh-compact border border-[var(--hh-border)] px-1.5 py-0.5 text-hh-status font-medium text-[var(--hh-text-secondary)]">
                                   {item.category}
                                 </span>
                               ) : null}
@@ -332,16 +332,16 @@ export function MaterialSelectionDetailClient({
                                 variant={itemStatusVariant(item.status)}
                               />
                             </div>
-                            <p className="mt-2 break-words text-sm font-semibold text-[var(--neo-text-primary)]">
+                            <p className="mt-2 break-words text-sm font-semibold text-[var(--hh-text-primary)]">
                               {item.itemName}
                             </p>
                             {specs.length > 0 ? (
-                              <p className="mt-1 break-words text-xs leading-5 text-[var(--neo-text-secondary)]">
+                              <p className="mt-1 break-words text-xs leading-5 text-[var(--hh-text-secondary)]">
                                 {specs.join(" · ")}
                               </p>
                             ) : null}
                             {item.notes ? (
-                              <p className="mt-2 break-words text-xs leading-5 text-[var(--neo-text-secondary)]">
+                              <p className="mt-2 break-words text-xs leading-5 text-[var(--hh-text-secondary)]">
                                 {item.notes}
                               </p>
                             ) : null}
@@ -364,12 +364,17 @@ export function MaterialSelectionDetailClient({
           className="max-w-[680px]"
           footer={
             <>
-              <Button variant="outline" size="sm" className="rounded-sm" onClick={closeModal}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-hh-compact"
+                onClick={closeModal}
+              >
                 Cancel
               </Button>
               <Button
                 size="sm"
-                className="rounded-sm"
+                className="rounded-hh-compact"
                 disabled={saving}
                 onClick={() => void saveItem()}
               >
@@ -474,14 +479,14 @@ export function MaterialSelectionDetailClient({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="rounded-sm"
+                className="rounded-hh-compact"
                 disabled={uploading}
                 onClick={() => fileInputRef.current?.click()}
               >
                 {uploading ? "Uploading..." : "Upload image"}
               </Button>
               {form.imageUrl ? (
-                <span className="text-xs text-[var(--neo-text-secondary)]">Image attached</span>
+                <span className="text-xs text-[var(--hh-text-secondary)]">Image attached</span>
               ) : null}
             </div>
 

@@ -19,13 +19,13 @@ import { WorkerPayrollStatementPrint } from "./worker-payroll-statement-print";
 import { cn } from "@/lib/utils";
 
 const reportSecondaryButtonClass =
-  "h-9 rounded-[0.625rem] border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-[13px] font-semibold text-[var(--neo-text-primary)] shadow-none hover:border-[var(--neo-border-strong)] hover:bg-[var(--neo-surface-muted)] focus-visible:ring-[var(--neo-gold-ring)] max-md:min-h-11";
+  "hh-focus-ring h-9 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-hh-table-cell font-semibold text-[var(--hh-text-primary)] shadow-none hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-selected)] max-md:min-h-11";
 
 const reportTableHeadClass =
-  "h-10 whitespace-nowrap border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--neo-text-tertiary)]";
+  "h-10 whitespace-nowrap border-b border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 text-left text-hh-status font-semibold uppercase tracking-normal text-[var(--hh-text-tertiary)]";
 
 const reportTableCellClass =
-  "h-11 border-b border-[var(--neo-border)] px-3 py-2 align-middle text-[13px] text-[var(--neo-text-primary)]";
+  "h-11 border-b border-[var(--hh-border)] px-3 py-2 align-middle text-hh-table-cell text-[var(--hh-text-primary)]";
 
 function displayDeduction(n: number): string {
   const clean = Math.abs(n) < 0.005 ? 0 : n;
@@ -117,15 +117,15 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
       tone: balanceTone(report.summary.balance),
       className:
         Math.abs(report.summary.balance) < 0.005
-          ? "border-[rgb(16_185_129_/_0.22)] bg-[rgb(16_185_129_/_0.055)]"
-          : "border-[rgb(244_114_182_/_0.24)] bg-[rgb(244_114_182_/_0.055)]",
+          ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)]"
+          : "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)]",
     },
   ];
 
   return (
     <PageLayout
       divider={false}
-      className="dark financial-nums max-md:!gap-3 max-md:!py-3"
+      className="financial-nums max-md:!gap-3 max-md:!py-3"
       header={
         <PageHeader
           className="print:hidden"
@@ -170,11 +170,11 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
           title={titleName}
           description={`${report.monthLabel} payroll activity and settlement summary.`}
         >
-          <div className="flex flex-wrap items-center gap-2 text-[12px] text-[var(--neo-text-tertiary)]">
-            <span className="rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2.5 py-1">
+          <div className="flex flex-wrap items-center gap-2 text-hh-metadata text-[var(--hh-text-tertiary)]">
+            <span className="rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-2.5 py-1">
               {report.monthLabel}
             </span>
-            <span className="rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2.5 py-1">
+            <span className="rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-2.5 py-1">
               {report.rows.length.toLocaleString("en-US")} activity rows
             </span>
           </div>
@@ -195,7 +195,7 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
 
         {!report.supabaseConfigured && (
           <NeoPanel bodyClassName="px-4 py-3">
-            <p className="text-sm text-rose-300">
+            <p className="text-sm text-[var(--hh-danger)]">
               {report.loadError ?? "Supabase is not configured."}
             </p>
           </NeoPanel>
@@ -203,10 +203,10 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
 
         {report.supabaseConfigured && report.loadError && (
           <NeoPanel
-            className="border-[rgb(216_180_106_/_0.22)] bg-[rgb(216_180_106_/_0.06)]"
+            className="border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)]"
             bodyClassName="px-4 py-3"
           >
-            <p className="text-sm text-[var(--neo-gold-soft)]">
+            <p className="text-sm text-[var(--hh-text-primary)]">
               Some data may be incomplete: {report.loadError}
             </p>
           </NeoPanel>
@@ -248,13 +248,11 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
                     {report.rows.map((r) => (
                       <tr
                         key={r.id}
-                        className="transition-colors duration-150 hover:bg-[var(--neo-surface-muted)]"
+                        className="transition-colors duration-150 hover:bg-[var(--hh-l3-selected)]"
                       >
                         <td className={cn(reportTableCellClass, "tabular-nums")}>{r.date}</td>
                         <td className={reportTableCellClass}>{r.type}</td>
-                        <td
-                          className={cn(reportTableCellClass, "text-[var(--neo-text-secondary)]")}
-                        >
+                        <td className={cn(reportTableCellClass, "text-[var(--hh-text-secondary)]")}>
                           {r.projectLabel}
                         </td>
                         <td className={cn(reportTableCellClass, "text-right")}>
@@ -273,19 +271,19 @@ export default async function WorkerMonthlyReportPage({ params, searchParams }: 
                   <NeoMobileCard key={r.id} className="px-3 py-3">
                     <div className="flex min-w-0 items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[13px] font-semibold text-[var(--neo-text-primary)]">
+                        <p className="text-hh-table-cell font-semibold text-[var(--hh-text-primary)]">
                           {r.type}
                         </p>
-                        <p className="mt-1 truncate text-[12px] text-[var(--neo-text-secondary)]">
+                        <p className="mt-1 truncate text-hh-metadata text-[var(--hh-text-secondary)]">
                           {r.projectLabel}
                         </p>
-                        <p className="mt-2 text-[12px] tabular-nums text-[var(--neo-text-tertiary)]">
+                        <p className="mt-2 text-hh-metadata tabular-nums text-[var(--hh-text-tertiary)]">
                           {r.date}
                         </p>
                       </div>
                       <NeoAmount
                         tone={r.amount < 0 ? "muted" : "neutral"}
-                        className="shrink-0 text-right text-[13px]"
+                        className="shrink-0 text-right text-hh-table-cell"
                       >
                         {fmtSignedUsd(r.amount)}
                       </NeoAmount>

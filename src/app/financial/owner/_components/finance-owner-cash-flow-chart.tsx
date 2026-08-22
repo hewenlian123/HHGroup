@@ -6,9 +6,9 @@ import { fmtUsdAxis, fmtUsdFull } from "../_lib/format-owner-currency";
 export function FinanceOwnerCashFlowChart({ points }: { points: FinanceOwnerCashFlowPoint[] }) {
   if (points.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-5 py-14 text-center transition-colors duration-200 ease-out max-md:px-4 max-md:py-16">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)]">
-          <Activity className="h-6 w-6 text-[var(--neo-text-tertiary)]" aria-hidden />
+      <div className="flex flex-col items-center justify-center rounded-hh-task border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-5 py-14 text-center transition-colors duration-200 ease-out max-md:px-4 max-md:py-16">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
+          <Activity className="h-6 w-6 text-[var(--hh-text-tertiary)]" aria-hidden />
         </div>
         <p className="mt-4 text-sm font-semibold text-foreground">No cash movement yet</p>
         <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">
@@ -96,7 +96,7 @@ export function FinanceOwnerCashFlowChart({ points }: { points: FinanceOwnerCash
                 y={t.y + 3}
                 textAnchor="end"
                 fill="currentColor"
-                className="tabular-nums text-[10px] font-normal tracking-tight"
+                className="tabular-nums text-hh-table-header font-normal tracking-normal"
               >
                 {t.label}
               </text>
@@ -131,7 +131,7 @@ export function FinanceOwnerCashFlowChart({ points }: { points: FinanceOwnerCash
                 y={h - 14}
                 textAnchor="middle"
                 fill="currentColor"
-                className="text-[10px] font-medium tracking-tight"
+                className="text-hh-table-header font-medium tracking-normal"
               >
                 {p.label}
               </text>
@@ -139,13 +139,13 @@ export function FinanceOwnerCashFlowChart({ points }: { points: FinanceOwnerCash
           ))}
         </svg>
       </div>
-      <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-2 border-t border-[var(--neo-border)] pt-5 text-[11px] font-medium tracking-wide text-muted-foreground">
+      <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-2 border-t border-[var(--hh-border)] pt-5 text-hh-status font-medium tracking-normal text-muted-foreground">
         <span className="inline-flex items-center gap-2">
-          <span className="h-[3px] w-6 rounded-full bg-[rgb(16_163_127)]" />
+          <span className="h-[3px] w-6 rounded-full bg-[var(--hh-success)]" />
           Cash in
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="h-[3px] w-6 rounded-full bg-[rgb(220_80_70)]" />
+          <span className="h-[3px] w-6 rounded-full bg-[var(--hh-danger)]" />
           Cash out
         </span>
       </div>

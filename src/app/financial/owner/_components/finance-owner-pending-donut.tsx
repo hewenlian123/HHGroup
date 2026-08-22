@@ -63,9 +63,9 @@ export function FinanceOwnerPendingDonut({
 
   if (zeroTotal) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)] px-4 py-10 text-center transition-colors duration-200 ease-out max-md:py-12">
-        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-raised)]">
-          <Wallet className="h-5 w-5 text-[var(--neo-text-tertiary)]" aria-hidden />
+      <div className="flex flex-col items-center justify-center rounded-hh-standard border border-dashed border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] px-4 py-10 text-center transition-colors duration-200 ease-out max-md:py-12">
+        <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)]">
+          <Wallet className="h-5 w-5 text-[var(--hh-text-tertiary)]" aria-hidden />
         </div>
         <p className="mt-3 text-sm font-semibold text-foreground">Nothing pending</p>
         <p className="mt-1 max-w-xs text-xs leading-relaxed text-muted-foreground">
@@ -73,7 +73,7 @@ export function FinanceOwnerPendingDonut({
         </p>
         <Link
           href="/labor/worker-balances"
-          className="mt-5 inline-flex min-h-[44px] items-center text-[11px] font-semibold text-primary hover:underline"
+          className="mt-5 inline-flex min-h-[44px] items-center text-hh-status font-semibold text-primary hover:underline"
         >
           View balances
         </Link>
@@ -91,7 +91,7 @@ export function FinanceOwnerPendingDonut({
             r={(rOut + rIn) / 2}
             fill="none"
             stroke="currentColor"
-            className="text-zinc-200 dark:text-border/50"
+            className="text-[var(--hh-border-strong)]"
             strokeWidth={rOut - rIn}
           />
           {arcs.map((a) => (
@@ -99,11 +99,9 @@ export function FinanceOwnerPendingDonut({
           ))}
         </svg>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center leading-none">
-          <p className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
-            Total
-          </p>
+          <p className="text-hh-status uppercase text-muted-foreground">Total</p>
           <p
-            className="mt-1 max-w-[92px] truncate text-sm font-semibold tracking-tight text-foreground tabular-nums"
+            className="mt-1 max-w-[92px] truncate text-sm font-semibold tracking-normal text-foreground tabular-nums"
             title={fmtUsdFull(total)}
           >
             {fmtUsdAdaptive(total)}
@@ -117,7 +115,7 @@ export function FinanceOwnerPendingDonut({
           return (
             <div
               key={p.key}
-              className="flex items-center justify-between gap-3 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 py-2 transition-colors duration-200 ease-out hover:bg-[var(--neo-surface-raised)]"
+              className="flex items-center justify-between gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2 transition-colors duration-200 ease-out hover:bg-[var(--hh-l2-operational-surface)]"
             >
               <div className="flex min-w-0 items-center gap-2">
                 <span
@@ -126,14 +124,14 @@ export function FinanceOwnerPendingDonut({
                 />
                 <div className="min-w-0 leading-tight">
                   <p className="truncate text-xs font-medium text-foreground">{p.short}</p>
-                  <p className="truncate text-[10px] text-muted-foreground">{p.label}</p>
+                  <p className="truncate text-hh-table-header text-muted-foreground">{p.label}</p>
                 </div>
               </div>
               <div className="shrink-0 text-right leading-tight">
                 <p className="text-xs font-semibold tabular-nums" title={fmtUsdFull(p.value)}>
                   {fmtUsdAdaptive(p.value)}
                 </p>
-                <p className="text-[10px] tabular-nums text-muted-foreground">{pct}%</p>
+                <p className="text-hh-table-header tabular-nums text-muted-foreground">{pct}%</p>
               </div>
             </div>
           );
@@ -141,7 +139,7 @@ export function FinanceOwnerPendingDonut({
         <div className="flex justify-end pt-1">
           <Link
             href="/labor/worker-balances"
-            className="inline-flex min-h-[44px] items-center text-[11px] font-semibold text-primary hover:underline sm:min-h-0"
+            className="inline-flex min-h-[44px] items-center text-hh-status font-semibold text-primary hover:underline sm:min-h-0"
           >
             View details
           </Link>

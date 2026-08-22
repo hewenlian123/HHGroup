@@ -53,12 +53,12 @@ export function SettingsSubNav() {
   return (
     <div className="page-container pt-4 md:pt-5">
       {mobileBreadcrumb ? (
-        <p className="mb-3 text-[13px] text-[var(--neo-canvas-text-secondary)] sm:hidden">
+        <p className="mb-3 text-hh-table-cell text-[var(--hh-text-secondary)] sm:hidden">
           {mobileBreadcrumb}
         </p>
       ) : null}
       <nav
-        className="flex flex-wrap gap-2 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-2 shadow-[var(--neo-shadow-panel)]"
+        className="flex flex-wrap gap-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-2 shadow-operational"
         aria-label="Settings sections"
         data-testid="settings-subnav"
       >
@@ -68,13 +68,13 @@ export function SettingsSubNav() {
             <Button
               key={item.href}
               asChild
-              variant={active ? "default" : "ghost"}
+              variant="ghost"
               size="sm"
               className={cn(
                 "h-8 rounded-md",
                 active
-                  ? "bg-[var(--neo-gold)] text-zinc-950 hover:bg-[var(--neo-gold-soft)]"
-                  : "text-[var(--neo-text-secondary)] hover:text-[var(--neo-text-primary)]"
+                  ? "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-selected)]"
+                  : "text-[var(--hh-text-secondary)] hover:text-[var(--hh-text-primary)]"
               )}
             >
               <Link href={item.href} aria-current={active ? "page" : undefined}>

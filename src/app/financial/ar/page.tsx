@@ -61,7 +61,7 @@ export default async function ARPage() {
   ];
 
   return (
-    <div className="dark neo-page-on-graphite page-container page-stack py-6 text-[var(--neo-canvas-text-secondary)]">
+    <div className="page-container page-stack py-6 text-[var(--hh-text-secondary)]">
       <PageHeader
         title="Accounts Receivable"
         description="Outstanding invoices and aging. Record payments from invoice detail."
@@ -82,10 +82,8 @@ export default async function ARPage() {
                 className={cn(
                   "mt-3 text-xl",
                   TYPO.kpiValue,
-                  label === "Overdue AR" && value > 0 && "text-amber-600 dark:text-amber-400",
-                  label === "Paid This Month" &&
-                    value > 0 &&
-                    "text-emerald-700 dark:text-emerald-400"
+                  label === "Overdue AR" && value > 0 && "text-[var(--hh-warning)]",
+                  label === "Paid This Month" && value > 0 && "text-[var(--hh-success)]"
                 )}
               >
                 {formatCurrency(value)}
@@ -105,7 +103,7 @@ export default async function ARPage() {
           <div className="space-y-6">
             {sortedBuckets.map((bucket) => (
               <div key={bucket} className={OS.card}>
-                <h3 className="border-b border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-4 py-3 text-sm font-semibold text-[var(--neo-text-primary)]">
+                <h3 className="border-b border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-4 py-3 text-sm font-semibold text-[var(--hh-text-primary)]">
                   {bucket} days overdue
                 </h3>
                 <Table>
@@ -133,7 +131,7 @@ export default async function ARPage() {
                             {inv.invoiceNo}
                           </Link>
                         </TableCell>
-                        <TableCell className="text-zinc-500 dark:text-zinc-400">
+                        <TableCell className="text-[var(--hh-text-secondary)]">
                           {projectNameById.get(inv.projectId) ?? inv.projectId}
                         </TableCell>
                         <TableCell className={TYPO.primaryName}>{inv.clientName}</TableCell>
@@ -153,7 +151,12 @@ export default async function ARPage() {
                           {inv.computedStatus}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button asChild variant="outline" size="sm" className="h-8 rounded-sm">
+                          <Button
+                            asChild
+                            variant="outline"
+                            size="sm"
+                            className="h-8 rounded-hh-compact"
+                          >
                             <Link href={`/financial/invoices/${inv.id}?recordPayment=1`}>
                               <CreditCard className="mr-1 h-4 w-4" />
                               Collect

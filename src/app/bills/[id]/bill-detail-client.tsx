@@ -197,7 +197,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
           <dd
             className={cn(
               billsDetailDdClass,
-              "tabular-nums font-normal text-[var(--neo-text-secondary)]"
+              "tabular-nums font-normal text-[var(--hh-text-secondary)]"
             )}
           >
             {formatDate(bill.issue_date)}
@@ -206,7 +206,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
           <dd
             className={cn(
               billsDetailDdClass,
-              "tabular-nums font-normal text-[var(--neo-text-secondary)]"
+              "tabular-nums font-normal text-[var(--hh-text-secondary)]"
             )}
           >
             {formatDate(bill.due_date)}
@@ -242,7 +242,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
         bodyClassName="p-0"
       >
         {payments.length === 0 ? (
-          <p className="px-4 py-6 text-[13px] text-[var(--neo-text-secondary)] md:px-6">
+          <p className="px-4 py-6 text-hh-table-cell text-[var(--hh-text-secondary)] md:px-6">
             Record a payment when you pay this bill.
           </p>
         ) : (
@@ -261,21 +261,21 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
             </thead>
             <tbody>
               {payments.map((p) => (
-                <tr key={p.id} className="border-b border-[var(--neo-border)] last:border-b-0">
+                <tr key={p.id} className="border-b border-[var(--hh-border)] last:border-b-0">
                   <td className={cn(tableRawTdClass, TYPO.date)}>{formatDate(p.payment_date)}</td>
                   <td className={cn(tableRawTdClass, "text-right", TYPO.amount)}>
                     <NeoAmount>{formatCurrency(p.amount)}</NeoAmount>
                   </td>
-                  <td className={cn(tableRawTdClass, "text-[var(--neo-text-secondary)]")}>
+                  <td className={cn(tableRawTdClass, "text-[var(--hh-text-secondary)]")}>
                     {p.payment_method ?? "—"}
                   </td>
-                  <td className={cn(tableRawTdClass, "text-[var(--neo-text-secondary)]")}>
+                  <td className={cn(tableRawTdClass, "text-[var(--hh-text-secondary)]")}>
                     {p.reference_no ?? "—"}
                   </td>
                   <td
                     className={cn(
                       tableRawTdClass,
-                      "max-w-[200px] truncate text-[var(--neo-text-secondary)]"
+                      "max-w-[200px] truncate text-[var(--hh-text-secondary)]"
                     )}
                     title={p.notes ?? ""}
                   >
@@ -290,15 +290,13 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
 
       {bill.notes ? (
         <NeoPanel title="Notes" bodyClassName="px-4 py-4 md:px-6 md:py-5">
-          <p className="text-[13px] leading-relaxed text-[var(--neo-text-secondary)]">
-            {bill.notes}
-          </p>
+          <p className="text-hh-table-cell text-[var(--hh-text-secondary)]">{bill.notes}</p>
         </NeoPanel>
       ) : null}
 
       <div
         className={cn(
-          "flex flex-wrap items-center gap-2 border-t border-[var(--neo-border)] pt-4",
+          "flex flex-wrap items-center gap-2 border-t border-[var(--hh-border)] pt-4",
           "max-md:[&_button]:min-h-11 max-md:[&_a]:min-h-11"
         )}
       >
@@ -444,7 +442,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
                 type="date"
                 value={paymentDate}
                 onChange={(e) => setPaymentDate(e.target.value)}
-                className="h-11 rounded-[0.625rem] tabular-nums"
+                className="h-11 rounded-hh-standard tabular-nums"
                 required
               />
             </div>
@@ -457,7 +455,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
                 inputMode="decimal"
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
-                className="neo-amount h-11 rounded-[0.625rem] tabular-nums"
+                className="neo-amount h-11 rounded-hh-standard tabular-nums"
                 placeholder="0.00"
                 required
               />
@@ -467,7 +465,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
               <NeoInput
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
-                className="h-11 rounded-[0.625rem]"
+                className="h-11 rounded-hh-standard"
                 placeholder="e.g. Check, ACH"
               />
             </div>
@@ -476,7 +474,7 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
               <NeoInput
                 value={paymentRef}
                 onChange={(e) => setPaymentRef(e.target.value)}
-                className="h-11 rounded-[0.625rem]"
+                className="h-11 rounded-hh-standard"
               />
             </div>
             <div className="space-y-1.5">
@@ -484,11 +482,11 @@ export function BillDetailClient({ bill, payments, addPaymentOpen: initialAddPay
               <NeoInput
                 value={paymentNotes}
                 onChange={(e) => setPaymentNotes(e.target.value)}
-                className="h-11 rounded-[0.625rem]"
+                className="h-11 rounded-hh-standard"
               />
             </div>
             {error ? (
-              <p className="rounded-lg border border-rose-500/25 bg-rose-500/10 px-3 py-2 text-[12px] font-medium text-rose-200">
+              <p className="rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2 text-hh-error text-[var(--hh-danger)]">
                 {error}
               </p>
             ) : null}

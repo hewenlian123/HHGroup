@@ -83,7 +83,7 @@ export default async function ProjectFinancialReviewPage() {
         description="Read-only list. Use each project detail link to review context before editing values."
         action={
           payload ? (
-            <p className="text-sm text-[var(--neo-text-secondary)]">
+            <p className="text-sm text-[var(--hh-text-secondary)]">
               {rows.length} of {payload.summary.totalProjects} projects flagged
             </p>
           ) : null
@@ -135,10 +135,10 @@ export default async function ProjectFinancialReviewPage() {
                   <td className="px-3 py-2">
                     <span
                       className={cn(
-                        "inline-flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium",
+                        "inline-flex items-center gap-1 rounded-hh-compact px-2 py-1 text-hh-status font-medium",
                         row.confirmedProfitStatus === "needs_review"
-                          ? "border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.12)] text-[var(--neo-gold-soft)]"
-                          : "border border-emerald-500/20 bg-[var(--neo-emerald-soft)] text-[var(--neo-emerald)]"
+                          ? "border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
+                          : "border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
                       )}
                     >
                       {row.confirmedProfitStatus === "needs_review" ? (
@@ -156,7 +156,7 @@ export default async function ProjectFinancialReviewPage() {
                       {row.issues.map((issue) => (
                         <span
                           key={issue.code}
-                          className="rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 py-1 text-[11px] text-[var(--neo-text-secondary)]"
+                          className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-2 py-1 text-hh-status text-[var(--hh-text-secondary)]"
                         >
                           {issue.label}
                         </span>

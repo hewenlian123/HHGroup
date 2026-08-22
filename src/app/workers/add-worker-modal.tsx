@@ -129,13 +129,18 @@ export function AddWorkerModal({ open, onOpenChange, onSuccess }: Props) {
             <Button
               type="button"
               variant="outline"
-              className="min-h-10 rounded-md"
+              className="min-h-10 rounded-hh-compact"
               onClick={() => onOpenChange(false)}
               disabled={busy}
             >
               Cancel
             </Button>
-            <Button type="submit" form={formId} disabled={busy} className="min-h-10 rounded-md">
+            <Button
+              type="submit"
+              form={formId}
+              disabled={busy}
+              className="min-h-10 rounded-hh-compact"
+            >
               <SubmitSpinner loading={busy} className="mr-2" />
               {busy ? "Saving..." : "Add Worker"}
             </Button>

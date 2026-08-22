@@ -84,15 +84,16 @@ function PaymentAttachmentRow({
   return (
     <div
       className={cn(
-        "group flex min-h-[58px] items-center gap-3 rounded-xl border border-black/[0.06] bg-muted/[0.18] px-3 py-2.5 transition-colors dark:border-white/[0.08]",
-        attachment.status === "failed" && "border-red-200 bg-red-50/60 dark:border-red-900/40"
+        "group flex min-h-[58px] items-center gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-2.5 transition-colors",
+        attachment.status === "failed" &&
+          "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)]"
       )}
     >
       <button
         type="button"
         disabled={!canPreview}
         onClick={onPreview}
-        className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-background text-muted-foreground ring-offset-background transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none"
+        className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-hh-standard bg-background text-muted-foreground ring-offset-background transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none"
         aria-label={`Preview ${attachment.file_name}`}
       >
         {attachment.file_type === "image" && attachment.localPreviewUrl ? (
@@ -106,11 +107,13 @@ function PaymentAttachmentRow({
         )}
       </button>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium text-foreground">{attachment.file_name}</p>
+        <p className="truncate text-hh-table-cell font-medium text-foreground">
+          {attachment.file_name}
+        </p>
         <p
           className={cn(
-            "mt-0.5 truncate text-[11px] text-muted-foreground",
-            attachment.status === "failed" && "text-red-600 dark:text-red-400"
+            "mt-0.5 truncate text-hh-status text-muted-foreground",
+            attachment.status === "failed" && "text-[var(--hh-danger)]"
           )}
         >
           {attachment.status === "uploading"
@@ -127,7 +130,7 @@ function PaymentAttachmentRow({
           type="button"
           disabled={disabled}
           onClick={onRetry}
-          className="shrink-0 rounded-md px-2 py-1.5 text-[12px] font-medium text-foreground transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-40"
+          className="shrink-0 rounded-hh-compact px-2 py-1.5 text-hh-metadata font-medium text-foreground transition-colors hover:bg-muted/80 disabled:pointer-events-none disabled:opacity-40"
         >
           Retry
         </button>
@@ -495,7 +498,7 @@ export function EditPaymentReceivedModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto rounded-md border-border/60">
+      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto rounded-hh-compact border-border/60">
         <DialogHeader className="border-b border-border/60 pb-3">
           <DialogTitle className="text-base font-medium">Edit Payment</DialogTitle>
         </DialogHeader>
@@ -504,7 +507,7 @@ export function EditPaymentReceivedModal({
           <div className="py-10 text-center text-sm text-muted-foreground">Loading payment…</div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4 pt-3">
-            <div className="rounded-xl border border-black/[0.06] bg-muted/[0.18] px-3 py-3 dark:border-white/[0.08]">
+            <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-3 py-3">
               <div className="flex items-start gap-2">
                 <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground">
                   <LockKeyhole className="h-3.5 w-3.5" />
@@ -518,7 +521,7 @@ export function EditPaymentReceivedModal({
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                  <p className="text-hh-table-header uppercase tracking-normal text-muted-foreground">
                     Max amount
                   </p>
                   <p className="text-sm font-semibold tabular-nums text-foreground">
@@ -527,7 +530,7 @@ export function EditPaymentReceivedModal({
                 </div>
               </div>
               {financialLocked ? (
-                <p className="mt-3 rounded-lg bg-amber-50 px-2.5 py-2 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+                <p className="mt-3 rounded-hh-standard bg-[var(--hh-warning-soft-fill)] px-2.5 py-2 text-xs text-[var(--hh-warning)]">
                   This legacy payment is not safely linked to a single invoice ledger row. You can
                   edit notes and attachments only.
                 </p>
@@ -536,7 +539,7 @@ export function EditPaymentReceivedModal({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
                   Payment Date
                 </label>
                 <FinanceDatePicker
@@ -547,7 +550,7 @@ export function EditPaymentReceivedModal({
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
                   Amount Received
                 </label>
                 <Input
@@ -564,14 +567,14 @@ export function EditPaymentReceivedModal({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
                 Payment Method
               </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value)}
                 disabled={financialLocked || saving}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-9 w-full rounded-hh-compact border border-input bg-transparent px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {PAYMENT_METHODS.map((m) => (
                   <option key={m} value={m}>
@@ -582,7 +585,7 @@ export function EditPaymentReceivedModal({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
                 Deposit Account
               </label>
               <Input
@@ -595,7 +598,7 @@ export function EditPaymentReceivedModal({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
                 Notes
               </label>
               <Textarea
@@ -608,7 +611,7 @@ export function EditPaymentReceivedModal({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              <label className="text-xs font-medium uppercase tracking-normal text-muted-foreground">
                 Attachments
               </label>
               <input
@@ -644,21 +647,21 @@ export function EditPaymentReceivedModal({
                   type="button"
                   disabled={saving}
                   onClick={() => cameraInputRef.current?.click()}
-                  className="group flex min-h-[58px] items-center gap-3 rounded-xl border border-black/[0.07] bg-background px-3 py-3 text-left transition-[background-color,border-color,transform] hover:border-black/[0.12] hover:bg-muted/30 active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]"
+                  className="group flex min-h-[58px] items-center gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-left transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] disabled:pointer-events-none disabled:opacity-45"
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/55">
                     <Camera className="h-[18px] w-[18px] text-foreground/80" strokeWidth={1.6} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-foreground">
+                    <span className="block text-hh-table-cell font-medium text-foreground">
                       Take photo
                     </span>
-                    <span className="block truncate text-[11px] text-muted-foreground">
+                    <span className="block truncate text-hh-status text-muted-foreground">
                       Camera upload
                     </span>
                   </span>
                   <ChevronRight
-                    className="h-4 w-4 shrink-0 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5"
+                    className="h-4 w-4 shrink-0 text-muted-foreground/70"
                     strokeWidth={1.5}
                   />
                 </button>
@@ -666,21 +669,21 @@ export function EditPaymentReceivedModal({
                   type="button"
                   disabled={saving}
                   onClick={() => uploadInputRef.current?.click()}
-                  className="group flex min-h-[58px] items-center gap-3 rounded-xl border border-black/[0.07] bg-background px-3 py-3 text-left transition-[background-color,border-color,transform] hover:border-black/[0.12] hover:bg-muted/30 active:scale-[0.995] disabled:pointer-events-none disabled:opacity-45 dark:border-white/[0.09]"
+                  className="group flex min-h-[58px] items-center gap-3 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-3 text-left transition-colors hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] disabled:pointer-events-none disabled:opacity-45"
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted/55">
                     <Upload className="h-[18px] w-[18px] text-foreground/80" strokeWidth={1.6} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13px] font-medium text-foreground">
+                    <span className="block text-hh-table-cell font-medium text-foreground">
                       Upload files
                     </span>
-                    <span className="block truncate text-[11px] text-muted-foreground">
+                    <span className="block truncate text-hh-status text-muted-foreground">
                       Images or PDFs
                     </span>
                   </span>
                   <ChevronRight
-                    className="h-4 w-4 shrink-0 text-muted-foreground/70 transition-transform group-hover:translate-x-0.5"
+                    className="h-4 w-4 shrink-0 text-muted-foreground/70"
                     strokeWidth={1.5}
                   />
                 </button>
@@ -693,18 +696,17 @@ export function EditPaymentReceivedModal({
                 onDragOver={onDragOver}
                 onDrop={onDrop}
                 className={cn(
-                  "rounded-xl border border-dashed px-3 py-3 transition-[border-color,background-color,box-shadow]",
-                  "border-black/[0.12] bg-muted/[0.22] dark:border-white/[0.12]",
+                  "rounded-hh-standard border border-dashed px-3 py-3 transition-[border-color,background-color,box-shadow]",
+                  "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)]",
                   !saving && "hover:bg-muted/[0.34]",
-                  dragActive &&
-                    "border-foreground/25 bg-muted/50 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.06)]",
+                  dragActive && "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)]",
                   saving && "opacity-55"
                 )}
               >
-                <p className="text-center text-[12px] font-medium text-foreground/85">
+                <p className="text-center text-hh-metadata font-medium text-foreground/85">
                   Drop payment attachments here
                 </p>
-                <p className="mt-0.5 text-center text-[11px] text-muted-foreground">
+                <p className="mt-0.5 text-center text-hh-status text-muted-foreground">
                   Photos or PDFs
                 </p>
               </div>

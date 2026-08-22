@@ -159,7 +159,6 @@ export default async function SubcontractorDetailPage({ params }: Props) {
   return (
     <PageLayout
       divider={false}
-      className="dark"
       header={
         <PageHeader
           title={subcontractor.name}
@@ -181,14 +180,14 @@ export default async function SubcontractorDetailPage({ params }: Props) {
       <SetBreadcrumbEntityTitle label={subcontractor.name} />
       {dataLoadWarning ? (
         <p
-          className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]"
+          className="rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-3 py-2 text-hh-body text-[var(--hh-information)]"
           role="status"
         >
           {dataLoadWarning}
         </p>
       ) : null}
       {insuranceAlert ? (
-        <div className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2">
+        <div className="rounded-hh-standard border border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] px-3 py-2">
           <StatusBadge
             label={
               new Date(subcontractor.insurance_expiration_date!).getTime() < Date.now()
@@ -209,26 +208,22 @@ export default async function SubcontractorDetailPage({ params }: Props) {
             ["Insurance expiration", subcontractor.insurance_expiration_date ?? "—"],
           ].map(([label, value]) => (
             <div key={label} className="min-w-0">
-              <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+              <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
                 {label}
               </p>
-              <p className="mt-1 break-words text-[var(--neo-text-primary)]">{value}</p>
+              <p className="mt-1 break-words text-[var(--hh-text-primary)]">{value}</p>
             </div>
           ))}
           <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
-              W9
-            </p>
+            <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">W9</p>
             <div className="mt-1">
               <SubcontractorW9 subcontractorId={id} w9StoragePath={subcontractor.w9_storage_path} />
             </div>
           </div>
           {subcontractor.notes ? (
             <div className="min-w-0 md:col-span-2">
-              <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
-                Notes
-              </p>
-              <p className="mt-1 max-w-3xl break-words text-[var(--neo-text-primary)]">
+              <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">Notes</p>
+              <p className="mt-1 max-w-3xl break-words text-[var(--hh-text-primary)]">
                 {subcontractor.notes}
               </p>
             </div>
@@ -259,7 +254,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
           },
         ].map((item) => (
           <div key={item.label} className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-normal text-[var(--neo-text-tertiary)]">
+            <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
               {item.label}
             </p>
             <p className="mt-1 text-lg">
@@ -272,39 +267,39 @@ export default async function SubcontractorDetailPage({ params }: Props) {
       <NeoPanel title="Contracts" bodyClassName="p-0">
         <NeoTable className="border-0 shadow-none" tableClassName="min-w-[1180px]">
           <thead>
-            <tr className="border-b border-[var(--neo-border)]">
-              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
+            <tr className="border-b border-[var(--hh-border)]">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal">
                 Project
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal">
                 Cost Code
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Contract Amount
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Scheduled
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Billed To Date
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Paid To Date
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Deductions
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Net Payable
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Remaining Contract
               </th>
             </tr>
           </thead>
           <tbody>
             {contractRows.length === 0 ? (
-              <tr className="border-b border-[var(--neo-border)]">
+              <tr className="border-b border-[var(--hh-border)]">
                 <td colSpan={9} className="py-6 px-3">
                   <EmptyState
                     title="No contracts"
@@ -319,11 +314,11 @@ export default async function SubcontractorDetailPage({ params }: Props) {
                 return (
                   <tr
                     key={c.id}
-                    className={`border-b border-[var(--neo-border)] ${
+                    className={`border-b border-[var(--hh-border)] ${
                       fullyBilled
-                        ? "bg-emerald-500/10"
+                        ? "bg-[var(--hh-success-soft-fill)]"
                         : outstandingPositive
-                          ? "bg-[rgb(184_137_45_/_0.08)]"
+                          ? "bg-[var(--hh-warning-soft-fill)]"
                           : ""
                     }`}
                   >
@@ -367,31 +362,31 @@ export default async function SubcontractorDetailPage({ params }: Props) {
       <NeoPanel title="Progress bills" bodyClassName="p-0">
         <NeoTable className="border-0 shadow-none" tableClassName="min-w-[640px]">
           <thead>
-            <tr className="border-b border-[var(--neo-border)]">
-              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
+            <tr className="border-b border-[var(--hh-border)]">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal">
                 Project
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal">
                 Date
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Amount
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal">
                 Status
               </th>
             </tr>
           </thead>
           <tbody>
             {bills.length === 0 ? (
-              <tr className="border-b border-[var(--neo-border)]">
+              <tr className="border-b border-[var(--hh-border)]">
                 <td colSpan={4} className="py-6 px-3">
                   <EmptyState title="No bills" description="No approved progress bills yet." />
                 </td>
               </tr>
             ) : (
               bills.map((b) => (
-                <tr key={b.id} className="border-b border-[var(--neo-border)]">
+                <tr key={b.id} className="border-b border-[var(--hh-border)]">
                   <td className="py-1.5 px-3">
                     {subcontractIdToProjectName.get(b.subcontract_id) ?? "—"}
                   </td>
@@ -415,24 +410,24 @@ export default async function SubcontractorDetailPage({ params }: Props) {
       <NeoPanel title="Payment history" bodyClassName="p-0">
         <NeoTable className="border-0 shadow-none" tableClassName="min-w-[640px]">
           <thead>
-            <tr className="border-b border-[var(--neo-border)]">
-              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
+            <tr className="border-b border-[var(--hh-border)]">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal">
                 Project
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal">
                 Date
               </th>
-              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal tabular-nums">
+              <th className="text-right py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal tabular-nums">
                 Amount
               </th>
-              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--neo-text-tertiary)] uppercase tracking-normal">
+              <th className="text-left py-2 px-3 text-xs font-medium text-[var(--hh-text-tertiary)] uppercase tracking-normal">
                 Method
               </th>
             </tr>
           </thead>
           <tbody>
             {payments.length === 0 ? (
-              <tr className="border-b border-[var(--neo-border)]">
+              <tr className="border-b border-[var(--hh-border)]">
                 <td colSpan={4} className="py-6 px-3">
                   <EmptyState
                     title="No payments"
@@ -442,7 +437,7 @@ export default async function SubcontractorDetailPage({ params }: Props) {
               </tr>
             ) : (
               payments.map((p) => (
-                <tr key={p.id} className="border-b border-[var(--neo-border)]">
+                <tr key={p.id} className="border-b border-[var(--hh-border)]">
                   <td className="py-1.5 px-3">
                     {subcontractIdToProjectName.get(p.subcontract_id) ?? "—"}
                   </td>

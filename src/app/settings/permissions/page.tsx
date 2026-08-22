@@ -171,16 +171,16 @@ export default function SettingsPermissionsPage() {
           {PERMISSION_GROUPS.map((group) => (
             <div
               key={group.title}
-              className="rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] p-3"
+              className="rounded-lg border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] p-3"
             >
-              <p className="mb-2 text-sm font-semibold text-[var(--neo-text-primary)]">
+              <p className="mb-2 text-sm font-semibold text-[var(--hh-text-primary)]">
                 {group.title}
               </p>
               <div className="grid gap-2 md:grid-cols-2">
                 {group.keys.map((key) => (
                   <label
                     key={key}
-                    className="inline-flex min-h-10 items-center gap-2 rounded-md px-2 text-sm text-[var(--neo-text-primary)] hover:bg-[var(--neo-surface-raised)]"
+                    className="inline-flex min-h-10 items-center gap-2 rounded-md px-2 text-sm text-[var(--hh-text-primary)] hover:bg-[var(--hh-l2-operational-surface)]"
                   >
                     <input
                       type="checkbox"

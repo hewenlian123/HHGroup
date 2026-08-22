@@ -54,7 +54,7 @@ export function PaymentDeleteDependenciesDialog({
 
         <div className="max-h-[50vh] space-y-2 overflow-y-auto pr-1">
           {blockers.length === 0 ? (
-            <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
+            <p className="rounded-hh-compact border border-dashed border-border px-3 py-4 text-sm text-muted-foreground">
               No blocking dependencies were found. Refresh the check and try deleting again.
             </p>
           ) : (
@@ -63,7 +63,7 @@ export function PaymentDeleteDependenciesDialog({
               return (
                 <div
                   key={`${dep.type}-${dep.id}`}
-                  className="rounded-md border border-border bg-card px-3 py-3"
+                  className="rounded-hh-compact border border-border bg-card px-3 py-3"
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">

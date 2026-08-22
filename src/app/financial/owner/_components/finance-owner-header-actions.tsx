@@ -15,7 +15,7 @@ export function FinanceOwnerHeaderActions({
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
       <div
         className={cn(
-          "inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 py-2 text-sm font-medium text-[var(--neo-text-primary)] tabular-nums shadow-[var(--neo-shadow-panel)] sm:min-h-9 sm:py-0"
+          "inline-flex min-h-[44px] items-center gap-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 py-2 text-sm font-medium text-[var(--hh-text-primary)] tabular-nums shadow-operational sm:min-h-9 sm:py-0"
         )}
         title="KPIs and invoicing totals use the current calendar month. Cash flow shows the last six months ending this month."
       >

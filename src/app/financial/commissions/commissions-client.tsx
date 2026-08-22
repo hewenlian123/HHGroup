@@ -87,46 +87,47 @@ async function postCommissionReceiptWithProgress(
   });
 }
 
-const COMMISSION_PAGE_BG = "dark neo-page-on-graphite text-[var(--neo-canvas-text-secondary)]";
+const COMMISSION_PAGE_BG = "text-[var(--hh-text-secondary)]";
 const COMMISSION_MODAL =
-  "max-w-[480px] w-full gap-0 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:max-w-[480px] md:p-8";
-const COMMISSION_LABEL = "mb-1.5 block text-[12px] font-medium text-[var(--neo-text-secondary)]";
+  "max-w-[480px] w-full gap-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-6 text-[var(--hh-text-primary)] shadow-operational sm:max-w-[480px] md:p-8";
+const COMMISSION_LABEL =
+  "mb-1.5 block text-hh-metadata font-medium text-[var(--hh-text-secondary)]";
 const COMMISSION_FIELD =
-  "h-10 rounded-lg border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] text-[var(--neo-text-primary)] focus-visible:border-[var(--neo-gold)] focus-visible:ring-2 focus-visible:ring-[var(--neo-gold-ring)]";
+  "hh-focus-ring h-10 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body text-[var(--hh-text-primary)]";
 
 const commissionsShell =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-2xl";
+  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const kpiTile =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
+  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational";
 
 const kpiIcon =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]";
 
 const RECEIPT_UPLOAD_MODAL =
-  "max-w-[480px] w-full gap-0 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-6 text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] sm:max-w-[480px] md:p-8";
-const COMMISSION_DIALOG_FOOTER = "mt-6 border-t border-[var(--neo-border)] bg-transparent pt-4";
+  "max-w-[480px] w-full gap-0 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-6 text-[var(--hh-text-primary)] shadow-operational sm:max-w-[480px] md:p-8";
+const COMMISSION_DIALOG_FOOTER = "mt-6 border-t border-[var(--hh-border)] bg-transparent pt-4";
 const COMMISSION_SECONDARY_BUTTON =
-  "h-10 rounded-lg border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[14px] font-medium text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]";
+  "h-10 rounded-hh-standard border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-hh-body font-medium text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-primary)]";
 const COMMISSION_PRIMARY_BUTTON =
-  "h-10 rounded-lg bg-[var(--neo-gold)] text-[14px] font-medium text-zinc-950 hover:bg-[var(--neo-gold-soft)]";
+  "h-10 rounded-hh-standard bg-[var(--hh-action-primary)] text-hh-control text-[var(--hh-action-primary-foreground)] hover:opacity-90";
 const COMMISSION_DANGER_BUTTON =
-  "h-10 rounded-lg bg-rose-600 text-[14px] font-medium text-white hover:bg-rose-700";
+  "h-10 rounded-hh-standard bg-[var(--hh-danger)] text-hh-control text-white hover:opacity-90";
 function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
   const map = {
     unpaid: {
-      bg: "bg-[var(--neo-surface-muted)] ring-1 ring-[var(--neo-border)]",
-      text: "text-[var(--neo-text-secondary)]",
+      bg: "bg-[var(--hh-l3-selected)] ring-1 ring-[var(--hh-border)]",
+      text: "text-[var(--hh-text-secondary)]",
       label: "Outstanding",
     },
     partial: {
-      bg: "bg-amber-500/10 ring-1 ring-amber-500/25",
-      text: "text-amber-200",
+      bg: "bg-[var(--hh-warning-soft-fill)] ring-1 ring-[var(--hh-warning-border)]",
+      text: "text-[var(--hh-warning)]",
       label: "Partial",
     },
     paid: {
-      bg: "bg-emerald-50 ring-1 ring-emerald-200/60 dark:bg-emerald-900/20 dark:ring-emerald-900/30",
-      text: "text-emerald-800 dark:text-emerald-200",
+      bg: "bg-[var(--hh-success-soft-fill)] ring-1 ring-[var(--hh-success-border)]",
+      text: "text-[var(--hh-success)]",
       label: "Paid",
     },
   } as const;
@@ -134,7 +135,7 @@ function PaymentStatusPill({ status }: { status: CommissionPaymentStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium leading-tight",
+        "inline-flex items-center rounded-full px-2 py-0.5 text-hh-status font-medium leading-tight",
         c.bg,
         c.text
       )}
@@ -150,7 +151,7 @@ type ProjectOption = { id: string; name: string };
 function CommissionStatusChip({ row }: { row: Row }) {
   if ((Number(row.commission_amount) || 0) <= 0) {
     return (
-      <span className="inline-flex items-center rounded-full bg-[var(--neo-surface-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--neo-text-secondary)] ring-1 ring-[var(--neo-border)]">
+      <span className="inline-flex items-center rounded-full bg-[var(--hh-l3-selected)] px-2 py-0.5 text-hh-status font-medium text-[var(--hh-text-secondary)] ring-1 ring-[var(--hh-border)]">
         No commission
       </span>
     );
@@ -678,7 +679,7 @@ export function CommissionsClient({
     (printing: boolean) => (
       <Button
         type="button"
-        className="h-8 rounded-lg bg-emerald-600 text-[13px] font-medium text-white hover:bg-emerald-700"
+        className="h-8 rounded-hh-standard bg-[var(--hh-success)] text-hh-table-cell font-medium text-white hover:opacity-90"
         disabled={printing}
         onClick={() => void handlePreviewPrintReceipt()}
       >
@@ -1003,27 +1004,27 @@ export function CommissionsClient({
     return (
       <>
         {paymentsLoadingId === r.id ? (
-          <p className="text-[12px] text-text-secondary">Loading payments…</p>
+          <p className="text-hh-metadata text-text-secondary">Loading payments…</p>
         ) : (paymentsByCommission[r.id] ?? []).length === 0 ? (
-          <p className="text-[12px] text-text-secondary">No payments recorded.</p>
+          <p className="text-hh-metadata text-text-secondary">No payments recorded.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[480px] border-collapse text-[13px] lg:min-w-0">
+            <table className="w-full min-w-[480px] border-collapse text-hh-table-cell lg:min-w-0">
               <thead>
-                <tr className="border-b border-[var(--neo-border)] text-left text-[var(--neo-text-tertiary)]">
-                  <th className="py-2 pr-4 text-[11px] font-semibold uppercase tracking-wide">
+                <tr className="border-b border-[var(--hh-border)] text-left text-[var(--hh-text-tertiary)]">
+                  <th className="py-2 pr-4 text-hh-status font-semibold uppercase tracking-normal">
                     Date
                   </th>
-                  <th className="py-2 pr-4 text-right text-[11px] font-semibold uppercase tracking-wide">
+                  <th className="py-2 pr-4 text-right text-hh-status font-semibold uppercase tracking-normal">
                     Amount
                   </th>
-                  <th className="py-2 pr-4 text-[11px] font-semibold uppercase tracking-wide">
+                  <th className="py-2 pr-4 text-hh-status font-semibold uppercase tracking-normal">
                     Method
                   </th>
-                  <th className="min-w-[8rem] py-2 pr-4 text-[11px] font-semibold uppercase tracking-wide">
+                  <th className="min-w-[8rem] py-2 pr-4 text-hh-status font-semibold uppercase tracking-normal">
                     Note
                   </th>
-                  <th className="min-w-[11rem] py-2 text-right text-[11px] font-semibold uppercase tracking-wide">
+                  <th className="min-w-[11rem] py-2 text-right text-hh-status font-semibold uppercase tracking-normal">
                     {/* actions */}
                   </th>
                 </tr>
@@ -1032,17 +1033,17 @@ export function CommissionsClient({
                 {(paymentsByCommission[r.id] ?? []).map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b border-[var(--neo-border)] last:border-b-0"
+                    className="border-b border-[var(--hh-border)] last:border-b-0"
                     data-testid={`financial-payment-row-${p.id}`}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <td className="py-2.5 pr-4 font-mono tabular-nums text-text-secondary">
+                    <td className="py-2.5 pr-4 hh-fin tabular-nums text-text-secondary">
                       {formatDate(p.payment_date)}
                     </td>
-                    <td className="py-2.5 pr-4 text-right font-mono tabular-nums text-text-primary">
+                    <td className="py-2.5 pr-4 text-right hh-fin tabular-nums text-text-primary">
                       {fmtUsd(p.amount)}
                     </td>
-                    <td className="py-2.5 pr-4 text-[var(--neo-text-secondary)]">
+                    <td className="py-2.5 pr-4 text-[var(--hh-text-secondary)]">
                       {p.payment_method}
                     </td>
                     <td className="max-w-[16rem] truncate py-2.5 pr-4 text-text-secondary">
@@ -1055,7 +1056,7 @@ export function CommissionsClient({
                             <button
                               type="button"
                               disabled={receiptViewLoading?.payment.id === p.id}
-                              className="rounded-md p-1.5 text-emerald-700 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-emerald-50 hover:text-emerald-800 active:scale-[0.95] active:duration-100 disabled:opacity-50 dark:hover:bg-emerald-950/30"
+                              className="rounded-hh-compact p-1.5 text-[var(--hh-success)] transition-colors duration-150 ease-out hover:bg-[var(--hh-success-soft-fill)] hover:text-[var(--hh-success)] disabled:opacity-50"
                               data-testid={`financial-payment-receipt-view-${p.id}`}
                               aria-label="View uploaded receipt"
                               onClick={(e) => openReceiptPreview(r, p, e)}
@@ -1069,7 +1070,7 @@ export function CommissionsClient({
                             <button
                               type="button"
                               disabled={receiptDeletingPaymentId === p.id}
-                              className="rounded-md p-1.5 text-rose-500 transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--neo-surface-muted)] hover:text-rose-400 active:scale-[0.95] active:duration-100 disabled:opacity-50"
+                              className="rounded-hh-compact p-1.5 text-[var(--hh-danger)] transition-colors duration-150 ease-out hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-danger)] disabled:opacity-50"
                               data-testid={`financial-payment-receipt-remove-${p.id}`}
                               aria-label="Remove uploaded receipt"
                               onClick={(e) => void deleteCommissionPaymentReceipt(r, p, e)}
@@ -1084,7 +1085,7 @@ export function CommissionsClient({
                         ) : (
                           <button
                             type="button"
-                            className="rounded-md p-1.5 text-[var(--neo-text-tertiary)] transition-all duration-150 ease-out hover:-translate-y-px hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-secondary)] active:scale-[0.95] active:duration-100"
+                            className="rounded-hh-compact p-1.5 text-[var(--hh-text-tertiary)] transition-colors duration-150 ease-out hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-secondary)]"
                             data-testid={`financial-payment-receipt-upload-${p.id}`}
                             aria-label="Upload receipt"
                             onClick={(e) => openReceiptUploadModal(r, p, e)}
@@ -1094,7 +1095,7 @@ export function CommissionsClient({
                         )}
                         <button
                           type="button"
-                          className="rounded-md p-1.5 text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+                          className="rounded-hh-compact p-1.5 text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-primary)]"
                           data-testid={`financial-payment-view-pdf-${p.id}`}
                           aria-label="View payment receipt PDF"
                           onClick={(e) => {
@@ -1106,7 +1107,7 @@ export function CommissionsClient({
                         </button>
                         <button
                           type="button"
-                          className="rounded-md p-1.5 text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+                          className="rounded-hh-compact p-1.5 text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-primary)]"
                           data-testid={`financial-payment-edit-${p.id}`}
                           aria-label="Edit payment"
                           onClick={(e) => openPaymentRecordEdit(r, p, e)}
@@ -1115,7 +1116,7 @@ export function CommissionsClient({
                         </button>
                         <button
                           type="button"
-                          className="rounded-md p-1.5 text-rose-500 hover:bg-[var(--neo-surface-muted)] hover:text-rose-400"
+                          className="rounded-hh-compact p-1.5 text-[var(--hh-danger)] hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-danger)]"
                           data-testid={`financial-payment-delete-${p.id}`}
                           aria-label="Delete payment"
                           onClick={(e) => openPaymentDelete(r, p, e)}
@@ -1137,7 +1138,7 @@ export function CommissionsClient({
   return (
     <div
       className={cn(
-        "min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[14px] leading-normal",
+        "min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-hh-body leading-normal",
         COMMISSION_PAGE_BG,
         mobileListPagePaddingClass,
         "flex flex-col"
@@ -1150,7 +1151,7 @@ export function CommissionsClient({
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-white/10 pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--neo-canvas-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--neo-canvas-text-secondary)]"
+            className="gap-1 border-b border-[var(--hh-border)] pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--hh-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--hh-text-secondary)]"
             title="Commission Payments"
             subtitle="Commission tracking and payout history by project, person, and role."
             actions={
@@ -1171,7 +1172,7 @@ export function CommissionsClient({
           fab={
             <button
               type="button"
-              className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/[0.08] bg-[var(--neo-graphite-900)] text-white shadow-[0_10px_26px_rgba(0,0,0,0.22)] ring-1 ring-black/10"
+              className="flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational"
               data-testid="financial-commission-add-mobile"
               aria-label="Add Commission"
               onClick={openCreateModal}
@@ -1186,7 +1187,7 @@ export function CommissionsClient({
           activeFilterCount={activeDrawerFilterCount}
           searchSlot={
             <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
               <Input
                 value={filterSearch}
                 onChange={(e) => setFilterSearch(e.target.value)}
@@ -1228,14 +1229,18 @@ export function CommissionsClient({
               ))}
             </select>
           </div>
-          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          <Button
+            type="button"
+            className="w-full rounded-hh-compact"
+            onClick={() => setFiltersOpen(false)}
+          >
             Done
           </Button>
         </MobileFilterSheet>
 
         {loadError ? (
           <p
-            className="border-b border-[var(--neo-border)] pb-3 text-sm text-destructive"
+            className="border-b border-[var(--hh-border)] pb-3 text-sm text-destructive"
             role="alert"
           >
             {loadError}
@@ -1243,7 +1248,7 @@ export function CommissionsClient({
         ) : null}
 
         <section className="border-b border-border/60 pb-4">
-          <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+          <p className="mb-3 text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
             Summary
           </p>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -1252,7 +1257,7 @@ export function CommissionsClient({
                 <FileText className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   Total commission
                 </div>
                 <div
@@ -1268,7 +1273,7 @@ export function CommissionsClient({
                 <Eye className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   Paid commission
                 </div>
                 <div
@@ -1284,7 +1289,7 @@ export function CommissionsClient({
                 <ChevronRight className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   Outstanding
                 </div>
                 <div
@@ -1300,7 +1305,7 @@ export function CommissionsClient({
                 <Paperclip className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   This month paid
                 </div>
                 <div
@@ -1317,7 +1322,7 @@ export function CommissionsClient({
         <div className={cn(commissionsShell, "hidden md:block p-3")}>
           <div className="flex w-full flex-wrap items-end gap-3 md:flex-nowrap">
             <div className="flex min-w-[240px] flex-1 flex-col gap-1">
-              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 Search
               </label>
               <div className="relative w-full">
@@ -1332,7 +1337,7 @@ export function CommissionsClient({
               </div>
             </div>
             <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 Status
               </label>
               <select
@@ -1348,7 +1353,7 @@ export function CommissionsClient({
               </select>
             </div>
             <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 Person
               </label>
               <select
@@ -1370,7 +1375,7 @@ export function CommissionsClient({
 
         {!loadError && rows.length === 0 ? (
           <div className={cn(commissionsShell, "px-4 py-10 text-center")}>
-            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]">
+            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]">
               <FileText className="h-5 w-5" aria-hidden />
             </span>
             <p className="text-sm font-medium text-foreground">No commissions yet</p>
@@ -1398,13 +1403,13 @@ export function CommissionsClient({
 
         <div className="md:hidden">
           {!loadError && filteredRows.length > 0 ? (
-            <div className="divide-y divide-[var(--neo-border)]">
+            <div className="divide-y divide-[var(--hh-border)]">
               {filteredRows.map((r) => (
                 <div key={r.id} className="py-2.5">
                   <div className="flex min-h-[48px] items-start gap-2">
                     <button
                       type="button"
-                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-hh-standard text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-selected)] hover:text-[var(--hh-text-primary)]"
                       data-testid={`financial-commission-expand-${r.id}`}
                       aria-expanded={expandedIds.has(r.id)}
                       aria-label={expandedIds.has(r.id) ? "Collapse payments" : "Expand payments"}
@@ -1428,7 +1433,7 @@ export function CommissionsClient({
                       <p className="truncate text-xs text-text-secondary">
                         {r.person_name || "—"} · {r.role}
                       </p>
-                      <p className="mt-1 text-xs font-mono tabular-nums text-text-secondary">
+                      <p className="mt-1 text-xs hh-fin tabular-nums text-text-secondary">
                         Out {fmtUsd(r.outstanding_amount)} · Paid {fmtUsd(r.paid_amount)}
                       </p>
                     </button>
@@ -1437,7 +1442,7 @@ export function CommissionsClient({
                     </div>
                   </div>
                   <div
-                    className="mt-2 flex flex-wrap justify-end gap-2 border-t border-[var(--neo-border)] pt-2"
+                    className="mt-2 flex flex-wrap justify-end gap-2 border-t border-[var(--hh-border)] pt-2"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <RowActionsMenu
@@ -1459,7 +1464,7 @@ export function CommissionsClient({
                     />
                   </div>
                   {expandedIds.has(r.id) ? (
-                    <div className="mt-2 border-t border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-2 py-3">
+                    <div className="mt-2 border-t border-[var(--hh-border)] bg-[var(--hh-l3-selected)] px-2 py-3">
                       <CommissionPaymentDetailsPanel r={r} />
                     </div>
                   ) : null}
@@ -1471,32 +1476,32 @@ export function CommissionsClient({
 
         <div className={cn(commissionsShell, "hidden md:block")}>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px] border-collapse text-[13px] lg:min-w-0">
+            <table className="w-full min-w-[780px] border-collapse text-hh-table-cell lg:min-w-0">
               <thead>
                 <tr className="border-b border-border/60">
                   <th className="w-10 px-3 py-3" aria-label="Expand" />
-                  <th className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-3 text-left text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                     Project
                   </th>
-                  <th className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-3 text-left text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                     Person
                   </th>
-                  <th className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-3 text-left text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                     Role
                   </th>
-                  <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-3 text-right text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                     Commission
                   </th>
-                  <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-3 text-right text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                     Paid
                   </th>
-                  <th className="px-3 py-3 text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-3 text-right text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                     Outstanding
                   </th>
-                  <th className="px-3 py-3 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="px-3 py-3 text-left text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                     Status
                   </th>
-                  <th className="w-[11rem] px-3 py-3 text-right text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  <th className="w-[11rem] px-3 py-3 text-right text-hh-status font-medium uppercase tracking-normal text-muted-foreground">
                     Actions
                   </th>
                 </tr>
@@ -1504,13 +1509,13 @@ export function CommissionsClient({
               <tbody>
                 {rows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-10 text-center text-[14px] text-text-secondary">
+                    <td colSpan={9} className="py-10 text-center text-hh-body text-text-secondary">
                       No commissions.
                     </td>
                   </tr>
                 ) : filteredRows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-10 text-center text-[14px] text-text-secondary">
+                    <td colSpan={9} className="py-10 text-center text-hh-body text-text-secondary">
                       No rows match your filters.
                     </td>
                   </tr>
@@ -1525,7 +1530,7 @@ export function CommissionsClient({
                         <td className="px-3 py-4 align-middle" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
-                            className="flex h-11 w-11 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40"
+                            className="flex h-11 w-11 items-center justify-center rounded-hh-compact text-muted-foreground hover:bg-muted/40"
                             data-testid={`financial-commission-expand-${r.id}`}
                             aria-expanded={expandedIds.has(r.id)}
                             aria-label={
@@ -1577,8 +1582,8 @@ export function CommissionsClient({
                         </td>
                       </tr>
                       {expandedIds.has(r.id) ? (
-                        <tr className="border-b border-[var(--neo-border)]">
-                          <td colSpan={9} className="bg-[var(--neo-surface-muted)] p-0">
+                        <tr className="border-b border-[var(--hh-border)]">
+                          <td colSpan={9} className="bg-[var(--hh-l3-selected)] p-0">
                             <div className="px-6 py-4 pl-14">
                               <CommissionPaymentDetailsPanel r={r} />
                             </div>
@@ -1605,7 +1610,7 @@ export function CommissionsClient({
               <DialogTitle className="text-xl font-bold text-text-primary">
                 Add Commission
               </DialogTitle>
-              <DialogDescription className="text-[13px] leading-snug text-text-secondary">
+              <DialogDescription className="text-hh-table-cell leading-snug text-text-secondary">
                 Select the project first. Commissions are always created against a project.
               </DialogDescription>
             </DialogHeader>
@@ -1687,7 +1692,7 @@ export function CommissionsClient({
                 />
               </div>
               {createError ? (
-                <p className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                <p className="rounded-hh-standard border border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] px-3 py-2 text-sm text-[var(--hh-danger)]">
                   {createError}
                 </p>
               ) : null}
@@ -1730,7 +1735,7 @@ export function CommissionsClient({
               </DialogTitle>
             </DialogHeader>
             {editRow && (
-              <p className="text-[13px] leading-snug text-text-secondary">
+              <p className="text-hh-table-cell leading-snug text-text-secondary">
                 {editRow.project_name || "Project"} · Paid {fmtUsd(editRow.paid_amount)}
               </p>
             )}
@@ -1818,7 +1823,7 @@ export function CommissionsClient({
               </DialogTitle>
             </DialogHeader>
             {paymentEditParent && paymentEditRecord && (
-              <p className="text-[13px] leading-snug text-text-secondary">
+              <p className="text-hh-table-cell leading-snug text-text-secondary">
                 {paymentEditParent.person_name} · {paymentEditParent.project_name}
               </p>
             )}
@@ -1915,7 +1920,7 @@ export function CommissionsClient({
               </DialogTitle>
             </DialogHeader>
             {selectedCommission && (
-              <p className="text-[13px] leading-snug text-text-secondary">
+              <p className="text-hh-table-cell leading-snug text-text-secondary">
                 {selectedCommission.person_name} · {selectedCommission.project_name} · Outstanding:
                 {fmtUsd(selectedCommission.outstanding_amount)}
               </p>
@@ -2009,7 +2014,7 @@ export function CommissionsClient({
                 Delete payment
               </DialogTitle>
             </DialogHeader>
-            <p className="text-[13px] leading-relaxed text-text-secondary">
+            <p className="text-hh-table-cell leading-relaxed text-text-secondary">
               Remove this payment record? This cannot be undone.
             </p>
             <DialogFooter className={COMMISSION_DIALOG_FOOTER}>
@@ -2046,7 +2051,7 @@ export function CommissionsClient({
                 Delete commission
               </DialogTitle>
             </DialogHeader>
-            <p className="text-[13px] leading-relaxed text-text-secondary">
+            <p className="text-hh-table-cell leading-relaxed text-text-secondary">
               Remove commission for{" "}
               <span className="font-medium text-text-primary">
                 {commissionDeleteTarget?.person_name?.trim() || "this person"}
@@ -2088,7 +2093,7 @@ export function CommissionsClient({
                   <DialogTitle className="text-lg font-semibold text-text-primary">
                     Upload Receipt
                   </DialogTitle>
-                  <DialogDescription className="text-[13px] text-text-secondary">
+                  <DialogDescription className="text-hh-table-cell text-text-secondary">
                     {formatDate(receiptUploadModal.payment.payment_date)} ·{" "}
                     {fmtUsd(receiptUploadModal.payment.amount)}
                   </DialogDescription>
@@ -2106,10 +2111,10 @@ export function CommissionsClient({
                   role="button"
                   tabIndex={0}
                   className={cn(
-                    "mt-4 flex cursor-pointer flex-col items-center justify-center rounded-[10px] border-2 border-dashed px-6 py-10 transition-colors outline-none",
+                    "mt-4 flex cursor-pointer flex-col items-center justify-center rounded-hh-standard border-2 border-dashed px-6 py-10 transition-colors outline-none",
                     receiptUploadDragging
-                      ? "border-emerald-500/60 bg-emerald-500/10"
-                      : "border-[var(--neo-border-strong)] bg-[var(--neo-surface-muted)]",
+                      ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)]"
+                      : "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)]",
                     receiptUploadSubmitting && "pointer-events-none opacity-70"
                   )}
                   onClick={() => !receiptUploadSubmitting && receiptUploadInputRef.current?.click()}
@@ -2144,27 +2149,27 @@ export function CommissionsClient({
                     if (f) void submitReceiptFile(f);
                   }}
                 >
-                  <Upload className="mb-3 h-8 w-8 text-[var(--neo-text-tertiary)]" aria-hidden />
-                  <p className="text-center text-[14px] font-medium text-[var(--neo-text-primary)]">
+                  <Upload className="mb-3 h-8 w-8 text-[var(--hh-text-tertiary)]" aria-hidden />
+                  <p className="text-center text-hh-body font-medium text-[var(--hh-text-primary)]">
                     Drag &amp; drop or click to upload
                   </p>
-                  <p className="mt-1 text-center text-[12px] text-[var(--neo-text-tertiary)]">
+                  <p className="mt-1 text-center text-hh-metadata text-[var(--hh-text-tertiary)]">
                     JPG, PNG, or PDF
                   </p>
                 </div>
                 {receiptUploadSubmitting ? (
                   <div className="mt-4 space-y-2">
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--neo-surface-muted)]">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--hh-l3-selected)]">
                       <div
-                        className="h-full rounded-full bg-emerald-500 transition-[width] duration-150"
+                        className="h-full rounded-full bg-[var(--hh-success-soft-fill)] transition-[width] duration-150"
                         style={{ width: `${Math.max(0, Math.min(100, receiptUploadProgress))}%` }}
                       />
                     </div>
-                    <p className="text-center text-[12px] text-text-secondary">Uploading…</p>
+                    <p className="text-center text-hh-metadata text-text-secondary">Uploading…</p>
                   </div>
                 ) : null}
                 {receiptUploadError ? (
-                  <p className="mt-3 text-[13px] text-red-600" role="alert">
+                  <p className="mt-3 text-hh-table-cell text-[var(--hh-danger)]" role="alert">
                     {receiptUploadError}
                   </p>
                 ) : null}
@@ -2242,7 +2247,7 @@ export function CommissionsClient({
                   key={commissionPdfOpenId}
                   title="Commission summary PDF"
                   src={`/commission/${commissionPdfOpenId}/pdf`}
-                  className="h-[min(72vh_640px)] w-full rounded-sm border border-border/60 bg-white"
+                  className="h-[min(72vh_640px)] w-full rounded-hh-compact border border-border/60 bg-white"
                 />
               ) : null}
             </div>
@@ -2307,7 +2312,7 @@ export function CommissionsClient({
                   key={paymentReceiptPdfOpenId}
                   title="Payment Receipt PDF"
                   src={`/commission-payment/${paymentReceiptPdfOpenId}/pdf`}
-                  className="h-[min(72vh_640px)] w-full rounded-sm border border-border/60 bg-white"
+                  className="h-[min(72vh_640px)] w-full rounded-hh-compact border border-border/60 bg-white"
                 />
               ) : null}
             </div>

@@ -21,13 +21,13 @@ import { formatCurrency, formatDate, formatInteger } from "@/lib/formatters";
 import { TYPO } from "@/lib/typography";
 
 const depositsShell =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)] md:rounded-2xl";
+  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational md:rounded-hh-task";
 
 const kpiTile =
-  "rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-primary)] shadow-[var(--neo-shadow-panel)]";
+  "rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] shadow-operational";
 
 const kpiIcon =
-  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]";
+  "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]";
 
 export default function DepositsPage() {
   return (
@@ -132,7 +132,7 @@ function DepositsPageInner() {
   return (
     <div
       className={cn(
-        "dark neo-page-on-graphite min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--neo-canvas-text-secondary)]",
+        "min-w-0 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(0.35rem,env(safe-area-inset-top,0px))] text-[var(--hh-text-secondary)]",
         "flex flex-col"
       )}
     >
@@ -144,7 +144,7 @@ function DepositsPageInner() {
       >
         <div className="hidden md:block">
           <PageHeader
-            className="gap-1 border-b border-white/10 pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--neo-canvas-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--neo-canvas-text-secondary)]"
+            className="gap-1 border-b border-[var(--hh-border)] pb-2 lg:items-baseline lg:gap-x-4 [&_h1]:text-[var(--hh-text-primary)] [&_p]:mt-0 [&_p]:text-[var(--hh-text-secondary)]"
             title="Deposits"
             subtitle="Cash In and deposit records created automatically when customer payments are received."
           />
@@ -221,14 +221,18 @@ function DepositsPageInner() {
               />
             </div>
           </div>
-          <Button type="button" className="w-full rounded-sm" onClick={() => setFiltersOpen(false)}>
+          <Button
+            type="button"
+            className="w-full rounded-hh-compact"
+            onClick={() => setFiltersOpen(false)}
+          >
             Done
           </Button>
         </MobileFilterSheet>
 
         {/* KPI summary */}
         <section className="border-b border-border/60 pb-4">
-          <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+          <p className="mb-3 text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
             Summary
           </p>
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
@@ -237,7 +241,7 @@ function DepositsPageInner() {
                 <Wallet className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   Total deposited
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
@@ -250,7 +254,7 @@ function DepositsPageInner() {
                 <Banknote className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   Deposit count
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
@@ -263,7 +267,7 @@ function DepositsPageInner() {
                 <CalendarDays className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   This month
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
@@ -276,7 +280,7 @@ function DepositsPageInner() {
                 <Link2 className="h-4 w-4" aria-hidden />
               </span>
               <div className="min-w-0">
-                <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <div className="text-hh-table-header font-medium uppercase tracking-normal text-muted-foreground">
                   Linked payments
                 </div>
                 <div className="mt-0.5 text-xl font-medium tabular-nums text-foreground">
@@ -291,7 +295,7 @@ function DepositsPageInner() {
         <div className={cn(depositsShell, "p-3")}>
           <div className="flex w-full flex-wrap items-end gap-3 md:flex-nowrap">
             <div className="flex min-w-[240px] flex-1 flex-col gap-1">
-              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 Search
               </label>
               <div className="relative w-full">
@@ -306,10 +310,11 @@ function DepositsPageInner() {
               </div>
             </div>
             <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 Project
               </label>
               <Select
+                aria-label="Filter deposits by project"
                 value={projectFilter}
                 onChange={(e) => setProjectFilter(e.target.value)}
                 className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[220px]"
@@ -323,10 +328,11 @@ function DepositsPageInner() {
               </Select>
             </div>
             <div className="flex min-w-[180px] flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 Account
               </label>
               <Select
+                aria-label="Filter deposits by account"
                 value={accountFilter}
                 onChange={(e) => setAccountFilter(e.target.value)}
                 className="h-10 min-h-[44px] min-w-0 sm:min-h-10 sm:w-[220px]"
@@ -340,12 +346,13 @@ function DepositsPageInner() {
               </Select>
             </div>
           </div>
-          <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-[var(--neo-border)] pt-3">
+          <div className="mt-3 flex flex-wrap items-end gap-3 border-t border-[var(--hh-border)] pt-3">
             <div className="flex flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 Date from
               </label>
               <Input
+                aria-label="Deposits date from"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
@@ -353,10 +360,11 @@ function DepositsPageInner() {
               />
             </div>
             <div className="flex flex-1 flex-col gap-1 sm:flex-initial">
-              <label className="text-[10px] font-medium uppercase tracking-[0.2em] text-text-secondary/75 dark:text-muted-foreground">
+              <label className="text-hh-table-header font-medium uppercase tracking-normal text-text-secondary/75 dark:text-muted-foreground">
                 Date to
               </label>
               <Input
+                aria-label="Deposits date to"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
@@ -368,7 +376,7 @@ function DepositsPageInner() {
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-10 min-h-[44px] rounded-sm shadow-none sm:h-9 sm:min-h-0"
+                className="h-10 min-h-[44px] rounded-hh-compact shadow-none sm:h-9 sm:min-h-0"
                 onClick={() => void load()}
               >
                 Refresh
@@ -383,7 +391,7 @@ function DepositsPageInner() {
           </div>
         ) : deposits.length === 0 ? (
           <div className={cn(depositsShell, "px-4 py-10 text-center")}>
-            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] text-[var(--neo-text-secondary)]">
+            <span className="mx-auto mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]">
               <Wallet className="h-5 w-5" aria-hidden />
             </span>
             <p className="text-sm font-medium text-foreground">No deposits yet</p>
@@ -400,7 +408,7 @@ function DepositsPageInner() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-9 rounded-sm shadow-none"
+                className="h-9 rounded-hh-compact shadow-none"
                 onClick={() => {
                   setSearchQuery("");
                   setProjectFilter("");
@@ -415,7 +423,7 @@ function DepositsPageInner() {
           />
         ) : (
           <section className={cn(depositsShell, "overflow-hidden p-0")}>
-            <div className="hidden md:grid grid-cols-[minmax(120px,0.7fr)_minmax(180px,1.1fr)_minmax(180px,1fr)_minmax(120px,0.75fr)_minmax(160px,0.9fr)_minmax(120px,0.7fr)_minmax(110px,0.6fr)_44px] gap-3 border-b border-border/60 px-3 py-2.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/70">
+            <div className="hidden md:grid grid-cols-[minmax(120px,0.7fr)_minmax(180px,1.1fr)_minmax(180px,1fr)_minmax(120px,0.75fr)_minmax(160px,0.9fr)_minmax(120px,0.7fr)_minmax(110px,0.6fr)_44px] gap-3 border-b border-border/60 px-3 py-2.5 text-hh-status font-medium uppercase tracking-normal text-muted-foreground/70">
               <div>Date</div>
               <div>Customer</div>
               <div>Project</div>
@@ -432,7 +440,7 @@ function DepositsPageInner() {
                   key={row.id}
                   className="group px-3 py-3 transition-colors hover:bg-muted/25 md:grid md:grid-cols-[minmax(120px,0.7fr)_minmax(180px,1.1fr)_minmax(180px,1fr)_minmax(120px,0.75fr)_minmax(160px,0.9fr)_minmax(120px,0.7fr)_minmax(110px,0.6fr)_44px] md:items-center md:gap-3"
                 >
-                  <div className="font-mono text-sm tabular-nums text-muted-foreground md:text-sm">
+                  <div className="hh-fin text-sm tabular-nums text-muted-foreground md:text-sm">
                     {formatDate(row.date)}
                   </div>
                   <div className="min-w-0">
@@ -448,7 +456,7 @@ function DepositsPageInner() {
                       {row.project_name ?? "—"}
                     </div>
                   </div>
-                  <div className="hidden md:block font-mono text-sm tabular-nums text-muted-foreground">
+                  <div className="hidden md:block hh-fin text-sm tabular-nums text-muted-foreground">
                     {row.payment_id ? row.payment_id.slice(0, 8) : "—"}
                   </div>
                   <div className="hidden md:block min-w-0 truncate text-sm text-muted-foreground">
@@ -458,14 +466,12 @@ function DepositsPageInner() {
                     <div className="md:hidden text-xs text-muted-foreground">
                       {(row.payment_method ?? "—") + " · " + (row.account ?? "—")}
                     </div>
-                    <div
-                      className={cn(TYPO.amount, "text-sm text-emerald-700 dark:text-emerald-400")}
-                    >
+                    <div className={cn(TYPO.amount, "text-sm text-[var(--hh-success)]")}>
                       {formatCurrency(row.amount)}
                     </div>
                   </div>
                   <div>
-                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200/60 dark:bg-emerald-900/20 dark:text-emerald-200 dark:ring-emerald-900/30">
+                    <span className="inline-flex items-center rounded-full bg-[var(--hh-success-soft-fill)] px-2 py-0.5 text-hh-status font-medium text-[var(--hh-success)] ring-1 ring-[var(--hh-success-border)]">
                       Recorded
                     </span>
                   </div>

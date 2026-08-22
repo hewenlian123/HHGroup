@@ -293,8 +293,8 @@ export default function SettingsListsPage() {
             className={cn(
               "min-h-9 rounded-md border px-3 py-1.5 text-sm font-medium capitalize transition-colors",
               tab === t
-                ? "border-[var(--neo-gold)] bg-[rgb(184_137_45_/_0.16)] text-[var(--neo-text-primary)]"
-                : "border-[var(--neo-border)] bg-[var(--neo-surface-raised)] text-[var(--neo-text-secondary)] hover:bg-[var(--neo-surface-muted)] hover:text-[var(--neo-text-primary)]"
+                ? "border-[var(--hh-border-strong)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
+                : "border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-secondary)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]"
             )}
           >
             {t === "categories"
@@ -375,7 +375,7 @@ export default function SettingsListsPage() {
                           onClick={handleRenameSave}
                           aria-label="Save"
                         >
-                          <Check className="h-4 w-4 text-[var(--neo-emerald)]" />
+                          <Check className="h-4 w-4 text-[var(--hh-success)]" />
                         </Button>
                         <Button
                           size="icon"
@@ -394,7 +394,7 @@ export default function SettingsListsPage() {
                       <span className="font-medium">{row.name}</span>
                     )}
                   </td>
-                  <td className="py-2.5 px-4 text-right tabular-nums text-[var(--neo-text-secondary)]">
+                  <td className="py-2.5 px-4 text-right tabular-nums text-[var(--hh-text-secondary)]">
                     {row.used}
                   </td>
                   <td className="px-4 py-2.5">
@@ -454,7 +454,7 @@ export default function SettingsListsPage() {
         onOpenChange={(open) => !open && state.setDeleteBlocked(null)}
       >
         <NeoModal title="Cannot delete" className="max-w-sm">
-          <p className="text-sm text-[var(--neo-text-secondary)]">
+          <p className="text-sm text-[var(--hh-text-secondary)]">
             {state.deleteBlocked
               ? `"${state.deleteBlocked.name}" is used by ${state.deleteBlocked.count} record(s). Disable it instead to hide from dropdowns while keeping existing data.`
               : ""}

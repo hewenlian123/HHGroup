@@ -76,9 +76,9 @@ function EmptyReportState({
 }) {
   return (
     <div data-testid={testId} className={cn(OS.emptyState, "min-w-0")}>
-      <Layers className="mx-auto h-8 w-8 text-[var(--neo-text-tertiary)]" aria-hidden />
-      <p className="mt-3 text-sm font-semibold text-[var(--neo-text-primary)]">{title}</p>
-      <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-[var(--neo-text-secondary)]">
+      <Layers className="mx-auto h-8 w-8 text-[var(--hh-text-tertiary)]" aria-hidden />
+      <p className="mt-3 text-sm font-semibold text-[var(--hh-text-primary)]">{title}</p>
+      <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-[var(--hh-text-secondary)]">
         {body}
       </p>
     </div>
@@ -96,7 +96,12 @@ function MonthlyReport({ data }: { data: ReportsData }) {
           <input type="hidden" name="tab" value="monthly" />
           <label className="flex min-w-0 flex-col gap-1">
             <span className={TYPO.sectionLabel}>Period</span>
-            <NativeSelect name="period" defaultValue={data.range.period} aria-label="Report period">
+            <NativeSelect
+              name="period"
+              defaultValue={data.range.period}
+              aria-label="Report period"
+              className="min-h-11 md:min-h-10"
+            >
               <option value="this-month">This Month</option>
               <option value="last-month">Last Month</option>
               <option value="this-quarter">This Quarter</option>
@@ -108,7 +113,7 @@ function MonthlyReport({ data }: { data: ReportsData }) {
             <span className={TYPO.sectionLabel}>From</span>
             <input
               aria-label="Custom from date"
-              className="neo-input min-h-10 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)]"
+              className="neo-input min-h-11 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] md:min-h-10"
               type="date"
               name="from"
               defaultValue={data.range.start}
@@ -118,7 +123,7 @@ function MonthlyReport({ data }: { data: ReportsData }) {
             <span className={TYPO.sectionLabel}>To</span>
             <input
               aria-label="Custom to date"
-              className="neo-input min-h-10 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] px-3 text-sm text-[var(--neo-text-primary)]"
+              className="neo-input min-h-11 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-3 text-sm text-[var(--hh-text-primary)] md:min-h-10"
               type="date"
               name="to"
               defaultValue={data.range.end}
@@ -159,10 +164,10 @@ function ProjectMobileCard({ row }: { row: ProjectProfitabilityRow }) {
     <NeoMobileCard className="p-4">
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="break-words text-sm font-semibold text-[var(--neo-text-primary)]">
+          <p className="break-words text-sm font-semibold text-[var(--hh-text-primary)]">
             {row.project}
           </p>
-          <p className="mt-1 truncate text-xs text-[var(--neo-text-secondary)]">{row.customer}</p>
+          <p className="mt-1 truncate text-xs text-[var(--hh-text-secondary)]">{row.customer}</p>
         </div>
         <NeoStatus label={row.status} variant="default" />
       </div>
@@ -180,14 +185,14 @@ function ProjectMobileCard({ row }: { row: ProjectProfitabilityRow }) {
         ].map(([label, value]) => (
           <div key={label} className="min-w-0">
             <p className={TYPO.sectionLabel}>{label}</p>
-            <p className="mt-1 truncate text-right tabular-nums text-[var(--neo-text-primary)]">
+            <p className="mt-1 truncate text-right tabular-nums text-[var(--hh-text-primary)]">
               {formatCurrency(Number(value))}
             </p>
           </div>
         ))}
         <div className="min-w-0">
           <p className={TYPO.sectionLabel}>Margin %</p>
-          <p className="mt-1 text-right tabular-nums text-[var(--neo-text-primary)]">
+          <p className="mt-1 text-right tabular-nums text-[var(--hh-text-primary)]">
             {formatPercent(row.marginPct, { maximumFractionDigits: 1 })}
           </p>
         </div>
@@ -209,7 +214,7 @@ function ProjectProfitability({ rows }: { rows: ProjectProfitabilityRow[] }) {
           <div className="hidden min-w-0 md:block">
             <NeoTable scrollClassName="max-h-[620px]" tableClassName="min-w-[1320px]">
               <thead>
-                <tr className="border-b border-[var(--neo-border)] text-left">
+                <tr className="border-b border-[var(--hh-border)] text-left">
                   {[
                     "Project",
                     "Customer",
@@ -240,13 +245,13 @@ function ProjectProfitability({ rows }: { rows: ProjectProfitabilityRow[] }) {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--neo-border)]">
+              <tbody className="divide-y divide-[var(--hh-border)]">
                 {rows.map((row) => (
-                  <tr key={row.projectId} className="hover:bg-[var(--neo-surface-muted)]">
-                    <td className="max-w-[220px] px-3 py-3 text-sm font-semibold text-[var(--neo-text-primary)]">
+                  <tr key={row.projectId} className="hover:bg-[var(--hh-l3-hover)]">
+                    <td className="max-w-[220px] px-3 py-3 text-sm font-semibold text-[var(--hh-text-primary)]">
                       <span className="line-clamp-2">{row.project}</span>
                     </td>
-                    <td className="max-w-[180px] px-3 py-3 text-sm text-[var(--neo-text-secondary)]">
+                    <td className="max-w-[180px] px-3 py-3 text-sm text-[var(--hh-text-secondary)]">
                       <span className="line-clamp-2">{row.customer}</span>
                     </td>
                     {[
@@ -312,7 +317,7 @@ function AgingBucketGrid({
           className={cn(OS.card, "min-w-0 px-3 py-3")}
         >
           <p className={TYPO.kpiLabel}>{bucket.bucket}</p>
-          <p className="mt-2 truncate text-lg font-semibold tabular-nums text-[var(--neo-text-primary)]">
+          <p className="mt-2 truncate text-lg font-semibold tabular-nums text-[var(--hh-text-primary)]">
             {formatCurrency(bucket.amount)}
           </p>
           <p className={cn(TYPO.kpiSubtitle, "mt-2")}>
@@ -329,10 +334,10 @@ function AgingMobileCard({ row }: { row: AgingRow }) {
     <NeoMobileCard className="p-4">
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="break-words text-sm font-semibold text-[var(--neo-text-primary)]">
+          <p className="break-words text-sm font-semibold text-[var(--hh-text-primary)]">
             {row.label}
           </p>
-          <p className="mt-1 truncate text-xs text-[var(--neo-text-secondary)]">
+          <p className="mt-1 truncate text-xs text-[var(--hh-text-secondary)]">
             {row.counterparty} · {row.project}
           </p>
         </div>
@@ -341,9 +346,9 @@ function AgingMobileCard({ row }: { row: AgingRow }) {
       <div className="mt-3 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <p className={TYPO.sectionLabel}>Due</p>
-          <p className="mt-1 text-xs text-[var(--neo-text-secondary)]">{formatDate(row.dueDate)}</p>
+          <p className="mt-1 text-xs text-[var(--hh-text-secondary)]">{formatDate(row.dueDate)}</p>
         </div>
-        <p className="text-right text-sm font-semibold tabular-nums text-[var(--neo-text-primary)]">
+        <p className="text-right text-sm font-semibold tabular-nums text-[var(--hh-text-primary)]">
           {formatCurrency(row.amount)}
         </p>
       </div>
@@ -357,7 +362,7 @@ function AgingTable({ rows }: { rows: AgingRow[] }) {
       <div className="hidden min-w-0 md:block">
         <NeoTable tableClassName="min-w-[980px]">
           <thead>
-            <tr className="border-b border-[var(--neo-border)]">
+            <tr className="border-b border-[var(--hh-border)]">
               {["Item", "Counterparty", "Project", "Due Date", "Bucket", "Source", "Balance"].map(
                 (label) => (
                   <th
@@ -374,19 +379,19 @@ function AgingTable({ rows }: { rows: AgingRow[] }) {
               )}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[var(--neo-border)]">
+          <tbody className="divide-y divide-[var(--hh-border)]">
             {rows.map((row) => (
-              <tr key={`${row.source}-${row.id}`} className="hover:bg-[var(--neo-surface-muted)]">
-                <td className="max-w-[220px] px-3 py-3 text-sm font-semibold text-[var(--neo-text-primary)]">
+              <tr key={`${row.source}-${row.id}`} className="hover:bg-[var(--hh-l3-hover)]">
+                <td className="max-w-[220px] px-3 py-3 text-sm font-semibold text-[var(--hh-text-primary)]">
                   <span className="line-clamp-2">{row.label}</span>
                 </td>
-                <td className="px-3 py-3 text-sm text-[var(--neo-text-secondary)]">
+                <td className="px-3 py-3 text-sm text-[var(--hh-text-secondary)]">
                   {row.counterparty}
                 </td>
-                <td className="max-w-[220px] px-3 py-3 text-sm text-[var(--neo-text-secondary)]">
+                <td className="max-w-[220px] px-3 py-3 text-sm text-[var(--hh-text-secondary)]">
                   <span className="line-clamp-2">{row.project}</span>
                 </td>
-                <td className="px-3 py-3 text-sm tabular-nums text-[var(--neo-text-secondary)]">
+                <td className="px-3 py-3 text-sm tabular-nums text-[var(--hh-text-secondary)]">
                   {formatDate(row.dueDate)}
                 </td>
                 <td className="px-3 py-3">
@@ -395,7 +400,7 @@ function AgingTable({ rows }: { rows: AgingRow[] }) {
                     variant={row.bucket === "Current" ? "success" : "warning"}
                   />
                 </td>
-                <td className="px-3 py-3 text-sm text-[var(--neo-text-secondary)]">{row.source}</td>
+                <td className="px-3 py-3 text-sm text-[var(--hh-text-secondary)]">{row.source}</td>
                 <td className="px-3 py-3 text-right text-sm tabular-nums">
                   <NeoAmount>{formatCurrency(row.amount)}</NeoAmount>
                 </td>
@@ -450,14 +455,13 @@ export function ReportsClient({ data, activeTab }: { data: ReportsData; activeTa
 
   return (
     <PageLayout
-      className="dark"
       header={
         <PageHeader
           title="Reports"
           description={`Operating analysis for ${formatDateRange(data.range.start, data.range.end)}.`}
           actions={
-            <div className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--neo-border)] bg-[var(--neo-surface-muted)] px-3 text-sm text-[var(--neo-text-secondary)]">
-              <BarChart3 className="h-4 w-4 text-[var(--neo-gold)]" aria-hidden />
+            <div className="inline-flex min-h-10 items-center gap-2 rounded-md border border-[var(--hh-border)] bg-[var(--hh-l3-hover)] px-3 text-sm text-[var(--hh-text-secondary)]">
+              <BarChart3 className="h-4 w-4 text-[var(--hh-text-secondary)]" aria-hidden />
               <span className="truncate">{data.range.label}</span>
             </div>
           }
@@ -465,7 +469,7 @@ export function ReportsClient({ data, activeTab }: { data: ReportsData; activeTa
       }
     >
       {data.warnings.length > 0 ? (
-        <div className="rounded-lg border border-[rgb(184_147_90_/_0.24)] bg-[rgb(184_147_90_/_0.10)] px-4 py-3 text-sm text-[var(--neo-text-secondary)]">
+        <div className="rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-4 py-3 text-hh-body text-[var(--hh-information)]">
           Some report sources were unavailable. Values shown use the sources that loaded.
         </div>
       ) : null}
@@ -488,7 +492,7 @@ export function ReportsClient({ data, activeTab }: { data: ReportsData; activeTa
             description="Revenue, collections, cost, AP, profit, and previous-period movement."
             bodyClassName="p-4"
             action={
-              <ClipboardList className="h-4 w-4 text-[var(--neo-text-tertiary)]" aria-hidden />
+              <ClipboardList className="h-4 w-4 text-[var(--hh-text-tertiary)]" aria-hidden />
             }
           >
             <MonthlyReport data={data} />

@@ -145,7 +145,7 @@ export function BillCategoryCombobox({
               aria-selected={opt === value}
               className={cn(
                 billsCategoryOptionClass,
-                opt === value && "bg-[rgb(184_147_90_/_0.10)] text-[var(--neo-gold-soft)]"
+                opt === value && "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)]"
               )}
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -169,7 +169,7 @@ export function BillCategoryCombobox({
             </li>
           ) : null}
           {filtered.length === 0 && !showAddOption ? (
-            <li className="px-3 py-2.5 text-[13px] text-[var(--neo-text-secondary)]">
+            <li className="px-3 py-2.5 text-hh-table-cell text-[var(--hh-text-secondary)]">
               No matching categories
             </li>
           ) : null}

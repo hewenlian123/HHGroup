@@ -62,13 +62,13 @@ export default async function NewMaterialSelectionPage() {
   return (
     <PageLayout
       divider={false}
-      className="dark md:max-w-4xl"
+      className="md:max-w-4xl"
       header={
         <PageHeader
           title="New Material Selection"
           description="Create a customer/project approval sheet."
           actions={
-            <Button variant="outline" size="sm" className="rounded-sm" asChild>
+            <Button variant="outline" size="sm" className="rounded-hh-compact" asChild>
               <Link href="/materials">
                 <ArrowLeft className="mr-1.5 h-4 w-4" aria-hidden />
                 Back
@@ -125,7 +125,12 @@ export default async function NewMaterialSelectionPage() {
 
           <div className="space-y-1.5">
             <NeoFieldLabel htmlFor="material-selection-status">Status</NeoFieldLabel>
-            <NeoSelect id="material-selection-status" name="status" defaultValue="draft">
+            <NeoSelect
+              id="material-selection-status"
+              name="status"
+              defaultValue="draft"
+              className="min-h-11 md:min-h-10"
+            >
               <option value="draft">Draft</option>
               <option value="shared">Shared</option>
               <option value="approved">Approved</option>
@@ -143,10 +148,10 @@ export default async function NewMaterialSelectionPage() {
           </div>
 
           <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
-            <Button variant="outline" className="rounded-sm" asChild>
+            <Button variant="outline" className="rounded-hh-compact" asChild>
               <Link href="/materials">Cancel</Link>
             </Button>
-            <Button type="submit" className="rounded-sm">
+            <Button type="submit" className="rounded-hh-compact">
               Create Selection
             </Button>
           </div>

@@ -67,7 +67,7 @@ export function SubcontractorsListClient({
     <>
       {dataLoadWarning ? (
         <p
-          className="rounded-lg border border-[rgb(184_137_45_/_0.24)] bg-[rgb(184_137_45_/_0.10)] px-3 py-2 text-sm text-[var(--neo-text-secondary)]"
+          className="rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-3 py-2 text-hh-body text-[var(--hh-information)]"
           role="status"
         >
           {dataLoadWarning}
@@ -84,7 +84,7 @@ export function SubcontractorsListClient({
         activeFilterCount={activeFilterCount}
         searchSlot={
           <div className="relative w-full">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
             <NeoInput
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -106,7 +106,7 @@ export function SubcontractorsListClient({
 
       <NeoToolbar className="hidden justify-between md:flex">
         <div className="relative w-full max-w-md">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--neo-text-tertiary)]" />
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--hh-text-tertiary)]" />
           <NeoInput
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -159,7 +159,7 @@ export function SubcontractorsListClient({
                     href={`/subcontractors/${r.id}`}
                     className="flex min-h-[72px] flex-col justify-center gap-1 p-3"
                   >
-                    <p className="font-medium text-[var(--neo-text-primary)]">{r.name}</p>
+                    <p className="font-medium text-[var(--hh-text-primary)]">{r.name}</p>
                     <div>
                       {r.insurance_expiration_date ? (
                         r.insurance_alert ? (
@@ -168,25 +168,23 @@ export function SubcontractorsListClient({
                             variant="warning"
                           />
                         ) : (
-                          <span className="text-xs text-[var(--neo-text-secondary)]">
+                          <span className="text-xs text-[var(--hh-text-secondary)]">
                             {r.insurance_expiration_date}
                           </span>
                         )
                       ) : (
-                        <span className="text-xs text-[var(--neo-text-secondary)]">—</span>
+                        <span className="text-xs text-[var(--hh-text-secondary)]">—</span>
                       )}
                     </div>
-                    <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums text-[var(--neo-text-secondary)]">
+                    <dl className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs tabular-nums text-[var(--hh-text-secondary)]">
                       <div>
-                        <dt className="inline text-[10px] uppercase tracking-normal">Contracts</dt>{" "}
+                        <dt className="inline text-hh-table-header uppercase">Contracts</dt>{" "}
                         <dd className="inline">
                           <NeoAmount>${fmtUsd(r.contractAmount)}</NeoAmount>
                         </dd>
                       </div>
                       <div>
-                        <dt className="inline text-[10px] uppercase tracking-normal">
-                          AP Outstanding
-                        </dt>{" "}
+                        <dt className="inline text-hh-table-header uppercase">AP Outstanding</dt>{" "}
                         <dd className="inline">
                           <NeoAmount tone={r.apOutstanding > 0 ? "expense" : "neutral"}>
                             ${fmtUsd(r.apOutstanding)}
@@ -218,7 +216,7 @@ export function SubcontractorsListClient({
                   <td className="py-2 px-3">
                     <Link
                       href={`/subcontractors/${r.id}`}
-                      className="font-medium text-[var(--neo-text-primary)] underline-offset-2 hover:underline"
+                      className="font-medium text-[var(--hh-text-primary)] underline-offset-2 hover:underline"
                     >
                       {r.name}
                     </Link>
@@ -231,12 +229,12 @@ export function SubcontractorsListClient({
                           variant="warning"
                         />
                       ) : (
-                        <span className="text-xs text-[var(--neo-text-secondary)]">
+                        <span className="text-xs text-[var(--hh-text-secondary)]">
                           {r.insurance_expiration_date}
                         </span>
                       )
                     ) : (
-                      <span className="text-xs text-[var(--neo-text-secondary)]">—</span>
+                      <span className="text-xs text-[var(--hh-text-secondary)]">—</span>
                     )}
                   </td>
                   <td className={amountCellClass}>

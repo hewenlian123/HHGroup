@@ -355,12 +355,7 @@ function healthStatusLabel(status: HealthCheckStatus, options?: { executive?: bo
   return options?.executive ? "Critical" : "Failed";
 }
 
-type StatusPillVariant = "default" | "calm" | "hero";
-
-function statusToneClasses(
-  status: HealthCheckStatus,
-  variant: StatusPillVariant = "default"
-): {
+function statusToneClasses(status: HealthCheckStatus): {
   pill: string;
   dot: string;
   text: string;
@@ -369,37 +364,28 @@ function statusToneClasses(
 } {
   if (status === "fail") {
     return {
-      pill:
-        variant === "calm"
-          ? "border-red-400/28 bg-red-500/[0.08] text-red-200"
-          : "border-red-400/38 bg-red-500/[0.10] text-red-200",
-      dot: "bg-red-300",
-      text: "text-red-200",
-      border: "border-red-400/28",
-      glow: "shadow-[0_16px_34px_rgba(0,0,0,0.20)]",
+      pill: "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]",
+      dot: "bg-[var(--hh-danger)]",
+      text: "text-[var(--hh-danger)]",
+      border: "border-[var(--hh-danger-border)]",
+      glow: "shadow-operational",
     };
   }
   if (status === "warning") {
     return {
-      pill:
-        variant === "calm"
-          ? "border-[rgb(198_165_106_/_0.32)] bg-[rgb(198_165_106_/_0.08)] text-[#F4E6C5]"
-          : "border-[rgb(198_165_106_/_0.42)] bg-[rgb(198_165_106_/_0.11)] text-[#F4E6C5]",
-      dot: "bg-[#C6A56A]",
-      text: "text-amber-100",
-      border: "border-[rgb(198_165_106_/_0.30)]",
-      glow: "shadow-[0_16px_34px_rgba(0,0,0,0.20)]",
+      pill: "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]",
+      dot: "bg-[var(--hh-warning)]",
+      text: "text-[var(--hh-warning)]",
+      border: "border-[var(--hh-warning-border)]",
+      glow: "shadow-operational",
     };
   }
   return {
-    pill:
-      variant === "calm"
-        ? "border-emerald-300/16 bg-emerald-300/[0.045] text-emerald-100/72"
-        : "border-emerald-300/30 bg-emerald-400/[0.085] text-emerald-100",
-    dot: variant === "calm" ? "bg-emerald-300/60" : "bg-emerald-300",
-    text: "text-emerald-100",
-    border: "border-emerald-300/22",
-    glow: "shadow-[0_16px_34px_rgba(0,0,0,0.18)]",
+    pill: "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]",
+    dot: "bg-[var(--hh-success)]",
+    text: "text-[var(--hh-success)]",
+    border: "border-[var(--hh-success-border)]",
+    glow: "shadow-operational",
   };
 }
 
@@ -407,18 +393,16 @@ function StatusPill({
   status,
   label,
   compact = false,
-  variant = "default",
 }: {
   status: HealthCheckStatus;
   label?: string;
   compact?: boolean;
-  variant?: StatusPillVariant;
 }) {
-  const tone = statusToneClasses(status, variant);
+  const tone = statusToneClasses(status);
   return (
     <span
       className={`inline-flex shrink-0 items-center gap-2 rounded-full border font-medium ${tone.pill} ${
-        compact ? "px-1.5 py-0.5 text-[10px]" : "px-2.5 py-1.5 text-xs"
+        compact ? "px-1.5 py-0.5 text-hh-status" : "px-2.5 py-1.5 text-hh-metadata"
       }`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${tone.dot}`} />
@@ -433,20 +417,21 @@ function QaStatusLabel({ status }: { status: SystemQaStatus }) {
       status={qaStatusToHealthStatus(status)}
       label={status === "pass" ? "Pass" : status === "warning" ? "Warning" : "Critical"}
       compact
-      variant={status === "pass" ? "calm" : "default"}
     />
   );
 }
 
 function HealthStatusLabel({ status }: { status: HealthCheckStatus }) {
-  return <StatusPill status={status} compact variant={status === "ok" ? "calm" : "default"} />;
+  return <StatusPill status={status} compact />;
 }
 
 function QaSummaryCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-lg border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3">
-      <p className="text-xs font-medium uppercase tracking-[0.06em] text-slate-400">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-50">{value}</p>
+    <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-4 py-3 shadow-operational">
+      <p className="text-hh-label uppercase text-[var(--hh-text-tertiary)]">{label}</p>
+      <p className="mt-1 text-hh-financial-total font-semibold text-[var(--hh-text-primary)] hh-fin">
+        {value}
+      </p>
     </div>
   );
 }
@@ -626,7 +611,7 @@ function DataQualityPanel({
       </div>
 
       {error ? (
-        <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
+        <p className="mt-4 text-sm text-[var(--hh-danger)]">{error}</p>
       ) : loading && !dataQuality ? (
         <p className="mt-4 text-sm text-muted-foreground">Checking Supabase data safely…</p>
       ) : dataQuality && summary ? (
@@ -666,16 +651,16 @@ function DataQualityPanel({
               <table className="w-full min-w-[560px] text-sm">
                 <thead>
                   <tr className="text-left">
-                    <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    <th className="h-8 px-3 py-0 pr-6 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Module
                     </th>
-                    <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    <th className="h-8 px-3 py-0 pr-6 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Status
                     </th>
-                    <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    <th className="h-8 px-3 py-0 pr-6 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Checked
                     </th>
-                    <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                    <th className="h-8 px-3 py-0 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                       Issues
                     </th>
                   </tr>
@@ -716,16 +701,16 @@ function DataQualityPanel({
                 <table className="w-full min-w-[720px] text-sm">
                   <thead>
                     <tr className="text-left">
-                      <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      <th className="h-8 px-3 py-0 pr-6 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                         Issue
                       </th>
-                      <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      <th className="h-8 px-3 py-0 pr-6 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                         Severity
                       </th>
-                      <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      <th className="h-8 px-3 py-0 pr-6 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                         Current / Expected
                       </th>
-                      <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                      <th className="h-8 px-3 py-0 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                         Recommended action
                       </th>
                     </tr>
@@ -821,11 +806,11 @@ function SystemQaSectionTable({ section }: { section: SystemQaSection }) {
   const passCount = section.checks.filter((check) => check.status === "pass").length;
 
   return (
-    <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] p-3 sm:p-4">
+    <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-medium text-foreground">{section.name}</h3>
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-hh-metadata text-[var(--hh-text-tertiary)]">
             {passCount} / {section.checks.length} checks passed
           </p>
         </div>
@@ -836,16 +821,16 @@ function SystemQaSectionTable({ section }: { section: SystemQaSection }) {
           <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="text-left">
-                <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 py-0 pr-6 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Check
                 </th>
-                <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 py-0 pr-6 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Status
                 </th>
-                <th className="h-8 px-3 py-0 pr-6 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 py-0 pr-6 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Page / Type
                 </th>
-                <th className="h-8 px-3 py-0 text-left text-[10px] font-medium uppercase tracking-[0.06em] text-[#9CA3AF]">
+                <th className="h-8 px-3 py-0 text-left text-hh-table-header font-medium uppercase tracking-normal text-[var(--hh-text-tertiary)]">
                   Detail
                 </th>
               </tr>
@@ -877,7 +862,7 @@ function SystemQaSectionTable({ section }: { section: SystemQaSection }) {
                     <td className={`py-2.5 text-xs leading-5 ${tone.detail}`}>
                       <span className="block">{check.message}</span>
                       {check.recommendedAction ? (
-                        <span className="mt-1 block text-slate-200/75">
+                        <span className="mt-1 block text-[var(--hh-text-secondary)]">
                           {check.recommendedAction}
                         </span>
                       ) : null}
@@ -935,7 +920,7 @@ function SystemQaPanel({
       </div>
 
       {error ? (
-        <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>
+        <p className="mt-4 text-sm text-[var(--hh-danger)]">{error}</p>
       ) : loading && !qa ? (
         <p className="mt-4 text-sm text-muted-foreground">Running safe QA checks…</p>
       ) : qa ? (
@@ -1227,16 +1212,16 @@ function isDiagnosticCode(value: string): boolean {
 function CodeBadge({ value, status = "info" }: { value: string; status?: DetailRowStatus }) {
   const tone =
     status === "fail"
-      ? "border-red-300/25 bg-red-400/[0.09] text-red-100"
+      ? "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] text-[var(--hh-danger)]"
       : status === "warning"
-        ? "border-amber-300/25 bg-amber-300/[0.1] text-amber-100"
+        ? "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)]"
         : status === "ok"
-          ? "border-emerald-300/14 bg-emerald-300/[0.045] text-emerald-100/70"
-          : "border-[rgb(198_165_106_/_0.20)] bg-[rgb(198_165_106_/_0.07)] text-slate-200/78";
+          ? "border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] text-[var(--hh-success)]"
+          : "border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] text-[var(--hh-information)]";
 
   return (
     <code
-      className={`inline-flex max-w-full items-center rounded-md border px-1.5 py-0.5 font-mono text-[11px] leading-4 ${tone}`}
+      className={`inline-flex max-w-full items-center rounded-hh-compact border px-1.5 py-0.5 text-hh-status hh-fin ${tone}`}
     >
       <span className="truncate">{value}</span>
     </code>
@@ -1245,7 +1230,7 @@ function CodeBadge({ value, status = "info" }: { value: string; status?: DetailR
 
 function CodePath({ value, href }: { value: string; href?: string }) {
   const className =
-    "inline-flex max-w-full items-center rounded-md border border-[rgb(198_165_106_/_0.16)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 font-mono text-[11px] leading-4 text-slate-200/78 no-underline transition hover:border-[rgb(198_165_106_/_0.34)] hover:bg-[rgb(198_165_106_/_0.08)] hover:text-slate-50";
+    "hh-focus-ring inline-flex max-w-full items-center rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-hh-status text-[var(--hh-text-secondary)] no-underline transition hh-fin hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] hover:text-[var(--hh-text-primary)]";
   const content = <span className="break-all">{value}</span>;
 
   if (href) {
@@ -1267,67 +1252,59 @@ function detailRowTone(status: DetailRowStatus): {
 } {
   if (status === "fail") {
     return {
-      row: "border-red-300/14 bg-red-500/[0.025] hover:bg-red-400/[0.055] hover:shadow-[inset_0_0_0_1px_rgba(248,113,113,0.12)]",
-      accent: "border-red-300/55",
-      title: "text-red-50",
-      detail: "text-red-100/78",
+      row: "border-[var(--hh-danger-border)] bg-[var(--hh-danger-soft-fill)] hover:bg-[var(--hh-l3-hover)]",
+      accent: "border-[var(--hh-danger)]",
+      title: "text-[var(--hh-text-primary)]",
+      detail: "text-[var(--hh-danger)]",
     };
   }
   if (status === "warning") {
     return {
-      row: "border-amber-300/14 bg-amber-400/[0.025] hover:bg-amber-300/[0.055] hover:shadow-[inset_0_0_0_1px_rgba(251,191,36,0.12)]",
-      accent: "border-amber-300/60",
-      title: "text-amber-50",
-      detail: "text-amber-100/80",
+      row: "border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] hover:bg-[var(--hh-l3-hover)]",
+      accent: "border-[var(--hh-warning)]",
+      title: "text-[var(--hh-text-primary)]",
+      detail: "text-[var(--hh-warning)]",
     };
   }
   if (status === "info") {
     return {
-      row: "border-[rgb(198_165_106_/_0.10)] hover:bg-[rgb(198_165_106_/_0.045)]",
-      accent: "border-[rgb(198_165_106_/_0.26)]",
-      title: "text-slate-100/90",
-      detail: "text-slate-300/82",
+      row: "border-[var(--hh-information-border)] hover:bg-[var(--hh-l3-hover)]",
+      accent: "border-[var(--hh-information)]",
+      title: "text-[var(--hh-text-primary)]",
+      detail: "text-[var(--hh-information)]",
     };
   }
   return {
-    row: "border-[var(--neo-border)] hover:bg-[var(--neo-surface-hover)]",
+    row: "border-[var(--hh-border)] hover:bg-[var(--hh-l3-hover)]",
     accent: "border-transparent",
-    title: "text-slate-200",
-    detail: "text-slate-400",
+    title: "text-[var(--hh-text-primary)]",
+    detail: "text-[var(--hh-text-secondary)]",
   };
 }
 
 function DetailStatusPill({ status }: { status: DetailRowStatus }) {
   if (status === "info") {
     return (
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[rgb(198_165_106_/_0.20)] bg-[rgb(198_165_106_/_0.07)] px-1.5 py-0.5 text-[10px] font-medium text-slate-200/76">
-        <span className="h-1.5 w-1.5 rounded-full bg-[#C6A56A]/70" />
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-1.5 py-0.5 text-hh-status text-[var(--hh-information)]">
+        <span className="h-1.5 w-1.5 rounded-full bg-[var(--hh-information)]" />
         Info
       </span>
     );
   }
-  return <StatusPill status={status} compact variant={status === "ok" ? "calm" : "default"} />;
-}
-
-function GuardianScanLine() {
-  return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 h-px overflow-hidden">
-      <span className="guardian-scan-line block h-px w-1/2 bg-gradient-to-r from-transparent via-[#C6A56A]/55 to-transparent" />
-    </div>
-  );
+  return <StatusPill status={status} compact />;
 }
 
 function GuardianRefreshLine({ status }: { status: HealthCheckStatus }) {
   const tone =
     status === "fail"
-      ? "from-red-400 via-red-200 to-red-400"
+      ? "bg-[var(--hh-danger)]"
       : status === "warning"
-        ? "from-[#C6A56A] via-[#F4E6C5] to-[#C6A56A]"
-        : "from-emerald-300 via-[#C6A56A] to-emerald-300";
+        ? "bg-[var(--hh-warning)]"
+        : "bg-[var(--hh-success)]";
 
   return (
-    <div className="guardian-refresh-line absolute inset-x-5 bottom-4 h-px overflow-hidden rounded-full bg-[var(--neo-border)]">
-      <span className={`block h-full bg-gradient-to-r ${tone}`} />
+    <div className="guardian-refresh-line absolute inset-x-5 bottom-4 h-px overflow-hidden rounded-full bg-[var(--hh-border)]">
+      <span className={`block h-full ${tone}`} />
     </div>
   );
 }
@@ -1336,22 +1313,22 @@ function StatusOrb({ status }: { status: HealthCheckStatus }) {
   const score = status === "ok" ? "100" : status === "warning" ? "72" : "28";
   const ring =
     status === "fail"
-      ? "from-red-400 via-red-300 to-zinc-800"
+      ? "border-[var(--hh-danger-border)]"
       : status === "warning"
-        ? "from-[#C6A56A] via-[#F4E6C5] to-zinc-900"
-        : "from-emerald-300 via-[#C6A56A] to-zinc-900";
+        ? "border-[var(--hh-warning-border)]"
+        : "border-[var(--hh-success-border)]";
 
   return (
     <div
-      className={`relative grid h-28 w-28 shrink-0 place-items-center rounded-full bg-gradient-to-br ${ring} p-px shadow-[0_18px_40px_rgba(0,0,0,0.32)] sm:h-32 sm:w-32`}
+      className={`relative grid h-28 w-28 shrink-0 place-items-center rounded-full border bg-[var(--hh-l2-operational-surface)] ${ring} shadow-operational sm:h-32 sm:w-32`}
       aria-hidden="true"
     >
-      <div className="grid h-full w-full place-items-center rounded-full border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)]">
+      <div className="grid h-full w-full place-items-center rounded-full bg-[var(--hh-l2-operational-surface)]">
         <div className="text-center">
-          <p className="text-3xl font-semibold tabular-nums text-slate-50">{score}</p>
-          <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-[#C6A56A]/75">
-            health
+          <p className="text-hh-financial-total font-semibold text-[var(--hh-text-primary)] hh-fin">
+            {score}
           </p>
+          <p className="mt-0.5 text-hh-status uppercase text-[var(--hh-text-tertiary)]">health</p>
         </div>
       </div>
     </div>
@@ -1385,12 +1362,13 @@ function HealthHero({
   const environmentLabel = environment?.vercelEnv ?? environment?.nodeEnv ?? "local";
 
   return (
-    <section className={`guardian-hero relative overflow-hidden rounded-2xl border ${tone.border}`}>
-      <GuardianScanLine />
+    <section
+      className={`guardian-hero relative overflow-hidden rounded-hh-task border ${tone.border}`}
+    >
       <div className="relative z-10 grid gap-5 p-4 pb-10 sm:p-5 sm:pb-10 lg:grid-cols-[1fr_auto] lg:items-center lg:p-6 lg:pb-11">
         <div className="min-w-0">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <span className="inline-flex min-h-[32px] items-center gap-2 rounded-full border border-[rgb(198_165_106_/_0.24)] bg-[rgb(198_165_106_/_0.08)] px-3 text-xs font-medium uppercase tracking-[0.08em] text-[#F4E6C5]">
+            <span className="inline-flex min-h-[32px] items-center gap-2 rounded-full border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-3 text-hh-label uppercase text-[var(--hh-information)]">
               <Activity className="h-3.5 w-3.5" />
               Command Center
             </span>
@@ -1399,30 +1377,30 @@ function HealthHero({
               label={healthStatusLabel(overallStatus, { executive: true })}
             />
           </div>
-          <h1 className="text-3xl font-semibold tracking-normal text-slate-50 sm:text-4xl">
+          <h1 className="text-hh-page-title font-semibold text-[var(--hh-text-primary)]">
             System Guardian
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+          <p className="mt-2 max-w-2xl text-hh-body text-[var(--hh-text-secondary)]">
             Production health, data reachability, route availability, and safety guards.
           </p>
 
-          <div className="mt-5 grid gap-2 text-xs text-slate-300 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-5 grid gap-2 text-hh-metadata text-[var(--hh-text-secondary)] sm:grid-cols-2 xl:grid-cols-4">
             <div className="guardian-hero-metric">
-              <span className="text-slate-400/85">Overall Status</span>
+              <span className="text-[var(--hh-text-tertiary)]">Overall Status</span>
               <span className={tone.text}>
                 {healthStatusLabel(overallStatus, { executive: true })}
               </span>
             </div>
             <div className="guardian-hero-metric">
-              <span className="text-slate-400/85">Last Checked</span>
+              <span className="text-[var(--hh-text-tertiary)]">Last Checked</span>
               <span>{formatCheckedAt(checkedAt)}</span>
             </div>
             <div className="guardian-hero-metric">
-              <span className="text-slate-400/85">Auto Refresh</span>
+              <span className="text-[var(--hh-text-tertiary)]">Auto Refresh</span>
               <span>Health only · {cadenceSeconds}s</span>
             </div>
             <div className="guardian-hero-metric">
-              <span className="text-slate-400/85">Environment</span>
+              <span className="text-[var(--hh-text-tertiary)]">Environment</span>
               <span className="truncate">{environmentLabel}</span>
             </div>
           </div>
@@ -1432,18 +1410,18 @@ function HealthHero({
           <StatusOrb status={overallStatus} />
           <div className="grid min-w-[12rem] gap-2">
             <div className="guardian-hero-metric">
-              <span className="inline-flex items-center gap-1.5 text-slate-400/85">
+              <span className="inline-flex items-center gap-1.5 text-[var(--hh-text-tertiary)]">
                 <GitCommit className="h-3.5 w-3.5" />
                 Commit
               </span>
-              <code className="font-mono text-xs text-[#F4E6C5]">
+              <code className="text-hh-metadata text-[var(--hh-text-primary)] hh-fin">
                 {shortCommit(environment?.commit)}
               </code>
             </div>
             <Button
               size="sm"
               variant="outline"
-              className="min-h-[44px] border-[rgb(198_165_106_/_0.28)] bg-[rgb(198_165_106_/_0.08)] text-slate-50 hover:border-[rgb(198_165_106_/_0.46)] hover:bg-[rgb(198_165_106_/_0.12)]"
+              className="min-h-[44px]"
               onClick={onRefresh}
               disabled={disabled}
             >
@@ -1452,7 +1430,7 @@ function HealthHero({
             </Button>
             <Button
               size="sm"
-              className="min-h-[44px] border border-[rgb(198_165_106_/_0.34)] bg-[#C6A56A] text-[#0B0D12] hover:bg-[#D9BE82]"
+              className="min-h-[44px]"
               onClick={onFullScan}
               disabled={fullScanDisabled}
             >
@@ -1483,18 +1461,20 @@ function HealthSummaryCard({
   const tone = statusToneClasses(status);
   return (
     <div
-      className={`guardian-summary-card group rounded-xl border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] p-4 transition duration-200 hover:border-[rgb(198_165_106_/_0.26)] hover:bg-[var(--neo-surface-hover)] ${tone.glow}`}
+      className={`guardian-summary-card group rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-4 transition duration-200 hover:border-[var(--hh-border-strong)] hover:bg-[var(--hh-l3-hover)] ${tone.glow}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[rgb(198_165_106_/_0.18)] bg-[rgb(198_165_106_/_0.08)] text-[#F4E6C5]">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]">
           <Icon className="h-4 w-4" />
         </div>
         <StatusPill status={status} compact />
       </div>
       <div className="mt-4 min-w-0">
-        <h2 className="text-sm font-semibold text-slate-50">{title}</h2>
-        <p className="mt-1 text-xs leading-5 text-slate-400">{summary}</p>
-        {count ? <p className="mt-3 font-mono text-xs text-[#F4E6C5]/80">{count}</p> : null}
+        <h2 className="text-hh-panel-title text-[var(--hh-text-primary)]">{title}</h2>
+        <p className="mt-1 text-hh-metadata text-[var(--hh-text-secondary)]">{summary}</p>
+        {count ? (
+          <p className="mt-3 text-hh-metadata text-[var(--hh-text-secondary)] hh-fin">{count}</p>
+        ) : null}
       </div>
     </div>
   );
@@ -1514,8 +1494,8 @@ function ActiveIssuesPanel({
     <section className="guardian-panel p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-slate-50">Active Issues</h2>
-          <p className="mt-1 text-xs leading-5 text-slate-400">
+          <h2 className="text-hh-section-title text-[var(--hh-text-primary)]">Active Issues</h2>
+          <p className="mt-1 text-hh-metadata text-[var(--hh-text-secondary)]">
             Critical alerts surface first; optional modules stay informational.
           </p>
         </div>
@@ -1526,12 +1506,12 @@ function ActiveIssuesPanel({
       </div>
 
       {issues.length === 0 ? (
-        <div className="mt-4 rounded-xl border border-emerald-300/15 bg-emerald-300/8 p-4">
+        <div className="mt-4 rounded-hh-standard border border-[var(--hh-success-border)] bg-[var(--hh-success-soft-fill)] p-4">
           <div className="flex items-start gap-3">
-            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-200" />
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--hh-success)]" />
             <div>
-              <p className="text-sm font-medium text-emerald-50">No active issues</p>
-              <p className="mt-1 text-xs leading-5 text-emerald-100/75">
+              <p className="text-hh-body-strong text-[var(--hh-success)]">No active issues</p>
+              <p className="mt-1 text-hh-metadata text-[var(--hh-text-secondary)]">
                 Guardian found no blocking problems in production.
               </p>
             </div>
@@ -1548,16 +1528,16 @@ function ActiveIssuesPanel({
             return (
               <div
                 key={issue.id}
-                className={`relative overflow-hidden rounded-xl border ${tone.border} bg-[var(--hh-l2-operational-surface)] p-3 transition duration-150 hover:bg-[var(--neo-surface-hover)] ${tone.glow}`}
+                className={`relative overflow-hidden rounded-hh-standard border ${tone.border} bg-[var(--hh-l2-operational-surface)] p-3 transition duration-150 hover:bg-[var(--hh-l3-hover)] ${tone.glow}`}
               >
                 <span
                   className={`absolute inset-y-3 left-0 w-px ${
-                    issue.status === "fail" ? "bg-red-300/65" : "bg-amber-300/65"
+                    issue.status === "fail" ? "bg-[var(--hh-danger)]" : "bg-[var(--hh-warning)]"
                   }`}
                 />
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-50">
+                    <p className="text-hh-body-strong text-[var(--hh-text-primary)]">
                       {issue.href ? (
                         <Link
                           href={issue.href}
@@ -1571,7 +1551,9 @@ function ActiveIssuesPanel({
                     </p>
                     <p
                       className={`mt-1 text-xs leading-5 ${
-                        issue.status === "fail" ? "text-red-100/78" : "text-amber-100/82"
+                        issue.status === "fail"
+                          ? "text-[var(--hh-danger)]"
+                          : "text-[var(--hh-warning)]"
                       }`}
                     >
                       {issue.message}
@@ -1581,7 +1563,7 @@ function ActiveIssuesPanel({
                         {metaIsCode ? (
                           <CodeBadge value={issue.meta} status={issue.status} />
                         ) : (
-                          <span className="inline-flex rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-0.5 text-[11px] text-slate-300/75">
+                          <span className="inline-flex rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-0.5 text-hh-status text-[var(--hh-text-secondary)]">
                             {issue.meta}
                           </span>
                         )}
@@ -1590,12 +1572,12 @@ function ActiveIssuesPanel({
                     {alsoReportedBy.length || groupedCount > 1 ? (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {alsoReportedBy.length ? (
-                          <span className="inline-flex rounded-md border border-cyan-200/10 bg-cyan-300/[0.055] px-2 py-0.5 text-[11px] text-cyan-100/75">
+                          <span className="inline-flex rounded-hh-compact border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] px-2 py-0.5 text-hh-status text-[var(--hh-information)]">
                             Also reported by: {alsoReportedBy.join(", ")}
                           </span>
                         ) : null}
                         {groupedCount > 1 ? (
-                          <span className="inline-flex rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-0.5 text-[11px] text-slate-300/75">
+                          <span className="inline-flex rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-0.5 text-hh-status text-[var(--hh-text-secondary)]">
                             {groupedCount} active issue entries grouped
                           </span>
                         ) : null}
@@ -1611,8 +1593,8 @@ function ActiveIssuesPanel({
       )}
 
       {optionalModules.length ? (
-        <div className="mt-4 rounded-xl border border-[rgb(198_165_106_/_0.16)] bg-[rgb(198_165_106_/_0.07)] p-3 text-xs leading-5 text-slate-200/80">
-          <span className="font-medium text-slate-50">Informational modules:</span>{" "}
+        <div className="mt-4 rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] p-3 text-hh-metadata text-[var(--hh-information)]">
+          <span className="font-medium text-[var(--hh-text-primary)]">Informational modules:</span>{" "}
           {optionalModules.map((check) => check.name).join(", ")}
         </div>
       ) : null}
@@ -1642,7 +1624,9 @@ function HealthDetailRow({ row }: { row: HealthDetailRowData }) {
               ) : null}
             </>
           )}
-          {row.meta ? <p className="mt-1 text-[11px] text-slate-500">{row.meta}</p> : null}
+          {row.meta ? (
+            <p className="mt-1 text-hh-status text-[var(--hh-text-tertiary)]">{row.meta}</p>
+          ) : null}
         </div>
       </td>
       <td className="py-3 pr-4 align-top">
@@ -1667,7 +1651,7 @@ function HealthDetailCard({ row }: { row: HealthDetailRowData }) {
 
   return (
     <div
-      className={`rounded-xl border bg-[var(--hh-l2-operational-surface)] p-3 transition duration-150 ${tone.row} ${row.status === "warning" ? "shadow-[inset_2px_0_0_rgba(251,191,36,0.45)]" : ""}`}
+      className={`rounded-hh-standard border bg-[var(--hh-l2-operational-surface)] p-3 transition duration-150 ${tone.row}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -1683,7 +1667,9 @@ function HealthDetailCard({ row }: { row: HealthDetailRowData }) {
               ) : null}
             </>
           )}
-          {row.meta ? <p className="mt-1 text-[11px] text-slate-500">{row.meta}</p> : null}
+          {row.meta ? (
+            <p className="mt-1 text-hh-status text-[var(--hh-text-tertiary)]">{row.meta}</p>
+          ) : null}
         </div>
         <DetailStatusPill status={row.status} />
       </div>
@@ -1708,12 +1694,12 @@ function HealthDetailTable({
   emptyMessage?: string;
 }) {
   if (loading && !rows) {
-    return <p className="px-4 pb-4 text-sm text-slate-400">Checking...</p>;
+    return <p className="px-4 pb-4 text-hh-body text-[var(--hh-text-secondary)]">Checking...</p>;
   }
 
   const sortedRows = sortedDetailRows(rows ?? []);
   if (sortedRows.length === 0) {
-    return <p className="px-4 pb-4 text-sm text-slate-400">{emptyMessage}</p>;
+    return <p className="px-4 pb-4 text-hh-body text-[var(--hh-text-secondary)]">{emptyMessage}</p>;
   }
 
   return (
@@ -1728,13 +1714,13 @@ function HealthDetailTable({
           <table className="guardian-detail-table w-full min-w-[620px] text-sm">
             <thead>
               <tr className="text-left">
-                <th className="h-9 px-3 pr-4 text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                <th className="h-9 px-3 pr-4 text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
                   Check
                 </th>
-                <th className="h-9 pr-4 text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                <th className="h-9 pr-4 text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
                   Status
                 </th>
-                <th className="h-9 text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                <th className="h-9 text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
                   Detail
                 </th>
               </tr>
@@ -1769,7 +1755,7 @@ function HealthSection({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = React.useState(defaultOpen);
-  const tone = statusToneClasses(status, status === "ok" ? "calm" : "default");
+  const tone = statusToneClasses(status);
 
   React.useEffect(() => {
     if (defaultOpen) setOpen(true);
@@ -1777,39 +1763,41 @@ function HealthSection({
 
   return (
     <details
-      className={`guardian-panel group/section overflow-hidden transition duration-200 hover:border-[rgb(198_165_106_/_0.22)] ${tone.glow}`}
+      className={`guardian-panel group/section overflow-hidden transition duration-200 hover:border-[var(--hh-border-strong)] ${tone.glow}`}
       open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
-      <summary className="flex min-h-[60px] cursor-pointer list-none items-center gap-3 px-4 py-3 transition hover:bg-[rgb(198_165_106_/_0.045)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(198_165_106_/_0.55)] sm:px-5">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[rgb(198_165_106_/_0.18)] bg-[rgb(198_165_106_/_0.08)] text-[#F4E6C5]">
+      <summary className="hh-focus-ring flex min-h-[60px] cursor-pointer list-none items-center gap-3 px-4 py-3 transition hover:bg-[var(--hh-l3-hover)] sm:px-5">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l3-selected)] text-[var(--hh-text-secondary)]">
           <Icon className="h-4 w-4" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
-            <span className="text-sm font-semibold text-slate-50">{title}</span>
+            <span className="text-hh-panel-title text-[var(--hh-text-primary)]">{title}</span>
           </span>
           {description ? (
-            <span className="mt-0.5 block text-xs leading-5 text-slate-500">{description}</span>
+            <span className="mt-0.5 block text-hh-metadata text-[var(--hh-text-tertiary)]">
+              {description}
+            </span>
           ) : null}
         </span>
         <span className="ml-auto hidden items-center gap-2 sm:flex">
           {count ? (
-            <span className="rounded-md border border-[rgb(198_165_106_/_0.14)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 font-mono text-[11px] text-slate-200/74">
+            <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-hh-status text-[var(--hh-text-secondary)] hh-fin">
               {count}
             </span>
           ) : null}
-          <StatusPill status={status} compact variant={status === "ok" ? "calm" : "default"} />
+          <StatusPill status={status} compact />
         </span>
-        <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition details-chevron" />
+        <ChevronDown className="h-4 w-4 shrink-0 text-[var(--hh-text-tertiary)] transition details-chevron" />
       </summary>
       <div className="flex flex-wrap items-center gap-2 px-4 pb-3 sm:hidden">
         {count ? (
-          <span className="rounded-md border border-[rgb(198_165_106_/_0.14)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 font-mono text-[11px] text-slate-200/74">
+          <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-hh-status text-[var(--hh-text-secondary)] hh-fin">
             {count}
           </span>
         ) : null}
-        <StatusPill status={status} compact variant={status === "ok" ? "calm" : "default"} />
+        <StatusPill status={status} compact />
       </div>
       {children}
     </details>
@@ -1822,12 +1810,10 @@ function MetadataGrid({ rows }: { rows: Array<{ label: string; value: React.Reac
       {rows.map((row) => (
         <div
           key={row.label}
-          className="rounded-xl border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] p-3"
+          className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3"
         >
-          <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
-            {row.label}
-          </p>
-          <div className="mt-1 min-w-0 text-sm text-slate-100">{row.value}</div>
+          <p className="text-hh-label uppercase text-[var(--hh-text-tertiary)]">{row.label}</p>
+          <div className="mt-1 min-w-0 text-hh-body text-[var(--hh-text-primary)]">{row.value}</div>
         </div>
       ))}
     </div>
@@ -2212,7 +2198,7 @@ export default function SystemHealthPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="min-h-[44px] border-amber-200/30 bg-amber-300/10 text-amber-50 hover:bg-amber-300/15"
+                  className="min-h-[44px] border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] hover:bg-[var(--hh-l3-hover)]"
                   onClick={() => runCleanup("orphaned")}
                   disabled={cleanupBusy !== null}
                 >
@@ -2233,7 +2219,7 @@ export default function SystemHealthPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="min-h-[44px] border-amber-200/30 bg-amber-300/10 text-amber-50 hover:bg-amber-300/15"
+                  className="min-h-[44px] border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] hover:bg-[var(--hh-l3-hover)]"
                   onClick={() => runCleanup("ghost")}
                   disabled={cleanupBusy !== null}
                 >
@@ -2254,7 +2240,7 @@ export default function SystemHealthPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="min-h-[44px] border-amber-200/30 bg-amber-300/10 text-amber-50 hover:bg-amber-300/15"
+                  className="min-h-[44px] border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] hover:bg-[var(--hh-l3-hover)]"
                   onClick={() => runCleanup("duplicate")}
                   disabled={cleanupBusy !== null}
                 >
@@ -2284,7 +2270,7 @@ export default function SystemHealthPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="min-h-[44px] border-amber-200/30 bg-amber-300/10 text-amber-50 hover:bg-amber-300/15"
+                  className="min-h-[44px] border-[var(--hh-warning-border)] bg-[var(--hh-warning-soft-fill)] text-[var(--hh-warning)] hover:bg-[var(--hh-l3-hover)]"
                   onClick={() => runCleanup("stale")}
                   disabled={cleanupBusy !== null}
                 >
@@ -2434,7 +2420,7 @@ export default function SystemHealthPage() {
       label: "Environment",
       value: (
         <span className="inline-flex min-w-0 items-center gap-2">
-          <Globe2 className="h-4 w-4 shrink-0 text-[#F4E6C5]/75" />
+          <Globe2 className="h-4 w-4 shrink-0 text-[var(--hh-text-secondary)]" />
           <span className="truncate">
             {health?.environment?.vercelEnv ?? health?.environment?.nodeEnv ?? "local"}
           </span>
@@ -2444,7 +2430,7 @@ export default function SystemHealthPage() {
     {
       label: "Commit",
       value: (
-        <code className="font-mono text-[#F4E6C5]">
+        <code className="text-[var(--hh-text-primary)] hh-fin">
           {health?.environment?.commit ? shortCommit(health.environment.commit) : "n/a"}
         </code>
       ),
@@ -2490,27 +2476,27 @@ export default function SystemHealthPage() {
   ];
 
   return (
-    <div className="system-health-command-center min-h-screen bg-workspace px-3 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-4 text-[var(--neo-text-secondary)] sm:px-4 lg:px-6">
+    <div className="system-health-command-center min-h-screen bg-workspace px-3 pb-[calc(env(safe-area-inset-bottom)+2rem)] pt-4 text-[var(--hh-text-secondary)] sm:px-4 lg:px-6">
       <style jsx global>{`
         .system-health-command-center {
           background: var(--hh-l1-workspace);
         }
         .system-health-command-center .guardian-hero {
           background: var(--hh-l2-operational-surface);
-          box-shadow: var(--neo-shadow-panel);
+          box-shadow: var(--hh-shadow-operational);
         }
         .system-health-command-center .guardian-panel {
-          border: 1px solid var(--neo-border);
-          border-radius: 1rem;
+          border: 1px solid var(--hh-border);
+          border-radius: var(--hh-radius-standard);
           background: var(--hh-l2-operational-surface);
-          box-shadow: var(--neo-shadow-panel);
+          box-shadow: var(--hh-shadow-operational);
         }
         .system-health-command-center .guardian-hero-metric {
           min-width: 0;
-          border-radius: 0.75rem;
-          border: 1px solid var(--neo-border);
+          border-radius: var(--hh-radius-standard);
+          border: 1px solid var(--hh-border);
           background: var(--hh-l2-operational-surface);
-          padding: 0.65rem 0.75rem;
+          padding: var(--hh-space-2) var(--hh-space-3);
         }
         .system-health-command-center .guardian-hero-metric span {
           display: block;
@@ -2522,19 +2508,14 @@ export default function SystemHealthPage() {
         .system-health-command-center summary::-webkit-details-marker {
           display: none;
         }
-        .system-health-command-center .guardian-scan-line {
-          animation: none;
-          opacity: 0.46;
-        }
         .system-health-command-center .guardian-refresh-line span {
-          width: 42%;
-          animation: guardian-refresh ${cadenceSeconds}s linear infinite;
+          width: 100%;
         }
         .system-health-command-center .airtable-table-wrap {
           max-width: 100%;
           overflow: hidden;
-          border-color: var(--neo-border) !important;
-          border-radius: 0.875rem;
+          border-color: var(--hh-border) !important;
+          border-radius: var(--hh-radius-standard);
           background: var(--hh-l2-operational-surface) !important;
         }
         .system-health-command-center .airtable-table-scroll {
@@ -2544,8 +2525,8 @@ export default function SystemHealthPage() {
         .system-health-command-center .guardian-table-shell {
           max-width: 100%;
           overflow: hidden;
-          border: 1px solid var(--neo-border);
-          border-radius: 0.875rem;
+          border: 1px solid var(--hh-border);
+          border-radius: var(--hh-radius-standard);
           background: var(--hh-l2-operational-surface);
         }
         .system-health-command-center .guardian-detail-table,
@@ -2559,13 +2540,13 @@ export default function SystemHealthPage() {
         }
         .system-health-command-center .guardian-detail-table th,
         .system-health-command-center .airtable-table-wrap th {
-          border-bottom: 1px solid var(--neo-border) !important;
+          border-bottom: 1px solid var(--hh-border) !important;
           background: transparent !important;
-          color: var(--neo-text-tertiary) !important;
+          color: var(--hh-text-tertiary) !important;
         }
         .system-health-command-center .guardian-detail-table td,
         .system-health-command-center .airtable-table-wrap td {
-          border-color: var(--neo-border) !important;
+          border-color: var(--hh-border) !important;
           background: transparent !important;
           box-shadow: none !important;
         }
@@ -2577,60 +2558,14 @@ export default function SystemHealthPage() {
           background-color: var(--hh-l2-operational-surface) !important;
         }
         .system-health-command-center .text-foreground {
-          color: var(--neo-text-primary) !important;
+          color: var(--hh-text-primary) !important;
         }
         .system-health-command-center .text-muted-foreground {
-          color: var(--neo-text-secondary) !important;
+          color: var(--hh-text-secondary) !important;
         }
         .system-health-command-center .border-border\\/70,
         .system-health-command-center .border-border\\/60 {
-          border-color: var(--neo-border) !important;
-        }
-        .system-health-command-center [class~="text-slate-50"],
-        .system-health-command-center [class*="text-slate-100"],
-        .system-health-command-center [class*="text-slate-200"],
-        .system-health-command-center [class*="text-[#F4E6C5]"] {
-          color: var(--neo-text-primary) !important;
-        }
-        .system-health-command-center [class*="text-slate-300"],
-        .system-health-command-center [class*="text-slate-400"],
-        .system-health-command-center [class*="text-[#9CA3AF]"] {
-          color: var(--neo-text-secondary) !important;
-        }
-        .system-health-command-center [class*="text-slate-500"] {
-          color: var(--neo-text-tertiary) !important;
-        }
-        @keyframes guardian-scan {
-          0% {
-            transform: translateX(-60%);
-            opacity: 0;
-          }
-          18%,
-          72% {
-            opacity: 1;
-          }
-          100% {
-            transform: translateX(220%);
-            opacity: 0;
-          }
-        }
-        @keyframes guardian-refresh {
-          0% {
-            transform: translateX(-110%);
-          }
-          100% {
-            transform: translateX(245%);
-          }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .system-health-command-center *,
-          .system-health-command-center *::before,
-          .system-health-command-center *::after {
-            animation-duration: 0.001ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.001ms !important;
-            scroll-behavior: auto !important;
-          }
+          border-color: var(--hh-border) !important;
         }
       `}</style>
 
@@ -2649,12 +2584,12 @@ export default function SystemHealthPage() {
         />
 
         {error ? (
-          <div className="guardian-panel border-red-400/25 p-4 text-sm text-red-100">
+          <div className="guardian-panel border-[var(--hh-danger-border)] p-4 text-hh-body text-[var(--hh-danger)]">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-300" />
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-[var(--hh-danger)]" />
               <div>
                 <p className="font-medium">Guardian request failed.</p>
-                <p className="mt-1 text-xs leading-5 text-red-100/75">{error}</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--hh-danger)]">{error}</p>
               </div>
             </div>
           </div>
@@ -2861,26 +2796,25 @@ export default function SystemHealthPage() {
             defaultOpen={Boolean(integrityScanDetailRows?.some((row) => row.status !== "ok"))}
           >
             {integrityScanError ? (
-              <p className="px-4 pb-4 text-sm text-red-300">{integrityScanError}</p>
+              <p className="px-4 pb-4 text-sm text-[var(--hh-danger)]">{integrityScanError}</p>
             ) : integrityScan ? (
               <>
                 <div className="px-4 pb-4">
-                  <div className="rounded-xl border border-[rgb(198_165_106_/_0.20)] bg-[rgb(198_165_106_/_0.055)] p-3 text-sm text-slate-200">
+                  <div className="rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] p-3 text-hh-body text-[var(--hh-text-secondary)]">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusPill
                         status={integrityScanHealthStatus}
                         label={`Status: ${healthStatusLabel(integrityScanHealthStatus)}`}
                         compact
-                        variant="calm"
                       />
-                      <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
+                      <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-[var(--hh-text-secondary)]">
                         Read-only scan
                       </span>
-                      <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
+                      <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-[var(--hh-text-secondary)]">
                         Auto-fix disabled
                       </span>
                     </div>
-                    <p className="mt-2 text-xs leading-5 text-slate-400">
+                    <p className="mt-2 text-xs leading-5 text-[var(--hh-text-tertiary)]">
                       No cleanup actions are available from this panel. Use the scanner as a
                       dependency inventory before any exact-ID cleanup review.
                     </p>
@@ -2908,7 +2842,7 @@ export default function SystemHealthPage() {
                   ]}
                 />
                 <div className="px-4 pb-3">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                  <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
                     Top 10 issues
                   </p>
                 </div>
@@ -2920,16 +2854,16 @@ export default function SystemHealthPage() {
               </>
             ) : (
               <div className="px-4 pb-4">
-                <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-sm text-slate-300">
+                <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-sm text-[var(--hh-text-secondary)]">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
+                    <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-[var(--hh-text-secondary)]">
                       Read-only scan
                     </span>
-                    <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
+                    <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-[var(--hh-text-secondary)]">
                       Manual full scan
                     </span>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-slate-400">
+                  <p className="mt-2 text-xs leading-5 text-[var(--hh-text-tertiary)]">
                     No full scan has been run in this session. Use Run full scan to load marker,
                     dependency, QA, and route safety results.
                   </p>
@@ -2961,26 +2895,27 @@ export default function SystemHealthPage() {
             )}
           >
             {financialReconciliationError ? (
-              <p className="px-4 pb-4 text-sm text-red-300">{financialReconciliationError}</p>
+              <p className="px-4 pb-4 text-sm text-[var(--hh-danger)]">
+                {financialReconciliationError}
+              </p>
             ) : financialReconciliation ? (
               <>
                 <div className="px-4 pb-4">
-                  <div className="rounded-xl border border-[rgb(198_165_106_/_0.20)] bg-[rgb(198_165_106_/_0.055)] p-3 text-sm text-slate-200">
+                  <div className="rounded-hh-standard border border-[var(--hh-information-border)] bg-[var(--hh-information-soft-fill)] p-3 text-hh-body text-[var(--hh-text-secondary)]">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusPill
                         status={financialReconciliationHealthStatus}
                         label={`Status: ${healthStatusLabel(financialReconciliationHealthStatus)}`}
                         compact
-                        variant="calm"
                       />
-                      <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
+                      <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-[var(--hh-text-secondary)]">
                         Read-only scan
                       </span>
-                      <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
+                      <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-[var(--hh-text-secondary)]">
                         Auto-fix disabled
                       </span>
                     </div>
-                    <p className="mt-2 text-xs leading-5 text-slate-400">
+                    <p className="mt-2 text-xs leading-5 text-[var(--hh-text-tertiary)]">
                       No cleanup actions are available from this panel. Use this summary to review
                       mismatches before any financial formula, ledger, or reversal-policy work.
                     </p>
@@ -3005,7 +2940,7 @@ export default function SystemHealthPage() {
                   ]}
                 />
                 <div className="px-4 pb-3">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.08em] text-slate-500">
+                  <p className="text-hh-table-header uppercase text-[var(--hh-text-tertiary)]">
                     Top 10 issues
                   </p>
                 </div>
@@ -3017,19 +2952,19 @@ export default function SystemHealthPage() {
               </>
             ) : (
               <div className="px-4 pb-4">
-                <div className="rounded-xl border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-sm text-slate-300">
+                <div className="rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-3 text-sm text-[var(--hh-text-secondary)]">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
+                    <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-[var(--hh-text-secondary)]">
                       Read-only scan
                     </span>
-                    <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
+                    <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-[var(--hh-text-secondary)]">
                       Manual full scan
                     </span>
-                    <span className="rounded-md border border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-slate-200/80">
+                    <span className="rounded-hh-compact border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] px-2 py-1 text-xs text-[var(--hh-text-secondary)]">
                       Auto-fix disabled
                     </span>
                   </div>
-                  <p className="mt-2 text-xs leading-5 text-slate-400">
+                  <p className="mt-2 text-xs leading-5 text-[var(--hh-text-tertiary)]">
                     No full scan has been run in this session. Use Run full scan to load invoice,
                     estimate, project, worker, and marker financial reconciliation results.
                   </p>
@@ -3058,7 +2993,7 @@ export default function SystemHealthPage() {
             <Button
               variant="outline"
               size="sm"
-              className="min-h-[44px] w-full border-[var(--neo-border)] bg-[var(--hh-l2-operational-surface)] text-slate-100 hover:bg-[var(--neo-surface-hover)] sm:w-auto"
+              className="min-h-[44px] w-full border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-hover)] sm:w-auto"
             >
               Back to Dashboard
             </Button>

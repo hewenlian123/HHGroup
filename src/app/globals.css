@@ -965,7 +965,6 @@
     /* ---- Legacy Neo compatibility aliases; HH tokens remain authoritative ---- */
     --neo-graphite-950: #07090d;
     --neo-graphite-900: #0b0f15;
-    --neo-surface-base: var(--hh-l1-workspace);
     --neo-surface-raised: var(--hh-l2-operational-surface);
     --neo-surface-muted: var(--hh-l2-operational-surface);
     --neo-surface-hover: var(--hh-l3-hover);
@@ -1032,7 +1031,6 @@
     --radius: var(--hh-radius-standard);
   }
   html.dark {
-    --neo-surface-base: var(--hh-l1-workspace);
     --neo-surface-raised: var(--hh-l2-operational-surface);
     --neo-surface-muted: var(--hh-l2-operational-surface);
     --neo-surface-hover: var(--hh-l3-hover);

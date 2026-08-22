@@ -67,7 +67,7 @@ export default async function WorkersPage() {
   return (
     <PageLayout
       divider={false}
-      className={cn("dark financial-nums max-md:!py-3", "max-md:!gap-3")}
+      className={cn("financial-nums max-md:!py-3", "max-md:!gap-3")}
       header={
         <div className="hidden md:block">
           <PageHeader

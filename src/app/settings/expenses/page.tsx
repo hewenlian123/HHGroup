@@ -322,18 +322,19 @@ export default function SettingsExpensesPage() {
       ) : null}
 
       <div
-        className="flex flex-wrap gap-2 rounded-xl border border-[var(--neo-border)] bg-[var(--neo-surface-raised)] p-2 shadow-[var(--neo-shadow-panel)]"
+        className="flex flex-wrap gap-2 rounded-hh-standard border border-[var(--hh-border)] bg-[var(--hh-l2-operational-surface)] p-2 shadow-operational"
         data-testid="settings-expenses-tabs"
       >
         {TABS.map((t) => (
           <Button
             key={t.id}
             type="button"
-            variant={tab === t.id ? "default" : "outline"}
+            variant="ghost"
             size="sm"
             className={cn(
               "h-8 rounded-md",
-              tab === t.id && "bg-[var(--neo-gold)] text-zinc-950 hover:bg-[var(--neo-gold-soft)]"
+              tab === t.id &&
+                "bg-[var(--hh-l3-selected)] text-[var(--hh-text-primary)] hover:bg-[var(--hh-l3-selected)]"
             )}
             data-testid={`settings-expenses-tab-${t.id}`}
             onClick={() => setTab(t.id)}
@@ -433,7 +434,7 @@ export default function SettingsExpensesPage() {
                     className="table-row-compact"
                     data-testid={`settings-expenses-row-${r.id}`}
                   >
-                    <td className="px-3 py-2 align-middle font-medium text-[var(--neo-text-primary)]">
+                    <td className="px-3 py-2 align-middle font-medium text-[var(--hh-text-primary)]">
                       {r.name}
                     </td>
                     <td className="px-3 py-2 align-middle">
@@ -442,10 +443,10 @@ export default function SettingsExpensesPage() {
                         variant={r.active ? "success" : "warning"}
                       />
                     </td>
-                    <td className="px-3 py-2 align-middle text-[var(--neo-text-secondary)]">
+                    <td className="px-3 py-2 align-middle text-[var(--hh-text-secondary)]">
                       {r.is_default ? "Yes" : "—"}
                     </td>
-                    <td className="px-3 py-2 align-middle text-[var(--neo-text-secondary)]">
+                    <td className="px-3 py-2 align-middle text-[var(--hh-text-secondary)]">
                       {r.is_system ? "Yes" : "—"}
                     </td>
                     <td className="px-3 py-2 align-middle">
